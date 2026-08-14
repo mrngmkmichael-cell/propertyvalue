@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 import httpx
@@ -12,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import crime, epc, flood
+from app.services import amenities, crime, epc, flood
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -52,7 +53,20 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
     return [r for r in records if q in r["address"].lower()]
 
 
+async def _empty_list():
+    return []
+
+
+def _format_distance(value) -> str:
+    try:
+        m = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    return f"{int(m)} m" if m < 1000 else f"{m / 1000:.1f} km"
+
+
 templates.env.filters["gbp"] = _format_gbp
+templates.env.filters["distance"] = _format_distance
 
 
 @app.on_event("startup")
@@ -115,35 +129,51 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     context["location"] = location
     canonical = location["postcode"]
-
-    try:
-        all_transactions = await sold_prices_for_postcode(canonical)
-        context["avg_price"] = _average_amount(all_transactions)
-        context["transactions"] = _filter_by_address(all_transactions, house_number)
-        context["postcode_has_transactions"] = bool(all_transactions)
-    except httpx.HTTPError:
-        context["tx_error"] = True
-
-    context["epc_configured"] = epc.is_configured()
-    if context["epc_configured"]:
-        try:
-            all_certificates = await epc.certificates_for_postcode(canonical)
-            context["certificates"] = _filter_by_address(all_certificates, house_number)
-            context["postcode_has_certificates"] = bool(all_certificates)
-        except httpx.HTTPError:
-            context["epc_error"] = True
-
     lat, lon = location["latitude"], location["longitude"]
+    context["epc_configured"] = epc.is_configured()
 
-    try:
-        context["flood_warnings"] = await flood.warnings_near(lat, lon)
-    except httpx.HTTPError:
+    # Independent external API calls - fetch concurrently rather than
+    # one at a time. Five external services per page load is enough
+    # that doing them sequentially was becoming a real, noticeable
+    # source of slowness.
+    tx_result, epc_result, flood_result, crime_result, amenities_result = await asyncio.gather(
+        sold_prices_for_postcode(canonical),
+        epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
+        flood.warnings_near(lat, lon),
+        crime.summary_near(lat, lon),
+        amenities.nearby_amenities_and_station(lat, lon),
+        return_exceptions=True,
+    )
+
+    if isinstance(tx_result, Exception):
+        context["tx_error"] = True
+    else:
+        context["avg_price"] = _average_amount(tx_result)
+        context["transactions"] = _filter_by_address(tx_result, house_number)
+        context["postcode_has_transactions"] = bool(tx_result)
+
+    if context["epc_configured"]:
+        if isinstance(epc_result, Exception):
+            context["epc_error"] = True
+        else:
+            context["certificates"] = _filter_by_address(epc_result, house_number)
+            context["postcode_has_certificates"] = bool(epc_result)
+
+    if isinstance(flood_result, Exception):
         context["flood_error"] = True
+    else:
+        context["flood_warnings"] = flood_result
 
-    try:
-        context["crime"] = await crime.summary_near(lat, lon)
-    except httpx.HTTPError:
+    if isinstance(crime_result, Exception):
         context["crime_error"] = True
+    else:
+        context["crime"] = crime_result
+
+    if isinstance(amenities_result, Exception):
+        context["amenities_error"] = True
+    else:
+        context["amenities"] = amenities_result["categories"]
+        context["station"] = amenities_result["station"]
 
     if context["current_user"]:
         try:

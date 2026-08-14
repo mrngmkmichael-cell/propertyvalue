@@ -437,3 +437,56 @@ a {
 .site-footer a:hover {
     color: var(--accent);
 }
+
+/* Amenities */
+
+.amenity-group {
+    border-bottom: 1px solid var(--rule);
+    padding: 0.7rem 0;
+}
+
+.amenity-group summary {
+    cursor: pointer;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    list-style: none;
+}
+
+.amenity-group summary::-webkit-details-marker {
+    display: none;
+}
+
+.amenity-group summary::before {
+    content: "+ ";
+    color: var(--accent);
+}
+
+.amenity-group[open] summary::before {
+    content: "\2212 ";
+}
+
+.amenity-list {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+}
+
+.amenity-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--rule);
+    font-size: 0.92rem;
+}
+
+.amenity-list li:last-child {
+    border-bottom: none;
+}
+
+.amenity-distance {
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}

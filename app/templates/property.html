@@ -199,6 +199,66 @@
             <p class="notice">No crime data available for this area.</p>
         {% endif %}
     </section>
+
+    <section class="report-section">
+        <h2>Local amenities</h2>
+        {% if amenities_error %}
+            <p class="notice notice-error">
+                The amenities data service didn't respond. Try again in a moment.
+            </p>
+        {% elif amenities %}
+            <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
+            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals")] %}
+            <details class="amenity-group">
+                <summary>{{ amenities[key]|length }} {{ label }}</summary>
+                {% if amenities[key] %}
+                    <ul class="amenity-list">
+                        {% for a in amenities[key][:10] %}
+                        <li>{{ a.name }} <span class="amenity-distance">{{ a.distance_m | distance }}</span></li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="notice">None found nearby.</p>
+                {% endif %}
+            </details>
+            {% endfor %}
+        {% endif %}
+    </section>
+
+    <section class="report-section">
+        <h2>Schools nearby</h2>
+        <p class="section-sub">Proximity only — not a catchment area or admissions guarantee. No reliable free UK-wide catchment data exists.</p>
+        {% if amenities_error %}
+            <p class="notice notice-error">
+                The amenities data service didn't respond. Try again in a moment.
+            </p>
+        {% elif amenities and amenities.school %}
+            <ul class="amenity-list">
+                {% for s in amenities.school[:10] %}
+                <li>{{ s.name }} <span class="amenity-distance">{{ s.distance_m | distance }}</span></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="notice">No schools found nearby.</p>
+        {% endif %}
+    </section>
+
+    <section class="report-section">
+        <h2>Getting around</h2>
+        {% if amenities_error %}
+            <p class="notice notice-error">
+                The amenities data service didn't respond. Try again in a moment.
+            </p>
+        {% elif station %}
+            <p class="section-sub">
+                Nearest station: <strong>{{ station.name }}</strong>{% if station.network %} ({{ station.network }}){% endif %}
+                — {{ station.distance_m | distance }}
+                {%- if station.lines %} — {{ station.lines | join(", ") }}{% endif %}
+            </p>
+        {% else %}
+            <p class="notice">No train or tube station found nearby.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -213,6 +273,8 @@ EPC data from
 Flood data from the
 <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference" target="_blank" rel="noopener">Environment Agency real-time flood-monitoring API</a>.
 Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>.
+Local amenities and station data from
+<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.
 {% endblock %}
 
 {% block extra_head %}
