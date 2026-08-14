@@ -19,12 +19,12 @@
     <h1>{{ location.postcode }}</h1>
     <p class="location-sub">{{ location.admin_district }}, {{ location.region }}</p>
 
-    {% if error == "api_error" %}
+    <h2>Sold price history</h2>
+    {% if tx_error %}
         <p class="notice notice-error">
             Land Registry's data service didn't respond. Try again in a moment.
         </p>
     {% elif transactions %}
-        <h2>Sold price history</h2>
         <table class="tx-table">
             <thead>
                 <tr>
@@ -48,6 +48,36 @@
     {% else %}
         <p class="notice">No recorded sold transactions for this postcode yet.</p>
     {% endif %}
+
+    {% if epc_configured %}
+        <h2>Energy performance certificates</h2>
+        {% if epc_error %}
+            <p class="notice notice-error">
+                The EPC data service didn't respond. Try again in a moment.
+            </p>
+        {% elif certificates %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Date registered</th>
+                        <th>Rating</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cert in certificates %}
+                    <tr>
+                        <td>{{ cert.address }}</td>
+                        <td>{{ cert.date }}</td>
+                        <td><span class="epc-badge epc-{{ cert.rating | lower }}">{{ cert.rating }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No EPC certificates found for this postcode.</p>
+        {% endif %}
+    {% endif %}
 {% endif %}
 {% endblock %}
 
@@ -55,4 +85,8 @@
 Sold price data from
 <a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">HM Land Registry Price Paid Data</a>.
 Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener">postcodes.io</a>.
+{% if epc_configured %}
+EPC data from
+<a href="https://get-energy-performance-data.communities.gov.uk" target="_blank" rel="noopener">Get energy performance of buildings data</a>.
+{% endif %}
 {% endblock %}

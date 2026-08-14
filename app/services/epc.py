@@ -1,0 +1,49 @@
+"""EPC (energy rating) certificates from the government's
+Energy Performance of Buildings Data service. Requires a free
+account and a bearer token (see .env.example) — the search
+returns [] rather than raising when no token is configured, so
+the rest of the site still works if this layer isn't set up yet.
+"""
+import os
+
+import httpx
+
+API_BASE = "https://api.get-energy-performance-data.communities.gov.uk"
+
+
+def is_configured() -> bool:
+    return bool(os.environ.get("EPC_API_TOKEN"))
+
+
+async def certificates_for_postcode(canonical_postcode: str) -> list[dict]:
+    """Fetch domestic EPC certificates for a postcode, newest first."""
+    token = os.environ.get("EPC_API_TOKEN")
+    if not token:
+        return []
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{API_BASE}/api/domestic/search",
+            params={"postcode": canonical_postcode},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+            },
+        )
+    response.raise_for_status()
+    records = response.json().get("data", [])
+
+    certificates = []
+    for rec in records:
+        address_parts = [
+            rec.get(f"addressLine{n}") for n in (1, 2, 3, 4)
+        ]
+        address = ", ".join(p for p in address_parts if p)
+        certificates.append({
+            "address": address or rec.get("postTown", ""),
+            "rating": rec.get("currentEnergyEfficiencyBand", "?"),
+            "date": rec.get("registrationDate", ""),
+        })
+
+    certificates.sort(key=lambda c: c["date"], reverse=True)
+    return certificates
