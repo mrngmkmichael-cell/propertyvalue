@@ -30,6 +30,10 @@ async def certificates_for_postcode(canonical_postcode: str) -> list[dict]:
                 "Accept": "application/json",
             },
         )
+    if response.status_code == 404:
+        # The API's way of saying "no certificates for this query" —
+        # not a real failure.
+        return []
     response.raise_for_status()
     records = response.json().get("data", [])
 
