@@ -6,6 +6,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -55,7 +56,11 @@ async def not_found_handler(request: Request, exc: StarletteHTTPException):
         return templates.TemplateResponse(
             request, "404.html", base_context(request), status_code=404
         )
-    raise exc
+    # Any other HTTP exception (405 Method Not Allowed, etc.) - defer to
+    # Starlette's own default handling rather than re-raising, which
+    # doesn't route back through the middleware chain correctly and
+    # crashes to an unhandled 500 instead of the proper status code.
+    return await default_http_exception_handler(request, exc)
 
 
 @app.exception_handler(Exception)
