@@ -53,6 +53,13 @@
         {% endif %}
     </div>
 
+    {% if transactions or certificates %}
+    <div class="address-filter-field">
+        <label for="address-filter">Filter by house number or address</label>
+        <input type="text" id="address-filter" placeholder="e.g. 37 or Avalon Road" autocomplete="off">
+    </div>
+    {% endif %}
+
     <section class="report-section">
         <h2>Sold price history</h2>
         {% if tx_error %}
@@ -60,7 +67,11 @@
                 Land Registry's data service didn't respond. Try again in a moment.
             </p>
         {% elif transactions %}
-            <table class="tx-table">
+            <p class="section-sub">
+                {{ transactions|length }} sales recorded
+                {% if avg_price %}— postcode average {{ avg_price | gbp }}{% endif %}
+            </p>
+            <table class="tx-table" data-filterable>
                 <thead>
                     <tr>
                         <th>Address</th>
@@ -93,7 +104,7 @@
                 The EPC data service didn't respond. Try again in a moment.
             </p>
         {% elif certificates %}
-            <table class="tx-table">
+            <table class="tx-table" data-filterable>
                 <thead>
                     <tr>
                         <th>Address</th>
@@ -203,6 +214,24 @@ Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">
 
 {% block extra_scripts %}
 {% if location %}
+<script>
+    (function () {
+        const input = document.getElementById('address-filter');
+        if (!input) return;
+        const tables = document.querySelectorAll('[data-filterable] tbody');
+        input.addEventListener('input', function () {
+            const q = input.value.trim().toLowerCase();
+            tables.forEach(function (tbody) {
+                tbody.querySelectorAll('tr').forEach(function (row) {
+                    const cell = row.querySelector('td');
+                    const text = cell ? cell.textContent.toLowerCase() : '';
+                    row.style.display = (!q || text.includes(q)) ? '' : 'none';
+                });
+            });
+        });
+    })();
+</script>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>

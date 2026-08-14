@@ -35,6 +35,16 @@ def _format_gbp(value) -> str:
         return str(value)
 
 
+def _average_amount(transactions: list[dict]) -> float | None:
+    amounts = []
+    for tx in transactions:
+        try:
+            amounts.append(float(tx["amount"]))
+        except (TypeError, ValueError, KeyError):
+            continue
+    return sum(amounts) / len(amounts) if amounts else None
+
+
 templates.env.filters["gbp"] = _format_gbp
 
 
@@ -99,6 +109,7 @@ async def property_search(request: Request, postcode: str = ""):
 
     try:
         context["transactions"] = await sold_prices_for_postcode(canonical)
+        context["avg_price"] = _average_amount(context["transactions"])
     except httpx.HTTPError:
         context["tx_error"] = True
 
