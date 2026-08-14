@@ -6,6 +6,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
@@ -48,6 +49,22 @@ def base_context(request: Request) -> dict:
     }
 
 
+@app.exception_handler(StarletteHTTPException)
+async def not_found_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse(
+            request, "404.html", base_context(request), status_code=404
+        )
+    raise exc
+
+
+@app.exception_handler(Exception)
+async def server_error_handler(request: Request, exc: Exception):
+    return templates.TemplateResponse(
+        request, "500.html", base_context(request), status_code=500
+    )
+
+
 @app.get("/")
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html", base_context(request))
@@ -62,7 +79,12 @@ async def property_search(request: Request, postcode: str = ""):
     if not postcode:
         return templates.TemplateResponse(request, "property.html", context)
 
-    location = await lookup_postcode(postcode)
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        context["error"] = "lookup_error"
+        return templates.TemplateResponse(request, "property.html", context)
+
     if location is None:
         context["error"] = "not_found"
         return templates.TemplateResponse(request, "property.html", context)
@@ -95,7 +117,10 @@ async def property_search(request: Request, postcode: str = ""):
         context["crime_error"] = True
 
     if context["current_user"]:
-        context["watchlist_item"] = watchlist.get_item(context["current_user"]["id"], canonical)
+        try:
+            context["watchlist_item"] = watchlist.get_item(context["current_user"]["id"], canonical)
+        except Exception:
+            context["watchlist_item"] = None
 
     return templates.TemplateResponse(request, "property.html", context)
 

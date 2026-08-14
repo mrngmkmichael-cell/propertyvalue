@@ -16,6 +16,13 @@
         <code>SW1A 1AA</code>.
     </p>
 
+{% elif error == "lookup_error" %}
+    <span class="kicker">Temporarily unavailable</span>
+    <h1>{{ query }}</h1>
+    <p class="notice notice-error">
+        The postcode lookup service didn't respond. Try again in a moment.
+    </p>
+
 {% else %}
     <div class="report-head">
         <span class="kicker">Property report</span>

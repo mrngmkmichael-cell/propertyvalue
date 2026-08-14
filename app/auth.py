@@ -39,11 +39,17 @@ def current_user(request: Request) -> Optional[dict]:
     user_id = request.session.get("user_id")
     if not user_id:
         return None
-    with get_session() as db:
-        user = db.get(User, user_id)
-        if user is None:
-            return None
-        return {"id": user.id, "email": user.email}
+    try:
+        with get_session() as db:
+            user = db.get(User, user_id)
+            if user is None:
+                return None
+            return {"id": user.id, "email": user.email}
+    except Exception:
+        # base_context() calls this on every page load, including the
+        # error pages themselves - a transient DB hiccup shouldn't take
+        # down the whole site, just quietly log the visitor out.
+        return None
 
 
 def find_user_by_email(db, email: str) -> Optional[User]:
