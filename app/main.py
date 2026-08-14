@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.services import epc
+from app.services import crime, epc, flood
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -58,5 +58,17 @@ async def property_search(request: Request, postcode: str = ""):
             context["certificates"] = await epc.certificates_for_postcode(canonical)
         except httpx.HTTPError:
             context["epc_error"] = True
+
+    lat, lon = location["latitude"], location["longitude"]
+
+    try:
+        context["flood_warnings"] = await flood.warnings_near(lat, lon)
+    except httpx.HTTPError:
+        context["flood_error"] = True
+
+    try:
+        context["crime"] = await crime.summary_near(lat, lon)
+    except httpx.HTTPError:
+        context["crime_error"] = True
 
     return templates.TemplateResponse(request, "property.html", context)

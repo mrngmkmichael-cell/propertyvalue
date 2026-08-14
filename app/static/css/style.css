@@ -169,3 +169,28 @@ body {
 .epc-e { background: #fdae61; }
 .epc-f { background: #f46d43; }
 .epc-g { background: #d73027; color: #f5f5f5; }
+
+.section-sub {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+}
+
+.capitalize {
+    text-transform: capitalize;
+}
+
+.flood-badge {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #10151b;
+}
+
+.flood-level-1 { background: #d73027; color: #f5f5f5; }
+.flood-level-2 { background: #f46d43; }
+.flood-level-3 { background: #fee08b; }
+.flood-level-4 { background: var(--border); color: var(--muted); }

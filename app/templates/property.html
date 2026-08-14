@@ -78,6 +78,64 @@
             <p class="notice">No EPC certificates found for this postcode.</p>
         {% endif %}
     {% endif %}
+
+    <h2>Flood warnings</h2>
+    <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
+    {% if flood_error %}
+        <p class="notice notice-error">
+            The flood warning service didn't respond. Try again in a moment.
+        </p>
+    {% elif flood_warnings %}
+        <table class="tx-table">
+            <thead>
+                <tr>
+                    <th>Area</th>
+                    <th>Severity</th>
+                    <th>Raised</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for w in flood_warnings %}
+                <tr>
+                    <td>{{ w.description }}</td>
+                    <td><span class="flood-badge flood-level-{{ w.severity_level }}">{{ w.severity }}</span></td>
+                    <td>{{ w.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="notice">No active flood warnings or alerts nearby.</p>
+    {% endif %}
+
+    <h2>Crime</h2>
+    {% if crime_error %}
+        <p class="notice notice-error">
+            The crime data service didn't respond. Try again in a moment.
+        </p>
+    {% elif crime and crime.total %}
+        <p class="section-sub">
+            {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}.
+        </p>
+        <table class="tx-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in crime.by_category %}
+                <tr>
+                    <td class="capitalize">{{ c.category }}</td>
+                    <td>{{ c.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="notice">No crime data available for this area.</p>
+    {% endif %}
 {% endif %}
 {% endblock %}
 
@@ -89,4 +147,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
 EPC data from
 <a href="https://get-energy-performance-data.communities.gov.uk" target="_blank" rel="noopener">Get energy performance of buildings data</a>.
 {% endif %}
+Flood data from the
+<a href="https://environment.data.gov.uk/flood-monitoring/doc/reference" target="_blank" rel="noopener">Environment Agency real-time flood-monitoring API</a>.
+Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>.
 {% endblock %}
