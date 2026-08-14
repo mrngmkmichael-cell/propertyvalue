@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ query }} — PropertyValue{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/">&larr; New search</a>
+
+{% if not query %}
+    <p>Enter a postcode to get started.</p>
+
+{% elif error == "not_found" %}
+    <h1>{{ query }}</h1>
+    <p class="notice notice-error">
+        We couldn't find that postcode. Double-check the spelling — it should look like
+        <code>SW1A 1AA</code>.
+    </p>
+
+{% else %}
+    <h1>{{ location.postcode }}</h1>
+    <p class="location-sub">{{ location.admin_district }}, {{ location.region }}</p>
+
+    {% if error == "api_error" %}
+        <p class="notice notice-error">
+            Land Registry's data service didn't respond. Try again in a moment.
+        </p>
+    {% elif transactions %}
+        <h2>Sold price history</h2>
+        <table class="tx-table">
+            <thead>
+                <tr>
+                    <th>Address</th>
+                    <th>Date</th>
+                    <th>Price</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                <tr>
+                    <td>{{ tx.address }}</td>
+                    <td>{{ tx.date }}</td>
+                    <td>{{ tx.amount | gbp }}</td>
+                    <td>{{ tx.category }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="notice">No recorded sold transactions for this postcode yet.</p>
+    {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block attribution %}
+Sold price data from
+<a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">HM Land Registry Price Paid Data</a>.
+Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener">postcodes.io</a>.
+{% endblock %}

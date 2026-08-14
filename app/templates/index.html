@@ -6,6 +6,11 @@
 <section class="hero">
     <h1>PropertyValue</h1>
     <p>Check a UK property before you decide — sold price history, energy rating, flood risk and crime stats, all in one place.</p>
-    <p class="phase-note">Phase 0: project scaffold is live. Search is coming in Phase 1.</p>
+
+    <form class="search-form" action="/property" method="get">
+        <label for="postcode">UK postcode</label>
+        <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+        <button type="submit">Search</button>
+    </form>
 </section>
 {% endblock %}

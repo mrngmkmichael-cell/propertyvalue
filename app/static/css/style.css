@@ -36,7 +36,7 @@ body {
 .site-main {
     flex: 1;
     padding: 2rem 1.5rem;
-    max-width: 720px;
+    max-width: 840px;
     margin: 0 auto;
     width: 100%;
 }
@@ -69,4 +69,85 @@ body {
 
 .site-footer a {
     color: var(--accent);
+}
+
+.search-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.search-form label {
+    width: 100%;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.search-form input {
+    flex: 1;
+    min-width: 200px;
+    padding: 0.6rem 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.search-form button {
+    padding: 0.6rem 1.25rem;
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: #0f1720;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.back-link:hover {
+    color: var(--accent);
+}
+
+.location-sub {
+    color: var(--muted);
+    margin-top: -0.5rem;
+}
+
+.notice {
+    padding: 0.75rem 1rem;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.notice-error {
+    border-color: #b3554f;
+}
+
+.tx-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+.tx-table th,
+.tx-table td {
+    text-align: left;
+    padding: 0.6rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tx-table th {
+    color: var(--muted);
+    font-weight: 600;
 }
