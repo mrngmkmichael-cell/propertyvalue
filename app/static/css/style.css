@@ -376,11 +376,32 @@ a {
 
 /* Map */
 
-.map-container {
+.location-visual {
+    position: relative;
     margin-top: 1.25rem;
     height: 320px;
+}
+
+.map-container {
+    height: 100%;
     border: 1px solid var(--rule-strong);
     background: var(--paper-raised);
+}
+
+.globe-container {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: #05070a;
+    border: 1px solid var(--rule-strong);
+    overflow: hidden;
+    cursor: grab;
+    transition: opacity 0.8s ease;
+}
+
+.globe-container.fade-out {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Footer */

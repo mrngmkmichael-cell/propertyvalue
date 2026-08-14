@@ -28,7 +28,10 @@
         <span class="kicker">Property report</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
-        <div id="map" class="map-container"></div>
+        <div class="location-visual">
+            <div id="globe-intro" class="globe-container"></div>
+            <div id="map" class="map-container"></div>
+        </div>
 
         {% if accounts_configured %}
             {% if current_user %}
@@ -213,6 +216,35 @@ Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">
     L.marker([{{ location.latitude | tojson }}, {{ location.longitude | tojson }}])
         .addTo(map)
         .bindPopup({{ location.postcode | tojson }});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.1"
+    integrity="sha256-KrZ2f0fivgrDRs16XrVdJZ6j2gbUedwi8YIN3WmPSWo=" crossorigin="anonymous"></script>
+<script>
+    const globeEl = document.getElementById('globe-intro');
+    const globeRect = globeEl.getBoundingClientRect();
+    const targetLat = {{ location.latitude | tojson }};
+    const targetLng = {{ location.longitude | tojson }};
+
+    const myGlobe = new Globe(globeEl)
+        .width(globeRect.width)
+        .height(globeRect.height)
+        .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe@2.45.2/example/img/earth-blue-marble.jpg')
+        .backgroundColor('#05070a')
+        .pointOfView({ lat: 20, lng: -20, altitude: 2.6 }, 0);
+
+    myGlobe.controls().autoRotate = true;
+    myGlobe.controls().autoRotateSpeed = 2.2;
+    myGlobe.controls().enableZoom = false;
+
+    setTimeout(() => {
+        myGlobe.controls().autoRotate = false;
+        myGlobe.pointOfView({ lat: targetLat, lng: targetLng, altitude: 0.4 }, 2200);
+    }, 1100);
+
+    setTimeout(() => {
+        globeEl.classList.add('fade-out');
+    }, 3600);
 </script>
 {% endif %}
 {% endblock %}
