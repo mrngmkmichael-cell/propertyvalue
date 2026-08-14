@@ -11,7 +11,13 @@ import re
 
 import httpx
 
-OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter"
+# Two independent public Overpass instances - the primary is known to
+# reject some hosting-provider IP ranges outright, so we fall back to
+# a mirror rather than surfacing that as an outage.
+OVERPASS_ENDPOINTS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
 
 # (label, overpass tag filter, search radius in metres)
 AMENITY_QUERIES = [
@@ -41,6 +47,23 @@ def _element_latlon(el: dict):
     return (center["lat"], center["lon"]) if center else (None, None)
 
 
+async def _query_overpass(query: str) -> list[dict]:
+    last_error = None
+    for endpoint in OVERPASS_ENDPOINTS:
+        try:
+            async with httpx.AsyncClient(timeout=25) as client:
+                response = await client.post(
+                    endpoint,
+                    data={"data": query},
+                    headers={"User-Agent": "curl/8.7.1"},
+                )
+            response.raise_for_status()
+            return response.json().get("elements", [])
+        except httpx.HTTPError as exc:
+            last_error = exc
+    raise last_error
+
+
 async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
     clauses = "".join(
         f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in AMENITY_QUERIES
@@ -50,15 +73,7 @@ async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
         f'nwr["station"="subway"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
     )
     query = f"[out:json][timeout:20];({clauses});out center tags;"
-
-    async with httpx.AsyncClient(timeout=25) as client:
-        response = await client.post(
-            OVERPASS_ENDPOINT,
-            data={"data": query},
-            headers={"User-Agent": "curl/8.7.1"},
-        )
-    response.raise_for_status()
-    elements = response.json().get("elements", [])
+    elements = await _query_overpass(query)
 
     categories = {label: [] for label, _, _ in AMENITY_QUERIES}
     stations = []
@@ -125,14 +140,7 @@ async def _station_lines(el_type: str, el_id: int) -> list[str]:
         f'rel(b{type_letter})["public_transport"="stop_area"];'
         f"out tags;"
     )
-    async with httpx.AsyncClient(timeout=25) as client:
-        response = await client.post(
-            OVERPASS_ENDPOINT,
-            data={"data": query},
-            headers={"User-Agent": "curl/8.7.1"},
-        )
-    response.raise_for_status()
-    elements = response.json().get("elements", [])
+    elements = await _query_overpass(query)
 
     lines = []
     for el in elements:
