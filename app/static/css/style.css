@@ -300,9 +300,10 @@ a {
 /* Map */
 
 .map-container {
-    margin-top: 0.5rem;
+    margin-top: 1.25rem;
     height: 320px;
     border: 1px solid var(--rule-strong);
+    background: var(--paper-raised);
 }
 
 /* Footer */

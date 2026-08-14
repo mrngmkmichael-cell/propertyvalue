@@ -21,6 +21,7 @@
         <span class="kicker">Property report</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+        <div id="map" class="map-container"></div>
     </div>
 
     <section class="report-section">
@@ -162,4 +163,30 @@ EPC data from
 Flood data from the
 <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference" target="_blank" rel="noopener">Environment Agency real-time flood-monitoring API</a>.
 Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>.
+{% endblock %}
+
+{% block extra_head %}
+{% if location %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if location %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    const map = L.map('map', { scrollWheelZoom: false }).setView(
+        [{{ location.latitude | tojson }}, {{ location.longitude | tojson }}], 15
+    );
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+    }).addTo(map);
+    L.marker([{{ location.latitude | tojson }}, {{ location.longitude | tojson }}])
+        .addTo(map)
+        .bindPopup({{ location.postcode | tojson }});
+</script>
+{% endif %}
 {% endblock %}
