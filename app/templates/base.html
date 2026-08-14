@@ -15,6 +15,19 @@
         <div class="site-header-inner">
             <a class="brand" href="/">PropertyValue</a>
             <span class="tagline">UK Property Intelligence</span>
+            {% if accounts_configured %}
+            <nav class="site-nav">
+                {% if current_user %}
+                    <a href="/watchlist">Watchlist</a>
+                    <form action="/logout" method="post" class="nav-form">
+                        <button type="submit">Log out</button>
+                    </form>
+                {% else %}
+                    <a href="/login">Log in</a>
+                    <a href="/signup">Sign up</a>
+                {% endif %}
+            </nav>
+            {% endif %}
         </div>
     </header>
 

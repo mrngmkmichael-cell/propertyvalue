@@ -22,6 +22,25 @@
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
         <div id="map" class="map-container"></div>
+
+        {% if accounts_configured %}
+            {% if current_user %}
+                <form class="stacked-form watchlist-form" action="/watchlist/save" method="post">
+                    <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                    <div class="search-form-field">
+                        <label for="note">{{ "Update note" if watchlist_item else "Save to watchlist" }}</label>
+                        <input type="text" id="note" name="note" placeholder="Optional note to yourself"
+                               value="{{ watchlist_item.note if watchlist_item else '' }}">
+                    </div>
+                    <button type="submit">{{ "Update" if watchlist_item else "Save" }}</button>
+                </form>
+            {% else %}
+                <p class="section-sub">
+                    <a href="/login?next=/property?postcode={{ location.postcode }}">Log in</a>
+                    to save this property to your watchlist.
+                </p>
+            {% endif %}
+        {% endif %}
     </div>
 
     <section class="report-section">
