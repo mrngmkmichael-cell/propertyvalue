@@ -45,6 +45,13 @@ def _average_amount(transactions: list[dict]) -> float | None:
     return sum(amounts) / len(amounts) if amounts else None
 
 
+def _filter_by_address(records: list[dict], query: str) -> list[dict]:
+    if not query:
+        return records
+    q = query.strip().lower()
+    return [r for r in records if q in r["address"].lower()]
+
+
 templates.env.filters["gbp"] = _format_gbp
 
 
@@ -86,10 +93,12 @@ def index(request: Request):
 
 
 @app.get("/property")
-async def property_search(request: Request, postcode: str = ""):
+async def property_search(request: Request, postcode: str = "", house_number: str = ""):
     postcode = postcode.strip()
+    house_number = house_number.strip()
     context = base_context(request)
     context["query"] = postcode
+    context["house_number"] = house_number
 
     if not postcode:
         return templates.TemplateResponse(request, "property.html", context)
@@ -108,15 +117,19 @@ async def property_search(request: Request, postcode: str = ""):
     canonical = location["postcode"]
 
     try:
-        context["transactions"] = await sold_prices_for_postcode(canonical)
-        context["avg_price"] = _average_amount(context["transactions"])
+        all_transactions = await sold_prices_for_postcode(canonical)
+        context["avg_price"] = _average_amount(all_transactions)
+        context["transactions"] = _filter_by_address(all_transactions, house_number)
+        context["postcode_has_transactions"] = bool(all_transactions)
     except httpx.HTTPError:
         context["tx_error"] = True
 
     context["epc_configured"] = epc.is_configured()
     if context["epc_configured"]:
         try:
-            context["certificates"] = await epc.certificates_for_postcode(canonical)
+            all_certificates = await epc.certificates_for_postcode(canonical)
+            context["certificates"] = _filter_by_address(all_certificates, house_number)
+            context["postcode_has_certificates"] = bool(all_certificates)
         except httpx.HTTPError:
             context["epc_error"] = True
 

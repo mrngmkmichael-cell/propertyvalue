@@ -53,10 +53,16 @@
         {% endif %}
     </div>
 
-    {% if transactions or certificates %}
+    {% if postcode_has_transactions or postcode_has_certificates %}
     <div class="address-filter-field">
         <label for="address-filter">Filter by house number or address</label>
-        <input type="text" id="address-filter" placeholder="e.g. 37 or Avalon Road" autocomplete="off">
+        <input type="text" id="address-filter" placeholder="e.g. 37 or Avalon Road" autocomplete="off" value="{{ house_number }}">
+        {% if house_number %}
+            <p class="section-sub">
+                Showing only results matching "{{ house_number }}" —
+                <a href="/property?postcode={{ location.postcode }}">show all results for this postcode</a>.
+            </p>
+        {% endif %}
     </div>
     {% endif %}
 
@@ -91,6 +97,8 @@
                     {% endfor %}
                 </tbody>
             </table>
+        {% elif house_number and postcode_has_transactions %}
+            <p class="notice">No sold transactions found for "{{ house_number }}" at this postcode.</p>
         {% else %}
             <p class="notice">No recorded sold transactions for this postcode yet.</p>
         {% endif %}
@@ -122,6 +130,8 @@
                     {% endfor %}
                 </tbody>
             </table>
+        {% elif house_number and postcode_has_certificates %}
+            <p class="notice">No EPC certificates found for "{{ house_number }}" at this postcode.</p>
         {% else %}
             <p class="notice">No EPC certificates found for this postcode.</p>
         {% endif %}
