@@ -4,12 +4,15 @@
 
 {% block content %}
 <section class="hero">
-    <h1>PropertyValue</h1>
-    <p>Check a UK property before you decide — sold price history, energy rating, flood risk and crime stats, all in one place.</p>
+    <span class="kicker">Due diligence, made simple</span>
+    <h1>Know a property before you commit.</h1>
+    <p class="dek">Sold price history, energy rating, flood warnings and crime stats for any UK postcode — all in one place, sourced from official public data.</p>
 
     <form class="search-form" action="/property" method="get">
-        <label for="postcode">UK postcode</label>
-        <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+        <div class="search-form-field">
+            <label for="postcode">UK postcode</label>
+            <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+        </div>
         <button type="submit">Search</button>
     </form>
 </section>

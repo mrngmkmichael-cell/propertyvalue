@@ -9,6 +9,7 @@
     <p>Enter a postcode to get started.</p>
 
 {% elif error == "not_found" %}
+    <span class="kicker">Not found</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
         We couldn't find that postcode. Double-check the spelling — it should look like
@@ -16,40 +17,46 @@
     </p>
 
 {% else %}
-    <h1>{{ location.postcode }}</h1>
-    <p class="location-sub">{{ location.admin_district }}, {{ location.region }}</p>
+    <div class="report-head">
+        <span class="kicker">Property report</span>
+        <h1>{{ location.postcode }}</h1>
+        <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+    </div>
 
-    <h2>Sold price history</h2>
-    {% if tx_error %}
-        <p class="notice notice-error">
-            Land Registry's data service didn't respond. Try again in a moment.
-        </p>
-    {% elif transactions %}
-        <table class="tx-table">
-            <thead>
-                <tr>
-                    <th>Address</th>
-                    <th>Date</th>
-                    <th>Price</th>
-                    <th>Type</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tx in transactions %}
-                <tr>
-                    <td>{{ tx.address }}</td>
-                    <td>{{ tx.date }}</td>
-                    <td>{{ tx.amount | gbp }}</td>
-                    <td>{{ tx.category }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p class="notice">No recorded sold transactions for this postcode yet.</p>
-    {% endif %}
+    <section class="report-section">
+        <h2>Sold price history</h2>
+        {% if tx_error %}
+            <p class="notice notice-error">
+                Land Registry's data service didn't respond. Try again in a moment.
+            </p>
+        {% elif transactions %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Date</th>
+                        <th class="num">Price</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td>{{ tx.address }}</td>
+                        <td>{{ tx.date }}</td>
+                        <td class="num">{{ tx.amount | gbp }}</td>
+                        <td>{{ tx.category }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No recorded sold transactions for this postcode yet.</p>
+        {% endif %}
+    </section>
 
     {% if epc_configured %}
+    <section class="report-section">
         <h2>Energy performance certificates</h2>
         {% if epc_error %}
             <p class="notice notice-error">
@@ -61,7 +68,7 @@
                     <tr>
                         <th>Address</th>
                         <th>Date registered</th>
-                        <th>Rating</th>
+                        <th class="num">Rating</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -69,7 +76,7 @@
                     <tr>
                         <td>{{ cert.address }}</td>
                         <td>{{ cert.date }}</td>
-                        <td><span class="epc-badge epc-{{ cert.rating | lower }}">{{ cert.rating }}</span></td>
+                        <td class="num"><span class="epc-badge epc-{{ cert.rating | lower }}">{{ cert.rating }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -77,65 +84,70 @@
         {% else %}
             <p class="notice">No EPC certificates found for this postcode.</p>
         {% endif %}
+    </section>
     {% endif %}
 
-    <h2>Flood warnings</h2>
-    <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
-    {% if flood_error %}
-        <p class="notice notice-error">
-            The flood warning service didn't respond. Try again in a moment.
-        </p>
-    {% elif flood_warnings %}
-        <table class="tx-table">
-            <thead>
-                <tr>
-                    <th>Area</th>
-                    <th>Severity</th>
-                    <th>Raised</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for w in flood_warnings %}
-                <tr>
-                    <td>{{ w.description }}</td>
-                    <td><span class="flood-badge flood-level-{{ w.severity_level }}">{{ w.severity }}</span></td>
-                    <td>{{ w.date }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p class="notice">No active flood warnings or alerts nearby.</p>
-    {% endif %}
+    <section class="report-section">
+        <h2>Flood warnings</h2>
+        <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
+        {% if flood_error %}
+            <p class="notice notice-error">
+                The flood warning service didn't respond. Try again in a moment.
+            </p>
+        {% elif flood_warnings %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th class="num">Severity</th>
+                        <th>Raised</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for w in flood_warnings %}
+                    <tr>
+                        <td>{{ w.description }}</td>
+                        <td class="num"><span class="flood-badge flood-level-{{ w.severity_level }}">{{ w.severity }}</span></td>
+                        <td>{{ w.date }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No active flood warnings or alerts nearby.</p>
+        {% endif %}
+    </section>
 
-    <h2>Crime</h2>
-    {% if crime_error %}
-        <p class="notice notice-error">
-            The crime data service didn't respond. Try again in a moment.
-        </p>
-    {% elif crime and crime.total %}
-        <p class="section-sub">
-            {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}.
-        </p>
-        <table class="tx-table">
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th>Count</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in crime.by_category %}
-                <tr>
-                    <td class="capitalize">{{ c.category }}</td>
-                    <td>{{ c.count }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p class="notice">No crime data available for this area.</p>
-    {% endif %}
+    <section class="report-section">
+        <h2>Crime</h2>
+        {% if crime_error %}
+            <p class="notice notice-error">
+                The crime data service didn't respond. Try again in a moment.
+            </p>
+        {% elif crime and crime.total %}
+            <p class="section-sub">
+                {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="num">Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in crime.by_category %}
+                    <tr>
+                        <td class="capitalize">{{ c.category }}</td>
+                        <td class="num">{{ c.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No crime data available for this area.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
