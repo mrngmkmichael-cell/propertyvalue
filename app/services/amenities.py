@@ -16,12 +16,15 @@ from app.services import _cache
 # Independent public Overpass instances, tried in order. The primary
 # is known to reject some hosting-provider IP ranges outright, and
 # the shared public instances occasionally go down together under
-# load (observed: primary 504, kumi.systems unresponsive, both at
-# the same time) - three independent operators makes a correlated
-# outage much less likely than two.
+# load - observed live, more than once, more than two of them
+# degraded at the same time (504s, unresponsive, or a "200 OK" with
+# a broken/empty database - see _is_healthy_response). Five
+# independent operators makes a fully correlated outage unlikely.
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",
     "https://overpass.osm.ch/api/interpreter",
 ]
 # Short per-attempt timeout so a slow/blocked endpoint fails over to
@@ -57,6 +60,16 @@ def _element_latlon(el: dict):
     return (center["lat"], center["lon"]) if center else (None, None)
 
 
+def _is_healthy_response(data: dict) -> bool:
+    # A mirror with a broken/uninitialized database can return a
+    # syntactically valid 200 OK with an empty result set - no HTTP
+    # error, so the usual try/except doesn't catch it. Its timestamp
+    # gives it away: a healthy instance reports a real ISO date
+    # ("2026-08-14T23:26:46Z"); a broken one returned "116437".
+    timestamp = data.get("osm3s", {}).get("timestamp_osm_base", "")
+    return bool(re.match(r"^\d{4}-\d{2}-\d{2}", timestamp))
+
+
 async def _query_overpass(query: str) -> list[dict]:
     last_error = None
     for endpoint in OVERPASS_ENDPOINTS:
@@ -68,7 +81,11 @@ async def _query_overpass(query: str) -> list[dict]:
                     headers={"User-Agent": "curl/8.7.1"},
                 )
             response.raise_for_status()
-            return response.json().get("elements", [])
+            data = response.json()
+            if not _is_healthy_response(data):
+                last_error = RuntimeError(f"{endpoint} returned an unhealthy response")
+                continue
+            return data.get("elements", [])
         except httpx.HTTPError as exc:
             last_error = exc
     raise last_error
