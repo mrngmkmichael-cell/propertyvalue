@@ -511,6 +511,7 @@
                         <tr>
                             <th>School</th>
                             <th>Ofsted rating</th>
+                            <th class="num">FSM eligible</th>
                             {% if group_name != "Nursery" %}<th>Exam results</th>{% endif %}
                             <th class="num">Distance</th>
                         </tr>
@@ -525,6 +526,10 @@
                                 {% else %}
                                     <span class="ofsted-none">Not rated</span>
                                 {% endif %}
+                            </td>
+                            <td class="num">
+                                {% if s.fsm_eligible_pct is not none %}{{ s.fsm_eligible_pct }}%
+                                {% else %}<span class="ofsted-none">—</span>{% endif %}
                             </td>
                             {% if group_name != "Nursery" %}
                             <td>

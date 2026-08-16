@@ -9,7 +9,7 @@ import math
 from sqlalchemy import select
 
 from app.db import get_session, is_configured
-from app.models import Ks2Result, Ks4Result, School
+from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics
 
 SEARCH_RADIUS_KM = 5
 PER_GROUP_LIMIT = 3
@@ -118,5 +118,17 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
 
         for school in grouped["Nursery"]:
             school["exam_results"] = None
+
+        all_urns = [s["urn"] for schools in grouped.values() for s in schools]
+        if all_urns:
+            fsm_by_urn = {
+                r.urn: r.fsm_eligible_pct
+                for r in session.scalars(
+                    select(SchoolCharacteristics).where(SchoolCharacteristics.urn.in_(all_urns))
+                )
+            }
+            for schools in grouped.values():
+                for school in schools:
+                    school["fsm_eligible_pct"] = fsm_by_urn.get(school["urn"])
 
     return {name: schools for name, schools in grouped.items() if schools}

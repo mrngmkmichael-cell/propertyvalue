@@ -171,3 +171,21 @@ class Ks2Result(Base):
     pupil_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rwm_expected_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     rwm_higher_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class SchoolCharacteristics(Base):
+    """Free school meal (FSM) eligibility, by school URN - a common
+    school-level deprivation/characteristics indicator. Populated by
+    scripts/import_school_characteristics.py from DfE's "schools,
+    pupils and their characteristics" school census.
+
+    SEN status, class sizes, workforce and finance data were also
+    investigated for this table but aren't published at individual
+    school level as free open data - only aggregated to local
+    authority/national, which isn't useful per-property. Not faked.
+    """
+    __tablename__ = "school_characteristics"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    fsm_eligible_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
