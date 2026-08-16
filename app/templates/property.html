@@ -1740,7 +1740,7 @@ Listed building data from Historic England's
 {% endblock %}
 
 {% block extra_head %}
-{% if location %}
+{% if location and not google_maps_api_key %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 {% endif %}
@@ -1766,6 +1766,23 @@ Listed building data from Historic England's
     })();
 </script>
 
+{% if google_maps_api_key %}
+<script>
+    function initPropertyMap() {
+        const center = { lat: {{ location.latitude | tojson }}, lng: {{ location.longitude | tojson }} };
+        const map = new google.maps.Map(document.getElementById('map'), {
+            center: center,
+            zoom: 15,
+            scrollwheel: false,
+            streetViewControl: false,
+            mapTypeControl: false,
+            fullscreenControl: false,
+        });
+        new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
+    }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initPropertyMap&loading=async" async defer></script>
+{% else %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
@@ -1780,6 +1797,7 @@ Listed building data from Historic England's
         .addTo(map)
         .bindPopup({{ location.postcode | tojson }});
 </script>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/globe.gl@2.46.1"
     integrity="sha256-KrZ2f0fivgrDRs16XrVdJZ6j2gbUedwi8YIN3WmPSWo=" crossorigin="anonymous"></script>

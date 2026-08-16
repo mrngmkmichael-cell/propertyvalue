@@ -224,6 +224,7 @@ def base_context(request: Request) -> dict:
     return {
         "current_user": auth.current_user(request),
         "accounts_configured": db.is_configured(),
+        "google_maps_api_key": os.environ.get("GOOGLE_MAPS_API_KEY", ""),
     }
 
 
