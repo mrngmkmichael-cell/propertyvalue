@@ -95,3 +95,43 @@ class HouseholdIncome(Base):
     region_code: Mapped[str] = mapped_column(String(16), default="")
     region_name: Mapped[str] = mapped_column(String(100), default="")
     total_annual_income: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Occupation(Base):
+    """Census 2021 occupation breakdown (TS063), by LSOA - counts of
+    usual residents 16+ in employment, by occupation category.
+    Populated by scripts/import_census_stats.py. Static until the
+    2031 census.
+    """
+    __tablename__ = "occupation"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    managers_directors_senior: Mapped[int] = mapped_column(Integer, default=0)
+    professional: Mapped[int] = mapped_column(Integer, default=0)
+    associate_professional_technical: Mapped[int] = mapped_column(Integer, default=0)
+    admin_secretarial: Mapped[int] = mapped_column(Integer, default=0)
+    skilled_trades: Mapped[int] = mapped_column(Integer, default=0)
+    caring_leisure_service: Mapped[int] = mapped_column(Integer, default=0)
+    sales_customer_service: Mapped[int] = mapped_column(Integer, default=0)
+    process_plant_machine_operatives: Mapped[int] = mapped_column(Integer, default=0)
+    elementary: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Qualification(Base):
+    """Census 2021 highest qualification breakdown (TS067), by LSOA -
+    counts of usual residents 16+, by highest qualification level.
+    Populated by scripts/import_census_stats.py. Static until the
+    2031 census.
+    """
+    __tablename__ = "qualification"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    no_qualifications: Mapped[int] = mapped_column(Integer, default=0)
+    level_1_entry: Mapped[int] = mapped_column(Integer, default=0)
+    level_2: Mapped[int] = mapped_column(Integer, default=0)
+    apprenticeship: Mapped[int] = mapped_column(Integer, default=0)
+    level_3: Mapped[int] = mapped_column(Integer, default=0)
+    level_4_plus: Mapped[int] = mapped_column(Integer, default=0)
+    other_qualifications: Mapped[int] = mapped_column(Integer, default=0)

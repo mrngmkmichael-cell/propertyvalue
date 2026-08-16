@@ -190,6 +190,24 @@
                 {% else %}No data available{% endif %}
             </span>
         </a>
+
+        <a href="#occupation" class="dashboard-card status-{{ 'muted' if not occupation else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-occupation">{{ icons.icon('occupation') }}</span>
+            <span class="dashboard-card-title">Occupation</span>
+            <span class="dashboard-card-status">
+                {% if occupation %}{{ occupation.professional_pct }}% managerial/professional
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        <a href="#qualification" class="dashboard-card status-{{ 'muted' if not qualification else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-qualification">{{ icons.icon('qualification') }}</span>
+            <span class="dashboard-card-title">Qualification</span>
+            <span class="dashboard-card-status">
+                {% if qualification %}{{ qualification.degree_pct }}% degree-educated
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
     </div>
 
     <section class="report-section" id="sold-price-history" data-animate>
@@ -570,6 +588,70 @@
             <p class="notice">No deprivation data available for this area.</p>
         {% endif %}
     </section>
+
+    <section class="report-section" id="occupation" data-animate>
+        <h2>Occupation</h2>
+        {% if occupation_error %}
+            <p class="notice notice-error">
+                The occupation data service didn't respond. Try again in a moment.
+            </p>
+        {% elif occupation %}
+            <p class="section-sub">
+                Occupation of usual residents aged 16+ in employment, from Census 2021 — this
+                small area (LSOA), not a per-property figure.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Occupation</th>
+                        <th class="num">Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in occupation.breakdown %}
+                    <tr>
+                        <td>{{ o.label }}</td>
+                        <td class="num">{{ o.pct }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No occupation data available for this area.</p>
+        {% endif %}
+    </section>
+
+    <section class="report-section" id="qualification" data-animate>
+        <h2>Qualification</h2>
+        {% if qualification_error %}
+            <p class="notice notice-error">
+                The qualification data service didn't respond. Try again in a moment.
+            </p>
+        {% elif qualification %}
+            <p class="section-sub">
+                Highest qualification held by usual residents aged 16+, from Census 2021 — this
+                small area (LSOA), not a per-property figure.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Qualification level</th>
+                        <th class="num">Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in qualification.breakdown %}
+                    <tr>
+                        <td>{{ q.label }}</td>
+                        <td class="num">{{ q.pct }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No qualification data available for this area.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -598,6 +680,8 @@ Deprivation data from the Ministry of Housing, Communities and Local Government'
 Household income estimates from the
 <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales" target="_blank" rel="noopener">Office for National Statistics</a>
 — modelled estimates, financial year ending 2023.
+Occupation and qualification data from
+<a href="https://www.nomisweb.co.uk/sources/census_2021" target="_blank" rel="noopener">Census 2021</a>, via Nomis.
 {% endblock %}
 
 {% block extra_head %}

@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import amenities, area_stats, crime, epc, flood, hpi, schools_db
+from app.services import amenities, area_stats, census_stats, crime, epc, flood, hpi, schools_db
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -275,6 +275,14 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["household_income"] = area_stats.income_for_msoa(codes.get("msoa", ""))
     except Exception:
         context["household_income_error"] = True
+    try:
+        context["occupation"] = census_stats.occupation_for_lsoa(codes.get("lsoa", ""))
+    except Exception:
+        context["occupation_error"] = True
+    try:
+        context["qualification"] = census_stats.qualification_for_lsoa(codes.get("lsoa", ""))
+    except Exception:
+        context["qualification_error"] = True
 
     if context["current_user"]:
         try:

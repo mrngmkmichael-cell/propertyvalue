@@ -701,6 +701,8 @@ a {
 .icon-transport { background: rgba(46, 74, 122, 0.14); color: #2e4a7a; }
 .icon-income { background: rgba(31, 122, 108, 0.14); color: #1f7a6c; }
 .icon-deprivation { background: rgba(122, 42, 74, 0.14); color: #7a2a4a; }
+.icon-occupation { background: rgba(90, 90, 90, 0.14); color: #5a5a5a; }
+.icon-qualification { background: rgba(76, 46, 130, 0.14); color: #4c2e82; }
 
 .dashboard-card-title {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
