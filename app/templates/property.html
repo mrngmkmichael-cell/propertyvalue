@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as icons %}
 
 {% block title %}{{ query }} — PropertyValue{% endblock %}
 
@@ -25,6 +26,13 @@
 
 {% else %}
     <div class="report-head">
+        {% set breadcrumb_parts = [] %}
+        {% for part in [location.get("country", ""), location.region, location.admin_district] %}
+            {% if part and part not in breadcrumb_parts %}{% set _ = breadcrumb_parts.append(part) %}{% endif %}
+        {% endfor %}
+        {% if breadcrumb_parts %}
+        <nav class="breadcrumb">{{ breadcrumb_parts | join(" › ") }}</nav>
+        {% endif %}
         <span class="kicker">Property report</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
@@ -74,8 +82,10 @@
     </div>
     {% endif %}
 
+    {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
     <div class="dashboard-grid">
-        <a href="#sold-price-history" class="dashboard-card">
+        <a href="#sold-price-history" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('market') }}</span>
             <span class="dashboard-card-title">Local Market</span>
             <span class="dashboard-card-status">
                 {% if tx_error %}Data unavailable
@@ -86,7 +96,8 @@
         </a>
 
         {% if epc_configured %}
-        <a href="#epc" class="dashboard-card">
+        <a href="#epc" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('energy') }}</span>
             <span class="dashboard-card-title">Energy Efficiency</span>
             <span class="dashboard-card-status">
                 {% if epc_error %}Data unavailable
@@ -97,7 +108,8 @@
         </a>
         {% endif %}
 
-        <a href="#flood" class="dashboard-card">
+        <a href="#flood" class="dashboard-card status-{{ 'muted' if flood_error else ('attn' if flood_warnings else 'ok') }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">Flood Risk</span>
             <span class="dashboard-card-status">
                 {% if flood_error %}Data unavailable
@@ -106,7 +118,8 @@
             </span>
         </a>
 
-        <a href="#crime" class="dashboard-card">
+        <a href="#crime" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">Crime &amp; Safety</span>
             <span class="dashboard-card-status">
                 {% if crime_error %}Data unavailable
@@ -115,7 +128,8 @@
             </span>
         </a>
 
-        <a href="#schools" class="dashboard-card">
+        <a href="#schools" class="dashboard-card status-{{ 'muted' if (schools_error or not schools) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Schools &amp; Catchment</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
@@ -124,16 +138,17 @@
             </span>
         </a>
 
-        <a href="#sold-price-history" class="dashboard-card">
+        <a href="#sold-price-history" class="dashboard-card status-{{ 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('prosperity') }}</span>
             <span class="dashboard-card-title">Area Prosperity</span>
             <span class="dashboard-card-status">
-                {% if hpi and hpi.local_authority %}{{ "%+.1f"|format(hpi.local_authority.annual_change_pct) }}% YoY ({{ hpi.local_authority.name }})
-                {% elif hpi and hpi.region %}{{ "%+.1f"|format(hpi.region.annual_change_pct) }}% YoY ({{ hpi.region.name }})
+                {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
                 {% else %}No data available{% endif %}
             </span>
         </a>
 
-        <a href="#amenities" class="dashboard-card">
+        <a href="#amenities" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('amenities') }}</span>
             <span class="dashboard-card-title">Nearby Essentials</span>
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
@@ -142,7 +157,8 @@
             </span>
         </a>
 
-        <a href="#getting-around" class="dashboard-card">
+        <a href="#getting-around" class="dashboard-card status-{{ 'muted' if (amenities_error or not station) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon">{{ icons.icon('transport') }}</span>
             <span class="dashboard-card-title">Getting Around</span>
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
@@ -152,7 +168,7 @@
         </a>
     </div>
 
-    <section class="report-section" id="sold-price-history">
+    <section class="report-section" id="sold-price-history" data-animate>
         <h2>Sold price history</h2>
         {% if tx_error %}
             <p class="notice notice-error">
@@ -216,10 +232,23 @@
                 </tbody>
             </table>
         {% endif %}
+
+        {% if price_position is defined %}
+            <p class="section-sub">Price position (vs {{ price_position_area.name }} average):</p>
+            <div class="price-position-bar">
+                <div class="price-position-marker" style="left: {{ price_position }}%;"></div>
+            </div>
+            <p class="price-position-caption">
+                {{ price_position_reference | gbp }} is
+                {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
+                {{ "%.0f"|format(diff_pct | abs) }}% {{ "above" if diff_pct >= 0 else "below" }}
+                the {{ price_position_area.name }} average of {{ price_position_area.average_price | gbp }}.
+            </p>
+        {% endif %}
     </section>
 
     {% if epc_configured %}
-    <section class="report-section" id="epc">
+    <section class="report-section" id="epc" data-animate>
         <h2>Energy performance certificates</h2>
         {% if epc_error %}
             <p class="notice notice-error">
@@ -252,7 +281,7 @@
     </section>
     {% endif %}
 
-    <section class="report-section" id="flood">
+    <section class="report-section" id="flood" data-animate>
         <h2>Flood warnings</h2>
         <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
         {% if flood_error %}
@@ -283,7 +312,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section" id="crime">
+    <section class="report-section" id="crime" data-animate>
         <h2>Crime</h2>
         {% if crime_error %}
             <p class="notice notice-error">
@@ -314,7 +343,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section" id="amenities">
+    <section class="report-section" id="amenities" data-animate>
         <h2>Local amenities</h2>
         {% if amenities_error %}
             <p class="notice notice-error">
@@ -339,7 +368,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section" id="schools">
+    <section class="report-section" id="schools" data-animate>
         <h2>Schools nearby</h2>
         <p class="section-sub">Proximity only — not a catchment area or admissions guarantee. No reliable free UK-wide catchment data exists.</p>
         {% if schools_error %}
@@ -378,7 +407,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section" id="getting-around">
+    <section class="report-section" id="getting-around" data-animate>
         <h2>Getting around</h2>
         {% if amenities_error %}
             <p class="notice notice-error">
@@ -443,6 +472,26 @@ register. Ofsted ratings from
                 });
             });
         });
+    })();
+</script>
+
+<script>
+    (function () {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const targets = document.querySelectorAll('[data-animate]');
+        if (!('IntersectionObserver' in window)) {
+            targets.forEach(function (el) { el.classList.add('in-view'); });
+            return;
+        }
+        const observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('in-view');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+        targets.forEach(function (el) { observer.observe(el); });
     })();
 </script>
 

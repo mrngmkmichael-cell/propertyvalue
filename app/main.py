@@ -57,6 +57,19 @@ async def _empty_list():
     return []
 
 
+def _price_position(reference_price: float | None, area_average: float | None) -> float | None:
+    """Where the reference price sits on a 0-100 bar centred on the
+    area average. Not a true percentile (we don't have the full local
+    sales distribution) - just a fixed 0.4x-2.2x-of-average window,
+    clamped at the edges."""
+    if not reference_price or not area_average:
+        return None
+    ratio = reference_price / area_average
+    low, high = 0.4, 2.2
+    position = (ratio - low) / (high - low) * 100
+    return max(0, min(100, position))
+
+
 def _format_distance(value) -> str:
     try:
         m = float(value)
@@ -185,6 +198,20 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     if not isinstance(hpi_result, Exception):
         context["hpi"] = hpi_result
+        area = hpi_result.get("local_authority") or hpi_result.get("region")
+        if area:
+            reference_price = None
+            if context.get("transactions"):
+                try:
+                    reference_price = float(context["transactions"][0]["amount"])
+                except (TypeError, ValueError, KeyError, IndexError):
+                    reference_price = None
+            reference_price = reference_price or context.get("avg_price")
+            position = _price_position(reference_price, area["average_price"])
+            if position is not None:
+                context["price_position"] = position
+                context["price_position_reference"] = reference_price
+                context["price_position_area"] = area
 
     try:
         context["schools"] = schools_db.nearby_schools(lat, lon)
