@@ -1,23 +1,117 @@
 {% extends "base.html" %}
+{% import "_icons.html" as icons %}
 
 {% block title %}PropertyValue — UK Property Lookup{% endblock %}
 
 {% block content %}
 <section class="hero">
-    <span class="kicker">Due diligence, made simple</span>
-    <h1>Know a property before you commit.</h1>
-    <p class="dek">Sold price history, energy rating, flood warnings and crime stats for any UK postcode — all in one place, sourced from official public data.</p>
+    <div class="hero-blob hero-blob-1"></div>
+    <div class="hero-blob hero-blob-2"></div>
+    <div class="hero-inner">
+        <span class="kicker">Due diligence, made simple</span>
+        <h1>Know a property before you commit.</h1>
+        <p class="dek">Sold price history, energy rating, flood risk, crime, schools and more for any UK postcode — all in one place, sourced from official public data. No account, no paywall.</p>
 
-    <form class="search-form" action="/property" method="get">
-        <div class="search-form-field">
-            <label for="postcode">UK postcode</label>
-            <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+        <form class="search-form" action="/property" method="get">
+            <div class="search-form-field">
+                <label for="postcode">UK postcode</label>
+                <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+            </div>
+            <div class="search-form-field">
+                <label for="house_number">House/flat number (optional)</label>
+                <input type="text" id="house_number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+            </div>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+</section>
+
+<section class="stats-row" data-animate>
+    <div class="stat-card">
+        <span class="stat-number">25+</span>
+        <span class="stat-label">Checks in every report</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">15+</span>
+        <span class="stat-label">Official data sources</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">£0</span>
+        <span class="stat-label">Always free, no account needed</span>
+    </div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading" data-animate>Everything we check, in one report</h2>
+    <p class="landing-subheading" data-animate>
+        One postcode search pulls together sold prices, official risk designations and area
+        statistics that would otherwise mean checking a dozen different government websites.
+    </p>
+    <div class="feature-grid">
+        {% for icon_name, label, blurb in [
+            ('market', 'Sold Prices', 'Full transaction history from HM Land Registry'),
+            ('valuation', 'Valuation Estimate', 'A DIY estimate from nearby comparables'),
+            ('energy', 'Energy Efficiency', 'EPC rating, floor area and year built'),
+            ('flood', 'Flood Risk', 'Official flood zone plus live warnings'),
+            ('crime', 'Crime & Safety', 'Local crime stats vs the wider area'),
+            ('schools', 'Schools & Catchment', 'Ofsted ratings and exam results nearby'),
+            ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more'),
+            ('planning', 'Planning Constraints', 'Listed status, conservation and heritage'),
+            ('broadband', 'Broadband & Mobile', 'Fixed-line speed and signal coverage'),
+            ('noise', 'Noise', 'Modelled road, rail and aircraft noise'),
+            ('rental', 'Rental Analysis', 'Typical rent by bedroom count nearby'),
+            ('transport', 'Getting Around', 'Nearest rail, Tube and bus links'),
+        ] %}
+        <div class="feature-card" data-animate>
+            <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
+            <span class="feature-card-title">{{ label }}</span>
+            <span class="feature-card-blurb">{{ blurb }}</span>
         </div>
-        <div class="search-form-field">
-            <label for="house_number">House/flat number (optional)</label>
-            <input type="text" id="house_number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+        {% endfor %}
+    </div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading" data-animate>How it works</h2>
+    <div class="steps-row">
+        <div class="step-card" data-animate>
+            <span class="step-number">1</span>
+            <span class="step-title">Enter a postcode</span>
+            <span class="step-blurb">Add a house or flat number if you want results filtered to one address.</span>
         </div>
-        <button type="submit">Search</button>
-    </form>
+        <div class="step-card" data-animate>
+            <span class="step-number">2</span>
+            <span class="step-title">We check the official sources</span>
+            <span class="step-blurb">Land Registry, EPC, Environment Agency, ONS, Ofsted and more — queried live, not scraped.</span>
+        </div>
+        <div class="step-card" data-animate>
+            <span class="step-number">3</span>
+            <span class="step-title">Get your report</span>
+            <span class="step-blurb">A full due-diligence report in seconds, with every figure sourced and dated.</span>
+        </div>
+    </div>
+</section>
+
+<section class="sources-strip" data-animate>
+    <span class="sources-strip-label">Sourced directly from</span>
+    <div class="sources-strip-list">
+        <span>HM Land Registry</span>
+        <span>EPC Register</span>
+        <span>Environment Agency</span>
+        <span>Office for National Statistics</span>
+        <span>Department for Education</span>
+        <span>Ofsted</span>
+        <span>Ofcom</span>
+        <span>Natural England</span>
+        <span>Historic England</span>
+        <span>Police.uk</span>
+        <span>Food Standards Agency</span>
+        <span>British Geological Survey</span>
+        <span>OpenStreetMap</span>
+    </div>
+    <p class="sources-strip-note">
+        Never listings scraped from Rightmove or Zoopla — every figure here traces back to an
+        official, openly licensed government or public data source.
+    </p>
 </section>
 {% endblock %}
