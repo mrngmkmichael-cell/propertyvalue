@@ -1091,6 +1091,11 @@ dialog.report-modal .report-section {
 .dashboard-grid button[data-animate]:nth-child(16) { transition-delay: 0.43s; }
 .dashboard-grid button[data-animate]:nth-child(17) { transition-delay: 0.45s; }
 .dashboard-grid button[data-animate]:nth-child(18) { transition-delay: 0.47s; }
+.dashboard-grid button[data-animate]:nth-child(19) { transition-delay: 0.49s; }
+.dashboard-grid button[data-animate]:nth-child(20) { transition-delay: 0.51s; }
+.dashboard-grid button[data-animate]:nth-child(21) { transition-delay: 0.53s; }
+.dashboard-grid button[data-animate]:nth-child(22) { transition-delay: 0.55s; }
+.dashboard-grid button[data-animate]:nth-child(n+23) { transition-delay: 0.55s; }
 
 @media (prefers-reduced-motion: reduce) {
     [data-animate] {

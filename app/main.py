@@ -14,8 +14,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    amenities, area_stats, broadband, census_stats, crime, epc, flood, heritage, hpi, mobile_coverage, noise,
-    radon, schools_db, valuation,
+    amenities, area_stats, broadband, census_stats, crime, demographics, epc, flood, heritage, hpi,
+    mobile_coverage, noise, radon, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -219,6 +219,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         schools_result, deprivation_result, income_result,
         occupation_result, qualification_result, broadband_result, mobile_result,
         radon_result, heritage_result, comparables_result,
+        age_profile_result, housing_result, background_result, wellbeing_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -238,6 +239,10 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         radon.risk_near(lat, lon),
         heritage.nearby_listed_buildings(lat, lon),
         _nearby_comparables(lat, lon),
+        asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
         return_exceptions=True,
     )
 
@@ -365,6 +370,26 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["valuation"] = valuation.estimate_value(
             comparables_result, subject_type, growth_area["annual_change_pct"] if growth_area else None
         )
+
+    if isinstance(age_profile_result, Exception):
+        context["age_profile_error"] = True
+    else:
+        context["age_profile"] = age_profile_result
+
+    if isinstance(housing_result, Exception):
+        context["housing_error"] = True
+    else:
+        context["housing"] = housing_result
+
+    if isinstance(background_result, Exception):
+        context["background_error"] = True
+    else:
+        context["background"] = background_result
+
+    if isinstance(wellbeing_result, Exception):
+        context["wellbeing_error"] = True
+    else:
+        context["wellbeing"] = wellbeing_result
 
     if context["current_user"]:
         try:

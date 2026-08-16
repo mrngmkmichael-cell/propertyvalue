@@ -288,6 +288,42 @@
                 {% else %}None found nearby{% endif %}
             </span>
         </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not age_profile else 'ok' }}" data-modal-target="modal-age-profile" data-animate>
+            <span class="dashboard-card-icon icon-age">{{ icons.icon('age') }}</span>
+            <span class="dashboard-card-title">Age Profile</span>
+            <span class="dashboard-card-status">
+                {% if age_profile %}{{ age_profile.under_25_pct }}% under 25
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not housing else 'ok' }}" data-modal-target="modal-housing" data-animate>
+            <span class="dashboard-card-icon icon-housing">{{ icons.icon('housing') }}</span>
+            <span class="dashboard-card-title">Housing Types &amp; Tenure</span>
+            <span class="dashboard-card-status">
+                {% if housing and housing.owned_pct is not none %}{{ housing.owned_pct }}% owner-occupied
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not background else 'ok' }}" data-modal-target="modal-background" data-animate>
+            <span class="dashboard-card-icon icon-ethnicity">{{ icons.icon('ethnicity') }}</span>
+            <span class="dashboard-card-title">Ethnicity, Religion &amp; Origin</span>
+            <span class="dashboard-card-status">
+                {% if background and background.born_abroad_pct is not none %}{{ background.born_abroad_pct }}% born outside the UK
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not wellbeing else 'ok' }}" data-modal-target="modal-wellbeing" data-animate>
+            <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
+            <span class="dashboard-card-title">Health, Relationships &amp; Social Grade</span>
+            <span class="dashboard-card-status">
+                {% if wellbeing and wellbeing.good_health_pct is not none %}{{ wellbeing.good_health_pct }}% good or very good health
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
     </div>
 
     <dialog class="report-modal" id="modal-sold-price-history">
@@ -1099,6 +1135,211 @@
             </section>
         </div>
     </dialog>
+
+    <dialog class="report-modal" id="modal-age-profile">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Age profile</h2>
+        <p class="section-sub">
+            Usual residents of this neighbourhood (LSOA) by age band, from Census 2021 — not a
+            per-property figure.
+        </p>
+        {% if age_profile_error %}
+            <p class="notice notice-error">
+                The census data service didn't respond. Try again in a moment.
+            </p>
+        {% elif age_profile %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Age band</th>
+                        <th class="num">Share</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in age_profile.breakdown %}
+                    <tr>
+                        <td>{{ a.label }}</td>
+                        <td class="num">{{ a.pct }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No age profile data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-housing">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Housing types, tenure &amp; occupancy</h2>
+        <p class="section-sub">
+            Households in this neighbourhood (LSOA), from Census 2021 — not a per-property figure,
+            and not specific to this particular home.
+        </p>
+        {% if housing_error %}
+            <p class="notice notice-error">
+                The census data service didn't respond. Try again in a moment.
+            </p>
+        {% elif housing %}
+            {% if housing.type_breakdown %}
+            <h3 class="subsection-heading">Accommodation type</h3>
+            <table class="tx-table">
+                <thead><tr><th>Type</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for t in housing.type_breakdown %}
+                    <tr><td>{{ t.label }}</td><td class="num">{{ t.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if housing.tenure_breakdown %}
+            <h3 class="subsection-heading">Tenure</h3>
+            <table class="tx-table">
+                <thead><tr><th>Tenure</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for t in housing.tenure_breakdown %}
+                    <tr><td>{{ t.label }}</td><td class="num">{{ t.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if housing.occupancy_breakdown %}
+            <h3 class="subsection-heading">Occupancy rating for bedrooms</h3>
+            <p class="section-sub">
+                Whether households have more or fewer bedrooms than the standard calls for — a
+                negative rating suggests overcrowding, a positive one suggests spare rooms.
+            </p>
+            <table class="tx-table">
+                <thead><tr><th>Rating</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for o in housing.occupancy_breakdown %}
+                    <tr><td>{{ o.label }}</td><td class="num">{{ o.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        {% else %}
+            <p class="notice">No housing data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-background">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Ethnicity, religion &amp; country of birth</h2>
+        <p class="section-sub">
+            Usual residents of this neighbourhood (LSOA), from Census 2021 — not a per-property
+            figure.
+        </p>
+        {% if background_error %}
+            <p class="notice notice-error">
+                The census data service didn't respond. Try again in a moment.
+            </p>
+        {% elif background %}
+            {% if background.ethnicity_breakdown %}
+            <h3 class="subsection-heading">Ethnic group</h3>
+            <table class="tx-table">
+                <thead><tr><th>Group</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for e in background.ethnicity_breakdown %}
+                    <tr><td>{{ e.label }}</td><td class="num">{{ e.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if background.religion_breakdown %}
+            <h3 class="subsection-heading">Religion</h3>
+            <table class="tx-table">
+                <thead><tr><th>Religion</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for r in background.religion_breakdown %}
+                    <tr><td>{{ r.label }}</td><td class="num">{{ r.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if background.country_of_birth_breakdown %}
+            <h3 class="subsection-heading">Country of birth</h3>
+            <table class="tx-table">
+                <thead><tr><th>Region</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for c in background.country_of_birth_breakdown %}
+                    <tr><td>{{ c.label }}</td><td class="num">{{ c.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        {% else %}
+            <p class="notice">No background data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-wellbeing">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Health, relationships &amp; social grade</h2>
+        <p class="section-sub">
+            Usual residents of this neighbourhood (LSOA), from Census 2021 — not a per-property
+            figure. "Social grade" here is NS-SEC, the official occupation-based socio-economic
+            classification — not the same as commercial market-research social grade (AB/C1/C2/DE),
+            which isn't published as free open data; NS-SEC is the closest free equivalent.
+        </p>
+        {% if wellbeing_error %}
+            <p class="notice notice-error">
+                The census data service didn't respond. Try again in a moment.
+            </p>
+        {% elif wellbeing %}
+            {% if wellbeing.health_breakdown %}
+            <h3 class="subsection-heading">General health</h3>
+            <table class="tx-table">
+                <thead><tr><th>Self-reported health</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for h in wellbeing.health_breakdown %}
+                    <tr><td>{{ h.label }}</td><td class="num">{{ h.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if wellbeing.marital_breakdown %}
+            <h3 class="subsection-heading">Marital &amp; civil partnership status</h3>
+            <table class="tx-table">
+                <thead><tr><th>Status</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for m in wellbeing.marital_breakdown %}
+                    <tr><td>{{ m.label }}</td><td class="num">{{ m.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+            {% if wellbeing.nssec_breakdown %}
+            <h3 class="subsection-heading">Socio-economic classification (NS-SEC)</h3>
+            <table class="tx-table">
+                <thead><tr><th>Classification</th><th class="num">Share</th></tr></thead>
+                <tbody>
+                    {% for n in wellbeing.nssec_breakdown %}
+                    <tr><td>{{ n.label }}</td><td class="num">{{ n.pct }}%</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        {% else %}
+            <p class="notice">No health/relationships/social grade data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
 {% endif %}
 {% endblock %}
 
@@ -1130,8 +1371,11 @@ Deprivation data from the Ministry of Housing, Communities and Local Government'
 Household income estimates from the
 <a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales" target="_blank" rel="noopener">Office for National Statistics</a>
 — modelled estimates, financial year ending 2023.
-Occupation and qualification data from
+Occupation, qualification, age, housing, ethnicity, religion, country of birth, general health,
+marital status and socio-economic classification data from
 <a href="https://www.nomisweb.co.uk/sources/census_2021" target="_blank" rel="noopener">Census 2021</a>, via Nomis.
+Valuation estimates are computed by this site from Land Registry sold prices and UK HPI growth
+rates — not a professional valuation or lender AVM.
 Noise data from DEFRA's
 <a href="https://www.gov.uk/government/publications/strategic-noise-mapping-2022" target="_blank" rel="noopener">strategic noise mapping (2022)</a>,
 via the Environment Agency.

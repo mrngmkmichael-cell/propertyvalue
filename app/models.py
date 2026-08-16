@@ -151,6 +151,189 @@ class Qualification(Base):
     other_qualifications: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class AgeProfile(Base):
+    """Census 2021 age structure (TS007A), by LSOA - usual residents
+    bucketed into six bands from the published five-year bands.
+    Populated by scripts/import_census_demographics.py. Static until
+    the 2031 census.
+    """
+    __tablename__ = "age_profile"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    under_15: Mapped[int] = mapped_column(Integer, default=0)
+    age_15_24: Mapped[int] = mapped_column(Integer, default=0)
+    age_25_44: Mapped[int] = mapped_column(Integer, default=0)
+    age_45_64: Mapped[int] = mapped_column(Integer, default=0)
+    age_65_84: Mapped[int] = mapped_column(Integer, default=0)
+    age_85_plus: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class HousingType(Base):
+    """Census 2021 accommodation type (TS044), by LSOA - households
+    by dwelling type. Populated by scripts/import_census_demographics.py.
+    Static until the 2031 census.
+    """
+    __tablename__ = "housing_type"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    detached: Mapped[int] = mapped_column(Integer, default=0)
+    semi_detached: Mapped[int] = mapped_column(Integer, default=0)
+    terraced: Mapped[int] = mapped_column(Integer, default=0)
+    flat_or_converted: Mapped[int] = mapped_column(Integer, default=0)
+    caravan_or_other: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Tenure(Base):
+    """Census 2021 tenure of household (TS054), by LSOA. Populated by
+    scripts/import_census_demographics.py. Static until the 2031
+    census.
+    """
+    __tablename__ = "tenure"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    owned_outright: Mapped[int] = mapped_column(Integer, default=0)
+    owned_mortgage: Mapped[int] = mapped_column(Integer, default=0)
+    shared_ownership: Mapped[int] = mapped_column(Integer, default=0)
+    social_rented: Mapped[int] = mapped_column(Integer, default=0)
+    private_rented: Mapped[int] = mapped_column(Integer, default=0)
+    rent_free: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class OccupancyRating(Base):
+    """Census 2021 occupancy rating for bedrooms (TS052), by LSOA -
+    whether households have more or fewer bedrooms than the standard
+    calls for. Populated by scripts/import_census_demographics.py.
+    Static until the 2031 census.
+    """
+    __tablename__ = "occupancy_rating"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    plus_2_or_more: Mapped[int] = mapped_column(Integer, default=0)
+    plus_1: Mapped[int] = mapped_column(Integer, default=0)
+    exact: Mapped[int] = mapped_column(Integer, default=0)
+    minus_1: Mapped[int] = mapped_column(Integer, default=0)
+    minus_2_or_less: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Ethnicity(Base):
+    """Census 2021 ethnic group (TS021), by LSOA - top-level
+    categories only (not the detailed sub-groups). Populated by
+    scripts/import_census_demographics.py. Static until the 2031
+    census.
+    """
+    __tablename__ = "ethnicity"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    asian: Mapped[int] = mapped_column(Integer, default=0)
+    black: Mapped[int] = mapped_column(Integer, default=0)
+    mixed: Mapped[int] = mapped_column(Integer, default=0)
+    white: Mapped[int] = mapped_column(Integer, default=0)
+    other: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Religion(Base):
+    """Census 2021 religion (TS030), by LSOA. Populated by
+    scripts/import_census_demographics.py. Static until the 2031
+    census.
+    """
+    __tablename__ = "religion"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    no_religion: Mapped[int] = mapped_column(Integer, default=0)
+    christian: Mapped[int] = mapped_column(Integer, default=0)
+    buddhist: Mapped[int] = mapped_column(Integer, default=0)
+    hindu: Mapped[int] = mapped_column(Integer, default=0)
+    jewish: Mapped[int] = mapped_column(Integer, default=0)
+    muslim: Mapped[int] = mapped_column(Integer, default=0)
+    sikh: Mapped[int] = mapped_column(Integer, default=0)
+    other_religion: Mapped[int] = mapped_column(Integer, default=0)
+    not_answered: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class CountryOfBirth(Base):
+    """Census 2021 country of birth (TS004), by LSOA - top-level
+    regions only. Populated by scripts/import_census_demographics.py.
+    Static until the 2031 census.
+    """
+    __tablename__ = "country_of_birth"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    uk: Mapped[int] = mapped_column(Integer, default=0)
+    eu: Mapped[int] = mapped_column(Integer, default=0)
+    non_eu_europe: Mapped[int] = mapped_column(Integer, default=0)
+    africa: Mapped[int] = mapped_column(Integer, default=0)
+    middle_east_asia: Mapped[int] = mapped_column(Integer, default=0)
+    americas_caribbean: Mapped[int] = mapped_column(Integer, default=0)
+    oceania_other: Mapped[int] = mapped_column(Integer, default=0)
+    british_overseas: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class GeneralHealth(Base):
+    """Census 2021 general health (TS037), by LSOA - self-reported
+    health of usual residents. Populated by
+    scripts/import_census_demographics.py. Static until the 2031
+    census.
+    """
+    __tablename__ = "general_health"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    very_good: Mapped[int] = mapped_column(Integer, default=0)
+    good: Mapped[int] = mapped_column(Integer, default=0)
+    fair: Mapped[int] = mapped_column(Integer, default=0)
+    bad: Mapped[int] = mapped_column(Integer, default=0)
+    very_bad: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class MaritalStatus(Base):
+    """Census 2021 marital and civil partnership status (TS002), by
+    LSOA - top-level categories only. Populated by
+    scripts/import_census_demographics.py. Static until the 2031
+    census.
+    """
+    __tablename__ = "marital_status"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    never_married: Mapped[int] = mapped_column(Integer, default=0)
+    married_or_civil_partnership: Mapped[int] = mapped_column(Integer, default=0)
+    separated: Mapped[int] = mapped_column(Integer, default=0)
+    divorced_or_dissolved: Mapped[int] = mapped_column(Integer, default=0)
+    widowed_or_surviving_partner: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class SocioeconomicClassification(Base):
+    """Census 2021 NS-SEC (TS062), by LSOA - the official
+    occupation-based socio-economic classification. Note this is NOT
+    the same as commercial market-research "social grade" (AB/C1/C2/DE)
+    - that scheme isn't published as an open bulk dataset, only via a
+    more involved long-format API query, so NS-SEC (a very similar,
+    equally standard measure, and what's actually free) is used instead.
+    Populated by scripts/import_census_demographics.py. Static until
+    the 2031 census.
+    """
+    __tablename__ = "socioeconomic_classification"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    higher_managerial_professional: Mapped[int] = mapped_column(Integer, default=0)
+    lower_managerial_professional: Mapped[int] = mapped_column(Integer, default=0)
+    intermediate: Mapped[int] = mapped_column(Integer, default=0)
+    small_employers_self_employed: Mapped[int] = mapped_column(Integer, default=0)
+    lower_supervisory_technical: Mapped[int] = mapped_column(Integer, default=0)
+    semi_routine: Mapped[int] = mapped_column(Integer, default=0)
+    routine: Mapped[int] = mapped_column(Integer, default=0)
+    never_worked_long_term_unemployed: Mapped[int] = mapped_column(Integer, default=0)
+    full_time_students: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class Ks4Result(Base):
     """GCSE (Key Stage 4) headline performance measures, by school
     URN - the "Total" row across all pupil characteristic breakdowns.
