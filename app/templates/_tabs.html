@@ -1,0 +1,7 @@
+{% macro tabs(location, house_number, active_tab) %}
+{% set qs = "postcode=" ~ (location.postcode | urlencode) ~ (("&house_number=" ~ (house_number | urlencode)) if house_number else "") %}
+<nav class="report-tabs">
+    <a href="/property?{{ qs }}" class="report-tab{{ ' active' if active_tab == 'summary' else '' }}">Summary</a>
+    <a href="/property/comparables?{{ qs }}" class="report-tab{{ ' active' if active_tab == 'comparables' else '' }}">Comparables</a>
+</nav>
+{% endmacro %}

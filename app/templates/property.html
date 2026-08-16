@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_tabs.html" as tabnav %}
 
 {% block title %}{{ query }} — PropertyValue{% endblock %}
 
 {% block content %}
 <a class="back-link" href="/">&larr; New search</a>
+
+{% if location %}{{ tabnav.tabs(location, house_number, active_tab) }}{% endif %}
 
 {% if not query %}
     <p>Enter a postcode to get started.</p>
@@ -866,26 +869,6 @@ Broadband coverage data from Ofcom's
                 });
             });
         });
-    })();
-</script>
-
-<script>
-    (function () {
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const targets = document.querySelectorAll('[data-animate]');
-        if (!('IntersectionObserver' in window)) {
-            targets.forEach(function (el) { el.classList.add('in-view'); });
-            return;
-        }
-        const observer = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('in-view');
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-        targets.forEach(function (el) { observer.observe(el); });
     })();
 </script>
 

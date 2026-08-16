@@ -266,6 +266,36 @@ a {
     color: var(--accent);
 }
 
+.report-tabs {
+    display: flex;
+    gap: 1.75rem;
+    margin: 0.5rem 0 1.75rem;
+    border-bottom: 1px solid var(--rule-strong);
+}
+
+.report-tab {
+    display: inline-block;
+    padding: 0 0 0.7rem;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+}
+
+.report-tab:hover {
+    color: var(--ink);
+}
+
+.report-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
 .report-head {
     padding-bottom: 1.5rem;
     margin-bottom: 2rem;

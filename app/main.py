@@ -14,8 +14,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import amenities, area_stats, broadband, census_stats, crime, epc, flood, hpi, noise, schools_db
-from app.services.land_registry import sold_prices_for_postcode
-from app.services.postcodes import lookup_postcode
+from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
+from app.services.postcodes import lookup_postcode, nearby_postcodes
 
 load_dotenv()
 
@@ -44,6 +44,14 @@ def _average_amount(transactions: list[dict]) -> float | None:
         except (TypeError, ValueError, KeyError):
             continue
     return sum(amounts) / len(amounts) if amounts else None
+
+
+def _median(sorted_values: list[float]) -> float | None:
+    n = len(sorted_values)
+    if not n:
+        return None
+    mid = n // 2
+    return sorted_values[mid] if n % 2 else (sorted_values[mid - 1] + sorted_values[mid]) / 2
 
 
 def _filter_by_address(records: list[dict], query: str) -> list[dict]:
@@ -175,6 +183,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         return templates.TemplateResponse(request, "property.html", context)
 
     context["location"] = location
+    context["active_tab"] = "summary"
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
@@ -323,6 +332,69 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             context["shortlisted_urns"] = set()
 
     return templates.TemplateResponse(request, "property.html", context)
+
+
+@app.get("/property/comparables")
+async def property_comparables(request: Request, postcode: str = "", house_number: str = ""):
+    postcode = postcode.strip()
+    house_number = house_number.strip()
+    context = base_context(request)
+    context["query"] = postcode
+    context["house_number"] = house_number
+
+    if not postcode:
+        return RedirectResponse("/", status_code=303)
+
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        context["error"] = "lookup_error"
+        return templates.TemplateResponse(request, "comparables.html", context)
+
+    if location is None:
+        context["error"] = "not_found"
+        return templates.TemplateResponse(request, "comparables.html", context)
+
+    context["location"] = location
+    context["active_tab"] = "comparables"
+    canonical = location["postcode"]
+    lat, lon = location["latitude"], location["longitude"]
+
+    try:
+        nearby = await nearby_postcodes(lat, lon)
+        distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
+        transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
+
+        for tx in transactions:
+            tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+        transactions.sort(key=lambda t: (t["distance_m"] is None, t["distance_m"]))
+
+        amounts = sorted(float(t["amount"]) for t in transactions if t.get("amount"))
+        context["comparables"] = transactions
+        context["comparables_count"] = len(transactions)
+
+        if amounts:
+            context["comparables_median"] = _median(amounts)
+            context["comparables_min"] = amounts[0]
+            context["comparables_max"] = amounts[-1]
+
+            reference_price = None
+            subject_sales = [t for t in transactions if t["postcode"] == canonical]
+            if house_number:
+                subject_sales = [t for t in subject_sales if house_number.lower() in t["address"].lower()]
+            if subject_sales:
+                try:
+                    reference_price = float(subject_sales[0]["amount"])
+                except (TypeError, ValueError):
+                    reference_price = None
+            if reference_price:
+                below = sum(1 for a in amounts if a < reference_price)
+                context["comparables_reference_price"] = reference_price
+                context["comparables_percentile"] = round(below / len(amounts) * 100)
+    except Exception:
+        context["comparables_error"] = True
+
+    return templates.TemplateResponse(request, "comparables.html", context)
 
 
 # --- Accounts ---

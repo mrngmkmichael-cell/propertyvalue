@@ -21,6 +21,21 @@ async def lookup_postcode(raw_postcode: str) -> dict | None:
     return response.json()["result"]
 
 
+async def nearby_postcodes(lat: float, lon: float, radius_m: int = 1000, limit: int = 100) -> list[dict]:
+    """Postcodes within a radius of a point, nearest first - used to
+    build a Land Registry VALUES batch for "sold nearby" comparables,
+    since exact-postcode lookups are fast but a postcode-prefix scan
+    of the whole Land Registry dataset times out (see land_registry.py)."""
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{API_BASE}/postcodes",
+            params={"lon": lon, "lat": lat, "radius": radius_m, "limit": limit},
+        )
+    response.raise_for_status()
+    result = response.json()["result"] or []
+    return [{"postcode": r["postcode"], "distance_m": round(r["distance"])} for r in result]
+
+
 async def outcode_centroid(outcode: str) -> dict | None:
     """Centroid of a postcode district (e.g. 'BR6') - used as a second
     reference point for wider-area comparisons, since postcodes.io has
