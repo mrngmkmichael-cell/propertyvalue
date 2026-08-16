@@ -7,15 +7,17 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header class="site-header">
         <div class="site-header-inner">
-            <a class="brand" href="/">PropertyValue</a>
-            <span class="tagline">UK Property Intelligence</span>
+            <div class="brand-block">
+                <a class="brand" href="/"><span class="brand-mark">P</span>PropertyValue</a>
+                <span class="tagline">UK Property Intelligence</span>
+            </div>
             {% if accounts_configured %}
             <nav class="site-nav">
                 {% if current_user %}
