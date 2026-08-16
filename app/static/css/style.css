@@ -927,6 +927,8 @@ a {
 .icon-ethnicity    { background: #f0fdfa; color: #0f766e; }
 .icon-wellbeing    { background: #fdf2f8; color: #be185d; }
 .icon-extension    { background: #f0f9ff; color: #0369a1; }
+.icon-planning     { background: #eef2ff; color: #3730a3; }
+.icon-environmental{ background: #ecfdf5; color: #047857; }
 
 .radon-badge {
     display: inline-block;

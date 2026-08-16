@@ -316,6 +316,30 @@
             </span>
         </button>
 
+        {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if planning_count else 'ok') }}" data-modal-target="modal-planning" data-animate>
+            {% if planning_count %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
+            <span class="dashboard-card-title">Planning Constraints</span>
+            <span class="dashboard-card-status">
+                {% if designations_error %}Data unavailable
+                {% elif planning_count %}{{ planning_count }} found
+                {% else %}None found{% endif %}
+            </span>
+        </button>
+
+        {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if environmental_count else 'ok') }}" data-modal-target="modal-environmental" data-animate>
+            {% if environmental_count %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-environmental">{{ icons.icon('environmental') }}</span>
+            <span class="dashboard-card-title">Environmental Designations</span>
+            <span class="dashboard-card-status">
+                {% if designations_error %}Data unavailable
+                {% elif environmental_count %}{{ environmental_count }} found
+                {% else %}None found{% endif %}
+            </span>
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if not age_profile else 'ok' }}" data-modal-target="modal-age-profile" data-animate>
             <span class="dashboard-card-icon icon-age">{{ icons.icon('age') }}</span>
             <span class="dashboard-card-title">Age Profile</span>
@@ -573,6 +597,32 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if mees_compliant is defined and mees_compliant is not none %}
+            <h3 class="subsection-heading">MEES compliance</h3>
+            {% if mees_compliant %}
+            <p class="section-sub">
+                Rated {{ certificates[0].rating }} — meets the Minimum Energy Efficiency Standard
+                (England & Wales requires at least an E rating to legally let a property, with some
+                exemptions).
+            </p>
+            {% else %}
+            <p class="notice">
+                Rated {{ certificates[0].rating }} — below the Minimum Energy Efficiency Standard.
+                A property must be at least an E rating to be legally let in England & Wales unless
+                a valid exemption is registered — worth checking if you're planning to rent this out.
+            </p>
+            {% endif %}
+            {% endif %}
+            {% if lead_plumbing_era is defined and lead_plumbing_era %}
+            <h3 class="subsection-heading">Potential lead plumbing</h3>
+            <p class="notice">
+                Built {{ property_detail.year_built }} — UK regulations only phased out lead water
+                supply pipes around the 1970s, so older properties like this one sometimes still have
+                them (usually just the supply pipe from the street, not necessarily the internal
+                plumbing). Not a certainty — worth asking about or getting checked, not something
+                EPC data can confirm directly.
+            </p>
+            {% endif %}
         {% elif house_number and postcode_has_certificates %}
             <p class="notice">No EPC certificates found for "{{ house_number }}" at this postcode.</p>
         {% else %}
@@ -1275,6 +1325,98 @@
             </table>
         {% else %}
             <p class="notice">No listed buildings found nearby.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-planning">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Planning constraints</h2>
+        <p class="section-sub">
+            Whether this exact point falls inside a nationally designated planning-constraint area,
+            queried live against Historic England's and ONS's official boundary data — the same
+            source a paid planning-constraint checker would use, not a locked placeholder.
+        </p>
+        {% if designations_error %}
+            <p class="notice notice-error">
+                The planning-constraints data service didn't respond. Try again in a moment.
+            </p>
+        {% elif designations %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Constraint</th>
+                        <th class="num">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, d in designations.items() %}
+                        {% if d.group == 'planning' %}
+                        <tr>
+                            <td>{{ d.label }}</td>
+                            <td class="num">
+                                {% if d.present %}<strong>{{ d.names | join(", ") }}</strong>
+                                {% elif d.present is none %}<span class="ofsted-none">Unavailable</span>
+                                {% else %}<span class="ofsted-none">Not found</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="section-sub">
+                Not included: Brownfield Land — unlike the checks above, this isn't published as one
+                national dataset, only as ~300 separate council registers with no reliable central
+                source, so we're not guessing at it.
+            </p>
+        {% else %}
+            <p class="notice">No planning-constraint data available for this location.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-environmental">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Environmental designations</h2>
+        <p class="section-sub">
+            Whether this exact point falls inside a nationally protected natural area, queried live
+            against Natural England's official boundary data.
+        </p>
+        {% if designations_error %}
+            <p class="notice notice-error">
+                The environmental-designations data service didn't respond. Try again in a moment.
+            </p>
+        {% elif designations %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Designation</th>
+                        <th class="num">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, d in designations.items() %}
+                        {% if d.group == 'environmental' %}
+                        <tr>
+                            <td>{{ d.label }}</td>
+                            <td class="num">
+                                {% if d.present %}<strong>{{ d.names | join(", ") }}</strong>
+                                {% elif d.present is none %}<span class="ofsted-none">Unavailable</span>
+                                {% else %}<span class="ofsted-none">Not found</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No environmental-designation data available for this location.</p>
         {% endif %}
             </section>
         </div>

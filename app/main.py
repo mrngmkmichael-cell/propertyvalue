@@ -15,7 +15,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    amenities, area_stats, broadband, census_stats, crime, demographics, epc, flood, heritage, hpi,
+    amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, heritage, hpi,
     mobile_coverage, noise, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
@@ -68,6 +68,25 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
 def _leading_token(address: str) -> str:
     match = re.match(r"\s*(\w+)", address)
     return match.group(1).lower() if match else ""
+
+
+def _likely_pre_1970(year_built: str) -> bool | None:
+    """Best-effort read of the EPC year_built string (an exact year for
+    new-builds, or an RdSAP age-band range/label like "1950-1966" or
+    "Before 1900" for existing ones) - checks whether any part of it
+    predates 1970, the rough era UK regulations phased out lead water
+    supply pipes. Uses the earliest year in a range so a band that
+    straddles 1970 (e.g. "1967-1975") still gets flagged, since part
+    of it genuinely could be pre-1970. Returns None rather than
+    guessing if the string can't be parsed."""
+    if not year_built:
+        return None
+    if year_built == "Before 1900":
+        return True
+    years = re.findall(r"\d{4}", year_built)
+    if not years:
+        return None
+    return int(years[0]) < 1970
 
 
 async def _epc_flow(
@@ -272,6 +291,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         occupation_result, qualification_result, broadband_result, mobile_result,
         radon_result, heritage_result, comparables_result,
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
+        designations_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         _epc_flow(canonical, house_number, context["epc_configured"]),
@@ -296,6 +316,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
+        designations.check_all(lat, lon),
         return_exceptions=True,
     )
 
@@ -447,6 +468,30 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["rental_error"] = True
     else:
         context["rental"] = rental_result
+
+    if isinstance(designations_result, Exception):
+        context["designations_error"] = True
+    else:
+        context["designations"] = designations_result
+        # Being in a "built-up area" is completely ordinary for most
+        # searches (most UK homes are), unlike the other planning
+        # designations here - excluded from the attn-triggering count
+        # so the card isn't flagging half of urban England amber.
+        context["planning_flags"] = [
+            d for k, d in designations_result.items()
+            if d["group"] == "planning" and d.get("present") and k != "built_up_area"
+        ]
+        context["environmental_flags"] = [
+            d for d in designations_result.values() if d["group"] == "environmental" and d.get("present")
+        ]
+
+    # MEES compliance + lead-plumbing era, both computed from EPC data
+    # already fetched above - no extra API calls needed.
+    if context.get("certificates"):
+        rating = context["certificates"][0].get("rating", "")
+        context["mees_compliant"] = (rating not in ("F", "G")) if rating else None
+    if context.get("property_detail", {}).get("year_built"):
+        context["lead_plumbing_era"] = _likely_pre_1970(context["property_detail"]["year_built"])
 
     if context["current_user"]:
         try:
