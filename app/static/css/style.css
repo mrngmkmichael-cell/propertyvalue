@@ -759,6 +759,7 @@ a {
 .icon-qualification { background: rgba(76, 46, 130, 0.14); color: #4c2e82; }
 .icon-noise { background: rgba(184, 144, 43, 0.16); color: #8a6a1f; }
 .icon-broadband { background: rgba(46, 110, 150, 0.14); color: #2e6e96; }
+.icon-mobile { background: rgba(76, 46, 130, 0.14); color: #4c2e82; }
 
 .noise-badge {
     display: inline-block;

@@ -218,3 +218,21 @@ class BroadbandCoverage(Base):
     ultrafast_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     superfast_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     below_uso_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class MobileCoverage(Base):
+    """Mobile signal coverage, by local authority (laua) - from the
+    same Ofcom Connected Nations 2025 release as BroadbandCoverage,
+    but mobile coverage is only published at local-authority level,
+    not postcode-unit level (signal geography doesn't map to
+    individual premises the way fixed-line does). Populated by
+    scripts/import_mobile_coverage.py.
+    """
+    __tablename__ = "mobile_coverage"
+
+    laua_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    la_name: Mapped[str] = mapped_column(String(150), default="")
+    coverage_4g_outdoor_all_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coverage_4g_indoor_all_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    no_4g_outdoor_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coverage_5g_outdoor_pct: Mapped[float | None] = mapped_column(Float, nullable=True)

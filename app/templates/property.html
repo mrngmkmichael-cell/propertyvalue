@@ -235,6 +235,17 @@
                 {% else %}No data available{% endif %}
             </span>
         </a>
+
+        {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
+        <a href="#mobile" class="dashboard-card status-{{ mobile_status }}" data-animate>
+            {% if mobile_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
+            <span class="dashboard-card-title">Mobile Signal</span>
+            <span class="dashboard-card-status">
+                {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}% 4G outdoor (all networks)
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
     </div>
 
     <section class="report-section" id="sold-price-history" data-animate>
@@ -805,6 +816,53 @@
             <p class="notice">No broadband coverage data available for this postcode.</p>
         {% endif %}
     </section>
+
+    <section class="report-section" id="mobile" data-animate>
+        <h2>Mobile signal</h2>
+        {% if mobile_error %}
+            <p class="notice notice-error">
+                The mobile coverage data service didn't respond. Try again in a moment.
+            </p>
+        {% elif mobile %}
+            <p class="section-sub">
+                Ofcom's Connected Nations coverage estimates for {{ mobile.la_name }} (local authority
+                level — mobile signal isn't mapped to individual postcodes the way fixed-line
+                broadband is).
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Coverage</th>
+                        <th class="num">% of premises</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>4G outdoors, from all networks</td>
+                        <td class="num">{{ mobile.coverage_4g_outdoor_all_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td>4G indoors, from all networks</td>
+                        <td class="num">{{ mobile.coverage_4g_indoor_all_pct }}%</td>
+                    </tr>
+                    {% if mobile.coverage_5g_outdoor_pct %}
+                    <tr>
+                        <td>5G outdoors, from all networks</td>
+                        <td class="num">{{ mobile.coverage_5g_outdoor_pct }}%</td>
+                    </tr>
+                    {% endif %}
+                    {% if mobile.no_4g_outdoor_pct %}
+                    <tr>
+                        <td>No 4G outdoor coverage at all</td>
+                        <td class="num">{{ mobile.no_4g_outdoor_pct }}%</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No mobile coverage data available for this area.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -841,7 +899,7 @@ Occupation and qualification data from
 Noise data from DEFRA's
 <a href="https://www.gov.uk/government/publications/strategic-noise-mapping-2022" target="_blank" rel="noopener">strategic noise mapping (2022)</a>,
 via the Environment Agency.
-Broadband coverage data from Ofcom's
+Broadband and mobile coverage data from Ofcom's
 <a href="https://www.ofcom.org.uk/phones-and-broadband/coverage-and-speeds/coverage-and-speeds/" target="_blank" rel="noopener">Connected Nations</a> report.
 {% endblock %}
 
