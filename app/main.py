@@ -15,8 +15,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, food_hygiene,
-    heritage, hpi, mobile_coverage, noise, radon, rental, schools_db, valuation,
+    amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, flood_zones,
+    food_hygiene, heritage, hpi, mobile_coverage, noise, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -295,7 +295,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         occupation_result, qualification_result, broadband_result, mobile_result,
         radon_result, heritage_result, comparables_result,
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
-        designations_result, food_hygiene_result,
+        designations_result, food_hygiene_result, flood_zone_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         _epc_flow(canonical, house_number, context["epc_configured"]),
@@ -322,6 +322,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
         designations.check_all(lat, lon),
         food_hygiene.nearby_ratings(lat, lon),
+        flood_zones.zone_for(lat, lon),
         return_exceptions=True,
     )
 
@@ -348,6 +349,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["flood_error"] = True
     else:
         context["flood_warnings"] = flood_result
+
+    if isinstance(flood_zone_result, Exception) or flood_zone_result is None:
+        context["flood_zone_error"] = True
+    else:
+        context["flood_zone"] = flood_zone_result
 
     if isinstance(noise_result, Exception):
         context["noise_error"] = True

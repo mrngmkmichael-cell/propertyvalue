@@ -156,16 +156,21 @@
             </span>
         </button>
 
-        {% set flood_status = 'muted' if flood_error else ('attn' if flood_warnings else 'ok') %}
+        {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3)) else 'ok') %}
         <button type="button" class="dashboard-card status-{{ flood_status }}" data-modal-target="modal-flood" data-animate>
             {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">Flood Risk</span>
             <span class="dashboard-card-status">
-                {% if flood_error %}Data unavailable
-                {% elif flood_warnings %}{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}
-                {% else %}No active warnings{% endif %}
+                {% if flood_zone %}{{ flood_zone.label }}
+                {% elif flood_zone_error %}Zone data unavailable
+                {% else %}Zone 1 (low probability){% endif %}
             </span>
+            {% if flood_warnings %}
+            <span class="dashboard-card-substat">{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}</span>
+            {% elif not flood_error %}
+            <span class="dashboard-card-substat">No active warnings</span>
+            {% endif %}
         </button>
 
         {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
@@ -685,8 +690,27 @@
         <div class="report-modal-inner">
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
-        <h2>Flood warnings</h2>
-        <p class="section-sub">Active warnings and alerts within 6 miles — not a long-term flood risk score.</p>
+        <h2>Flood risk</h2>
+        <h3 class="subsection-heading">Flood zone</h3>
+        <p class="section-sub">
+            The Environment Agency's long-term planning flood risk classification (rivers and sea) —
+            Zone 3 is high probability (1% or greater annual river risk, or 0.5%+ from the sea), Zone
+            2 is medium, and Zone 1 (unmapped) is low probability.
+        </p>
+        {% if flood_zone_error %}
+            <p class="notice notice-error">
+                The flood zone data service didn't respond. Try again in a moment.
+            </p>
+        {% elif flood_zone %}
+            <p class="notice{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
+                <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %} — {{ flood_zone.source }} flooding{% endif %}
+            </p>
+        {% else %}
+            <p class="notice">No flood zone data available for this location.</p>
+        {% endif %}
+
+        <h3 class="subsection-heading">Active warnings</h3>
+        <p class="section-sub">Active warnings and alerts within 6 miles right now — not the long-term zone above.</p>
         {% if flood_error %}
             <p class="notice notice-error">
                 The flood warning service didn't respond. Try again in a moment.
@@ -1675,8 +1699,12 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
 EPC data from
 <a href="https://get-energy-performance-data.communities.gov.uk" target="_blank" rel="noopener">Get energy performance of buildings data</a>.
 {% endif %}
-Flood data from the
+Flood warning data from the
 <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference" target="_blank" rel="noopener">Environment Agency real-time flood-monitoring API</a>.
+Flood zone data from the Environment Agency's
+<a href="https://www.gov.uk/guidance/flood-map-for-planning-service-guidance" target="_blank" rel="noopener">Flood Map for Planning</a>.
+Food hygiene ratings from the
+<a href="https://ratings.food.gov.uk" target="_blank" rel="noopener">Food Standards Agency</a>.
 Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>.
 Local amenities and station data from
 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.
