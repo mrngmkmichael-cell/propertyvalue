@@ -135,3 +135,39 @@ class Qualification(Base):
     level_3: Mapped[int] = mapped_column(Integer, default=0)
     level_4_plus: Mapped[int] = mapped_column(Integer, default=0)
     other_qualifications: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Ks4Result(Base):
+    """GCSE (Key Stage 4) headline performance measures, by school
+    URN - the "Total" row across all pupil characteristic breakdowns.
+    Populated by scripts/import_exam_results.py from DfE's school
+    performance tables (explore-education-statistics). Republished
+    annually.
+    """
+    __tablename__ = "ks4_results"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    pupil_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    attainment8_avg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    progress8_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    grade5_english_maths_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    grade4_english_maths_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ebacc_entry_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ebacc_aps_avg: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class Ks2Result(Base):
+    """KS2 (SATs) headline performance measures, by school URN - the
+    "Total" pupils, reading/writing/maths combined subject row.
+    Populated by scripts/import_exam_results.py from DfE's Key Stage
+    2 attainment data (explore-education-statistics). Republished
+    annually.
+    """
+    __tablename__ = "ks2_results"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    pupil_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rwm_expected_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rwm_higher_pct: Mapped[float | None] = mapped_column(Float, nullable=True)

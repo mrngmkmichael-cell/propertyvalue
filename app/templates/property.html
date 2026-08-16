@@ -511,6 +511,7 @@
                         <tr>
                             <th>School</th>
                             <th>Ofsted rating</th>
+                            {% if group_name != "Nursery" %}<th>Exam results</th>{% endif %}
                             <th class="num">Distance</th>
                         </tr>
                     </thead>
@@ -525,6 +526,16 @@
                                     <span class="ofsted-none">Not rated</span>
                                 {% endif %}
                             </td>
+                            {% if group_name != "Nursery" %}
+                            <td>
+                                {% if s.exam_results and s.exam_results.headline_value is not none %}
+                                    {{ s.exam_results.headline_label }}: {{ s.exam_results.headline_value }}{{ "%" if group_name == "Primary" else "" }}
+                                    <span class="exam-year">({{ s.exam_results.academic_year }})</span>
+                                {% else %}
+                                    <span class="ofsted-none">No data</span>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                             <td class="num">{{ s.distance_m | distance }}</td>
                         </tr>
                         {% endfor %}
@@ -729,6 +740,9 @@ School data from the Department for Education's
 register. Ofsted ratings from
 <a href="https://www.gov.uk/government/statistical-data-sets/monthly-management-information-ofsteds-school-inspections-outcomes" target="_blank" rel="noopener">Ofsted's published inspection outcomes</a>
 — state-funded schools only, and only the latest graded inspection.
+Exam results from the Department for Education's
+<a href="https://explore-education-statistics.service.gov.uk/" target="_blank" rel="noopener">Explore Education Statistics</a> service
+— state-funded schools only.
 Deprivation data from the Ministry of Housing, Communities and Local Government's
 <a href="https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025" target="_blank" rel="noopener">English Indices of Deprivation 2025</a>.
 Household income estimates from the

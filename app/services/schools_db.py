@@ -9,7 +9,7 @@ import math
 from sqlalchemy import select
 
 from app.db import get_session, is_configured
-from app.models import School
+from app.models import Ks2Result, Ks4Result, School
 
 SEARCH_RADIUS_KM = 5
 PER_GROUP_LIMIT = 3
@@ -71,6 +71,7 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
             if distance_km > SEARCH_RADIUS_KM:
                 continue
             candidates.append({
+                "urn": row.urn,
                 "group": group,
                 "name": row.name,
                 "phase": row.phase,
@@ -81,10 +82,41 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
                 "ofsted_inspection_date": row.ofsted_inspection_date,
             })
 
-    candidates.sort(key=lambda s: s["distance_m"])
-    for school in candidates:
-        group = school["group"]
-        if len(grouped[group]) < PER_GROUP_LIMIT:
-            grouped[group].append(school)
+        candidates.sort(key=lambda s: s["distance_m"])
+        for school in candidates:
+            group = school["group"]
+            if len(grouped[group]) < PER_GROUP_LIMIT:
+                grouped[group].append(school)
+
+        secondary_urns = [s["urn"] for s in grouped["Secondary"]]
+        if secondary_urns:
+            ks4_by_urn = {
+                r.urn: r for r in session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(secondary_urns)))
+            }
+            for school in grouped["Secondary"]:
+                r = ks4_by_urn.get(school["urn"])
+                school["exam_results"] = {
+                    "academic_year": r.academic_year,
+                    "headline_label": "Progress 8",
+                    "headline_value": r.progress8_score,
+                    "grade5_english_maths_pct": r.grade5_english_maths_pct,
+                } if r else None
+
+        primary_urns = [s["urn"] for s in grouped["Primary"]]
+        if primary_urns:
+            ks2_by_urn = {
+                r.urn: r for r in session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(primary_urns)))
+            }
+            for school in grouped["Primary"]:
+                r = ks2_by_urn.get(school["urn"])
+                school["exam_results"] = {
+                    "academic_year": r.academic_year,
+                    "headline_label": "Meeting expected standard",
+                    "headline_value": r.rwm_expected_pct,
+                    "grade5_english_maths_pct": None,
+                } if r else None
+
+        for school in grouped["Nursery"]:
+            school["exam_results"] = None
 
     return {name: schools for name, schools in grouped.items() if schools}

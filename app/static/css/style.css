@@ -614,6 +614,11 @@ a {
 .ofsted-3 { background: #b8902b; }
 .ofsted-4 { background: var(--accent); }
 
+.exam-year {
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+}
+
 .ofsted-none {
     color: var(--ink-soft);
     font-style: italic;
