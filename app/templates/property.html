@@ -559,6 +559,38 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if extension_signal %}
+            <h3 class="subsection-heading">Extended or modified?</h3>
+            <p class="section-sub">
+                Comparing the floor area on this address's earliest and latest EPC certificates —
+                a real signal since these are independent measurements taken by different assessors,
+                not self-reported, but not certain: floor area can also drift a little between
+                assessments just from measurement differences, with no work actually done.
+            </p>
+            {% if extension_signal.likely_extended %}
+            <p class="notice">
+                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>
+                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                Large enough that this property has probably been extended or had a loft/garage
+                conversion since the earlier certificate.
+            </p>
+            {% elif extension_signal.change_pct <= -15 %}
+            <p class="notice">
+                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>
+                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                No sign of an extension, but that's a large enough drop to be worth asking about —
+                could mean the unit was subdivided, or just a re-measurement.
+            </p>
+            {% else %}
+            <p class="notice">
+                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
+                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }})
+                — no meaningful change, no sign of an extension from this data.
+            </p>
+            {% endif %}
+            {% endif %}
         {% elif house_number and postcode_has_certificates %}
             <p class="notice">No EPC certificates found for "{{ house_number }}" at this postcode.</p>
         {% else %}
@@ -850,25 +882,40 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Getting around</h2>
+        <p class="section-sub">
+            Rail and Tube stations first (closest 5 of each, within 3km), then the nearest bus stop
+            — prioritised in that order since trains and the Tube usually matter more for a commute
+            than the nearest bus stop.
+        </p>
         {% if amenities_error %}
             <p class="notice notice-error">
                 The amenities data service didn't respond. Try again in a moment.
             </p>
-        {% elif stations %}
-            <ul class="transport-list">
-                {% for mode, label in [("rail", "Rail"), ("tube", "Tube"), ("bus", "Bus")] %}
-                    {% if stations[mode] %}
+        {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.bus) %}
+            {% for mode, label in [("rail", "Rail"), ("tube", "Tube")] %}
+                {% if stations_list[mode] %}
+                <h3 class="subsection-heading">{{ label }} stations</h3>
+                <ul class="transport-list">
+                    {% for s in stations_list[mode] %}
                     <li>
                         <span class="transport-mode">{{ label }}</span>
-                        <strong>{{ stations[mode].name }}</strong>{% if stations[mode].network %} ({{ stations[mode].network }}){% endif %}
-                        — {{ stations[mode].distance_m | distance }}
-                        {%- if stations[mode].lines %} — {{ stations[mode].lines | join(", ") }}{% endif %}
+                        <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
+                        — {{ s.distance_m | distance }}
+                        {%- if stations[mode] and stations[mode].name == s.name and stations[mode].lines %} — {{ stations[mode].lines | join(", ") }}{% endif %}
                     </li>
-                    {% endif %}
-                {% endfor %}
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            {% endfor %}
+            {% if stations_list.bus %}
+            <h3 class="subsection-heading">Nearest bus stop</h3>
+            <ul class="transport-list">
+                <li>
+                    <span class="transport-mode">Bus</span>
+                    <strong>{{ stations_list.bus[0].name }}</strong>
+                    — {{ stations_list.bus[0].distance_m | distance }}
+                </li>
             </ul>
-            {% if not (stations.rail or stations.tube or stations.bus) %}
-                <p class="notice">No public transport found nearby.</p>
             {% endif %}
         {% else %}
             <p class="notice">No public transport found nearby.</p>

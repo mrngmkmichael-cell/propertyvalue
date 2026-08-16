@@ -72,6 +72,42 @@ async def certificates_for_postcode(canonical_postcode: str) -> list[dict]:
     return certificates
 
 
+EXTENSION_THRESHOLD_PCT = 15  # minimum floor-area growth to call out as a probable extension
+
+
+def detect_extension(history: list[dict]) -> dict | None:
+    """Compares total_floor_area across multiple EPC certificates for
+    the same address, earliest vs latest by date - a large jump is
+    real (if imperfect) evidence of a probable extension or loft
+    conversion, since these are independent physical measurements
+    taken by different assessors on different visits, not
+    self-reported. Not certain: floor area can drift a little between
+    assessments just from measurement/rounding differences between
+    assessors even with no work done, so this only flags a change
+    past EXTENSION_THRESHOLD_PCT rather than any change at all.
+    """
+    usable = [h for h in history if h.get("total_floor_area")]
+    if len(usable) < 2:
+        return None
+    ordered = sorted(usable, key=lambda h: h["date"])
+    earliest, latest = ordered[0], ordered[-1]
+    if earliest["total_floor_area"] == latest["total_floor_area"]:
+        return {
+            "earliest_date": earliest["date"], "earliest_area": earliest["total_floor_area"],
+            "latest_date": latest["date"], "latest_area": latest["total_floor_area"],
+            "change_pct": 0.0, "likely_extended": False,
+        }
+    change_pct = (latest["total_floor_area"] - earliest["total_floor_area"]) / earliest["total_floor_area"] * 100
+    return {
+        "earliest_date": earliest["date"],
+        "earliest_area": earliest["total_floor_area"],
+        "latest_date": latest["date"],
+        "latest_area": latest["total_floor_area"],
+        "change_pct": round(change_pct, 1),
+        "likely_extended": change_pct >= EXTENSION_THRESHOLD_PCT,
+    }
+
+
 async def certificate_detail(certificate_number: str) -> dict | None:
     """Extra fields (floor area, dwelling type, room count) not
     included in the search results - a separate API call per

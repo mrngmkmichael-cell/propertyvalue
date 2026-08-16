@@ -44,6 +44,7 @@ AMENITY_QUERIES = [
 ]
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
+STATION_LIST_LIMIT = 5
 
 
 def _haversine_m(lat1, lon1, lat2, lon2) -> float:
@@ -173,16 +174,15 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])
 
-    nearest_by_mode = {}
-    for mode, candidates in stations.items():
-        if not candidates:
-            continue
+    for candidates in stations.values():
         candidates.sort(key=lambda s: s["distance_m"])
-        nearest_by_mode[mode] = candidates[0]
 
-    # Line lookups are a second Overpass round-trip each - run the
-    # (at most two: rail, tube) concurrently rather than one after
-    # another.
+    nearest_by_mode = {mode: candidates[0] for mode, candidates in stations.items() if candidates}
+
+    # Line lookups are a second Overpass round-trip each - only done
+    # for the single nearest rail/tube station (as before), not every
+    # station in the expanded list, to keep the extra API calls
+    # bounded regardless of how many stations happen to be nearby.
     line_lookup_modes = [m for m in ("rail", "tube") if m in nearest_by_mode]
     if line_lookup_modes:
         line_results = await asyncio.gather(
@@ -195,7 +195,13 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         for mode, lines in zip(line_lookup_modes, line_results):
             nearest_by_mode[mode]["lines"] = [] if isinstance(lines, Exception) else lines
 
-    return {"categories": categories, "stations": nearest_by_mode}
+    stations_by_mode = {
+        "rail": stations["rail"][:STATION_LIST_LIMIT],
+        "tube": stations["tube"][:STATION_LIST_LIMIT],
+        "bus": stations["bus"][:1],
+    }
+
+    return {"categories": categories, "stations": nearest_by_mode, "stations_list": stations_by_mode}
 
 
 async def _station_lines(el_type: str, el_id: int) -> list[str]:

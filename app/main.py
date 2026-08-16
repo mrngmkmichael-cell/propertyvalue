@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 
 import httpx
 from dotenv import load_dotenv
@@ -64,25 +65,59 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
     return [r for r in records if q in r["address"].lower()]
 
 
-async def _epc_flow(canonical: str, house_number: str, configured: bool) -> tuple[list[dict], dict | None]:
+def _leading_token(address: str) -> str:
+    match = re.match(r"\s*(\w+)", address)
+    return match.group(1).lower() if match else ""
+
+
+async def _epc_flow(
+    canonical: str, house_number: str, configured: bool
+) -> tuple[list[dict], dict | None, dict | None]:
     """Certificates + the extra-detail fetch for the first matching
     one, chained together as a single coroutine so the detail call
     (which depends on the search results) runs concurrently with
     everything else in the main gather, instead of strictly after it
     - it was previously awaited as its own serial step once the whole
     gather had already finished, adding a full extra EPC API round
-    trip to every page load that had certificates."""
+    trip to every page load that had certificates.
+
+    When a house number narrows the search to one specific address
+    with more than one certificate on file, also fetches detail for
+    all of them (bounded to that one address's own history, typically
+    2-4 certificates) to check for a floor-area jump suggesting a
+    probable extension - see epc.detect_extension."""
     if not configured:
-        return [], None
+        return [], None, None
     certs = await epc.certificates_for_postcode(canonical)
     filtered = _filter_by_address(certs, house_number)
     detail = None
+    extension_signal = None
     if filtered:
         try:
             detail = await epc.certificate_detail(filtered[0]["certificate_number"])
         except httpx.HTTPError:
             detail = None
-    return certs, detail
+        if house_number:
+            # The general substring filter above is deliberately loose
+            # (good for a human-reviewed table, where "6" matching "16"
+            # is a harmless extra row) - but this feeds an automated
+            # floor-area comparison, so it needs a stricter same-address
+            # match first, or it could silently compare two different
+            # properties that happen to share a digit.
+            target_token = _leading_token(house_number)
+            same_address = [c for c in filtered if _leading_token(c["address"]) == target_token]
+            if len(same_address) >= 2:
+                details = await asyncio.gather(
+                    *(epc.certificate_detail(c["certificate_number"]) for c in same_address),
+                    return_exceptions=True,
+                )
+                history = [
+                    {"date": cert["date"], "total_floor_area": d["total_floor_area"]}
+                    for cert, d in zip(same_address, details)
+                    if not isinstance(d, Exception) and d
+                ]
+                extension_signal = epc.detect_extension(history)
+    return certs, detail, extension_signal
 
 
 async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
@@ -275,11 +310,13 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         if isinstance(epc_flow_result, Exception):
             context["epc_error"] = True
         else:
-            epc_result, property_detail = epc_flow_result
+            epc_result, property_detail, extension_signal = epc_flow_result
             context["certificates"] = _filter_by_address(epc_result, house_number)
             context["postcode_has_certificates"] = bool(epc_result)
             if property_detail:
                 context["property_detail"] = property_detail
+            if extension_signal:
+                context["extension_signal"] = extension_signal
 
     if isinstance(flood_result, Exception):
         context["flood_error"] = True
@@ -305,6 +342,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     else:
         context["amenities"] = amenities_result["categories"]
         context["stations"] = amenities_result["stations"]
+        context["stations_list"] = amenities_result["stations_list"]
         context["nearest_transport"] = min(
             amenities_result["stations"].values(), key=lambda s: s["distance_m"], default=None
         )
