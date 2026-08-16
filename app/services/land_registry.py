@@ -10,7 +10,7 @@ prefix lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 prefix lrcommon: <http://landregistry.data.gov.uk/def/common/>
 prefix skos: <http://www.w3.org/2004/02/skos/core#>
 
-SELECT ?paon ?saon ?street ?postcode ?amount ?date ?category
+SELECT ?paon ?saon ?street ?postcode ?amount ?date ?category ?propertyType
 WHERE {{
   VALUES ?postcode {{ {postcode_values} }}
   ?addr lrcommon:postcode ?postcode.
@@ -21,6 +21,7 @@ WHERE {{
   OPTIONAL {{?addr lrcommon:paon ?paon}}
   OPTIONAL {{?addr lrcommon:saon ?saon}}
   OPTIONAL {{?addr lrcommon:street ?street}}
+  OPTIONAL {{?transx lrppi:propertyType/skos:prefLabel ?propertyType}}
 }}
 ORDER BY DESC(?date)
 LIMIT 300
@@ -87,6 +88,7 @@ async def sold_prices_for_postcodes(postcodes: list[str]) -> list[dict]:
             "amount": _binding_value(row, "amount"),
             "date": _binding_value(row, "date")[:10],
             "category": _binding_value(row, "category"),
+            "property_type": _binding_value(row, "propertyType") or None,
         })
     return transactions
 

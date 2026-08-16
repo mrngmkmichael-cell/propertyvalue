@@ -15,7 +15,7 @@ from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
     amenities, area_stats, broadband, census_stats, crime, epc, flood, heritage, hpi, mobile_coverage, noise,
-    radon, schools_db,
+    radon, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -66,6 +66,19 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
 
 async def _empty_list():
     return []
+
+
+async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
+    """Same nearby-postcodes-then-batch-query chain the Comparables tab
+    uses, reused here to power the Valuation estimate on the Summary
+    tab. Kept as a single coroutine so it can sit alongside everything
+    else in the main asyncio.gather despite its two-step dependency."""
+    nearby = await nearby_postcodes(lat, lon)
+    distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
+    transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
+    for tx in transactions:
+        tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+    return transactions
 
 
 def _imd_label(decile: int | None) -> str | None:
@@ -205,7 +218,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         amenities_result, hpi_result, noise_result,
         schools_result, deprivation_result, income_result,
         occupation_result, qualification_result, broadband_result, mobile_result,
-        radon_result, heritage_result,
+        radon_result, heritage_result, comparables_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -224,6 +237,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", "")),
         radon.risk_near(lat, lon),
         heritage.nearby_listed_buildings(lat, lon),
+        _nearby_comparables(lat, lon),
         return_exceptions=True,
     )
 
@@ -340,6 +354,17 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["heritage_error"] = True
     else:
         context["heritage"] = heritage_result
+
+    if isinstance(comparables_result, Exception):
+        context["valuation_error"] = True
+    else:
+        subject_type = valuation.normalize_property_type(
+            (context.get("property_detail") or {}).get("dwelling_type")
+        )
+        growth_area = (context.get("hpi") or {}).get("local_authority") or (context.get("hpi") or {}).get("region")
+        context["valuation"] = valuation.estimate_value(
+            comparables_result, subject_type, growth_area["annual_change_pct"] if growth_area else None
+        )
 
     if context["current_user"]:
         try:

@@ -920,6 +920,12 @@ a {
 .icon-mobile       { background: #fdf4ff; color: #a21caf; }
 .icon-radon        { background: #f7fee7; color: #65a30d; }
 .icon-heritage     { background: #fafaf9; color: #78716c; }
+.icon-valuation    { background: #fefce8; color: #a16207; }
+.icon-rental       { background: #ecfeff; color: #0e7490; }
+.icon-age          { background: #eef2ff; color: #4338ca; }
+.icon-housing      { background: #fff7ed; color: #c2410c; }
+.icon-ethnicity    { background: #f0fdfa; color: #0f766e; }
+.icon-wellbeing    { background: #fdf2f8; color: #be185d; }
 
 .radon-badge {
     display: inline-block;

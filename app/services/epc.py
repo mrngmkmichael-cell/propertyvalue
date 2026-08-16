@@ -10,6 +10,24 @@ import httpx
 
 API_BASE = "https://api.get-energy-performance-data.communities.gov.uk"
 
+# RdSAP's standard England & Wales construction age band lettering -
+# not in the certificate's top-level fields, only nested inside
+# sap_building_parts[n].construction_age_band as a bare letter.
+CONSTRUCTION_AGE_BANDS = {
+    "A": "Before 1900",
+    "B": "1900–1929",
+    "C": "1930–1949",
+    "D": "1950–1966",
+    "E": "1967–1975",
+    "F": "1976–1982",
+    "G": "1983–1990",
+    "H": "1991–1995",
+    "I": "1996–2002",
+    "J": "2003–2006",
+    "K": "2007–2011",
+    "L": "2012 onwards",
+}
+
 
 def is_configured() -> bool:
     return bool(os.environ.get("EPC_API_TOKEN"))
@@ -77,8 +95,21 @@ async def certificate_detail(certificate_number: str) -> dict | None:
     response.raise_for_status()
     data = response.json().get("data", {})
 
+    # RdSAP (existing dwellings) records a lettered age band; SAP
+    # (new-build) records an exact construction_year instead - only
+    # one of the two will be present, depending on assessment type.
+    year_built = None
+    for part in data.get("sap_building_parts") or []:
+        if part.get("construction_year"):
+            year_built = str(part["construction_year"])
+            break
+        if part.get("construction_age_band"):
+            year_built = CONSTRUCTION_AGE_BANDS.get(part["construction_age_band"])
+            break
+
     return {
         "dwelling_type": data.get("dwelling_type", ""),
         "total_floor_area": data.get("total_floor_area"),
         "habitable_room_count": data.get("habitable_room_count"),
+        "year_built": year_built,
     }

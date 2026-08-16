@@ -44,6 +44,7 @@
             {% if property_detail.dwelling_type %}{{ property_detail.dwelling_type }}{% endif %}
             {% if property_detail.total_floor_area %}· {{ property_detail.total_floor_area }} m²{% endif %}
             {% if property_detail.habitable_room_count %}· {{ property_detail.habitable_room_count }} habitable rooms{% endif %}
+            {% if property_detail.year_built %}· Built {{ property_detail.year_built }}{% endif %}
         </p>
         <p class="property-detail-note">Based on the most recent EPC certificate for this postcode — may not exactly match a specific unit.</p>
         {% endif %}
@@ -99,6 +100,19 @@
             </span>
             {% if transactions %}
             <span class="dashboard-card-substat">{{ transactions|length }} sale{{ "s" if transactions|length != 1 else "" }} recorded here</span>
+            {% endif %}
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if (valuation_error or not valuation) else 'ok' }}" data-modal-target="modal-valuation" data-animate>
+            <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
+            <span class="dashboard-card-title">Valuation Estimate</span>
+            <span class="dashboard-card-status">
+                {% if valuation_error %}Data unavailable
+                {% elif valuation %}{{ valuation.estimate | gbp }}
+                {% else %}Not enough nearby sales{% endif %}
+            </span>
+            {% if valuation %}
+            <span class="dashboard-card-substat">{{ valuation.low | gbp }} – {{ valuation.high | gbp }} range</span>
             {% endif %}
         </button>
 
@@ -354,6 +368,59 @@
                 {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
                 {{ "%.0f"|format(diff_pct | abs) }}% {{ "above" if diff_pct >= 0 else "below" }}
                 the {{ price_position_area.name }} average of {{ price_position_area.average_price | gbp }}.
+            </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-valuation">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Valuation estimate</h2>
+        <p class="section-sub">
+            A rough DIY estimate from public sold-price data, not a professional valuation — there's
+            no free equivalent to a lender's automated valuation model, so this is fully transparent
+            about its method instead of pretending to more precision than it has.
+        </p>
+        {% if valuation_error %}
+            <p class="notice notice-error">
+                The comparables data service didn't respond. Try again in a moment.
+            </p>
+        {% elif valuation %}
+            <p class="section-sub">
+                Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
+                within about 1km, sold in the last {{ valuation.years_window }} years{% if valuation.matched_property_type %} of a similar property type{% endif %},
+                each scaled up for this area's house-price growth since its sale date so older sales
+                aren't taken at face value.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Estimate</th>
+                        <th class="num">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Low (25th percentile)</td>
+                        <td class="num">{{ valuation.low | gbp }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Estimate (median)</strong></td>
+                        <td class="num"><strong>{{ valuation.estimate | gbp }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>High (75th percentile)</td>
+                        <td class="num">{{ valuation.high | gbp }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">
+                Not enough recent nearby sales to estimate confidently — we need at least 5 sales
+                within about 1km from the last 5 years, and this area doesn't have that many.
             </p>
         {% endif %}
             </section>
