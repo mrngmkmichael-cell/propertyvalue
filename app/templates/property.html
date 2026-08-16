@@ -120,7 +120,7 @@
             </span>
         </a>
 
-        {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0)] | max if noise else none %}
+        {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
         {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
         <a href="#noise" class="dashboard-card status-{{ noise_status }}" data-animate>
             {% if noise_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -401,10 +401,17 @@
                         <td><span class="noise-badge noise-{{ noise.rail_label | lower | replace(' ', '-') }}">{{ noise.rail_label }}</span></td>
                     </tr>
                     {% endif %}
+                    {% if noise.airport_db is not none %}
+                    <tr>
+                        <td>Aircraft</td>
+                        <td class="num">{{ noise.airport_db }} dB(A)</td>
+                        <td><span class="noise-badge noise-{{ noise.airport_label | lower | replace(' ', '-') }}">{{ noise.airport_label }}</span></td>
+                    </tr>
+                    {% endif %}
                 </tbody>
             </table>
         {% else %}
-            <p class="notice">No modelled road or rail noise near this address — DEFRA only maps noise near major roads and railways, so this usually just means none are close by.</p>
+            <p class="notice">No modelled road, rail or aircraft noise near this address — DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
         {% endif %}
     </section>
 

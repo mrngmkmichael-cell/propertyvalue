@@ -1,11 +1,17 @@
-"""Road and rail noise levels from DEFRA's strategic noise maps
-(Round 4, 2022), queried live via the Environment Agency's WMS
+"""Road, rail and airport noise levels from DEFRA's strategic noise
+maps (Round 4, 2022), queried live via the Environment Agency's WMS
 GetFeatureInfo point-query API - no key required, and no need to
 download/parse the underlying noise-grid rasters ourselves.
 
 Lden = day-evening-night average noise level in dB(A), the standard
 annoyance indicator used across these maps: a 24-hour average with
 penalties added for evening and night-time noise.
+
+Note: a similar-looking "Risk of Flooding from Surface Water" WMS
+dataset in the same family was investigated for the flood section
+but abandoned - it returned no features at plausible flood-risk
+locations and started 403-ing under light repeated testing, unlike
+these three which have been reliable.
 """
 import asyncio
 
@@ -16,8 +22,10 @@ from app.services import _cache
 WMS_BASE = "https://environment.data.gov.uk/geoservices/datasets"
 ROAD_DATASET_ID = "562c9d56-7c2d-4d42-83bb-578d6e97a517"
 RAIL_DATASET_ID = "3fb3c2d7-292c-4e0a-bd5b-d8e4e1fe2947"
+AIRPORT_DATASET_ID = "dac9cba4-abe7-43bd-b8e9-8a83da52edd8"
 ROAD_LAYER = "Road_Noise_Lden_England_Round_4_All"
 RAIL_LAYER = "Rail_Noise_Lden_England_Round_4_All"
+AIRPORT_LAYER = "Airport_Noise_ALL_Lden"
 CACHE_TTL_S = 86400  # static until the next mapping round, every ~5 years
 
 # Grid cell half-width for the query box, in degrees - small enough to
@@ -61,10 +69,12 @@ async def _query_layer(client: httpx.AsyncClient, dataset_id: str, layer: str, l
     if not features:
         return None
     value = features[0].get("properties", {}).get("GRAY_INDEX")
-    if not isinstance(value, (int, float)) or value <= 0:
-        # 0 (or missing) is the raster's nodata sentinel within the
-        # dataset's extent - real levels never read exactly 0, and
-        # the published data has a 35-40dB minimum threshold anyway.
+    if not isinstance(value, (int, float)) or not (0 < value < 150):
+        # Nodata sentinels vary by dataset: road/rail use 0 within
+        # the extent, the airport layer uses ~3.4028235e38 (the
+        # standard float32 nodata value). Real levels never read
+        # exactly 0 or anywhere near either sentinel, and the
+        # published data has a 35-40dB minimum threshold anyway.
         return None
     return round(value)
 
@@ -76,9 +86,10 @@ async def noise_near(lat: float, lon: float) -> dict:
         return cached
 
     async with httpx.AsyncClient() as client:
-        road_db, rail_db = await asyncio.gather(
+        road_db, rail_db, airport_db = await asyncio.gather(
             _query_layer(client, ROAD_DATASET_ID, ROAD_LAYER, lat, lon),
             _query_layer(client, RAIL_DATASET_ID, RAIL_LAYER, lat, lon),
+            _query_layer(client, AIRPORT_DATASET_ID, AIRPORT_LAYER, lat, lon),
         )
 
     result = {
@@ -86,6 +97,8 @@ async def noise_near(lat: float, lon: float) -> dict:
         "road_label": _band_label(road_db) if road_db is not None else None,
         "rail_db": rail_db,
         "rail_label": _band_label(rail_db) if rail_db is not None else None,
+        "airport_db": airport_db,
+        "airport_label": _band_label(airport_db) if airport_db is not None else None,
     }
     _cache.set(key, result)
     return result

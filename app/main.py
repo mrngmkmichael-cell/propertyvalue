@@ -226,7 +226,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     if isinstance(noise_result, Exception):
         context["noise_error"] = True
-    elif noise_result.get("road_db") is not None or noise_result.get("rail_db") is not None:
+    elif any(noise_result.get(k) is not None for k in ("road_db", "rail_db", "airport_db")):
         context["noise"] = noise_result
 
     if isinstance(crime_result, Exception):
