@@ -421,6 +421,36 @@ class MobileCoverage(Base):
     coverage_5g_outdoor_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class RentalPrice(Base):
+    """Median private-rental prices, by local authority (laua) and
+    bedroom count - from ONS's Price Index of Private Rents (PIPR),
+    the successor to their discontinued "Private rental market
+    summary statistics". Updated monthly by ONS; this table isn't -
+    it's a periodic manual re-run of scripts/import_rental_prices.py,
+    same cadence as the Ofcom Connected Nations imports.
+
+    There's no free per-property rental comparables source (unlike
+    sold prices, tenancies aren't publicly registered), so this is an
+    area + bedroom-count typical rent, not a "similar nearby lettings"
+    comparison.
+    """
+    __tablename__ = "rental_price"
+
+    laua_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    la_name: Mapped[str] = mapped_column(String(150), default="")
+    period: Mapped[str] = mapped_column(String(7), default="")
+    price_all: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_all_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_1bed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_1bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_2bed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_2bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_3bed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_3bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    price_4plus_bed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    change_4plus_bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
 # --- Live external lookups below don't need their own DB models -
 # radon.py and heritage.py query the BGS/Historic England ArcGIS
 # services directly per-request, cached in-memory like noise.py,

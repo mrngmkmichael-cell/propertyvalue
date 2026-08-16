@@ -15,7 +15,7 @@ from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
     amenities, area_stats, broadband, census_stats, crime, demographics, epc, flood, heritage, hpi,
-    mobile_coverage, noise, radon, schools_db, valuation,
+    mobile_coverage, noise, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -219,7 +219,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         schools_result, deprivation_result, income_result,
         occupation_result, qualification_result, broadband_result, mobile_result,
         radon_result, heritage_result, comparables_result,
-        age_profile_result, housing_result, background_result, wellbeing_result,
+        age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -243,6 +243,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
         return_exceptions=True,
     )
 
@@ -390,6 +391,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["wellbeing_error"] = True
     else:
         context["wellbeing"] = wellbeing_result
+
+    if isinstance(rental_result, Exception):
+        context["rental_error"] = True
+    else:
+        context["rental"] = rental_result
 
     if context["current_user"]:
         try:

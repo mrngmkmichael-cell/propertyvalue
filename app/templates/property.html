@@ -116,6 +116,19 @@
             {% endif %}
         </button>
 
+        <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}" data-modal-target="modal-rental" data-animate>
+            <span class="dashboard-card-icon icon-rental">{{ icons.icon('rental') }}</span>
+            <span class="dashboard-card-title">Rental Analysis</span>
+            <span class="dashboard-card-status">
+                {% if rental_error %}Data unavailable
+                {% elif rental %}{{ rental.price_all | gbp }} pcm typical
+                {% else %}No data available{% endif %}
+            </span>
+            {% if rental %}
+            <span class="dashboard-card-substat">{{ rental.la_name }}, by bedroom count</span>
+            {% endif %}
+        </button>
+
         {% if epc_configured %}
         <button type="button" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-modal-target="modal-epc" data-animate>
             <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
@@ -458,6 +471,60 @@
                 Not enough recent nearby sales to estimate confidently — we need at least 5 sales
                 within about 1km from the last 5 years, and this area doesn't have that many.
             </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-rental">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Rental analysis</h2>
+        <p class="section-sub">
+            Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
+            ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold-price
+            register for rents — tenancies aren't publicly registered the way sales are — so this is an
+            area + bedroom-count typical rent, not a comparison against specific nearby lettings.
+        </p>
+        {% if rental_error %}
+            <p class="notice notice-error">
+                The rental data service didn't respond. Try again in a moment.
+            </p>
+        {% elif rental %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Bedrooms</th>
+                        <th class="num">Typical rent (pcm)</th>
+                        <th class="num">Year on year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>All properties</strong></td>
+                        <td class="num"><strong>{{ rental.price_all | gbp }}</strong></td>
+                        <td class="num">
+                            {% if rental.change_all_pct is not none %}
+                            <span class="hpi-change {{ 'up' if rental.change_all_pct >= 0 else 'down' }}">{{ "%+.1f"|format(rental.change_all_pct) }}%</span>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% for b in rental.by_bedroom %}
+                    <tr>
+                        <td>{{ b.label }}</td>
+                        <td class="num">{{ b.price | gbp }}</td>
+                        <td class="num">
+                            {% if b.change_pct is not none %}
+                            <span class="hpi-change {{ 'up' if b.change_pct >= 0 else 'down' }}">{{ "%+.1f"|format(b.change_pct) }}%</span>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No rental price data available for this area.</p>
         {% endif %}
             </section>
         </div>
@@ -1376,6 +1443,8 @@ marital status and socio-economic classification data from
 <a href="https://www.nomisweb.co.uk/sources/census_2021" target="_blank" rel="noopener">Census 2021</a>, via Nomis.
 Valuation estimates are computed by this site from Land Registry sold prices and UK HPI growth
 rates — not a professional valuation or lender AVM.
+Rental price data from the Office for National Statistics'
+<a href="https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/priceindexofprivaterentsukmonthlypricestatistics" target="_blank" rel="noopener">Price Index of Private Rents</a>.
 Noise data from DEFRA's
 <a href="https://www.gov.uk/government/publications/strategic-noise-mapping-2022" target="_blank" rel="noopener">strategic noise mapping (2022)</a>,
 via the Environment Agency.
