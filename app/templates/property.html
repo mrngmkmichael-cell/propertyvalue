@@ -246,6 +246,26 @@
                 {% else %}No data available{% endif %}
             </span>
         </a>
+
+        {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
+        <a href="#radon" class="dashboard-card status-{{ radon_status }}" data-animate>
+            {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
+            <span class="dashboard-card-title">Radon Gas</span>
+            <span class="dashboard-card-status">
+                {% if radon %}{{ radon.label }}
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        <a href="#heritage" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
+            <span class="dashboard-card-title">Listed Buildings</span>
+            <span class="dashboard-card-status">
+                {% if heritage %}{{ heritage|length }} nearby
+                {% else %}None found nearby{% endif %}
+            </span>
+        </a>
     </div>
 
     <section class="report-section" id="sold-price-history" data-animate>
@@ -863,6 +883,58 @@
             <p class="notice">No mobile coverage data available for this area.</p>
         {% endif %}
     </section>
+
+    <section class="report-section" id="radon" data-animate>
+        <h2>Radon gas</h2>
+        {% if radon_error %}
+            <p class="notice notice-error">
+                The radon data service didn't respond. Try again in a moment.
+            </p>
+        {% elif radon %}
+            <p class="section-sub">
+                From the British Geological Survey's Indicative Atlas of Radon (1km grid square) —
+                the percentage of homes estimated to be at or above the UK radon Action Level.
+            </p>
+            <p><span class="radon-badge radon-{{ radon.class }}">Class {{ radon.class }}</span> {{ radon.label }}</p>
+        {% else %}
+            <p class="notice">No radon data available for this area.</p>
+        {% endif %}
+    </section>
+
+    <section class="report-section" id="heritage" data-animate>
+        <h2>Listed buildings nearby</h2>
+        <p class="section-sub">
+            Within 500m, from Historic England's National Heritage List — proximity only, not a
+            statement about this specific address. We don't match individual building footprints
+            to addresses, so we can't say whether this property itself is listed.
+        </p>
+        {% if heritage_error %}
+            <p class="notice notice-error">
+                The heritage data service didn't respond. Try again in a moment.
+            </p>
+        {% elif heritage %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Grade</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in heritage %}
+                    <tr>
+                        <td><a href="{{ b.url }}" target="_blank" rel="noopener">{{ b.name }}</a></td>
+                        <td>{{ b.grade }}</td>
+                        <td class="num">{{ b.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No listed buildings found nearby.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -901,6 +973,10 @@ Noise data from DEFRA's
 via the Environment Agency.
 Broadband and mobile coverage data from Ofcom's
 <a href="https://www.ofcom.org.uk/phones-and-broadband/coverage-and-speeds/coverage-and-speeds/" target="_blank" rel="noopener">Connected Nations</a> report.
+Radon data from the British Geological Survey's
+<a href="https://www.bgs.ac.uk/datasets/radon-data-indicative-atlas-of-radon/" target="_blank" rel="noopener">Indicative Atlas of Radon</a>.
+Listed building data from Historic England's
+<a href="https://historicengland.org.uk/listing/the-list/" target="_blank" rel="noopener">National Heritage List for England</a>.
 {% endblock %}
 
 {% block extra_head %}

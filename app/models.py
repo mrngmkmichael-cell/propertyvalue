@@ -236,3 +236,11 @@ class MobileCoverage(Base):
     coverage_4g_indoor_all_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     no_4g_outdoor_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     coverage_5g_outdoor_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+# --- Live external lookups below don't need their own DB models -
+# radon.py and heritage.py query the BGS/Historic England ArcGIS
+# services directly per-request, cached in-memory like noise.py,
+# rather than a bulk import (the underlying grid/point data changes
+# rarely, but there's no practical need to mirror the whole GB radon
+# atlas or the full national heritage list into our own database).

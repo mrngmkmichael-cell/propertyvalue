@@ -760,6 +760,22 @@ a {
 .icon-noise { background: rgba(184, 144, 43, 0.16); color: #8a6a1f; }
 .icon-broadband { background: rgba(46, 110, 150, 0.14); color: #2e6e96; }
 .icon-mobile { background: rgba(76, 46, 130, 0.14); color: #4c2e82; }
+.icon-radon { background: rgba(184, 144, 43, 0.16); color: #8a6a1f; }
+.icon-heritage { background: rgba(122, 42, 74, 0.14); color: #7a2a4a; }
+
+.radon-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff1e5;
+    margin-right: 0.4rem;
+}
+
+.radon-1, .radon-2 { background: #2e7d4f; }
+.radon-3, .radon-4 { background: #b8902b; }
+.radon-5, .radon-6 { background: var(--accent); }
 
 .noise-badge {
     display: inline-block;

@@ -14,7 +14,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    amenities, area_stats, broadband, census_stats, crime, epc, flood, hpi, mobile_coverage, noise, schools_db,
+    amenities, area_stats, broadband, census_stats, crime, epc, flood, heritage, hpi, mobile_coverage, noise,
+    radon, schools_db,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -204,6 +205,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         amenities_result, hpi_result, noise_result,
         schools_result, deprivation_result, income_result,
         occupation_result, qualification_result, broadband_result, mobile_result,
+        radon_result, heritage_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -220,6 +222,8 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(broadband.coverage_for_postcode, canonical),
         asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", "")),
+        radon.risk_near(lat, lon),
+        heritage.nearby_listed_buildings(lat, lon),
         return_exceptions=True,
     )
 
@@ -326,6 +330,16 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["mobile_error"] = True
     else:
         context["mobile"] = mobile_result
+
+    if isinstance(radon_result, Exception):
+        context["radon_error"] = True
+    else:
+        context["radon"] = radon_result
+
+    if isinstance(heritage_result, Exception):
+        context["heritage_error"] = True
+    else:
+        context["heritage"] = heritage_result
 
     if context["current_user"]:
         try:
