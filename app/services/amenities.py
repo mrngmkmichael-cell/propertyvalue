@@ -1,10 +1,9 @@
 """Local amenities (restaurants, supermarkets, hospitals, pharmacies,
-pubs, schools) and the nearest train/tube station, from OpenStreetMap's
-free Overpass API (no key required).
+pubs) and the nearest train/tube station, from OpenStreetMap's free
+Overpass API (no key required).
 
-Schools are proximity only, NOT catchment areas - there's no reliable
-free UK-wide catchment API (patchy, inconsistent per-council data at
-best), so we deliberately don't claim to show one.
+Schools are handled separately (app/services/schools_db.py), from
+DfE/Ofsted data rather than OSM - see that module for why.
 """
 import math
 import re
@@ -39,7 +38,6 @@ AMENITY_QUERIES = [
     ("pharmacy", '["amenity"="pharmacy"]', 1000),
     ("pub", '["amenity"="pub"]', 1000),
     ("hospital", '["amenity"="hospital"]', 3000),
-    ("school", '["amenity"="school"]', 1500),
 ]
 STATION_RADIUS_M = 3000
 
@@ -89,20 +87,6 @@ async def _query_overpass(query: str) -> list[dict]:
         except httpx.HTTPError as exc:
             last_error = exc
     raise last_error
-
-
-def _school_type(tags: dict) -> str:
-    school = tags.get("school", "")
-    if school:
-        return school.replace("_", " ").strip().capitalize()
-    levels = set((tags.get("isced:level") or "").split(";"))
-    if levels & {"2", "3"}:
-        return "Secondary"
-    if "1" in levels:
-        return "Primary"
-    if "0" in levels:
-        return "Nursery"
-    return ""
 
 
 async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
@@ -161,12 +145,6 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             categories["pub"].append({"name": name, "distance_m": distance_m})
         elif amenity == "hospital":
             categories["hospital"].append({"name": name, "distance_m": distance_m})
-        elif amenity == "school":
-            categories["school"].append({
-                "name": name,
-                "distance_m": distance_m,
-                "type": _school_type(tags),
-            })
 
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])

@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -34,3 +34,24 @@ class WatchlistItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
+
+
+class School(Base):
+    """Open schools in England, from DfE's GIAS establishment data,
+    joined with Ofsted's state-funded school inspection outcomes.
+    Populated by scripts/import_schools.py (a one-time/periodic
+    offline import, not something the deployed app runs itself) -
+    see that script for source URLs and field mapping.
+    """
+    __tablename__ = "schools"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(255))
+    phase: Mapped[str] = mapped_column(String(100), default="")
+    type_name: Mapped[str] = mapped_column(String(150), default="")
+    postcode: Mapped[str] = mapped_column(String(16), default="")
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    ofsted_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_rating_label: Mapped[str] = mapped_column(String(50), default="")
+    ofsted_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)

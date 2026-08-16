@@ -507,19 +507,7 @@ a {
 
 /* HPI area comparison */
 
-.hpi-comparison {
-    list-style: none;
-    margin: 0.5rem 0 1rem;
-    padding: 0;
-}
-
-.hpi-comparison li {
-    padding: 0.3rem 0;
-    font-size: 0.92rem;
-}
-
 .hpi-change {
-    margin-left: 0.5rem;
     font-size: 0.85rem;
 }
 
@@ -529,4 +517,26 @@ a {
 
 .hpi-change.down {
     color: var(--accent);
+}
+
+/* Ofsted ratings */
+
+.ofsted-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #fff1e5;
+}
+
+.ofsted-1 { background: #276b3f; }
+.ofsted-2 { background: #4c8a4c; }
+.ofsted-3 { background: #b8902b; }
+.ofsted-4 { background: var(--accent); }
+
+.ofsted-none {
+    color: var(--ink-soft);
+    font-style: italic;
+    font-size: 0.85rem;
 }

@@ -256,24 +256,32 @@
     <section class="report-section">
         <h2>Schools nearby</h2>
         <p class="section-sub">Proximity only — not a catchment area or admissions guarantee. No reliable free UK-wide catchment data exists.</p>
-        {% if amenities_error %}
+        {% if schools_error %}
             <p class="notice notice-error">
-                The amenities data service didn't respond. Try again in a moment.
+                The schools data service didn't respond. Try again in a moment.
             </p>
-        {% elif amenities and amenities.school %}
+        {% elif schools %}
             <table class="tx-table">
                 <thead>
                     <tr>
                         <th>School</th>
-                        <th>Type</th>
+                        <th>Phase</th>
+                        <th>Ofsted rating</th>
                         <th class="num">Distance</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for s in amenities.school[:10] %}
+                    {% for s in schools %}
                     <tr>
                         <td>{{ s.name }}</td>
-                        <td>{% if s.type %}<span class="school-type-badge">{{ s.type }}</span>{% endif %}</td>
+                        <td>{% if s.phase and s.phase != "Not applicable" %}<span class="school-type-badge">{{ s.phase }}</span>{% endif %}</td>
+                        <td>
+                            {% if s.ofsted_rating_label %}
+                                <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                            {% else %}
+                                <span class="ofsted-none">Not rated</span>
+                            {% endif %}
+                        </td>
                         <td class="num">{{ s.distance_m | distance }}</td>
                     </tr>
                     {% endfor %}
@@ -318,6 +326,11 @@ Flood data from the
 Crime data from <a href="https://data.police.uk" target="_blank" rel="noopener">data.police.uk</a>.
 Local amenities and station data from
 <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>.
+School data from the Department for Education's
+<a href="https://www.get-information-schools.service.gov.uk" target="_blank" rel="noopener">Get Information about Schools</a>
+register. Ofsted ratings from
+<a href="https://www.gov.uk/government/statistical-data-sets/monthly-management-information-ofsteds-school-inspections-outcomes" target="_blank" rel="noopener">Ofsted's published inspection outcomes</a>
+— state-funded schools only, and only the latest graded inspection.
 {% endblock %}
 
 {% block extra_head %}

@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import amenities, crime, epc, flood, hpi
+from app.services import amenities, crime, epc, flood, hpi, schools_db
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -178,6 +178,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     if not isinstance(hpi_result, Exception):
         context["hpi"] = hpi_result
+
+    try:
+        context["schools"] = schools_db.nearby_schools(lat, lon)
+    except Exception:
+        context["schools_error"] = True
 
     if context["current_user"]:
         try:
