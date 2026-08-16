@@ -170,6 +170,26 @@
                 {% else %}Nothing nearby{% endif %}
             </span>
         </a>
+
+        <a href="#household-income" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
+            <span class="dashboard-card-title">Household Income</span>
+            <span class="dashboard-card-status">
+                {% if household_income %}{{ household_income.here | gbp }} p/a
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
+        <a href="#deprivation" class="dashboard-card status-{{ deprivation_status }}" data-animate>
+            {% if deprivation_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-deprivation">{{ icons.icon('deprivation') }}</span>
+            <span class="dashboard-card-title">Deprivation</span>
+            <span class="dashboard-card-status">
+                {% if deprivation %}Decile {{ deprivation.imd_decile }} of 10
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
     </div>
 
     <section class="report-section" id="sold-price-history" data-animate>
@@ -471,6 +491,85 @@
             <p class="notice">No public transport found nearby.</p>
         {% endif %}
     </section>
+
+    <section class="report-section" id="household-income" data-animate>
+        <h2>Household income</h2>
+        {% if household_income_error %}
+            <p class="notice notice-error">
+                The household income data service didn't respond. Try again in a moment.
+            </p>
+        {% elif household_income %}
+            <p class="section-sub">
+                Modelled estimate of average total annual household income for this neighbourhood,
+                from ONS's small-area income statistics (financial year ending 2023) — not a
+                per-property figure.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th class="num">Average income</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>This neighbourhood</td>
+                        <td class="num">{{ household_income.here | gbp }}</td>
+                    </tr>
+                    {% if household_income.la_average %}
+                    <tr>
+                        <td>{{ household_income.la_name }} (borough)</td>
+                        <td class="num">{{ household_income.la_average | gbp }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if household_income.region_average %}
+                    <tr>
+                        <td>{{ household_income.region_name }}</td>
+                        <td class="num">{{ household_income.region_average | gbp }}</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No household income estimate available for this area.</p>
+        {% endif %}
+    </section>
+
+    <section class="report-section" id="deprivation" data-animate>
+        <h2>Deprivation</h2>
+        {% if deprivation_error %}
+            <p class="notice notice-error">
+                The deprivation data service didn't respond. Try again in a moment.
+            </p>
+        {% elif deprivation %}
+            <p class="section-sub">
+                From the official English Indices of Deprivation (IMD 2025) — decile 1 is the most
+                deprived 10% of small areas in England, decile 10 the least. {{ imd_label }}.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Domain</th>
+                        <th class="num">Decile</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Overall (IMD)</strong></td>
+                        <td class="num"><strong>{{ deprivation.imd_decile }}</strong></td>
+                    </tr>
+                    {% for d in deprivation.domains %}
+                    <tr>
+                        <td>{{ d.label }}</td>
+                        <td class="num">{{ d.decile }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No deprivation data available for this area.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -494,6 +593,11 @@ School data from the Department for Education's
 register. Ofsted ratings from
 <a href="https://www.gov.uk/government/statistical-data-sets/monthly-management-information-ofsteds-school-inspections-outcomes" target="_blank" rel="noopener">Ofsted's published inspection outcomes</a>
 — state-funded schools only, and only the latest graded inspection.
+Deprivation data from the Ministry of Housing, Communities and Local Government's
+<a href="https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025" target="_blank" rel="noopener">English Indices of Deprivation 2025</a>.
+Household income estimates from the
+<a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales" target="_blank" rel="noopener">Office for National Statistics</a>
+— modelled estimates, financial year ending 2023.
 {% endblock %}
 
 {% block extra_head %}

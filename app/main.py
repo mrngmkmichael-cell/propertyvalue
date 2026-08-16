@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import amenities, crime, epc, flood, hpi, schools_db
+from app.services import amenities, area_stats, crime, epc, flood, hpi, schools_db
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -55,6 +55,20 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
 
 async def _empty_list():
     return []
+
+
+def _imd_label(decile: int | None) -> str | None:
+    if decile is None:
+        return None
+    if decile <= 2:
+        return "Among the most deprived areas in England"
+    if decile <= 4:
+        return "More deprived than average"
+    if decile <= 6:
+        return "Around the national average"
+    if decile <= 8:
+        return "Less deprived than average"
+    return "Among the least deprived areas in England"
 
 
 def _crime_comparison(local: dict, district: dict) -> list[dict]:
@@ -249,6 +263,18 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["schools_total"] = sum(len(v) for v in context["schools"].values())
     except Exception:
         context["schools_error"] = True
+
+    codes = location.get("codes", {})
+    try:
+        context["deprivation"] = area_stats.deprivation_for_lsoa(codes.get("lsoa", ""))
+        if context["deprivation"]:
+            context["imd_label"] = _imd_label(context["deprivation"]["imd_decile"])
+    except Exception:
+        context["deprivation_error"] = True
+    try:
+        context["household_income"] = area_stats.income_for_msoa(codes.get("msoa", ""))
+    except Exception:
+        context["household_income_error"] = True
 
     if context["current_user"]:
         try:

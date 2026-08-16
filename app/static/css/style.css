@@ -699,6 +699,8 @@ a {
 .icon-prosperity { background: rgba(76, 122, 46, 0.14); color: #4c7a2e; }
 .icon-amenities { background: rgba(196, 110, 30, 0.14); color: #c46e1e; }
 .icon-transport { background: rgba(46, 74, 122, 0.14); color: #2e4a7a; }
+.icon-income { background: rgba(31, 122, 108, 0.14); color: #1f7a6c; }
+.icon-deprivation { background: rgba(122, 42, 74, 0.14); color: #7a2a4a; }
 
 .dashboard-card-title {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;

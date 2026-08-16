@@ -55,3 +55,43 @@ class School(Base):
     ofsted_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ofsted_rating_label: Mapped[str] = mapped_column(String(50), default="")
     ofsted_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class Deprivation(Base):
+    """English Indices of Deprivation 2025, by LSOA (2021 boundaries).
+    Populated by scripts/import_area_stats.py from MHCLG's official
+    File 7 release - a periodic (every few years) official dataset,
+    not something with a live API.
+    """
+    __tablename__ = "deprivation"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    lsoa_name: Mapped[str] = mapped_column(String(100), default="")
+    la_code: Mapped[str] = mapped_column(String(16), default="")
+    la_name: Mapped[str] = mapped_column(String(150), default="")
+    imd_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    imd_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    income_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    employment_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    education_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    health_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    crime_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    housing_barriers_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    living_environment_decile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class HouseholdIncome(Base):
+    """ONS model-based total annual household income estimates, by
+    MSOA, financial year ending 2023. Populated by
+    scripts/import_area_stats.py. Modelled (not measured) estimates -
+    the official ONS caveat, not a limitation of this app.
+    """
+    __tablename__ = "household_income"
+
+    msoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    msoa_name: Mapped[str] = mapped_column(String(100), default="")
+    la_code: Mapped[str] = mapped_column(String(16), default="")
+    la_name: Mapped[str] = mapped_column(String(150), default="")
+    region_code: Mapped[str] = mapped_column(String(16), default="")
+    region_name: Mapped[str] = mapped_column(String(100), default="")
+    total_annual_income: Mapped[int | None] = mapped_column(Integer, nullable=True)
