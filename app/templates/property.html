@@ -129,15 +129,19 @@
 
         {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
         {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
+        {% set noise_max_label = ('Low' if noise_max < 55 else ('Moderate' if noise_max < 65 else ('High' if noise_max < 75 else 'Very high'))) if noise_max is not none else none %}
         <button type="button" class="dashboard-card status-{{ noise_status }}" data-modal-target="modal-noise" data-animate>
             {% if noise_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-noise">{{ icons.icon('noise') }}</span>
             <span class="dashboard-card-title">Noise</span>
             <span class="dashboard-card-status">
                 {% if noise_error %}Data unavailable
-                {% elif noise %}{{ noise_max }} dB(A) at its loudest
+                {% elif noise %}{{ noise_max_label }}
                 {% else %}No modelled noise nearby{% endif %}
             </span>
+            {% if noise and noise_max is not none %}
+            <span class="dashboard-card-substat">{{ noise_max }} dB(A) at its loudest</span>
+            {% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-modal-target="modal-crime" data-animate>
@@ -439,6 +443,15 @@
         <p class="section-sub">
             Modelled Lden (day-evening-night average) noise level in dB(A), from DEFRA's strategic
             noise maps (2022) — a 10m-grid model, not a measurement at this specific address.
+        </p>
+        <p class="section-sub">
+            The dB(A) number on its own doesn't mean much without context, and there's no official
+            "acceptable" cut-off — DEFRA just groups the same measurement into four bands.
+            Roughly: <strong>Low</strong> (under 55 dB(A)) is a quiet residential street;
+            <strong>Moderate</strong> (55–65 dB(A)) is normal conversation, or a road heard from
+            indoors with windows shut; <strong>High</strong> (65–75 dB(A)) is a busy road right
+            outside, or a vacuum cleaner; <strong>Very high</strong> (75 dB(A) and up) is standing
+            next to heavy traffic.
         </p>
         {% if noise_error %}
             <p class="notice notice-error">
