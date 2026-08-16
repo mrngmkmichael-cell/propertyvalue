@@ -120,6 +120,19 @@
             </span>
         </a>
 
+        {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0)] | max if noise else none %}
+        {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
+        <a href="#noise" class="dashboard-card status-{{ noise_status }}" data-animate>
+            {% if noise_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-noise">{{ icons.icon('noise') }}</span>
+            <span class="dashboard-card-title">Noise</span>
+            <span class="dashboard-card-status">
+                {% if noise_error %}Data unavailable
+                {% elif noise %}{{ noise_max }} dB(A) at its loudest
+                {% else %}No modelled noise nearby{% endif %}
+            </span>
+        </a>
+
         <a href="#crime" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-animate>
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">Crime &amp; Safety</span>
@@ -351,6 +364,47 @@
             </table>
         {% else %}
             <p class="notice">No active flood warnings or alerts nearby.</p>
+        {% endif %}
+    </section>
+
+    <section class="report-section" id="noise" data-animate>
+        <h2>Noise</h2>
+        <p class="section-sub">
+            Modelled Lden (day-evening-night average) noise level in dB(A), from DEFRA's strategic
+            noise maps (2022) — a 10m-grid model, not a measurement at this specific address.
+        </p>
+        {% if noise_error %}
+            <p class="notice notice-error">
+                The noise data service didn't respond. Try again in a moment.
+            </p>
+        {% elif noise %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Source</th>
+                        <th class="num">Level</th>
+                        <th>Band</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if noise.road_db is not none %}
+                    <tr>
+                        <td>Road</td>
+                        <td class="num">{{ noise.road_db }} dB(A)</td>
+                        <td><span class="noise-badge noise-{{ noise.road_label | lower | replace(' ', '-') }}">{{ noise.road_label }}</span></td>
+                    </tr>
+                    {% endif %}
+                    {% if noise.rail_db is not none %}
+                    <tr>
+                        <td>Rail</td>
+                        <td class="num">{{ noise.rail_db }} dB(A)</td>
+                        <td><span class="noise-badge noise-{{ noise.rail_label | lower | replace(' ', '-') }}">{{ noise.rail_label }}</span></td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No modelled road or rail noise near this address — DEFRA only maps noise near major roads and railways, so this usually just means none are close by.</p>
         {% endif %}
     </section>
 
@@ -682,6 +736,9 @@ Household income estimates from the
 — modelled estimates, financial year ending 2023.
 Occupation and qualification data from
 <a href="https://www.nomisweb.co.uk/sources/census_2021" target="_blank" rel="noopener">Census 2021</a>, via Nomis.
+Noise data from DEFRA's
+<a href="https://www.gov.uk/government/publications/strategic-noise-mapping-2022" target="_blank" rel="noopener">strategic noise mapping (2022)</a>,
+via the Environment Agency.
 {% endblock %}
 
 {% block extra_head %}

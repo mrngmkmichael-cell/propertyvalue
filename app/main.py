@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import amenities, area_stats, census_stats, crime, epc, flood, hpi, schools_db
+from app.services import amenities, area_stats, census_stats, crime, epc, flood, hpi, noise, schools_db
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -185,7 +185,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # source of slowness.
     (
         tx_result, epc_result, flood_result, crime_result, district_crime_result,
-        amenities_result, hpi_result,
+        amenities_result, hpi_result, noise_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -194,6 +194,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         crime.summary_for_outcode(location["outcode"]),
         amenities.nearby_amenities_and_station(lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+        noise.noise_near(lat, lon),
         return_exceptions=True,
     )
 
@@ -222,6 +223,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["flood_error"] = True
     else:
         context["flood_warnings"] = flood_result
+
+    if isinstance(noise_result, Exception):
+        context["noise_error"] = True
+    elif noise_result.get("road_db") is not None or noise_result.get("rail_db") is not None:
+        context["noise"] = noise_result
 
     if isinstance(crime_result, Exception):
         context["crime_error"] = True
