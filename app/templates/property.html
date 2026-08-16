@@ -86,20 +86,24 @@
     {% endif %}
 
     {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
+    <p class="section-sub">Tap a card to see the details in a popup.</p>
     <div class="dashboard-grid">
-        <a href="#sold-price-history" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>
             <span class="dashboard-card-icon icon-market">{{ icons.icon('market') }}</span>
             <span class="dashboard-card-title">Local Market</span>
             <span class="dashboard-card-status">
                 {% if tx_error %}Data unavailable
-                {% elif transactions %}{{ transactions|length }} sale{{ "s" if transactions|length != 1 else "" }} recorded
+                {% elif transactions %}{{ transactions[0].amount | gbp }} last sale
                 {% elif house_number and postcode_has_transactions %}None for "{{ house_number }}"
                 {% else %}No recorded sales{% endif %}
             </span>
-        </a>
+            {% if transactions %}
+            <span class="dashboard-card-substat">{{ transactions|length }} sale{{ "s" if transactions|length != 1 else "" }} recorded here</span>
+            {% endif %}
+        </button>
 
         {% if epc_configured %}
-        <a href="#epc" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-modal-target="modal-epc" data-animate>
             <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
             <span class="dashboard-card-title">Energy Efficiency</span>
             <span class="dashboard-card-status">
@@ -108,11 +112,11 @@
                 {% elif house_number and postcode_has_certificates %}None for "{{ house_number }}"
                 {% else %}No certificates found{% endif %}
             </span>
-        </a>
+        </button>
         {% endif %}
 
         {% set flood_status = 'muted' if flood_error else ('attn' if flood_warnings else 'ok') %}
-        <a href="#flood" class="dashboard-card status-{{ flood_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ flood_status }}" data-modal-target="modal-flood" data-animate>
             {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">Flood Risk</span>
@@ -121,11 +125,11 @@
                 {% elif flood_warnings %}{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}
                 {% else %}No active warnings{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
         {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
-        <a href="#noise" class="dashboard-card status-{{ noise_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ noise_status }}" data-modal-target="modal-noise" data-animate>
             {% if noise_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-noise">{{ icons.icon('noise') }}</span>
             <span class="dashboard-card-title">Noise</span>
@@ -134,9 +138,9 @@
                 {% elif noise %}{{ noise_max }} dB(A) at its loudest
                 {% else %}No modelled noise nearby{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#crime" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-modal-target="modal-crime" data-animate>
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">Crime &amp; Safety</span>
             <span class="dashboard-card-status">
@@ -144,9 +148,9 @@
                 {% elif crime and crime.total %}{{ crime.total }} crimes recorded
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#schools" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-modal-target="modal-schools" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Schools &amp; Catchment</span>
             <span class="dashboard-card-status">
@@ -154,10 +158,10 @@
                 {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
-        <a href="#sold-price-history" class="dashboard-card status-{{ prosperity_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ prosperity_status }}" data-modal-target="modal-sold-price-history" data-animate>
             {% if prosperity_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
             <span class="dashboard-card-title">Area Prosperity</span>
@@ -165,9 +169,9 @@
                 {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#amenities" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-modal-target="modal-amenities" data-animate>
             <span class="dashboard-card-icon icon-amenities">{{ icons.icon('amenities') }}</span>
             <span class="dashboard-card-title">Nearby Essentials</span>
             <span class="dashboard-card-status">
@@ -175,9 +179,9 @@
                 {% elif amenities %}{{ (amenities.restaurant|length) + (amenities.supermarket|length) + (amenities.pharmacy|length) + (amenities.pub|length) + (amenities.hospital|length) }} nearby
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#getting-around" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}" data-modal-target="modal-getting-around" data-animate>
             <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
             <span class="dashboard-card-title">Getting Around</span>
             <span class="dashboard-card-status">
@@ -185,19 +189,19 @@
                 {% elif nearest_transport %}{{ nearest_transport.name }} · {{ nearest_transport.distance_m | distance }}
                 {% else %}Nothing nearby{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#household-income" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-modal-target="modal-household-income" data-animate>
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
             <span class="dashboard-card-title">Household Income</span>
             <span class="dashboard-card-status">
                 {% if household_income %}{{ household_income.here | gbp }} p/a
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
-        <a href="#deprivation" class="dashboard-card status-{{ deprivation_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ deprivation_status }}" data-modal-target="modal-deprivation" data-animate>
             {% if deprivation_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-deprivation">{{ icons.icon('deprivation') }}</span>
             <span class="dashboard-card-title">Deprivation</span>
@@ -205,28 +209,28 @@
                 {% if deprivation %}Decile {{ deprivation.imd_decile }} of 10
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#occupation" class="dashboard-card status-{{ 'muted' if not occupation else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not occupation else 'ok' }}" data-modal-target="modal-occupation" data-animate>
             <span class="dashboard-card-icon icon-occupation">{{ icons.icon('occupation') }}</span>
             <span class="dashboard-card-title">Occupation</span>
             <span class="dashboard-card-status">
                 {% if occupation %}{{ occupation.professional_pct }}% managerial/professional
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#qualification" class="dashboard-card status-{{ 'muted' if not qualification else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not qualification else 'ok' }}" data-modal-target="modal-qualification" data-animate>
             <span class="dashboard-card-icon icon-qualification">{{ icons.icon('qualification') }}</span>
             <span class="dashboard-card-title">Qualification</span>
             <span class="dashboard-card-status">
                 {% if qualification %}{{ qualification.degree_pct }}% degree-educated
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
-        <a href="#broadband" class="dashboard-card status-{{ broadband_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
             {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-broadband">{{ icons.icon('broadband') }}</span>
             <span class="dashboard-card-title">Broadband</span>
@@ -234,10 +238,10 @@
                 {% if broadband %}{{ broadband.label }}
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
-        <a href="#mobile" class="dashboard-card status-{{ mobile_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ mobile_status }}" data-modal-target="modal-mobile" data-animate>
             {% if mobile_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
             <span class="dashboard-card-title">Mobile Signal</span>
@@ -245,10 +249,10 @@
                 {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}% 4G outdoor (all networks)
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
         {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
-        <a href="#radon" class="dashboard-card status-{{ radon_status }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ radon_status }}" data-modal-target="modal-radon" data-animate>
             {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
             <span class="dashboard-card-title">Radon Gas</span>
@@ -256,19 +260,22 @@
                 {% if radon %}{{ radon.label }}
                 {% else %}No data available{% endif %}
             </span>
-        </a>
+        </button>
 
-        <a href="#heritage" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
             <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
             <span class="dashboard-card-title">Listed Buildings</span>
             <span class="dashboard-card-status">
                 {% if heritage %}{{ heritage|length }} nearby
                 {% else %}None found nearby{% endif %}
             </span>
-        </a>
+        </button>
     </div>
 
-    <section class="report-section" id="sold-price-history" data-animate>
+    <dialog class="report-modal" id="modal-sold-price-history">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Sold price history</h2>
         {% if tx_error %}
             <p class="notice notice-error">
@@ -345,10 +352,15 @@
                 the {{ price_position_area.name }} average of {{ price_position_area.average_price | gbp }}.
             </p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
     {% if epc_configured %}
-    <section class="report-section" id="epc" data-animate>
+    <dialog class="report-modal" id="modal-epc">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Energy performance certificates</h2>
         {% if epc_error %}
             <p class="notice notice-error">
@@ -378,10 +390,15 @@
         {% else %}
             <p class="notice">No EPC certificates found for this postcode.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
     {% endif %}
 
-    <section class="report-section" id="flood" data-animate>
+    <dialog class="report-modal" id="modal-flood">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Flood warnings</h2>
         <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
         {% if flood_error %}
@@ -410,9 +427,14 @@
         {% else %}
             <p class="notice">No active flood warnings or alerts nearby.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="noise" data-animate>
+    <dialog class="report-modal" id="modal-noise">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Noise</h2>
         <p class="section-sub">
             Modelled Lden (day-evening-night average) noise level in dB(A), from DEFRA's strategic
@@ -458,9 +480,14 @@
         {% else %}
             <p class="notice">No modelled road, rail or aircraft noise near this address — DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="crime" data-animate>
+    <dialog class="report-modal" id="modal-crime">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Crime</h2>
         {% if crime_error %}
             <p class="notice notice-error">
@@ -516,9 +543,14 @@
         {% else %}
             <p class="notice">No crime data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="amenities" data-animate>
+    <dialog class="report-modal" id="modal-amenities">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Local amenities</h2>
         {% if amenities_error %}
             <p class="notice notice-error">
@@ -541,9 +573,14 @@
             </details>
             {% endfor %}
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="schools" data-animate>
+    <dialog class="report-modal" id="modal-schools">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Schools nearby</h2>
         <p class="section-sub">
             Nearest 3 of each type, by proximity only — not a catchment area or admissions guarantee.
@@ -621,9 +658,14 @@
         {% else %}
             <p class="notice">No schools found nearby.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="getting-around" data-animate>
+    <dialog class="report-modal" id="modal-getting-around">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Getting around</h2>
         {% if amenities_error %}
             <p class="notice notice-error">
@@ -648,9 +690,14 @@
         {% else %}
             <p class="notice">No public transport found nearby.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="household-income" data-animate>
+    <dialog class="report-modal" id="modal-household-income">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Household income</h2>
         {% if household_income_error %}
             <p class="notice notice-error">
@@ -691,9 +738,14 @@
         {% else %}
             <p class="notice">No household income estimate available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="deprivation" data-animate>
+    <dialog class="report-modal" id="modal-deprivation">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Deprivation</h2>
         {% if deprivation_error %}
             <p class="notice notice-error">
@@ -727,9 +779,14 @@
         {% else %}
             <p class="notice">No deprivation data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="occupation" data-animate>
+    <dialog class="report-modal" id="modal-occupation">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Occupation</h2>
         {% if occupation_error %}
             <p class="notice notice-error">
@@ -759,9 +816,14 @@
         {% else %}
             <p class="notice">No occupation data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="qualification" data-animate>
+    <dialog class="report-modal" id="modal-qualification">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Qualification</h2>
         {% if qualification_error %}
             <p class="notice notice-error">
@@ -791,9 +853,14 @@
         {% else %}
             <p class="notice">No qualification data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="broadband" data-animate>
+    <dialog class="report-modal" id="modal-broadband">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Broadband</h2>
         {% if broadband_error %}
             <p class="notice notice-error">
@@ -835,9 +902,14 @@
         {% else %}
             <p class="notice">No broadband coverage data available for this postcode.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="mobile" data-animate>
+    <dialog class="report-modal" id="modal-mobile">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Mobile signal</h2>
         {% if mobile_error %}
             <p class="notice notice-error">
@@ -882,9 +954,14 @@
         {% else %}
             <p class="notice">No mobile coverage data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="radon" data-animate>
+    <dialog class="report-modal" id="modal-radon">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Radon gas</h2>
         {% if radon_error %}
             <p class="notice notice-error">
@@ -899,9 +976,14 @@
         {% else %}
             <p class="notice">No radon data available for this area.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 
-    <section class="report-section" id="heritage" data-animate>
+    <dialog class="report-modal" id="modal-heritage">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
         <h2>Listed buildings nearby</h2>
         <p class="section-sub">
             Within 500m, from Historic England's National Heritage List — proximity only, not a
@@ -934,7 +1016,9 @@
         {% else %}
             <p class="notice">No listed buildings found nearby.</p>
         {% endif %}
-    </section>
+            </section>
+        </div>
+    </dialog>
 {% endif %}
 {% endblock %}
 

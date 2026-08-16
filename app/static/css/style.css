@@ -845,6 +845,12 @@ a {
     box-shadow: var(--shadow-sm);
     position: relative;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .dashboard-card:hover {
@@ -964,6 +970,90 @@ a {
     color: var(--ink);
 }
 
+.dashboard-card-substat {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+}
+
+/* Card detail modals */
+
+dialog.report-modal {
+    border: none;
+    border-radius: var(--radius-lg);
+    padding: 0;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-lg);
+    width: min(640px, calc(100vw - 2.5rem));
+    max-height: calc(100vh - 4rem);
+}
+
+dialog.report-modal::backdrop {
+    background: rgba(15, 17, 23, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+dialog.report-modal[open] {
+    animation: report-modal-in 0.18s ease;
+}
+
+@keyframes report-modal-in {
+    from { opacity: 0; transform: scale(0.97) translateY(6px); }
+    to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    dialog.report-modal[open] {
+        animation: none;
+    }
+}
+
+.report-modal-inner {
+    padding: 1.75rem;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.report-modal-close {
+    position: sticky;
+    top: -0.25rem;
+    margin: -0.25rem -0.25rem 0.5rem auto;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 1;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.report-modal-close:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+dialog.report-modal .report-section {
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0;
+    margin-top: 0;
+    max-width: none;
+    overflow-x: visible;
+}
+
 /* Scroll-in animation */
 
 [data-animate] {
@@ -977,24 +1067,24 @@ a {
     transform: translateY(0);
 }
 
-.dashboard-grid a[data-animate]:nth-child(1) { transition-delay: 0.02s; }
-.dashboard-grid a[data-animate]:nth-child(2) { transition-delay: 0.05s; }
-.dashboard-grid a[data-animate]:nth-child(3) { transition-delay: 0.08s; }
-.dashboard-grid a[data-animate]:nth-child(4) { transition-delay: 0.11s; }
-.dashboard-grid a[data-animate]:nth-child(5) { transition-delay: 0.14s; }
-.dashboard-grid a[data-animate]:nth-child(6) { transition-delay: 0.17s; }
-.dashboard-grid a[data-animate]:nth-child(7) { transition-delay: 0.2s; }
-.dashboard-grid a[data-animate]:nth-child(8) { transition-delay: 0.23s; }
-.dashboard-grid a[data-animate]:nth-child(9) { transition-delay: 0.26s; }
-.dashboard-grid a[data-animate]:nth-child(10) { transition-delay: 0.29s; }
-.dashboard-grid a[data-animate]:nth-child(11) { transition-delay: 0.32s; }
-.dashboard-grid a[data-animate]:nth-child(12) { transition-delay: 0.35s; }
-.dashboard-grid a[data-animate]:nth-child(13) { transition-delay: 0.37s; }
-.dashboard-grid a[data-animate]:nth-child(14) { transition-delay: 0.39s; }
-.dashboard-grid a[data-animate]:nth-child(15) { transition-delay: 0.41s; }
-.dashboard-grid a[data-animate]:nth-child(16) { transition-delay: 0.43s; }
-.dashboard-grid a[data-animate]:nth-child(17) { transition-delay: 0.45s; }
-.dashboard-grid a[data-animate]:nth-child(18) { transition-delay: 0.47s; }
+.dashboard-grid button[data-animate]:nth-child(1) { transition-delay: 0.02s; }
+.dashboard-grid button[data-animate]:nth-child(2) { transition-delay: 0.05s; }
+.dashboard-grid button[data-animate]:nth-child(3) { transition-delay: 0.08s; }
+.dashboard-grid button[data-animate]:nth-child(4) { transition-delay: 0.11s; }
+.dashboard-grid button[data-animate]:nth-child(5) { transition-delay: 0.14s; }
+.dashboard-grid button[data-animate]:nth-child(6) { transition-delay: 0.17s; }
+.dashboard-grid button[data-animate]:nth-child(7) { transition-delay: 0.2s; }
+.dashboard-grid button[data-animate]:nth-child(8) { transition-delay: 0.23s; }
+.dashboard-grid button[data-animate]:nth-child(9) { transition-delay: 0.26s; }
+.dashboard-grid button[data-animate]:nth-child(10) { transition-delay: 0.29s; }
+.dashboard-grid button[data-animate]:nth-child(11) { transition-delay: 0.32s; }
+.dashboard-grid button[data-animate]:nth-child(12) { transition-delay: 0.35s; }
+.dashboard-grid button[data-animate]:nth-child(13) { transition-delay: 0.37s; }
+.dashboard-grid button[data-animate]:nth-child(14) { transition-delay: 0.39s; }
+.dashboard-grid button[data-animate]:nth-child(15) { transition-delay: 0.41s; }
+.dashboard-grid button[data-animate]:nth-child(16) { transition-delay: 0.43s; }
+.dashboard-grid button[data-animate]:nth-child(17) { transition-delay: 0.45s; }
+.dashboard-grid button[data-animate]:nth-child(18) { transition-delay: 0.47s; }
 
 @media (prefers-reduced-motion: reduce) {
     [data-animate] {

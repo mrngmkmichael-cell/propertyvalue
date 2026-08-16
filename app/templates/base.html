@@ -69,6 +69,23 @@
             targets.forEach(function (el) { observer.observe(el); });
         })();
     </script>
+    <script>
+        (function () {
+            document.querySelectorAll('[data-modal-target]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    const dialog = document.getElementById(btn.dataset.modalTarget);
+                    if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+                });
+            });
+            document.querySelectorAll('dialog.report-modal').forEach(function (dialog) {
+                dialog.addEventListener('click', function (e) {
+                    if (e.target === dialog) dialog.close();
+                });
+                const closeBtn = dialog.querySelector('[data-modal-close]');
+                if (closeBtn) closeBtn.addEventListener('click', function () { dialog.close(); });
+            });
+        })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
