@@ -13,12 +13,16 @@ import httpx
 
 from app.services import _cache
 
-# Two independent public Overpass instances - the primary is known to
-# reject some hosting-provider IP ranges outright, so we fall back to
-# a mirror rather than surfacing that as an outage.
+# Independent public Overpass instances, tried in order. The primary
+# is known to reject some hosting-provider IP ranges outright, and
+# the shared public instances occasionally go down together under
+# load (observed: primary 504, kumi.systems unresponsive, both at
+# the same time) - three independent operators makes a correlated
+# outage much less likely than two.
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.osm.ch/api/interpreter",
 ]
 # Short per-attempt timeout so a slow/blocked endpoint fails over to
 # the mirror quickly instead of dragging the whole page load out.
