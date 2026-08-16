@@ -33,7 +33,15 @@ async def nearby_postcodes(lat: float, lon: float, radius_m: int = 1000, limit: 
         )
     response.raise_for_status()
     result = response.json()["result"] or []
-    return [{"postcode": r["postcode"], "distance_m": round(r["distance"])} for r in result]
+    return [
+        {
+            "postcode": r["postcode"],
+            "distance_m": round(r["distance"]),
+            "latitude": r["latitude"],
+            "longitude": r["longitude"],
+        }
+        for r in result
+    ]
 
 
 async def outcode_centroid(outcode: str) -> dict | None:

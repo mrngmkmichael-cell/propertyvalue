@@ -537,10 +537,13 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
     try:
         nearby = await nearby_postcodes(lat, lon)
         distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
+        coords_by_postcode = {p["postcode"]: (p["latitude"], p["longitude"]) for p in nearby}
         transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
 
         for tx in transactions:
             tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+            coords = coords_by_postcode.get(tx["postcode"])
+            tx["latitude"], tx["longitude"] = coords if coords else (None, None)
         transactions.sort(key=lambda t: (t["distance_m"] is None, t["distance_m"]))
 
         amounts = sorted(float(t["amount"]) for t in transactions if t.get("amount"))

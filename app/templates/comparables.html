@@ -41,9 +41,14 @@
         {% elif comparables %}
             <p class="section-sub">
                 {{ comparables_count }} sold prices recorded nearby (up to 1km, most recent first) — from
-                HM Land Registry, the same source as the Sold Price History section. Not "for sale" listings —
-                that's licensed data we don't have free access to.
+                HM Land Registry, the same source as the Sold Price History section. Not "for sale" or
+                "to let" listings — that's licensed data (Rightmove/Zoopla) we don't have free access to,
+                so it can't appear here or anywhere on this site.
             </p>
+
+            <div class="location-visual comparables-map">
+                <div id="comparables-map" class="map-container"></div>
+            </div>
 
             {% if comparables_median %}
             <p class="section-sub"><strong>Median: {{ comparables_median | gbp }}</strong></p>
@@ -67,11 +72,12 @@
             {% endif %}
             {% endif %}
 
-            <table class="tx-table">
+            <table class="tx-table" id="comparables-table">
                 <thead>
                     <tr>
                         <th>Address</th>
                         <th>Postcode</th>
+                        <th>Type</th>
                         <th class="num">Price</th>
                         <th>Date</th>
                         <th class="num">Distance</th>
@@ -82,6 +88,7 @@
                     <tr>
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.postcode }}</td>
+                        <td class="capitalize">{{ tx.property_type or "—" }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "—" }}</td>
@@ -100,4 +107,58 @@
 Sold price data from
 <a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">HM Land Registry Price Paid Data</a>.
 Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener">postcodes.io</a>.
+{% endblock %}
+
+{% block extra_head %}
+{% if comparables %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if comparables %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    const compMap = L.map('comparables-map', { scrollWheelZoom: false }).setView(
+        [{{ location.latitude | tojson }}, {{ location.longitude | tojson }}], 15
+    );
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+    }).addTo(compMap);
+
+    L.marker([{{ location.latitude | tojson }}, {{ location.longitude | tojson }}])
+        .addTo(compMap)
+        .bindPopup({{ location.postcode | tojson }});
+
+    const comparablePoints = {{ comparables | tojson }};
+    const prices = comparablePoints.map(function (c) { return parseFloat(c.amount); }).filter(function (n) { return !isNaN(n); });
+    const lowP = prices.length ? Math.min.apply(null, prices) : 0;
+    const highP = prices.length ? Math.max.apply(null, prices) : 1;
+
+    function priceColor(amount) {
+        const n = parseFloat(amount);
+        if (isNaN(n) || highP === lowP) return '#3b5bfd';
+        const t = (n - lowP) / (highP - lowP);
+        if (t < 0.33) return '#10b981';
+        if (t < 0.66) return '#eab308';
+        return '#dc2626';
+    }
+
+    comparablePoints.forEach(function (c) {
+        if (c.latitude == null || c.longitude == null) return;
+        L.circleMarker([c.latitude, c.longitude], {
+            radius: 6,
+            color: '#ffffff',
+            weight: 1.5,
+            fillColor: priceColor(c.amount),
+            fillOpacity: 0.9,
+        })
+            .addTo(compMap)
+            .bindPopup(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> — ' + c.date);
+    });
+</script>
+{% endif %}
 {% endblock %}
