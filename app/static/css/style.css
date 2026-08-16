@@ -286,6 +286,18 @@ a {
     margin-top: 0.5rem;
 }
 
+.property-detail-line {
+    margin: 0.9rem 0 0.15rem;
+    font-size: 1.05rem;
+}
+
+.property-detail-note {
+    margin: 0 0 0.5rem;
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    font-style: italic;
+}
+
 .report-section {
     margin-top: 2.5rem;
 }
@@ -539,4 +551,46 @@ a {
     color: var(--ink-soft);
     font-style: italic;
     font-size: 0.85rem;
+}
+
+/* Dashboard overview grid */
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    border-top: 1px solid var(--rule-strong);
+    border-left: 1px solid var(--rule-strong);
+    margin-top: 2rem;
+}
+
+.dashboard-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background: var(--paper);
+    padding: 1.1rem 1.1rem 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    border-right: 1px solid var(--rule-strong);
+    border-bottom: 1px solid var(--rule-strong);
+    transition: background 0.15s ease;
+}
+
+.dashboard-card:hover {
+    background: var(--paper-raised);
+}
+
+.dashboard-card-title {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.dashboard-card-status {
+    font-family: "PT Serif", Georgia, serif;
+    font-size: 0.95rem;
+    line-height: 1.35;
 }

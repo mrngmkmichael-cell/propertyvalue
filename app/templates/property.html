@@ -28,6 +28,14 @@
         <span class="kicker">Property report</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+        {% if property_detail and (property_detail.dwelling_type or property_detail.total_floor_area) %}
+        <p class="property-detail-line">
+            {% if property_detail.dwelling_type %}{{ property_detail.dwelling_type }}{% endif %}
+            {% if property_detail.total_floor_area %}· {{ property_detail.total_floor_area }} m²{% endif %}
+            {% if property_detail.habitable_room_count %}· {{ property_detail.habitable_room_count }} habitable rooms{% endif %}
+        </p>
+        <p class="property-detail-note">Based on the most recent EPC certificate for this postcode — may not exactly match a specific unit.</p>
+        {% endif %}
         <div class="location-visual">
             <div id="globe-intro" class="globe-container"></div>
             <div id="map" class="map-container"></div>
@@ -66,7 +74,85 @@
     </div>
     {% endif %}
 
-    <section class="report-section">
+    <div class="dashboard-grid">
+        <a href="#sold-price-history" class="dashboard-card">
+            <span class="dashboard-card-title">Local Market</span>
+            <span class="dashboard-card-status">
+                {% if tx_error %}Data unavailable
+                {% elif transactions %}{{ transactions|length }} sale{{ "s" if transactions|length != 1 else "" }} recorded
+                {% elif house_number and postcode_has_transactions %}None for "{{ house_number }}"
+                {% else %}No recorded sales{% endif %}
+            </span>
+        </a>
+
+        {% if epc_configured %}
+        <a href="#epc" class="dashboard-card">
+            <span class="dashboard-card-title">Energy Efficiency</span>
+            <span class="dashboard-card-status">
+                {% if epc_error %}Data unavailable
+                {% elif certificates %}{{ certificates|length }} certificate{{ "s" if certificates|length != 1 else "" }} found
+                {% elif house_number and postcode_has_certificates %}None for "{{ house_number }}"
+                {% else %}No certificates found{% endif %}
+            </span>
+        </a>
+        {% endif %}
+
+        <a href="#flood" class="dashboard-card">
+            <span class="dashboard-card-title">Flood Risk</span>
+            <span class="dashboard-card-status">
+                {% if flood_error %}Data unavailable
+                {% elif flood_warnings %}{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}
+                {% else %}No active warnings{% endif %}
+            </span>
+        </a>
+
+        <a href="#crime" class="dashboard-card">
+            <span class="dashboard-card-title">Crime &amp; Safety</span>
+            <span class="dashboard-card-status">
+                {% if crime_error %}Data unavailable
+                {% elif crime and crime.total %}{{ crime.total }} crimes recorded
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        <a href="#schools" class="dashboard-card">
+            <span class="dashboard-card-title">Schools &amp; Catchment</span>
+            <span class="dashboard-card-status">
+                {% if schools_error %}Data unavailable
+                {% elif schools %}{{ schools|length }} nearby
+                {% else %}None found nearby{% endif %}
+            </span>
+        </a>
+
+        <a href="#sold-price-history" class="dashboard-card">
+            <span class="dashboard-card-title">Area Prosperity</span>
+            <span class="dashboard-card-status">
+                {% if hpi and hpi.local_authority %}{{ "%+.1f"|format(hpi.local_authority.annual_change_pct) }}% YoY ({{ hpi.local_authority.name }})
+                {% elif hpi and hpi.region %}{{ "%+.1f"|format(hpi.region.annual_change_pct) }}% YoY ({{ hpi.region.name }})
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        <a href="#amenities" class="dashboard-card">
+            <span class="dashboard-card-title">Nearby Essentials</span>
+            <span class="dashboard-card-status">
+                {% if amenities_error %}Data unavailable
+                {% elif amenities %}{{ (amenities.restaurant|length) + (amenities.supermarket|length) + (amenities.pharmacy|length) + (amenities.pub|length) + (amenities.hospital|length) }} nearby
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
+
+        <a href="#getting-around" class="dashboard-card">
+            <span class="dashboard-card-title">Getting Around</span>
+            <span class="dashboard-card-status">
+                {% if amenities_error %}Data unavailable
+                {% elif station %}{{ station.name }} · {{ station.distance_m | distance }}
+                {% else %}No station nearby{% endif %}
+            </span>
+        </a>
+    </div>
+
+    <section class="report-section" id="sold-price-history">
         <h2>Sold price history</h2>
         {% if tx_error %}
             <p class="notice notice-error">
@@ -133,7 +219,7 @@
     </section>
 
     {% if epc_configured %}
-    <section class="report-section">
+    <section class="report-section" id="epc">
         <h2>Energy performance certificates</h2>
         {% if epc_error %}
             <p class="notice notice-error">
@@ -166,7 +252,7 @@
     </section>
     {% endif %}
 
-    <section class="report-section">
+    <section class="report-section" id="flood">
         <h2>Flood warnings</h2>
         <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
         {% if flood_error %}
@@ -197,7 +283,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section">
+    <section class="report-section" id="crime">
         <h2>Crime</h2>
         {% if crime_error %}
             <p class="notice notice-error">
@@ -228,7 +314,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section">
+    <section class="report-section" id="amenities">
         <h2>Local amenities</h2>
         {% if amenities_error %}
             <p class="notice notice-error">
@@ -253,7 +339,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section">
+    <section class="report-section" id="schools">
         <h2>Schools nearby</h2>
         <p class="section-sub">Proximity only — not a catchment area or admissions guarantee. No reliable free UK-wide catchment data exists.</p>
         {% if schools_error %}
@@ -292,7 +378,7 @@
         {% endif %}
     </section>
 
-    <section class="report-section">
+    <section class="report-section" id="getting-around">
         <h2>Getting around</h2>
         {% if amenities_error %}
             <p class="notice notice-error">

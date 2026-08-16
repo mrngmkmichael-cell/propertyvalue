@@ -159,6 +159,13 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         else:
             context["certificates"] = _filter_by_address(epc_result, house_number)
             context["postcode_has_certificates"] = bool(epc_result)
+            if context["certificates"]:
+                try:
+                    context["property_detail"] = await epc.certificate_detail(
+                        context["certificates"][0]["certificate_number"]
+                    )
+                except httpx.HTTPError:
+                    pass
 
     if isinstance(flood_result, Exception):
         context["flood_error"] = True

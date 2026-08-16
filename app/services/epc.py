@@ -47,7 +47,38 @@ async def certificates_for_postcode(canonical_postcode: str) -> list[dict]:
             "address": address or rec.get("postTown", ""),
             "rating": rec.get("currentEnergyEfficiencyBand", "?"),
             "date": rec.get("registrationDate", ""),
+            "certificate_number": rec.get("certificateNumber", ""),
         })
 
     certificates.sort(key=lambda c: c["date"], reverse=True)
     return certificates
+
+
+async def certificate_detail(certificate_number: str) -> dict | None:
+    """Extra fields (floor area, dwelling type, room count) not
+    included in the search results - a separate API call per
+    certificate, so only fetch this for one representative property
+    (the property header), not the whole list."""
+    token = os.environ.get("EPC_API_TOKEN")
+    if not token or not certificate_number:
+        return None
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        response = await client.get(
+            f"{API_BASE}/api/certificate",
+            params={"certificate_number": certificate_number},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+            },
+        )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    data = response.json().get("data", {})
+
+    return {
+        "dwelling_type": data.get("dwelling_type", ""),
+        "total_floor_area": data.get("total_floor_area"),
+        "habitable_room_count": data.get("habitable_room_count"),
+    }
