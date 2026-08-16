@@ -5,6 +5,7 @@ Overpass API (no key required).
 Schools are handled separately (app/services/schools_db.py), from
 DfE/Ofsted data rather than OSM - see that module for why.
 """
+import asyncio
 import math
 import re
 
@@ -12,13 +13,14 @@ import httpx
 
 from app.services import _cache
 
-# Independent public Overpass instances, tried in order. The primary
-# is known to reject some hosting-provider IP ranges outright, and
-# the shared public instances occasionally go down together under
-# load - observed live, more than once, more than two of them
-# degraded at the same time (504s, unresponsive, or a "200 OK" with
-# a broken/empty database - see _is_healthy_response). Five
-# independent operators makes a fully correlated outage unlikely.
+# Independent public Overpass instances, raced concurrently (see
+# _query_overpass). The primary is known to reject some
+# hosting-provider IP ranges outright, and the shared public
+# instances occasionally go down together under load - observed
+# live, more than once, more than two of them degraded at the same
+# time (504s, unresponsive, or a "200 OK" with a broken/empty
+# database - see _is_healthy_response). Five independent operators
+# makes a fully correlated outage unlikely.
 OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
@@ -26,8 +28,9 @@ OVERPASS_ENDPOINTS = [
     "https://overpass.openstreetmap.fr/api/interpreter",
     "https://overpass.osm.ch/api/interpreter",
 ]
-# Short per-attempt timeout so a slow/blocked endpoint fails over to
-# the mirror quickly instead of dragging the whole page load out.
+# Per-attempt timeout - since all mirrors are raced concurrently now
+# (not tried one at a time), this bounds total worst-case latency
+# rather than accumulating across mirrors.
 OVERPASS_TIMEOUT_S = 8
 CACHE_TTL_S = 3600  # OSM POI data doesn't change fast enough to need per-request freshness
 
@@ -69,25 +72,34 @@ def _is_healthy_response(data: dict) -> bool:
     return bool(re.match(r"^\d{4}-\d{2}-\d{2}", timestamp))
 
 
+async def _try_endpoint(client: httpx.AsyncClient, endpoint: str, query: str) -> list[dict]:
+    response = await client.post(endpoint, data={"data": query}, headers={"User-Agent": "curl/8.7.1"})
+    response.raise_for_status()
+    data = response.json()
+    if not _is_healthy_response(data):
+        raise RuntimeError(f"{endpoint} returned an unhealthy response")
+    return data.get("elements", [])
+
+
 async def _query_overpass(query: str) -> list[dict]:
-    last_error = None
-    for endpoint in OVERPASS_ENDPOINTS:
+    # Race all mirrors concurrently rather than trying them one at a
+    # time - a sequential fallback means a bad run of dead/slow
+    # mirrors adds their timeouts one after another (observed: up to
+    # ~26s cold). Racing bounds worst-case latency to roughly the
+    # single timeout window instead of the sum of every mirror tried.
+    async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT_S) as client:
+        tasks = [asyncio.ensure_future(_try_endpoint(client, ep, query)) for ep in OVERPASS_ENDPOINTS]
+        last_error = None
         try:
-            async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT_S) as client:
-                response = await client.post(
-                    endpoint,
-                    data={"data": query},
-                    headers={"User-Agent": "curl/8.7.1"},
-                )
-            response.raise_for_status()
-            data = response.json()
-            if not _is_healthy_response(data):
-                last_error = RuntimeError(f"{endpoint} returned an unhealthy response")
-                continue
-            return data.get("elements", [])
-        except httpx.HTTPError as exc:
-            last_error = exc
-    raise last_error
+            for coro in asyncio.as_completed(tasks):
+                try:
+                    return await coro
+                except (httpx.HTTPError, RuntimeError) as exc:
+                    last_error = exc
+            raise last_error
+        finally:
+            for t in tasks:
+                t.cancel()
 
 
 async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
@@ -166,13 +178,22 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         if not candidates:
             continue
         candidates.sort(key=lambda s: s["distance_m"])
-        nearest = candidates[0]
-        if mode in ("rail", "tube"):
-            try:
-                nearest["lines"] = await _station_lines(nearest["type"], nearest["id"])
-            except httpx.HTTPError:
-                nearest["lines"] = []
-        nearest_by_mode[mode] = nearest
+        nearest_by_mode[mode] = candidates[0]
+
+    # Line lookups are a second Overpass round-trip each - run the
+    # (at most two: rail, tube) concurrently rather than one after
+    # another.
+    line_lookup_modes = [m for m in ("rail", "tube") if m in nearest_by_mode]
+    if line_lookup_modes:
+        line_results = await asyncio.gather(
+            *(
+                _station_lines(nearest_by_mode[m]["type"], nearest_by_mode[m]["id"])
+                for m in line_lookup_modes
+            ),
+            return_exceptions=True,
+        )
+        for mode, lines in zip(line_lookup_modes, line_results):
+            nearest_by_mode[mode]["lines"] = [] if isinstance(lines, Exception) else lines
 
     return {"categories": categories, "stations": nearest_by_mode}
 

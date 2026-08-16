@@ -177,15 +177,22 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     context["location"] = location
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
     context["epc_configured"] = epc.is_configured()
 
-    # Independent external API calls - fetch concurrently rather than
-    # one at a time. Five external services per page load is enough
-    # that doing them sequentially was becoming a real, noticeable
-    # source of slowness.
+    # Independent external API calls AND our own DB lookups, fetched
+    # concurrently rather than one at a time. The DB lookups
+    # (schools, deprivation, income, occupation, qualification,
+    # broadband) are synchronous SQLAlchemy calls - each one is a
+    # separate network round-trip to Neon, so running six of them
+    # back-to-back after the external APIs had already finished was
+    # adding real, measurable latency. asyncio.to_thread lets them
+    # run on worker threads in parallel with everything else instead.
     (
         tx_result, epc_result, flood_result, crime_result, district_crime_result,
         amenities_result, hpi_result, noise_result,
+        schools_result, deprivation_result, income_result,
+        occupation_result, qualification_result, broadband_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
@@ -195,6 +202,12 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         amenities.nearby_amenities_and_station(lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         noise.noise_near(lat, lon),
+        asyncio.to_thread(schools_db.nearby_schools, lat, lon),
+        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
+        asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(broadband.coverage_for_postcode, canonical),
         return_exceptions=True,
     )
 
@@ -264,35 +277,38 @@ async def property_search(request: Request, postcode: str = "", house_number: st
                 context["price_position_reference"] = reference_price
                 context["price_position_area"] = area
 
-    try:
-        context["schools"] = schools_db.nearby_schools(lat, lon)
-        context["schools_total"] = sum(len(v) for v in context["schools"].values())
-    except Exception:
+    if isinstance(schools_result, Exception):
         context["schools_error"] = True
+    else:
+        context["schools"] = schools_result
+        context["schools_total"] = sum(len(v) for v in schools_result.values())
 
-    codes = location.get("codes", {})
-    try:
-        context["deprivation"] = area_stats.deprivation_for_lsoa(codes.get("lsoa", ""))
-        if context["deprivation"]:
-            context["imd_label"] = _imd_label(context["deprivation"]["imd_decile"])
-    except Exception:
+    if isinstance(deprivation_result, Exception):
         context["deprivation_error"] = True
-    try:
-        context["household_income"] = area_stats.income_for_msoa(codes.get("msoa", ""))
-    except Exception:
+    else:
+        context["deprivation"] = deprivation_result
+        if deprivation_result:
+            context["imd_label"] = _imd_label(deprivation_result["imd_decile"])
+
+    if isinstance(income_result, Exception):
         context["household_income_error"] = True
-    try:
-        context["occupation"] = census_stats.occupation_for_lsoa(codes.get("lsoa", ""))
-    except Exception:
+    else:
+        context["household_income"] = income_result
+
+    if isinstance(occupation_result, Exception):
         context["occupation_error"] = True
-    try:
-        context["qualification"] = census_stats.qualification_for_lsoa(codes.get("lsoa", ""))
-    except Exception:
+    else:
+        context["occupation"] = occupation_result
+
+    if isinstance(qualification_result, Exception):
         context["qualification_error"] = True
-    try:
-        context["broadband"] = broadband.coverage_for_postcode(canonical)
-    except Exception:
+    else:
+        context["qualification"] = qualification_result
+
+    if isinstance(broadband_result, Exception):
         context["broadband_error"] = True
+    else:
+        context["broadband"] = broadband_result
 
     if context["current_user"]:
         try:
