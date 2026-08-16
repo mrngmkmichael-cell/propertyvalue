@@ -8,12 +8,13 @@ from app.db import get_session
 from app.models import WatchlistItem
 
 
-def get_item(user_id: int, postcode: str) -> dict | None:
+def get_item(user_id: int, postcode: str, house_number: str = "") -> dict | None:
     with get_session() as session:
         item = session.scalar(
             select(WatchlistItem).where(
                 WatchlistItem.user_id == user_id,
                 WatchlistItem.postcode == postcode,
+                WatchlistItem.house_number == house_number,
             )
         )
         return {"id": item.id, "note": item.note} if item else None
@@ -27,23 +28,32 @@ def list_items(user_id: int) -> list[dict]:
             .order_by(WatchlistItem.created_at.desc())
         )
         return [
-            {"id": i.id, "postcode": i.postcode, "note": i.note, "created_at": i.created_at}
+            {
+                "id": i.id,
+                "postcode": i.postcode,
+                "house_number": i.house_number,
+                "note": i.note,
+                "created_at": i.created_at,
+            }
             for i in items
         ]
 
 
-def save_item(user_id: int, postcode: str, note: str) -> None:
+def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None:
     with get_session() as session:
         existing = session.scalar(
             select(WatchlistItem).where(
                 WatchlistItem.user_id == user_id,
                 WatchlistItem.postcode == postcode,
+                WatchlistItem.house_number == house_number,
             )
         )
         if existing:
             existing.note = note
         else:
-            session.add(WatchlistItem(user_id=user_id, postcode=postcode, note=note))
+            session.add(WatchlistItem(
+                user_id=user_id, postcode=postcode, house_number=house_number, note=note,
+            ))
         session.commit()
 
 

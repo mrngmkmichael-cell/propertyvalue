@@ -57,16 +57,22 @@
             {% if current_user %}
                 <form class="stacked-form watchlist-form" action="/watchlist/save" method="post">
                     <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                    <input type="hidden" name="house_number" value="{{ house_number }}">
                     <div class="search-form-field">
                         <label for="note">{{ "Update note" if watchlist_item else "Save to watchlist" }}</label>
                         <input type="text" id="note" name="note" placeholder="Optional note to yourself"
                                value="{{ watchlist_item.note if watchlist_item else '' }}">
                     </div>
                     <button type="submit">{{ "Update" if watchlist_item else "Save" }}</button>
+                    {% if house_number %}
+                    <p class="section-sub">Saved against this specific house/flat number ({{ house_number }}), not just the postcode.</p>
+                    {% else %}
+                    <p class="section-sub">No house/flat number filter is set, so this saves the postcode as a whole — the property details shown above may not match a specific unit. Use the filter below to narrow to one address first.</p>
+                    {% endif %}
                 </form>
             {% else %}
                 <p class="section-sub">
-                    <a href="/login?next=/property?postcode={{ location.postcode }}">Log in</a>
+                    <a href="/login?next=/property?postcode={{ location.postcode }}{% if house_number %}&house_number={{ house_number }}{% endif %}">Log in</a>
                     to save this property to your watchlist.
                 </p>
             {% endif %}

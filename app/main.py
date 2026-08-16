@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+from urllib.parse import quote, urlencode
 
 import httpx
 from dotenv import load_dotenv
@@ -512,7 +513,9 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     if context["current_user"]:
         try:
-            context["watchlist_item"] = watchlist.get_item(context["current_user"]["id"], canonical)
+            context["watchlist_item"] = watchlist.get_item(
+                context["current_user"]["id"], canonical, house_number
+            )
         except Exception:
             context["watchlist_item"] = None
         try:
@@ -666,12 +669,19 @@ def watchlist_view(request: Request):
 
 
 @app.post("/watchlist/save")
-def watchlist_save(request: Request, postcode: str = Form(...), note: str = Form("")):
+def watchlist_save(
+    request: Request,
+    postcode: str = Form(...),
+    house_number: str = Form(""),
+    note: str = Form(""),
+):
+    house_number = house_number.strip()
+    qs = urlencode({"postcode": postcode, "house_number": house_number}) if house_number else urlencode({"postcode": postcode})
     user = auth.current_user(request)
     if not user:
-        return RedirectResponse(f"/login?next=/property?postcode={postcode}", status_code=303)
-    watchlist.save_item(user["id"], postcode, note.strip())
-    return RedirectResponse(f"/property?postcode={postcode}", status_code=303)
+        return RedirectResponse(f"/login?next=/property?{qs}", status_code=303)
+    watchlist.save_item(user["id"], postcode, house_number, note.strip())
+    return RedirectResponse(f"/property?{qs}", status_code=303)
 
 
 @app.post("/watchlist/remove")

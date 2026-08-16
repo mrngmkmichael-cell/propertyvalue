@@ -25,11 +25,14 @@ class User(Base):
 
 class WatchlistItem(Base):
     __tablename__ = "watchlist_items"
-    __table_args__ = (UniqueConstraint("user_id", "postcode", name="uq_user_postcode"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "postcode", "house_number", name="uq_user_postcode_housenum"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     postcode: Mapped[str] = mapped_column(String(16))
+    house_number: Mapped[str] = mapped_column(String(32), default="")
     note: Mapped[str] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 

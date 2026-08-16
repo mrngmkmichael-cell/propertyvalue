@@ -10,7 +10,7 @@
     <table class="tx-table">
         <thead>
             <tr>
-                <th>Postcode</th>
+                <th>Address</th>
                 <th>Note</th>
                 <th>Saved</th>
                 <th class="num"></th>
@@ -19,7 +19,11 @@
         <tbody>
             {% for item in items %}
             <tr>
-                <td><a href="/property?postcode={{ item.postcode }}">{{ item.postcode }}</a></td>
+                <td>
+                    <a href="/property?postcode={{ item.postcode }}{% if item.house_number %}&house_number={{ item.house_number }}{% endif %}">
+                        {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
+                    </a>
+                </td>
                 <td>{{ item.note or "—" }}</td>
                 <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
                 <td class="num">
