@@ -88,6 +88,8 @@
 
     {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
     <p class="section-sub">Tap a card to see the details in a popup.</p>
+
+    <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>
             <span class="dashboard-card-icon icon-market">{{ icons.icon('market') }}</span>
@@ -129,6 +131,20 @@
             {% endif %}
         </button>
 
+        {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
+        <button type="button" class="dashboard-card status-{{ prosperity_status }}" data-modal-target="modal-sold-price-history" data-animate>
+            {% if prosperity_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
+            <span class="dashboard-card-title">Area Prosperity</span>
+            <span class="dashboard-card-status">
+                {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+    </div>
+
+    <h3 class="dashboard-category-heading">Property &amp; Condition</h3>
+    <div class="dashboard-grid">
         {% if epc_configured %}
         <button type="button" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-modal-target="modal-epc" data-animate>
             <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
@@ -155,7 +171,10 @@
                 {% else %}Search with a house number{% endif %}
             </span>
         </button>
+    </div>
 
+    <h3 class="dashboard-category-heading">Risk &amp; Safety</h3>
+    <div class="dashboard-grid">
         {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3)) else 'ok') %}
         <button type="button" class="dashboard-card status-{{ flood_status }}" data-modal-target="modal-flood" data-animate>
             {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -200,6 +219,56 @@
             </span>
         </button>
 
+        {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
+        <button type="button" class="dashboard-card status-{{ radon_status }}" data-modal-target="modal-radon" data-animate>
+            {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
+            <span class="dashboard-card-title">Radon Gas</span>
+            <span class="dashboard-card-status">
+                {% if radon %}{{ radon.label }}
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+    </div>
+
+    <h3 class="dashboard-category-heading">Planning &amp; Heritage</h3>
+    <div class="dashboard-grid">
+        {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if planning_count else 'ok') }}" data-modal-target="modal-planning" data-animate>
+            {% if planning_count %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
+            <span class="dashboard-card-title">Planning Constraints</span>
+            <span class="dashboard-card-status">
+                {% if designations_error %}Data unavailable
+                {% elif planning_count %}{{ planning_count }} found
+                {% else %}None found{% endif %}
+            </span>
+        </button>
+
+        {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if environmental_count else 'ok') }}" data-modal-target="modal-environmental" data-animate>
+            {% if environmental_count %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-environmental">{{ icons.icon('environmental') }}</span>
+            <span class="dashboard-card-title">Environmental Designations</span>
+            <span class="dashboard-card-status">
+                {% if designations_error %}Data unavailable
+                {% elif environmental_count %}{{ environmental_count }} found
+                {% else %}None found{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
+            <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
+            <span class="dashboard-card-title">Listed Buildings</span>
+            <span class="dashboard-card-status">
+                {% if heritage %}{{ heritage|length }} nearby
+                {% else %}None found nearby{% endif %}
+            </span>
+        </button>
+    </div>
+
+    <h3 class="dashboard-category-heading">Location &amp; Connectivity</h3>
+    <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-modal-target="modal-schools" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Schools &amp; Catchment</span>
@@ -207,17 +276,6 @@
                 {% if schools_error %}Data unavailable
                 {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
-            </span>
-        </button>
-
-        {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
-        <button type="button" class="dashboard-card status-{{ prosperity_status }}" data-modal-target="modal-sold-price-history" data-animate>
-            {% if prosperity_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
-            <span class="dashboard-card-title">Area Prosperity</span>
-            <span class="dashboard-card-status">
-                {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
-                {% else %}No data available{% endif %}
             </span>
         </button>
 
@@ -241,6 +299,31 @@
             </span>
         </button>
 
+        {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
+        <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
+            {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-broadband">{{ icons.icon('broadband') }}</span>
+            <span class="dashboard-card-title">Broadband</span>
+            <span class="dashboard-card-status">
+                {% if broadband %}{{ broadband.label }}
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
+        <button type="button" class="dashboard-card status-{{ mobile_status }}" data-modal-target="modal-mobile" data-animate>
+            {% if mobile_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
+            <span class="dashboard-card-title">Mobile Signal</span>
+            <span class="dashboard-card-status">
+                {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}% 4G outdoor (all networks)
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+    </div>
+
+    <h3 class="dashboard-category-heading">Area &amp; Community</h3>
+    <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-modal-target="modal-household-income" data-animate>
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
             <span class="dashboard-card-title">Household Income</span>
@@ -276,72 +359,6 @@
             <span class="dashboard-card-status">
                 {% if qualification %}{{ qualification.degree_pct }}% degree-educated
                 {% else %}No data available{% endif %}
-            </span>
-        </button>
-
-        {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
-        <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
-            {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-broadband">{{ icons.icon('broadband') }}</span>
-            <span class="dashboard-card-title">Broadband</span>
-            <span class="dashboard-card-status">
-                {% if broadband %}{{ broadband.label }}
-                {% else %}No data available{% endif %}
-            </span>
-        </button>
-
-        {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
-        <button type="button" class="dashboard-card status-{{ mobile_status }}" data-modal-target="modal-mobile" data-animate>
-            {% if mobile_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
-            <span class="dashboard-card-title">Mobile Signal</span>
-            <span class="dashboard-card-status">
-                {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}% 4G outdoor (all networks)
-                {% else %}No data available{% endif %}
-            </span>
-        </button>
-
-        {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
-        <button type="button" class="dashboard-card status-{{ radon_status }}" data-modal-target="modal-radon" data-animate>
-            {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
-            <span class="dashboard-card-title">Radon Gas</span>
-            <span class="dashboard-card-status">
-                {% if radon %}{{ radon.label }}
-                {% else %}No data available{% endif %}
-            </span>
-        </button>
-
-        <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
-            <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
-            <span class="dashboard-card-title">Listed Buildings</span>
-            <span class="dashboard-card-status">
-                {% if heritage %}{{ heritage|length }} nearby
-                {% else %}None found nearby{% endif %}
-            </span>
-        </button>
-
-        {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
-        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if planning_count else 'ok') }}" data-modal-target="modal-planning" data-animate>
-            {% if planning_count %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
-            <span class="dashboard-card-title">Planning Constraints</span>
-            <span class="dashboard-card-status">
-                {% if designations_error %}Data unavailable
-                {% elif planning_count %}{{ planning_count }} found
-                {% else %}None found{% endif %}
-            </span>
-        </button>
-
-        {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
-        <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if environmental_count else 'ok') }}" data-modal-target="modal-environmental" data-animate>
-            {% if environmental_count %}<span class="check-this-tag">Check this</span>{% endif %}
-            <span class="dashboard-card-icon icon-environmental">{{ icons.icon('environmental') }}</span>
-            <span class="dashboard-card-title">Environmental Designations</span>
-            <span class="dashboard-card-status">
-                {% if designations_error %}Data unavailable
-                {% elif environmental_count %}{{ environmental_count }} found
-                {% else %}None found{% endif %}
             </span>
         </button>
 
