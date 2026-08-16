@@ -490,3 +490,43 @@ a {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
+
+.school-type-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.45rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    vertical-align: middle;
+}
+
+/* HPI area comparison */
+
+.hpi-comparison {
+    list-style: none;
+    margin: 0.5rem 0 1rem;
+    padding: 0;
+}
+
+.hpi-comparison li {
+    padding: 0.3rem 0;
+    font-size: 0.92rem;
+}
+
+.hpi-change {
+    margin-left: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.hpi-change.up {
+    color: #2e7d4f;
+}
+
+.hpi-change.down {
+    color: var(--accent);
+}

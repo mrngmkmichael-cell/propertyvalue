@@ -7,8 +7,11 @@ long-term assessment, so we're clear in the UI about what this is.
 """
 import httpx
 
+from app.services import _cache
+
 API_BASE = "https://environment.data.gov.uk/flood-monitoring"
 SEARCH_RADIUS_KM = 10
+CACHE_TTL_S = 600  # active warnings can genuinely change, so kept short
 
 # https://environment.data.gov.uk/flood-monitoring/doc/reference
 SEVERITY_LABELS = {
@@ -20,7 +23,17 @@ SEVERITY_LABELS = {
 
 
 async def warnings_near(lat: float, lon: float) -> list[dict]:
-    async with httpx.AsyncClient(timeout=15) as client:
+    key = _cache.coord_key("flood", lat, lon)
+    cached = _cache.get(key, CACHE_TTL_S)
+    if cached is not None:
+        return cached
+    result = await _fetch_warnings(lat, lon)
+    _cache.set(key, result)
+    return result
+
+
+async def _fetch_warnings(lat: float, lon: float) -> list[dict]:
+    async with httpx.AsyncClient(timeout=8) as client:
         response = await client.get(
             f"{API_BASE}/id/floods",
             params={"lat": lat, "long": lon, "dist": SEARCH_RADIUS_KM},

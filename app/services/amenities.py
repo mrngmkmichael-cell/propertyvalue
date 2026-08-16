@@ -11,6 +11,8 @@ import re
 
 import httpx
 
+from app.services import _cache
+
 # Two independent public Overpass instances - the primary is known to
 # reject some hosting-provider IP ranges outright, so we fall back to
 # a mirror rather than surfacing that as an outage.
@@ -18,6 +20,10 @@ OVERPASS_ENDPOINTS = [
     "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 ]
+# Short per-attempt timeout so a slow/blocked endpoint fails over to
+# the mirror quickly instead of dragging the whole page load out.
+OVERPASS_TIMEOUT_S = 8
+CACHE_TTL_S = 3600  # OSM POI data doesn't change fast enough to need per-request freshness
 
 # (label, overpass tag filter, search radius in metres)
 AMENITY_QUERIES = [
@@ -51,7 +57,7 @@ async def _query_overpass(query: str) -> list[dict]:
     last_error = None
     for endpoint in OVERPASS_ENDPOINTS:
         try:
-            async with httpx.AsyncClient(timeout=25) as client:
+            async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT_S) as client:
                 response = await client.post(
                     endpoint,
                     data={"data": query},
@@ -64,7 +70,31 @@ async def _query_overpass(query: str) -> list[dict]:
     raise last_error
 
 
+def _school_type(tags: dict) -> str:
+    school = tags.get("school", "")
+    if school:
+        return school.replace("_", " ").strip().capitalize()
+    levels = set((tags.get("isced:level") or "").split(";"))
+    if levels & {"2", "3"}:
+        return "Secondary"
+    if "1" in levels:
+        return "Primary"
+    if "0" in levels:
+        return "Nursery"
+    return ""
+
+
 async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
+    key = _cache.coord_key("amenities", lat, lon)
+    cached = _cache.get(key, CACHE_TTL_S)
+    if cached is not None:
+        return cached
+    result = await _fetch_amenities_and_station(lat, lon)
+    _cache.set(key, result)
+    return result
+
+
+async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     clauses = "".join(
         f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in AMENITY_QUERIES
     )
@@ -111,7 +141,11 @@ async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
         elif amenity == "hospital":
             categories["hospital"].append({"name": name, "distance_m": distance_m})
         elif amenity == "school":
-            categories["school"].append({"name": name, "distance_m": distance_m})
+            categories["school"].append({
+                "name": name,
+                "distance_m": distance_m,
+                "type": _school_type(tags),
+            })
 
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])

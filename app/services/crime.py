@@ -6,10 +6,23 @@ from collections import Counter
 
 import httpx
 
+from app.services import _cache
+
 API_BASE = "https://data.police.uk/api"
+CACHE_TTL_S = 86400  # Police.uk data only updates monthly
 
 
 async def summary_near(lat: float, lon: float) -> dict:
+    key = _cache.coord_key("crime", lat, lon)
+    cached = _cache.get(key, CACHE_TTL_S)
+    if cached is not None:
+        return cached
+    result = await _fetch_summary(lat, lon)
+    _cache.set(key, result)
+    return result
+
+
+async def _fetch_summary(lat: float, lon: float) -> dict:
     async with httpx.AsyncClient(timeout=15) as client:
         response = await client.get(
             f"{API_BASE}/crimes-street/all-crime",

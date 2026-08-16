@@ -102,6 +102,22 @@
         {% else %}
             <p class="notice">No recorded sold transactions for this postcode yet.</p>
         {% endif %}
+
+        {% if hpi and (hpi.local_authority or hpi.region or hpi.country) %}
+            <p class="section-sub">How this compares ({{ hpi.local_authority.period or hpi.region.period or hpi.country.period }}):</p>
+            <ul class="hpi-comparison">
+                {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
+                    {% if area %}
+                    <li>
+                        {{ area.name }} average: <strong>{{ area.average_price | gbp }}</strong>
+                        <span class="hpi-change {{ 'up' if area.annual_change_pct >= 0 else 'down' }}">
+                            {{ "%+.1f"|format(area.annual_change_pct) }}% year on year
+                        </span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        {% endif %}
     </section>
 
     {% if epc_configured %}
@@ -235,7 +251,10 @@
         {% elif amenities and amenities.school %}
             <ul class="amenity-list">
                 {% for s in amenities.school[:10] %}
-                <li>{{ s.name }} <span class="amenity-distance">{{ s.distance_m | distance }}</span></li>
+                <li>
+                    <span class="amenity-name">{{ s.name }}{% if s.type %} <span class="school-type-badge">{{ s.type }}</span>{% endif %}</span>
+                    <span class="amenity-distance">{{ s.distance_m | distance }}</span>
+                </li>
                 {% endfor %}
             </ul>
         {% else %}
@@ -265,6 +284,8 @@
 {% block attribution %}
 Sold price data from
 <a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">HM Land Registry Price Paid Data</a>.
+Area price comparison from the
+<a href="https://landregistry.data.gov.uk/app/ukhpi" target="_blank" rel="noopener">UK House Price Index</a>.
 Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener">postcodes.io</a>.
 {% if epc_configured %}
 EPC data from

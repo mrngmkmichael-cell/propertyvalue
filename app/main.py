@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, watchlist
 from app.models import User
-from app.services import amenities, crime, epc, flood
+from app.services import amenities, crime, epc, flood, hpi
 from app.services.land_registry import sold_prices_for_postcode
 from app.services.postcodes import lookup_postcode
 
@@ -136,12 +136,13 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # one at a time. Five external services per page load is enough
     # that doing them sequentially was becoming a real, noticeable
     # source of slowness.
-    tx_result, epc_result, flood_result, crime_result, amenities_result = await asyncio.gather(
+    tx_result, epc_result, flood_result, crime_result, amenities_result, hpi_result = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
         flood.warnings_near(lat, lon),
         crime.summary_near(lat, lon),
         amenities.nearby_amenities_and_station(lat, lon),
+        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         return_exceptions=True,
     )
 
@@ -174,6 +175,9 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     else:
         context["amenities"] = amenities_result["categories"]
         context["station"] = amenities_result["station"]
+
+    if not isinstance(hpi_result, Exception):
+        context["hpi"] = hpi_result
 
     if context["current_user"]:
         try:
