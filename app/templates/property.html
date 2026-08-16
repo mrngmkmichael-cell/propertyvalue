@@ -142,6 +142,20 @@
         </button>
         {% endif %}
 
+        {% set ext_status = 'attn' if (extension_signal and (extension_signal.likely_extended or extension_signal.change_pct <= -15)) else ('ok' if extension_signal else 'muted') %}
+        <button type="button" class="dashboard-card status-{{ ext_status }}" data-modal-target="modal-extension" data-animate>
+            {% if ext_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-extension">{{ icons.icon('extension') }}</span>
+            <span class="dashboard-card-title">Extended or Modified</span>
+            <span class="dashboard-card-status">
+                {% if extension_signal and extension_signal.likely_extended %}Likely extended
+                {% elif extension_signal and extension_signal.change_pct <= -15 %}Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%
+                {% elif extension_signal %}No sign of change
+                {% elif house_number %}Not enough EPC history
+                {% else %}Search with a house number{% endif %}
+            </span>
+        </button>
+
         {% set flood_status = 'muted' if flood_error else ('attn' if flood_warnings else 'ok') %}
         <button type="button" class="dashboard-card status-{{ flood_status }}" data-modal-target="modal-flood" data-animate>
             {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -559,38 +573,6 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% if extension_signal %}
-            <h3 class="subsection-heading">Extended or modified?</h3>
-            <p class="section-sub">
-                Comparing the floor area on this address's earliest and latest EPC certificates —
-                a real signal since these are independent measurements taken by different assessors,
-                not self-reported, but not certain: floor area can also drift a little between
-                assessments just from measurement differences, with no work actually done.
-            </p>
-            {% if extension_signal.likely_extended %}
-            <p class="notice">
-                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>
-                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
-                Large enough that this property has probably been extended or had a loft/garage
-                conversion since the earlier certificate.
-            </p>
-            {% elif extension_signal.change_pct <= -15 %}
-            <p class="notice">
-                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>
-                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
-                No sign of an extension, but that's a large enough drop to be worth asking about —
-                could mean the unit was subdivided, or just a re-measurement.
-            </p>
-            {% else %}
-            <p class="notice">
-                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
-                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }})
-                — no meaningful change, no sign of an extension from this data.
-            </p>
-            {% endif %}
-            {% endif %}
         {% elif house_number and postcode_has_certificates %}
             <p class="notice">No EPC certificates found for "{{ house_number }}" at this postcode.</p>
         {% else %}
@@ -600,6 +582,54 @@
         </div>
     </dialog>
     {% endif %}
+
+    <dialog class="report-modal" id="modal-extension">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Extended or modified?</h2>
+        <p class="section-sub">
+            Comparing the floor area on this address's earliest and latest EPC certificates —
+            a real signal since these are independent measurements taken by different assessors,
+            not self-reported, but not certain: floor area can also drift a little between
+            assessments just from measurement differences, with no work actually done.
+        </p>
+        {% if not house_number %}
+            <p class="notice">
+                Search with a house or flat number to check this specific address — with just a
+                postcode we can't tell which property's EPC history to compare.
+            </p>
+        {% elif not extension_signal %}
+            <p class="notice">
+                Not enough EPC history for this address — we need at least two certificates with a
+                recorded floor area to compare, and this address doesn't have that many on file.
+            </p>
+        {% elif extension_signal.likely_extended %}
+            <p class="notice">
+                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>
+                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                Large enough that this property has probably been extended or had a loft/garage
+                conversion since the earlier certificate.
+            </p>
+        {% elif extension_signal.change_pct <= -15 %}
+            <p class="notice">
+                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>
+                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                No sign of an extension, but that's a large enough drop to be worth asking about —
+                could mean the unit was subdivided, or just a re-measurement.
+            </p>
+        {% else %}
+            <p class="notice">
+                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
+                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }})
+                — no meaningful change, no sign of an extension from this data.
+            </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
 
     <dialog class="report-modal" id="modal-flood">
         <div class="report-modal-inner">
