@@ -57,6 +57,26 @@ async def _empty_list():
     return []
 
 
+def _crime_comparison(local: dict, district: dict) -> list[dict]:
+    local_counts = {c["category"]: c["count"] for c in local["by_category"]}
+    district_counts = {c["category"]: c["count"] for c in district["by_category"]}
+    categories = sorted(
+        set(local_counts) | set(district_counts),
+        key=lambda cat: -local_counts.get(cat, 0),
+    )
+    rows = []
+    for cat in categories:
+        here = local_counts.get(cat, 0)
+        area = district_counts.get(cat, 0)
+        if area == 0:
+            trend = "higher" if here > 0 else "same"
+        else:
+            ratio = here / area
+            trend = "higher" if ratio > 1.15 else ("lower" if ratio < 0.85 else "same")
+        rows.append({"category": cat, "here": here, "area": area, "trend": trend})
+    return rows
+
+
 def _price_position(reference_price: float | None, area_average: float | None) -> float | None:
     """Where the reference price sits on a 0-100 bar centred on the
     area average. Not a true percentile (we don't have the full local
@@ -149,11 +169,15 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # one at a time. Five external services per page load is enough
     # that doing them sequentially was becoming a real, noticeable
     # source of slowness.
-    tx_result, epc_result, flood_result, crime_result, amenities_result, hpi_result = await asyncio.gather(
+    (
+        tx_result, epc_result, flood_result, crime_result, district_crime_result,
+        amenities_result, hpi_result,
+    ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
         flood.warnings_near(lat, lon),
         crime.summary_near(lat, lon),
+        crime.summary_for_outcode(location["outcode"]),
         amenities.nearby_amenities_and_station(lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         return_exceptions=True,
@@ -189,12 +213,19 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["crime_error"] = True
     else:
         context["crime"] = crime_result
+        if not isinstance(district_crime_result, Exception) and district_crime_result:
+            context["district_crime"] = district_crime_result
+            if crime_result.get("by_category") or district_crime_result.get("by_category"):
+                context["crime_comparison"] = _crime_comparison(crime_result, district_crime_result)
 
     if isinstance(amenities_result, Exception):
         context["amenities_error"] = True
     else:
         context["amenities"] = amenities_result["categories"]
-        context["station"] = amenities_result["station"]
+        context["stations"] = amenities_result["stations"]
+        context["nearest_transport"] = min(
+            amenities_result["stations"].values(), key=lambda s: s["distance_m"], default=None
+        )
 
     if not isinstance(hpi_result, Exception):
         context["hpi"] = hpi_result
@@ -215,6 +246,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     try:
         context["schools"] = schools_db.nearby_schools(lat, lon)
+        context["schools_total"] = sum(len(v) for v in context["schools"].values())
     except Exception:
         context["schools_error"] = True
 

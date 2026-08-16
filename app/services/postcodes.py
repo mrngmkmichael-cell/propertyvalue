@@ -19,3 +19,17 @@ async def lookup_postcode(raw_postcode: str) -> dict | None:
         return None
     response.raise_for_status()
     return response.json()["result"]
+
+
+async def outcode_centroid(outcode: str) -> dict | None:
+    """Centroid of a postcode district (e.g. 'BR6') - used as a second
+    reference point for wider-area comparisons, since postcodes.io has
+    no local-authority-boundary centroid lookup."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(f"{API_BASE}/outcodes/{quote(outcode.strip())}")
+
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    result = response.json()["result"]
+    return {"latitude": result["latitude"], "longitude": result["longitude"]}

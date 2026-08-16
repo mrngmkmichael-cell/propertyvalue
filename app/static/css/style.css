@@ -315,6 +315,20 @@ a {
     padding-bottom: 0.6rem;
 }
 
+.subsection-heading {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 1.5rem 0 0.25rem;
+}
+
+.subsection-heading:first-of-type {
+    margin-top: 1rem;
+}
+
 .section-sub {
     color: var(--ink-soft);
     font-size: 0.92rem;
@@ -524,6 +538,52 @@ a {
     vertical-align: middle;
 }
 
+/* Crime comparison */
+
+.crime-trend {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.crime-trend-higher { color: var(--accent); }
+.crime-trend-lower { color: #2e7d4f; }
+.crime-trend-same { color: var(--ink-soft); font-weight: 400; }
+
+/* Getting around */
+
+.transport-list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+}
+
+.transport-list li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--rule);
+}
+
+.transport-list li:last-child {
+    border-bottom: none;
+}
+
+.transport-mode {
+    display: inline-block;
+    min-width: 3.2rem;
+    margin-right: 0.5rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 3px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: center;
+    vertical-align: middle;
+}
+
 /* HPI area comparison */
 
 .hpi-change {
@@ -593,20 +653,52 @@ a {
 
 .dashboard-card.status-attn {
     border-left-color: #b8902b;
+    background: #fbf0d9;
+}
+
+.dashboard-card.status-attn:hover {
+    background: #f7e6bd;
 }
 
 .dashboard-card.status-muted {
     opacity: 0.62;
 }
 
+.check-this-tag {
+    position: absolute;
+    top: 0.9rem;
+    right: 1.1rem;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8a6a1f;
+}
+
 .dashboard-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 50%;
+    background: rgba(163, 39, 31, 0.12);
     color: var(--accent);
 }
 
 .dashboard-card-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
 }
+
+.icon-energy { background: rgba(184, 144, 43, 0.16); color: #8a6a1f; }
+.icon-flood { background: rgba(46, 110, 150, 0.14); color: #2e6e96; }
+.icon-crime { background: rgba(122, 42, 74, 0.14); color: #7a2a4a; }
+.icon-schools { background: rgba(31, 122, 108, 0.14); color: #1f7a6c; }
+.icon-prosperity { background: rgba(76, 122, 46, 0.14); color: #4c7a2e; }
+.icon-amenities { background: rgba(196, 110, 30, 0.14); color: #c46e1e; }
+.icon-transport { background: rgba(46, 74, 122, 0.14); color: #2e4a7a; }
 
 .dashboard-card-title {
     font-family: -apple-system, "Segoe UI", Roboto, sans-serif;

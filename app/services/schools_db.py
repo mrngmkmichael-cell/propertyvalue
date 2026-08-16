@@ -11,10 +11,29 @@ from sqlalchemy import select
 from app.db import get_session, is_configured
 from app.models import School
 
-SEARCH_RADIUS_KM = 3
+SEARCH_RADIUS_KM = 5
+PER_GROUP_LIMIT = 3
 # Rough degrees-per-km at UK latitudes, generous enough for a first-pass
 # bounding box before the precise haversine distance filter/sort below.
 DEG_PER_KM = 1 / 111
+
+GROUP_ORDER = ["Nursery", "Primary", "Secondary"]
+
+
+def _phase_group(phase: str) -> str | None:
+    """Collapses GIAS's ~8 PhaseOfEducation values down to the three
+    groups parents actually think in terms of. 'All-through' and
+    '16 plus' schools get folded into Secondary rather than added as
+    a fourth group, since the ask was specifically Nursery/Primary/
+    Secondary."""
+    p = (phase or "").lower()
+    if "nursery" in p:
+        return "Nursery"
+    if "primary" in p:
+        return "Primary"
+    if "secondary" in p or "16 plus" in p or "all-through" in p or "all through" in p:
+        return "Secondary"
+    return None
 
 
 def _haversine_km(lat1, lon1, lat2, lon2) -> float:
@@ -26,9 +45,13 @@ def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
-def nearby_schools(lat: float, lon: float, limit: int = 10) -> list[dict]:
+def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
+    """Nearest schools grouped into Nursery/Primary/Secondary, up to
+    PER_GROUP_LIMIT each. Groups with no results nearby are omitted
+    rather than shown empty."""
+    grouped: dict[str, list[dict]] = {name: [] for name in GROUP_ORDER}
     if not is_configured():
-        return []
+        return grouped
 
     box = SEARCH_RADIUS_KM * DEG_PER_KM
     with get_session() as session:
@@ -39,12 +62,16 @@ def nearby_schools(lat: float, lon: float, limit: int = 10) -> list[dict]:
             )
         ).all()
 
-        schools = []
+        candidates = []
         for row in rows:
+            group = _phase_group(row.phase)
+            if group is None:
+                continue
             distance_km = _haversine_km(lat, lon, row.latitude, row.longitude)
             if distance_km > SEARCH_RADIUS_KM:
                 continue
-            schools.append({
+            candidates.append({
+                "group": group,
                 "name": row.name,
                 "phase": row.phase,
                 "type": row.type_name,
@@ -54,5 +81,10 @@ def nearby_schools(lat: float, lon: float, limit: int = 10) -> list[dict]:
                 "ofsted_inspection_date": row.ofsted_inspection_date,
             })
 
-    schools.sort(key=lambda s: s["distance_m"])
-    return schools[:limit]
+    candidates.sort(key=lambda s: s["distance_m"])
+    for school in candidates:
+        group = school["group"]
+        if len(grouped[group]) < PER_GROUP_LIMIT:
+            grouped[group].append(school)
+
+    return {name: schools for name, schools in grouped.items() if schools}

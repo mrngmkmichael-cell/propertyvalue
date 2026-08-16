@@ -85,7 +85,7 @@
     {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
     <div class="dashboard-grid">
         <a href="#sold-price-history" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('market') }}</span>
+            <span class="dashboard-card-icon icon-market">{{ icons.icon('market') }}</span>
             <span class="dashboard-card-title">Local Market</span>
             <span class="dashboard-card-status">
                 {% if tx_error %}Data unavailable
@@ -97,7 +97,7 @@
 
         {% if epc_configured %}
         <a href="#epc" class="dashboard-card status-{{ 'muted' if (epc_error or not certificates) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('energy') }}</span>
+            <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
             <span class="dashboard-card-title">Energy Efficiency</span>
             <span class="dashboard-card-status">
                 {% if epc_error %}Data unavailable
@@ -108,8 +108,10 @@
         </a>
         {% endif %}
 
-        <a href="#flood" class="dashboard-card status-{{ 'muted' if flood_error else ('attn' if flood_warnings else 'ok') }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('flood') }}</span>
+        {% set flood_status = 'muted' if flood_error else ('attn' if flood_warnings else 'ok') %}
+        <a href="#flood" class="dashboard-card status-{{ flood_status }}" data-animate>
+            {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">Flood Risk</span>
             <span class="dashboard-card-status">
                 {% if flood_error %}Data unavailable
@@ -119,7 +121,7 @@
         </a>
 
         <a href="#crime" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('crime') }}</span>
+            <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">Crime &amp; Safety</span>
             <span class="dashboard-card-status">
                 {% if crime_error %}Data unavailable
@@ -128,18 +130,20 @@
             </span>
         </a>
 
-        <a href="#schools" class="dashboard-card status-{{ 'muted' if (schools_error or not schools) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('schools') }}</span>
+        <a href="#schools" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Schools &amp; Catchment</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
-                {% elif schools %}{{ schools|length }} nearby
+                {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
             </span>
         </a>
 
-        <a href="#sold-price-history" class="dashboard-card status-{{ 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('prosperity') }}</span>
+        {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
+        <a href="#sold-price-history" class="dashboard-card status-{{ prosperity_status }}" data-animate>
+            {% if prosperity_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
             <span class="dashboard-card-title">Area Prosperity</span>
             <span class="dashboard-card-status">
                 {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
@@ -148,7 +152,7 @@
         </a>
 
         <a href="#amenities" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('amenities') }}</span>
+            <span class="dashboard-card-icon icon-amenities">{{ icons.icon('amenities') }}</span>
             <span class="dashboard-card-title">Nearby Essentials</span>
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
@@ -157,13 +161,13 @@
             </span>
         </a>
 
-        <a href="#getting-around" class="dashboard-card status-{{ 'muted' if (amenities_error or not station) else 'ok' }}" data-animate>
-            <span class="dashboard-card-icon">{{ icons.icon('transport') }}</span>
+        <a href="#getting-around" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}" data-animate>
+            <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
             <span class="dashboard-card-title">Getting Around</span>
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
-                {% elif station %}{{ station.name }} · {{ station.distance_m | distance }}
-                {% else %}No station nearby{% endif %}
+                {% elif nearest_transport %}{{ nearest_transport.name }} · {{ nearest_transport.distance_m | distance }}
+                {% else %}Nothing nearby{% endif %}
             </span>
         </a>
     </div>
@@ -320,8 +324,34 @@
             </p>
         {% elif crime and crime.total %}
             <p class="section-sub">
-                {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}.
+                {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}
+                {%- if district_crime %}, versus {{ district_crime.total }} in the wider {{ location.outcode }} postcode area{% endif %}.
             </p>
+            {% if crime_comparison %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="num">Here</th>
+                        <th class="num">{{ location.outcode }} area</th>
+                        <th>Versus area</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in crime_comparison %}
+                    <tr>
+                        <td class="capitalize">{{ c.category }}</td>
+                        <td class="num">{{ c.here }}</td>
+                        <td class="num">{{ c.area }}</td>
+                        <td><span class="crime-trend crime-trend-{{ c.trend }}">{{ {"higher": "Higher", "lower": "Lower", "same": "About the same"}[c.trend] }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="section-sub">
+                Same ~1 mile radius sample as above, just centred on the {{ location.outcode }} postcode area instead — not a population-weighted local authority crime rate, which isn't available as clean open data.
+            </p>
+            {% else %}
             <table class="tx-table">
                 <thead>
                     <tr>
@@ -338,6 +368,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% endif %}
         {% else %}
             <p class="notice">No crime data available for this area.</p>
         {% endif %}
@@ -370,38 +401,45 @@
 
     <section class="report-section" id="schools" data-animate>
         <h2>Schools nearby</h2>
-        <p class="section-sub">Proximity only — not a catchment area or admissions guarantee. No reliable free UK-wide catchment data exists.</p>
+        <p class="section-sub">
+            Nearest 3 of each type, by proximity only — not a catchment area or admissions guarantee.
+            No reliable free UK-wide catchment data exists, so we can't say whether this address falls
+            within any school's admission area.
+        </p>
         {% if schools_error %}
             <p class="notice notice-error">
                 The schools data service didn't respond. Try again in a moment.
             </p>
         {% elif schools %}
-            <table class="tx-table">
-                <thead>
-                    <tr>
-                        <th>School</th>
-                        <th>Phase</th>
-                        <th>Ofsted rating</th>
-                        <th class="num">Distance</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in schools %}
-                    <tr>
-                        <td>{{ s.name }}</td>
-                        <td>{% if s.phase and s.phase != "Not applicable" %}<span class="school-type-badge">{{ s.phase }}</span>{% endif %}</td>
-                        <td>
-                            {% if s.ofsted_rating_label %}
-                                <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
-                            {% else %}
-                                <span class="ofsted-none">Not rated</span>
-                            {% endif %}
-                        </td>
-                        <td class="num">{{ s.distance_m | distance }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            {% for group_name in ["Nursery", "Primary", "Secondary"] %}
+                {% if schools[group_name] %}
+                <h3 class="subsection-heading">{{ group_name }}</h3>
+                <table class="tx-table">
+                    <thead>
+                        <tr>
+                            <th>School</th>
+                            <th>Ofsted rating</th>
+                            <th class="num">Distance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in schools[group_name] %}
+                        <tr>
+                            <td>{{ s.name }}</td>
+                            <td>
+                                {% if s.ofsted_rating_label %}
+                                    <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                                {% else %}
+                                    <span class="ofsted-none">Not rated</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">{{ s.distance_m | distance }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+            {% endfor %}
         {% else %}
             <p class="notice">No schools found nearby.</p>
         {% endif %}
@@ -413,14 +451,24 @@
             <p class="notice notice-error">
                 The amenities data service didn't respond. Try again in a moment.
             </p>
-        {% elif station %}
-            <p class="section-sub">
-                Nearest station: <strong>{{ station.name }}</strong>{% if station.network %} ({{ station.network }}){% endif %}
-                — {{ station.distance_m | distance }}
-                {%- if station.lines %} — {{ station.lines | join(", ") }}{% endif %}
-            </p>
+        {% elif stations %}
+            <ul class="transport-list">
+                {% for mode, label in [("rail", "Rail"), ("tube", "Tube"), ("bus", "Bus")] %}
+                    {% if stations[mode] %}
+                    <li>
+                        <span class="transport-mode">{{ label }}</span>
+                        <strong>{{ stations[mode].name }}</strong>{% if stations[mode].network %} ({{ stations[mode].network }}){% endif %}
+                        — {{ stations[mode].distance_m | distance }}
+                        {%- if stations[mode].lines %} — {{ stations[mode].lines | join(", ") }}{% endif %}
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            {% if not (stations.rail or stations.tube or stations.bus) %}
+                <p class="notice">No public transport found nearby.</p>
+            {% endif %}
         {% else %}
-            <p class="notice">No train or tube station found nearby.</p>
+            <p class="notice">No public transport found nearby.</p>
         {% endif %}
     </section>
 {% endif %}

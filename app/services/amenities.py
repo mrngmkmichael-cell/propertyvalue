@@ -40,6 +40,7 @@ AMENITY_QUERIES = [
     ("hospital", '["amenity"="hospital"]', 3000),
 ]
 STATION_RADIUS_M = 3000
+BUS_STOP_RADIUS_M = 800
 
 
 def _haversine_m(lat1, lon1, lat2, lon2) -> float:
@@ -99,6 +100,13 @@ async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
     return result
 
 
+def _station_mode(tags: dict) -> str:
+    network = tags.get("network", "").lower()
+    if tags.get("station") == "subway" or "underground" in network or "tube" in network:
+        return "tube"
+    return "rail"
+
+
 async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     clauses = "".join(
         f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in AMENITY_QUERIES
@@ -106,16 +114,17 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     clauses += (
         f'nwr["railway"~"station|halt"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
         f'nwr["station"="subway"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
+        f'nwr["highway"="bus_stop"](around:{BUS_STOP_RADIUS_M},{lat},{lon});'
     )
     query = f"[out:json][timeout:20];({clauses});out center tags;"
     elements = await _query_overpass(query)
 
     categories = {label: [] for label, _, _ in AMENITY_QUERIES}
-    stations = []
+    stations = {"rail": [], "tube": [], "bus": []}
 
     for el in elements:
         tags = el.get("tags", {})
-        name = tags.get("name", "Unnamed")
+        name = tags.get("name") or tags.get("ref") or "Unnamed"
         el_lat, el_lon = _element_latlon(el)
         if el_lat is None:
             continue
@@ -127,13 +136,16 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             re.match(r"station|halt", tags.get("railway", "")) or tags.get("station") == "subway"
         )
 
-        if is_station:
-            stations.append({
-                "id": el["id"],
-                "type": el["type"],
-                "name": name,
-                "network": tags.get("network", ""),
-                "distance_m": distance_m,
+        if tags.get("highway") == "bus_stop":
+            stations["bus"].append({
+                "id": el["id"], "type": el["type"], "name": name,
+                "network": "", "distance_m": distance_m,
+            })
+        elif is_station:
+            mode = _station_mode(tags)
+            stations[mode].append({
+                "id": el["id"], "type": el["type"], "name": name,
+                "network": tags.get("network", ""), "distance_m": distance_m,
             })
         elif amenity == "restaurant":
             categories["restaurant"].append({"name": name, "distance_m": distance_m})
@@ -149,16 +161,20 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])
 
-    nearest_station = None
-    if stations:
-        stations.sort(key=lambda s: s["distance_m"])
-        nearest_station = stations[0]
-        try:
-            nearest_station["lines"] = await _station_lines(nearest_station["type"], nearest_station["id"])
-        except httpx.HTTPError:
-            nearest_station["lines"] = []
+    nearest_by_mode = {}
+    for mode, candidates in stations.items():
+        if not candidates:
+            continue
+        candidates.sort(key=lambda s: s["distance_m"])
+        nearest = candidates[0]
+        if mode in ("rail", "tube"):
+            try:
+                nearest["lines"] = await _station_lines(nearest["type"], nearest["id"])
+            except httpx.HTTPError:
+                nearest["lines"] = []
+        nearest_by_mode[mode] = nearest
 
-    return {"categories": categories, "station": nearest_station}
+    return {"categories": categories, "stations": nearest_by_mode}
 
 
 async def _station_lines(el_type: str, el_id: int) -> list[str]:

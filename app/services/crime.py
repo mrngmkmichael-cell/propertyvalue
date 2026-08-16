@@ -6,10 +6,23 @@ from collections import Counter
 
 import httpx
 
-from app.services import _cache
+from app.services import _cache, postcodes
 
 API_BASE = "https://data.police.uk/api"
 CACHE_TTL_S = 86400  # Police.uk data only updates monthly
+
+
+async def summary_for_outcode(outcode: str) -> dict | None:
+    """Same crime summary, but centred on the postcode district (e.g.
+    'BR6') rather than the exact address - used as a wider-area
+    comparison. Not a true local-authority crime rate (no free,
+    population-normalized dataset comparable to a point-radius query
+    exists) - this is the same ~1 mile radius sample, just centred
+    more broadly."""
+    centroid = await postcodes.outcode_centroid(outcode)
+    if centroid is None:
+        return None
+    return await summary_near(centroid["latitude"], centroid["longitude"])
 
 
 async def summary_near(lat: float, lon: float) -> dict:
