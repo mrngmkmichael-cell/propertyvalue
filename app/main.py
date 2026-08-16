@@ -64,8 +64,25 @@ def _filter_by_address(records: list[dict], query: str) -> list[dict]:
     return [r for r in records if q in r["address"].lower()]
 
 
-async def _empty_list():
-    return []
+async def _epc_flow(canonical: str, house_number: str, configured: bool) -> tuple[list[dict], dict | None]:
+    """Certificates + the extra-detail fetch for the first matching
+    one, chained together as a single coroutine so the detail call
+    (which depends on the search results) runs concurrently with
+    everything else in the main gather, instead of strictly after it
+    - it was previously awaited as its own serial step once the whole
+    gather had already finished, adding a full extra EPC API round
+    trip to every page load that had certificates."""
+    if not configured:
+        return [], None
+    certs = await epc.certificates_for_postcode(canonical)
+    filtered = _filter_by_address(certs, house_number)
+    detail = None
+    if filtered:
+        try:
+            detail = await epc.certificate_detail(filtered[0]["certificate_number"])
+        except httpx.HTTPError:
+            detail = None
+    return certs, detail
 
 
 async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
@@ -214,7 +231,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # adding real, measurable latency. asyncio.to_thread lets them
     # run on worker threads in parallel with everything else instead.
     (
-        tx_result, epc_result, flood_result, crime_result, district_crime_result,
+        tx_result, epc_flow_result, flood_result, crime_result, district_crime_result,
         amenities_result, hpi_result, noise_result,
         schools_result, deprivation_result, income_result,
         occupation_result, qualification_result, broadband_result, mobile_result,
@@ -222,7 +239,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
-        epc.certificates_for_postcode(canonical) if context["epc_configured"] else _empty_list(),
+        _epc_flow(canonical, house_number, context["epc_configured"]),
         flood.warnings_near(lat, lon),
         crime.summary_near(lat, lon),
         crime.summary_for_outcode(location["outcode"]),
@@ -255,18 +272,14 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["postcode_has_transactions"] = bool(tx_result)
 
     if context["epc_configured"]:
-        if isinstance(epc_result, Exception):
+        if isinstance(epc_flow_result, Exception):
             context["epc_error"] = True
         else:
+            epc_result, property_detail = epc_flow_result
             context["certificates"] = _filter_by_address(epc_result, house_number)
             context["postcode_has_certificates"] = bool(epc_result)
-            if context["certificates"]:
-                try:
-                    context["property_detail"] = await epc.certificate_detail(
-                        context["certificates"][0]["certificate_number"]
-                    )
-                except httpx.HTTPError:
-                    pass
+            if property_detail:
+                context["property_detail"] = property_detail
 
     if isinstance(flood_result, Exception):
         context["flood_error"] = True

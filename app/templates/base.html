@@ -12,6 +12,15 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    <div id="page-loading-overlay" aria-hidden="true">
+        <div class="page-loading-inner">
+            <div class="page-loading-spinner"></div>
+            <div class="page-loading-title">Gathering your report</div>
+            <div class="page-loading-message" id="page-loading-message">Pulling sold price history&hellip;</div>
+            <div class="page-loading-bar-track"><div class="page-loading-bar-fill" id="page-loading-bar"></div></div>
+        </div>
+    </div>
+
     <header class="site-header">
         <div class="site-header-inner">
             <div class="brand-block">
@@ -83,6 +92,73 @@
                 });
                 const closeBtn = dialog.querySelector('[data-modal-close]');
                 if (closeBtn) closeBtn.addEventListener('click', function () { dialog.close(); });
+            });
+        })();
+    </script>
+    <script>
+        (function () {
+            const overlay = document.getElementById('page-loading-overlay');
+            const messageEl = document.getElementById('page-loading-message');
+            const barEl = document.getElementById('page-loading-bar');
+            if (!overlay || !messageEl || !barEl) return;
+
+            const messages = [
+                'Pulling sold price history…',
+                'Checking flood and noise risk…',
+                'Looking up nearby schools…',
+                'Comparing sold prices nearby…',
+                'Crunching Census 2021 data…',
+                'Checking crime stats…',
+                'Estimating today’s value…',
+                'Almost there…',
+            ];
+            let msgIndex = 0;
+            let msgTimer = null;
+            let showTimer = null;
+            let shown = false;
+
+            function showOverlay() {
+                if (shown) return;
+                shown = true;
+                msgIndex = 0;
+                messageEl.textContent = messages[0];
+                barEl.style.animation = 'none';
+                void barEl.offsetWidth;
+                barEl.style.animation = '';
+                overlay.classList.add('visible');
+                msgTimer = setInterval(function () {
+                    msgIndex = (msgIndex + 1) % messages.length;
+                    messageEl.textContent = messages[msgIndex];
+                }, 1300);
+            }
+
+            function scheduleOverlay() {
+                if (shown || showTimer) return;
+                showTimer = setTimeout(showOverlay, 200);
+            }
+
+            document.addEventListener('submit', function () {
+                scheduleOverlay();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                const a = e.target.closest('a');
+                if (!a || !a.href || a.target === '_blank' || a.hasAttribute('download')) return;
+                let url;
+                try { url = new URL(a.href, window.location.href); } catch (err) { return; }
+                if (url.origin !== window.location.origin) return;
+                const samePage = url.pathname === window.location.pathname && url.search === window.location.search;
+                if (samePage) return;
+                scheduleOverlay();
+            });
+
+            window.addEventListener('pageshow', function () {
+                overlay.classList.remove('visible');
+                shown = false;
+                if (msgTimer) clearInterval(msgTimer);
+                if (showTimer) clearTimeout(showTimer);
+                showTimer = null;
             });
         })();
     </script>
