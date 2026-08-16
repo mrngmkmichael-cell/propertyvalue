@@ -105,18 +105,30 @@
 
         {% if hpi and (hpi.local_authority or hpi.region or hpi.country) %}
             <p class="section-sub">How this compares ({{ hpi.local_authority.period or hpi.region.period or hpi.country.period }}):</p>
-            <ul class="hpi-comparison">
-                {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
-                    {% if area %}
-                    <li>
-                        {{ area.name }} average: <strong>{{ area.average_price | gbp }}</strong>
-                        <span class="hpi-change {{ 'up' if area.annual_change_pct >= 0 else 'down' }}">
-                            {{ "%+.1f"|format(area.annual_change_pct) }}% year on year
-                        </span>
-                    </li>
-                    {% endif %}
-                {% endfor %}
-            </ul>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th class="num">Average price</th>
+                        <th class="num">Year on year</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
+                        {% if area %}
+                        <tr>
+                            <td>{{ area.name }}</td>
+                            <td class="num">{{ area.average_price | gbp }}</td>
+                            <td class="num">
+                                <span class="hpi-change {{ 'up' if area.annual_change_pct >= 0 else 'down' }}">
+                                    {{ "%+.1f"|format(area.annual_change_pct) }}%
+                                </span>
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
         {% endif %}
     </section>
 
@@ -249,14 +261,24 @@
                 The amenities data service didn't respond. Try again in a moment.
             </p>
         {% elif amenities and amenities.school %}
-            <ul class="amenity-list">
-                {% for s in amenities.school[:10] %}
-                <li>
-                    <span class="amenity-name">{{ s.name }}{% if s.type %} <span class="school-type-badge">{{ s.type }}</span>{% endif %}</span>
-                    <span class="amenity-distance">{{ s.distance_m | distance }}</span>
-                </li>
-                {% endfor %}
-            </ul>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>School</th>
+                        <th>Type</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in amenities.school[:10] %}
+                    <tr>
+                        <td>{{ s.name }}</td>
+                        <td>{% if s.type %}<span class="school-type-badge">{{ s.type }}</span>{% endif %}</td>
+                        <td class="num">{{ s.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <p class="notice">No schools found nearby.</p>
         {% endif %}
