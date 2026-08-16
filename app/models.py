@@ -36,6 +36,20 @@ class WatchlistItem(Base):
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 
 
+class SchoolShortlistItem(Base):
+    """A logged-in user's saved/shortlisted schools - the same
+    account system as WatchlistItem, keyed by school URN instead of
+    a postcode."""
+    __tablename__ = "school_shortlist_items"
+    __table_args__ = (UniqueConstraint("user_id", "urn", name="uq_user_school_urn"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    urn: Mapped[int] = mapped_column(Integer)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class School(Base):
     """Open schools in England, from DfE's GIAS establishment data,
     joined with Ofsted's state-funded school inspection outcomes.
@@ -189,3 +203,18 @@ class SchoolCharacteristics(Base):
     urn: Mapped[int] = mapped_column(Integer, primary_key=True)
     academic_year: Mapped[str] = mapped_column(String(16), default="")
     fsm_eligible_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class BroadbandCoverage(Base):
+    """Fixed-line broadband availability, by full postcode (unit
+    level, not just district) - from Ofcom's Connected Nations 2025
+    data. Populated by scripts/import_broadband.py. Republished
+    roughly annually.
+    """
+    __tablename__ = "broadband_coverage"
+
+    postcode: Mapped[str] = mapped_column(String(16), primary_key=True)
+    gigabit_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ultrafast_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    superfast_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    below_uso_pct: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Your school shortlist — PropertyValue{% endblock %}
+
+{% block content %}
+<span class="kicker">Saved schools</span>
+<h1>Your school shortlist</h1>
+
+{% if items %}
+    <table class="tx-table">
+        <thead>
+            <tr>
+                <th>School</th>
+                <th>Note</th>
+                <th>Saved</th>
+                <th class="num"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td>{{ item.note or "—" }}</td>
+                <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
+                <td class="num">
+                    <form action="/schools/shortlist/remove" method="post" class="nav-form">
+                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                        <button type="submit">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="notice">Nothing shortlisted yet. Search for a postcode and use "Shortlist" next to any school in its report.</p>
+{% endif %}
+{% endblock %}

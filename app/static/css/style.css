@@ -614,6 +614,25 @@ a {
 .ofsted-3 { background: #b8902b; }
 .ofsted-4 { background: var(--accent); }
 
+.shortlist-btn {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--ink-soft);
+    border-radius: 3px;
+    background: none;
+    color: var(--ink-soft);
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-size: 0.72rem;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.shortlist-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
 .exam-year {
     color: var(--ink-soft);
     font-size: 0.78rem;
@@ -709,6 +728,7 @@ a {
 .icon-occupation { background: rgba(90, 90, 90, 0.14); color: #5a5a5a; }
 .icon-qualification { background: rgba(76, 46, 130, 0.14); color: #4c2e82; }
 .icon-noise { background: rgba(184, 144, 43, 0.16); color: #8a6a1f; }
+.icon-broadband { background: rgba(46, 110, 150, 0.14); color: #2e6e96; }
 
 .noise-badge {
     display: inline-block;

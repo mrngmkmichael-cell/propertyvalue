@@ -221,6 +221,17 @@
                 {% else %}No data available{% endif %}
             </span>
         </a>
+
+        {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
+        <a href="#broadband" class="dashboard-card status-{{ broadband_status }}" data-animate>
+            {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-broadband">{{ icons.icon('broadband') }}</span>
+            <span class="dashboard-card-title">Broadband</span>
+            <span class="dashboard-card-status">
+                {% if broadband %}{{ broadband.label }}
+                {% else %}No data available{% endif %}
+            </span>
+        </a>
     </div>
 
     <section class="report-section" id="sold-price-history" data-animate>
@@ -521,6 +532,7 @@
                             <th class="num">FSM eligible</th>
                             {% if group_name != "Nursery" %}<th>Exam results</th>{% endif %}
                             <th class="num">Distance</th>
+                            {% if accounts_configured %}<th class="num"></th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -549,6 +561,23 @@
                             </td>
                             {% endif %}
                             <td class="num">{{ s.distance_m | distance }}</td>
+                            {% if accounts_configured %}
+                            <td class="num">
+                                {% if current_user %}
+                                    {% if s.urn in shortlisted_urns %}
+                                        <span class="ofsted-none">Shortlisted</span>
+                                    {% else %}
+                                        <form action="/schools/shortlist/save" method="post" class="nav-form">
+                                            <input type="hidden" name="urn" value="{{ s.urn }}">
+                                            <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                                            <button type="submit" class="shortlist-btn">Shortlist</button>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="/login?next=/property?postcode={{ location.postcode }}" class="shortlist-btn">Shortlist</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -729,6 +758,50 @@
             <p class="notice">No qualification data available for this area.</p>
         {% endif %}
     </section>
+
+    <section class="report-section" id="broadband" data-animate>
+        <h2>Broadband</h2>
+        {% if broadband_error %}
+            <p class="notice notice-error">
+                The broadband data service didn't respond. Try again in a moment.
+            </p>
+        {% elif broadband %}
+            <p class="section-sub">
+                Fixed-line broadband availability for this exact postcode, from Ofcom's Connected
+                Nations data.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Speed tier</th>
+                        <th class="num">Availability</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gigabit-capable</td>
+                        <td class="num">{{ broadband.gigabit_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Ultrafast (100Mbit/s+)</td>
+                        <td class="num">{{ broadband.ultrafast_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Superfast (30Mbit/s+)</td>
+                        <td class="num">{{ broadband.superfast_pct }}%</td>
+                    </tr>
+                    {% if broadband.below_uso_pct %}
+                    <tr>
+                        <td>Below the Universal Service Obligation</td>
+                        <td class="num">{{ broadband.below_uso_pct }}%</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No broadband coverage data available for this postcode.</p>
+        {% endif %}
+    </section>
 {% endif %}
 {% endblock %}
 
@@ -765,6 +838,8 @@ Occupation and qualification data from
 Noise data from DEFRA's
 <a href="https://www.gov.uk/government/publications/strategic-noise-mapping-2022" target="_blank" rel="noopener">strategic noise mapping (2022)</a>,
 via the Environment Agency.
+Broadband coverage data from Ofcom's
+<a href="https://www.ofcom.org.uk/phones-and-broadband/coverage-and-speeds/coverage-and-speeds/" target="_blank" rel="noopener">Connected Nations</a> report.
 {% endblock %}
 
 {% block extra_head %}
