@@ -41,6 +41,7 @@ AMENITY_QUERIES = [
     ("pharmacy", '["amenity"="pharmacy"]', 1000),
     ("pub", '["amenity"="pub"]', 1000),
     ("hospital", '["amenity"="hospital"]', 3000),
+    ("parking", '["amenity"="parking"]', 800),
 ]
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
@@ -170,6 +171,11 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             categories["pub"].append({"name": name, "distance_m": distance_m})
         elif amenity == "hospital":
             categories["hospital"].append({"name": name, "distance_m": distance_m})
+        elif amenity == "parking":
+            categories["parking"].append({
+                "name": name, "distance_m": distance_m,
+                "fee": tags.get("fee", ""), "type": tags.get("parking", ""),
+            })
 
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])

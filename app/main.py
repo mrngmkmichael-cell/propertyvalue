@@ -15,8 +15,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, heritage, hpi,
-    mobile_coverage, noise, radon, rental, schools_db, valuation,
+    amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, food_hygiene,
+    heritage, hpi, mobile_coverage, noise, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -204,7 +204,11 @@ def _format_distance(value) -> str:
         m = float(value)
     except (TypeError, ValueError):
         return str(value)
-    return f"{int(m)} m" if m < 1000 else f"{m / 1000:.1f} km"
+    miles = m / 1609.344
+    if miles < 0.1:
+        yards = m / 0.9144
+        return f"{int(round(yards))} yd"
+    return f"{miles:.1f} mi"
 
 
 templates.env.filters["gbp"] = _format_gbp
@@ -291,7 +295,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         occupation_result, qualification_result, broadband_result, mobile_result,
         radon_result, heritage_result, comparables_result,
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
-        designations_result,
+        designations_result, food_hygiene_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         _epc_flow(canonical, house_number, context["epc_configured"]),
@@ -317,6 +321,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
         designations.check_all(lat, lon),
+        food_hygiene.nearby_ratings(lat, lon),
         return_exceptions=True,
     )
 
@@ -484,6 +489,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["environmental_flags"] = [
             d for d in designations_result.values() if d["group"] == "environmental" and d.get("present")
         ]
+
+    if isinstance(food_hygiene_result, Exception):
+        context["food_hygiene_error"] = True
+    else:
+        context["food_hygiene"] = food_hygiene_result
 
     # MEES compliance + lead-plumbing era, both computed from EPC data
     # already fetched above - no extra API calls needed.

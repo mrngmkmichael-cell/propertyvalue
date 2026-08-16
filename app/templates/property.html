@@ -478,7 +478,7 @@
         {% elif valuation %}
             <p class="section-sub">
                 Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
-                within about 1km, sold in the last {{ valuation.years_window }} years{% if valuation.matched_property_type %} of a similar property type{% endif %},
+                within about 0.6 miles, sold in the last {{ valuation.years_window }} years{% if valuation.matched_property_type %} of a similar property type{% endif %},
                 each scaled up for this area's house-price growth since its sale date so older sales
                 aren't taken at face value.
             </p>
@@ -507,7 +507,7 @@
         {% else %}
             <p class="notice">
                 Not enough recent nearby sales to estimate confidently — we need at least 5 sales
-                within about 1km from the last 5 years, and this area doesn't have that many.
+                within about 0.6 miles from the last 5 years, and this area doesn't have that many.
             </p>
         {% endif %}
             </section>
@@ -686,7 +686,7 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Flood warnings</h2>
-        <p class="section-sub">Active warnings and alerts within 10km — not a long-term flood risk score.</p>
+        <p class="section-sub">Active warnings and alerts within 6 miles — not a long-term flood risk score.</p>
         {% if flood_error %}
             <p class="notice notice-error">
                 The flood warning service didn't respond. Try again in a moment.
@@ -853,13 +853,16 @@
             </p>
         {% elif amenities %}
             <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
-            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals")] %}
+            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks")] %}
             <details class="amenity-group">
                 <summary>{{ amenities[key]|length }} {{ label }}</summary>
                 {% if amenities[key] %}
                     <ul class="amenity-list">
                         {% for a in amenities[key][:10] %}
-                        <li>{{ a.name }} <span class="amenity-distance">{{ a.distance_m | distance }}</span></li>
+                        <li>
+                            {{ a.name }}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% endif %}
+                            <span class="amenity-distance">{{ a.distance_m | distance }}</span>
+                        </li>
                         {% endfor %}
                     </ul>
                 {% else %}
@@ -867,6 +870,39 @@
                 {% endif %}
             </details>
             {% endfor %}
+        {% endif %}
+        <h3 class="subsection-heading">Food hygiene ratings</h3>
+        <p class="section-sub">
+            From the Food Standards Agency's Food Hygiene Rating Scheme, within half a mile — 0 is
+            urgent improvement needed, 5 is very good.
+        </p>
+        {% if food_hygiene_error %}
+            <p class="notice notice-error">
+                The food hygiene data service didn't respond. Try again in a moment.
+            </p>
+        {% elif food_hygiene %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Establishment</th>
+                        <th>Type</th>
+                        <th class="num">Rating</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in food_hygiene %}
+                    <tr>
+                        <td>{{ f.name }}</td>
+                        <td>{{ f.type }}</td>
+                        <td class="num"><span class="epc-badge epc-{{ 'a' if f.rating >= 4 else ('c' if f.rating >= 3 else 'g') }}">{{ f.rating }}</span></td>
+                        <td class="num">{{ f.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No rated establishments found nearby.</p>
         {% endif %}
             </section>
         </div>
@@ -963,7 +999,7 @@
             <section class="report-section">
         <h2>Getting around</h2>
         <p class="section-sub">
-            Rail and Tube stations first (closest 5 of each, within 3km), then the nearest bus stop
+            Rail and Tube stations first (closest 5 of each, within ~2 miles), then the nearest bus stop
             — prioritised in that order since trains and the Tube usually matter more for a commute
             than the nearest bus stop.
         </p>
@@ -1296,7 +1332,7 @@
             <section class="report-section">
         <h2>Listed buildings nearby</h2>
         <p class="section-sub">
-            Within 500m, from Historic England's National Heritage List — proximity only, not a
+            Within about a third of a mile, from Historic England's National Heritage List — proximity only, not a
             statement about this specific address. We don't match individual building footprints
             to addresses, so we can't say whether this property itself is listed.
         </p>
