@@ -219,13 +219,16 @@ a {
 }
 
 .hero {
-    position: relative;
-    overflow: hidden;
     padding: 0.5rem 0 0.5rem;
 }
 
 .hero-inner {
     position: relative;
+}
+
+.hero-glow {
+    position: relative;
+    overflow: hidden;
     z-index: 1;
 }
 
@@ -254,18 +257,18 @@ a {
 }
 
 .hero-blob-1 {
-    width: 420px;
-    height: 420px;
-    top: -200px;
-    right: -140px;
+    width: 280px;
+    height: 280px;
+    top: -110px;
+    right: -90px;
     background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
 }
 
 .hero-blob-2 {
-    width: 340px;
-    height: 340px;
-    bottom: -200px;
-    left: -120px;
+    width: 220px;
+    height: 220px;
+    bottom: -100px;
+    left: -70px;
     background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
     animation-delay: -9s;
 }

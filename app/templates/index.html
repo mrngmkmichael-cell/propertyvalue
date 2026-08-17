@@ -5,12 +5,14 @@
 
 {% block content %}
 <section class="hero">
-    <div class="hero-blob hero-blob-1"></div>
-    <div class="hero-blob hero-blob-2"></div>
     <div class="hero-inner">
-        <span class="kicker">Due diligence, made simple</span>
-        <h1>Know a property before you commit.</h1>
-        <p class="dek">Sold price history, energy rating, flood risk, crime, schools and more for any UK postcode — all in one place, sourced from official public data. No account, no paywall.</p>
+        <div class="hero-glow">
+            <div class="hero-blob hero-blob-1"></div>
+            <div class="hero-blob hero-blob-2"></div>
+            <span class="kicker">Due diligence, made simple</span>
+            <h1>Know a property before you commit.</h1>
+            <p class="dek">Sold price history, energy rating, flood risk, crime, schools and more for any UK postcode — all in one place, sourced from official public data. Just £4.99 per report.</p>
+        </div>
 
         <form class="search-form" action="/property" method="get">
             <div class="search-form-field">
@@ -36,8 +38,8 @@
         <span class="stat-label">Official data sources</span>
     </div>
     <div class="stat-card">
-        <span class="stat-number">£0</span>
-        <span class="stat-label">Always free, no account needed</span>
+        <span class="stat-number">£4.99</span>
+        <span class="stat-label">One-time fee, per property report</span>
     </div>
 </section>
 
