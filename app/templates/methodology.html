@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Why trust this — PropertyValue{% endblock %}
+
+{% block content %}
+<span class="kicker">Methodology</span>
+<h1>Why trust this?</h1>
+<p class="dek">
+    Every figure on this site traces back to a named official source — never a guess, never
+    a proprietary model dressed up as fact, never something scraped from a listings site
+    without a licence to use it. Here's exactly how that works, and just as importantly,
+    what we deliberately don't show and why.
+</p>
+
+<section class="landing-section">
+    <h2 class="landing-heading">How each check works</h2>
+    <p class="landing-subheading">
+        Almost everything in a report is queried live, at the moment you search, directly
+        against the government or public body that actually holds the data — not a cache of
+        scraped listings, not a third-party aggregator's re-packaging of someone else's numbers.
+        A handful of checks (school Ofsted ratings, census demographics, air quality) come from
+        periodic bulk files the relevant body publishes, imported on our own schedule rather
+        than live, since that's genuinely how those particular datasets are distributed —
+        every such case is labelled as such inline, in that card's own detail view.
+    </p>
+</section>
+
+<section class="landing-section landing-section-tinted">
+    <h2 class="landing-heading">What we deliberately don't show</h2>
+    <p class="landing-subheading">
+        The property-data market has real gaps that no free source fills. Rather than paper
+        over them with an estimate, a model, or someone else's licensed data, we say so
+        plainly. If it isn't listed below, it's because we found a genuine free source for it.
+    </p>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Council Tax band</span>
+            <span class="feature-card-blurb">Not published as free open data anywhere — the VOA's banding list is a paid product.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Live "for sale" listings</span>
+            <span class="feature-card-blurb">Rightmove/Zoopla listings are licensed data. We show sold-price history from HM Land Registry instead — the free, official equivalent.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">School catchment areas (most of the UK)</span>
+            <span class="feature-card-blurb">Most English school admissions don't have a fixed catchment at all — distance is only a tie-breaker, and it shifts yearly. We show real published boundaries where a council actually publishes them, and say "not covered" everywhere else, rather than modelling an estimate like paid competitors do.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Service charge / ground rent amounts</span>
+            <span class="feature-card-blurb">Private lease information, only disclosed to a solicitor during an actual purchase. We do show Freehold/Leasehold status from Land Registry, which is free.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Brownfield land status</span>
+            <span class="feature-card-blurb">Self-published per-council in ~300 different registers with no single live national feed.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Full planning application history</span>
+            <span class="feature-card-blurb">No unified national API across England's local planning authorities.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Actual sunlight hours / overshadowing</span>
+            <span class="feature-card-blurb">Needs LIDAR-based shadow modelling, not a live lookup. We show garden/frontage compass orientation instead, as an honest proxy.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Corporate/overseas property ownership</span>
+            <span class="feature-card-blurb">Land Registry's CCOD/OCOD dataset sits behind a licence click-through, not a straightforward open download.</span>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading">Every source we query</h2>
+    <div class="sources-strip" style="margin-top: 1.5rem;">
+        <div class="sources-strip-list">
+            <a href="https://www.gov.uk/government/organisations/land-registry" target="_blank" rel="noopener">HM Land Registry</a>
+            <a href="https://epc.opendatacommunities.org" target="_blank" rel="noopener">EPC Register</a>
+            <a href="https://www.gov.uk/government/organisations/environment-agency" target="_blank" rel="noopener">Environment Agency</a>
+            <a href="https://www.ons.gov.uk" target="_blank" rel="noopener">Office for National Statistics</a>
+            <a href="https://www.gov.uk/government/organisations/department-for-education" target="_blank" rel="noopener">Department for Education</a>
+            <a href="https://www.gov.uk/government/organisations/ofsted" target="_blank" rel="noopener">Ofsted</a>
+            <a href="https://www.ofcom.org.uk" target="_blank" rel="noopener">Ofcom</a>
+            <a href="https://www.gov.uk/government/organisations/natural-england" target="_blank" rel="noopener">Natural England</a>
+            <a href="https://historicengland.org.uk" target="_blank" rel="noopener">Historic England</a>
+            <a href="https://www.police.uk" target="_blank" rel="noopener">Police.uk</a>
+            <a href="https://www.food.gov.uk" target="_blank" rel="noopener">Food Standards Agency</a>
+            <a href="https://www.bgs.ac.uk" target="_blank" rel="noopener">British Geological Survey</a>
+            <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a>
+            <a href="https://uk-air.defra.gov.uk" target="_blank" rel="noopener">Defra</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

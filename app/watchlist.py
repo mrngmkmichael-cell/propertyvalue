@@ -34,6 +34,7 @@ def list_items(user_id: int) -> list[dict]:
                 "house_number": i.house_number,
                 "note": i.note,
                 "created_at": i.created_at,
+                "last_snapshot": i.last_snapshot,
             }
             for i in items
         ]
@@ -71,6 +72,14 @@ def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None
                 user_id=user_id, postcode=postcode, house_number=house_number, note=note,
             ))
         session.commit()
+
+
+def update_snapshot(item_id: int, snapshot_json: str) -> None:
+    with get_session() as session:
+        item = session.get(WatchlistItem, item_id)
+        if item:
+            item.last_snapshot = snapshot_json
+            session.commit()
 
 
 def remove_item(user_id: int, item_id: int) -> None:

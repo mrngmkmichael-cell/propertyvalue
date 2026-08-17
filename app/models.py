@@ -35,6 +35,11 @@ class WatchlistItem(Base):
     house_number: Mapped[str] = mapped_column(String(32), default="")
     note: Mapped[str] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    # A snapshot of the last-seen comparison summary (see main.py's
+    # _comparison_summary) as JSON text, so the watchlist page can
+    # flag what's changed since the user last looked - no email/cron
+    # infrastructure required, just a diff computed on each visit.
+    last_snapshot: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 

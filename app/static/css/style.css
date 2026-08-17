@@ -947,6 +947,87 @@ a {
 
 /* Tables */
 
+.dashboard-card-locked {
+    position: relative;
+    text-decoration: none;
+}
+
+.dashboard-card-locked .dashboard-card-status,
+.dashboard-card-locked .dashboard-card-substat {
+    filter: blur(5px);
+    user-select: none;
+}
+
+.dashboard-card-lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: var(--radius-lg);
+    backdrop-filter: blur(1px);
+}
+
+.dashboard-card-lock-overlay svg {
+    width: 20px;
+    height: 20px;
+    color: var(--accent);
+}
+
+.dashboard-card-lock-label {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-align: center;
+    padding: 0 0.75rem;
+}
+
+.watchlist-changes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.watchlist-change-chip {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #92400e;
+    background: var(--warn-bg);
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-pill);
+    padding: 0.2rem 0.6rem;
+}
+
+.price-chart {
+    position: relative;
+    margin: 1rem 0;
+    padding: 1rem 1rem 0.5rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+}
+
+.price-chart-tooltip {
+    position: absolute;
+    top: 0.5rem;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: #ffffff;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.3rem 0.6rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
 .compare-table-wrap {
     overflow-x: auto;
 }

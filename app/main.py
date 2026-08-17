@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import os
 import re
 from urllib.parse import quote, urlencode
@@ -15,6 +16,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import auth, db, school_shortlist, watchlist
+from app.services import _cache
 from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, crime, demographics, designations, epc,
@@ -143,6 +145,7 @@ async def _epc_flow(
 
 
 VALUATION_EPC_LOOKUP_CAP = 20  # bounds worst-case added EPC calls regardless of how many recent sales exist
+PROPERTY_SEARCH_CACHE_TTL_S = 3600  # how long a full report is reused for repeat views of the same address
 
 
 async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
@@ -264,6 +267,42 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     return summary
 
 
+def _snapshot_changes(old: dict, new: dict) -> list[str]:
+    """Human-readable differences between two _comparison_summary
+    snapshots of the same address, for the watchlist's "what's
+    changed since you last looked" - deliberately only flags
+    meaningfully-sized moves, not every minor fluctuation."""
+    changes = []
+
+    old_price, new_price = old.get("avg_price"), new.get("avg_price")
+    if old_price and new_price and old_price != new_price:
+        changes.append(f"Average sold price changed from {_format_gbp(old_price)} to {_format_gbp(new_price)}")
+
+    old_zone, new_zone = old.get("flood_zone"), new.get("flood_zone")
+    if old_zone and new_zone and old_zone != new_zone:
+        changes.append(f"Flood zone changed from {old_zone} to {new_zone}")
+
+    old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
+    if old_crime is not None and new_crime is not None and old_crime != new_crime:
+        diff = new_crime - old_crime
+        if abs(diff) >= 5:
+            changes.append(f"Recorded crime nearby {'up' if diff > 0 else 'down'} by {abs(diff)} since last checked")
+
+    old_growth, new_growth = old.get("price_growth_pct"), new.get("price_growth_pct")
+    if old_growth is not None and new_growth is not None:
+        # A small deadband around zero avoids flagging a "flip" that's really
+        # just rounding/measurement noise on a value hovering near 0% YoY -
+        # only count it once each side is clearly past the band.
+        deadband = 0.3
+        was_up, now_up = old_growth >= deadband, new_growth >= deadband
+        was_down, now_down = old_growth <= -deadband, new_growth <= -deadband
+        if (was_up and now_down) or (was_down and now_up):
+            direction = "growth turned negative" if new_growth < 0 else "prices are growing again"
+            changes.append(f"Area house-price trend flipped — {direction} ({new_growth:+.1f}% YoY)")
+
+    return changes
+
+
 def _imd_label(decile: int | None) -> str | None:
     if decile is None:
         return None
@@ -365,6 +404,11 @@ def index(request: Request):
     return templates.TemplateResponse(request, "index.html", base_context(request))
 
 
+@app.get("/methodology")
+def methodology(request: Request):
+    return templates.TemplateResponse(request, "methodology.html", base_context(request))
+
+
 @app.get("/property")
 async def property_search(request: Request, postcode: str = "", house_number: str = ""):
     postcode = postcode.strip()
@@ -401,6 +445,54 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # back-to-back after the external APIs had already finished was
     # adding real, measurable latency. asyncio.to_thread lets them
     # run on worker threads in parallel with everything else instead.
+    # The whole batch below is cached together, keyed on the exact
+    # postcode + house number searched - every field in it is derived
+    # purely from that (no per-user data), and repeat views of the
+    # same address are extremely common (someone re-checking a
+    # property, or several visitors looking at the same listing) but
+    # were re-running all ~28 upstream API/DB calls from scratch every
+    # single time, at 8-13s a page load. An hour of staleness is a
+    # reasonable trade for that - none of this data moves fast enough
+    # for a user to notice.
+    gather_cache_key = ("property_search_gather", canonical, house_number)
+    gather_results = _cache.get(gather_cache_key, PROPERTY_SEARCH_CACHE_TTL_S)
+    if gather_results is None:
+        gather_results = await asyncio.gather(
+            sold_prices_for_postcode(canonical),
+            _epc_flow(canonical, house_number, context["epc_configured"]),
+            flood.warnings_near(lat, lon),
+            crime.summary_near(lat, lon),
+            crime.summary_for_outcode(location["outcode"]),
+            amenities.nearby_amenities_and_station(lat, lon),
+            hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+            noise.noise_near(lat, lon),
+            asyncio.to_thread(schools_db.nearby_schools, lat, lon),
+            asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
+            asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(broadband.coverage_for_postcode, canonical),
+            asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", "")),
+            radon.risk_near(lat, lon),
+            heritage.nearby_listed_buildings(lat, lon),
+            _nearby_comparables(lat, lon),
+            asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
+            asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
+            designations.check_all(lat, lon),
+            food_hygiene.nearby_ratings(lat, lon),
+            flood_zones.zone_for(lat, lon),
+            google_places.nearby_food_ratings(lat, lon),
+            orientation.orientation_for(lat, lon),
+            asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
+            historic_landfill.check_near(lat, lon),
+            catchment.catchments_for(lat, lon),
+            return_exceptions=True,
+        )
+        _cache.set(gather_cache_key, gather_results)
+
     (
         tx_result, epc_flow_result, flood_result, crime_result, district_crime_result,
         amenities_result, hpi_result, noise_result,
@@ -410,40 +502,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
-    ) = await asyncio.gather(
-        sold_prices_for_postcode(canonical),
-        _epc_flow(canonical, house_number, context["epc_configured"]),
-        flood.warnings_near(lat, lon),
-        crime.summary_near(lat, lon),
-        crime.summary_for_outcode(location["outcode"]),
-        amenities.nearby_amenities_and_station(lat, lon),
-        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
-        noise.noise_near(lat, lon),
-        asyncio.to_thread(schools_db.nearby_schools, lat, lon),
-        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
-        asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(broadband.coverage_for_postcode, canonical),
-        asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", "")),
-        radon.risk_near(lat, lon),
-        heritage.nearby_listed_buildings(lat, lon),
-        _nearby_comparables(lat, lon),
-        asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
-        asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
-        designations.check_all(lat, lon),
-        food_hygiene.nearby_ratings(lat, lon),
-        flood_zones.zone_for(lat, lon),
-        google_places.nearby_food_ratings(lat, lon),
-        orientation.orientation_for(lat, lon),
-        asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
-        historic_landfill.check_near(lat, lon),
-        catchment.catchments_for(lat, lon),
-        return_exceptions=True,
-    )
+    ) = gather_results
 
     if isinstance(tx_result, Exception):
         context["tx_error"] = True
@@ -802,11 +861,25 @@ def logout(request: Request):
 
 
 @app.get("/watchlist")
-def watchlist_view(request: Request):
+async def watchlist_view(request: Request):
     context = base_context(request)
     if not context["current_user"]:
         return RedirectResponse("/login?next=/watchlist", status_code=303)
-    context["items"] = watchlist.list_items(context["current_user"]["id"])
+
+    items = watchlist.list_items(context["current_user"]["id"])
+    if items:
+        fresh_summaries = await asyncio.gather(
+            *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
+            return_exceptions=True,
+        )
+        for item, fresh in zip(items, fresh_summaries):
+            if isinstance(fresh, Exception):
+                item["changes"] = []
+                continue
+            old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
+            item["changes"] = _snapshot_changes(old, fresh) if old else []
+            watchlist.update_snapshot(item["id"], json.dumps(fresh, default=str))
+    context["items"] = items
     return templates.TemplateResponse(request, "watchlist.html", context)
 
 
