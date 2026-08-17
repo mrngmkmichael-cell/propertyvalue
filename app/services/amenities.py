@@ -46,6 +46,7 @@ AMENITY_QUERIES = [
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
 STATION_LIST_LIMIT = 5
+ROAD_LOOKUP_RADIUS_M = 800  # matches the parking search radius - just enough to name any unnamed car park
 
 
 def _haversine_m(lat1, lon1, lat2, lon2) -> float:
@@ -62,6 +63,23 @@ def _element_latlon(el: dict):
         return el["lat"], el["lon"]
     center = el.get("center")
     return (center["lat"], center["lon"]) if center else (None, None)
+
+
+def _nearest_road_name(lat: float, lon: float, roads: list[dict]) -> str | None:
+    """Most OSM car parks have no name of their own - rather than
+    show a bare "Unnamed", fall back to whichever named road passes
+    closest to the car park's own location. Checks distance to every
+    node along each road's geometry rather than a proper line-segment
+    projection - road nodes are dense enough in practice (well under
+    the radius searched here) that this is accurate enough without
+    the extra complexity."""
+    best_name, best_dist = None, float("inf")
+    for road in roads:
+        for pt in road["geometry"]:
+            d = _haversine_m(lat, lon, pt["lat"], pt["lon"])
+            if d < best_dist:
+                best_dist, best_name = d, road["name"]
+    return best_name
 
 
 def _is_healthy_response(data: dict) -> bool:
@@ -130,15 +148,26 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         f'nwr["station"="subway"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
         f'nwr["highway"="bus_stop"](around:{BUS_STOP_RADIUS_M},{lat},{lon});'
     )
-    query = f"[out:json][timeout:20];({clauses});out center tags;"
+    query = (
+        f"[out:json][timeout:20];({clauses});out center tags;"
+        f'way["highway"]["name"](around:{ROAD_LOOKUP_RADIUS_M},{lat},{lon});out geom;'
+    )
     elements = await _query_overpass(query)
 
     categories = {label: [] for label, _, _ in AMENITY_QUERIES}
     stations = {"rail": [], "tube": [], "bus": []}
+    roads = [
+        {"name": el["tags"]["name"], "geometry": el["geometry"]}
+        for el in elements
+        if "geometry" in el and el.get("tags", {}).get("highway") and el.get("tags", {}).get("name")
+    ]
+    unnamed_parking = []  # (entry dict, its own lat/lon) - road-name lookup happens after the main loop
 
     for el in elements:
+        if "geometry" in el:
+            continue  # a road fetched only for the name-lookup above, not an amenity/station
         tags = el.get("tags", {})
-        name = tags.get("name") or tags.get("ref") or "Unnamed"
+        name = tags.get("name") or tags.get("ref") or tags.get("addr:street") or "Unnamed"
         el_lat, el_lon = _element_latlon(el)
         if el_lat is None:
             continue
@@ -172,10 +201,17 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         elif amenity == "hospital":
             categories["hospital"].append({"name": name, "distance_m": distance_m})
         elif amenity == "parking":
-            categories["parking"].append({
+            entry = {
                 "name": name, "distance_m": distance_m,
                 "fee": tags.get("fee", ""), "type": tags.get("parking", ""),
-            })
+            }
+            categories["parking"].append(entry)
+            if name == "Unnamed":
+                unnamed_parking.append((entry, el_lat, el_lon))
+
+    for entry, p_lat, p_lon in unnamed_parking:
+        road_name = _nearest_road_name(p_lat, p_lon, roads)
+        entry["name"] = f"Parking off {road_name}" if road_name else "Unnamed car park"
 
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])

@@ -506,7 +506,8 @@
         {% elif valuation %}
             <p class="section-sub">
                 Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
-                within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}{% if valuation.matched_property_type %} of a similar property type{% endif %},
+                within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}
+                of a similar size (floor area within {{ valuation.floor_area_variance_pct }}% of this property's),
                 each scaled up for this area's house-price growth since its sale date so older sales
                 aren't taken at face value.
             </p>
@@ -532,10 +533,15 @@
                     </tr>
                 </tbody>
             </table>
+        {% elif not valuation_floor_area_known %}
+            <p class="notice">
+                We don't have a floor area for this property to compare against — try adding a house
+                or flat number to the search above to narrow it down to one address.
+            </p>
         {% else %}
             <p class="notice">
-                Not enough recent nearby sales to estimate confidently — we need at least 5 sales
-                within about 0.6 miles from the last year, and this area doesn't have that many.
+                No relevant sale record of a similar-sized property (within 5% floor area) to reference
+                within the last year.
             </p>
         {% endif %}
             </section>

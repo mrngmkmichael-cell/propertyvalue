@@ -7,35 +7,18 @@ valuation or mortgage-lender-grade figure.
 
 Method: take sold comparables within the search radius already used
 by the Comparables tab, keep only recent ones (old sales are a poor
-guide to today's value), inflate each by the area's latest year-on-year
-HPI growth rate compounded over the years since sale, then report the
-median plus an interquartile range. Comparables matching the subject
-property's broad type (flat/terraced/semi/detached) are preferred when
-there are enough of them, since a flat and a detached house selling
-"nearby" tell you very different things.
+guide to today's value) whose EPC floor area is within
+FLOOR_AREA_VARIANCE_PCT of the subject property's own floor area -
+two "nearby" sales can be a one-bed flat and a five-bed house, which
+tell you nothing about each other's value even in the same postcode -
+then inflate each by the area's latest year-on-year HPI growth rate
+compounded over the years since sale, and report the median plus an
+interquartile range.
 """
 import datetime
 
 RECENT_YEARS = 1
-MIN_COMPARABLES = 5
-
-
-def normalize_property_type(epc_dwelling_type: str | None) -> str | None:
-    """Map an EPC dwelling_type string (e.g. 'Mid-terrace house') onto
-    the same broad categories Land Registry uses (detached/semi-detached/
-    terraced/flat-maisonette), so the two can be compared."""
-    if not epc_dwelling_type:
-        return None
-    t = epc_dwelling_type.lower()
-    if "flat" in t or "maisonette" in t:
-        return "flat-maisonette"
-    if "semi" in t:
-        return "semi-detached"
-    if "detached" in t:
-        return "detached"
-    if "terrace" in t:
-        return "terraced"
-    return "other"
+FLOOR_AREA_VARIANCE_PCT = 5
 
 
 def _years_since(date_str: str | None) -> float | None:
@@ -58,13 +41,21 @@ def _percentile(sorted_values: list[float], pct: float) -> float:
 
 def estimate_value(
     comparables: list[dict],
-    subject_property_type: str | None,
+    subject_floor_area: float | None,
     annual_growth_pct: float | None,
 ) -> dict | None:
+    if not subject_floor_area:
+        return None
+
     growth_rate = (annual_growth_pct or 0) / 100
+    margin = subject_floor_area * (FLOOR_AREA_VARIANCE_PCT / 100)
+    low_area, high_area = subject_floor_area - margin, subject_floor_area + margin
 
     usable = []
     for tx in comparables:
+        floor_area = tx.get("floor_area")
+        if not floor_area or not (low_area <= floor_area <= high_area):
+            continue
         years = _years_since(tx.get("date"))
         if years is None or years > RECENT_YEARS:
             continue
@@ -77,14 +68,7 @@ def estimate_value(
         adjusted = amount * ((1 + growth_rate) ** years)
         usable.append({**tx, "adjusted_amount": adjusted})
 
-    matched_type = False
-    if subject_property_type:
-        same_type = [u for u in usable if u.get("property_type") == subject_property_type]
-        if len(same_type) >= MIN_COMPARABLES:
-            usable = same_type
-            matched_type = True
-
-    if len(usable) < MIN_COMPARABLES:
+    if not usable:
         return None
 
     amounts = sorted(u["adjusted_amount"] for u in usable)
@@ -94,6 +78,6 @@ def estimate_value(
         "low": round(_percentile(amounts, 0.25), -3),
         "high": round(_percentile(amounts, 0.75), -3),
         "sample_size": len(amounts),
-        "matched_property_type": matched_type,
         "years_window": RECENT_YEARS,
+        "floor_area_variance_pct": FLOOR_AREA_VARIANCE_PCT,
     }

@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import os
 import re
 from urllib.parse import quote, urlencode
@@ -140,16 +141,65 @@ async def _epc_flow(
     return certs, detail, extension_signal
 
 
+VALUATION_EPC_LOOKUP_CAP = 20  # bounds worst-case added EPC calls regardless of how many recent sales exist
+
+
 async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
     """Same nearby-postcodes-then-batch-query chain the Comparables tab
     uses, reused here to power the Valuation estimate on the Summary
     tab. Kept as a single coroutine so it can sit alongside everything
-    else in the main asyncio.gather despite its two-step dependency."""
+    else in the main asyncio.gather despite its two-step dependency.
+
+    Also looks up floor_area (via EPC) for the subset of comparables
+    within valuation.RECENT_YEARS, so the estimate can be narrowed to
+    similar-sized properties rather than just "sold nearby recently" -
+    a flat and a detached house a few doors apart tell you very
+    different things about value. This can't use the subject
+    property's own floor area to pre-filter (that comes from a
+    different concurrent branch of the same gather, not available
+    yet here) - the ±5% comparison happens afterwards, once both are
+    ready. Bounded to VALUATION_EPC_LOOKUP_CAP nearest recent sales so
+    a busy postcode can't balloon this into dozens of extra EPC calls."""
     nearby = await nearby_postcodes(lat, lon)
     distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
     transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
     for tx in transactions:
         tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+
+    cutoff = (datetime.date.today() - datetime.timedelta(days=365 * valuation.RECENT_YEARS)).isoformat()
+    recent = sorted(
+        (tx for tx in transactions if (tx.get("date") or "") >= cutoff),
+        key=lambda tx: tx["distance_m"] if tx["distance_m"] is not None else float("inf"),
+    )[:VALUATION_EPC_LOOKUP_CAP]
+    if not recent:
+        return transactions
+
+    postcodes_needed = {tx["postcode"] for tx in recent}
+    certs_by_postcode = dict(zip(
+        postcodes_needed,
+        await asyncio.gather(
+            *(epc.certificates_for_postcode(pc) for pc in postcodes_needed), return_exceptions=True
+        ),
+    ))
+
+    detail_targets = []
+    for tx in recent:
+        certs = certs_by_postcode.get(tx["postcode"])
+        if isinstance(certs, Exception) or not certs:
+            continue
+        token = _leading_token(tx["address"])
+        matches = [c for c in certs if _leading_token(c["address"]) == token]
+        if matches:
+            detail_targets.append((tx, matches[0]["certificate_number"]))  # certs are newest-first already
+
+    if detail_targets:
+        details = await asyncio.gather(
+            *(epc.certificate_detail(cert_no) for _, cert_no in detail_targets), return_exceptions=True
+        )
+        for (tx, _), detail in zip(detail_targets, details):
+            if not isinstance(detail, Exception) and detail:
+                tx["floor_area"] = detail.get("total_floor_area")
+
     return transactions
 
 
@@ -450,12 +500,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if isinstance(comparables_result, Exception):
         context["valuation_error"] = True
     else:
-        subject_type = valuation.normalize_property_type(
-            (context.get("property_detail") or {}).get("dwelling_type")
-        )
+        subject_floor_area = (context.get("property_detail") or {}).get("total_floor_area")
+        context["valuation_floor_area_known"] = bool(subject_floor_area)
         growth_area = (context.get("hpi") or {}).get("local_authority") or (context.get("hpi") or {}).get("region")
         context["valuation"] = valuation.estimate_value(
-            comparables_result, subject_type, growth_area["annual_change_pct"] if growth_area else None
+            comparables_result, subject_floor_area, growth_area["annual_change_pct"] if growth_area else None
         )
 
     if isinstance(age_profile_result, Exception):
