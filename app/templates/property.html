@@ -1227,6 +1227,34 @@
             No reliable free UK-wide catchment data exists, so we can't say whether this address falls
             within any school's admission area.
         </p>
+        {% if school_landscape %}
+        <div class="landscape-summary">
+            <h3 class="subsection-heading">Local school landscape</h3>
+            <p class="section-sub" style="margin-top: 0;">
+                Within {{ school_landscape.radius_km }} km: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
+                {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }}{% endif %}
+                {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} universit{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
+            </p>
+            <div class="landscape-stat-row">
+                {% for r in school_landscape.by_rating %}
+                <span class="landscape-stat {{ r.css }}"><strong>{{ r.count }}</strong> {{ r.label }}</span>
+                {% endfor %}
+            </div>
+            <div class="landscape-stat-row">
+                {% for p in school_landscape.by_phase %}
+                <span class="landscape-stat"><strong>{{ p.count }}</strong> {{ p.label }}</span>
+                {% endfor %}
+                {% if school_landscape.special_count %}
+                <span class="landscape-stat"><strong>{{ school_landscape.special_count }}</strong> Special school{{ 's' if school_landscape.special_count != 1 }}</span>
+                {% endif %}
+            </div>
+            {% if school_landscape.higher_education_names %}
+            <p class="section-sub">
+                {{ school_landscape.higher_education_names | join(', ') }}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
         {% if schools_error %}
             <p class="notice notice-error">
                 The schools data service didn't respond. Try again in a moment.

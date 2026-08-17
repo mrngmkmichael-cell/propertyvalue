@@ -1581,6 +1581,54 @@ a {
     font-size: 0.85rem;
 }
 
+.landscape-summary {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.landscape-stat-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.6rem 0;
+}
+
+.landscape-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+}
+
+.landscape-stat strong {
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.landscape-stat.ofsted-1, .landscape-stat.ofsted-2 {
+    background: var(--good-bg); color: var(--good); border-color: transparent;
+}
+
+.landscape-stat.ofsted-3 {
+    background: var(--warn-bg); color: var(--warn); border-color: transparent;
+}
+
+.landscape-stat.ofsted-4 {
+    background: var(--bad-bg); color: var(--bad); border-color: transparent;
+}
+
+.landscape-stat.ofsted-none {
+    background: var(--surface-2); color: var(--ink-soft); border-color: var(--border);
+}
+
 /* Dashboard overview grid */
 
 .dashboard-grid {

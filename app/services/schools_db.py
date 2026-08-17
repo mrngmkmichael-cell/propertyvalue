@@ -132,3 +132,93 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
                     school["fsm_eligible_pct"] = fsm_by_urn.get(school["urn"])
 
     return {name: schools for name, schools in grouped.items() if schools}
+
+
+RATING_ORDER = ["Outstanding", "Good", "Requires improvement", "Inadequate", "No current grade"]
+
+
+def school_landscape(lat: float, lon: float) -> dict | None:
+    """Aggregate counts for the local area, rather than a list of
+    individual schools - answers "is this a good area for schools"
+    rather than "which specific school". Same SEARCH_RADIUS_KM as
+    nearby_schools() so the two stay consistent with each other.
+
+    Special schools are counted separately from the Nursery/Primary/
+    Secondary phase breakdown: GIAS records almost all of them with
+    phase="Not applicable" rather than a real phase, so they'd
+    otherwise vanish from a phase-only breakdown entirely. Higher
+    education (universities) and further education (sixth-form/FE
+    colleges) are also GIAS establishment types, just not schools in
+    the phase-of-education sense, so they're counted separately too
+    rather than folded into "school" totals.
+    """
+    if not is_configured():
+        return None
+
+    box = SEARCH_RADIUS_KM * DEG_PER_KM
+    with get_session() as session:
+        rows = session.scalars(
+            select(School).where(
+                School.latitude.between(lat - box, lat + box),
+                School.longitude.between(lon - box, lon + box),
+            )
+        ).all()
+
+    by_rating = {label: 0 for label in RATING_ORDER}
+    by_phase = {name: 0 for name in GROUP_ORDER}
+    special_count = 0
+    further_education = 0
+    higher_education_names = []
+
+    for row in rows:
+        distance_km = _haversine_km(lat, lon, row.latitude, row.longitude)
+        if distance_km > SEARCH_RADIUS_KM:
+            continue
+
+        type_lower = (row.type_name or "").lower()
+        if type_lower == "higher education institutions":
+            higher_education_names.append(row.name)
+            continue  # not Ofsted-rated, not part of the school counts below
+        if type_lower == "further education":
+            further_education += 1
+            continue
+
+        if "special" in type_lower:
+            special_count += 1
+        else:
+            group = _phase_group(row.phase)
+            if not group:
+                continue  # e.g. "Offshore schools", "Miscellaneous" - not a recognised phase, excluded entirely rather than counted in ratings but not in by_phase
+            by_phase[group] += 1
+
+        # Ofsted's 2024 reform moved many inspections to an ungraded
+        # report-card format with no overall 1-4 grade - "no rating"
+        # here often means recently inspected under the new system,
+        # not "never inspected", so the label has to stay honest
+        # about that rather than implying Ofsted hasn't visited.
+        label = row.ofsted_rating_label or "No current grade"
+        by_rating[label] += 1
+
+    total_schools = sum(by_phase.values()) + special_count
+    if total_schools == 0 and not higher_education_names and further_education == 0:
+        return None
+
+    higher_education_names.sort()
+    rating_css = {
+        "Outstanding": "ofsted-1", "Good": "ofsted-2",
+        "Requires improvement": "ofsted-3", "Inadequate": "ofsted-4",
+        "No current grade": "ofsted-none",
+    }
+    return {
+        "radius_km": SEARCH_RADIUS_KM,
+        "total_schools": total_schools,
+        "by_rating": [
+            {"label": label, "count": by_rating[label], "css": rating_css[label]}
+            for label in RATING_ORDER if by_rating[label]
+        ],
+        "by_phase": [{"label": name, "count": by_phase[name]} for name in GROUP_ORDER if by_phase[name]],
+        "special_count": special_count,
+        "further_education": further_education,
+        "higher_education_count": len(higher_education_names),
+        "higher_education_names": higher_education_names,
+    }

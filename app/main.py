@@ -489,6 +489,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
             historic_landfill.check_near(lat, lon),
             catchment.catchments_for(lat, lon),
+            asyncio.to_thread(schools_db.school_landscape, lat, lon),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
@@ -502,6 +503,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
+        school_landscape_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -579,6 +581,9 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     else:
         context["schools"] = schools_result
         context["schools_total"] = sum(len(v) for v in schools_result.values())
+
+    if not isinstance(school_landscape_result, Exception) and school_landscape_result:
+        context["school_landscape"] = school_landscape_result
 
     if isinstance(deprivation_result, Exception):
         context["deprivation_error"] = True
