@@ -6,10 +6,11 @@ against DfE's separate school-establishment data by hand.
 """
 import math
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
 from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics
+from app.services import _cache
 
 SEARCH_RADIUS_KM = 5
 PER_GROUP_LIMIT = 3
@@ -209,9 +210,14 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "Requires improvement": "ofsted-3", "Inadequate": "ofsted-4",
         "No current grade": "ofsted-none",
     }
+    graded = total_schools - by_rating["No current grade"]
+    good_or_better_pct = (
+        round((by_rating["Outstanding"] + by_rating["Good"]) / graded * 100) if graded else None
+    )
     return {
         "radius_km": SEARCH_RADIUS_KM,
         "total_schools": total_schools,
+        "good_or_better_pct": good_or_better_pct,
         "by_rating": [
             {"label": label, "count": by_rating[label], "css": rating_css[label]}
             for label in RATING_ORDER if by_rating[label]
@@ -222,3 +228,36 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "higher_education_count": len(higher_education_names),
         "higher_education_names": higher_education_names,
     }
+
+
+NATIONAL_BASELINE_CACHE_KEY = "schools_national_baseline"
+NATIONAL_BASELINE_TTL_S = 86400  # a full table scan - the underlying data only changes on a periodic re-import
+
+
+def national_baseline() -> dict | None:
+    """% of graded schools nationally rated Outstanding or Good - the
+    context a single area's numbers need to actually mean something
+    ("38% Outstanding/Good" only tells a parent anything next to the
+    national figure). Excludes higher/further education (not
+    Ofsted-rated the same way) but otherwise counts every school with
+    a current grade, cached for a day since this is a full-table
+    aggregate."""
+    if not is_configured():
+        return None
+    cached = _cache.get(NATIONAL_BASELINE_CACHE_KEY, NATIONAL_BASELINE_TTL_S)
+    if cached is not None:
+        return cached
+
+    with get_session() as session:
+        rows = session.execute(
+            select(School.ofsted_rating, func.count()).where(School.ofsted_rating.is_not(None)).group_by(School.ofsted_rating)
+        ).all()
+
+    by_rating = dict(rows)
+    total = sum(by_rating.values())
+    if not total:
+        return None
+    good_or_better = by_rating.get(1, 0) + by_rating.get(2, 0)
+    result = {"good_or_better_pct": round(good_or_better / total * 100), "total_graded": total}
+    _cache.set(NATIONAL_BASELINE_CACHE_KEY, result)
+    return result

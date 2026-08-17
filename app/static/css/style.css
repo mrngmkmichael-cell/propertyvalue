@@ -1629,6 +1629,50 @@ a {
     background: var(--surface-2); color: var(--ink-soft); border-color: var(--border);
 }
 
+.school-guide-compare {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    align-items: start;
+}
+
+.school-guide-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 1.5rem;
+}
+
+.school-guide-area-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.school-guide-area-header h2 {
+    font-size: 1.15rem;
+    margin: 0;
+}
+
+.school-guide-headline-pct {
+    font-family: var(--font-sans);
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 0.25rem 0 0.5rem;
+}
+
+.school-guide-headline-pct-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-top: 0.25rem;
+}
+
 /* Dashboard overview grid */
 
 .dashboard-grid {

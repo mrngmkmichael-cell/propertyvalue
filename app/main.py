@@ -21,7 +21,7 @@ from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, crime, demographics, designations, epc,
     flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise,
-    orientation, radon, rental, schools_db, valuation,
+    orientation, place_search, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -932,6 +932,65 @@ def watchlist_remove(request: Request, item_id: int = Form(...)):
         return RedirectResponse("/login?next=/watchlist", status_code=303)
     watchlist.remove_item(user["id"], item_id)
     return RedirectResponse("/watchlist", status_code=303)
+
+
+# --- School Guide ---
+
+MAX_COMPARE_AREAS = 4
+
+
+def _parse_areas_param(raw: str) -> list[dict]:
+    areas = []
+    for chunk in raw.split("|"):
+        parts = chunk.split(",", 2)
+        if len(parts) != 3:
+            continue
+        try:
+            areas.append({"latitude": float(parts[0]), "longitude": float(parts[1]), "label": parts[2]})
+        except ValueError:
+            continue
+    return areas
+
+
+def _areas_param(areas: list[dict]) -> str:
+    return "|".join(f"{a['latitude']},{a['longitude']},{a['label']}" for a in areas)
+
+
+@app.get("/schools/guide")
+async def schools_guide(request: Request, q: str = "", areas: str = ""):
+    context = base_context(request)
+    context["query"] = q
+
+    area_list = _parse_areas_param(areas)
+
+    if q:
+        resolved = await place_search.resolve(q)
+        if resolved is None:
+            context["search_error"] = True
+        elif any(
+            abs(a["latitude"] - resolved["latitude"]) < 0.001 and abs(a["longitude"] - resolved["longitude"]) < 0.001
+            for a in area_list
+        ):
+            context["search_duplicate"] = True
+        else:
+            area_list.append(resolved)
+
+    area_list = area_list[:MAX_COMPARE_AREAS]
+
+    context["national_baseline"] = await asyncio.to_thread(schools_db.national_baseline)
+
+    areas_with_stats = []
+    for i, area in enumerate(area_list):
+        landscape = await asyncio.to_thread(schools_db.school_landscape, area["latitude"], area["longitude"])
+        remaining = area_list[:i] + area_list[i + 1:]
+        areas_with_stats.append({
+            **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
+        })
+    context["areas"] = areas_with_stats
+    context["areas_param"] = _areas_param(area_list)
+    context["can_add_more"] = len(area_list) < MAX_COMPARE_AREAS
+
+    return templates.TemplateResponse(request, "schools_guide.html", context)
 
 
 # --- School shortlist ---

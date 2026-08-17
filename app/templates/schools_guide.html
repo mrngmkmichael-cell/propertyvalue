@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}School Guide — PropertyValue{% endblock %}
+
+{% block content %}
+<span class="kicker">School Guide</span>
+<h1>Find and compare school quality by area</h1>
+<p class="dek">
+    Search any postcode or town to see the Ofsted picture for schools nearby — how many are
+    Outstanding, Good, or not currently graded, what types are in the area, and how it stacks up
+    against the national average. Add a second or third area to compare side by side.
+</p>
+
+{% if current_user %}
+<p class="section-sub"><a href="/schools/shortlist">My shortlisted schools</a></p>
+{% endif %}
+
+<form action="/schools/guide" method="get" class="search-form" style="margin: 1.5rem 0;">
+    <input type="hidden" name="areas" value="{{ areas_param }}">
+    <div class="search-form-field">
+        <label for="q">Postcode or town</label>
+        <input type="text" id="q" name="q" placeholder="e.g. Oxford, or OX1 1BP" autocomplete="off" required>
+    </div>
+    <button type="submit">{{ "Add area to compare" if areas else "Search" }}</button>
+</form>
+
+{% if search_error %}
+<p class="notice notice-error">
+    Couldn't find "{{ query }}" as a postcode or place name — try a UK postcode, postcode district
+    (e.g. "OX1"), or a town/city name.
+</p>
+{% elif search_duplicate %}
+<p class="notice">
+    That area's already in the comparison below.
+</p>
+{% endif %}
+
+{% if national_baseline %}
+<p class="section-sub">
+    Nationally, <strong>{{ national_baseline.good_or_better_pct }}%</strong> of graded schools are
+    rated Outstanding or Good.
+</p>
+{% endif %}
+
+{% if areas %}
+<div class="school-guide-compare">
+    {% for area in areas %}
+    <div class="school-guide-area">
+        <div class="school-guide-area-header">
+            <h2>{{ area.label }}</h2>
+            <a href="/schools/guide?areas={{ area.remove_areas_param | urlencode }}" class="shortlist-btn">Remove</a>
+        </div>
+        {% if area.landscape %}
+            {% if area.landscape.good_or_better_pct is not none %}
+            <p class="school-guide-headline-pct
+                {%- if national_baseline and area.landscape.good_or_better_pct >= national_baseline.good_or_better_pct %} hl-good
+                {%- elif national_baseline %} hl-warn{% endif %}">
+                {{ area.landscape.good_or_better_pct }}%
+                <span class="school-guide-headline-pct-label">Outstanding or Good</span>
+            </p>
+            {% endif %}
+            <p class="section-sub" style="margin-top: 0;">
+                Within {{ area.landscape.radius_km }} km: {{ area.landscape.total_schools }} school{{ 's' if area.landscape.total_schools != 1 }}
+                {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
+                {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
+            </p>
+            <div class="landscape-stat-row">
+                {% for r in area.landscape.by_rating %}
+                <span class="landscape-stat {{ r.css }}"><strong>{{ r.count }}</strong> {{ r.label }}</span>
+                {% endfor %}
+            </div>
+            <div class="landscape-stat-row">
+                {% for p in area.landscape.by_phase %}
+                <span class="landscape-stat"><strong>{{ p.count }}</strong> {{ p.label }}</span>
+                {% endfor %}
+                {% if area.landscape.special_count %}
+                <span class="landscape-stat"><strong>{{ area.landscape.special_count }}</strong> Special</span>
+                {% endif %}
+            </div>
+            {% if area.landscape.higher_education_names %}
+            <p class="section-sub">{{ area.landscape.higher_education_names | join(', ') }}</p>
+            {% endif %}
+        {% else %}
+            <p class="notice">
+                No Ofsted/GIAS school data available here — our schools database only covers England
+                (Scotland, Wales and Northern Ireland have their own separate inspection bodies we
+                don't yet source from).
+            </p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% elif not search_error %}
+<p class="notice">Search a postcode or town above to get started.</p>
+{% endif %}
+{% endblock %}
