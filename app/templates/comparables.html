@@ -78,6 +78,7 @@
                         <th>Address</th>
                         <th>Postcode</th>
                         <th>Type</th>
+                        <th>Tenure</th>
                         <th class="num">Price</th>
                         <th>Date</th>
                         <th class="num">Distance</th>
@@ -89,6 +90,7 @@
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.postcode }}</td>
                         <td class="capitalize">{{ tx.property_type or "—" }}</td>
+                        <td>{{ tx.tenure or "—" }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "—" }}</td>

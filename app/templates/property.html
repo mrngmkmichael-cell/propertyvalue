@@ -513,7 +513,7 @@
                         <th>Address</th>
                         <th>Date</th>
                         <th class="num">Price</th>
-                        <th>Type</th>
+                        <th>Tenure</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -522,11 +522,19 @@
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.category }}</td>
+                        <td>{{ tx.tenure or "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% if transactions and transactions[0].tenure == "Leasehold" %}
+            <p class="section-sub">
+                Most recent sale here was recorded as <strong>leasehold</strong> — expect a service
+                charge and ground rent. We can't show the amount: that's private lease information,
+                not published anywhere as open data (only disclosed to a buyer's solicitor during an
+                actual purchase, via an LPE1 form from the managing agent).
+            </p>
+            {% endif %}
         {% elif house_number and postcode_has_transactions %}
             <p class="notice">No sold transactions found for "{{ house_number }}" at this postcode.</p>
         {% else %}
