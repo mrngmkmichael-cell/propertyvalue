@@ -177,6 +177,16 @@
                 {% else %}Search with a house number{% endif %}
             </span>
         </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not orientation else 'ok' }}" data-modal-target="modal-orientation" data-animate>
+            <span class="dashboard-card-icon icon-orientation">{{ icons.icon('orientation') }}</span>
+            <span class="dashboard-card-title">Aspect</span>
+            <span class="dashboard-card-status">
+                {% if orientation %}Garden faces {{ orientation.rear_facing }}
+                {% elif orientation_error %}Data unavailable
+                {% else %}No estimate available{% endif %}
+            </span>
+        </button>
     </div>
 
     <h3 class="dashboard-category-heading">Risk &amp; Safety</h3>
@@ -709,6 +719,49 @@
                 {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
                 {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }})
                 — no meaningful change, no sign of an extension from this data.
+            </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-orientation">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Aspect</h2>
+        <p class="section-sub">
+            An estimate of which way the property faces, worked out from its building footprint and
+            the nearest named road — not a measured sunlight or overshadowing survey, and there's no
+            free UK data source for that (it needs proper LIDAR-based shadow modelling). This assumes
+            a typical street-fronting layout and doesn't account for trees or neighbouring buildings
+            that might shade the garden.
+        </p>
+        {% if orientation %}
+            <table class="tx-table">
+                <tbody>
+                    <tr>
+                        <td>Rear/garden-facing</td>
+                        <td class="num"><strong>{{ orientation.rear_facing }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Front-facing</td>
+                        <td class="num">{{ orientation.front_facing }}</td>
+                    </tr>
+                    <tr>
+                        <td>Nearest road</td>
+                        <td class="num">{{ orientation.nearest_road }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        {% elif orientation_error %}
+            <p class="notice notice-error">
+                The map data service didn't respond. Try again in a moment.
+            </p>
+        {% else %}
+            <p class="notice">
+                No estimate available — either no building footprint or no named road was found
+                nearby in OpenStreetMap for this location.
             </p>
         {% endif %}
             </section>

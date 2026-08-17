@@ -1164,6 +1164,7 @@ a {
 .icon-extension    { background: #f0f9ff; color: #0369a1; }
 .icon-planning     { background: #eef2ff; color: #3730a3; }
 .icon-environmental{ background: #ecfdf5; color: #047857; }
+.icon-orientation  { background: #fefce8; color: #a16207; }
 
 .radon-badge {
     display: inline-block;

@@ -18,7 +18,8 @@ from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
     amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood, flood_zones,
-    food_hygiene, google_places, heritage, hpi, mobile_coverage, noise, radon, rental, schools_db, valuation,
+    food_hygiene, google_places, heritage, hpi, mobile_coverage, noise, orientation, radon, rental, schools_db,
+    valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -348,6 +349,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         radon_result, heritage_result, comparables_result,
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
+        orientation_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         _epc_flow(canonical, house_number, context["epc_configured"]),
@@ -376,6 +378,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         food_hygiene.nearby_ratings(lat, lon),
         flood_zones.zone_for(lat, lon),
         google_places.nearby_food_ratings(lat, lon),
+        orientation.orientation_for(lat, lon),
         return_exceptions=True,
     )
 
@@ -558,6 +561,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["google_ratings_error"] = True
     else:
         context["google_ratings"] = google_ratings_result
+
+    if isinstance(orientation_result, Exception):
+        context["orientation_error"] = True
+    else:
+        context["orientation"] = orientation_result
 
     # MEES compliance + lead-plumbing era, both computed from EPC data
     # already fetched above - no extra API calls needed.
