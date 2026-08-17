@@ -146,6 +146,14 @@ def _crs_code(ref: str | None) -> str | None:
     return None
 
 
+def _line_badges(names: list[str]) -> list[dict]:
+    badges = []
+    for name in names:
+        color = transit_lines.color_for_line(name)
+        badges.append({"name": name, "color": color, "text_color": transit_lines.text_color_for(color)})
+    return badges
+
+
 def _station_mode(tags: dict) -> str:
     network = tags.get("network", "").lower()
     if tags.get("railway") == "tram_stop":
@@ -210,11 +218,23 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             # this, a stop like "Piccadilly Gardens" would appear
             # twice in the list.
             if not any(s["name"] == name for s in stations[mode]):
+                network = tags.get("network", "")
+                if mode == "tram":
+                    # Trams don't carry OSM's per-line `line` tag the
+                    # way National Rail/Underground stations do, and
+                    # there's no single reliably-documented per-branch
+                    # colour scheme for most UK tram networks either -
+                    # this shows one badge for the whole network (e.g.
+                    # "Manchester Metrolink") rather than guessing at
+                    # individual route colours.
+                    line_names = [network] if network else []
+                else:
+                    line_names = [n.strip() for n in tags.get("line", "").split(";") if n.strip()]
                 stations[mode].append({
                     "id": el["id"], "type": el["type"], "name": name,
-                    "network": tags.get("network", ""), "distance_m": distance_m,
+                    "network": network, "distance_m": distance_m,
                     "crs": _crs_code(tags.get("ref:crs")) if mode == "rail" else None,
-                    "line_tag": tags.get("line", ""),
+                    "lines": _line_badges(line_names),
                 })
         elif amenity == "restaurant":
             categories["restaurant"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
@@ -267,41 +287,9 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         candidates.sort(key=lambda s: s["distance_m"])
 
     nearest_by_mode = {mode: candidates[0] for mode, candidates in stations.items() if candidates}
-
-    # OSM tags the serving lines directly on the station node itself
-    # (a semicolon-separated `line` tag, e.g. "Central;Bakerloo;Victoria")
-    # - far more reliably populated than the public_transport=stop_area
-    # relations this used to query for in a second Overpass round-trip,
-    # which left plenty of real stations (Regent's Park among them)
-    # showing no lines at all.
-    for mode in ("rail", "tube"):
-        if mode not in nearest_by_mode:
-            continue
-        names = [n.strip() for n in nearest_by_mode[mode].get("line_tag", "").split(";") if n.strip()]
-        nearest_by_mode[mode]["lines"] = [
-            {
-                "name": name,
-                "color": transit_lines.color_for_line(name),
-                "text_color": transit_lines.text_color_for(transit_lines.color_for_line(name)),
-            }
-            for name in names
-        ]
-
-    # Trams don't carry OSM's per-line `line` tag the way National
-    # Rail/Underground stations do - there's no single per-branch
-    # colour scheme reliably documented for most UK tram networks
-    # either, so this shows one badge for the whole network (e.g.
-    # "Manchester Metrolink") rather than guessing at individual
-    # route colours.
-    if "tram" in nearest_by_mode:
-        network = nearest_by_mode["tram"].get("network", "")
-        if network:
-            color = transit_lines.color_for_line(network)
-            nearest_by_mode["tram"]["lines"] = [
-                {"name": network, "color": color, "text_color": transit_lines.text_color_for(color)}
-            ]
-        else:
-            nearest_by_mode["tram"]["lines"] = []
+    # nearest_by_mode holds the same dict objects as `stations` (not
+    # copies), so each already carries the "lines" badges attached
+    # when it was appended above - nothing further to do here.
 
     if "rail" in nearest_by_mode and nearest_by_mode["rail"].get("crs"):
         journeys = await rail_journey.fastest_to_cities(nearest_by_mode["rail"]["crs"])

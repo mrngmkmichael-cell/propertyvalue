@@ -1395,9 +1395,9 @@
                         <span class="transport-mode">{{ label }}</span>
                         <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
                         — {{ s.distance_m | distance }}
-                        {%- if stations[mode] and stations[mode].name == s.name and stations[mode].lines %}
+                        {%- if s.lines %}
                         <span class="line-badge-row">
-                            {% for line in stations[mode].lines %}
+                            {% for line in s.lines %}
                             <span class="line-badge" style="background:{{ line.color }};color:{{ line.text_color }};">{{ line.name }}</span>
                             {% endfor %}
                         </span>
