@@ -6,7 +6,7 @@ from urllib.parse import quote, urlencode
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -202,6 +202,66 @@ async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
                 tx["floor_area"] = detail.get("total_floor_area")
 
     return transactions
+
+
+async def _comparison_summary(postcode: str, house_number: str) -> dict:
+    """A lighter-weight version of property_search's big gather, for
+    the watchlist compare view - fetches only the handful of fields
+    shown in the comparison table, for however many properties the
+    user selected, rather than the full ~28-way gather per property
+    (which would multiply badly across several properties at once)."""
+    location = await lookup_postcode(postcode)
+    if location is None:
+        return {"postcode": postcode, "house_number": house_number, "not_found": True}
+
+    canonical = location["postcode"]
+    lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
+    epc_configured = epc.is_configured()
+
+    tx_result, epc_flow_result, flood_zone_result, crime_result, deprivation_result, hpi_result = (
+        await asyncio.gather(
+            sold_prices_for_postcode(canonical),
+            _epc_flow(canonical, house_number, epc_configured),
+            flood_zones.zone_for(lat, lon),
+            crime.summary_near(lat, lon),
+            asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+            hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+            return_exceptions=True,
+        )
+    )
+
+    summary = {
+        "postcode": canonical, "house_number": house_number,
+        "admin_district": location["admin_district"], "region": location["region"],
+    }
+
+    if not isinstance(tx_result, Exception):
+        summary["avg_price"] = _average_amount(_filter_by_address(tx_result, house_number))
+
+    if not isinstance(epc_flow_result, Exception) and epc_configured:
+        _, property_detail, _ = epc_flow_result
+        if property_detail:
+            summary["dwelling_type"] = property_detail.get("dwelling_type")
+            summary["floor_area"] = property_detail.get("total_floor_area")
+            summary["year_built"] = property_detail.get("year_built")
+
+    if not isinstance(flood_zone_result, Exception) and flood_zone_result:
+        summary["flood_zone"] = flood_zone_result["label"]
+
+    if not isinstance(crime_result, Exception) and crime_result:
+        summary["crime_total"] = crime_result.get("total")
+
+    if not isinstance(deprivation_result, Exception) and deprivation_result:
+        summary["imd_decile"] = deprivation_result.get("imd_decile")
+
+    if not isinstance(hpi_result, Exception) and hpi_result:
+        growth_area = hpi_result.get("local_authority") or hpi_result.get("region")
+        if growth_area:
+            summary["price_growth_pct"] = growth_area.get("annual_change_pct")
+            summary["price_growth_area"] = growth_area.get("name")
+
+    return summary
 
 
 def _imd_label(decile: int | None) -> str | None:
@@ -748,6 +808,27 @@ def watchlist_view(request: Request):
         return RedirectResponse("/login?next=/watchlist", status_code=303)
     context["items"] = watchlist.list_items(context["current_user"]["id"])
     return templates.TemplateResponse(request, "watchlist.html", context)
+
+
+@app.get("/watchlist/compare")
+async def watchlist_compare(request: Request, item_ids: list[int] = Query(default=[])):
+    context = base_context(request)
+    if not context["current_user"]:
+        return RedirectResponse("/login?next=/watchlist", status_code=303)
+
+    items = watchlist.get_items_by_ids(context["current_user"]["id"], item_ids)
+    if items:
+        summaries = await asyncio.gather(
+            *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
+            return_exceptions=True,
+        )
+        context["columns"] = [
+            {**item, "summary": ({"not_found": True} if isinstance(s, Exception) else s)}
+            for item, s in zip(items, summaries)
+        ]
+    else:
+        context["columns"] = []
+    return templates.TemplateResponse(request, "compare.html", context)
 
 
 @app.post("/watchlist/save")

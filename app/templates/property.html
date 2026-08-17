@@ -93,6 +93,55 @@
     {% endif %}
 
     {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
+    {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
+    {% set ext_status = 'attn' if (extension_signal and (extension_signal.likely_extended or extension_signal.change_pct <= -15)) else ('ok' if extension_signal else 'muted') %}
+    {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3)) else 'ok') %}
+    {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
+    {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
+    {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
+    {% set aq_worst = (air_quality.pollutants | map(attribute='times_guideline') | list | max) if air_quality and air_quality.pollutants else none %}
+    {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
+    {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
+    {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
+    {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
+    {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
+    {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
+    {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
+    {% set attention_items = [] %}
+    {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-hpi', 'Area house prices falling')) %}{% endif %}
+    {% if ext_status == 'attn' %}{% set _ = attention_items.append(('modal-extension', 'Possible unrecorded extension/change')) %}{% endif %}
+    {% if flood_status == 'attn' %}{% set _ = attention_items.append(('modal-flood', 'Flood risk')) %}{% endif %}
+    {% if noise_status == 'attn' %}{% set _ = attention_items.append(('modal-noise', 'High noise levels')) %}{% endif %}
+    {% if radon_status == 'attn' %}{% set _ = attention_items.append(('modal-radon', 'Elevated radon risk')) %}{% endif %}
+    {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
+    {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
+    {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
+    {% if environmental_count %}{% set _ = attention_items.append(('modal-environmental', 'Environmental designations present')) %}{% endif %}
+    {% if broadband_status == 'attn' %}{% set _ = attention_items.append(('modal-broadband', 'Poor broadband availability')) %}{% endif %}
+    {% if mobile_status == 'attn' %}{% set _ = attention_items.append(('modal-mobile', 'Poor mobile coverage')) %}{% endif %}
+    {% if deprivation_status == 'attn' %}{% set _ = attention_items.append(('modal-deprivation', 'Among more deprived areas nationally')) %}{% endif %}
+
+    {% if attention_items %}
+    <div class="attention-banner" data-animate>
+        <span class="attention-banner-count">{{ attention_items | length }}</span>
+        <div class="attention-banner-body">
+            <strong>{{ attention_items | length }} thing{{ "s" if attention_items | length != 1 else "" }} worth checking on this property</strong>
+            <div class="attention-banner-list">
+                {% for modal_id, label in attention_items %}
+                <button type="button" class="attention-banner-chip" data-modal-target="{{ modal_id }}">{{ label }}</button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="attention-banner attention-banner-clear" data-animate>
+        <span class="attention-banner-count">&#10003;</span>
+        <div class="attention-banner-body">
+            <strong>No major red flags found</strong> across flood, noise, radon, air quality, contamination, planning and area indicators.
+        </div>
+    </div>
+    {% endif %}
+
     <p class="section-sub">Tap a card to see the details in a popup.</p>
 
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
@@ -124,6 +173,12 @@
             {% endif %}
         </button>
 
+        <button type="button" class="dashboard-card status-ok" data-modal-target="modal-calculators" data-animate>
+            <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
+            <span class="dashboard-card-title">Costs &amp; Affordability</span>
+            <span class="dashboard-card-status">Stamp duty, mortgage, yield</span>
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}" data-modal-target="modal-rental" data-animate>
             <span class="dashboard-card-icon icon-rental">{{ icons.icon('rental') }}</span>
             <span class="dashboard-card-title">Rental Analysis</span>
@@ -137,7 +192,6 @@
             {% endif %}
         </button>
 
-        {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
         <button type="button" class="dashboard-card status-{{ prosperity_status }}" data-modal-target="modal-sold-price-history" data-animate>
             {% if prosperity_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
@@ -164,7 +218,6 @@
         </button>
         {% endif %}
 
-        {% set ext_status = 'attn' if (extension_signal and (extension_signal.likely_extended or extension_signal.change_pct <= -15)) else ('ok' if extension_signal else 'muted') %}
         <button type="button" class="dashboard-card status-{{ ext_status }}" data-modal-target="modal-extension" data-animate>
             {% if ext_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-extension">{{ icons.icon('extension') }}</span>
@@ -191,7 +244,6 @@
 
     <h3 class="dashboard-category-heading">Risk &amp; Safety</h3>
     <div class="dashboard-grid">
-        {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3)) else 'ok') %}
         <button type="button" class="dashboard-card status-{{ flood_status }}" data-modal-target="modal-flood" data-animate>
             {% if flood_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
@@ -208,8 +260,6 @@
             {% endif %}
         </button>
 
-        {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
-        {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
         {% set noise_max_label = ('Low' if noise_max < 55 else ('Moderate' if noise_max < 65 else ('High' if noise_max < 75 else 'Very high'))) if noise_max is not none else none %}
         <button type="button" class="dashboard-card status-{{ noise_status }}" data-modal-target="modal-noise" data-animate>
             {% if noise_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -235,7 +285,6 @@
             </span>
         </button>
 
-        {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
         <button type="button" class="dashboard-card status-{{ radon_status }}" data-modal-target="modal-radon" data-animate>
             {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
@@ -246,8 +295,6 @@
             </span>
         </button>
 
-        {% set aq_worst = (air_quality.pollutants | map(attribute='times_guideline') | list | max) if air_quality and air_quality.pollutants else none %}
-        {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
         <button type="button" class="dashboard-card status-{{ aq_status }}" data-modal-target="modal-air-quality" data-animate>
             {% if aq_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-air-quality">{{ icons.icon('air_quality') }}</span>
@@ -259,7 +306,6 @@
             </span>
         </button>
 
-        {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
         <button type="button" class="dashboard-card status-{{ landfill_status }}" data-modal-target="modal-historic-landfill" data-animate>
             {% if landfill_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-landfill">{{ icons.icon('landfill') }}</span>
@@ -276,7 +322,6 @@
 
     <h3 class="dashboard-category-heading">Planning &amp; Heritage</h3>
     <div class="dashboard-grid">
-        {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
         <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if planning_count else 'ok') }}" data-modal-target="modal-planning" data-animate>
             {% if planning_count %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
@@ -288,7 +333,6 @@
             </span>
         </button>
 
-        {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
         <button type="button" class="dashboard-card status-{{ 'muted' if designations_error else ('attn' if environmental_count else 'ok') }}" data-modal-target="modal-environmental" data-animate>
             {% if environmental_count %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-environmental">{{ icons.icon('environmental') }}</span>
@@ -352,7 +396,6 @@
             </span>
         </button>
 
-        {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
         <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
             {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-broadband">{{ icons.icon('broadband') }}</span>
@@ -363,7 +406,6 @@
             </span>
         </button>
 
-        {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
         <button type="button" class="dashboard-card status-{{ mobile_status }}" data-modal-target="modal-mobile" data-animate>
             {% if mobile_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
@@ -386,7 +428,6 @@
             </span>
         </button>
 
-        {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
         <button type="button" class="dashboard-card status-{{ deprivation_status }}" data-modal-target="modal-deprivation" data-animate>
             {% if deprivation_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-deprivation">{{ icons.icon('deprivation') }}</span>
@@ -591,6 +632,78 @@
                 within the last year.
             </p>
         {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-calculators">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Costs &amp; affordability</h2>
+        <p class="section-sub">
+            Estimates only, computed in your browser from published tax bands (correct as of April
+            2025 — always confirm the exact figure on
+            <a href="https://www.gov.uk/stamp-duty-land-tax" target="_blank" rel="noopener">gov.uk</a>,
+            <a href="https://www.revenue.scot/land-buildings-transaction-tax" target="_blank" rel="noopener">Revenue Scotland</a>
+            or <a href="https://www.gov.uk/land-transaction-tax" target="_blank" rel="noopener">the WRA</a>
+            before exchanging, since Budgets change these). Not financial advice.
+        </p>
+
+        <h3 class="subsection-heading">Stamp duty / transaction tax</h3>
+        <div class="calc-grid">
+            <div class="search-form-field">
+                <label for="calc-price">Purchase price (£)</label>
+                <input type="number" id="calc-price" min="0" step="1000"
+                       value="{{ (valuation.estimate if valuation else (avg_price if avg_price else 300000)) | int }}">
+            </div>
+            <div class="search-form-field">
+                <label for="calc-buyer-type">Buyer type</label>
+                <select id="calc-buyer-type">
+                    <option value="standard">Home mover</option>
+                    <option value="ftb">First-time buyer</option>
+                    <option value="additional">Additional property (buy-to-let/second home)</option>
+                </select>
+            </div>
+            <div class="search-form-field">
+                <label for="calc-region">Tax region</label>
+                <select id="calc-region">
+                    <option value="england-ni">England / Northern Ireland (SDLT)</option>
+                    <option value="scotland">Scotland (LBTT)</option>
+                    <option value="wales">Wales (LTT)</option>
+                </select>
+            </div>
+        </div>
+        <p class="calc-result">Estimated tax: <strong id="calc-sdlt-result">£0</strong> (<span id="calc-sdlt-rate">0%</span> effective rate)</p>
+
+        <h3 class="subsection-heading">Mortgage repayment</h3>
+        <div class="calc-grid">
+            <div class="search-form-field">
+                <label for="calc-deposit-pct">Deposit (%)</label>
+                <input type="number" id="calc-deposit-pct" min="0" max="100" step="1" value="15">
+            </div>
+            <div class="search-form-field">
+                <label for="calc-rate">Interest rate (% APR)</label>
+                <input type="number" id="calc-rate" min="0" max="20" step="0.1" value="4.5">
+            </div>
+            <div class="search-form-field">
+                <label for="calc-term">Term (years)</label>
+                <input type="number" id="calc-term" min="1" max="40" step="1" value="25">
+            </div>
+        </div>
+        <p class="calc-result">Est. monthly repayment: <strong id="calc-mortgage-result">£0</strong>
+            <span class="section-sub">(on a £<span id="calc-loan-amount">0</span> loan)</span>
+        </p>
+
+        <h3 class="subsection-heading">Buy-to-let gross yield</h3>
+        <div class="calc-grid">
+            <div class="search-form-field">
+                <label for="calc-rent">Expected monthly rent (£)</label>
+                <input type="number" id="calc-rent" min="0" step="10"
+                       value="{{ rental.price_all | int if rental and rental.price_all else 0 }}">
+            </div>
+        </div>
+        <p class="calc-result">Gross yield: <strong id="calc-yield-result">—</strong></p>
             </section>
         </div>
     </dialog>
@@ -2042,6 +2155,124 @@ Listed building data from Historic England's
                 });
             });
         });
+    })();
+</script>
+
+<script>
+    (function () {
+        const priceInput = document.getElementById('calc-price');
+        if (!priceInput) return;
+
+        const buyerType = document.getElementById('calc-buyer-type');
+        const region = document.getElementById('calc-region');
+        const sdltResult = document.getElementById('calc-sdlt-result');
+        const sdltRate = document.getElementById('calc-sdlt-rate');
+        const depositPct = document.getElementById('calc-deposit-pct');
+        const rateInput = document.getElementById('calc-rate');
+        const termInput = document.getElementById('calc-term');
+        const mortgageResult = document.getElementById('calc-mortgage-result');
+        const loanAmountEl = document.getElementById('calc-loan-amount');
+        const rentInput = document.getElementById('calc-rent');
+        const yieldResult = document.getElementById('calc-yield-result');
+
+        // Marginal tax bands: [upper bound (Infinity for the top band), rate].
+        // Rates as of April 2025 - always changeable by a future Budget.
+        const BANDS = {
+            'england-ni': {
+                standard: [[125000, 0], [250000, 0.02], [925000, 0.05], [1500000, 0.10], [Infinity, 0.12]],
+                ftb: [[300000, 0], [500000, 0.05]],  // above 500k: no relief, falls back to standard
+                ftbCeiling: 500000,
+                surcharge: 0.05,
+            },
+            scotland: {
+                standard: [[145000, 0], [250000, 0.02], [325000, 0.05], [750000, 0.10], [Infinity, 0.12]],
+                ftb: [[175000, 0], [250000, 0.02], [325000, 0.05], [750000, 0.10], [Infinity, 0.12]],
+                ftbCeiling: Infinity,
+                surcharge: 0.08,
+            },
+            wales: {
+                standard: [[225000, 0], [400000, 0.06], [750000, 0.075], [1500000, 0.10], [Infinity, 0.12]],
+                ftb: null,  // no first-time-buyer relief in Wales
+                ftbCeiling: 0,
+                surcharge: 0.05,
+            },
+        };
+
+        function marginalTax(price, bands) {
+            let tax = 0;
+            let lower = 0;
+            for (const [upper, rate] of bands) {
+                if (price <= lower) break;
+                const taxableInBand = Math.min(price, upper) - lower;
+                tax += taxableInBand * rate;
+                lower = upper;
+            }
+            return tax;
+        }
+
+        function calcTransactionTax() {
+            const price = Math.max(0, Number(priceInput.value) || 0);
+            const table = BANDS[region.value];
+            const type = buyerType.value;
+
+            let bands = table.standard;
+            if (type === 'ftb' && table.ftb && price <= table.ftbCeiling) {
+                bands = table.ftb;
+            }
+            let tax = marginalTax(price, bands);
+
+            if (type === 'additional') {
+                tax += price * table.surcharge;
+            }
+
+            sdltResult.textContent = '£' + Math.round(tax).toLocaleString('en-GB');
+            sdltRate.textContent = price > 0 ? (tax / price * 100).toFixed(1) + '%' : '0%';
+        }
+
+        function calcMortgage() {
+            const price = Math.max(0, Number(priceInput.value) || 0);
+            const deposit = price * (Math.min(100, Math.max(0, Number(depositPct.value) || 0)) / 100);
+            const loan = Math.max(0, price - deposit);
+            const annualRate = Math.max(0, Number(rateInput.value) || 0) / 100;
+            const months = Math.max(1, Number(termInput.value) || 1) * 12;
+            const monthlyRate = annualRate / 12;
+
+            let monthly;
+            if (monthlyRate === 0) {
+                monthly = loan / months;
+            } else {
+                monthly = loan * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+            }
+
+            loanAmountEl.textContent = Math.round(loan).toLocaleString('en-GB');
+            mortgageResult.textContent = '£' + Math.round(monthly).toLocaleString('en-GB') + '/mo';
+        }
+
+        function calcYield() {
+            const price = Math.max(0, Number(priceInput.value) || 0);
+            const rent = Math.max(0, Number(rentInput.value) || 0);
+            if (price <= 0 || rent <= 0) {
+                yieldResult.textContent = '—';
+                return;
+            }
+            const annualRent = rent * 12;
+            yieldResult.textContent = (annualRent / price * 100).toFixed(2) + '%';
+        }
+
+        function recalcAll() {
+            calcTransactionTax();
+            calcMortgage();
+            calcYield();
+        }
+
+        [priceInput, buyerType, region, depositPct, rateInput, termInput, rentInput].forEach(function (el) {
+            el.addEventListener('input', recalcAll);
+        });
+
+        const countryToRegion = { 'Scotland': 'scotland', 'Wales': 'wales' };
+        region.value = countryToRegion[{{ (location.country or "") | tojson }}] || 'england-ni';
+
+        recalcAll();
     })();
 </script>
 

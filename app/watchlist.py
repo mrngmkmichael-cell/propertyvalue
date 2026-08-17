@@ -39,6 +39,22 @@ def list_items(user_id: int) -> list[dict]:
         ]
 
 
+def get_items_by_ids(user_id: int, item_ids: list[int]) -> list[dict]:
+    with get_session() as session:
+        items = session.scalars(
+            select(WatchlistItem).where(
+                WatchlistItem.user_id == user_id,
+                WatchlistItem.id.in_(item_ids),
+            )
+        )
+        by_id = {
+            i.id: {"id": i.id, "postcode": i.postcode, "house_number": i.house_number, "note": i.note}
+            for i in items
+        }
+        # Preserve the order the user selected them in, not DB order.
+        return [by_id[i] for i in item_ids if i in by_id]
+
+
 def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None:
     with get_session() as session:
         existing = session.scalar(

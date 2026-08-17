@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Compare properties — PropertyValue{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/watchlist">&larr; Back to watchlist</a>
+
+<span class="kicker">Side by side</span>
+<h1>Compare properties</h1>
+
+{% if not columns %}
+    <p class="notice">No properties selected — go back to your watchlist and tick 2 or 3 to compare.</p>
+{% else %}
+    <div class="compare-table-wrap">
+    <table class="tx-table compare-table">
+        <thead>
+            <tr>
+                <th></th>
+                {% for col in columns %}
+                <th>
+                    <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
+                        {{ col.house_number ~ ", " ~ col.postcode if col.house_number else col.postcode }}
+                    </a>
+                    {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Average sold price</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.avg_price | gbp if col.summary.avg_price else "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Area price growth (YoY)</strong></td>
+                {% for col in columns %}
+                <td>
+                    {% if col.summary.price_growth_pct is defined and col.summary.price_growth_pct is not none %}
+                        {{ "%+.1f"|format(col.summary.price_growth_pct) }}% ({{ col.summary.price_growth_area }})
+                    {% else %}—{% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Dwelling type</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.dwelling_type or "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Floor area</strong></td>
+                {% for col in columns %}
+                <td>{{ (col.summary.floor_area ~ " m²") if col.summary.floor_area else "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Built</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.year_built or "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Flood zone</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.flood_zone or "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Crime nearby</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.crime_total ~ " recorded" if col.summary.crime_total is not none else "—" }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Deprivation decile</strong></td>
+                {% for col in columns %}
+                <td>{{ (col.summary.imd_decile ~ " of 10") if col.summary.imd_decile else "—" }}</td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">
+        A quick side-by-side snapshot only — open each property's full report for the complete picture.
+    </p>
+{% endif %}
+{% endblock %}

@@ -7,9 +7,11 @@
 <h1>Your watchlist</h1>
 
 {% if items %}
+    <form action="/watchlist/compare" method="get">
     <table class="tx-table">
         <thead>
             <tr>
+                <th class="num"></th>
                 <th>Address</th>
                 <th>Note</th>
                 <th>Saved</th>
@@ -19,6 +21,7 @@
         <tbody>
             {% for item in items %}
             <tr>
+                <td class="num"><input type="checkbox" name="item_ids" value="{{ item.id }}"></td>
                 <td>
                     <a href="/property?postcode={{ item.postcode }}{% if item.house_number %}&house_number={{ item.house_number }}{% endif %}">
                         {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
@@ -36,6 +39,11 @@
             {% endfor %}
         </tbody>
     </table>
+    <p class="section-sub" style="margin-top: 1rem;">
+        <button type="submit">Compare selected</button>
+        Pick 2 or 3 properties to compare side by side.
+    </p>
+    </form>
 {% else %}
     <p class="notice">Nothing saved yet. Search for a postcode and use "Save to watchlist" on its report.</p>
 {% endif %}
