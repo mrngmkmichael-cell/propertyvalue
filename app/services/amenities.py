@@ -42,6 +42,10 @@ AMENITY_QUERIES = [
     ("pub", '["amenity"="pub"]', 1000),
     ("hospital", '["amenity"="hospital"]', 3000),
     ("parking", '["amenity"="parking"]', 800),
+    ("ev_charging", '["amenity"="charging_station"]', 2000),
+    ("gp", '["amenity"="doctors"]', 2000),
+    ("dentist", '["amenity"="dentist"]', 2000),
+    ("green_space", '["leisure"~"park|recreation_ground|nature_reserve"]', 1500),
 ]
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
@@ -208,6 +212,23 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             categories["parking"].append(entry)
             if name == "Unnamed":
                 unnamed_parking.append((entry, el_lat, el_lon))
+        elif amenity == "charging_station":
+            connector_tags = {
+                "socket:type2": "Type 2", "socket:type2_combo": "CCS",
+                "socket:chademo": "CHAdeMO", "socket:tesla_standard": "Tesla",
+            }
+            categories["ev_charging"].append({
+                "name": name, "distance_m": distance_m,
+                "connectors": [label for key, label in connector_tags.items() if tags.get(key)],
+            })
+        elif amenity == "doctors":
+            categories["gp"].append({"name": name, "distance_m": distance_m})
+        elif amenity == "dentist":
+            categories["dentist"].append({"name": name, "distance_m": distance_m})
+        elif tags.get("leisure") in ("park", "recreation_ground", "nature_reserve"):
+            categories["green_space"].append({
+                "name": name, "distance_m": distance_m, "type": tags.get("leisure"),
+            })
 
     for entry, p_lat, p_lon in unnamed_parking:
         road_name = _nearest_road_name(p_lat, p_lon, roads)

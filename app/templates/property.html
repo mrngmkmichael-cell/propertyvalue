@@ -245,6 +245,33 @@
                 {% else %}No data available{% endif %}
             </span>
         </button>
+
+        {% set aq_worst = (air_quality.pollutants | map(attribute='times_guideline') | list | max) if air_quality and air_quality.pollutants else none %}
+        {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
+        <button type="button" class="dashboard-card status-{{ aq_status }}" data-modal-target="modal-air-quality" data-animate>
+            {% if aq_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-air-quality">{{ icons.icon('air_quality') }}</span>
+            <span class="dashboard-card-title">Air Quality</span>
+            <span class="dashboard-card-status">
+                {% if air_quality_error %}Data unavailable
+                {% elif air_quality %}{{ aq_worst }}&times; WHO guideline at worst
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
+        <button type="button" class="dashboard-card status-{{ landfill_status }}" data-modal-target="modal-historic-landfill" data-animate>
+            {% if landfill_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-landfill">{{ icons.icon('landfill') }}</span>
+            <span class="dashboard-card-title">Historic Contamination</span>
+            <span class="dashboard-card-status">
+                {% if historic_landfill_error %}Data unavailable
+                {% elif historic_landfill and historic_landfill.status == 'on_site' %}On a former landfill
+                {% elif historic_landfill and historic_landfill.status == 'nearby' %}Former landfill nearby
+                {% elif historic_landfill %}None nearby
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
     </div>
 
     <h3 class="dashboard-category-heading">Planning &amp; Heritage</h3>
@@ -959,14 +986,14 @@
             </p>
         {% elif amenities %}
             <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
-            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks")] %}
+            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces")] %}
             <details class="amenity-group">
                 <summary>{{ amenities[key]|length }} {{ label }}</summary>
                 {% if amenities[key] %}
                     <ul class="amenity-list">
                         {% for a in amenities[key][:10] %}
                         <li>
-                            {{ a.name }}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% endif %}
+                            {{ a.name }}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
                             <span class="amenity-distance">{{ a.distance_m | distance }}</span>
                         </li>
                         {% endfor %}
@@ -1462,6 +1489,84 @@
             <p><span class="radon-badge radon-{{ radon.class }}">Class {{ radon.class }}</span> {{ radon.label }}</p>
         {% else %}
             <p class="notice">No radon data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-air-quality">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Air quality</h2>
+        <p class="section-sub">
+            Modelled annual mean background concentrations from Defra's national Pollution Climate
+            Mapping (1km grid), compared against the World Health Organization's 2021 Air Quality
+            Guideline levels — a stricter, health-based reference point than the UK's own (much
+            older) legal limits.
+        </p>
+        {% if air_quality_error %}
+            <p class="notice notice-error">
+                The air quality data service didn't respond. Try again in a moment.
+            </p>
+        {% elif air_quality %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Pollutant</th>
+                        <th class="num">Concentration</th>
+                        <th class="num">WHO guideline</th>
+                        <th class="num">vs. guideline</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in air_quality.pollutants %}
+                    <tr>
+                        <td>{{ p.label }}</td>
+                        <td class="num">{{ p.value }} &micro;g/m&sup3;</td>
+                        <td class="num">{{ p.who_guideline }} &micro;g/m&sup3;</td>
+                        <td class="num">{{ p.times_guideline }}&times;</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p class="section-sub">{{ air_quality.year }} modelled data.</p>
+        {% else %}
+            <p class="notice">No air quality data available for this location.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-historic-landfill">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Historic contamination</h2>
+        <p class="section-sub">
+            From the Environment Agency's Historic Landfill Sites dataset — old (mostly pre-1994
+            regulation) tipping sites, which can carry ground gas or leachate risks for decades
+            after closing. Being nearby isn't automatically disqualifying, but it's worth asking
+            about site investigation reports and any gas protection measures if buying.
+        </p>
+        {% if historic_landfill_error %}
+            <p class="notice notice-error">
+                The historic landfill data service didn't respond. Try again in a moment.
+            </p>
+        {% elif historic_landfill and historic_landfill.status == 'on_site' %}
+            <p class="notice notice-error">
+                <strong>This property sits on or overlaps a former landfill site</strong>
+                ("{{ historic_landfill.site_name }}").
+            </p>
+        {% elif historic_landfill and historic_landfill.status == 'nearby' %}
+            <p class="notice">
+                <strong>A former landfill site is nearby</strong> — "{{ historic_landfill.site_name }}",
+                about {{ historic_landfill.distance_m | distance }} away.
+            </p>
+        {% elif historic_landfill %}
+            <p class="notice">No historic landfill sites found nearby.</p>
+        {% else %}
+            <p class="notice">No data available for this location.</p>
         {% endif %}
             </section>
         </div>

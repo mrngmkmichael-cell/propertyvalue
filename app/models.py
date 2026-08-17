@@ -406,6 +406,28 @@ class BroadbandCoverage(Base):
     below_uso_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class AirQuality(Base):
+    """Modelled annual mean background air pollutant concentrations,
+    by 1km British National Grid cell - from Defra's national
+    Pollution Climate Mapping (PCM), the standard UK modelled
+    background dataset (used alongside real monitoring stations for
+    official air quality reporting). Covers every 1km square in the
+    UK, not just where a monitor happens to sit. Populated by
+    scripts/import_air_quality.py. Republished annually - grid_easting/
+    grid_northing are the cell's centre point (British National Grid,
+    EPSG:27700), matching what postcodes.io already returns per
+    postcode, so no separate coordinate conversion is needed.
+    """
+    __tablename__ = "air_quality"
+
+    grid_easting: Mapped[int] = mapped_column(Integer, primary_key=True)
+    grid_northing: Mapped[int] = mapped_column(Integer, primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, default=0)
+    no2_ug_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pm25_ug_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pm10_ug_m3: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
 class MobileCoverage(Base):
     """Mobile signal coverage, by local authority (laua) - from the
     same Ofcom Connected Nations 2025 release as BroadbandCoverage,
