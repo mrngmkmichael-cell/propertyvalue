@@ -1,0 +1,108 @@
+"""School catchment-area boundaries - is this point inside a
+published catchment/priority-admission zone for a specific school?
+
+There is no national UK catchment-area dataset, and largely can't be
+one: most English school admissions (especially secondaries, mostly
+academies now) don't have a fixed catchment at all - places are
+allocated by priority criteria (looked-after children, siblings,
+faith criteria) with home-to-school distance only used as a
+tie-breaker within each priority band, so the effective "catchment"
+shifts every year with how many people applied. Commercial sites that
+show a catchment area are showing a *modelled estimate* from historic
+admission distances (itself not published anywhere reusable - even
+dedicated open-data projects investigating this concluded no council
+publishes real distance-offered data, and had to statistically model
+it), usually behind a paywall - not a real boundary.
+
+This module only covers the minority of (mostly Scottish, plus a
+handful of English) local authorities that buck that trend and
+publish real fixed catchment-area polygons as open GIS data - queried
+live via ArcGIS FeatureServer/MapServer point-in-polygon "intersects"
+queries, the same pattern as designations.py. Everywhere else, this
+correctly reports no result rather than guessing - matching the
+project's standing rule against faking data no free source actually
+has.
+"""
+import asyncio
+
+import httpx
+
+from app.services import _cache
+
+CACHE_TTL_S = 86400 * 30  # catchment boundaries are reissued at most annually
+
+# (local authority, phase, query URL incl. layer index, school-name field)
+_SOURCES = [
+    ("Sheffield", "Primary",
+     "https://sheffieldcitycouncil.cloud.esriuk.com/server/rest/services/AGOL/OpenData/FeatureServer/1", "catchment"),
+    ("Sheffield", "Secondary",
+     "https://sheffieldcitycouncil.cloud.esriuk.com/server/rest/services/AGOL/OpenData/FeatureServer/3", "catchment"),
+    ("Hampshire", "Primary/Junior",
+     "https://services-eu1.arcgis.com/JZryykSnmiY7YI6X/arcgis/rest/services/School_Catchments_7_10/FeatureServer/0",
+     "School"),
+    ("Hampshire", "Secondary",
+     "https://services-eu1.arcgis.com/JZryykSnmiY7YI6X/arcgis/rest/services/School_Catchments_11_16/FeatureServer/0",
+     "School"),
+    ("City of York", "Primary",
+     "https://maps.york.gov.uk/arcgis/rest/services/Public/EducationLearning/MapServer/3", "SchName"),
+    ("City of York", "Secondary",
+     "https://maps.york.gov.uk/arcgis/rest/services/Public/EducationLearning/MapServer/4", "Schname"),
+    ("City of Edinburgh", "Secondary (non-denominational)",
+     "https://edinburghcouncilmaps.info/arcgis/rest/services/AdminBoundaries/MiscBoundaries/MapServer/6", "SCHOOL"),
+    ("City of Edinburgh", "Secondary (Roman Catholic)",
+     "https://edinburghcouncilmaps.info/arcgis/rest/services/AdminBoundaries/MiscBoundaries/MapServer/7",
+     "SCH_NAME"),
+    ("Stirling", "Primary/Secondary",
+     "https://services.arcgis.com/GlZ1P6ksdiXNYhvC/arcgis/rest/services/SchoolsAndCatchments/FeatureServer/0",
+     "School"),
+    ("Aberdeen City", "Primary (non-denominational)",
+     "https://services5.arcgis.com/0sktPVp3t1LvXc9z/arcgis/rest/services/Primary_School_Catchments/FeatureServer/58",
+     "NAME"),
+    ("North Lanarkshire", "Primary (non-denominational)",
+     "https://services-eu1.arcgis.com/9edRUxcMgH07BEka/arcgis/rest/services/"
+     "Non_Denominational_Primary_Catchments_View/FeatureServer/0", "name"),
+    ("North Lanarkshire", "Primary (denominational)",
+     "https://services-eu1.arcgis.com/9edRUxcMgH07BEka/arcgis/rest/services/"
+     "Denominational_Primary_Catchments_View/FeatureServer/0", "name"),
+]
+
+
+async def _query_source(client: httpx.AsyncClient, url: str, name_field: str, lat: float, lon: float) -> list[str]:
+    params = {
+        "geometry": f"{lon},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": name_field,
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    response = await client.get(f"{url}/query", params=params, timeout=10)
+    response.raise_for_status()
+    features = response.json().get("features", [])
+    return sorted({
+        f["attributes"].get(name_field) for f in features if f["attributes"].get(name_field)
+    })
+
+
+async def catchments_for(lat: float, lon: float) -> list[dict]:
+    key = _cache.coord_key("catchment", lat, lon)
+    cached = _cache.get(key, CACHE_TTL_S)
+    if cached is not None:
+        return cached
+
+    async with httpx.AsyncClient() as client:
+        results = await asyncio.gather(
+            *(_query_source(client, url, field, lat, lon) for _, _, url, field in _SOURCES),
+            return_exceptions=True,
+        )
+
+    matches = []
+    for (authority, phase, _, _), result in zip(_SOURCES, results):
+        if isinstance(result, Exception) or not result:
+            continue
+        for school_name in result:
+            matches.append({"authority": authority, "phase": phase, "school_name": school_name})
+
+    _cache.set(key, matches)
+    return matches

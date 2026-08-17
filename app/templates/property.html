@@ -322,6 +322,16 @@
             </span>
         </button>
 
+        <button type="button" class="dashboard-card status-{{ 'muted' if catchment_error else ('ok' if catchment else 'muted') }}" data-modal-target="modal-catchment" data-animate>
+            <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
+            <span class="dashboard-card-title">School Catchment Areas</span>
+            <span class="dashboard-card-status">
+                {% if catchment_error %}Data unavailable
+                {% elif catchment %}In {{ catchment | length }} catchment{{ "s" if catchment | length != 1 else "" }}
+                {% else %}Not covered for this area{% endif %}
+            </span>
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-modal-target="modal-amenities" data-animate>
             <span class="dashboard-card-icon icon-amenities">{{ icons.icon('amenities') }}</span>
             <span class="dashboard-card-title">Nearby Essentials</span>
@@ -1156,6 +1166,53 @@
             {% endfor %}
         {% else %}
             <p class="notice">No schools found nearby.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-catchment">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>School catchment areas</h2>
+        <p class="section-sub">
+            There's no free UK-wide catchment-area dataset — most English school admissions
+            (especially secondaries, mostly academies now) don't have a fixed catchment at all;
+            places go by priority criteria with distance only as a tie-breaker, which shifts every
+            year. This checks real, published catchment-boundary polygons from the handful of local
+            authorities that do openly publish them, rather than an estimate from historic admission
+            data. If nothing shows below, it doesn't mean there's no catchment here — it most likely
+            means this area's council isn't one of the ones that publishes this data openly.
+        </p>
+        {% if catchment_error %}
+            <p class="notice notice-error">
+                The catchment data service didn't respond. Try again in a moment.
+            </p>
+        {% elif catchment %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>School</th>
+                        <th>Phase</th>
+                        <th>Local authority</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in catchment %}
+                    <tr>
+                        <td>{{ c.school_name }}</td>
+                        <td>{{ c.phase }}</td>
+                        <td>{{ c.authority }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">
+                Not covered — this address isn't in one of the local authorities that publishes
+                open catchment-area data.
+            </p>
         {% endif %}
             </section>
         </div>

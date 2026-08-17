@@ -17,9 +17,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth, db, school_shortlist, watchlist
 from app.models import User
 from app.services import (
-    air_quality, amenities, area_stats, broadband, census_stats, crime, demographics, designations, epc, flood,
-    flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
-    radon, rental, schools_db, valuation,
+    air_quality, amenities, area_stats, broadband, catchment, census_stats, crime, demographics, designations, epc,
+    flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise,
+    orientation, radon, rental, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -349,7 +349,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         radon_result, heritage_result, comparables_result,
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
-        orientation_result, air_quality_result, historic_landfill_result,
+        orientation_result, air_quality_result, historic_landfill_result, catchment_result,
     ) = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         _epc_flow(canonical, house_number, context["epc_configured"]),
@@ -381,6 +381,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         orientation.orientation_for(lat, lon),
         asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
         historic_landfill.check_near(lat, lon),
+        catchment.catchments_for(lat, lon),
         return_exceptions=True,
     )
 
@@ -578,6 +579,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["historic_landfill_error"] = True
     else:
         context["historic_landfill"] = historic_landfill_result
+
+    if isinstance(catchment_result, Exception):
+        context["catchment_error"] = True
+    else:
+        context["catchment"] = catchment_result
 
     # MEES compliance + lead-plumbing era, both computed from EPC data
     # already fetched above - no extra API calls needed.
