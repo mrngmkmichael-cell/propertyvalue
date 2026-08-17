@@ -187,7 +187,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             further_education += 1
             continue
 
-        entry = {"name": row.name, "type": row.type_name, "distance_m": round(distance_km * 1000)}
+        entry = {
+            "urn": row.urn, "name": row.name, "type": row.type_name,
+            "distance_m": round(distance_km * 1000), "phase_group": None,
+            "ofsted_rating": row.ofsted_rating, "ofsted_rating_label": row.ofsted_rating_label,
+            "ofsted_inspection_date": row.ofsted_inspection_date,
+        }
 
         if "special" in type_lower:
             special_count += 1
@@ -196,6 +201,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             group = _phase_group(row.phase)
             if not group:
                 continue  # e.g. "Offshore schools", "Miscellaneous" - not a recognised phase, excluded entirely rather than counted in ratings but not in by_phase
+            entry["phase_group"] = group
             by_phase[group] += 1
             schools_by_phase[group].append(entry)
 
@@ -211,6 +217,38 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     total_schools = sum(by_phase.values()) + special_count
     if total_schools == 0 and not higher_education_names and further_education == 0:
         return None
+
+    # Every included school appears in exactly one rating bucket, so
+    # that's the complete set to enrich - one batched IN-query each
+    # rather than a query per school, same pattern as nearby_schools().
+    all_entries = [e for bucket in schools_by_rating.values() for e in bucket]
+    all_urns = [e["urn"] for e in all_entries]
+    if all_urns:
+        with get_session() as session:
+            ks4_by_urn = {r.urn: r for r in session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(all_urns)))}
+            ks2_by_urn = {r.urn: r for r in session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(all_urns)))}
+            fsm_by_urn = {
+                r.urn: r.fsm_eligible_pct
+                for r in session.scalars(select(SchoolCharacteristics).where(SchoolCharacteristics.urn.in_(all_urns)))
+            }
+        for e in all_entries:
+            e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
+            if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
+                r = ks4_by_urn[e["urn"]]
+                e["exam_results"] = {
+                    "academic_year": r.academic_year, "headline_label": "Progress 8",
+                    "headline_value": r.progress8_score, "grade5_english_maths_pct": r.grade5_english_maths_pct,
+                    "pupil_count": r.pupil_count,
+                }
+            elif e["phase_group"] == "Primary" and e["urn"] in ks2_by_urn:
+                r = ks2_by_urn[e["urn"]]
+                e["exam_results"] = {
+                    "academic_year": r.academic_year, "headline_label": "Meeting expected standard",
+                    "headline_value": r.rwm_expected_pct, "grade5_english_maths_pct": None,
+                    "pupil_count": r.pupil_count,
+                }
+            else:
+                e["exam_results"] = None
 
     higher_education_names.sort()
     rating_css = {

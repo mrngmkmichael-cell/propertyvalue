@@ -1686,6 +1686,33 @@ a {
     font-style: italic;
 }
 
+.school-detail summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.school-detail summary::-webkit-details-marker {
+    display: none;
+}
+
+.school-detail summary:hover strong {
+    text-decoration: underline;
+}
+
+.school-detail-panel {
+    margin: 0.4rem 0 0.3rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
+.school-detail-panel p {
+    margin: 0.25rem 0;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
 .school-guide-compare {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

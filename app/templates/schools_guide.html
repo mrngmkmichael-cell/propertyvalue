@@ -70,7 +70,32 @@
                     <summary><strong>{{ r.count }}</strong> {{ r.label }}</summary>
                     <ul class="landscape-stat-schools">
                         {% for s in r.schools[:25] %}
-                        <li><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</li>
+                        <li>
+                            <details class="school-detail">
+                                <summary><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</summary>
+                                <div class="school-detail-panel">
+                                    <p>
+                                        {% if s.ofsted_rating_label %}
+                                        <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                                        {%- if s.ofsted_inspection_date %} <span class="exam-year">inspected {{ s.ofsted_inspection_date }}</span>{% endif %}
+                                        {% else %}
+                                        <span class="ofsted-none">No current Ofsted grade</span>
+                                        {% endif %}
+                                    </p>
+                                    {% if s.exam_results %}
+                                    <p>
+                                        {{ s.exam_results.headline_label }}:
+                                        <strong>{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</strong>
+                                        <span class="exam-year">({{ s.exam_results.academic_year }})</span>
+                                        {%- if s.exam_results.grade5_english_maths_pct is not none %} · Grade 5+ English &amp; Maths: {{ s.exam_results.grade5_english_maths_pct }}%{% endif %}
+                                    </p>
+                                    {% endif %}
+                                    {% if s.fsm_eligible_pct is not none %}
+                                    <p>Free school meals eligible: {{ s.fsm_eligible_pct }}%</p>
+                                    {% endif %}
+                                </div>
+                            </details>
+                        </li>
                         {% endfor %}
                         {% if r.schools | length > 25 %}
                         <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} more</li>
@@ -85,7 +110,32 @@
                     <summary><strong>{{ p.count }}</strong> {{ p.label }}</summary>
                     <ul class="landscape-stat-schools">
                         {% for s in p.schools[:25] %}
-                        <li><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</li>
+                        <li>
+                            <details class="school-detail">
+                                <summary><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</summary>
+                                <div class="school-detail-panel">
+                                    <p>
+                                        {% if s.ofsted_rating_label %}
+                                        <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                                        {%- if s.ofsted_inspection_date %} <span class="exam-year">inspected {{ s.ofsted_inspection_date }}</span>{% endif %}
+                                        {% else %}
+                                        <span class="ofsted-none">No current Ofsted grade</span>
+                                        {% endif %}
+                                    </p>
+                                    {% if s.exam_results %}
+                                    <p>
+                                        {{ s.exam_results.headline_label }}:
+                                        <strong>{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</strong>
+                                        <span class="exam-year">({{ s.exam_results.academic_year }})</span>
+                                        {%- if s.exam_results.grade5_english_maths_pct is not none %} · Grade 5+ English &amp; Maths: {{ s.exam_results.grade5_english_maths_pct }}%{% endif %}
+                                    </p>
+                                    {% endif %}
+                                    {% if s.fsm_eligible_pct is not none %}
+                                    <p>Free school meals eligible: {{ s.fsm_eligible_pct }}%</p>
+                                    {% endif %}
+                                </div>
+                            </details>
+                        </li>
                         {% endfor %}
                         {% if p.schools | length > 25 %}
                         <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} more</li>
@@ -98,7 +148,32 @@
                     <summary><strong>{{ area.landscape.special_count }}</strong> Special</summary>
                     <ul class="landscape-stat-schools">
                         {% for s in area.landscape.special_schools[:25] %}
-                        <li><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</li>
+                        <li>
+                            <details class="school-detail">
+                                <summary><strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}</summary>
+                                <div class="school-detail-panel">
+                                    <p>
+                                        {% if s.ofsted_rating_label %}
+                                        <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                                        {%- if s.ofsted_inspection_date %} <span class="exam-year">inspected {{ s.ofsted_inspection_date }}</span>{% endif %}
+                                        {% else %}
+                                        <span class="ofsted-none">No current Ofsted grade</span>
+                                        {% endif %}
+                                    </p>
+                                    {% if s.exam_results %}
+                                    <p>
+                                        {{ s.exam_results.headline_label }}:
+                                        <strong>{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</strong>
+                                        <span class="exam-year">({{ s.exam_results.academic_year }})</span>
+                                        {%- if s.exam_results.grade5_english_maths_pct is not none %} · Grade 5+ English &amp; Maths: {{ s.exam_results.grade5_english_maths_pct }}%{% endif %}
+                                    </p>
+                                    {% endif %}
+                                    {% if s.fsm_eligible_pct is not none %}
+                                    <p>Free school meals eligible: {{ s.fsm_eligible_pct }}%</p>
+                                    {% endif %}
+                                </div>
+                            </details>
+                        </li>
                         {% endfor %}
                         {% if area.landscape.special_schools | length > 25 %}
                         <li class="landscape-stat-schools-more">+{{ area.landscape.special_schools | length - 25 }} more</li>
