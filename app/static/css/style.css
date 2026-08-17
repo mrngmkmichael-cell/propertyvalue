@@ -706,7 +706,8 @@ a {
 
 .search-form label,
 .stacked-form label,
-.address-filter-field label {
+.address-filter-field label,
+.calc-grid label {
     display: block;
     font-family: var(--font-sans);
     font-size: 0.75rem;
@@ -719,8 +720,11 @@ a {
 
 .search-form input,
 .stacked-form input,
-.address-filter-field input {
+.address-filter-field input,
+.calc-grid input,
+.calc-grid select {
     width: 100%;
+    box-sizing: border-box;
     padding: 0.65rem 0.85rem;
     background: var(--surface);
     border: 1px solid var(--border);
@@ -737,7 +741,9 @@ a {
 
 .search-form input:focus,
 .stacked-form input:focus,
-.address-filter-field input:focus {
+.address-filter-field input:focus,
+.calc-grid input:focus,
+.calc-grid select:focus {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
@@ -905,12 +911,14 @@ a {
 
 .calc-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
     margin: 0.5rem 0;
 }
 
 .calc-grid .search-form-field {
+    flex: none;
+    min-width: 0;
     margin: 0;
 }
 
