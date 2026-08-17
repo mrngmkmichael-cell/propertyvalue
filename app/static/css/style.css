@@ -964,11 +964,14 @@ a {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    gap: 0.35rem;
-    background: rgba(255, 255, 255, 0.55);
+    justify-content: flex-end;
+    gap: 0.3rem;
+    padding-bottom: 1rem;
+    /* Transparent over the icon/title (kept crisp, unblurred, to sell
+       what's behind the lock) - only washes out the lower half, where
+       the actual blurred status/substat text sits. */
+    background: linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.85) 58%);
     border-radius: var(--radius-lg);
-    backdrop-filter: blur(1px);
 }
 
 .dashboard-card-lock-overlay svg {
