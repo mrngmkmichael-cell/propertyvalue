@@ -143,8 +143,16 @@ async def certificate_detail(certificate_number: str) -> dict | None:
             year_built = CONSTRUCTION_AGE_BANDS.get(part["construction_age_band"])
             break
 
+    # dwelling_type is usually a plain string, but some certificates
+    # (observed on a SAP/new-build record) return a localized-value
+    # object instead - {"value": "Detached house", "language": "1"} -
+    # handle both shapes rather than leaking the raw object into the UI.
+    dwelling_type = data.get("dwelling_type", "")
+    if isinstance(dwelling_type, dict):
+        dwelling_type = dwelling_type.get("value", "")
+
     return {
-        "dwelling_type": data.get("dwelling_type", ""),
+        "dwelling_type": dwelling_type,
         "total_floor_area": data.get("total_floor_area"),
         "habitable_room_count": data.get("habitable_room_count"),
         "year_built": year_built,
