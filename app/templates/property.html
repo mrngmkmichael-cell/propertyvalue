@@ -506,7 +506,7 @@
         {% elif valuation %}
             <p class="section-sub">
                 Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
-                within about 0.6 miles, sold in the last {{ valuation.years_window }} years{% if valuation.matched_property_type %} of a similar property type{% endif %},
+                within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}{% if valuation.matched_property_type %} of a similar property type{% endif %},
                 each scaled up for this area's house-price growth since its sale date so older sales
                 aren't taken at face value.
             </p>
@@ -535,7 +535,7 @@
         {% else %}
             <p class="notice">
                 Not enough recent nearby sales to estimate confidently — we need at least 5 sales
-                within about 0.6 miles from the last 5 years, and this area doesn't have that many.
+                within about 0.6 miles from the last year, and this area doesn't have that many.
             </p>
         {% endif %}
             </section>
@@ -944,6 +944,41 @@
                         <td>{{ f.type }}</td>
                         <td class="num"><span class="epc-badge epc-{{ 'a' if f.rating >= 4 else ('c' if f.rating >= 3 else 'g') }}">{{ f.rating }}</span></td>
                         <td class="num">{{ f.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No rated establishments found nearby.</p>
+        {% endif %}
+        <h3 class="subsection-heading">Google ratings</h3>
+        <p class="section-sub">
+            Public star ratings from Google for nearby restaurants and cafes, within half a mile —
+            a "what's it like" signal, separate from the official hygiene scores above.
+        </p>
+        {% if not google_ratings_configured %}
+            <p class="notice">Not set up on this deployment.</p>
+        {% elif google_ratings_error %}
+            <p class="notice notice-error">
+                The Google ratings service didn't respond. Try again in a moment.
+            </p>
+        {% elif google_ratings %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Establishment</th>
+                        <th>Type</th>
+                        <th class="num">Rating</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in google_ratings %}
+                    <tr>
+                        <td>{{ g.name }}</td>
+                        <td>{{ g.type }}</td>
+                        <td class="num"><span class="epc-badge epc-{{ 'a' if g.rating >= 4 else ('c' if g.rating >= 3 else 'g') }}">{{ g.rating }}{% if g.rating_count %} <span class="section-sub">({{ g.rating_count }})</span>{% endif %}</span></td>
+                        <td class="num">{{ g.distance_m | distance if g.distance_m is not none else "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

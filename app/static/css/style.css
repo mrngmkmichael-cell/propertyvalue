@@ -269,7 +269,7 @@ a {
 }
 
 .stat-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px) scale(1.02);
     box-shadow: var(--shadow-md);
 }
 
@@ -327,7 +327,7 @@ a {
 }
 
 .feature-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px) scale(1.02);
     box-shadow: var(--shadow-md);
 }
 
@@ -363,7 +363,7 @@ a {
 }
 
 .step-card:hover {
-    transform: translateY(-3px);
+    transform: translateY(-4px) scale(1.02);
     box-shadow: var(--shadow-md);
 }
 
@@ -1090,7 +1090,7 @@ a {
 
 .dashboard-card:hover {
     border-color: var(--border-strong);
-    transform: translateY(-3px);
+    transform: translateY(-4px) scale(1.02);
     box-shadow: var(--shadow-lg);
 }
 

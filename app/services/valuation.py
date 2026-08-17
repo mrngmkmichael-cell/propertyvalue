@@ -16,7 +16,7 @@ there are enough of them, since a flat and a detached house selling
 """
 import datetime
 
-RECENT_YEARS = 5
+RECENT_YEARS = 1
 MIN_COMPARABLES = 5
 
 
