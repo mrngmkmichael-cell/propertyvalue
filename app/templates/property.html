@@ -1355,15 +1355,15 @@
             <section class="report-section">
         <h2>Getting around</h2>
         <p class="section-sub">
-            Rail and Tube stations first (closest 5 of each, within ~2 miles), then the nearest bus stop
-            — prioritised in that order since trains and the Tube usually matter more for a commute
-            than the nearest bus stop.
+            Rail, Tube and tram stations first (closest 5 of each, within ~2 miles), then the nearest
+            bus stop — prioritised in that order since trains, the Tube and trams usually matter more
+            for a commute than the nearest bus stop.
         </p>
         {% if amenities_error %}
             <p class="notice notice-error">
                 The amenities data service didn't respond. Try again in a moment.
             </p>
-        {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.bus) %}
+        {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.tram or stations_list.bus) %}
             {% if stations.rail and stations.rail.city_journeys is defined %}
                 {% if stations.rail.city_journeys %}
                 <ul class="transport-list city-journeys">
@@ -1381,8 +1381,12 @@
                     {{ stations.rail.name }} — may still be reachable changing trains.
                 </p>
                 {% endif %}
+                <p class="section-sub" style="margin-top: -0.5rem;">
+                    Live scheduled trains, checked just now — a slower result late at night or early
+                    morning reflects reduced off-peak service, not the typical daytime journey.
+                </p>
             {% endif %}
-            {% for mode, label in [("rail", "Rail"), ("tube", "Tube")] %}
+            {% for mode, label in [("rail", "Rail"), ("tube", "Tube"), ("tram", "Tram")] %}
                 {% if stations_list[mode] %}
                 <h3 class="subsection-heading">{{ label }} stations</h3>
                 <ul class="transport-list">
@@ -1391,7 +1395,13 @@
                         <span class="transport-mode">{{ label }}</span>
                         <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
                         — {{ s.distance_m | distance }}
-                        {%- if stations[mode] and stations[mode].name == s.name and stations[mode].lines %} — {{ stations[mode].lines | join(", ") }}{% endif %}
+                        {%- if stations[mode] and stations[mode].name == s.name and stations[mode].lines %}
+                        <span class="line-badge-row">
+                            {% for line in stations[mode].lines %}
+                            <span class="line-badge" style="background:{{ line.color }};color:{{ line.text_color }};">{{ line.name }}</span>
+                            {% endfor %}
+                        </span>
+                        {%- endif %}
                     </li>
                     {% endfor %}
                 </ul>

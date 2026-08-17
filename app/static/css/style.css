@@ -1497,6 +1497,24 @@ a {
     vertical-align: middle;
 }
 
+.line-badge-row {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
+.line-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 /* HPI area comparison */
 
 .hpi-change {
