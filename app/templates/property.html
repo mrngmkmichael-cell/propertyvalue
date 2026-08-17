@@ -1271,6 +1271,7 @@
                             <th class="num">FSM eligible</th>
                             {% if group_name != "Nursery" %}<th>Exam results</th>{% endif %}
                             <th class="num">Distance</th>
+                            {% if accounts_configured %}<th class="num"></th>{% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -1299,6 +1300,23 @@
                             </td>
                             {% endif %}
                             <td class="num">{{ s.distance_m | distance }}</td>
+                            {% if accounts_configured %}
+                            <td class="num">
+                                {% if current_user %}
+                                    {% if s.urn in shortlisted_urns %}
+                                        <span class="ofsted-none">Shortlisted</span>
+                                    {% else %}
+                                        <form action="/schools/shortlist/save" method="post" class="nav-form">
+                                            <input type="hidden" name="urn" value="{{ s.urn }}">
+                                            <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                                            <button type="submit" class="shortlist-btn">Shortlist</button>
+                                        </form>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="/login?next=/property?postcode={{ location.postcode }}" class="shortlist-btn">Shortlist</a>
+                                {% endif %}
+                            </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
