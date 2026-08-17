@@ -15,7 +15,7 @@ from fastapi.exception_handlers import http_exception_handler as default_http_ex
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import auth, db, school_shortlist, watchlist
+from app import auth, db, watchlist
 from app.services import _cache
 from app.models import User
 from app.services import (
@@ -724,12 +724,6 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             )
         except Exception:
             context["watchlist_item"] = None
-        try:
-            context["shortlisted_urns"] = {
-                item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
-            }
-        except Exception:
-            context["shortlisted_urns"] = set()
 
     return templates.TemplateResponse(request, "property.html", context)
 
@@ -933,34 +927,3 @@ def watchlist_remove(request: Request, item_id: int = Form(...)):
     watchlist.remove_item(user["id"], item_id)
     return RedirectResponse("/watchlist", status_code=303)
 
-
-# --- School shortlist ---
-
-
-@app.get("/schools/shortlist")
-def school_shortlist_view(request: Request):
-    context = base_context(request)
-    if not context["current_user"]:
-        return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
-    context["items"] = school_shortlist.list_items(context["current_user"]["id"])
-    return templates.TemplateResponse(request, "school_shortlist.html", context)
-
-
-@app.post("/schools/shortlist/save")
-def school_shortlist_save(
-    request: Request, urn: int = Form(...), postcode: str = Form(...), note: str = Form("")
-):
-    user = auth.current_user(request)
-    if not user:
-        return RedirectResponse(f"/login?next=/property?postcode={postcode}", status_code=303)
-    school_shortlist.save_item(user["id"], urn, note.strip())
-    return RedirectResponse(f"/property?postcode={postcode}#schools", status_code=303)
-
-
-@app.post("/schools/shortlist/remove")
-def school_shortlist_remove(request: Request, item_id: int = Form(...)):
-    user = auth.current_user(request)
-    if not user:
-        return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
-    school_shortlist.remove_item(user["id"], item_id)
-    return RedirectResponse("/schools/shortlist", status_code=303)

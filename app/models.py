@@ -44,20 +44,6 @@ class WatchlistItem(Base):
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 
 
-class SchoolShortlistItem(Base):
-    """A logged-in user's saved/shortlisted schools - the same
-    account system as WatchlistItem, keyed by school URN instead of
-    a postcode."""
-    __tablename__ = "school_shortlist_items"
-    __table_args__ = (UniqueConstraint("user_id", "urn", name="uq_user_school_urn"),)
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    urn: Mapped[int] = mapped_column(Integer)
-    note: Mapped[str] = mapped_column(String(500), default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-
-
 class School(Base):
     """Open schools in England, from DfE's GIAS establishment data,
     joined with Ofsted's state-funded school inspection outcomes.
