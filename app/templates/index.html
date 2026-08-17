@@ -33,9 +33,7 @@
 
         <div class="hero-art" aria-hidden="true">
             <svg viewBox="0 0 440 400" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="220" cy="200" r="190" fill="var(--accent-soft)"/>
-                <circle cx="220" cy="200" r="140" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 7"/>
-                <circle cx="220" cy="200" r="100" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 7"/>
+                <circle cx="220" cy="205" r="130" fill="#ffffff" fill-opacity="0.6"/>
 
                 <g transform="translate(220 205)">
                     <circle class="hero-pin-ping" cx="0" cy="120" r="14" fill="none" stroke="var(--accent)" stroke-width="3"/>
@@ -269,7 +267,7 @@
         const el = document.getElementById('hero-map');
         if (!el) return;
         const heroMap = L.map('hero-map', {
-            center: [53.5, -2.3], zoom: 6,
+            center: [52.6, -3.2], zoom: 6.4,
             zoomControl: false,
             dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
             boxZoom: false, keyboard: false, touchZoom: false, tap: false,
