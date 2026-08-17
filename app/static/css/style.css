@@ -1595,7 +1595,6 @@ a {
     margin: 0.6rem 0;
 }
 
-.landscape-stat,
 .landscape-stat-details summary {
     display: inline-flex;
     align-items: center;
@@ -1610,29 +1609,24 @@ a {
     border: 1px solid var(--border);
 }
 
-.landscape-stat strong,
 .landscape-stat-details summary strong {
     font-size: 0.95rem;
     font-weight: 800;
 }
 
-.landscape-stat.ofsted-1, .landscape-stat.ofsted-2,
-.landscape-stat-details.ofsted-1 summary, .landscape-stat-details.ofsted-2 summary {
+.landscape-stat-details.rating-outstanding summary, .landscape-stat-details.rating-good summary {
     background: var(--good-bg); color: var(--good); border-color: transparent;
 }
 
-.landscape-stat.ofsted-3,
-.landscape-stat-details.ofsted-3 summary {
+.landscape-stat-details.rating-reqimprovement summary {
     background: var(--warn-bg); color: var(--warn); border-color: transparent;
 }
 
-.landscape-stat.ofsted-4,
-.landscape-stat-details.ofsted-4 summary {
+.landscape-stat-details.rating-inadequate summary {
     background: var(--bad-bg); color: var(--bad); border-color: transparent;
 }
 
-.landscape-stat.ofsted-none,
-.landscape-stat-details.ofsted-none summary {
+.landscape-stat-details.rating-none summary {
     background: var(--surface-2); color: var(--ink-soft); border-color: var(--border);
 }
 

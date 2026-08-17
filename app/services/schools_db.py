@@ -251,10 +251,15 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 e["exam_results"] = None
 
     higher_education_names.sort()
+    # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class
+    # names are already used for the small inline Ofsted badge in the
+    # plain school table (.ofsted-1 { background: ... }), and being
+    # unscoped, they'd match this chip too and paint the whole
+    # expandable container solid green - a real bug caught by testing.
     rating_css = {
-        "Outstanding": "ofsted-1", "Good": "ofsted-2",
-        "Requires improvement": "ofsted-3", "Inadequate": "ofsted-4",
-        "No current grade": "ofsted-none",
+        "Outstanding": "rating-outstanding", "Good": "rating-good",
+        "Requires improvement": "rating-reqimprovement", "Inadequate": "rating-inadequate",
+        "No current grade": "rating-none",
     }
     graded = total_schools - by_rating["No current grade"]
     good_or_better_pct = (
