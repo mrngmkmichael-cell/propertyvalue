@@ -603,44 +603,80 @@ a {
 
 .sources-strip {
     margin-top: 4rem;
-    padding: 2rem;
+    padding: 2.5rem 2rem;
     background: var(--surface-2);
     border-radius: var(--radius-lg);
     text-align: center;
 }
 
-.sources-strip-label {
+.sources-strip-heading {
     display: block;
     font-family: var(--font-sans);
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 1.05rem;
+    font-weight: 600;
     color: var(--ink-soft);
-    margin-bottom: 1rem;
+    margin-bottom: 1.75rem;
 }
+
+.sources-strip-heading em {
+    font-style: normal;
+    font-weight: 800;
+}
+
+.sources-strip-heading .hl-warn { color: var(--warn); }
+.sources-strip-heading .hl-accent { color: var(--accent); }
 
 .sources-strip-list {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 0.5rem 1.5rem;
-    margin-bottom: 1rem;
+    align-items: flex-start;
+    row-gap: 1.75rem;
+    column-gap: 2.25rem;
+    margin-bottom: 1.75rem;
 }
 
-.sources-strip-list a {
-    font-family: var(--font-sans);
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--ink);
+.sources-strip-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    width: 6.5rem;
     text-decoration: none;
-    border-bottom: 1px solid transparent;
-    transition: color 0.15s ease, border-color 0.15s ease;
+    color: var(--ink-faint);
+    filter: grayscale(1);
+    opacity: 0.75;
+    transition: color 0.15s ease, opacity 0.15s ease, filter 0.15s ease, transform 0.15s ease;
 }
 
-.sources-strip-list a:hover {
+.sources-strip-item:hover {
     color: var(--accent);
-    border-color: var(--accent);
+    opacity: 1;
+    filter: grayscale(0);
+    transform: translateY(-2px);
+}
+
+.sources-strip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+.sources-strip-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.sources-strip-name {
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.25;
 }
 
 .sources-strip-note {

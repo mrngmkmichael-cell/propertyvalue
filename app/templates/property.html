@@ -1364,6 +1364,24 @@
                 The amenities data service didn't respond. Try again in a moment.
             </p>
         {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.bus) %}
+            {% if stations.rail and stations.rail.city_journeys is defined %}
+                {% if stations.rail.city_journeys %}
+                <ul class="transport-list city-journeys">
+                    {% for j in stations.rail.city_journeys %}
+                    <li>
+                        <strong>{{ j.minutes }} min</strong> to {{ j.city }} from {{ stations.rail.name }}
+                        — departs {{ j.departs }}, arrives {{ j.arrives }}
+                        {%- if j.operator %} ({{ j.operator }}){% endif %}.
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="notice">
+                    No direct train to a major UK city found in Rail Data's live departures from
+                    {{ stations.rail.name }} — may still be reachable changing trains.
+                </p>
+                {% endif %}
+            {% endif %}
             {% for mode, label in [("rail", "Rail"), ("tube", "Tube")] %}
                 {% if stations_list[mode] %}
                 <h3 class="subsection-heading">{{ label }} stations</h3>

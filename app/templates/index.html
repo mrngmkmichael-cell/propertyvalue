@@ -200,21 +200,30 @@
 </section>
 
 <section class="sources-strip" data-animate>
-    <span class="sources-strip-label">Sourced directly from</span>
+    <span class="sources-strip-heading">
+        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
+    </span>
     <div class="sources-strip-list">
-        <a href="https://www.gov.uk/government/organisations/land-registry" target="_blank" rel="noopener">HM Land Registry</a>
-        <a href="https://epc.opendatacommunities.org" target="_blank" rel="noopener">EPC Register</a>
-        <a href="https://www.gov.uk/government/organisations/environment-agency" target="_blank" rel="noopener">Environment Agency</a>
-        <a href="https://www.ons.gov.uk" target="_blank" rel="noopener">Office for National Statistics</a>
-        <a href="https://www.gov.uk/government/organisations/department-for-education" target="_blank" rel="noopener">Department for Education</a>
-        <a href="https://www.gov.uk/government/organisations/ofsted" target="_blank" rel="noopener">Ofsted</a>
-        <a href="https://www.ofcom.org.uk" target="_blank" rel="noopener">Ofcom</a>
-        <a href="https://www.gov.uk/government/organisations/natural-england" target="_blank" rel="noopener">Natural England</a>
-        <a href="https://historicengland.org.uk" target="_blank" rel="noopener">Historic England</a>
-        <a href="https://www.police.uk" target="_blank" rel="noopener">Police.uk</a>
-        <a href="https://www.food.gov.uk" target="_blank" rel="noopener">Food Standards Agency</a>
-        <a href="https://www.bgs.ac.uk" target="_blank" rel="noopener">British Geological Survey</a>
-        <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a>
+        {% for icon_name, label, url in [
+            ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
+            ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
+            ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
+            ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
+            ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
+            ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
+            ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
+            ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
+            ('heritage', 'Historic England', 'https://historicengland.org.uk'),
+            ('crime', 'Police.uk', 'https://www.police.uk'),
+            ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
+            ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
+            ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
+        ] %}
+        <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener">
+            <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
+            <span class="sources-strip-name">{{ label }}</span>
+        </a>
+        {% endfor %}
     </div>
     <p class="sources-strip-note">
         Never listings scraped from Rightmove or Zoopla — every figure here traces back to an

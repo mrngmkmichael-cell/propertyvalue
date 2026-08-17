@@ -11,7 +11,7 @@ import re
 
 import httpx
 
-from app.services import _cache
+from app.services import _cache, rail_journey
 
 # Independent public Overpass instances, raced concurrently (see
 # _query_overpass). The primary is known to reject some
@@ -136,6 +136,16 @@ async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
     return result
 
 
+def _crs_code(ref: str | None) -> str | None:
+    """OSM tags National Rail stations' 3-letter CRS code as
+    `ref:crs`, but the tag is free text - only trust it when it
+    actually looks like one, rather than passing junk through to the
+    LDBWS API."""
+    if ref and re.match(r"^[A-Z]{3}$", ref.strip()):
+        return ref.strip()
+    return None
+
+
 def _station_mode(tags: dict) -> str:
     network = tags.get("network", "").lower()
     if tags.get("station") == "subway" or "underground" in network or "tube" in network:
@@ -193,6 +203,7 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             stations[mode].append({
                 "id": el["id"], "type": el["type"], "name": name,
                 "network": tags.get("network", ""), "distance_m": distance_m,
+                "crs": _crs_code(tags.get("ref:crs")) if mode == "rail" else None,
             })
         elif amenity == "restaurant":
             categories["restaurant"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
@@ -261,6 +272,16 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         )
         for mode, lines in zip(line_lookup_modes, line_results):
             nearest_by_mode[mode]["lines"] = [] if isinstance(lines, Exception) else lines
+
+    if "rail" in nearest_by_mode and nearest_by_mode["rail"].get("crs"):
+        journeys = await rail_journey.fastest_to_cities(nearest_by_mode["rail"]["crs"])
+        if journeys is not None:
+            # An empty list is meaningful (queried successfully, no
+            # direct city service found) and distinct from the key
+            # being absent entirely (not configured, or the lookup
+            # itself failed) - the template shows different messaging
+            # for each case.
+            nearest_by_mode["rail"]["city_journeys"] = journeys
 
     stations_by_mode = {
         "rail": stations["rail"][:STATION_LIST_LIMIT],
