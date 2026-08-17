@@ -36,6 +36,14 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+# Cache-busting query string for static assets, tied to the CSS
+# file's own mtime - without this, browsers (and Render's static
+# asset caching) can keep serving a stale stylesheet indefinitely
+# after a deploy, which happened repeatedly during development.
+try:
+    templates.env.globals["css_version"] = int(os.path.getmtime("app/static/css/style.css"))
+except OSError:
+    templates.env.globals["css_version"] = 0
 
 
 def _format_gbp(value) -> str:

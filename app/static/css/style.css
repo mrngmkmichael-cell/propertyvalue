@@ -1655,6 +1655,11 @@ a {
     display: none;
 }
 
+.landscape-stat-details summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
 .landscape-stat-details summary:hover {
     filter: brightness(0.97);
 }
