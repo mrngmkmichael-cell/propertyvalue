@@ -1641,6 +1641,11 @@ a {
     vertical-align: top;
 }
 
+.landscape-stat-details[open] {
+    display: block;
+    flex: 1 1 100%;
+}
+
 .landscape-stat-details summary {
     cursor: pointer;
     list-style: none;
@@ -1655,61 +1660,74 @@ a {
 }
 
 .landscape-stat-schools {
-    margin: 0.4rem 0 0;
-    padding: 0.5rem 0.75rem;
-    background: var(--surface-2);
-    border-radius: var(--radius-md);
-    max-width: 20rem;
-    max-height: 14rem;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0.75rem 0 0.25rem;
+    width: 100%;
 }
 
 .landscape-stat-schools li {
     list-style: none;
-    padding: 0.25rem 0;
-    font-family: var(--font-sans);
-    font-size: 0.78rem;
-    color: var(--ink-soft);
-    border-bottom: 1px solid var(--border);
-}
-
-.landscape-stat-schools li:last-child {
-    border-bottom: none;
-}
-
-.landscape-stat-schools li strong {
-    color: var(--ink);
-    font-weight: 600;
 }
 
 .landscape-stat-schools-more {
     font-style: italic;
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
+    padding: 0.25rem 0.1rem;
+}
+
+.school-detail {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.school-detail:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-md);
 }
 
 .school-detail summary {
+    display: block;
+    padding: 0.85rem 1.1rem;
     cursor: pointer;
     list-style: none;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
 }
 
 .school-detail summary::-webkit-details-marker {
     display: none;
 }
 
-.school-detail summary:hover strong {
-    text-decoration: underline;
+.school-detail summary strong {
+    color: var(--ink);
+    font-weight: 700;
+}
+
+.school-detail summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-lg);
 }
 
 .school-detail-panel {
-    margin: 0.4rem 0 0.3rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    margin: 0 1.1rem 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
 }
 
 .school-detail-panel p {
-    margin: 0.25rem 0;
-    font-size: 0.78rem;
+    margin: 0.35rem 0;
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
     color: var(--ink-soft);
 }
 
