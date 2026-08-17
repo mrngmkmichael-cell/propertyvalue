@@ -1113,6 +1113,17 @@ a {
     border-bottom: none;
 }
 
+.amenity-list li a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-strong);
+}
+
+.amenity-list li a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
 .amenity-distance {
     color: var(--ink-soft);
     font-variant-numeric: tabular-nums;

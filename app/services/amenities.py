@@ -165,7 +165,7 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
         for el in elements
         if "geometry" in el and el.get("tags", {}).get("highway") and el.get("tags", {}).get("name")
     ]
-    unnamed_parking = []  # (entry dict, its own lat/lon) - road-name lookup happens after the main loop
+    unnamed_entries = []  # (entry dict, its own lat/lon) - road-name lookup happens after the main loop
 
     for el in elements:
         if "geometry" in el:
@@ -195,44 +195,48 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
                 "network": tags.get("network", ""), "distance_m": distance_m,
             })
         elif amenity == "restaurant":
-            categories["restaurant"].append({"name": name, "distance_m": distance_m})
+            categories["restaurant"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif shop == "supermarket":
-            categories["supermarket"].append({"name": name, "distance_m": distance_m})
+            categories["supermarket"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "pharmacy":
-            categories["pharmacy"].append({"name": name, "distance_m": distance_m})
+            categories["pharmacy"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "pub":
-            categories["pub"].append({"name": name, "distance_m": distance_m})
+            categories["pub"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "hospital":
-            categories["hospital"].append({"name": name, "distance_m": distance_m})
+            categories["hospital"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "parking":
             entry = {
-                "name": name, "distance_m": distance_m,
+                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
                 "fee": tags.get("fee", ""), "type": tags.get("parking", ""),
             }
             categories["parking"].append(entry)
             if name == "Unnamed":
-                unnamed_parking.append((entry, el_lat, el_lon))
+                unnamed_entries.append((entry, el_lat, el_lon, "Parking off {}", "Unnamed car park"))
         elif amenity == "charging_station":
             connector_tags = {
                 "socket:type2": "Type 2", "socket:type2_combo": "CCS",
                 "socket:chademo": "CHAdeMO", "socket:tesla_standard": "Tesla",
             }
             categories["ev_charging"].append({
-                "name": name, "distance_m": distance_m,
+                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
                 "connectors": [label for key, label in connector_tags.items() if tags.get(key)],
             })
         elif amenity == "doctors":
-            categories["gp"].append({"name": name, "distance_m": distance_m})
+            categories["gp"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "dentist":
-            categories["dentist"].append({"name": name, "distance_m": distance_m})
+            categories["dentist"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif tags.get("leisure") in ("park", "recreation_ground", "nature_reserve"):
-            categories["green_space"].append({
-                "name": name, "distance_m": distance_m, "type": tags.get("leisure"),
-            })
+            entry = {
+                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
+                "type": tags.get("leisure"),
+            }
+            categories["green_space"].append(entry)
+            if name == "Unnamed":
+                unnamed_entries.append((entry, el_lat, el_lon, "Green space off {}", "Unnamed green space"))
 
-    for entry, p_lat, p_lon in unnamed_parking:
+    for entry, p_lat, p_lon, template, fallback in unnamed_entries:
         road_name = _nearest_road_name(p_lat, p_lon, roads)
-        entry["name"] = f"Parking off {road_name}" if road_name else "Unnamed car park"
+        entry["name"] = template.format(road_name) if road_name else fallback
 
     for items in categories.values():
         items.sort(key=lambda i: i["distance_m"])

@@ -993,7 +993,7 @@
                     <ul class="amenity-list">
                         {% for a in amenities[key][:10] %}
                         <li>
-                            {{ a.name }}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
+                            {% if a.lat and a.lon %}<a href="https://www.google.com/maps/search/?api=1&query={{ (a.name ~ ' near ' ~ a.lat ~ ',' ~ a.lon) | urlencode }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
                             <span class="amenity-distance">{{ a.distance_m | distance }}</span>
                         </li>
                         {% endfor %}
