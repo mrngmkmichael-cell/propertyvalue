@@ -167,7 +167,10 @@ def school_landscape(lat: float, lon: float) -> dict | None:
 
     by_rating = {label: 0 for label in RATING_ORDER}
     by_phase = {name: 0 for name in GROUP_ORDER}
+    schools_by_rating = {label: [] for label in RATING_ORDER}
+    schools_by_phase = {name: [] for name in GROUP_ORDER}
     special_count = 0
+    special_schools = []
     further_education = 0
     higher_education_names = []
 
@@ -184,13 +187,17 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             further_education += 1
             continue
 
+        entry = {"name": row.name, "type": row.type_name, "distance_m": round(distance_km * 1000)}
+
         if "special" in type_lower:
             special_count += 1
+            special_schools.append(entry)
         else:
             group = _phase_group(row.phase)
             if not group:
                 continue  # e.g. "Offshore schools", "Miscellaneous" - not a recognised phase, excluded entirely rather than counted in ratings but not in by_phase
             by_phase[group] += 1
+            schools_by_phase[group].append(entry)
 
         # Ofsted's 2024 reform moved many inspections to an ungraded
         # report-card format with no overall 1-4 grade - "no rating"
@@ -199,6 +206,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         # about that rather than implying Ofsted hasn't visited.
         label = row.ofsted_rating_label or "No current grade"
         by_rating[label] += 1
+        schools_by_rating[label].append(entry)
 
     total_schools = sum(by_phase.values()) + special_count
     if total_schools == 0 and not higher_education_names and further_education == 0:
@@ -214,16 +222,26 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     good_or_better_pct = (
         round((by_rating["Outstanding"] + by_rating["Good"]) / graded * 100) if graded else None
     )
+    for bucket in schools_by_rating.values():
+        bucket.sort(key=lambda s: s["distance_m"])
+    for bucket in schools_by_phase.values():
+        bucket.sort(key=lambda s: s["distance_m"])
+    special_schools.sort(key=lambda s: s["distance_m"])
+
     return {
         "radius_km": SEARCH_RADIUS_KM,
         "total_schools": total_schools,
         "good_or_better_pct": good_or_better_pct,
         "by_rating": [
-            {"label": label, "count": by_rating[label], "css": rating_css[label]}
+            {"label": label, "count": by_rating[label], "css": rating_css[label], "schools": schools_by_rating[label]}
             for label in RATING_ORDER if by_rating[label]
         ],
-        "by_phase": [{"label": name, "count": by_phase[name]} for name in GROUP_ORDER if by_phase[name]],
+        "by_phase": [
+            {"label": name, "count": by_phase[name], "schools": schools_by_phase[name]}
+            for name in GROUP_ORDER if by_phase[name]
+        ],
         "special_count": special_count,
+        "special_schools": special_schools,
         "further_education": further_education,
         "higher_education_count": len(higher_education_names),
         "higher_education_names": higher_education_names,

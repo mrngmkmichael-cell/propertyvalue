@@ -1590,11 +1590,13 @@ a {
 .landscape-stat-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
     gap: 0.5rem;
     margin: 0.6rem 0;
 }
 
-.landscape-stat {
+.landscape-stat,
+.landscape-stat-details summary {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -1608,25 +1610,80 @@ a {
     border: 1px solid var(--border);
 }
 
-.landscape-stat strong {
+.landscape-stat strong,
+.landscape-stat-details summary strong {
     font-size: 0.95rem;
     font-weight: 800;
 }
 
-.landscape-stat.ofsted-1, .landscape-stat.ofsted-2 {
+.landscape-stat.ofsted-1, .landscape-stat.ofsted-2,
+.landscape-stat-details.ofsted-1 summary, .landscape-stat-details.ofsted-2 summary {
     background: var(--good-bg); color: var(--good); border-color: transparent;
 }
 
-.landscape-stat.ofsted-3 {
+.landscape-stat.ofsted-3,
+.landscape-stat-details.ofsted-3 summary {
     background: var(--warn-bg); color: var(--warn); border-color: transparent;
 }
 
-.landscape-stat.ofsted-4 {
+.landscape-stat.ofsted-4,
+.landscape-stat-details.ofsted-4 summary {
     background: var(--bad-bg); color: var(--bad); border-color: transparent;
 }
 
-.landscape-stat.ofsted-none {
+.landscape-stat.ofsted-none,
+.landscape-stat-details.ofsted-none summary {
     background: var(--surface-2); color: var(--ink-soft); border-color: var(--border);
+}
+
+.landscape-stat-details {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.landscape-stat-details summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+.landscape-stat-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.landscape-stat-details summary:hover {
+    filter: brightness(0.97);
+}
+
+.landscape-stat-schools {
+    margin: 0.4rem 0 0;
+    padding: 0.5rem 0.75rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-md);
+    max-width: 20rem;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+
+.landscape-stat-schools li {
+    list-style: none;
+    padding: 0.25rem 0;
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    border-bottom: 1px solid var(--border);
+}
+
+.landscape-stat-schools li:last-child {
+    border-bottom: none;
+}
+
+.landscape-stat-schools li strong {
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.landscape-stat-schools-more {
+    font-style: italic;
 }
 
 .school-guide-compare {
