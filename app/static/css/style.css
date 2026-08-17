@@ -220,16 +220,14 @@ a {
 
 .hero {
     padding: 0.5rem 0 0.5rem;
+    background-image:
+        radial-gradient(420px 220px at 100% 0%, rgba(59, 91, 253, 0.16), transparent 70%),
+        radial-gradient(360px 200px at 0% 10%, rgba(167, 139, 250, 0.14), transparent 70%);
+    background-repeat: no-repeat;
 }
 
 .hero-inner {
     position: relative;
-}
-
-.hero-glow {
-    position: relative;
-    overflow: hidden;
-    z-index: 1;
 }
 
 .hero h1 {
@@ -244,38 +242,6 @@ a {
     line-height: 1.55;
     max-width: 40em;
     margin: 0.6rem 0 0;
-}
-
-.hero-blob {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(60px);
-    opacity: 0.35;
-    z-index: 0;
-    pointer-events: none;
-    animation: hero-blob-drift 18s ease-in-out infinite alternate;
-}
-
-.hero-blob-1 {
-    width: 280px;
-    height: 280px;
-    top: -110px;
-    right: -90px;
-    background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
-}
-
-.hero-blob-2 {
-    width: 220px;
-    height: 220px;
-    bottom: -100px;
-    left: -70px;
-    background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
-    animation-delay: -9s;
-}
-
-@keyframes hero-blob-drift {
-    0% { transform: translate(0, 0) scale(1); }
-    100% { transform: translate(30px, 20px) scale(1.12); }
 }
 
 /* Stats row */
@@ -299,6 +265,12 @@ a {
     flex-direction: column;
     gap: 0.3rem;
     text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
 }
 
 .stat-number {
@@ -386,6 +358,13 @@ a {
     gap: 0.5rem;
     text-align: center;
     padding: 1.5rem 1rem;
+    border-radius: var(--radius-lg);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.step-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
 }
 
 .step-number {
@@ -444,11 +423,19 @@ a {
     margin-bottom: 1rem;
 }
 
-.sources-strip-list span {
+.sources-strip-list a {
     font-family: var(--font-sans);
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.sources-strip-list a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
 }
 
 .sources-strip-note {
@@ -459,11 +446,6 @@ a {
     margin: 0 auto;
 }
 
-@media (prefers-reduced-motion: reduce) {
-    .hero-blob {
-        animation: none;
-    }
-}
 
 @media (max-width: 640px) {
     .stats-row {
