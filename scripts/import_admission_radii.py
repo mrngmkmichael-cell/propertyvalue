@@ -1474,6 +1474,48 @@ def fetch_west_sussex() -> list[dict]:
     return records
 
 
+_DURHAM_URLS = [
+    "https://durham.gov.uk/article/27947/Primary-school-admissions-individual-school-and-academy-intake-information",
+    "https://durham.gov.uk/article/27950/Secondary-school-admissions-individual-school-and-academy-intake-information",
+]
+_DURHAM_ROW_RE = re.compile(r"<tr>(.*?)</tr>", re.DOTALL)
+_DURHAM_CELL_RE = re.compile(r"<td>(.*?)</td>", re.DOTALL)
+_DURHAM_DISTANCE_RE = re.compile(r"([\d.]+)\s*[Mm]iles")
+
+
+def fetch_durham() -> list[dict]:
+    """Durham County Council publishes "individual school and academy
+    intake information" as plain HTML tables (Primary + Secondary),
+    seemingly stable URLs updated in place each year. Each row's last
+    cell has prose that differs in exact wording between the two
+    documents ("<X.XXX> miles in the distance criterion..." for
+    primary, "Last person offered a place lived <X.XXX> miles away
+    ..." for secondary, with inconsistent capitalisation of "Miles" in
+    a few rows) - rather than handle both phrasings, this just takes
+    the first "<number> miles" anywhere in that cell, school name is
+    always the second cell. Schools with their own admission
+    arrangements ("contact the school directly") have no such number
+    and are correctly skipped.
+    """
+    records = []
+    for url in _DURHAM_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        for row in _DURHAM_ROW_RE.findall(resp.text):
+            cells = _DURHAM_CELL_RE.findall(row)
+            if len(cells) < 2:
+                continue
+            name = re.sub(r"<[^>]+>", " ", cells[1]).replace("&nbsp;", " ").strip()
+            name = re.sub(r"\s+", " ", name)
+            if not name:
+                continue
+            match = _DURHAM_DISTANCE_RE.search(cells[-1])
+            if match:
+                records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1510,6 +1552,7 @@ _AUTHORITIES = [
     ("Suffolk", "2026/27", fetch_suffolk),
     ("East Sussex", "varies", fetch_east_sussex),
     ("West Sussex", "2025/26", fetch_west_sussex),
+    ("County Durham", "varies", fetch_durham),
 ]
 
 
