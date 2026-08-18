@@ -1698,6 +1698,104 @@ def fetch_dudley() -> list[dict]:
     return records
 
 
+def _fetch_afc_borough(url: str) -> list[dict]:
+    """Shared parser for the "STARTING PRIMARY SCHOOL... ALLOCATION OF
+    PLACES" PDFs used by both Richmond and Kingston upon Thames (both
+    administered by the same "Achieving for Children" admissions
+    service, hosted on the same rackcdn CDN as RBWM - same underlying
+    platform, near-identical layout). Clean table: School, Places,
+    EHCP, LAC, Social/medical, Sibling, Child of staff, Distance,
+    "Distance of last child offered under criterion 5 in metres" -
+    rows reading "All preferences met" or "Overseas" have no number
+    and are correctly skipped.
+    """
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0] or not row[-1]:
+                    continue
+                try:
+                    metres = float(row[-1].strip())
+                except ValueError:
+                    continue
+                records.append({"school_name": row[0].replace("\n", " ").strip(), "last_distance_miles": metres / _METRES_PER_MILE})
+    return records
+
+
+def fetch_richmond_upon_thames() -> list[dict]:
+    """London Borough of Richmond upon Thames - see
+    _fetch_afc_borough() for the shared AfC-platform format. Find the
+    current URL via Achieving for Children's site (kr.afcinfo.org.uk)
+    or by searching "LBR Notes to parents following Primary <year>
+    allocation" - republished each year at a new rackcdn attachment
+    ID.
+    """
+    url = ("https://5f2fe3253cd1dfa0d089-bf8b2cdb6a1dc2999fecbc372702016c.ssl.cf3.rackcdn.com/"
+           "uploads/ckeditor/attachments/17717/LBR_Notes_to_parents_following_Primary_2025_allocation.pdf")
+    print(f"  Downloading {url}")
+    return _fetch_afc_borough(url)
+
+
+def fetch_kingston_upon_thames() -> list[dict]:
+    """Royal Borough of Kingston upon Thames - see
+    _fetch_afc_borough() for the shared AfC-platform format (same as
+    Richmond). Find the current URL by searching "RBK Notes to parents
+    following Primary <year> allocation" - republished each year at a
+    new rackcdn attachment ID.
+    """
+    url = ("https://5f2fe3253cd1dfa0d089-bf8b2cdb6a1dc2999fecbc372702016c.ssl.cf3.rackcdn.com/"
+           "uploads/ckeditor/attachments/17727/RBK_Notes_to_parents_following_Primary_2025_allocation.docx.pdf")
+    print(f"  Downloading {url}")
+    return _fetch_afc_borough(url)
+
+
+def fetch_southwark() -> list[dict]:
+    """London Borough of Southwark's "Allocation of community school
+    places by criteria" PDF - republished each year at a new URL
+    under /sites/default/files/YYYY-MM/ (find the current one via
+    southwark.gov.uk's primary-admissions "admissions-criteria" page -
+    note the page itself is served from services.southwark.gov.uk but
+    the PDF asset only resolves under www.southwark.gov.uk). Clean
+    table, "Furthest distance (metres) offered a school place" at a
+    fixed column index; rows reading "ALL APPLICANTS OFFERED A PLACE"
+    have no number there and are correctly skipped. Southwark's own
+    names are abbreviated to just the distinctive part (e.g. "Crampton"
+    for "Crampton Primary School") - too short for the fuzzy matcher to
+    find reliably on its own, so " Primary School" is appended before
+    matching.
+    """
+    url = ("https://www.southwark.gov.uk/sites/default/files/2026-03/"
+           "Allocation-of-community-school-places-by-criteria-Sept-2025.pdf")
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table[1:]:
+                if not row or not row[0] or len(row) < 11 or not row[10]:
+                    continue
+                try:
+                    metres = float(row[10].strip())
+                except ValueError:
+                    continue
+                records.append({
+                    "school_name": row[0].strip() + " Primary School",
+                    "last_distance_miles": metres / _METRES_PER_MILE,
+                })
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1739,6 +1837,9 @@ _AUTHORITIES = [
     ("Leicester", "varies", fetch_leicester),
     ("Sandwell", "varies", fetch_sandwell),
     ("Dudley", "2025", fetch_dudley),
+    ("Richmond upon Thames", "2024/25", fetch_richmond_upon_thames),
+    ("Kingston upon Thames", "2024/25", fetch_kingston_upon_thames),
+    ("Southwark", "2025/26", fetch_southwark),
 ]
 
 
