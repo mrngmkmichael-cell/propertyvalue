@@ -1203,6 +1203,52 @@ def fetch_somerset() -> list[dict]:
     return records
 
 
+_DORSET_INDEX_URL = "https://www.dorsetcouncil.gov.uk/w/school-allocations"
+_DORSET_LINK_RE = re.compile(r'href="(/documents/d/guest/[^"]+)"')
+_DORSET_NAME_RE = re.compile(r"On Time Applications\n(.+?)\n")
+_DORSET_DISTANCE_RE = re.compile(r"([\d.]+)\s*Miles\.")
+
+
+def fetch_dorset() -> list[dict]:
+    """Dorset Council publishes one individual "information sheet" PDF
+    per oversubscribed school (primary "on-time"/"tr4-ot" and
+    secondary "tr7"/"tr9" transfer, both "on-time" and "late" rounds)
+    rather than a bulk document - this crawls the index page for the
+    current list of documents rather than hardcoding them, filtering
+    out "late"-round duplicates of schools already covered by the
+    "on-time" round document (find the current index page via
+    dorsetcouncil.gov.uk's "school-allocations" page). Clean prose:
+    "<School Name>", then "<Criterion> X.XXX Miles." A handful of
+    documents (seen for at least one secondary school) are scanned
+    images with no extractable text layer - these are silently
+    skipped rather than guessed at via OCR.
+    """
+    print(f"  Downloading index {_DORSET_INDEX_URL}")
+    resp = httpx.get(_DORSET_INDEX_URL, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    paths = [p for p in set(_DORSET_LINK_RE.findall(resp.text)) if "late" not in p.lower()]
+
+    records = []
+    for path in paths:
+        url = f"https://www.dorsetcouncil.gov.uk{path}"
+        print(f"  Downloading {url}")
+        try:
+            pdf_resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+            pdf_resp.raise_for_status()
+        except httpx.HTTPError:
+            continue
+        with pdfplumber.open(io.BytesIO(pdf_resp.content)) as pdf:
+            full_text = pdf.pages[0].extract_text() or ""
+        name_match = _DORSET_NAME_RE.search(full_text)
+        distance_match = _DORSET_DISTANCE_RE.search(full_text)
+        if name_match and distance_match:
+            records.append({
+                "school_name": name_match.group(1).strip(),
+                "last_distance_miles": float(distance_match.group(1)),
+            })
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1233,6 +1279,7 @@ _AUTHORITIES = [
     ("Peterborough", "2026/27", fetch_peterborough),
     ("North Somerset", "2024/25", fetch_north_somerset),
     ("Somerset", "2025/26", fetch_somerset),
+    ("Dorset", "2025/26", fetch_dorset),
 ]
 
 
