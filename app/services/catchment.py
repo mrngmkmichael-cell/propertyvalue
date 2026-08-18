@@ -67,6 +67,18 @@ _SOURCES = [
 ]
 
 
+def covered_authorities() -> list[str]:
+    """Deduplicated, ordered list of local authorities in _SOURCES -
+    shown to users when a search falls outside all of them, so "not
+    covered" reads as "your council doesn't publish this" rather than
+    looking like a broken feature."""
+    seen = []
+    for authority, _, _, _ in _SOURCES:
+        if authority not in seen:
+            seen.append(authority)
+    return seen
+
+
 async def _query_source(client: httpx.AsyncClient, url: str, name_field: str, lat: float, lon: float) -> list[dict]:
     params = {
         "geometry": f"{lon},{lat}",

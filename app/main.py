@@ -716,6 +716,8 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["catchment_error"] = True
     else:
         context["catchment"] = catchment_result
+        if not catchment_result:
+            context["catchment_covered_authorities"] = catchment.covered_authorities()
 
     # MEES compliance + lead-plumbing era, both computed from EPC data
     # already fetched above - no extra API calls needed.

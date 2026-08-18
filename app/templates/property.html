@@ -1456,6 +1456,9 @@
             <p class="notice">
                 Not covered — this address isn't in one of the local authorities that publishes
                 open catchment-area data.
+                {% if catchment_covered_authorities %}
+                This currently only covers: {{ catchment_covered_authorities | join(', ') }}.
+                {% endif %}
             </p>
         {% endif %}
             </section>
