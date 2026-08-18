@@ -2863,6 +2863,40 @@ def fetch_salford() -> list[dict]:
     return records
 
 
+_KNOWSLEY_INDEX_URLS = [
+    "https://www.knowsley.gov.uk/education-and-schools/school-admissions/apply-primary-school-september-2026/oversubscribed-primary",
+    "https://www.knowsley.gov.uk/education-and-schools/school-admissions/apply-secondary-school-september-2026/secondary-school",
+]
+_KNOWSLEY_DISTANCE_RE = re.compile(r"lived ([\d.]+)\s*(?:miles\s*)?from the school")
+
+
+def fetch_knowsley() -> list[dict]:
+    """Knowsley crawls two index pages (Primary/Secondary "oversubscribed
+    schools") for individual per-school "oversubscription breakdown"
+    PDFs, one per oversubscribed school (the set changes yearly).
+    School name is the first line of the PDF's own text; the decisive
+    distance is prose ("...lived 0.275 miles from the school (as the
+    crow flies)") - the Primary documents sometimes omit the word
+    "miles" from that sentence while Secondary always includes it, so
+    it's made optional in the pattern.
+    """
+    records = []
+    for index_url in _KNOWSLEY_INDEX_URLS:
+        resp = httpx.get(index_url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        pdf_urls = set(re.findall(r'href="(https://www\.knowsley\.gov\.uk/sites/default/files/[^"]+\.pdf)"', resp.text))
+        for pdf_url in pdf_urls:
+            pdf_resp = httpx.get(pdf_url, timeout=30, follow_redirects=True, headers=HEADERS)
+            pdf_resp.raise_for_status()
+            with pdfplumber.open(io.BytesIO(pdf_resp.content)) as pdf:
+                text = pdf.pages[0].extract_text() or ""
+            name = text.split("\n")[0].strip()
+            match = _KNOWSLEY_DISTANCE_RE.search(text)
+            if name and match:
+                records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2968,6 +3002,7 @@ _AUTHORITIES = [
     ("Bury", "varies", fetch_bury),
     ("Bolton", "varies", fetch_bolton),
     ("Salford", "2025/26", fetch_salford),
+    ("Knowsley", "2026/27", fetch_knowsley),
 ]
 
 
