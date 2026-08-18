@@ -3029,6 +3029,159 @@ def fetch_bexley() -> list[dict]:
 _LIVED_RE = re.compile(r"lived\s+([\d.]+)\s+miles", re.IGNORECASE)
 
 
+def fetch_havering() -> list[dict]:
+    """London Borough of Havering's "Infant and Primary School
+    Statistics" and "Secondary School Statistics" PDFs - the
+    "downloads/download/<id>/<slug>" landing page for each just
+    republishes a fresh "downloads/file/<id>/<slug>-<year>" link
+    every year rather than replacing the file in place, so this
+    fetches the current year's direct file link (update the numeric
+    IDs below if they 404 - the landing pages list every past year's
+    ID). Genuine PDF tables, but with reversed header text (same
+    quirk as Sefton's table - most header cells extract backwards,
+    e.g. "elbaliavA\\nsecalP" for "Places\\nAvailable" - only the data
+    rows are used, not the headers). The last column is "Furthest
+    Distance Allocation (in KM's)", "N/A" for schools that weren't
+    oversubscribed, occasionally with trailing asterisks (e.g.
+    "1.153**" - footnote markers) stripped by only taking the
+    leading numeric run. The "Totals" summary row at the end of each
+    table is skipped explicitly since it isn't a school.
+    """
+    urls = [
+        "https://www.havering.gov.uk/downloads/file/7022/infant-and-primary-school-statistics-2025",
+        "https://www.havering.gov.uk/downloads/file/6919/secondary-school-statistics-2025",
+    ]
+    dist_re = re.compile(r"^([\d.]+)")
+    records = []
+    for url in urls:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or not row[0]:
+                        continue
+                    name = row[0].replace("\n", " ").strip()
+                    if name.lower() == "totals":
+                        continue
+                    last_cell = row[-1]
+                    if not last_cell:
+                        continue
+                    match = dist_re.match(last_cell.strip())
+                    if match:
+                        km = float(match.group(1))
+                        records.append({"school_name": name, "last_distance_miles": km * 1000 / _METRES_PER_MILE})
+    return records
+
+
+_HILLINGDON_NA_RE = re.compile(r"^N/A ?\([A-Z]\)$")
+
+
+def fetch_hillingdon() -> list[dict]:
+    """Hillingdon Council's main "School Admissions" brochure - one
+    combined ~100+ page PDF (republished each year at a new file ID -
+    find the current one via hillingdon.gov.uk's own site search for
+    "School admissions <year> brochure" if this 404s) covering
+    everything: admissions criteria prose, a "furthest distance
+    offered" table for primary schools (3 pages) and one for
+    secondary schools (1 page), THEN staff contact-details tables
+    later in the document whose last column happens to be a small
+    integer (published admission number) that would otherwise also
+    look numeric. Only tables containing at least one cell matching
+    "N/A (<letter>)" (e.g. "N/A (U)" for undersubscribed, "N/A (F)"
+    for filled on other criteria) are treated as real distance
+    tables - that marker is unique to the distance tables and reliably
+    excludes the contact-details tables. Primary schools with two
+    forms of entry (e.g. a linked nursery class) get two table rows,
+    the second with a blank name cell - the school name is carried
+    forward from the last non-blank cell. Distances are in metres.
+    """
+    url = "https://www.hillingdon.gov.uk/media/10152/School-admissions-2026-brochure/pdf/c1School_Admissions_Main_brochure_2026.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            if not any(row and row[-1] and _HILLINGDON_NA_RE.match(str(row[-1]).strip()) for row in table):
+                continue
+            last_name = None
+            for row in table:
+                if not row:
+                    continue
+                if row[0]:
+                    last_name = row[0].replace("\n", " ").strip().rstrip("*").strip()
+                if not last_name:
+                    continue
+                last_cell = row[-1]
+                if not last_cell:
+                    continue
+                try:
+                    metres = float(str(last_cell).strip())
+                except ValueError:
+                    continue
+                records.append({"school_name": last_name, "last_distance_miles": metres / _METRES_PER_MILE})
+    return records
+
+
+_MIDDLESBROUGH_ROW_RE = re.compile(
+    r"^\d{3,4}\s*(.+?)\s+\d+\s+[YN]\s+\d+\s+(?:\d+|N/A)\s+.+?\s+([\d.]+|Not Known)\s*$"
+)
+
+
+def fetch_middlesbrough() -> list[dict]:
+    """Middlesbrough Council's combined "School admission statistics"
+    PDF - one file covering several years of both primary and
+    secondary intakes, most recent year first; only the first two
+    pages (most recent primary, most recent secondary) are used. The
+    PAGE URL slug changes periodically when a new year's edition is
+    published - re-resolve it from
+    middlesbrough.gov.uk/schools-and-education/school-admissions/
+    school-admissions-allocation-statistics/ (a Cloudflare-protected
+    page that blocks direct fetching, so search site:middlesbrough.gov.uk
+    "school admissions statistics" instead) if this 404s. Primary
+    pages render as plain text (not a real PDF table), one line per
+    school: "<DfE number> <name> <PAN> <Y/N oversubscribed> <total
+    offers> <waiting list> <last criteria text> <distance in miles or
+    'Not Known'>". Unlike most sources here, Middlesbrough publishes a
+    "furthest distance of the last place allocated" even for schools
+    that weren't oversubscribed, which is meaningless as a cutoff (it's
+    just whoever happened to be last processed) and occasionally wildly
+    large (e.g. 18 miles for a small local primary) - distances over 10
+    miles are dropped as implausible for this compact urban borough,
+    same rationale as Warwickshire's plausibility cap.
+    """
+    url = "https://www.middlesbrough.gov.uk/media/vuxofasc/school-admissions-statistics-2022-2026.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages[:2]:
+            text = page.extract_text() or ""
+            for line in text.split("\n"):
+                match = _MIDDLESBROUGH_ROW_RE.match(line.strip())
+                if not match:
+                    continue
+                name, dist = match.group(1).strip(), match.group(2)
+                if dist == "Not Known":
+                    continue
+                distance = float(dist)
+                if distance > 10:
+                    continue
+                records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 def fetch_islington() -> list[dict]:
     """Islington Council's "Cut-off distance for schools" page - a
     genuine HTML table (two of them: primary, then secondary) with
@@ -3210,6 +3363,9 @@ _AUTHORITIES = [
     ("Bexley", "varies", fetch_bexley),
     ("Southampton", "2024/25", fetch_southampton),
     ("Islington", "2026/27", fetch_islington),
+    ("Havering", "2025/26", fetch_havering),
+    ("Hillingdon", "2025/26", fetch_hillingdon),
+    ("Middlesbrough", "2025/26", fetch_middlesbrough),
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
