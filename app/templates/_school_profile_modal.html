@@ -1,17 +1,11 @@
-{% macro premium_gate() %}
-<div class="school-profile-locked">
-    <div class="school-profile-locked-content" aria-hidden="true">{{ caller() }}</div>
-    <div class="school-profile-lock-overlay">
-        {{ icons.icon('lock') }}
-        {% if current_user %}
-        <span class="school-profile-lock-label">Premium feature — coming soon</span>
-        {% else %}
-        <a href="/signup" class="school-profile-lock-label">Sign up free to unlock →</a>
-        {% endif %}
-    </div>
+{% macro premium_lock_banner() %}
+<div class="school-profile-lock-banner">
+    {{ icons.icon('lock') }}
+    <a href="{{ '/signup' if not current_user else '/premium' }}" class="school-profile-lock-label">Upgrade to Premium to unlock →</a>
 </div>
 {% endmacro %}
 {% set premium_unlocked = current_user and current_user.is_premium %}
+{% set value_lock_class = '' if premium_unlocked else 'school-profile-value-locked' %}
 <dialog class="report-modal" id="{{ modal_id }}">
     <div class="report-modal-inner">
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
@@ -124,7 +118,6 @@
                             {% endif %}
                             {% if s.detail and (s.detail.ofsted_quality_of_education or s.detail.ofsted_behaviour_attitudes or s.detail.ofsted_personal_development or s.detail.ofsted_leadership_management) %}
                             <p style="margin-top: 0.75rem;"><strong>Category judgements</strong></p>
-                            {% set judgements_table %}
                             <table>
                                 {% for label, value in [
                                     ("Quality of education", s.detail.ofsted_quality_of_education),
@@ -135,19 +128,14 @@
                                     ("Sixth form provision", s.detail.ofsted_sixth_form_provision),
                                 ] %}
                                 {% if value %}
-                                <tr><td>{{ label }}</td><td><span class="ofsted-badge ofsted-{{ value }}">{{ {1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}[value] }}</span></td></tr>
+                                <tr><td>{{ label }}</td><td><span class="{{ value_lock_class }}"><span class="ofsted-badge ofsted-{{ value }}">{{ {1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}[value] }}</span></span></td></tr>
                                 {% endif %}
                                 {% endfor %}
                                 {% if s.detail.ofsted_safeguarding_effective %}
-                                <tr><td>Safeguarding effective</td><td>{{ s.detail.ofsted_safeguarding_effective }}</td></tr>
+                                <tr><td>Safeguarding effective</td><td><span class="{{ value_lock_class }}">{{ s.detail.ofsted_safeguarding_effective }}</span></td></tr>
                                 {% endif %}
                             </table>
-                            {% endset %}
-                            {% if premium_unlocked %}
-                            {{ judgements_table }}
-                            {% else %}
-                            {% call premium_gate() %}{{ judgements_table }}{% endcall %}
-                            {% endif %}
+                            {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% endif %}
                             <p>Only the latest graded inspection is shown here - we don't hold a full historical inspection timeline.</p>
                         </div>
@@ -172,21 +160,15 @@
                             </table>
                             {% if s.exam_trend and s.exam_trend | length > 1 %}
                             <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label }} by year</strong></p>
-                            {% set trend_table %}
                             <table>
                                 {% for t in s.exam_trend %}
                                 <tr>
                                     <td>{{ t.academic_year }}</td>
-                                    <td>{{ t.headline_value if t.headline_value is not none else "—" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</td>
+                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else "—" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
                                 </tr>
                                 {% endfor %}
                             </table>
-                            {% endset %}
-                            {% if premium_unlocked %}
-                            {{ trend_table }}
-                            {% else %}
-                            {% call premium_gate() %}{{ trend_table }}{% endcall %}
-                            {% endif %}
+                            {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% endif %}
                         </div>
                     </details>
