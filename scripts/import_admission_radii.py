@@ -1157,6 +1157,52 @@ def fetch_north_somerset() -> list[dict]:
     return records
 
 
+_SOMERSET_URLS = [
+    "https://somersetcc.sharepoint.com/:b:/s/SCCPublic/"
+    "IQAmnq1_wHcJRayL6PFb9cfLAYPlkUMlIjVAMyhRFmP_Fng?e=sFNh7V&download=1",
+    "https://somersetcc.sharepoint.com/:b:/s/SCCPublic/"
+    "IQAs4cxF933FT6CTjdVlHM51AZxGnuma-esY5uYFvCNptJA?e=Ls4sqa&download=1",
+]
+_SOMERSET_SCHOOL_RE = re.compile(r"Allocation Summary for\s+(.+?)\n")
+_SOMERSET_DISTANCE_LINE_RE = re.compile(r"(?:^|\n)\d+\s+\S.*?\s(\d+)\s+([\d.]+)\s*(?=\n|$)")
+
+
+def fetch_somerset() -> list[dict]:
+    """Somerset County Council's "Allocation Summaries" PDFs (First
+    Admissions/Primary + Secondary), hosted on SharePoint share links
+    rather than the council's own domain - the share URL only returns
+    a raw PDF with "&download=1" appended (otherwise it 200s with an
+    HTML viewer page instead of the file), republished each year at a
+    new share link (find the current ones via somerset.gov.uk's
+    "school-place-allocation-summaries" page, inside the year's
+    accordion section). One page per school: "Allocation Summary for
+    <Name>", then a "Criterion | Number of places offered | Max
+    distance (miles)" table where only the one decisive
+    (oversubscribed) criterion row ends with two numbers ("<places>
+    <distance>") - every other criterion row ends with just the
+    places-offered count, so a line-level regex for a trailing
+    "int float" pair unambiguously finds the real distance without
+    needing pdfplumber's unreliable table extraction on this
+    heavily-wrapped layout.
+    """
+    records = []
+    for url in _SOMERSET_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+
+        sections = _SOMERSET_SCHOOL_RE.split(full_text)[1:]  # alternating name, body, name, body...
+        for name, body in zip(sections[0::2], sections[1::2]):
+            matches = _SOMERSET_DISTANCE_LINE_RE.findall(body.split("This information was correct")[0])
+            if matches:
+                records.append({"school_name": name.strip(), "last_distance_miles": float(matches[-1][1])})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1186,6 +1232,7 @@ _AUTHORITIES = [
     ("Portsmouth", "varies", fetch_portsmouth),
     ("Peterborough", "2026/27", fetch_peterborough),
     ("North Somerset", "2024/25", fetch_north_somerset),
+    ("Somerset", "2025/26", fetch_somerset),
 ]
 
 
