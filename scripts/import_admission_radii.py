@@ -1064,6 +1064,54 @@ def fetch_portsmouth() -> list[dict]:
     return records
 
 
+_PETERBOROUGH_URLS = [
+    "https://peterborough.gov.uk/asset-library/reception-allocations-sheet-2026-website.pdf",
+    "https://peterborough.gov.uk/asset-library/junior-allocations-sheet-2026-website.pdf",
+    "https://peterborough.gov.uk/asset-library/1st-round-allocation-stats-02.03.26-website.pdf",
+]
+
+
+def fetch_peterborough() -> list[dict]:
+    """Peterborough City Council's Reception, Junior, and Year 7
+    "1st round" allocation PDFs - republished each year at new URLs
+    under /asset-library/ (find the current ones via
+    peterborough.gov.uk's "school-allocation-information" page).
+    Reception/Junior share one table layout (last column "Distance
+    (miles)"); Year 7 uses a wider layout with the distance column at
+    a different position - rather than hardcode two different column
+    indices, this reuses the same decimal-cell-detection approach as
+    Stockport (every other numeric column across all three files is a
+    plain integer count or "N/A", so the one cell matching a decimal
+    number is unambiguous). One row (John Clare Primary School) reads
+    "206.404" - a genuine typo in the council's own PDF, not an
+    extraction glitch (Peterborough is a small unitary; no primary
+    admission is 200 miles), so implausible values (>30 miles) are
+    dropped rather than propagated as a real "circle" onto the map.
+    """
+    records = []
+    for url in _PETERBOROUGH_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or not row[0] or not isinstance(row[0], str):
+                        continue
+                    name = row[0].replace("\n", " ").strip()
+                    distance = None
+                    for cell in row[1:]:
+                        if cell and _STOCKPORT_DECIMAL_RE.match(cell.strip()):
+                            distance = float(cell.strip())
+                            break
+                    if distance is not None and distance <= 30:
+                        records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1091,6 +1139,7 @@ _AUTHORITIES = [
     ("Windsor and Maidenhead", "2025/26", fetch_windsor_and_maidenhead),
     ("Stockport", "2026/27", fetch_stockport),
     ("Portsmouth", "varies", fetch_portsmouth),
+    ("Peterborough", "2026/27", fetch_peterborough),
 ]
 
 
