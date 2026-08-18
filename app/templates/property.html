@@ -239,7 +239,8 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if not orientation else 'ok' }}" data-modal-target="modal-orientation" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not orientation else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-orientation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-orientation">{{ icons.icon('orientation') }}</span>
             <span class="dashboard-card-title">Aspect</span>
             <span class="dashboard-card-status">
@@ -430,7 +431,8 @@
 
     <h3 class="dashboard-category-heading">Area &amp; Community</h3>
     <div class="dashboard-grid">
-        <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-modal-target="modal-household-income" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-household-income" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
             <span class="dashboard-card-title">Household Income</span>
             <span class="dashboard-card-status">
@@ -494,7 +496,8 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if not wellbeing else 'ok' }}" data-modal-target="modal-wellbeing" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if not wellbeing else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-wellbeing" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
             <span class="dashboard-card-title">Health, Relationships &amp; Social Grade</span>
             <span class="dashboard-card-status">
