@@ -2269,6 +2269,96 @@ def fetch_wigan() -> list[dict]:
     return records
 
 
+def fetch_tameside() -> list[dict]:
+    """Tameside's Primary and Secondary "allocation statistics" PDFs
+    both publish the school's own real URN directly (Primary: a "URN"
+    column; Secondary: a "School unique ref number" column) - matched
+    directly like Greenwich, bypassing fuzzy name matching entirely
+    (name cells are frequently garbled by pdfplumber merging wrapped
+    multi-line cells, but the URN + Distance columns stay aligned
+    regardless). One secondary row has its URN corrupted to "E 106270"
+    by a line-wrap artifact - handled by extracting the digit run
+    rather than trusting the whole cell.
+    """
+    records = []
+
+    primary_url = "https://www.tameside.gov.uk/documents/d/guest/primary-full-stats-2024_1-pdf"
+    resp = httpx.get(primary_url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if len(row) < 18 or not row[2] or not row[2].isdigit() or not row[17]:
+                    continue
+                try:
+                    distance = float(row[17])
+                except ValueError:
+                    continue
+                records.append({"urn": int(row[2]), "school_name": row[3] or "", "last_distance_miles": distance})
+
+    secondary_url = "https://www.tameside.gov.uk/documents/d/guest/secondary-2025-pdf"
+    resp = httpx.get(secondary_url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if len(row) < 21 or not row[1] or not row[20]:
+                    continue
+                urn_match = re.search(r"\d{5,7}", row[1])
+                if not urn_match:
+                    continue
+                try:
+                    distance = float(row[20])
+                except ValueError:
+                    continue
+                records.append({"urn": int(urn_match.group()), "school_name": row[0] or "", "last_distance_miles": distance})
+
+    return records
+
+
+def fetch_sefton() -> list[dict]:
+    """Sefton Council's "Schools Admissions Information Guide" - a
+    huge (200+ page) composite prospectus with a per-school profile
+    section, republished each year at a new URL (find the current one
+    via sefton.gov.uk's "startingschool" page). The school name is the
+    first line of text on its profile's first page; "Table 2: How
+    places were allocated" has an "If oversubscribed furthest distance
+    (miles)" column (most other header cells on this table extract as
+    reversed text, but this one doesn't, so it's used as the anchor)
+    with one row per recent year, most recent first - takes that first
+    row's value. Faith/academy schools that set their own admissions
+    aren't included in this table and are naturally skipped.
+    """
+    url = "https://www.sefton.gov.uk/media/oavhszda/sefton-schools-admissions-information-guide-2026.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or not any("furthest distance" in str(c).lower() for c in table[0]):
+                continue
+            if len(table) < 2 or not table[1] or not table[1][-1]:
+                continue
+            try:
+                distance = float(table[1][-1].strip())
+            except ValueError:
+                continue
+            text = page.extract_text() or ""
+            name = text.split("\n")[0].strip()
+            if name:
+                records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2324,6 +2414,8 @@ _AUTHORITIES = [
     ("Walsall", "2025/26", fetch_walsall),
     ("Oldham", "2025/26", fetch_oldham),
     ("Wigan", "2025/26", fetch_wigan),
+    ("Sefton", "2025/26", fetch_sefton),
+    ("Tameside", "varies", fetch_tameside),
 ]
 
 
