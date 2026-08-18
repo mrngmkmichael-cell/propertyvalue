@@ -978,6 +978,56 @@ def fetch_windsor_and_maidenhead() -> list[dict]:
     return records
 
 
+_STOCKPORT_URLS = [
+    "https://assets.ctfassets.net/ii3xdrqc6nfw/5wDH7mjJwVyUmBxuKNKGyW/68b5a6974d1c750554e2352e180ed271/"
+    "Allocation_of_places_at_primary_schools_in_Stockport_for_September_2026.pdf",
+    "https://assets.ctfassets.net/ii3xdrqc6nfw/4EAb1hwybiJ3vKTqKigTMQ/87e71c0afd97857f5f6125fd0f95503b/"
+    "Allocation_of_places_at_secondary_schools_in_Stockport_for_September_2026.pdf",
+]
+_STOCKPORT_DECIMAL_RE = re.compile(r"^\d+\.\d+$")
+_STOCKPORT_INT_RE = re.compile(r"^\d+$")
+
+
+def fetch_stockport() -> list[dict]:
+    """Stockport Council's "Allocation of places" PDFs (Primary +
+    Secondary) - republished each year at a new content-hash URL under
+    assets.ctfassets.net (find the current ones via
+    stockport.gov.uk/documents/school-allocation). Extremely wide,
+    sparse tables (40-58 columns, mostly empty, with rotated/wrapped
+    header text split across several rows) make a fixed column index
+    unreliable - instead, per row, the school name is the first
+    non-empty cell that isn't a plain integer, and the distance is the
+    one cell matching a decimal number (every other numeric column in
+    these tables is a plain integer count, so this is unambiguous).
+    Header/label rows naturally have no decimal cell and are skipped.
+    """
+    records = []
+    for url in _STOCKPORT_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row:
+                        continue
+                    cells = [c.strip() if c else None for c in row]
+                    non_empty = [c for c in cells if c]
+                    name = None
+                    distance = None
+                    for c in non_empty:
+                        if _STOCKPORT_DECIMAL_RE.match(c):
+                            distance = float(c)
+                        elif name is None and not _STOCKPORT_INT_RE.match(c) and c.lower() != "miles":
+                            name = c
+                    if name and distance:
+                        records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1003,6 +1053,7 @@ _AUTHORITIES = [
     ("Coventry", "varies", fetch_coventry),
     ("Milton Keynes", "2025/26", fetch_milton_keynes),
     ("Windsor and Maidenhead", "2025/26", fetch_windsor_and_maidenhead),
+    ("Stockport", "2026/27", fetch_stockport),
 ]
 
 
