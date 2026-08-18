@@ -2934,6 +2934,222 @@ def fetch_sefton() -> list[dict]:
     return records
 
 
+def fetch_newham() -> list[dict]:
+    """London Borough of Newham's "Starting school" (primary) and
+    "Starting secondary school" (secondary) prospectuses - composite
+    PDFs (~100-120 pages) republished each year at a new file ID
+    (find current ones via newham.gov.uk's own site search for
+    "starting school in newham" / "starting secondary school in
+    newham" if these 404). There's no real PDF table here - the
+    "How places were offered" section (a handful of pages near the
+    front covering most community schools) and each individual
+    voluntary-aided/academy school's own one-page admissions profile
+    (scattered throughout the rest of the document) all render as
+    plain text with one line per school, e.g. "Brampton Manor Academy
+    460 2666 17 6 N/A 144 0 N/A 0 N/A N/A 293 0 460 All Other 0.816".
+    School names can themselves contain digits (e.g. "School 21"), so
+    rather than trying to isolate the name from the number of columns
+    (which varies row to row), the parser anchors on the *trailing*
+    "<criterion> <distance in miles>" and takes everything before the
+    first digit as the name - safe because undersubscribed schools
+    (ending "N/A N/A", no trailing float) are the only ones where that
+    could be ambiguous, and those are skipped anyway since there's no
+    distance to extract. Every real row appears twice (each double-page
+    spread renders identically as two separate PDF pages) - harmless,
+    de-duplicated downstream by URN.
+    """
+    urls = [
+        "https://www.newham.gov.uk/downloads/file/9671/starting-school-in-newham-2026-",
+        "https://www.newham.gov.uk/downloads/file/9673/starting-secondary-school-in-newham-full-digital-version",
+    ]
+    name_dist_re = re.compile(r"^([A-Za-z][A-Za-z'.\-&, ]+?)\s+\d.*\s(\d+\.\d+)\s*$")
+    records = []
+    for url in urls:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                for line in text.split("\n"):
+                    match = name_dist_re.match(line.strip())
+                    if not match:
+                        continue
+                    name = match.group(1).strip()
+                    if name.lower() == "total":
+                        continue
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(2))})
+    return records
+
+
+def fetch_bexley() -> list[dict]:
+    """London Borough of Bexley's "Admission to Secondary Schools"
+    booklet - a genuine PDF table (page 12 of the 2023-2024 edition)
+    headed "School | 5 years ago | 4 years ago | ... | @ <date>",
+    giving each selective/oversubscribed secondary school's offer
+    distance for the last several years side by side; the last
+    column is the most recent. Cells are either "<n> miles\\nStraight
+    line"/"<n> miles\\nRoad route" (take the number, ignore the
+    measurement method) or "All applicants offered places" /
+    "All selective applicants offered places" for schools that
+    weren't oversubscribed that year (skipped - no useful distance).
+    No newer edition of this booklet with a more recent last-column
+    date could be found published at a stable URL as of 2026; the
+    2023-2024 edition's last column (dated July 2022) is used as-is,
+    same situation as other authorities' "varies"-labelled sources.
+    Bexley's primary school admissions booklet was also checked but
+    contains only prose admissions policies per school, no numeric
+    distance table - primary schools aren't covered here.
+    """
+    url = "https://www.bexley.gov.uk/sites/default/files/2023-03/Admission-to-secondary-schools-2023-2024.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    dist_re = re.compile(r"([\d.]+)\s*miles")
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or not table[0] or table[0][0] != "School":
+                continue
+            for row in table[1:]:
+                if not row or not row[0]:
+                    continue
+                name = row[0].replace("\n", " ").strip()
+                last_cell = row[-1]
+                if not last_cell:
+                    continue
+                match = dist_re.search(last_cell)
+                if match:
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
+_LIVED_RE = re.compile(r"lived\s+([\d.]+)\s+miles", re.IGNORECASE)
+
+
+def fetch_islington() -> list[dict]:
+    """Islington Council's "Cut-off distance for schools" page - a
+    genuine HTML table (two of them: primary, then secondary) with
+    one row per school and three year columns side by side
+    ("Distance (miles) in 2026-27" / "2025-26" / "2024-25", most
+    recent first); takes the first column with a real number rather
+    than "Not applicable" (undersubscribed that year). Banded
+    secondary schools (e.g. Central Foundation Boys' School, which
+    publishes a separate cut-off per aptitude/distance band) appear
+    as multiple rows with " Band 1"/"Band 2" etc suffixed onto the
+    school name - all fuzzy-match to the same real school and
+    de-duplicate downstream to one URN, same as a school appearing
+    twice for any other reason. <thead> is stripped before parsing
+    so its header cells (which also use <th>) aren't mistaken for a
+    school row.
+    """
+    import html as html_module
+
+    url = (
+        "https://www.islington.gov.uk/children-and-families/schools/"
+        "apply-for-a-school-place/school-admissions-information/cut-off-distance-maps"
+    )
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    text = re.sub(r"<thead>.*?</thead>", "", resp.text, flags=re.S)
+
+    row_re = re.compile(
+        r"<tr>\s*<th>(.*?)</th>\s*<td>.*?</td>\s*<td>(.*?)</td>\s*<td>(.*?)</td>\s*<td>(.*?)</td>\s*</tr>", re.S
+    )
+    records = []
+    for match in row_re.finditer(text):
+        name = html_module.unescape(re.sub(r"<.*?>", "", match.group(1))).strip()
+        for cell in (match.group(2), match.group(3), match.group(4)):
+            cell_clean = html_module.unescape(re.sub(r"&nbsp;|<.*?>", "", cell)).strip()
+            try:
+                distance = float(cell_clean)
+            except ValueError:
+                continue
+            records.append({"school_name": name, "last_distance_miles": distance})
+            break
+    return records
+
+
+def fetch_southampton() -> list[dict]:
+    """Southampton City Council publishes two separate "how places
+    were offered at oversubscribed schools" documents: a PDF for
+    secondary schools with three years' tables stacked on separate
+    pages (most recent year last - only that page is used) giving a
+    "Distance of last child admitted" as the final column of each
+    school's block (column position varies row to row since each
+    school's admissions criteria differ, so the last float-typed
+    cell in the row is taken rather than a fixed index); and an XLSX
+    for infant/primary schools with one sheet per year (most recent
+    sheet used, named by year), where "Community"/"Voluntary
+    Controlled"/"Trust" schools appear in genuine numeric-column
+    tables (again: last float-typed cell = the distance) but
+    "Academies"/"Voluntary Aided" schools instead get a prose
+    "Criterion" cell reading "...This child lived 1.761 miles from
+    the school." (regex-extracted). Rows with neither a trailing
+    float nor a "lived ... miles" phrase (headers, section titles,
+    explanatory notes, schools that weren't oversubscribed) are
+    naturally skipped since no distance can be found. Both source
+    files are hosted at fairly stable per-year media IDs.
+    """
+    records = []
+
+    url = "https://www.southampton.gov.uk/media/ur2kqqix/how-places-were-offered-at-oversubscribed-schools-last-3-years.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        page = pdf.pages[-1]
+        table = page.extract_table()
+        for row in table or []:
+            if not row or not row[0]:
+                continue
+            name = row[0].strip()
+            distance = None
+            for cell in reversed(row[1:]):
+                if cell is None:
+                    continue
+                try:
+                    distance = float(cell)
+                    break
+                except ValueError:
+                    continue
+            if distance is not None:
+                records.append({"school_name": name, "last_distance_miles": distance})
+
+    url2 = (
+        "https://www.southampton.gov.uk/media/jwkpgyaz/"
+        "how-places-were-offered-at-oversubscribed-infant-and-primary-schools-for-year-r-entry-september-2024-2023-and-2022.xlsx"
+    )
+    print(f"  Downloading {url2}")
+    resp2 = httpx.get(url2, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp2.raise_for_status()
+    wb = openpyxl.load_workbook(io.BytesIO(resp2.content), data_only=True)
+    latest_sheet = max(wb.sheetnames, key=lambda s: int(s))
+    for row in wb[latest_sheet].iter_rows(values_only=True):
+        if not row or not row[0] or not isinstance(row[0], str) or row[0] == "School":
+            continue
+        name = row[0].strip()
+        distance = None
+        for cell in reversed(row[1:]):
+            if isinstance(cell, float):
+                distance = cell
+                break
+        if distance is None:
+            for cell in row[1:]:
+                if isinstance(cell, str):
+                    match = _LIVED_RE.search(cell)
+                    if match:
+                        distance = float(match.group(1))
+                        break
+        if distance is not None:
+            records.append({"school_name": name, "last_distance_miles": distance})
+
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2990,6 +3206,10 @@ _AUTHORITIES = [
     ("Oldham", "2025/26", fetch_oldham),
     ("Wigan", "2025/26", fetch_wigan),
     ("Sefton", "2025/26", fetch_sefton),
+    ("Newham", "2025/26", fetch_newham),
+    ("Bexley", "varies", fetch_bexley),
+    ("Southampton", "2024/25", fetch_southampton),
+    ("Islington", "2026/27", fetch_islington),
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
