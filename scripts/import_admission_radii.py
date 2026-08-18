@@ -1970,6 +1970,47 @@ def fetch_merton() -> list[dict]:
     return records
 
 
+_GREENWICH_DISTANCE_RE = re.compile(r"([\d.]+)")
+
+
+def fetch_greenwich() -> list[dict]:
+    """Royal Borough of Greenwich's "Primary School admissions data
+    and statistics" Excel workbook - republished each year at a new
+    URL under /sites/default/files/YYYY-MM/ (find the current one via
+    royalgreenwich.gov.uk's downloads page, ID 1191 as of writing - no
+    secondary equivalent was found). Uniquely among every source in
+    this registry, it publishes the school's own URN directly (column
+    "URN & DFE Numbers", formatted "<URN> & <DfE No>") rather than
+    relying on name matching - so records here carry a "urn" key that
+    build_records() uses directly (still checked against this
+    authority's real URNs rather than trusted blindly). "Last distance
+    offered in metres" is sometimes annotated (e.g. "21437.68 (Open
+    Band)" for faith schools with banded admission) - only the leading
+    number is taken. Section-header rows ("Planning Area 1") have no
+    PAN and are naturally skipped.
+    """
+    url = "https://www.royalgreenwich.gov.uk/sites/default/files/2025-04/Primary_Stats_for_Website_2024.xlsx"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+    ws = wb[wb.sheetnames[0]]
+
+    records = []
+    for row in ws.iter_rows(min_row=3, values_only=True):
+        if not row or not row[1] or not row[2] or not row[20]:
+            continue
+        urn_match = re.match(r"\s*(\d+)", str(row[1]))
+        distance_match = _GREENWICH_DISTANCE_RE.search(str(row[20]))
+        if urn_match and distance_match:
+            records.append({
+                "school_name": (row[0] or "").strip(),
+                "urn": int(urn_match.group(1)),
+                "last_distance_miles": float(distance_match.group(1)) / _METRES_PER_MILE,
+            })
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2018,6 +2059,7 @@ _AUTHORITIES = [
     ("Waltham Forest", "varies", fetch_waltham_forest),
     ("Lewisham", "2025/26", fetch_lewisham),
     ("Merton", "varies", fetch_merton),
+    ("Greenwich", "2024/25", fetch_greenwich),
 ]
 
 
@@ -2040,11 +2082,14 @@ def build_records(session) -> list[dict]:
             .where(SchoolDetail.local_authority == authority)
         ).all()
         candidates = {_normalize_school_name(name): urn for urn, name in schools_in_la}
+        valid_urns = {urn for urn, _ in schools_in_la}
 
         matched = 0
         unmatched = []
         for row in rows:
-            urn = _match_urn(row["school_name"], candidates)
+            # A source that publishes its own URN (e.g. Greenwich) is matched directly rather than
+            # by fuzzy name, but still checked against this authority's real URNs rather than trusted blindly.
+            urn = row["urn"] if row.get("urn") in valid_urns else _match_urn(row["school_name"], candidates)
             if urn is None:
                 unmatched.append(row["school_name"])
                 continue
