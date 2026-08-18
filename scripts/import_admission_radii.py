@@ -2222,6 +2222,53 @@ def fetch_oldham() -> list[dict]:
     return records
 
 
+_WIGAN_INDEX_URLS = [
+    "https://www.wigan.gov.uk/resident/education/schools/school-admissions/primary-schools.aspx",
+    "https://www.wigan.gov.uk/resident/education/schools/School-Admissions/Secondary-Schools.aspx",
+]
+_WIGAN_LINK_RE = re.compile(r'href="(/Docs/PDF/Resident/Education/Schools/Admissions/[^"]+\.pdf)"')
+_WIGAN_DISTANCE_RE = re.compile(r"living\s*([\d.]+)\s*miles from the school")
+
+
+def fetch_wigan() -> list[dict]:
+    """Wigan Council publishes one individual "how places were
+    allocated" PDF per school (both primary and secondary), listed on
+    two index pages that this crawls for the current list rather than
+    hardcoding them (find the current index pages via wigan.gov.uk's
+    "school-admissions" section if the URL slugs change; excludes the
+    generic booklets and appeals-info PDF that also appear in the same
+    link list). Prose format: school name is the document's first
+    line, and the decisive line reads "...living X.XXX miles from the
+    school." Schools not oversubscribed have no such sentence and are
+    naturally skipped.
+    """
+    records = []
+    for index_url in _WIGAN_INDEX_URLS:
+        print(f"  Downloading index {index_url}")
+        resp = httpx.get(index_url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        paths = [p for p in set(_WIGAN_LINK_RE.findall(resp.text))
+                 if "Booklet" not in p and "Appeals" not in p]
+        for path in paths:
+            url = f"https://www.wigan.gov.uk{path}"
+            print(f"  Downloading {url}")
+            try:
+                pdf_resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+                pdf_resp.raise_for_status()
+            except httpx.HTTPError:
+                continue
+            with pdfplumber.open(io.BytesIO(pdf_resp.content)) as pdf:
+                full_text = pdf.pages[0].extract_text() or ""
+            lines = full_text.split("\n")
+            if not lines:
+                continue
+            name = lines[0].strip()
+            match = _WIGAN_DISTANCE_RE.search(full_text)
+            if match:
+                records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2276,6 +2323,7 @@ _AUTHORITIES = [
     ("Calderdale", "2026/27", fetch_calderdale),
     ("Walsall", "2025/26", fetch_walsall),
     ("Oldham", "2025/26", fetch_oldham),
+    ("Wigan", "2025/26", fetch_wigan),
 ]
 
 
