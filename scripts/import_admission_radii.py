@@ -502,6 +502,125 @@ def fetch_birmingham() -> list[dict]:
     return records
 
 
+_NEWCASTLE_RECEPTION_ROW_RE = re.compile(
+    r'<p id="([^"]+)"><strong>[^<]+</strong></p>.*?'
+    r'Farthest distance from school</td><td[^>]*>([^<]*)</td>',
+    re.DOTALL,
+)
+_NEWCASTLE_TRANSFER_SCHOOL_RE = re.compile(r"<h3>([^<]+)</h3>(.*?)(?=<h3>|\Z)", re.DOTALL)
+_NEWCASTLE_DISTANCE_MILES_RE = re.compile(r"([\d.]+)\s*miles?", re.IGNORECASE)
+
+
+def fetch_newcastle() -> list[dict]:
+    """Newcastle City Council publishes its "how places were allocated"
+    results as plain HTML pages (not PDFs) - one for Reception
+    (primary) and one for Transfer (secondary), both republished each
+    year at a new URL suffix (find the current ones via
+    newcastle.gov.uk's own admissions pages). Reception page is one
+    big table with a "Farthest distance from school" row per school,
+    already in miles; Transfer page uses an "<h3>School Name</h3>"
+    heading per school followed by a "Last distance offered in
+    Category N: X.XXX miles" paragraph. Schools reading "School not
+    filled on distance criteria" have no distance and are correctly
+    skipped.
+    """
+    records = []
+
+    reception_url = "https://newcastle.gov.uk/services/how-reception-places-were-allocated-2026"
+    print(f"  Downloading {reception_url}")
+    resp = httpx.get(reception_url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    for name, value in _NEWCASTLE_RECEPTION_ROW_RE.findall(resp.text):
+        match = _NEWCASTLE_DISTANCE_MILES_RE.search(value)
+        if match:
+            records.append({"school_name": name.strip(), "last_distance_miles": float(match.group(1))})
+
+    transfer_url = (
+        "https://www.newcastle.gov.uk/services/schools-learning-and-childcare/"
+        "apply-school-place/information-about-how-reception-and-6"
+    )
+    print(f"  Downloading {transfer_url}")
+    resp = httpx.get(transfer_url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    for name, section in _NEWCASTLE_TRANSFER_SCHOOL_RE.findall(resp.text):
+        match = _NEWCASTLE_DISTANCE_MILES_RE.search(section)
+        if match:
+            records.append({"school_name": name.strip(), "last_distance_miles": float(match.group(1))})
+
+    return records
+
+
+_SURREY_SCHOOL_RE = re.compile(
+    r"^([A-Za-z][^\n]{2,90})\nDfE No: [\d/]+\n(.*?)(?=\n[A-Za-z][^\n]{2,90}\nDfE No: |\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+_SURREY_DISTANCE_RE = re.compile(r"Distance[^=\n]{0,25}=\s*([\d.]+)\s*km")
+
+# One PDF per district (plus one for Junior schools, one for
+# Secondary) - Surrey is a county council (like Gloucestershire) so
+# GIAS's local_authority for all of these is simply "Surrey", but the
+# council itself only publishes allocation figures broken down by
+# district, hence the long URL list.
+_SURREY_URLS = [
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0010/521389/FINAL-Elmbridge-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0020/521390/FINAL-Epsom-and-Ewell-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0003/521391/FINAL-Guildford-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0004/521392/FINAL-Mole-Valley-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0005/521393/FINAL-Reigate-and-Banstead-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0006/521394/FINAL-Runnymede-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0007/521395/FINAL-Spelthorne-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0008/521396/FINAL-Surrey-Heath-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0009/521397/FINAL-Tandridge-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0010/521398/FINAL-Waverley-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0011/521399/FINAL-Woking-Primary-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0009/521388/FINAL-Junior-allocation-figures-September-2026-V1.pdf",
+    "https://www.surreycc.gov.uk/__data/assets/pdf_file/0003/516684/FINAL-Secondary-allocation-figures-September-2026-V2.pdf",
+]
+
+
+def _parse_surrey_pdf(full_text: str) -> list[dict]:
+    records = []
+    for name, section in _SURREY_SCHOOL_RE.findall(full_text):
+        # "Distance to Nodal Point" is a distance to a fixed
+        # reference point used as a tie-breaker on some split
+        # catchments, not a home-to-school distance - excluded so it
+        # doesn't get mistaken for the admission radius.
+        distances = [
+            float(m.group(1))
+            for m in _SURREY_DISTANCE_RE.finditer(section)
+            if "nodal" not in m.group(0).lower()
+        ]
+        if distances:
+            records.append({"school_name": name.strip(), "last_distance_miles": max(distances) / 1.60934})
+    return records
+
+
+def fetch_surrey() -> list[dict]:
+    """Surrey County Council's "Allocation of places" PDFs - one per
+    district (Elmbridge, Epsom and Ewell, Guildford, Mole Valley,
+    Reigate and Banstead, Runnymede, Spelthorne, Surrey Heath,
+    Tandridge, Waverley, Woking) plus separate Junior and Secondary
+    documents, republished each year at new file IDs under the same
+    /__data/assets/pdf_file/ path pattern (find the current ones via
+    surreycc.gov.uk's own "arrangements-and-outcomes/previous-years"
+    page). Format is prose, not a table: each school is a heading line
+    followed by "DfE No: .../....", then free text ending in
+    "Distance = X.XXXkm" (already scoped to the last-filled criterion
+    per the document's own key) - already in km, converted to miles.
+    """
+    records = []
+    for url in _SURREY_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+        records.extend(_parse_surrey_pdf(full_text))
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -517,6 +636,8 @@ _AUTHORITIES = [
     ("Harrow", "2024/25", fetch_harrow),
     ("Gloucestershire", "2024/25", fetch_gloucestershire),
     ("Birmingham", "2023/24", fetch_birmingham),
+    ("Newcastle upon Tyne", "varies", fetch_newcastle),
+    ("Surrey", "2026/27", fetch_surrey),
 ]
 
 
