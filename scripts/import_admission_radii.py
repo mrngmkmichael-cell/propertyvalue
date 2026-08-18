@@ -2688,6 +2688,69 @@ def fetch_reading() -> list[dict]:
     return records
 
 
+_BURY_URLS = [
+    "https://www.bury.gov.uk/asset-library/historical-primary-20251.pdf",
+    "https://www.bury.gov.uk/asset-library/historical-community-secondary-schools-allocation-information2.pdf",
+]
+_BURY_NAME_RE = re.compile(r"\n([A-Za-z][^\n]{2,60})\nPublished")
+
+
+def fetch_bury() -> list[dict]:
+    """Bury's "historical information" PDFs (Primary, and Community
+    Secondary - the separate Voluntary Aided secondary one has no
+    distance column at all, faith/preference-based only, so it's
+    skipped) list 5-6 years per school, each year on its own line with
+    a distance figure somewhere in it (its column position differs
+    between the two documents), or "All"/"-" for a year not
+    oversubscribed on distance. Schools are split apart by matching
+    the name line immediately before a "Published" header line; within
+    each school's block, the most recent year (scanning backwards)
+    whose line contains an actual decimal number is used - this also
+    naturally skips a row mangled by an unrelated PDF text-wrapping
+    glitch (seen on one school, "The Derby") that dropped its real
+    distance onto a separate line, since the visible integer-only
+    remainder has no decimal for this to match. Primary school names
+    in that document are bare ("Cams Lane"), so " Primary School" is
+    appended before matching - secondary names are already given in
+    full ("Hazel Wood" -> "Hazel Wood High School" fuzzy-matches fine
+    without one).
+    """
+    records = []
+    for url in _BURY_URLS:
+        is_primary = url is _BURY_URLS[0]
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+        matches = list(_BURY_NAME_RE.finditer(full_text))
+        for i, m in enumerate(matches):
+            name = m.group(1).strip()
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(full_text)
+            block = full_text[start:end]
+            for year in range(2026, 2020, -1):
+                year_match = re.search(rf"^{year}\s+(.*)$", block, re.MULTILINE)
+                if not year_match:
+                    continue
+                # Distance is the only decimal-formatted value on the line (PAN,
+                # preference/category counts, appeals and totals are all plain
+                # integers) - its column position differs between the Primary and
+                # Secondary documents, so this searches for the decimal rather than
+                # assuming an index. This also naturally excludes a row mangled by
+                # a PDF text-wrapping glitch (seen on one school, "The Derby") that
+                # dropped its real distance onto a separate line, since the
+                # visible integer-only remainder has no "." for this to match.
+                distance_match = re.search(r"(\d+\.\d+)", year_match.group(1))
+                if not distance_match:
+                    continue
+                full_name = f"{name} Primary School" if is_primary else name
+                records.append({"school_name": full_name, "last_distance_miles": float(distance_match.group(1))})
+                break
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2790,6 +2853,7 @@ _AUTHORITIES = [
     ("Bristol, City of", "varies", fetch_bristol),
     ("North Yorkshire", "2025/26", fetch_north_yorkshire),
     ("Reading", "2025/26", fetch_reading),
+    ("Bury", "varies", fetch_bury),
 ]
 
 
