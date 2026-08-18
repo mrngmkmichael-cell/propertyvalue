@@ -2328,7 +2328,7 @@ def fetch_tameside() -> list[dict]:
 
 
 def fetch_gloucestershire() -> list[dict]:
-    """Gloucestershire's Primary and Secondary "allocation day
+    """Gloucestershire's Primary, Junior and Secondary "allocation day
     statistics" PDFs - clean tables with "Furthest distance allocated
     (miles)" as a fixed column. Rows that weren't oversubscribed show
     "N/A" (skipped); distances beyond 20 miles are deliberately
@@ -2339,6 +2339,7 @@ def fetch_gloucestershire() -> list[dict]:
     """
     urls = [
         "https://www.gloucestershire.gov.uk/media/ctgfusdi/primary-allocation-day-statistics-2025-1.pdf",
+        "https://gloucestershire.gov.uk/media/0rzhtukd/junior-allocation-day-statistics-2025.pdf",
         "https://www.gloucestershire.gov.uk/media/v1jdwr0r/secondary-allocation-day-statistics-2025.pdf",
     ]
     records = []
