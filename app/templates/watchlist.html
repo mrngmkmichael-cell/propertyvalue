@@ -6,6 +6,16 @@
 <span class="kicker">Saved properties</span>
 <h1>Your watchlist</h1>
 
+{% if changed_item_count %}
+<div class="watchlist-alert-banner" data-animate>
+    <span class="watchlist-alert-count">{{ changed_item_count }}</span>
+    <span>
+        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked —
+        see the highlighted rows below.
+    </span>
+</div>
+{% endif %}
+
 {% if items %}
     <form action="/watchlist/compare" method="get">
     <table class="tx-table">
@@ -20,7 +30,7 @@
         </thead>
         <tbody>
             {% for item in items %}
-            <tr>
+            <tr class="{{ 'watchlist-row-changed' if item.changes else '' }}">
                 <td class="num"><input type="checkbox" name="item_ids" value="{{ item.id }}"></td>
                 <td>
                     <a href="/property?postcode={{ item.postcode }}{% if item.house_number %}&house_number={{ item.house_number }}{% endif %}">

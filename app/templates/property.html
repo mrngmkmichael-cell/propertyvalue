@@ -39,6 +39,25 @@
         <span class="kicker">Property report</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+
+        {% if overview %}
+        <div class="overview-score-card overview-grade-{{ overview.grade | lower | replace(' ', '-') }}" data-animate>
+            <div class="overview-score-number">
+                <span class="overview-score-value">{{ overview.score }}</span>
+                <span class="overview-score-max">/100</span>
+            </div>
+            <div class="overview-score-body">
+                <span class="overview-score-grade">{{ overview.grade }}</span>
+                <p class="overview-score-verdict">{{ overview.verdict }}</p>
+                {% if overview.premium_extra_checks %}
+                <a href="{{ '/signup' if not current_user else '/premium' }}" class="overview-score-upsell">
+                    +{{ overview.premium_extra_checks }} more check{{ 's' if overview.premium_extra_checks != 1 }} factored in with Premium →
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         {% if property_detail and (property_detail.dwelling_type or property_detail.total_floor_area) %}
         <p class="property-detail-line">
             {% if property_detail.dwelling_type %}{{ property_detail.dwelling_type }}{% endif %}
@@ -503,6 +522,15 @@
             <span class="dashboard-card-status">
                 {% if wellbeing and wellbeing.good_health_pct is not none %}{{ wellbeing.good_health_pct }}% good or very good health
                 {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if not area_reviews.count else 'ok' }}" data-modal-target="modal-reviews" data-animate>
+            <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
+            <span class="dashboard-card-title">Resident Reviews</span>
+            <span class="dashboard-card-status">
+                {% if area_reviews.count %}{{ area_reviews.average }}/5 from {{ area_reviews.count }} review{{ "s" if area_reviews.count != 1 }}
+                {% else %}No reviews yet — be the first{% endif %}
             </span>
         </button>
     </div>
@@ -1396,7 +1424,10 @@
             year. This checks real, published catchment-boundary polygons from the handful of local
             authorities that do openly publish them, rather than an estimate from historic admission
             data. If nothing shows below, it doesn't mean there's no catchment here — it most likely
-            means this area's council isn't one of the ones that publishes this data openly.
+            means this area's council isn't one of the ones that publishes this data openly. Where
+            a match is found, the real boundary shape is drawn on the map above (Premium) — these
+            are each council's current boundary, not a historical year-by-year archive, since none
+            of these sources publish past years' shapes either.
         </p>
         {% if catchment_error %}
             <p class="notice notice-error">
@@ -2206,6 +2237,59 @@
             </section>
         </div>
     </dialog>
+
+    <dialog class="report-modal" id="modal-reviews">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Resident reviews</h2>
+        <p class="section-sub">
+            What it's like to live here, from people who actually do — the one thing none of our
+            open-data sources can tell you. Starts empty for most areas; be the first to add one.
+        </p>
+        {% if area_reviews.count %}
+        <p class="review-average">{{ area_reviews.average }}/5 <span class="section-sub">from {{ area_reviews.count }} review{{ "s" if area_reviews.count != 1 }}</span></p>
+        <ul class="review-list">
+            {% for r in area_reviews.reviews %}
+            <li class="review-item">
+                <span class="review-stars">{{ "★" * r.rating }}{{ "☆" * (5 - r.rating) }}</span>
+                {% if r.body %}<p>{{ r.body }}</p>{% endif %}
+                <span class="section-sub">{{ r.created_at.strftime("%Y-%m-%d") }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="notice">No reviews yet for this area.</p>
+        {% endif %}
+
+        {% if current_user %}
+        <form class="stacked-form" action="/reviews/submit" method="post" style="margin-top: 1.25rem;">
+            <input type="hidden" name="target_type" value="property">
+            <input type="hidden" name="target_key" value="{{ location.postcode }}">
+            <input type="hidden" name="next" value="/property?postcode={{ location.postcode }}{% if house_number %}&house_number={{ house_number }}{% endif %}#reviews">
+            <div class="search-form-field">
+                <label for="review-rating">{{ "Update your review" if my_area_review else "Your rating" }}</label>
+                <select id="review-rating" name="rating">
+                    {% for n in [5, 4, 3, 2, 1] %}
+                    <option value="{{ n }}" {{ "selected" if my_area_review and my_area_review.rating == n }}>{{ n }} star{{ "s" if n != 1 }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="search-form-field">
+                <label for="review-body">Your review (optional)</label>
+                <textarea id="review-body" name="body" maxlength="1000" rows="3">{{ my_area_review.body if my_area_review else "" }}</textarea>
+            </div>
+            <button type="submit">{{ "Update review" if my_area_review else "Submit review" }}</button>
+            {% if my_area_review %}<p class="section-sub">Submitting replaces your previous review for this area.</p>{% endif %}
+        </form>
+        {% else %}
+        <p class="section-sub">
+            <a href="/login?next=/property?postcode={{ location.postcode }}">Log in</a> to leave a review.
+        </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
 {% endif %}
 {% endblock %}
 
@@ -2533,6 +2617,21 @@ Listed building data from Historic England's
             fullscreenControl: false,
         });
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
+
+        const catchments = {{ (catchment or []) | tojson }};
+        catchments.forEach(function (c) {
+            if (!c.rings) return;
+            c.rings.forEach(function (ring) {
+                new google.maps.Polygon({
+                    paths: ring.map(function (pt) { return { lat: pt[1], lng: pt[0] }; }),
+                    map: map,
+                    strokeColor: '#3b5bfd', strokeWeight: 2, fillColor: '#3b5bfd', fillOpacity: 0.12,
+                }).addListener('click', function () {
+                    new google.maps.InfoWindow({ content: c.school_name + ' catchment' })
+                        .setPosition(ring[0].length ? { lat: ring[0][1], lng: ring[0][0] } : center);
+                });
+            });
+        });
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initPropertyMap&loading=async" async defer></script>
@@ -2550,6 +2649,14 @@ Listed building data from Historic England's
     L.marker([{{ location.latitude | tojson }}, {{ location.longitude | tojson }}])
         .addTo(map)
         .bindPopup({{ location.postcode | tojson }});
+
+    ({{ (catchment or []) | tojson }}).forEach(function (c) {
+        if (!c.rings) return;
+        L.geoJSON(
+            { type: 'Feature', properties: { name: c.school_name }, geometry: { type: 'Polygon', coordinates: c.rings } },
+            { style: { color: '#3b5bfd', weight: 2, fillOpacity: 0.12 } }
+        ).bindPopup(c.school_name + ' catchment').addTo(map);
+    });
 </script>
 {% endif %}
 

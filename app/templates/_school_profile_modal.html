@@ -12,6 +12,9 @@
         <section class="report-section">
             <h2>{{ s.name }}</h2>
             <p class="section-sub">{{ s.type }} — {{ s.distance_m | distance }}</p>
+            {% if s.verdict %}
+            <p class="school-profile-verdict">{{ s.verdict }}</p>
+            {% endif %}
 
             <ul class="school-profile-menu">
                 <li>
@@ -211,13 +214,53 @@
                     </details>
                 </li>
                 {% endif %}
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('reviews') }}</span>
+                            <span class="school-profile-label">Parent Reviews</span>
+                            <span class="school-profile-preview">
+                                {%- if s.review_summary and s.review_summary.count %}{{ s.review_summary.average }}/5 ({{ s.review_summary.count }}){% else %}No reviews yet{% endif %}
+                            </span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            {% if s.review_summary and s.review_summary.count %}
+                            <p class="review-average" style="margin: 0 0 0.5rem;">{{ s.review_summary.average }}/5 <span class="section-sub">from {{ s.review_summary.count }} review{{ "s" if s.review_summary.count != 1 }}</span></p>
+                            {% else %}
+                            <p>No parent reviews yet for this school — be the first.</p>
+                            {% endif %}
+                            {% if current_user %}
+                            <form class="stacked-form" action="/reviews/submit" method="post">
+                                <input type="hidden" name="target_type" value="school">
+                                <input type="hidden" name="target_key" value="{{ s.urn }}">
+                                <input type="hidden" name="next" value="{{ request.url.path }}{{ '?' ~ request.url.query if request.url.query else '' }}">
+                                <div class="search-form-field">
+                                    <label for="school-review-rating-{{ modal_id }}">Your rating</label>
+                                    <select id="school-review-rating-{{ modal_id }}" name="rating">
+                                        {% for n in [5, 4, 3, 2, 1] %}
+                                        <option value="{{ n }}">{{ n }} star{{ "s" if n != 1 }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="search-form-field">
+                                    <label for="school-review-body-{{ modal_id }}">Your review (optional)</label>
+                                    <textarea id="school-review-body-{{ modal_id }}" name="body" maxlength="1000" rows="2"></textarea>
+                                </div>
+                                <button type="submit">Submit review</button>
+                            </form>
+                            {% else %}
+                            <p class="section-sub"><a href="/login">Log in</a> to leave a review.</p>
+                            {% endif %}
+                        </div>
+                    </details>
+                </li>
             </ul>
 
             <p class="school-profile-note">
                 Not shown here — no free public data source available: exact admissions/oversubscription
                 numbers, catchment area, feeder and destination schools, teacher headcount, financial
-                reserves, A-Level results, per-subject entries, or any parent-review sentiment score
-                (that's proprietary to sites like Locrating, not something we can honestly reproduce).
+                reserves, A-Level results, or per-subject entries.
             </p>
         </section>
     </div>

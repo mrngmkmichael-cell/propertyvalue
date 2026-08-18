@@ -67,26 +67,39 @@ _SOURCES = [
 ]
 
 
-async def _query_source(client: httpx.AsyncClient, url: str, name_field: str, lat: float, lon: float) -> list[str]:
+async def _query_source(client: httpx.AsyncClient, url: str, name_field: str, lat: float, lon: float) -> list[dict]:
     params = {
         "geometry": f"{lon},{lat}",
         "geometryType": "esriGeometryPoint",
         "inSR": "4326",
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": name_field,
-        "returnGeometry": "false",
+        "returnGeometry": "true",
+        "outSR": "4326",
         "f": "json",
     }
     response = await client.get(f"{url}/query", params=params, timeout=10)
     response.raise_for_status()
     features = response.json().get("features", [])
-    return sorted({
-        f["attributes"].get(name_field) for f in features if f["attributes"].get(name_field)
-    })
+    results = []
+    seen = set()
+    for f in features:
+        name = f["attributes"].get(name_field)
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        results.append({"school_name": name, "rings": f.get("geometry", {}).get("rings")})
+    return sorted(results, key=lambda r: r["school_name"])
 
 
 async def catchments_for(lat: float, lon: float) -> list[dict]:
-    key = _cache.coord_key("catchment", lat, lon)
+    """Each match includes "rings" - the catchment polygon's own
+    coordinates (GeoJSON-style [lon, lat] pairs, ready to hand
+    straight to Leaflet's L.geoJSON) - a real boundary shape, not just
+    a name, for the minority of authorities in _SOURCES that publish
+    one. "rings" is None on the rare feature that has attributes but
+    no geometry returned."""
+    key = _cache.coord_key("catchment_v2", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:
         return cached
@@ -101,8 +114,8 @@ async def catchments_for(lat: float, lon: float) -> list[dict]:
     for (authority, phase, _, _), result in zip(_SOURCES, results):
         if isinstance(result, Exception) or not result:
             continue
-        for school_name in result:
-            matches.append({"authority": authority, "phase": phase, "school_name": school_name})
+        for row in result:
+            matches.append({"authority": authority, "phase": phase, "school_name": row["school_name"], "rings": row["rings"]})
 
     _cache.set(key, matches)
     return matches

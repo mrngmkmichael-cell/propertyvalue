@@ -49,6 +49,34 @@ class WatchlistItem(Base):
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 
 
+class Review(Base):
+    """A logged-in user's rating + optional text for either an area
+    (target_type="property", target_key=postcode - reviews are about
+    the area/street, not one specific unit) or a school
+    (target_type="school", target_key=str(urn)). One review per user
+    per target (re-submitting updates it rather than duplicating) -
+    the UniqueConstraint enforces that server-side too, not just in
+    the route handler.
+
+    Deliberately anonymous in display (no name/email shown - see
+    app/services/reviews.py) rather than adding a display-name field,
+    to avoid a half-built profile system nobody asked for and to keep
+    reviewers' identity private by default.
+    """
+    __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("user_id", "target_type", "target_key", name="uq_review_user_target"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    target_type: Mapped[str] = mapped_column(String(20))
+    target_key: Mapped[str] = mapped_column(String(32))
+    rating: Mapped[int] = mapped_column(Integer)
+    body: Mapped[str] = mapped_column(String(1000), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class SchoolShortlistItem(Base):
     """A logged-in user's saved/shortlisted schools - the same
     account system as WatchlistItem, keyed by school URN instead of

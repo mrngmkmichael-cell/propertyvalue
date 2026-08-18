@@ -21,7 +21,7 @@ from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, crime, demographics, designations, epc,
     flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise,
-    orientation, place_search, radon, rental, schools_db, valuation,
+    orientation, overview_score, place_search, radon, rental, reviews, schools_db, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -739,6 +739,23 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         except Exception:
             context["shortlisted_urns"] = set()
 
+    if context["accounts_configured"]:
+        context["area_reviews"] = reviews.summary_for("property", canonical)
+        if context["current_user"]:
+            context["my_area_review"] = reviews.user_review(context["current_user"]["id"], "property", canonical)
+    else:
+        context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
+
+    premium_unlocked = bool(context["current_user"] and context["current_user"].get("is_premium"))
+    context["overview"] = overview_score.compute(context, premium_unlocked=premium_unlocked)
+
+    # Catchment polygon shapes are the visual equivalent of the
+    # locked "School Catchment Areas" card - stripping them for
+    # non-premium users keeps the map consistent with that card
+    # rather than drawing the paywalled boundary anyway.
+    if not premium_unlocked and context.get("catchment"):
+        context["catchment"] = [{**c, "rings": None} for c in context["catchment"]]
+
     return templates.TemplateResponse(request, "property.html", context)
 
 
@@ -898,6 +915,7 @@ async def watchlist_view(request: Request):
             item["changes"] = _snapshot_changes(old, fresh) if old else []
             watchlist.update_snapshot(item["id"], json.dumps(fresh, default=str))
     context["items"] = items
+    context["changed_item_count"] = sum(1 for item in items if item["changes"])
     return templates.TemplateResponse(request, "watchlist.html", context)
 
 
@@ -1036,3 +1054,20 @@ def school_shortlist_remove(request: Request, item_id: int = Form(...)):
         return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
     school_shortlist.remove_item(user["id"], item_id)
     return RedirectResponse("/schools/shortlist", status_code=303)
+
+
+# --- Reviews ---
+
+
+@app.post("/reviews/submit")
+def reviews_submit(
+    request: Request, target_type: str = Form(...), target_key: str = Form(...),
+    rating: int = Form(...), body: str = Form(""), next: str = Form("/"),
+):
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse(f"/login?next={next}", status_code=303)
+    if target_type not in ("property", "school") or not (1 <= rating <= 5):
+        return RedirectResponse(next, status_code=303)
+    reviews.submit(user["id"], target_type, target_key, rating, body)
+    return RedirectResponse(next, status_code=303)

@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
 from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics, SchoolDestinations, SchoolDetail
-from app.services import _cache
+from app.services import _cache, overview_score, reviews
 
 SEARCH_RADIUS_KM = 5
 PER_GROUP_LIMIT = 3
@@ -256,10 +256,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             destinations_by_urn = {
                 r.urn: r for r in session.scalars(select(SchoolDestinations).where(SchoolDestinations.urn.in_(all_urns)))
             }
+        review_summaries = reviews.summaries_for_many("school", [str(urn) for urn in all_urns])
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
             e["detail"] = detail_by_urn.get(e["urn"])
             e["destinations"] = destinations_by_urn.get(e["urn"])
+            e["review_summary"] = review_summaries.get(str(e["urn"]))
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
                 e["exam_results"] = {
@@ -287,6 +289,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             else:
                 e["exam_results"] = None
                 e["exam_trend"] = []
+            e["verdict"] = overview_score.school_verdict(e)
 
     higher_education_names.sort()
     # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class
