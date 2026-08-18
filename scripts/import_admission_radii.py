@@ -1563,6 +1563,52 @@ def fetch_derby() -> list[dict]:
     return records
 
 
+_LEICESTER_URLS = [
+    "https://www.leicester.gov.uk/sites/default/files/2026-02/"
+    "breakdown-of-allocations-for-leicester-primary-and-infant-schools-as-of-16-april-2025.pdf",
+    "https://schools.leicester.gov.uk/media/8524/"
+    "breakdown-of-allocations-for-leicester-city-secondary-schools-as-of-1-march-2023.pdf",
+]
+
+
+def fetch_leicester() -> list[dict]:
+    """Leicester City Council's "Breakdown of allocations" PDFs
+    (Primary and Infant + Secondary) - republished at a new URL each
+    round (find the current ones via leicester.gov.uk's admissions
+    pages; the secondary one found is from 2023, the most recent
+    working link located - still real published data, just an older
+    round than the 2025 primary one). Multiple summary tables appear
+    before the real one; only the one whose header contains "Furthest
+    Distance" has the data, at whatever column index that table
+    happens to place it (found dynamically per table rather than
+    hardcoded, since the two files have slightly different column
+    sets before it).
+    """
+    records = []
+    for url in _LEICESTER_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                header = [h.replace("\n", " ") if h else "" for h in table[0]]
+                dist_idx = next((i for i, h in enumerate(header) if "Furthest" in h and "Distance" in h), None)
+                if dist_idx is None:
+                    continue
+                for row in table[1:]:
+                    if not row or not row[0] or dist_idx >= len(row) or not row[dist_idx]:
+                        continue
+                    try:
+                        distance = float(row[dist_idx].strip())
+                    except ValueError:
+                        continue
+                    records.append({"school_name": row[0].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1601,6 +1647,7 @@ _AUTHORITIES = [
     ("West Sussex", "2025/26", fetch_west_sussex),
     ("County Durham", "varies", fetch_durham),
     ("Derby", "2026/27", fetch_derby),
+    ("Leicester", "varies", fetch_leicester),
 ]
 
 
