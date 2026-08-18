@@ -2322,6 +2322,40 @@ def fetch_tameside() -> list[dict]:
     return records
 
 
+def fetch_gloucestershire() -> list[dict]:
+    """Gloucestershire's Primary and Secondary "allocation day
+    statistics" PDFs - clean tables with "Furthest distance allocated
+    (miles)" as a fixed column. Rows that weren't oversubscribed show
+    "N/A" (skipped); distances beyond 20 miles are deliberately
+    redacted by the council to ">20" for data-protection reasons
+    (skipped rather than guessed at). The "School DfE no." column is
+    the LOCAL 4-digit establishment number, not the national URN, so
+    matching is by (fuzzy) name like most other authorities.
+    """
+    urls = [
+        "https://www.gloucestershire.gov.uk/media/ctgfusdi/primary-allocation-day-statistics-2025-1.pdf",
+        "https://www.gloucestershire.gov.uk/media/v1jdwr0r/secondary-allocation-day-statistics-2025.pdf",
+    ]
+    records = []
+    for url in urls:
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if len(row) < 6 or not row[1] or not row[5]:
+                        continue
+                    try:
+                        distance = float(row[5])
+                    except ValueError:
+                        continue
+                    records.append({"school_name": row[1], "last_distance_miles": distance})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2416,6 +2450,7 @@ _AUTHORITIES = [
     ("Wigan", "2025/26", fetch_wigan),
     ("Sefton", "2025/26", fetch_sefton),
     ("Tameside", "varies", fetch_tameside),
+    ("Gloucestershire", "2025/26", fetch_gloucestershire),
 ]
 
 
