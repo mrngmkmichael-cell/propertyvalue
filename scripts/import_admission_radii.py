@@ -1385,6 +1385,57 @@ def fetch_suffolk() -> list[dict]:
     return records
 
 
+_EAST_SUSSEX_URLS = [
+    "https://www.eastsussex.gov.uk/education-learning/schools/apply-for-a-school-place/"
+    "apply-for-a-primary-or-junior-school/detailed-school-information-primary-and-junior?print=true",
+    "https://www.eastsussex.gov.uk/education-learning/schools/apply-for-a-school-place/"
+    "apply-for-a-secondary-school/detailed-school-information-secondary?print=true",
+]
+_EAST_SUSSEX_TIEBREAK_CAPTION = "Tie-breaker - furthest child allocated a place at the school"
+_EAST_SUSSEX_ROW_RE = re.compile(
+    r'<td class="govuk-table__cell clean-rich-text" colspan="1">\s*(.+?)\s*</td>\s*'
+    r'<td class="govuk-table__cell clean-rich-text govuk-table__cell--numeric[^"]*"\s*colspan="1">'
+    r"(.*?)</td>",
+    re.DOTALL,
+)
+_EAST_SUSSEX_DISTANCE_RE = re.compile(r"(\d+)m in category")
+
+
+def fetch_east_sussex() -> list[dict]:
+    """East Sussex County Council publishes its "detailed school
+    information" as HTML pages (Primary/Junior + Secondary), each
+    split into several alphabetical-range sub-pages in the normal
+    view - but the "?print=true" query parameter renders every
+    sub-page's content concatenated onto one page, which is far easier
+    to scrape than crawling each range separately (find the current
+    base URLs via eastsussex.gov.uk's "apply-for-a-primary-or-junior-
+    school"/"apply-for-a-secondary-school" sections if this stops
+    working). Each alphabetical range has its own "Tie-breaker -
+    furthest child allocated a place at the school" table with rows
+    like "<School Name> ... XXXXm in category N" - already in metres.
+    Rows for schools that weren't oversubscribed just say "All
+    preferences allocated" with no metres figure and are naturally
+    skipped.
+    """
+    records = []
+    for url in _EAST_SUSSEX_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        for block in resp.text.split(_EAST_SUSSEX_TIEBREAK_CAPTION)[1:]:
+            end = block.find("</tbody>")
+            section = block[:end] if end > 0 else block[:8000]
+            for name, cell in _EAST_SUSSEX_ROW_RE.findall(section):
+                match = _EAST_SUSSEX_DISTANCE_RE.search(cell)
+                if match:
+                    clean_name = name.replace("&nbsp;", "").strip()
+                    records.append({
+                        "school_name": clean_name,
+                        "last_distance_miles": float(match.group(1)) / _METRES_PER_MILE,
+                    })
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1419,6 +1470,7 @@ _AUTHORITIES = [
     ("Worcestershire", "2026/27", fetch_worcestershire),
     ("Cheshire East", "2025/26", fetch_cheshire_east),
     ("Suffolk", "2026/27", fetch_suffolk),
+    ("East Sussex", "varies", fetch_east_sussex),
 ]
 
 
