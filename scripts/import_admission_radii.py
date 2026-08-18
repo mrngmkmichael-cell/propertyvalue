@@ -3182,6 +3182,51 @@ def fetch_middlesbrough() -> list[dict]:
     return records
 
 
+_HARTLEPOOL_DIST_RE = re.compile(r"^([\d.]+)\s*km$", re.IGNORECASE)
+
+
+def fetch_hartlepool() -> list[dict]:
+    """Hartlepool Borough Council's "Admission to Secondary School
+    Allocation Report" PDF - a genuine table (reversed header text,
+    same quirk as Sefton/Havering) with one 3-row block per school:
+    the first row already carries the most recent year's ("2025")
+    data including the "Last Distance Offered" (km) as the last
+    cell, with the prior year's block following immediately after -
+    only the first (most recent) block per school is used, so no
+    year-column parsing is needed, just "first row with a name". "n/a"
+    in the distance cell means the school wasn't oversubscribed that
+    year and is skipped. No equivalent primary-schools allocation
+    report with per-school distance data could be found published at
+    a stable URL - only secondary schools are covered here.
+    """
+    url = "https://www.hartlepool.gov.uk/downloads/file/1216/admission-to-secondary-school-allocation-report-2024-and-2025"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0]:
+                    continue
+                name = row[0].replace("\n", " ").strip()
+                if name == "School":
+                    continue
+                last_cell = row[-1]
+                if not last_cell:
+                    continue
+                match = _HARTLEPOOL_DIST_RE.match(str(last_cell).strip())
+                if not match:
+                    continue
+                km = float(match.group(1))
+                records.append({"school_name": name, "last_distance_miles": km * 1000 / _METRES_PER_MILE})
+    return records
+
+
 def fetch_islington() -> list[dict]:
     """Islington Council's "Cut-off distance for schools" page - a
     genuine HTML table (two of them: primary, then secondary) with
@@ -3366,6 +3411,7 @@ _AUTHORITIES = [
     ("Havering", "2025/26", fetch_havering),
     ("Hillingdon", "2025/26", fetch_hillingdon),
     ("Middlesbrough", "2025/26", fetch_middlesbrough),
+    ("Hartlepool", "2025/26", fetch_hartlepool),
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
