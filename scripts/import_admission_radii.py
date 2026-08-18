@@ -934,6 +934,50 @@ def fetch_milton_keynes() -> list[dict]:
     return records
 
 
+_RBWM_DISTANCE_RE = re.compile(r"Furthest distance met:\s*([\d.]+)\s*miles")
+
+_RBWM_URLS = [
+    "https://5f2fe3253cd1dfa0d089-bf8b2cdb6a1dc2999fecbc372702016c.ssl.cf3.rackcdn.com/"
+    "uploads/ckeditor/attachments/17730/Allocation_information_for_RBWM_primary_schools_September_2025_V1.pdf",
+    "https://5f2fe3253cd1dfa0d089-bf8b2cdb6a1dc2999fecbc372702016c.ssl.cf3.rackcdn.com/"
+    "uploads/ckeditor/attachments/17544/FINAL_NOD_afc_middle_secondary_and_upper_school_allocation_information_2025_v2.pdf",
+]
+
+
+def fetch_windsor_and_maidenhead() -> list[dict]:
+    """Royal Borough of Windsor and Maidenhead's "Allocation
+    information" PDFs (Primary + Middle/Secondary/Upper) - republished
+    each year at a new attachment ID on a CDN host (find the current
+    ones via rbwm.gov.uk's school admissions pages). Prose layout, one
+    block per school: "<School Name>", "Type: ... Number of places
+    offered: N", "DfE Ref: .../... Number of divert offers: N",
+    "Furthest distance met: X.XXX miles ...". The school name is
+    always exactly two lines above the "DfE Ref:" line, which is a
+    more reliable anchor than scanning forward from the name (some
+    names get split across a stray hyperlink line in extraction).
+    """
+    records = []
+    for url in _RBWM_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+        lines = full_text.split("\n")
+        for i, line in enumerate(lines):
+            if not line.strip().startswith("DfE Ref:") or i < 2 or not lines[i - 1].strip().startswith("Type:"):
+                continue
+            name = lines[i - 2].strip()
+            for j in range(i, min(i + 3, len(lines))):
+                match = _RBWM_DISTANCE_RE.search(lines[j])
+                if match:
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+                    break
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -958,6 +1002,7 @@ _AUTHORITIES = [
     ("Wokingham", "2025/26", fetch_wokingham),
     ("Coventry", "varies", fetch_coventry),
     ("Milton Keynes", "2025/26", fetch_milton_keynes),
+    ("Windsor and Maidenhead", "2025/26", fetch_windsor_and_maidenhead),
 ]
 
 
