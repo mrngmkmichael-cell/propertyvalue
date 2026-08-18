@@ -91,39 +91,34 @@
 <section class="landing-section why-us-section" data-animate>
     <span class="section-pill">Why PropertyValue</span>
     <h2 class="landing-heading">Built different, on purpose</h2>
-    <p class="landing-subheading">
-        Five things that set this apart from Rightmove, Zoopla, and paid tools like Crystal Roof or PropBar.
-    </p>
-    <div class="why-gallery" data-gallery>
-        <button class="why-nav why-prev" type="button" aria-label="Scroll left" data-gallery-prev>&#8249;</button>
-        <div class="why-scroll" data-gallery-scroll>
-            <div class="why-card">
-                <span class="why-card-num">01</span>
-                <h3>Real school-catchment data, not estimates</h3>
-                <p>Actual admission distances pulled from council records across dozens of local authorities — not a modelled circle on a map.</p>
-            </div>
-            <div class="why-card">
-                <span class="why-card-num">02</span>
-                <h3>Zero scraping, zero guesswork</h3>
-                <p>Every figure traces to an official source — Land Registry, the EPC register, the Environment Agency, Police.uk, Ofsted, the DfE.</p>
-            </div>
-            <div class="why-card">
-                <span class="why-card-num">03</span>
-                <h3>One report, the full due-diligence stack</h3>
-                <p>Sold prices, EPC, flood risk, crime, schools, council tax, broadband, mobile signal, radon and more — for one address.</p>
-            </div>
-            <div class="why-card">
-                <span class="why-card-num">04</span>
-                <h3>A verdict, not a data dump</h3>
-                <p>The Overview Score turns a wall of numbers into a plain GOOD / AVERAGE / POOR call, with the reasoning shown.</p>
-            </div>
-            <div class="why-card">
-                <span class="why-card-num">05</span>
+    <div class="why-bento">
+        <div class="why-bento-item why-bento-hero">
+            <span class="why-bento-watermark">01</span>
+            <h3>Real school-catchment data, not estimates</h3>
+            <p>Actual admission distances pulled from council records across dozens of local authorities — not a modelled circle on a map.</p>
+        </div>
+        <div class="why-bento-item why-bento-wide">
+            <span class="why-bento-watermark">02</span>
+            <h3>Zero scraping, zero guesswork</h3>
+            <p>Every figure traces to an official source — Land Registry, EPC, the Environment Agency, Police.uk, Ofsted, the DfE.</p>
+        </div>
+        <div class="why-bento-item">
+            <span class="why-bento-watermark">03</span>
+            <h3>The full due-diligence stack</h3>
+            <p>Prices, energy, flood, crime, schools, council tax, broadband and more — one address.</p>
+        </div>
+        <div class="why-bento-item">
+            <span class="why-bento-watermark">04</span>
+            <h3>A verdict, not a data dump</h3>
+            <p>The Overview Score turns the numbers into a plain GOOD / AVERAGE / POOR call.</p>
+        </div>
+        <div class="why-bento-item why-bento-accent">
+            <span class="why-bento-watermark">05</span>
+            <div class="why-bento-accent-copy">
                 <h3>Unlimited, for less</h3>
                 <p>£9.99/month for unlimited searches and reports — a fraction of per-report fees or enterprise pricing elsewhere.</p>
             </div>
         </div>
-        <button class="why-nav why-next" type="button" aria-label="Scroll right" data-gallery-next>&#8250;</button>
     </div>
 </section>
 
@@ -315,34 +310,6 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(heroMap);
-    })();
-</script>
-<script>
-    (function () {
-        const root = document.querySelector('[data-gallery]');
-        if (!root) return;
-        const scroller = root.querySelector('[data-gallery-scroll]');
-        const prevBtn = root.querySelector('[data-gallery-prev]');
-        const nextBtn = root.querySelector('[data-gallery-next]');
-
-        function scrollByCard(direction) {
-            const card = scroller.querySelector('.why-card');
-            if (!card) return;
-            const style = getComputedStyle(scroller);
-            const gap = parseFloat(style.columnGap || style.gap || '0');
-            scroller.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
-        }
-        function updateNav() {
-            const max = scroller.scrollWidth - scroller.clientWidth - 2;
-            prevBtn.disabled = scroller.scrollLeft <= 0;
-            nextBtn.disabled = scroller.scrollLeft >= max;
-        }
-
-        if (prevBtn) prevBtn.addEventListener('click', function () { scrollByCard(-1); });
-        if (nextBtn) nextBtn.addEventListener('click', function () { scrollByCard(1); });
-        scroller.addEventListener('scroll', updateNav, { passive: true });
-        window.addEventListener('resize', updateNav);
-        updateNav();
     })();
 </script>
 {% endblock %}
