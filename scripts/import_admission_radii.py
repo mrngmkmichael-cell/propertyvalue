@@ -300,6 +300,112 @@ def fetch_kirklees() -> list[dict]:
     return records
 
 
+_EALING_DISTANCE_RE = re.compile(r"([\d.]+)\s*(of a mile|miles?)", re.IGNORECASE)
+_EALING_EXCLUDE_PREFIXES = ("criteria", "number", "places allocated", "no supplementary")
+
+
+def fetch_ealing() -> list[dict]:
+    """London Borough of Ealing's "Primary school on-time offers"
+    PDF - republished each spring at a new file ID (find the current
+    one via ealing.gov.uk's own search). Already in miles. Most
+    schools are one clean row; a handful of faith schools break their
+    admissions down by sub-criterion across several rows - this
+    tracks the most recent school-name row seen and attaches the
+    distance figure from whichever row it actually appears on
+    (usually the last oversubscribed criterion), rather than assuming
+    a fixed column position that only holds for the simple schools.
+    """
+    url = "https://www.ealing.gov.uk/download/downloads/id/18843/primary_school_on-time_offers_2025.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            current_name = None
+            for row in table:
+                cells = [c for c in row if c]
+                if not cells:
+                    continue
+                first = cells[0].strip()
+                if not first.lower().startswith(_EALING_EXCLUDE_PREFIXES) and "primary school" in first.lower():
+                    current_name = first
+                match = _EALING_DISTANCE_RE.search(" ".join(cells))
+                if match and current_name:
+                    records.append({"school_name": current_name, "last_distance_miles": float(match.group(1))})
+                    current_name = None  # one distance per school - stop after the first hit
+    return records
+
+
+def fetch_hackney() -> list[dict]:
+    """London Borough of Hackney's "How Places Were Offered - Reception"
+    PDF - republished each spring at a new URL each year (find the
+    current one via hackney.gov.uk/education's own search). Cleanest
+    format found yet: one row per school, second-to-last column is
+    literally "Max Distance (last child offered in miles)", already
+    in miles.
+    """
+    url = "https://education.hackney.gov.uk/sites/default/files/document/How%20Places%20Were%20Offered%20-%20Reception%202025.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 12 or not row[0] or not row[-2]:
+                    continue
+                try:
+                    distance = float(row[-2].strip())
+                except ValueError:
+                    continue
+                records.append({"school_name": row[0].strip(), "last_distance_miles": distance})
+    return records
+
+
+def fetch_solihull() -> list[dict]:
+    """Solihull Council's "How Reception Places Were Offered" PDF - a
+    3-year time series (like Bristol's), republished each spring at a
+    new URL (find the current one via solihull.gov.uk's own search).
+    Takes the most recent year's figure ("All offered"/N/A means not
+    oversubscribed that year, so falls back to the next most recent
+    year with a real value).
+    """
+    url = "https://www.solihull.gov.uk/sites/default/files/2025-04/How-Reception-Places-Were-Offered-23-24-25.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0] or row[0].strip().lower() in ("", "school"):
+                    continue
+                name = row[0].strip()
+                # Distance columns are at indices 2, 4, 6 (most recent first).
+                for idx in (2, 4, 6):
+                    if idx >= len(row) or not row[idx]:
+                        continue
+                    try:
+                        records.append({"school_name": name, "last_distance_miles": float(row[idx].strip())})
+                        break
+                    except ValueError:
+                        continue
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -309,6 +415,9 @@ _AUTHORITIES = [
     ("Bristol, City of", "varies", fetch_bristol),
     ("Leeds", "2024/25", fetch_leeds),
     ("Kirklees", "2024/25", fetch_kirklees),
+    ("Ealing", "2024/25", fetch_ealing),
+    ("Hackney", "2024/25", fetch_hackney),
+    ("Solihull", "varies", fetch_solihull),
 ]
 
 
