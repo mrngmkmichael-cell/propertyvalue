@@ -1112,6 +1112,51 @@ def fetch_peterborough() -> list[dict]:
     return records
 
 
+_NORTH_SOMERSET_INDEX_URL = (
+    "https://n-somerset.gov.uk/my-services/schools-learning/school-admissions/"
+    "oversubscribed-schools/primary-allocations-2024-25"
+)
+_NORTH_SOMERSET_PDF_RE = re.compile(r'href="([^"]+\.pdf)"')
+_NORTH_SOMERSET_NAME_RE = re.compile(r"Allocation sheet for\s+(.*?)\s*\d{4}/\d{2}", re.DOTALL)
+_NORTH_SOMERSET_DISTANCE_RE = re.compile(
+    r"distance between home and school for the last child offered a place was\s*([\d.]+)\s*miles", re.IGNORECASE
+)
+
+
+def fetch_north_somerset() -> list[dict]:
+    """North Somerset Council publishes one individual "Allocation
+    sheet" PDF per oversubscribed primary school (not one bulk
+    document) - this crawls the year's index page for the current
+    list of PDF links rather than hardcoding them individually, since
+    which schools were oversubscribed (and thus which PDFs exist)
+    changes every year (find the current index page via
+    n-somerset.gov.uk's "oversubscribed-schools/previous-primary-
+    allocations" page - the "primary-allocations-YYYY-YY" URL pattern
+    is likely to recur). Only ~13 schools a year (a small unitary), but
+    a clean, unambiguous prose format: "The distance between home and
+    school for the last child offered a place was X.XXX miles, as
+    measured in a direct line."
+    """
+    print(f"  Downloading index {_NORTH_SOMERSET_INDEX_URL}")
+    resp = httpx.get(_NORTH_SOMERSET_INDEX_URL, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    pdf_urls = [u for u in _NORTH_SOMERSET_PDF_RE.findall(resp.text) if "allocation" in u.lower()]
+
+    records = []
+    for url in pdf_urls:
+        print(f"  Downloading {url}")
+        pdf_resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        pdf_resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(pdf_resp.content)) as pdf:
+            full_text = (pdf.pages[0].extract_text() or "")
+        name_match = _NORTH_SOMERSET_NAME_RE.search(full_text)
+        distance_match = _NORTH_SOMERSET_DISTANCE_RE.search(full_text)
+        if name_match and distance_match:
+            name = name_match.group(1).replace("\n", " ").strip()
+            records.append({"school_name": name, "last_distance_miles": float(distance_match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1140,6 +1185,7 @@ _AUTHORITIES = [
     ("Stockport", "2026/27", fetch_stockport),
     ("Portsmouth", "varies", fetch_portsmouth),
     ("Peterborough", "2026/27", fetch_peterborough),
+    ("North Somerset", "2024/25", fetch_north_somerset),
 ]
 
 
