@@ -2148,6 +2148,47 @@ def fetch_calderdale() -> list[dict]:
     return records
 
 
+_WALSALL_URLS = [
+    "https://go.walsall.gov.uk/sites/default/files/2026-04/Reception%20Offers%202026_0.pdf",
+    "https://go.walsall.gov.uk/sites/default/files/2026-04/Year%203%20Offers%202026_Nicholas%20Gill.pdf",
+]
+
+
+def fetch_walsall() -> list[dict]:
+    """Walsall Council's "Reception Offers" and "Year 3 Offers" PDFs -
+    republished each year at a new URL under /sites/default/files/
+    YYYY-MM/ (find the current ones via go.walsall.gov.uk's primary
+    admissions page). Rotated "Furthest Distance" column header
+    extracts as reversed text, and the two files have a different
+    column count (Year 3 has no Pupil Premium column), so the decisive
+    figure is found via the same decimal-cell-detection approach as
+    Stockport/Peterborough rather than a fixed index. Already in
+    miles; "N/A"/"n/a" rows (not oversubscribed on distance) are
+    naturally skipped.
+    """
+    records = []
+    for url in _WALSALL_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or not row[0] or not isinstance(row[0], str) or not row[1] or not row[1].isdigit():
+                        continue
+                    distance = None
+                    for cell in row[2:]:
+                        if cell and _STOCKPORT_DECIMAL_RE.match(cell.strip()):
+                            distance = float(cell.strip())
+                            break
+                    if distance is not None:
+                        records.append({"school_name": row[0].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2200,6 +2241,7 @@ _AUTHORITIES = [
     ("Sutton", "2025/26", fetch_sutton),
     ("Haringey", "varies", fetch_haringey),
     ("Calderdale", "2026/27", fetch_calderdale),
+    ("Walsall", "2025/26", fetch_walsall),
 ]
 
 
