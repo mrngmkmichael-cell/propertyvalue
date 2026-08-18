@@ -2558,6 +2558,45 @@ def fetch_cheshire_west_and_chester() -> list[dict]:
     return records
 
 
+def fetch_bristol() -> list[dict]:
+    """Bristol's "furthest distance table" - one row per primary
+    school with a column per year back to 2020 (most recent last,
+    2026), distance in kilometres. Non-numeric markers ("D" = not
+    needed as a tie-break, "O" = faith/random allocation rather than
+    distance, "N" = not open) mean that year isn't usable, so this
+    scans backwards from the most recent year and takes the first
+    column that parses as a plain number. A handful of cells in older
+    year-columns are corrupted by an overlapping-text PDF rendering
+    glitch (e.g. "0.68 6", "D7") - these simply fail to parse and are
+    skipped in the backwards scan like any other non-numeric year.
+    """
+    url = "https://www.bristol.gov.uk/files/documents/3382-furthest-distance-table/file"
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0] or len(row) < 2:
+                    continue
+                name = row[0].strip()
+                if not name or name.lower().startswith("name of school"):
+                    continue
+                for cell in reversed(row[1:]):
+                    if not cell:
+                        continue
+                    try:
+                        distance_km = float(cell.strip())
+                    except ValueError:
+                        continue
+                    records.append({"school_name": name, "last_distance_miles": distance_km / 1.60934})
+                    break
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2657,6 +2696,7 @@ _AUTHORITIES = [
     ("Staffordshire", "varies", fetch_staffordshire),
     ("Kirklees", "2025/26", fetch_kirklees),
     ("Cheshire West and Chester", "2025/26", fetch_cheshire_west_and_chester),
+    ("Bristol, City of", "varies", fetch_bristol),
 ]
 
 
