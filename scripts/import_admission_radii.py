@@ -53,6 +53,9 @@ _DISTANCE_RE = re.compile(r"last distance[^\d]*([\d.]+)", re.IGNORECASE)
 # (e.g. "Feltham Hill I&N" vs "Feltham Hill Infant and Nursery School").
 _ABBREVIATIONS = {
     r"\bI&N\b": "Infant and Nursery",
+    r"\bJ I & N\b": "Junior Infant and Nursery",
+    r"\bJ & I\b": "Junior and Infant",
+    r"\bI & N\b": "Infant and Nursery",
     r"\bJun\b": "Junior",
     r"\bInf\b": "Infant",
     r"\bJnr\b": "Junior",
@@ -60,6 +63,8 @@ _ABBREVIATIONS = {
     r"\bC of E\b": "Church of England",
     r"\bCEVCP\b": "Church of England Voluntary Controlled Primary",
     r"\bCE\b": "Church of England",
+    r"\bVC\b": "Voluntary Controlled",
+    r"\bVA\b": "Voluntary Aided",
     r"\bRC\b": "Roman Catholic",
     r"\bR\.C\.(?=\s|$)": "Roman Catholic",
     r"\bRd\b": "Road",
@@ -2407,7 +2412,7 @@ _STAFFS_CELL_RE = re.compile(r"<td>(.*?)</td>", re.DOTALL)
 
 
 def _staffs_clean(text: str) -> str:
-    text = re.sub(r"<[^>]+>", " ", text).replace("&nbsp;", " ")
+    text = re.sub(r"<[^>]+>", " ", text).replace("&nbsp;", " ").replace("&amp;", "&")
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -2444,6 +2449,40 @@ def fetch_staffordshire() -> list[dict]:
                 except ValueError:
                     continue
                 records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
+def fetch_kirklees() -> list[dict]:
+    """Kirklees' Reception "by preference and criteria" PDF - several
+    tables per document (Community/Voluntary Controlled schools, Own
+    Admission Authority schools, and a preference-summary table with
+    no distance column at all), with a differing number of criteria
+    columns between the first two. Rather than assume a fixed layout,
+    only tables whose header row mentions "distance" are used, and
+    within those the PAN column (index 1) must be a plain digit to
+    skip header/section-title rows. Distances are in metres. No
+    secondary/Year 7 equivalent was found at a stable URL.
+    """
+    url = "https://www.kirklees.gov.uk/beta/admissions/pdf/reception-by-preference-and-criteria-25.pdf"
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            for table in page.extract_tables():
+                if not table or not any(h and "distance" in h.lower() for h in table[0]):
+                    continue
+                for row in table[1:]:
+                    if len(row) < 2 or not row[1] or not row[1].isdigit():
+                        continue
+                    name, dist_text = row[0], row[-1]
+                    if not name or not dist_text:
+                        continue
+                    try:
+                        distance_m = float(dist_text)
+                    except ValueError:
+                        continue
+                    records.append({"school_name": name, "last_distance_miles": distance_m / _METRES_PER_MILE})
     return records
 
 
@@ -2544,6 +2583,7 @@ _AUTHORITIES = [
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
     ("Staffordshire", "varies", fetch_staffordshire),
+    ("Kirklees", "2025/26", fetch_kirklees),
 ]
 
 
