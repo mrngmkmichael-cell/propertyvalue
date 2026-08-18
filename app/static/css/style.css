@@ -401,50 +401,6 @@ a {
     }
 }
 
-/* Stats row */
-
-.stats-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 2.5rem;
-}
-
-.stat-card {
-    flex: 1;
-    min-width: 160px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    text-align: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.stat-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: var(--shadow-md);
-}
-
-.stat-number {
-    font-family: var(--font-sans);
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--accent);
-}
-
-.stat-label {
-    font-family: var(--font-sans);
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--ink-soft);
-}
-
 /* Landing page sections */
 
 .landing-section {
@@ -906,12 +862,6 @@ a {
     margin: 0 auto;
 }
 
-
-@media (max-width: 640px) {
-    .stats-row {
-        flex-direction: column;
-    }
-}
 
 /* Why-us card carousel (Apple-style) */
 
