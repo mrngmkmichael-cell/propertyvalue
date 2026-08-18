@@ -57,9 +57,11 @@ _ABBREVIATIONS = {
     r"\bJnr\b": "Junior",
     r"\bJMI\b": "Junior Mixed Infant",
     r"\bC of E\b": "Church of England",
+    r"\bCEVCP\b": "Church of England Voluntary Controlled Primary",
     r"\bCE\b": "Church of England",
     r"\bRC\b": "Roman Catholic",
     r"\bRd\b": "Road",
+    r"\bCP\b": "Community Primary",
 }
 
 # Confidence floor for fuzzy name matching - below this, skip the row
@@ -1337,6 +1339,52 @@ def fetch_cheshire_east() -> list[dict]:
     return records
 
 
+_SUFFOLK_URLS = [
+    "https://www.suffolk.gov.uk/asset-library/school-admissions/Directory-of-Schools-in-Suffolk-Primary-2026-2027-1.pdf",
+    "https://www.suffolk.gov.uk/asset-library/school-admissions/Directory-of-Schools-in-Suffolk-Secondary-2026-2027-1.pdf",
+]
+_SUFFOLK_HEADING_RE = re.compile(r"^([A-Za-z][^,\n]{2,80}),.*[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}\s*$")
+_SUFFOLK_DISTANCE_RE = re.compile(r"Criterion under which last child admitted:.*?([\d.]+)\s*miles", re.IGNORECASE)
+
+
+def fetch_suffolk() -> list[dict]:
+    """Suffolk County Council's "Directory of Schools" PDFs (Primary +
+    Secondary) - a prose directory (school-by-school profile, not a
+    table), republished each year at a new URL under /asset-library/
+    school-admissions/ (find the current ones via suffolk.gov.uk's
+    primary/secondary "apply for a school place" pages). Each school's
+    entry is headed by its "<Name>, <Address>, <Postcode>" line
+    (detected via a UK postcode regex, since there's no other marker),
+    and the decisive line reads "Criterion under which last child
+    admitted: <criterion> X.XXX miles" - this scans line-by-line,
+    tracking the most recently seen heading so the distance line can
+    be attached to the right school even though (unlike every other
+    authority in this registry) the layout is continuous prose, not
+    row-per-school.
+    """
+    records = []
+    for url in _SUFFOLK_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+
+        current = None
+        for line in full_text.split("\n"):
+            heading_match = _SUFFOLK_HEADING_RE.match(line.strip())
+            if heading_match:
+                current = heading_match.group(1).strip()
+                continue
+            distance_match = _SUFFOLK_DISTANCE_RE.search(line)
+            if distance_match and current:
+                records.append({"school_name": current, "last_distance_miles": float(distance_match.group(1))})
+                current = None
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1370,6 +1418,7 @@ _AUTHORITIES = [
     ("Dorset", "2025/26", fetch_dorset),
     ("Worcestershire", "2026/27", fetch_worcestershire),
     ("Cheshire East", "2025/26", fetch_cheshire_east),
+    ("Suffolk", "2026/27", fetch_suffolk),
 ]
 
 
