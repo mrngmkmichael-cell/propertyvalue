@@ -797,6 +797,72 @@ def fetch_cambridgeshire() -> list[dict]:
     return records
 
 
+def _wokingham_distance_column(header: list) -> int | None:
+    """Wokingham's PDF renders rotated column headers as
+    line-reversed text (pdfplumber artifact of a 90-degree-rotated
+    header cell) - e.g. "Distance of child allocated last" comes out
+    as "tsal detacolla dlihc fo ecnatsiD" split across lines. Reversing
+    each line back locates the column - except in the widest
+    (17-column) table, where merged header cells throw off the
+    header/data column alignment by one, so that layout's distance
+    index (9, confirmed by inspecting its data rows directly) is
+    hardcoded instead."""
+    if len(header or []) == 17:
+        return 9
+    for i, cell in enumerate(header or []):
+        if not cell:
+            continue
+        for line in cell.split("\n"):
+            if "distance" in line[::-1].lower():
+                return i
+    return None
+
+
+def fetch_wokingham() -> list[dict]:
+    """Wokingham Borough Council's "Allocation breakdown for admission
+    to Primary School" PDF - republished each spring at a new URL
+    under /sites/wokingham/files/YYYY-MM/ (find the current one via
+    wokingham.gov.uk's "key-dates-and-statistics" page). No secondary
+    equivalent is published. Two different table layouts appear across
+    pages (a wide one for schools using the council's own coordinated
+    criteria, a narrower one for schools that set their own admission
+    criteria) - the distance column index differs between them, so
+    _wokingham_distance_column() locates it per-table rather than
+    assuming a fixed position. Distances over 20 miles are dropped as
+    an extraction glitch (this table has cases where a missing cell
+    shifts an unrelated large number, like an application count, into
+    the distance column) - Wokingham is a small borough where a
+    genuine cross-borough admission would never plausibly reach that
+    far, unlike Surrey's 47km faith-school outlier which was a
+    legitimate published figure in a clean, unambiguous column.
+    """
+    url = "https://www.wokingham.gov.uk/sites/wokingham/files/2026-04/Primary%20school%20allocation%20statistics%202026.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or len(table) < 2:
+                continue
+            dist_idx = _wokingham_distance_column(table[0])
+            if dist_idx is None:
+                continue
+            for row in table[1:]:
+                if not row or not row[0] or dist_idx >= len(row) or not row[dist_idx]:
+                    continue
+                name = re.sub(r"\*+$", "", row[0]).strip()
+                try:
+                    distance = float(row[dist_idx].strip())
+                except ValueError:
+                    continue
+                if 0 < distance <= 20:
+                    records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -818,6 +884,7 @@ _AUTHORITIES = [
     ("Oxfordshire", "2026/27", fetch_oxfordshire),
     ("Buckinghamshire", "2026/27", fetch_buckinghamshire),
     ("Cambridgeshire", "2026/27", fetch_cambridgeshire),
+    ("Wokingham", "2025/26", fetch_wokingham),
 ]
 
 
