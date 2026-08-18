@@ -849,7 +849,7 @@ a {
 .why-bento-item {
     position: relative;
     overflow: hidden;
-    background: var(--surface);
+    background: linear-gradient(155deg, var(--accent-soft) 0%, var(--surface) 48%);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
@@ -885,7 +885,7 @@ a {
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    background: var(--accent);
+    background: linear-gradient(155deg, var(--accent-hover) 0%, var(--accent) 55%);
     border-color: var(--accent);
 }
 
@@ -923,13 +923,52 @@ a {
     font-weight: 800;
     letter-spacing: -0.02em;
     color: var(--ink);
-    opacity: 0.06;
+    opacity: 0.08;
     line-height: 1;
     z-index: 0;
 }
 
 .why-bento-hero .why-bento-watermark {
     font-size: 4.5rem;
+}
+
+.why-bento-icon {
+    position: absolute;
+    top: 50%;
+    right: -0.5rem;
+    transform: translateY(-55%);
+    width: 88px;
+    height: 88px;
+    color: var(--accent);
+    opacity: 0.14;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.why-bento-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.why-bento-hero .why-bento-icon {
+    width: 168px;
+    height: 168px;
+    top: 42%;
+    right: -1.25rem;
+}
+
+.why-bento-wide .why-bento-icon {
+    width: 100px;
+    height: 100px;
+}
+
+.why-bento-accent .why-bento-icon {
+    width: 110px;
+    height: 110px;
+    top: 50%;
+    right: 1.5rem;
+    color: var(--accent-ink);
+    opacity: 0.22;
 }
 
 .why-bento-item h3,
