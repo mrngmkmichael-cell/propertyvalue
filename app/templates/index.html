@@ -89,40 +89,61 @@
 </section>
 
 <section class="landing-section why-us-section" data-animate>
-    <span class="section-pill">Why PropertyValue</span>
-    <h2 class="landing-heading">Built different, on purpose</h2>
-    <div class="why-bento">
-        <div class="why-bento-item why-bento-hero">
-            <span class="why-bento-icon">{{ icons.icon('schools') }}</span>
-            <span class="why-bento-watermark">01</span>
-            <h3>Real school-catchment data, not estimates</h3>
-            <p>Actual admission distances pulled from council records across dozens of local authorities — not a modelled circle on a map.</p>
-        </div>
-        <div class="why-bento-item why-bento-wide">
-            <span class="why-bento-icon">{{ icons.icon('lock') }}</span>
-            <span class="why-bento-watermark">02</span>
-            <h3>Zero scraping, zero guesswork</h3>
-            <p>Every figure traces to an official source — Land Registry, EPC, the Environment Agency, Police.uk, Ofsted, the DfE.</p>
-        </div>
-        <div class="why-bento-item">
-            <span class="why-bento-icon">{{ icons.icon('details') }}</span>
-            <span class="why-bento-watermark">03</span>
-            <h3>The full due-diligence stack</h3>
-            <p>Prices, energy, flood, crime, schools, council tax, broadband and more — one address.</p>
-        </div>
-        <div class="why-bento-item">
-            <span class="why-bento-icon">{{ icons.icon('reviews') }}</span>
-            <span class="why-bento-watermark">04</span>
-            <h3>A verdict, not a data dump</h3>
-            <p>The Overview Score turns the numbers into a plain GOOD / AVERAGE / POOR call.</p>
-        </div>
-        <div class="why-bento-item why-bento-accent">
-            <span class="why-bento-icon">{{ icons.icon('market') }}</span>
-            <span class="why-bento-watermark">05</span>
-            <div class="why-bento-accent-copy">
-                <h3>Unlimited, for less</h3>
-                <p>£9.99/month for unlimited searches and reports — a fraction of per-report fees or enterprise pricing elsewhere.</p>
+    <div class="why-header-row">
+        <h2 class="why-heading">Built different,<br>on purpose.</h2>
+        <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
+    </div>
+    <div class="why-carousel-wrap">
+        <div class="why-cards" data-scroll>
+            <div class="why-card">
+                <div class="why-card-top">
+                    <span class="why-card-eyebrow">School Catchment Data</span>
+                    <h3 class="why-card-title">Real distances, <span class="hl">not estimates.</span></h3>
+                    <p class="why-card-desc">Actual admission distances pulled from council records across dozens of local authorities — not a modelled circle on a map.</p>
+                </div>
+                <div class="why-card-visual why-visual-schools">{{ icons.icon('schools') }}</div>
+                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
+            <div class="why-card">
+                <div class="why-card-top">
+                    <span class="why-card-eyebrow">Verified Sources</span>
+                    <h3 class="why-card-title">Zero scraping, <span class="hl">zero guesswork.</span></h3>
+                    <p class="why-card-desc">Every figure traces to an official source — Land Registry, EPC, the Environment Agency, Police.uk, Ofsted, the DfE.</p>
+                </div>
+                <div class="why-card-visual why-visual-lock">{{ icons.icon('lock') }}</div>
+                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
+            </div>
+            <div class="why-card">
+                <div class="why-card-top">
+                    <span class="why-card-eyebrow">One Report</span>
+                    <h3 class="why-card-title">The full <span class="hl">due-diligence stack.</span></h3>
+                    <p class="why-card-desc">Prices, energy, flood, crime, schools, council tax, broadband and more — for one address.</p>
+                </div>
+                <div class="why-card-visual why-visual-details">{{ icons.icon('details') }}</div>
+                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
+            </div>
+            <div class="why-card">
+                <div class="why-card-top">
+                    <span class="why-card-eyebrow">Overview Score</span>
+                    <h3 class="why-card-title">A verdict, <span class="hl">not a data dump.</span></h3>
+                    <p class="why-card-desc">Turns the numbers into a plain GOOD, AVERAGE or POOR call — with the reasoning shown.</p>
+                </div>
+                <div class="why-card-visual why-visual-reviews">{{ icons.icon('reviews') }}</div>
+                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
+            </div>
+            <div class="why-card">
+                <div class="why-card-top">
+                    <span class="why-card-eyebrow">Simple Pricing</span>
+                    <h3 class="why-card-title">Unlimited, <span class="hl">for less.</span></h3>
+                    <p class="why-card-desc">£9.99 a month for unlimited searches and reports — a fraction of per-report fees elsewhere.</p>
+                </div>
+                <div class="why-card-visual why-visual-market">{{ icons.icon('market') }}</div>
+                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
+            </div>
+        </div>
+        <div class="why-pagers">
+            <button class="why-pager why-pager-prev" type="button" aria-label="Previous" data-scroll-prev>&#8249;</button>
+            <button class="why-pager why-pager-next" type="button" aria-label="Next" data-scroll-next>&#8250;</button>
         </div>
     </div>
 </section>
@@ -193,7 +214,7 @@
     </div>
 </section>
 
-<section class="landing-section">
+<section class="landing-section" id="whats-included">
     <span class="section-pill" data-animate>What's included</span>
     <h2 class="landing-heading" data-animate>Everything we check, in one report</h2>
     <p class="landing-subheading" data-animate>
@@ -315,6 +336,33 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(heroMap);
+    })();
+</script>
+<script>
+    (function () {
+        const scroller = document.querySelector('[data-scroll]');
+        if (!scroller) return;
+        const prevBtn = document.querySelector('[data-scroll-prev]');
+        const nextBtn = document.querySelector('[data-scroll-next]');
+
+        function scrollByCard(direction) {
+            const card = scroller.querySelector('.why-card');
+            if (!card) return;
+            const style = getComputedStyle(scroller);
+            const gap = parseFloat(style.columnGap || style.gap || '0');
+            scroller.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
+        }
+        function updateNav() {
+            const max = scroller.scrollWidth - scroller.clientWidth - 2;
+            prevBtn.disabled = scroller.scrollLeft <= 0;
+            nextBtn.disabled = scroller.scrollLeft >= max;
+        }
+
+        if (prevBtn) prevBtn.addEventListener('click', function () { scrollByCard(-1); });
+        if (nextBtn) nextBtn.addEventListener('click', function () { scrollByCard(1); });
+        scroller.addEventListener('scroll', updateNav, { passive: true });
+        window.addEventListener('resize', updateNav);
+        updateNav();
     })();
 </script>
 {% endblock %}
