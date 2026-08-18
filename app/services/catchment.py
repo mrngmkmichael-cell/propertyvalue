@@ -79,6 +79,18 @@ _SOURCES = [
     ("Glasgow City", "Primary (Gaelic)",
      "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
      "OPEN_DATA/Schools_Catchments_Open/MapServer/5", "NAME"),
+    ("Dundee City", "Primary (non-denominational)",
+     "https://services.arcgis.com/GlZ1P6ksdiXNYhvC/arcgis/rest/services/"
+     "School_Catchments_2022_View/FeatureServer/0", "School"),
+    ("Dundee City", "Secondary (Roman Catholic)",
+     "https://services.arcgis.com/GlZ1P6ksdiXNYhvC/arcgis/rest/services/"
+     "School_Catchments_2022_View/FeatureServer/1", "School"),
+    ("Dundee City", "Secondary (non-denominational)",
+     "https://services.arcgis.com/GlZ1P6ksdiXNYhvC/arcgis/rest/services/"
+     "School_Catchments_2022_View/FeatureServer/2", "School"),
+    ("Dundee City", "Primary (Roman Catholic)",
+     "https://services.arcgis.com/GlZ1P6ksdiXNYhvC/arcgis/rest/services/"
+     "School_Catchments_2022_View/FeatureServer/3", "School"),
 ]
 
 
