@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "PropertyValue Overlay",
+  "version": "1.0.0",
+  "description": "See sold prices, schools, flood risk and crime for any Rightmove, Zoopla or OnTheMarket listing, without leaving the page.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.rightmove.co.uk/properties/*",
+        "https://www.zoopla.co.uk/for-sale/details/*",
+        "https://www.zoopla.co.uk/to-rent/details/*",
+        "https://www.onthemarket.com/details/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "host_permissions": [
+    "https://YOUR-DEPLOYED-DOMAIN/*"
+  ]
+}

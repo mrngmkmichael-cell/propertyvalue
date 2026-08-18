@@ -8,7 +8,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
@@ -757,6 +757,68 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["catchment"] = [{**c, "rings": None} for c in context["catchment"]]
 
     return templates.TemplateResponse(request, "property.html", context)
+
+
+# --- Lightweight public JSON API (browser extension) ---
+
+_EXTENSION_CORS_HEADERS = {"Access-Control-Allow-Origin": "*"}
+
+
+@app.get("/api/lookup")
+async def api_lookup(postcode: str = ""):
+    """A fast, small subset of property_search's data, for the browser
+    extension overlay - deliberately NOT the full ~28-way gather (that's
+    fine at one request per page view on our own site, but this can be
+    hit from any Rightmove/Zoopla/OnTheMarket listing page, so it only
+    fetches the handful of signals the overlay actually shows). No
+    auth/cookies read or required - this is public read-only data, same
+    as the property page shows to a logged-out visitor.
+    """
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_failed"}, status_code=502, headers=_EXTENSION_CORS_HEADERS)
+    if location is None:
+        return JSONResponse({"error": "not_found"}, status_code=404, headers=_EXTENSION_CORS_HEADERS)
+
+    canonical = location["postcode"]
+    lat, lon = location["latitude"], location["longitude"]
+
+    tx_result, flood_zone_result, crime_result, landscape_result, hpi_result = await asyncio.gather(
+        sold_prices_for_postcode(canonical),
+        flood_zones.zone_for(lat, lon),
+        crime.summary_near(lat, lon),
+        asyncio.to_thread(schools_db.school_landscape, lat, lon),
+        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+        return_exceptions=True,
+    )
+
+    payload = {
+        "postcode": canonical, "admin_district": location["admin_district"], "region": location["region"],
+    }
+    if not isinstance(tx_result, Exception):
+        payload["avg_price"] = _average_amount(tx_result)
+    if not isinstance(flood_zone_result, Exception) and flood_zone_result:
+        payload["flood_zone"] = flood_zone_result["label"]
+    if not isinstance(crime_result, Exception) and crime_result:
+        payload["crime_total"] = crime_result.get("total")
+    if not isinstance(landscape_result, Exception) and landscape_result:
+        payload["schools_good_pct"] = landscape_result.get("good_or_better_pct")
+        payload["schools_total"] = landscape_result.get("total_schools")
+
+    mini_context = {
+        "hpi": hpi_result if not isinstance(hpi_result, Exception) else None,
+        "flood_zone": flood_zone_result if not isinstance(flood_zone_result, Exception) else None,
+        "school_landscape": landscape_result if not isinstance(landscape_result, Exception) else None,
+    }
+    payload["overview"] = overview_score.compute(mini_context, premium_unlocked=False)
+    payload["report_url"] = f"/property?postcode={canonical.replace(' ', '+')}"
+
+    return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
 @app.get("/property/comparables")
