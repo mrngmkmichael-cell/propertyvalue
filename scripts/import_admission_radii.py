@@ -22,6 +22,7 @@ To add another authority: write a fetch_<name>() function returning
 to _AUTHORITIES below with the authority name (must exactly match
 SchoolDetail.local_authority for that area) and academic year label.
 """
+import csv
 import difflib
 import io
 import os
@@ -668,6 +669,40 @@ def fetch_hertfordshire() -> list[dict]:
     return records
 
 
+_OXFORDSHIRE_DISTANCE_RE = re.compile(r"([\d.]+)\s*miles?", re.IGNORECASE)
+
+
+def fetch_oxfordshire() -> list[dict]:
+    """Oxfordshire County Council publishes its "last offer" data as a
+    plain CSV (not PDF!) - "Last place offered at schools that had
+    refusals", republished each allocation round at a new file name
+    (find the current one via oxfordshire.gov.uk's own
+    "allocation-reports-and-vacancies/primary-allocation" page - the
+    "P<year>-NOD<n>-LastOffer.csv" naming pattern is likely to recur).
+    Establishment name has a trailing "(DfE No)" suffix stripped
+    before matching; distance is already in miles. Cleanest source
+    format found across every authority in this registry so far.
+    """
+    url = "https://www.oxfordshire.gov.uk/sites/default/files/file/place-allocations/P26-NOD1-LastOffer.csv"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    text = resp.content.decode("utf-8-sig", errors="replace")
+
+    records = []
+    for line in text.splitlines()[2:]:
+        if not line.strip():
+            continue
+        cells = next(csv.reader([line]))
+        if len(cells) < 6 or not cells[0]:
+            continue
+        name = re.sub(r"\s*\(\d+/\d+\)\s*$", "", cells[0]).strip()
+        match = _OXFORDSHIRE_DISTANCE_RE.search(cells[5])
+        if match:
+            records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -686,6 +721,7 @@ _AUTHORITIES = [
     ("Newcastle upon Tyne", "varies", fetch_newcastle),
     ("Surrey", "2026/27", fetch_surrey),
     ("Hertfordshire", "varies", fetch_hertfordshire),
+    ("Oxfordshire", "2026/27", fetch_oxfordshire),
 ]
 
 
