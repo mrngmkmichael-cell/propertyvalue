@@ -898,9 +898,7 @@ a {
 .why-carousel-wrap {
     position: relative;
     overflow: hidden;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    padding: 0.5rem calc(50vw - 50%) 1rem;
+    padding: 0.5rem 0 1rem;
     -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
     mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
 }
