@@ -1249,6 +1249,54 @@ def fetch_dorset() -> list[dict]:
     return records
 
 
+_WORCESTERSHIRE_URLS = [
+    "https://www.worcestershire.gov.uk/sites/default/files/2026-05/"
+    "first_primary_schools_allocation_day_statistics_2026.pdf",
+    "https://www.worcestershire.gov.uk/sites/default/files/2026-04/"
+    "middle_schools_allocation_day_statistics_2026.pdf",
+    "https://www.worcestershire.gov.uk/sites/default/files/2026-02/"
+    "high_school_allocation_day_statistics_2026.pdf",
+]
+
+
+def fetch_worcestershire() -> list[dict]:
+    """Worcestershire County Council's "Allocation day statistics"
+    PDFs (First/Primary + Middle + High), republished each year at new
+    URLs under /sites/default/files/YYYY-MM/ (find the current ones
+    via worcestershire.gov.uk's "allocation-day-statistics-adjudicator
+    -reports-and-resources" page). "District, Name of School, DfE
+    Number, PAN, Oversubscribed, Refused, Criterion, Distance (miles)"
+    table - column count/order shifts very slightly between the three
+    files (a rotated-header artifact, same family of issue as
+    Wokingham's), so this uses the same decimal-cell-detection
+    approach as Stockport/Peterborough for the distance rather than a
+    fixed index; school name is reliably column 1 (District is
+    column 0, sometimes blank on continuation rows for the same
+    district) in all three.
+    """
+    records = []
+    for url in _WORCESTERSHIRE_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or len(row) < 2 or not row[1] or not isinstance(row[1], str):
+                        continue
+                    distance = None
+                    for cell in row:
+                        if cell and _STOCKPORT_DECIMAL_RE.match(cell.strip()):
+                            distance = float(cell.strip())
+                            break
+                    if distance is not None:
+                        records.append({"school_name": row[1].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1280,6 +1328,7 @@ _AUTHORITIES = [
     ("North Somerset", "2024/25", fetch_north_somerset),
     ("Somerset", "2025/26", fetch_somerset),
     ("Dorset", "2025/26", fetch_dorset),
+    ("Worcestershire", "2026/27", fetch_worcestershire),
 ]
 
 
