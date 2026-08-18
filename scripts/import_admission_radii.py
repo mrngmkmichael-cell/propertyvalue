@@ -1297,6 +1297,46 @@ def fetch_worcestershire() -> list[dict]:
     return records
 
 
+def fetch_cheshire_east() -> list[dict]:
+    """Cheshire East Council's "Breakdown of oversubscription criteria
+    allocated" PDF - republished each year at a new URL (find the
+    current one via cheshireeast.gov.uk's "previous-allocations.aspx"
+    page). Clean table: DfE Number, School, PAN, Total Allocated,
+    Lowest Criteria Allocated, Furthest Distance - column header says
+    "(miles)" but a subset of rows are actually recorded in metres
+    (e.g. "1489", "309", "92.912") rather than miles - confirmed by
+    checking what those figures become when divided by 1609.34: each
+    one lands on a small, entirely plausible mile value for a
+    small/lightly-oversubscribed local primary school, whereas taken
+    literally as miles (92, 309, 1489 miles) they're physically
+    impossible for a non-boarding UK primary school. Any value over 15
+    (a generous upper bound - no legitimate Cheshire primary
+    catchment approaches that) is therefore treated as metres and
+    converted, rather than either trusted at face value or discarded.
+    """
+    url = "https://www.cheshireeast.gov.uk/pdf/schools/admissions/2026-criteria-allocated-analysis-primary-lowest-criteria-only.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 6 or not row[1] or not row[-1]:
+                    continue
+                try:
+                    value = float(row[-1].strip())
+                except ValueError:
+                    continue
+                distance = value / _METRES_PER_MILE if value > 15 else value
+                records.append({"school_name": row[1].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1329,6 +1369,7 @@ _AUTHORITIES = [
     ("Somerset", "2025/26", fetch_somerset),
     ("Dorset", "2025/26", fetch_dorset),
     ("Worcestershire", "2026/27", fetch_worcestershire),
+    ("Cheshire East", "2025/26", fetch_cheshire_east),
 ]
 
 
