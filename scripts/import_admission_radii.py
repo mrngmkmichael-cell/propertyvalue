@@ -2111,6 +2111,43 @@ def fetch_haringey() -> list[dict]:
     return records
 
 
+_CALDERDALE_URLS = [
+    "https://dataworks.calderdale.gov.uk/download/vq9q6/t8y/Primary%20Preferences-Allocations%20by%20School%202026.csv",
+    "https://dataworks.calderdale.gov.uk/download/v8357/127/Secondary%20Preferences-Allocations%20by%20School%202026.csv",
+]
+_CALDERDALE_DISTANCE_RE = re.compile(r"([\d.]+)")
+
+
+def fetch_calderdale() -> list[dict]:
+    """Calderdale Council publishes real open-data CSVs (Primary +
+    Secondary preferences/allocations by school) on its "Calderdale
+    Data Works" open data portal, one file per year since 2015 -
+    republished each year at a new download ID (find the current ones
+    via the dataset pages: dataworks.calderdale.gov.uk/dataset/vq9q6
+    and .../v8357). "Distance of furthest pupil allocated a place (in
+    miles)" is already in miles; a few rows carry an annotation like
+    "0.351 (within catchment)" - only the leading number is taken.
+    Blank cells (school not oversubscribed on distance) are correctly
+    skipped.
+    """
+    records = []
+    for url in _CALDERDALE_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        text = resp.content.decode("utf-8-sig", errors="replace")
+        for line in text.splitlines()[1:]:
+            if not line.strip():
+                continue
+            cells = next(csv.reader([line]))
+            if len(cells) < 10 or not cells[0] or not cells[9].strip():
+                continue
+            match = _CALDERDALE_DISTANCE_RE.search(cells[9])
+            if match:
+                records.append({"school_name": cells[0].strip(), "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2162,6 +2199,7 @@ _AUTHORITIES = [
     ("Greenwich", "2024/25", fetch_greenwich),
     ("Sutton", "2025/26", fetch_sutton),
     ("Haringey", "varies", fetch_haringey),
+    ("Calderdale", "2026/27", fetch_calderdale),
 ]
 
 
