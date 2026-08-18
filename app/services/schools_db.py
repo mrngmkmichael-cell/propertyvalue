@@ -9,7 +9,9 @@ import math
 from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
-from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics, SchoolDestinations, SchoolDetail
+from app.models import (
+    Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCharacteristics, SchoolDestinations, SchoolDetail,
+)
 from app.services import _cache, overview_score, reviews
 
 SEARCH_RADIUS_KM = 5
@@ -207,6 +209,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             "distance_m": round(distance_km * 1000), "phase_group": None,
             "ofsted_rating": row.ofsted_rating, "ofsted_rating_label": row.ofsted_rating_label,
             "ofsted_inspection_date": row.ofsted_inspection_date,
+            "latitude": row.latitude, "longitude": row.longitude,
         }
 
         if "special" in type_lower:
@@ -256,12 +259,20 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             destinations_by_urn = {
                 r.urn: r for r in session.scalars(select(SchoolDestinations).where(SchoolDestinations.urn.in_(all_urns)))
             }
+            admission_radius_by_urn = {
+                r.urn: {
+                    "last_distance_miles": r.last_distance_miles, "academic_year": r.academic_year,
+                    "source_authority": r.source_authority,
+                }
+                for r in session.scalars(select(SchoolAdmissionRadius).where(SchoolAdmissionRadius.urn.in_(all_urns)))
+            }
         review_summaries = reviews.summaries_for_many("school", [str(urn) for urn in all_urns])
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
             e["detail"] = detail_by_urn.get(e["urn"])
             e["destinations"] = destinations_by_urn.get(e["urn"])
             e["review_summary"] = review_summaries.get(str(e["urn"]))
+            e["admission_radius"] = admission_radius_by_urn.get(e["urn"])
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
                 e["exam_results"] = {

@@ -758,6 +758,24 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if not premium_unlocked and context.get("catchment"):
         context["catchment"] = [{**c, "rings": None} for c in context["catchment"]]
 
+    # Same reasoning as the catchment polygons above - the estimated
+    # admission-distance circle is the map-drawn equivalent of a
+    # Premium-gated finding, so it's omitted entirely (not just
+    # hidden by CSS) for non-premium users. Built as its own small
+    # plain-dict list (not filtered from all_schools directly) since
+    # those entries also carry non-JSON-serializable ORM objects
+    # (e.g. "detail") that would break tojson() in the map script.
+    context["admission_radius_map_data"] = []
+    if premium_unlocked and context.get("school_landscape"):
+        context["admission_radius_map_data"] = [
+            {
+                "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
+                "last_distance_miles": s["admission_radius"]["last_distance_miles"],
+            }
+            for s in context["school_landscape"].get("all_schools", [])
+            if s.get("admission_radius")
+        ]
+
     return templates.TemplateResponse(request, "property.html", context)
 
 

@@ -50,9 +50,24 @@
                                 <tr><td>Area deprivation</td><td>Quintile {{ s.detail.idaci_quintile }} of 5 (1 = most deprived fifth nationally)</td></tr>
                                 {% endif %}
                                 {% endif %}
+                                {% if s.admission_radius %}
+                                <tr>
+                                    <td>Estimated admission distance</td>
+                                    <td><span class="{{ value_lock_class }}">{{ s.admission_radius.last_distance_miles }} mi ({{ s.admission_radius.academic_year }})</span></td>
+                                </tr>
+                                {% endif %}
                                 <tr><td>URN</td><td>{{ s.urn }}</td></tr>
                                 <tr><td>Distance</td><td>{{ s.distance_m | distance }}</td></tr>
                             </table>
+                            {% if s.admission_radius %}
+                            <p class="section-sub">
+                                Estimated admission distance is a <strong>modelled estimate</strong>, not a real
+                                boundary — how far the furthest-admitted pupil lived last year, per
+                                {{ s.admission_radius.source_authority }} council's own published figures. It
+                                shifts every year with demand and isn't a guarantee.
+                            </p>
+                            {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
+                            {% endif %}
                             <p>
                                 <a href="https://www.get-information-schools.service.gov.uk/Establishments/Establishment/Details/{{ s.urn }}" target="_blank" rel="noopener">
                                     Full official record on GOV.UK →

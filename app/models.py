@@ -500,6 +500,38 @@ class SchoolDestinations(Base):
     not_sustained_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class SchoolAdmissionRadius(Base):
+    """A MODELLED ESTIMATE of how far a school's admission area
+    reaches - deliberately not called a "catchment", because it isn't
+    one. Built from individual local authorities' own published "last
+    distance offered" figures (how far the furthest-admitted pupil
+    lived, in the most recent admissions round) - the same technique
+    catchment.school/Locrating-style sites use, per their own admitted
+    "modelled from historic admission distances" methodology, since no
+    real boundary exists for most English schools (see catchment.py's
+    docstring). Rendered as a circle around the school, not a real
+    shape.
+
+    Unlike every other bulk import in this project, there's no single
+    source: each of England's ~150 local authorities (Scotland/Wales/
+    NI have their own separate systems) publishes this in its own
+    format - some clean PDF tables, some prose, some km, some miles,
+    some multi-year, none centralised. scripts/import_admission_radii.py
+    is a registry of one parser function per authority, filled in
+    incrementally, not all at once - "full UK coverage" here means
+    "every authority's own site has eventually been individually
+    handled", a genuinely ongoing content-collection project rather
+    than a one-time bulk download like GIAS/Ofsted/DfE performance
+    data.
+    """
+    __tablename__ = "school_admission_radii"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    last_distance_miles: Mapped[float] = mapped_column(Float)
+    source_authority: Mapped[str] = mapped_column(String(150), default="")
+
+
 class SchoolCharacteristics(Base):
     """Free school meal (FSM) eligibility, by school URN - a common
     school-level deprivation/characteristics indicator. Populated by

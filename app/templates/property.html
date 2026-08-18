@@ -2635,6 +2635,20 @@ Listed building data from Historic England's
                 });
             });
         });
+
+        ({{ admission_radius_map_data | tojson }}).forEach(function (s) {
+            new google.maps.Circle({
+                center: { lat: s.latitude, lng: s.longitude },
+                radius: s.last_distance_miles * 1609.34,
+                map: map,
+                strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.8,
+                fillColor: '#d97706', fillOpacity: 0.06,
+            }).addListener('click', function () {
+                new google.maps.InfoWindow({
+                    content: s.name + ' — estimated admission distance ' + s.last_distance_miles + ' mi (not a guarantee)',
+                }).setPosition({ lat: s.latitude, lng: s.longitude });
+            });
+        });
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initPropertyMap&loading=async" async defer></script>
@@ -2659,6 +2673,13 @@ Listed building data from Historic England's
             { type: 'Feature', properties: { name: c.school_name }, geometry: { type: 'Polygon', coordinates: c.rings } },
             { style: { color: '#3b5bfd', weight: 2, fillOpacity: 0.12 } }
         ).bindPopup(c.school_name + ' catchment').addTo(map);
+    });
+
+    ({{ admission_radius_map_data | tojson }}).forEach(function (s) {
+        L.circle([s.latitude, s.longitude], {
+            radius: s.last_distance_miles * 1609.34,
+            color: '#d97706', weight: 2, opacity: 0.8, fillOpacity: 0.06,
+        }).bindPopup(s.name + ' — estimated admission distance ' + s.last_distance_miles + ' mi (not a guarantee)').addTo(map);
     });
 </script>
 {% endif %}
