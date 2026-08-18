@@ -2486,6 +2486,77 @@ def fetch_kirklees() -> list[dict]:
     return records
 
 
+_CHESHIRE_WEST_URLS = [
+    "https://www.cheshirewestandchester.gov.uk/asset-library/cwc-primary-guide-2025-26-online-final-version-mar-20251.pdf",
+    "https://www.cheshirewestandchester.gov.uk/asset-library/secondary-school-guide-2025-26-final-online12.pdf",
+]
+
+
+_CHESHIRE_WEST_POSTCODE_RE = re.compile(r"[A-Z]{1,2}\d[A-Z\d]?\s+\d[A-Z]{2}$")
+
+
+def _cheshire_west_name(cell: str) -> str:
+    lines = [line.strip() for line in cell.split("\n") if line.strip()]
+    if not lines:
+        return ""
+    postcode_idx = next((i for i, line in enumerate(lines) if _CHESHIRE_WEST_POSTCODE_RE.search(line)), None)
+    if not postcode_idx:
+        return lines[0]
+    # The address is 1 or 2 lines ending at the postcode line - a
+    # 2-line address (street, then town + postcode) is told apart from
+    # a 2-line school name by whether the preceding line has a comma
+    # (an address fragment) rather than being part of the name, but
+    # never mistake line 0 itself for an address line even if the
+    # school's own name happens to contain a comma (e.g. "The County
+    # High School, Leftwich").
+    addr_start = postcode_idx
+    if postcode_idx - 1 > 0 and "," in lines[postcode_idx - 1]:
+        addr_start = postcode_idx - 1
+    return " ".join(lines[:addr_start]) or lines[0]
+
+
+def fetch_cheshire_west_and_chester() -> list[dict]:
+    """Cheshire West and Chester's Primary and Secondary admissions
+    guide PDFs have a per-school table row with a "Lowest criteria"
+    and "Furthest distance" column - but pdfplumber extracts this
+    section of every page as right-to-left, so BOTH the criteria label
+    ("Distance" -> "ecnatsiD") and the distance figure itself
+    (e.g. "1.049" -> "940.1") come out character-reversed, not just the
+    column headers (the more common case elsewhere in this script).
+    Only rows whose reversed criteria label is exactly "Distance" are
+    used; other rows (a named criterion number, "N/A", or blank) mean
+    the school wasn't oversubscribed on distance and are skipped. The
+    school name can wrap across 1-2 lines before the address line
+    (identified by the following "Tel:" line), so both are joined.
+    """
+    records = []
+    for url in _CHESHIRE_WEST_URLS:
+        resp = httpx.get(url, timeout=90, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if len(row) < 3:
+                        continue
+                    criterion = (row[-3] or "").replace("\n", "").strip()
+                    if criterion.lower() != "ecnatsid":
+                        continue
+                    value = (row[-2] or "").strip()
+                    if not value:
+                        continue
+                    try:
+                        distance = float(value[::-1])
+                    except ValueError:
+                        continue
+                    name = _cheshire_west_name(row[1] or "")
+                    if name:
+                        records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2584,6 +2655,7 @@ _AUTHORITIES = [
     ("Warwickshire", "2025/26", fetch_warwickshire),
     ("Staffordshire", "varies", fetch_staffordshire),
     ("Kirklees", "2025/26", fetch_kirklees),
+    ("Cheshire West and Chester", "2025/26", fetch_cheshire_west_and_chester),
 ]
 
 
