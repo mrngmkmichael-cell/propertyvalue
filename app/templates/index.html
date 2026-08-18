@@ -94,19 +94,19 @@
         <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
     </div>
     {% set why_cards = [
-        ('school.png', 'School Catchment Data', 'Real distances,', 'not estimates.', 'Actual admission distances pulled from council records — not a modelled circle on a map.'),
-        ('verified.png', 'Verified Sources', 'Zero scraping,', 'zero guesswork.', 'Every figure traces to an official source, never scraped or estimated.'),
-        ('report.png', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax and more — for one address.'),
-        ('score.png', 'Overview Score', 'A verdict,', 'not a data dump.', 'A plain GOOD, AVERAGE or POOR call — with the reasoning shown.'),
-        ('pricing.png', 'Simple Pricing', 'Unlimited,', 'for less.', 'A fraction of per-report fees or enterprise pricing elsewhere.'),
+        ('schools', 'School Catchment Data', 'Real distances,', 'not estimates.', 'Actual admission distances pulled from council records — not a modelled circle on a map.'),
+        ('lock', 'Verified Sources', 'Zero scraping,', 'zero guesswork.', 'Every figure traces to an official source, never scraped or estimated.'),
+        ('details', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax and more — for one address.'),
+        ('reviews', 'Overview Score', 'A verdict,', 'not a data dump.', 'A plain GOOD, AVERAGE or POOR call — with the reasoning shown.'),
+        ('market', 'Simple Pricing', 'Unlimited,', 'for less.', 'A fraction of per-report fees or enterprise pricing elsewhere.'),
     ] %}
     <div class="why-carousel-wrap">
         <div class="why-cards">
             {% for pass_num in range(2) %}
-                {% for img_file, eyebrow, title_main, title_hl, desc in why_cards %}
+                {% for icon_name, eyebrow, title_main, title_hl, desc in why_cards %}
                 <div class="why-card"{% if pass_num == 1 %} aria-hidden="true"{% endif %}>
                     <div class="why-card-icon-box">
-                        <img class="why-card-icon-img" src="/static/img/why-cards/{{ img_file }}" alt="{{ eyebrow }}" loading="lazy">
+                        <span class="why-card-icon">{{ icons.icon(icon_name) }}</span>
                     </div>
                     <div class="why-card-body">
                         <span class="why-card-eyebrow">{{ eyebrow }}</span>
