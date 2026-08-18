@@ -1028,6 +1028,42 @@ def fetch_stockport() -> list[dict]:
     return records
 
 
+_PORTSMOUTH_ROW_RE = re.compile(r"<tr>\s*<td[^>]*>([^<]+)</td>\s*<td[^>]*>(.*?)</td>\s*</tr>", re.DOTALL)
+_PORTSMOUTH_DISTANCE_RE = re.compile(r"lived\s*([\d.]+)\s*miles away", re.IGNORECASE)
+
+_PORTSMOUTH_URLS = [
+    "https://www.portsmouth.gov.uk/services/schools-and-learning/schools/admissions/"
+    "waiting-list-and-appeals-for-a-school-place/starting-school-important-information/",
+    "https://www.portsmouth.gov.uk/services/schools-learning-and-childcare/schools/admissions/"
+    "waiting-list-and-appeals-for-a-school-place/important-information-for-secondary-transfer-applicants/",
+]
+
+
+def fetch_portsmouth() -> list[dict]:
+    """Portsmouth City Council publishes an "Oversubscribed schools"
+    HTML table (not a PDF) on its own admissions pages - one for
+    starting/primary school, one for secondary transfer, both
+    seemingly stable URLs updated in place each year (though note the
+    two use slightly different URL path segments -
+    "schools-and-learning" vs "schools-learning-and-childcare" -
+    re-check both if either 404s). Each row is "<school name>, prose
+    ending '...lived X.XXX miles away from the school.'" - schools
+    filled without reaching the distance criterion aren't listed at
+    all, so every row here already had a distance decide the last
+    place.
+    """
+    records = []
+    for url in _PORTSMOUTH_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        for name, cell in _PORTSMOUTH_ROW_RE.findall(resp.text):
+            match = _PORTSMOUTH_DISTANCE_RE.search(cell)
+            if match:
+                records.append({"school_name": name.strip(), "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1054,6 +1090,7 @@ _AUTHORITIES = [
     ("Milton Keynes", "2025/26", fetch_milton_keynes),
     ("Windsor and Maidenhead", "2025/26", fetch_windsor_and_maidenhead),
     ("Stockport", "2026/27", fetch_stockport),
+    ("Portsmouth", "varies", fetch_portsmouth),
 ]
 
 
