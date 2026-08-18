@@ -811,6 +811,11 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
 # --- Accounts ---
 
 
+@app.get("/premium")
+def premium_info(request: Request):
+    return templates.TemplateResponse(request, "premium.html", base_context(request))
+
+
 @app.get("/signup")
 def signup_form(request: Request):
     return templates.TemplateResponse(request, "signup.html", base_context(request))

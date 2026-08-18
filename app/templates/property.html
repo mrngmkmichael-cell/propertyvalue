@@ -144,6 +144,10 @@
 
     <p class="section-sub">Tap a card to see the details in a popup.</p>
 
+    {% set premium_unlocked = current_user and current_user.is_premium %}
+    {% set lock_label = "Sign up free to unlock" if not current_user else "Upgrade to Premium to unlock" %}
+    {% set lock_redirect = "/signup" if not current_user else "/premium" %}
+
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>
@@ -160,8 +164,8 @@
             {% endif %}
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-valuation" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if (valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-valuation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
             <span class="dashboard-card-title">Valuation Estimate</span>
             <span class="dashboard-card-status">
@@ -174,15 +178,15 @@
             {% endif %}
         </button>
 
-        <button type="button" class="dashboard-card status-ok{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-calculators" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-ok{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-calculators" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
             <span class="dashboard-card-title">Costs &amp; Affordability</span>
             <span class="dashboard-card-status">Stamp duty, mortgage, yield</span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-rental" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-rental" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-rental">{{ icons.icon('rental') }}</span>
             <span class="dashboard-card-title">Rental Analysis</span>
             <span class="dashboard-card-status">
@@ -221,8 +225,8 @@
         </button>
         {% endif %}
 
-        <button type="button" class="dashboard-card status-{{ ext_status }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-extension" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ ext_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-extension" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             {% if ext_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-extension">{{ icons.icon('extension') }}</span>
             <span class="dashboard-card-title">Extended or Modified</span>
@@ -299,8 +303,8 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ aq_status }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-air-quality" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ aq_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-air-quality" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             {% if aq_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-air-quality">{{ icons.icon('air_quality') }}</span>
             <span class="dashboard-card-title">Air Quality</span>
@@ -311,8 +315,8 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ landfill_status }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-historic-landfill" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ landfill_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-historic-landfill" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             {% if landfill_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-landfill">{{ icons.icon('landfill') }}</span>
             <span class="dashboard-card-title">Historic Contamination</span>
@@ -372,8 +376,8 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if catchment_error else ('ok' if catchment else 'muted') }}{{ ' dashboard-card-locked' if not current_user else '' }}" data-modal-target="modal-catchment" {% if not current_user %}data-lock-redirect="/signup"{% endif %} data-animate>
-            {% if not current_user %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">Sign up free to unlock</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if catchment_error else ('ok' if catchment else 'muted') }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-catchment" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">School Catchment Areas</span>
             <span class="dashboard-card-status">
