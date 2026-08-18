@@ -406,6 +406,66 @@ def fetch_solihull() -> list[dict]:
     return records
 
 
+def fetch_harrow() -> list[dict]:
+    """London Borough of Harrow's "How places were allocated at
+    Harrow Schools" PDF - republished each spring at a new file ID
+    (find the current one via harrow.gov.uk's own search). One clean
+    row per school; "FURTHEST DISTANCE OFFERED IN MILES..." is the
+    third-from-last column, already in miles.
+    """
+    url = "https://www.harrow.gov.uk/downloads/file/33045/Reception_2025___How_places_were_allocated_at_Harrow_Schools.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 3 or not row[0] or not row[-3]:
+                    continue
+                try:
+                    distance = float(row[-3].strip())
+                except ValueError:
+                    continue
+                records.append({"school_name": row[0].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
+def fetch_gloucestershire() -> list[dict]:
+    """Gloucestershire County Council's "Primary allocation day
+    statistics" PDF - republished each spring at a new file ID (find
+    the current one via gloucestershire.gov.uk's own search). One
+    clean row per school; "Furthest distance allocated (miles)" is
+    column index 5, already in miles. A county council rather than a
+    single city/borough - broader geographic spread than the mostly
+    urban authorities covered so far.
+    """
+    url = "https://www.gloucestershire.gov.uk/media/ctgfusdi/primary-allocation-day-statistics-2025-1.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 6 or not row[1] or not row[5]:
+                    continue
+                try:
+                    distance = float(row[5].strip())
+                except ValueError:
+                    continue
+                records.append({"school_name": row[1].replace("\n", " ").strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -418,6 +478,8 @@ _AUTHORITIES = [
     ("Ealing", "2024/25", fetch_ealing),
     ("Hackney", "2024/25", fetch_hackney),
     ("Solihull", "varies", fetch_solihull),
+    ("Harrow", "2024/25", fetch_harrow),
+    ("Gloucestershire", "2024/25", fetch_gloucestershire),
 ]
 
 
