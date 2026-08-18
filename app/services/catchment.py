@@ -64,6 +64,21 @@ _SOURCES = [
     ("North Lanarkshire", "Primary (denominational)",
      "https://services-eu1.arcgis.com/9edRUxcMgH07BEka/arcgis/rest/services/"
      "Denominational_Primary_Catchments_View/FeatureServer/0", "name"),
+    ("Glasgow City", "Primary (non-denominational)",
+     "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
+     "OPEN_DATA/Schools_Catchments_Open/MapServer/6", "NAME"),
+    ("Glasgow City", "Secondary (non-denominational)",
+     "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
+     "OPEN_DATA/Schools_Catchments_Open/MapServer/7", "NAME"),
+    ("Glasgow City", "Primary (Roman Catholic)",
+     "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
+     "OPEN_DATA/Schools_Catchments_Open/MapServer/8", "NAME"),
+    ("Glasgow City", "Secondary (Roman Catholic)",
+     "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
+     "OPEN_DATA/Schools_Catchments_Open/MapServer/9", "NAME"),
+    ("Glasgow City", "Primary (Gaelic)",
+     "https://utility.arcgis.com/usrsvcs/servers/2bfa782d5da84302bf15219e19a05112/rest/services/"
+     "OPEN_DATA/Schools_Catchments_Open/MapServer/5", "NAME"),
 ]
 
 
