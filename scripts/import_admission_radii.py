@@ -896,6 +896,44 @@ def fetch_coventry() -> list[dict]:
     return records
 
 
+_MK_DISTANCE_RE = re.compile(r"distance\s*(?:to the [\w\s]+ campus)?\s*of\s*([\d.]+)\s*miles?", re.IGNORECASE)
+
+_MK_URLS = [
+    "https://www.milton-keynes.gov.uk/sites/default/files/2025-04/Allocation%20Profile%20Starting%20School%2016%20April%202025.pdf",
+    "https://www.milton-keynes.gov.uk/sites/default/files/2025-02/Allocation%20Profile%203%20March%202025.pdf",
+]
+
+
+def fetch_milton_keynes() -> list[dict]:
+    """Milton Keynes City Council's "Allocation Profile" PDFs - one
+    for Starting/Primary School, one for Year 7/Secondary, republished
+    each year at a new URL under /sites/default/files/YYYY-MM/ (find
+    the current ones via milton-keynes.gov.uk's admissions pages).
+    One clean row per school: name, then prose ending "...to a
+    distance of X.XXX miles" (occasionally "...to the <campus name>
+    campus" for split-site schools, handled by the regex's optional
+    middle clause), vacancy flag.
+    """
+    records = []
+    for url in _MK_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table[1:]:
+                    if not row or not row[0] or not row[1]:
+                        continue
+                    match = _MK_DISTANCE_RE.search(row[1].replace("\n", " "))
+                    if match:
+                        name = row[0].replace("\n", " ").strip()
+                        records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -919,6 +957,7 @@ _AUTHORITIES = [
     ("Cambridgeshire", "2026/27", fetch_cambridgeshire),
     ("Wokingham", "2025/26", fetch_wokingham),
     ("Coventry", "varies", fetch_coventry),
+    ("Milton Keynes", "2025/26", fetch_milton_keynes),
 ]
 
 
