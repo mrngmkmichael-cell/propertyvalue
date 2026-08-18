@@ -44,7 +44,7 @@ def current_user(request: Request) -> Optional[dict]:
             user = db.get(User, user_id)
             if user is None:
                 return None
-            return {"id": user.id, "email": user.email}
+            return {"id": user.id, "email": user.email, "is_premium": user.is_premium}
     except Exception:
         # base_context() calls this on every page load, including the
         # error pages themselves - a transient DB hiccup shouldn't take

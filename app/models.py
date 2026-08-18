@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -17,6 +17,11 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    # No payment processor wired up yet - this is a manually-flipped
+    # flag (set directly in the DB) gating a couple of detailed school
+    # data sections behind a "Premium" visual lock, ahead of building
+    # real subscription billing.
+    is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
 
     watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

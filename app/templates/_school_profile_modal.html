@@ -1,3 +1,17 @@
+{% macro premium_gate() %}
+<div class="school-profile-locked">
+    <div class="school-profile-locked-content" aria-hidden="true">{{ caller() }}</div>
+    <div class="school-profile-lock-overlay">
+        {{ icons.icon('lock') }}
+        {% if current_user %}
+        <span class="school-profile-lock-label">Premium feature — coming soon</span>
+        {% else %}
+        <a href="/signup" class="school-profile-lock-label">Sign up free to unlock →</a>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+{% set premium_unlocked = current_user and current_user.is_premium %}
 <dialog class="report-modal" id="{{ modal_id }}">
     <div class="report-modal-inner">
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
@@ -110,6 +124,7 @@
                             {% endif %}
                             {% if s.detail and (s.detail.ofsted_quality_of_education or s.detail.ofsted_behaviour_attitudes or s.detail.ofsted_personal_development or s.detail.ofsted_leadership_management) %}
                             <p style="margin-top: 0.75rem;"><strong>Category judgements</strong></p>
+                            {% set judgements_table %}
                             <table>
                                 {% for label, value in [
                                     ("Quality of education", s.detail.ofsted_quality_of_education),
@@ -127,6 +142,12 @@
                                 <tr><td>Safeguarding effective</td><td>{{ s.detail.ofsted_safeguarding_effective }}</td></tr>
                                 {% endif %}
                             </table>
+                            {% endset %}
+                            {% if premium_unlocked %}
+                            {{ judgements_table }}
+                            {% else %}
+                            {% call premium_gate() %}{{ judgements_table }}{% endcall %}
+                            {% endif %}
                             {% endif %}
                             <p>Only the latest graded inspection is shown here - we don't hold a full historical inspection timeline.</p>
                         </div>
@@ -151,6 +172,7 @@
                             </table>
                             {% if s.exam_trend and s.exam_trend | length > 1 %}
                             <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label }} by year</strong></p>
+                            {% set trend_table %}
                             <table>
                                 {% for t in s.exam_trend %}
                                 <tr>
@@ -159,6 +181,12 @@
                                 </tr>
                                 {% endfor %}
                             </table>
+                            {% endset %}
+                            {% if premium_unlocked %}
+                            {{ trend_table }}
+                            {% else %}
+                            {% call premium_gate() %}{{ trend_table }}{% endcall %}
+                            {% endif %}
                             {% endif %}
                         </div>
                     </details>

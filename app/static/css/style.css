@@ -1845,6 +1845,48 @@ a {
     color: var(--ink-faint);
 }
 
+.school-profile-locked {
+    position: relative;
+    min-height: 70px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.school-profile-locked-content {
+    filter: blur(5px);
+    user-select: none;
+}
+
+.school-profile-lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    background: rgba(255, 255, 255, 0.78);
+    border-radius: var(--radius-md);
+}
+
+.school-profile-lock-overlay svg {
+    width: 18px;
+    height: 18px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.school-profile-lock-label {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a.school-profile-lock-label:hover {
+    text-decoration: underline;
+}
+
 .school-guide-compare {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
