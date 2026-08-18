@@ -93,73 +93,29 @@
         <h2 class="why-heading">Built different,<br>on purpose.</h2>
         <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
     </div>
+    {% set why_cards = [
+        ('schools', 'School Catchment Data', 'Real distances,', 'not estimates.', 'Actual admission distances pulled from council records — not a modelled circle on a map.'),
+        ('lock', 'Verified Sources', 'Zero scraping,', 'zero guesswork.', 'Every figure traces to an official source, never scraped or estimated.'),
+        ('details', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax and more — for one address.'),
+        ('reviews', 'Overview Score', 'A verdict,', 'not a data dump.', 'A plain GOOD, AVERAGE or POOR call — with the reasoning shown.'),
+        ('market', 'Simple Pricing', 'Unlimited,', 'for less.', 'A fraction of per-report fees or enterprise pricing elsewhere.'),
+    ] %}
     <div class="why-carousel-wrap">
-        <div class="why-cards" data-scroll>
-            <div class="why-card">
-                <div class="why-card-top">
-                    <span class="why-card-eyebrow">School Catchment Data</span>
-                    <h3 class="why-card-title">Real distances, <span class="hl">not estimates.</span></h3>
-                    <p class="why-card-desc">Actual admission distances pulled from council records — not a modelled circle on a map.</p>
+        <div class="why-cards">
+            {% for pass_num in range(2) %}
+                {% for icon_name, eyebrow, title_main, title_hl, desc in why_cards %}
+                <div class="why-card"{% if pass_num == 1 %} aria-hidden="true"{% endif %}>
+                    <div class="why-card-icon-box">
+                        <span class="why-card-icon">{{ icons.icon(icon_name) }}</span>
+                    </div>
+                    <div class="why-card-body">
+                        <span class="why-card-eyebrow">{{ eyebrow }}</span>
+                        <h3 class="why-card-title">{{ title_main }} <span class="hl">{{ title_hl }}</span></h3>
+                        <p class="why-card-desc">{{ desc }}</p>
+                    </div>
                 </div>
-                <div class="why-card-visual">
-                    <span class="visual-orb visual-orb-1"></span>
-                    <span class="visual-orb visual-orb-2"></span>
-                    <div class="visual-glass">{{ icons.icon('schools') }}</div>
-                </div>
-                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
-            </div>
-            <div class="why-card">
-                <div class="why-card-top">
-                    <span class="why-card-eyebrow">Verified Sources</span>
-                    <h3 class="why-card-title">Zero scraping, <span class="hl">zero guesswork.</span></h3>
-                    <p class="why-card-desc">Every figure traces to an official source, never scraped or estimated.</p>
-                </div>
-                <div class="why-card-visual">
-                    <span class="visual-orb visual-orb-1"></span>
-                    <span class="visual-orb visual-orb-2"></span>
-                    <div class="visual-glass">{{ icons.icon('lock') }}</div>
-                </div>
-                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
-            </div>
-            <div class="why-card">
-                <div class="why-card-top">
-                    <span class="why-card-eyebrow">One Report</span>
-                    <h3 class="why-card-title">The full <span class="hl">due-diligence stack.</span></h3>
-                    <p class="why-card-desc">Prices, energy, flood, crime, schools, tax and more — for one address.</p>
-                </div>
-                <div class="why-card-visual">
-                    <span class="visual-orb visual-orb-1"></span>
-                    <span class="visual-orb visual-orb-2"></span>
-                    <div class="visual-glass">{{ icons.icon('details') }}</div>
-                </div>
-                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
-            </div>
-            <div class="why-card">
-                <div class="why-card-top">
-                    <span class="why-card-eyebrow">Overview Score</span>
-                    <h3 class="why-card-title">A verdict, <span class="hl">not a data dump.</span></h3>
-                    <p class="why-card-desc">A plain GOOD, AVERAGE or POOR call — with the reasoning shown.</p>
-                </div>
-                <div class="why-card-visual">
-                    <span class="visual-orb visual-orb-1"></span>
-                    <span class="visual-orb visual-orb-2"></span>
-                    <div class="visual-glass">{{ icons.icon('reviews') }}</div>
-                </div>
-                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
-            </div>
-            <div class="why-card">
-                <div class="why-card-top">
-                    <span class="why-card-eyebrow">Simple Pricing</span>
-                    <h3 class="why-card-title">Unlimited, <span class="hl">for less.</span></h3>
-                    <p class="why-card-desc">A fraction of per-report fees or enterprise pricing elsewhere.</p>
-                </div>
-                <div class="why-card-visual">
-                    <span class="visual-orb visual-orb-1"></span>
-                    <span class="visual-orb visual-orb-2"></span>
-                    <div class="visual-glass">{{ icons.icon('market') }}</div>
-                </div>
-                <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
-            </div>
+                {% endfor %}
+            {% endfor %}
         </div>
     </div>
 </section>
