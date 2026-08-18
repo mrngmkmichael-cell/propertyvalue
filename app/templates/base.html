@@ -77,6 +77,25 @@
                 });
             }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
             targets.forEach(function (el) { observer.observe(el); });
+
+            // A direct #hash jump (e.g. a same-page nav link) can land a
+            // target already inside the viewport before the observer's
+            // first callback has a chance to fire, leaving it stuck
+            // invisible - catch that with an immediate manual check.
+            function revealVisible() {
+                const vh = window.innerHeight || document.documentElement.clientHeight;
+                targets.forEach(function (el) {
+                    if (el.classList.contains('in-view')) return;
+                    const rect = el.getBoundingClientRect();
+                    if (rect.top < vh * 0.9 && rect.bottom > 0) {
+                        el.classList.add('in-view');
+                        observer.unobserve(el);
+                    }
+                });
+            }
+            revealVisible();
+            window.addEventListener('load', revealVisible);
+            window.addEventListener('hashchange', revealVisible);
         })();
     </script>
     <script>

@@ -102,15 +102,9 @@
                     <p class="why-card-desc">Actual admission distances pulled from council records — not a modelled circle on a map.</p>
                 </div>
                 <div class="why-card-visual">
-                    <div class="phone-mockup">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen">
-                            <div class="mock-map">
-                                <span class="mock-map-radius"></span>
-                                <span class="mock-map-pin"></span>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="visual-orb visual-orb-1"></span>
+                    <span class="visual-orb visual-orb-2"></span>
+                    <div class="visual-glass">{{ icons.icon('schools') }}</div>
                 </div>
                 <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
@@ -121,18 +115,9 @@
                     <p class="why-card-desc">Every figure traces to an official source, never scraped or estimated.</p>
                 </div>
                 <div class="why-card-visual">
-                    <div class="phone-mockup">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen">
-                            <div class="mock-list">
-                                <div class="mock-list-row"><span class="mock-check">&check;</span><span class="mock-bar"></span></div>
-                                <div class="mock-list-row"><span class="mock-check">&check;</span><span class="mock-bar mock-bar-sm"></span></div>
-                                <div class="mock-list-row"><span class="mock-check">&check;</span><span class="mock-bar"></span></div>
-                                <div class="mock-list-row"><span class="mock-check">&check;</span><span class="mock-bar mock-bar-sm"></span></div>
-                                <div class="mock-list-row"><span class="mock-check">&check;</span><span class="mock-bar"></span></div>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="visual-orb visual-orb-1"></span>
+                    <span class="visual-orb visual-orb-2"></span>
+                    <div class="visual-glass">{{ icons.icon('lock') }}</div>
                 </div>
                 <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
@@ -143,17 +128,9 @@
                     <p class="why-card-desc">Prices, energy, flood, crime, schools, tax and more — for one address.</p>
                 </div>
                 <div class="why-card-visual">
-                    <div class="phone-mockup">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen">
-                            <div class="mock-stack">
-                                <div class="mock-tile"><span class="mock-tile-label">Sold Price</span><span class="mock-tile-value">£685k</span></div>
-                                <div class="mock-tile"><span class="mock-tile-label">Flood Risk</span><span class="mock-tile-value mock-good">Zone 1</span></div>
-                                <div class="mock-tile"><span class="mock-tile-label">Schools</span><span class="mock-tile-value">4 Good</span></div>
-                                <div class="mock-tile"><span class="mock-tile-label">Broadband</span><span class="mock-tile-value">910 Mb</span></div>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="visual-orb visual-orb-1"></span>
+                    <span class="visual-orb visual-orb-2"></span>
+                    <div class="visual-glass">{{ icons.icon('details') }}</div>
                 </div>
                 <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
@@ -164,15 +141,9 @@
                     <p class="why-card-desc">A plain GOOD, AVERAGE or POOR call — with the reasoning shown.</p>
                 </div>
                 <div class="why-card-visual">
-                    <div class="phone-mockup">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen phone-screen-center">
-                            <div class="mock-score">
-                                <span class="mock-score-num">75</span>
-                                <span class="mock-score-tag">GOOD</span>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="visual-orb visual-orb-1"></span>
+                    <span class="visual-orb visual-orb-2"></span>
+                    <div class="visual-glass">{{ icons.icon('reviews') }}</div>
                 </div>
                 <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
@@ -183,23 +154,12 @@
                     <p class="why-card-desc">A fraction of per-report fees or enterprise pricing elsewhere.</p>
                 </div>
                 <div class="why-card-visual">
-                    <div class="phone-mockup">
-                        <div class="phone-notch"></div>
-                        <div class="phone-screen phone-screen-center">
-                            <div class="mock-price">
-                                <span class="mock-price-amount">£9.99</span>
-                                <span class="mock-price-period">per month</span>
-                                <span class="mock-price-badge">Unlimited</span>
-                            </div>
-                        </div>
-                    </div>
+                    <span class="visual-orb visual-orb-1"></span>
+                    <span class="visual-orb visual-orb-2"></span>
+                    <div class="visual-glass">{{ icons.icon('market') }}</div>
                 </div>
                 <span class="why-card-arrow" aria-hidden="true">&rsaquo;</span>
             </div>
-        </div>
-        <div class="why-pagers">
-            <button class="why-pager why-pager-prev" type="button" aria-label="Previous" data-scroll-prev>&#8249;</button>
-            <button class="why-pager why-pager-next" type="button" aria-label="Next" data-scroll-next>&#8250;</button>
         </div>
     </div>
 </section>
@@ -277,27 +237,60 @@
         One postcode search pulls together sold prices, official risk designations and area
         statistics that would otherwise mean checking a dozen different government websites.
     </p>
-    <div class="feature-grid">
-        {% for icon_name, label, blurb in [
-            ('market', 'Sold Prices', 'Full transaction history from HM Land Registry'),
-            ('valuation', 'Valuation Estimate', 'A DIY estimate from nearby comparables'),
-            ('energy', 'Energy Efficiency', 'EPC rating, floor area and year built'),
-            ('flood', 'Flood Risk', 'Official flood zone plus live warnings'),
-            ('crime', 'Crime & Safety', 'Local crime stats vs the wider area'),
-            ('schools', 'Schools & Catchment', 'Ofsted ratings and exam results nearby'),
-            ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more'),
-            ('planning', 'Planning Constraints', 'Listed status, conservation and heritage'),
-            ('broadband', 'Broadband & Mobile', 'Fixed-line speed and signal coverage'),
-            ('noise', 'Noise', 'Modelled road, rail and aircraft noise'),
-            ('rental', 'Rental Analysis', 'Typical rent by bedroom count nearby'),
-            ('transport', 'Getting Around', 'Nearest rail, Tube and bus links'),
-        ] %}
-        <div class="feature-card" data-animate>
-            <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
-            <span class="feature-card-title">{{ label }}</span>
-            <span class="feature-card-blurb">{{ blurb }}</span>
+
+    <div class="tier-block" data-animate>
+        <div class="tier-header">
+            <h3 class="tier-title">Free, always</h3>
+            <p class="tier-desc">No card required — search any postcode and see this straight away.</p>
         </div>
-        {% endfor %}
+        <div class="feature-grid">
+            {% for icon_name, label, blurb in [
+                ('market', 'Sold Prices', 'Full transaction history from HM Land Registry'),
+                ('energy', 'Energy Efficiency', 'EPC rating, floor area and year built'),
+                ('flood', 'Flood Risk', 'Official flood zone plus live warnings'),
+                ('crime', 'Crime & Safety', 'Local crime stats vs the wider area'),
+                ('schools', 'Schools Nearby', 'Ofsted ratings and exam results nearby'),
+                ('noise', 'Noise', 'Modelled road, rail and aircraft noise'),
+                ('planning', 'Planning Constraints', 'Listed status, conservation and heritage'),
+                ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more'),
+                ('broadband', 'Broadband & Mobile', 'Fixed-line speed and signal coverage'),
+                ('transport', 'Getting Around', 'Nearest rail, Tube and bus links'),
+                ('deprivation', 'Area Statistics', 'Deprivation, occupation and demographics nearby'),
+                ('reviews', 'Reviews', 'Real feedback on the property, area and schools'),
+            ] %}
+            <div class="feature-card" data-animate>
+                <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
+                <span class="feature-card-title">{{ label }}</span>
+                <span class="feature-card-blurb">{{ blurb }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="tier-block tier-block-premium" data-animate>
+        <div class="tier-header">
+            <h3 class="tier-title">Premium <span class="tier-badge">£9.99/mo</span></h3>
+            <p class="tier-desc">Unlocks the deeper checks — including our real school catchment data.</p>
+        </div>
+        <div class="feature-grid">
+            {% for icon_name, label, blurb in [
+                ('schools', 'School Catchment Radius', 'Real admission distances, not a modelled circle'),
+                ('valuation', 'Valuation Estimate', 'A DIY estimate from nearby comparables'),
+                ('rental', 'Rental Analysis', 'Typical rent by bedroom count nearby'),
+                ('extension', 'Extension Potential', 'Permitted development and planning headroom'),
+                ('orientation', 'Sunlight & Orientation', 'Which way the garden and rooms face'),
+                ('landfill', 'Historic Landfill', 'Proximity to former landfill sites'),
+                ('income', 'Household Income', 'Estimated income levels nearby'),
+                ('wellbeing', 'Wellbeing Index', 'Life satisfaction and anxiety scores nearby'),
+            ] %}
+            <div class="feature-card feature-card-premium" data-animate>
+                <span class="feature-card-lock">{{ icons.icon('lock') }}</span>
+                <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
+                <span class="feature-card-title">{{ label }}</span>
+                <span class="feature-card-blurb">{{ blurb }}</span>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </section>
 
@@ -392,33 +385,6 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(heroMap);
-    })();
-</script>
-<script>
-    (function () {
-        const scroller = document.querySelector('[data-scroll]');
-        if (!scroller) return;
-        const prevBtn = document.querySelector('[data-scroll-prev]');
-        const nextBtn = document.querySelector('[data-scroll-next]');
-
-        function scrollByCard(direction) {
-            const card = scroller.querySelector('.why-card');
-            if (!card) return;
-            const style = getComputedStyle(scroller);
-            const gap = parseFloat(style.columnGap || style.gap || '0');
-            scroller.scrollBy({ left: direction * (card.getBoundingClientRect().width + gap), behavior: 'smooth' });
-        }
-        function updateNav() {
-            const max = scroller.scrollWidth - scroller.clientWidth - 2;
-            prevBtn.disabled = scroller.scrollLeft <= 0;
-            nextBtn.disabled = scroller.scrollLeft >= max;
-        }
-
-        if (prevBtn) prevBtn.addEventListener('click', function () { scrollByCard(-1); });
-        if (nextBtn) nextBtn.addEventListener('click', function () { scrollByCard(1); });
-        scroller.addEventListener('scroll', updateNav, { passive: true });
-        window.addEventListener('resize', updateNav);
-        updateNav();
     })();
 </script>
 {% endblock %}

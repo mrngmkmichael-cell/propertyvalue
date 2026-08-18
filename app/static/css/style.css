@@ -15,6 +15,9 @@
     --accent-soft: #eef1ff;
     --accent-ink: #ffffff;
 
+    --cta-orange: #f97316;
+    --cta-orange-hover: #ea580c;
+
     --good: #059669;
     --good-bg: #ecfdf5;
     --warn: #d97706;
@@ -533,6 +536,79 @@ a {
     line-height: 1.4;
 }
 
+/* Free / Premium tier split under "What's included" */
+
+.tier-block {
+    margin-top: 2.5rem;
+}
+
+.tier-block:first-of-type {
+    margin-top: 0;
+}
+
+.tier-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.tier-title {
+    font-family: var(--font-sans);
+    font-size: 1.15rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.tier-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-pill);
+}
+
+.tier-desc {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    margin: 0;
+}
+
+.feature-card-premium {
+    position: relative;
+    border-color: var(--accent-soft);
+    background: linear-gradient(160deg, var(--accent-soft) 0%, var(--surface) 55%);
+}
+
+.feature-card-lock {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    border: 1px solid var(--accent-soft);
+    border-radius: 50%;
+    color: var(--accent);
+}
+
+.feature-card-lock svg {
+    width: 13px;
+    height: 13px;
+}
+
 /* Homepage sample-report mockup */
 
 .report-preview {
@@ -858,13 +934,14 @@ a {
     font-family: var(--font-sans);
     font-weight: 600;
     font-size: 1rem;
-    color: var(--accent);
+    color: var(--cta-orange);
     text-decoration: none;
     white-space: nowrap;
     padding-bottom: 0.3rem;
 }
 
 .why-header-link:hover {
+    color: var(--cta-orange-hover);
     text-decoration: underline;
 }
 
@@ -950,211 +1027,65 @@ a {
 
 .why-card-visual {
     position: relative;
+    overflow: hidden;
     flex: 1;
     min-height: 290px;
     margin-top: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(165deg, var(--accent-soft) 0%, var(--surface-2) 100%);
+    background: linear-gradient(155deg, var(--accent) 0%, #6f7ffb 55%, var(--accent-hover) 100%);
 }
 
-/* Phone mockup illustration used in place of flat icons */
+/* Glass icon tile on a gradient field, used in place of flat icons */
 
-.phone-mockup {
-    width: 132px;
-    height: 264px;
-    background: var(--ink);
-    border-radius: 26px;
-    padding: 8px;
-    box-shadow: 0 18px 34px rgba(16, 24, 40, 0.2);
-}
-
-.phone-notch {
-    width: 46px;
-    height: 14px;
-    background: var(--ink);
-    border-radius: 0 0 10px 10px;
-    margin: 0 auto;
-}
-
-.phone-screen {
-    width: 100%;
-    height: 100%;
-    background: var(--surface);
-    border-radius: 18px;
-    overflow: hidden;
-    padding: 16px 10px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.phone-screen-center {
-    align-items: center;
-    justify-content: center;
-}
-
-.mock-map {
-    position: relative;
-    flex: 1;
-    background: var(--surface-2);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.mock-map-radius {
-    width: 62px;
-    height: 62px;
-    border: 2px dashed var(--accent);
-    border-radius: 50%;
-    opacity: 0.55;
-}
-
-.mock-map-pin {
+.visual-orb {
     position: absolute;
-    width: 12px;
-    height: 12px;
-    background: var(--accent);
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    box-shadow: 0 2px 4px rgba(16, 24, 40, 0.25);
-}
-
-.mock-list {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 10px;
-    height: 100%;
-}
-
-.mock-list-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.mock-check {
-    flex: 0 0 auto;
-    width: 15px;
-    height: 15px;
     border-radius: 50%;
-    background: var(--good-bg);
-    color: var(--good);
-    font-size: 9px;
-    font-weight: 700;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+    pointer-events: none;
+}
+
+.visual-orb-1 {
+    width: 200px;
+    height: 200px;
+    top: -60px;
+    right: -60px;
+}
+
+.visual-orb-2 {
+    width: 140px;
+    height: 140px;
+    bottom: -50px;
+    left: -40px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.visual-glass {
+    position: relative;
+    z-index: 1;
+    width: 92px;
+    height: 92px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 26px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: transform 0.2s ease;
 }
 
-.mock-bar {
-    flex: 1;
-    height: 6px;
-    background: var(--border);
-    border-radius: 3px;
+.why-card:hover .visual-glass {
+    transform: translateY(-4px) scale(1.04);
 }
 
-.mock-bar-sm {
-    flex: 0.6;
-}
-
-.mock-stack {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 7px;
-    height: 100%;
-}
-
-.mock-tile {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: var(--surface-2);
-    border-radius: 9px;
-    padding: 7px 9px;
-}
-
-.mock-tile-label {
-    font-family: var(--font-sans);
-    font-size: 8px;
-    font-weight: 600;
-    color: var(--ink-soft);
-}
-
-.mock-tile-value {
-    font-family: var(--font-sans);
-    font-size: 9.5px;
-    font-weight: 800;
-    color: var(--ink);
-}
-
-.mock-tile-value.mock-good {
-    color: var(--good);
-}
-
-.mock-score {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-}
-
-.mock-score-num {
-    font-family: var(--font-sans);
-    font-size: 2.75rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--good);
-    line-height: 1;
-}
-
-.mock-score-tag {
-    font-family: var(--font-sans);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    color: var(--good);
-    background: var(--good-bg);
-    padding: 0.25rem 0.65rem;
-    border-radius: var(--radius-pill);
-}
-
-.mock-price {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.mock-price-amount {
-    font-family: var(--font-sans);
-    font-size: 1.9rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-    line-height: 1;
-}
-
-.mock-price-period {
-    font-family: var(--font-sans);
-    font-size: 0.7rem;
-    color: var(--ink-soft);
-}
-
-.mock-price-badge {
-    font-family: var(--font-sans);
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: var(--accent);
-    background: var(--accent-soft);
-    padding: 0.25rem 0.65rem;
-    border-radius: var(--radius-pill);
-    margin-top: 0.25rem;
+.visual-glass svg {
+    width: 42px;
+    height: 42px;
+    color: #ffffff;
 }
 
 .why-card-arrow {
@@ -1177,39 +1108,6 @@ a {
 .why-card:hover .why-card-arrow {
     background: var(--accent);
     transform: scale(1.06);
-}
-
-.why-pagers {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.6rem;
-    margin-top: 1.25rem;
-}
-
-.why-pager {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    border: none;
-    background: var(--surface-2);
-    color: var(--ink-soft);
-    font-size: 1.3rem;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
-}
-
-.why-pager:hover:not(:disabled) {
-    background: var(--accent-soft);
-    color: var(--accent);
-}
-
-.why-pager:disabled {
-    opacity: 0.35;
-    cursor: default;
 }
 
 @media (max-width: 640px) {
