@@ -2597,6 +2597,37 @@ def fetch_bristol() -> list[dict]:
     return records
 
 
+_NORTH_YORKSHIRE_URLS = [
+    "https://hub.datanorthyorkshire.org/dataset/8e128b63-0967-43bb-929d-a4058e30f1e3/resource/94bf88ea-6c2f-4b69-80a5-09e990b2429b/download/2025-26-primary-statistics-school-admissions.xlsx",
+    "https://hub.datanorthyorkshire.org/dataset/8e128b63-0967-43bb-929d-a4058e30f1e3/resource/33e95fc2-8373-4fe0-80cd-dfccbddcfaa7/download/2025-26-secondary-statistics-school-admissions.xlsx",
+]
+_NORTH_YORKSHIRE_DISTANCE_RE = re.compile(r"([\d.]+)")
+
+
+def fetch_north_yorkshire() -> list[dict]:
+    """North Yorkshire's open-data Primary/Secondary admissions
+    spreadsheets (Data North Yorkshire hub) - the distance column is
+    free text like "Out of Catchment Distance - 3.433 miles" rather
+    than a plain number, so the first decimal number in the cell is
+    extracted. "N/A" (not oversubscribed) and "Contact the school"
+    (own admission authority) rows have no number and are skipped.
+    """
+    records = []
+    for url in _NORTH_YORKSHIRE_URLS:
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+        ws = wb.worksheets[0]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row[1] or not row[8]:
+                continue
+            match = _NORTH_YORKSHIRE_DISTANCE_RE.search(str(row[8]))
+            if not match:
+                continue
+            records.append({"school_name": row[1], "last_distance_miles": float(match.group(1))})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2697,6 +2728,7 @@ _AUTHORITIES = [
     ("Kirklees", "2025/26", fetch_kirklees),
     ("Cheshire West and Chester", "2025/26", fetch_cheshire_west_and_chester),
     ("Bristol, City of", "varies", fetch_bristol),
+    ("North Yorkshire", "2025/26", fetch_north_yorkshire),
 ]
 
 
