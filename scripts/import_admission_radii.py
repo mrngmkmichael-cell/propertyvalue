@@ -61,8 +61,10 @@ _ABBREVIATIONS = {
     r"\bCEVCP\b": "Church of England Voluntary Controlled Primary",
     r"\bCE\b": "Church of England",
     r"\bRC\b": "Roman Catholic",
+    r"\bR\.C\.(?=\s|$)": "Roman Catholic",
     r"\bRd\b": "Road",
     r"\bCP\b": "Community Primary",
+    r"\bC\.P\.(?=\s|$)": "Community Primary",
 }
 
 # Confidence floor for fuzzy name matching - below this, skip the row
@@ -2189,6 +2191,37 @@ def fetch_walsall() -> list[dict]:
     return records
 
 
+def fetch_oldham() -> list[dict]:
+    """Oldham Council's "Primary admissions summary of last place
+    offered" PDF - republished each year at a new URL (find the
+    current one via oldham.gov.uk, no secondary equivalent found).
+    Clean table: School (prefixed "(Oldham) ", stripped here), PAN,
+    Criteria, Distance - already in miles. "*" marks schools not
+    oversubscribed on distance and is correctly skipped.
+    """
+    url = "https://www.oldham.gov.uk/download/downloads/id/8161/2025_primary_admissions_summary_of_last_place_offered.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table[1:]:
+                if not row or not row[0] or not row[-1]:
+                    continue
+                try:
+                    distance = float(row[-1].strip())
+                except ValueError:
+                    continue
+                name = row[0].replace("\n", " ").replace("(Oldham)", "").strip()
+                records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2242,6 +2275,7 @@ _AUTHORITIES = [
     ("Haringey", "varies", fetch_haringey),
     ("Calderdale", "2026/27", fetch_calderdale),
     ("Walsall", "2025/26", fetch_walsall),
+    ("Oldham", "2025/26", fetch_oldham),
 ]
 
 
