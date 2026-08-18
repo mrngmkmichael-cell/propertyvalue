@@ -1516,6 +1516,53 @@ def fetch_durham() -> list[dict]:
     return records
 
 
+_DERBY_URLS = [
+    "https://www.derby.gov.uk/media/derbycitycouncil/content/documents/education/schooladmissions/"
+    "primary-admissions-handbook-2026-27.pdf",
+    "https://www.derby.gov.uk/media/derbycitycouncil/content/documents/education/schooladmissions/"
+    "secondary-school-admissions-handbook2026-27.pdf",
+]
+_DERBY_POSTCODE_RE = re.compile(r"\bDE\d[A-Z\d]?\s?\d[A-Z]{2}\b")
+_DERBY_DISTANCE_RE = re.compile(r"Furthest distance offered:\s*([\d.]+)\s*miles")
+
+
+def fetch_derby() -> list[dict]:
+    """Derby City Council's "Admissions Handbook" PDFs (Primary +
+    Secondary) - a prose school-by-school prospectus, republished each
+    year at a new URL under /media/derbycitycouncil/.../schooladmissions/
+    (find the current ones via derby.gov.uk's admissions pages). Each
+    school's profile ends with "Admissions Limit: N Furthest distance
+    offered: X.XXX miles". The school name heading is detected as the
+    line immediately before one containing "Telephone:" and a Derby
+    postcode (DEx x-xx) - a few schools have a second subtitle line
+    between the name and address (e.g. "Now incorporating <Nursery>")
+    which this can't distinguish from the real name, so a handful of
+    records get a wrong/partial name and are correctly dropped by the
+    fuzzy-match cutoff rather than mismatched.
+    """
+    records = []
+    for url in _DERBY_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        full_text = ""
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                full_text += (page.extract_text() or "") + "\n"
+
+        lines = full_text.split("\n")
+        current = None
+        for i, line in enumerate(lines):
+            if i + 1 < len(lines) and "Telephone:" in lines[i + 1] and _DERBY_POSTCODE_RE.search(lines[i + 1]):
+                current = line.strip()
+                continue
+            match = _DERBY_DISTANCE_RE.search(line)
+            if match and current:
+                records.append({"school_name": current, "last_distance_miles": float(match.group(1))})
+                current = None
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1553,6 +1600,7 @@ _AUTHORITIES = [
     ("East Sussex", "varies", fetch_east_sussex),
     ("West Sussex", "2025/26", fetch_west_sussex),
     ("County Durham", "varies", fetch_durham),
+    ("Derby", "2026/27", fetch_derby),
 ]
 
 
