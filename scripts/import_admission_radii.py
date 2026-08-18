@@ -1884,6 +1884,92 @@ def fetch_waltham_forest() -> list[dict]:
     return records
 
 
+def fetch_lewisham() -> list[dict]:
+    """London Borough of Lewisham's "Applying to start primary
+    school" brochure PDF - republished each year at the same stable
+    URL (find via lewisham.gov.uk's primary admissions page if it
+    ever moves). Most of the document's tables use rotated column
+    headers that extract as vertically-garbled text, but the "Name of
+    school" table (only 2 pages, community schools) is otherwise
+    clean - the decisive metres figure is found via the same
+    decimal-cell-detection approach as Stockport/Peterborough rather
+    than a fixed column index. Lewisham's own names are abbreviated
+    (e.g. "Adamsrill" for "Adamsrill Primary School"), so " Primary
+    School" is appended before matching, same fix as Southwark.
+    """
+    url = ("https://lewisham.gov.uk/-/media/services/education/schools/primary-school/"
+           "applying-to-start-primary-school-in-september.pdf")
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or not table[0] or table[0][0] != "Name of school":
+                continue
+            for row in table[1:]:
+                if not row or not row[0]:
+                    continue
+                distance = None
+                for cell in row[1:]:
+                    if cell and _STOCKPORT_DECIMAL_RE.match(cell.strip()):
+                        distance = float(cell.strip())
+                        break
+                if distance is not None:
+                    records.append({
+                        "school_name": row[0].strip() + " Primary School",
+                        "last_distance_miles": distance / _METRES_PER_MILE,
+                    })
+    return records
+
+
+def fetch_merton() -> list[dict]:
+    """London Borough of Merton's "Admissions and appeals data for
+    recent years" PDF - a single large document going back several
+    years, republished at a stable URL (find current one via
+    merton.gov.uk's "recent-years" admissions page if it moves). Most
+    recent secondary round is page index 2 (dated 3/3/25, right after
+    the "Transfer to secondary school" section heading); most recent
+    primary round is pages 9-11 (dated 16/4/2024 - the primary round
+    is a full year further behind than secondary in this document,
+    genuinely the latest published at time of writing). Each row can
+    show two distance figures (initial + "second round" after
+    appeals/late applications, sometimes "TBC" if not yet published);
+    this takes the max of whichever are real numbers, same policy as
+    other multi-round authorities. Merton's own primary names are
+    abbreviated (e.g. "Hillcross" for "Hillcross Primary School"), so
+    " Primary School" is appended only for the primary pages (the
+    secondary page's names are already complete).
+    """
+    url = "https://www.merton.gov.uk/system/files/admissions_and_appeals_data_for_recent_years_-_table.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page_index, suffix in [(2, ""), (9, " Primary School"), (10, " Primary School"), (11, " Primary School")]:
+            table = pdf.pages[page_index].extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0]:
+                    continue
+                name = row[0].replace("\n", " ").strip()
+                distances = []
+                for cell in row[1:]:
+                    if cell and "." in cell:
+                        try:
+                            distances.append(float(cell.strip()))
+                        except ValueError:
+                            pass
+                if distances:
+                    records.append({"school_name": name + suffix, "last_distance_miles": max(distances) / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1930,6 +2016,8 @@ _AUTHORITIES = [
     ("Southwark", "2025/26", fetch_southwark),
     ("Lambeth", "2024/25", fetch_lambeth),
     ("Waltham Forest", "varies", fetch_waltham_forest),
+    ("Lewisham", "2025/26", fetch_lewisham),
+    ("Merton", "varies", fetch_merton),
 ]
 
 
