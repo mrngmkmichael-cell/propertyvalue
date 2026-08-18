@@ -466,6 +466,42 @@ def fetch_gloucestershire() -> list[dict]:
     return records
 
 
+_BIRMINGHAM_DISTANCE_RE = re.compile(r"([\d,]+\.?\d*)\s*metres", re.IGNORECASE)
+
+
+def fetch_birmingham() -> list[dict]:
+    """Birmingham City Council's "Primary offers" PDF - republished
+    each year at a new file ID (find the current one via
+    birmingham.gov.uk's own search, "breakdown of primary school
+    offers"). One row per school; the last column is "Cut Off
+    Distance YYYY (where applicable)" - sometimes a plain "676
+    metres", sometimes "Faith (4166 metres)" (still a real distance,
+    just alongside the admitting criterion) - a regex extracts the
+    number regardless of what text surrounds it, and rows reading
+    "All Applicants" or similar with no metres figure are correctly
+    skipped. England's second-largest city by population.
+    """
+    url = "https://www.birmingham.gov.uk/download/downloads/id/29456/primary_offers_2024.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0] or not row[-1]:
+                    continue
+                match = _BIRMINGHAM_DISTANCE_RE.search(row[-1].replace(",", ""))
+                if match:
+                    name = row[0].replace("\n", " ").strip()
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(1)) / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -480,6 +516,7 @@ _AUTHORITIES = [
     ("Solihull", "varies", fetch_solihull),
     ("Harrow", "2024/25", fetch_harrow),
     ("Gloucestershire", "2024/25", fetch_gloucestershire),
+    ("Birmingham", "2023/24", fetch_birmingham),
 ]
 
 
