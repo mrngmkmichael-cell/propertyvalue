@@ -2807,6 +2807,62 @@ def fetch_bolton() -> list[dict]:
     return records
 
 
+_SALFORD_PRIMARY_URL = "https://www.salford.gov.uk/media/1x4phafq/primary-schools-2025-intake.pdf"
+_SALFORD_SECONDARY_URL = (
+    "https://www.salford.gov.uk/schools-and-learning/schools-admissions/secondary/"
+    "how-school-places-were-allocated-last-year/secondary-school-allocation-history-on-offer-day-1-march-2025/"
+)
+_SALFORD_DISTANCE_RE = re.compile(r"distance of ([\d.]+) miles")
+_SALFORD_ROW_RE = re.compile(r"<tr>(.*?)</tr>", re.DOTALL)
+_SALFORD_CELL_RE = re.compile(r"<td[^>]*>(.*?)</td>", re.DOTALL)
+
+
+def fetch_salford() -> list[dict]:
+    """Salford's Primary intake PDF and Secondary allocation-history
+    webpage (not a PDF - the HTML page itself is a plain table) both
+    describe the decisive distance in prose ("All applicants in
+    categories 1-6 to a distance of 0.906 miles") rather than a
+    dedicated numeric column, alongside undersubscribed rows ("All
+    applicants offered places") or faith-school rows with no distance
+    criterion at all ("Please contact school for finer detail") -
+    searched for generically rather than parsed positionally, since
+    both sources use the same prose phrasing.
+    """
+    records = []
+
+    resp = httpx.get(_SALFORD_PRIMARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0]:
+                    continue
+                joined = " ".join(cell for cell in row if cell)
+                match = _SALFORD_DISTANCE_RE.search(joined)
+                if match:
+                    name = row[0].replace("\n", " ").strip()
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+
+    resp = httpx.get(_SALFORD_SECONDARY_URL, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    for row_html in _SALFORD_ROW_RE.findall(resp.text):
+        cells = _SALFORD_CELL_RE.findall(row_html)
+        if len(cells) < 5:
+            continue
+        joined = " ".join(cells)
+        match = _SALFORD_DISTANCE_RE.search(joined)
+        if not match:
+            continue
+        name = re.sub(r"<[^>]+>", "", cells[0]).strip()
+        if name:
+            records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2911,6 +2967,7 @@ _AUTHORITIES = [
     ("Reading", "2025/26", fetch_reading),
     ("Bury", "varies", fetch_bury),
     ("Bolton", "varies", fetch_bolton),
+    ("Salford", "2025/26", fetch_salford),
 ]
 
 
