@@ -9,7 +9,7 @@ import math
 from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
-from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics, SchoolDetail
+from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics, SchoolDestinations, SchoolDetail
 from app.services import _cache
 
 SEARCH_RADIUS_KM = 5
@@ -35,6 +35,21 @@ def _phase_group(phase: str) -> str | None:
     if "secondary" in p or "16 plus" in p or "all-through" in p or "all through" in p:
         return "Secondary"
     return None
+
+
+def _latest_and_trend(rows) -> tuple[dict[int, object], dict[int, list]]:
+    """Splits a list of Ks4Result/Ks2Result rows (now one per school
+    *per year* since they're keyed on (urn, academic_year)) into the
+    latest row per URN - for the existing "current" fields - plus the
+    full year-ordered list per URN, for a trend view. academic_year
+    sorts correctly as a plain string ("2022/23" < "2023/24" < ...)
+    since all years use the same YYYY/YY format."""
+    by_urn: dict[int, list] = {}
+    for r in rows:
+        by_urn.setdefault(r.urn, []).append(r)
+    trend_by_urn = {urn: sorted(rs, key=lambda r: r.academic_year) for urn, rs in by_urn.items()}
+    latest_by_urn = {urn: rs[-1] for urn, rs in trend_by_urn.items()}
+    return latest_by_urn, trend_by_urn
 
 
 def _haversine_km(lat1, lon1, lat2, lon2) -> float:
@@ -91,9 +106,9 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
 
         secondary_urns = [s["urn"] for s in grouped["Secondary"]]
         if secondary_urns:
-            ks4_by_urn = {
-                r.urn: r for r in session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(secondary_urns)))
-            }
+            ks4_by_urn, _ = _latest_and_trend(
+                session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(secondary_urns)))
+            )
             for school in grouped["Secondary"]:
                 r = ks4_by_urn.get(school["urn"])
                 school["exam_results"] = {
@@ -105,9 +120,9 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
 
         primary_urns = [s["urn"] for s in grouped["Primary"]]
         if primary_urns:
-            ks2_by_urn = {
-                r.urn: r for r in session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(primary_urns)))
-            }
+            ks2_by_urn, _ = _latest_and_trend(
+                session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(primary_urns)))
+            )
             for school in grouped["Primary"]:
                 r = ks2_by_urn.get(school["urn"])
                 school["exam_results"] = {
@@ -225,8 +240,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     all_urns = [e["urn"] for e in all_entries]
     if all_urns:
         with get_session() as session:
-            ks4_by_urn = {r.urn: r for r in session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(all_urns)))}
-            ks2_by_urn = {r.urn: r for r in session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(all_urns)))}
+            ks4_by_urn, ks4_trend_by_urn = _latest_and_trend(
+                session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(all_urns)))
+            )
+            ks2_by_urn, ks2_trend_by_urn = _latest_and_trend(
+                session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(all_urns)))
+            )
             fsm_by_urn = {
                 r.urn: r.fsm_eligible_pct
                 for r in session.scalars(select(SchoolCharacteristics).where(SchoolCharacteristics.urn.in_(all_urns)))
@@ -234,9 +253,13 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             detail_by_urn = {
                 r.urn: r for r in session.scalars(select(SchoolDetail).where(SchoolDetail.urn.in_(all_urns)))
             }
+            destinations_by_urn = {
+                r.urn: r for r in session.scalars(select(SchoolDestinations).where(SchoolDestinations.urn.in_(all_urns)))
+            }
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
             e["detail"] = detail_by_urn.get(e["urn"])
+            e["destinations"] = destinations_by_urn.get(e["urn"])
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
                 e["exam_results"] = {
@@ -244,6 +267,11 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                     "headline_value": r.progress8_score, "grade5_english_maths_pct": r.grade5_english_maths_pct,
                     "pupil_count": r.pupil_count,
                 }
+                e["exam_trend"] = [
+                    {"academic_year": t.academic_year, "headline_value": t.progress8_score,
+                     "grade5_english_maths_pct": t.grade5_english_maths_pct}
+                    for t in ks4_trend_by_urn[e["urn"]]
+                ]
             elif e["phase_group"] == "Primary" and e["urn"] in ks2_by_urn:
                 r = ks2_by_urn[e["urn"]]
                 e["exam_results"] = {
@@ -251,8 +279,14 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                     "headline_value": r.rwm_expected_pct, "grade5_english_maths_pct": None,
                     "pupil_count": r.pupil_count,
                 }
+                e["exam_trend"] = [
+                    {"academic_year": t.academic_year, "headline_value": t.rwm_expected_pct,
+                     "grade5_english_maths_pct": None}
+                    for t in ks2_trend_by_urn[e["urn"]]
+                ]
             else:
                 e["exam_results"] = None
+                e["exam_trend"] = []
 
     higher_education_names.sort()
     # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class

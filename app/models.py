@@ -402,16 +402,19 @@ class SocioeconomicClassification(Base):
 
 
 class Ks4Result(Base):
-    """GCSE (Key Stage 4) headline performance measures, by school
-    URN - the "Total" row across all pupil characteristic breakdowns.
-    Populated by scripts/import_exam_results.py from DfE's school
-    performance tables (explore-education-statistics). Republished
-    annually.
+    """GCSE (Key Stage 4) headline performance measures, by school URN
+    and academic year - the "Total" row across all pupil
+    characteristic breakdowns. Keyed on (urn, academic_year) rather
+    than urn alone so multiple years can coexist, giving a trend
+    rather than just the latest snapshot. Populated by
+    scripts/import_exam_results.py from DfE's school performance
+    tables API (explore-education-statistics) - currently 2022/23
+    through 2024/25, the years that dataset covers.
     """
     __tablename__ = "ks4_results"
 
     urn: Mapped[int] = mapped_column(Integer, primary_key=True)
-    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    academic_year: Mapped[str] = mapped_column(String(16), primary_key=True)
     pupil_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     attainment8_avg: Mapped[float | None] = mapped_column(Float, nullable=True)
     progress8_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -422,19 +425,46 @@ class Ks4Result(Base):
 
 
 class Ks2Result(Base):
-    """KS2 (SATs) headline performance measures, by school URN - the
-    "Total" pupils, reading/writing/maths combined subject row.
-    Populated by scripts/import_exam_results.py from DfE's Key Stage
-    2 attainment data (explore-education-statistics). Republished
-    annually.
+    """KS2 (SATs) headline performance measures, by school URN and
+    academic year - the "Total" pupils, reading/writing/maths
+    combined subject row. Keyed on (urn, academic_year) for the same
+    trend-not-just-snapshot reason as Ks4Result. Populated by
+    scripts/import_exam_results.py from DfE's Key Stage 2 attainment
+    API (explore-education-statistics) - currently 2022/23 through
+    2024/25.
     """
     __tablename__ = "ks2_results"
 
     urn: Mapped[int] = mapped_column(Integer, primary_key=True)
-    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    academic_year: Mapped[str] = mapped_column(String(16), primary_key=True)
     pupil_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rwm_expected_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     rwm_higher_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class SchoolDestinations(Base):
+    """Where KS4 leavers went next, by school URN - the % staying in
+    a sustained education/employment/apprenticeship destination,
+    broken down by broad category (school sixth form, sixth-form
+    college, FE college, apprenticeship, employment, or not
+    recorded as sustained). This is aggregate category percentages
+    only, NOT named receiving institutions or feeder schools - DfE
+    doesn't publish per-pupil institution-to-institution tracking as
+    open data, only via restricted National Pupil Database access.
+    Populated by scripts/import_exam_results.py from DfE's KS4
+    destination measures API (explore-education-statistics), latest
+    available year only (2022/23 - the most recent published).
+    """
+    __tablename__ = "school_destinations"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    school_sixth_form_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    sixth_form_college_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    further_education_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    apprenticeship_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    employment_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    not_sustained_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class SchoolCharacteristics(Base):

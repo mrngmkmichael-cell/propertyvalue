@@ -149,6 +149,54 @@
                                 {% endif %}
                                 <tr><td>Academic year</td><td>{{ s.exam_results.academic_year }}</td></tr>
                             </table>
+                            {% if s.exam_trend and s.exam_trend | length > 1 %}
+                            <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label }} by year</strong></p>
+                            <table>
+                                {% for t in s.exam_trend %}
+                                <tr>
+                                    <td>{{ t.academic_year }}</td>
+                                    <td>{{ t.headline_value if t.headline_value is not none else "—" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </table>
+                            {% endif %}
+                        </div>
+                    </details>
+                </li>
+                {% endif %}
+                {% if s.destinations %}
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('destinations') }}</span>
+                            <span class="school-profile-label">Destinations</span>
+                            <span class="school-profile-preview">
+                                {%- set continuing = (s.destinations.school_sixth_form_pct or 0) + (s.destinations.sixth_form_college_pct or 0) + (s.destinations.further_education_pct or 0) -%}
+                                {{ continuing | round | int }}% into further study
+                            </span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            <table>
+                                {% for label, value in [
+                                    ("School sixth form", s.destinations.school_sixth_form_pct),
+                                    ("Sixth-form college", s.destinations.sixth_form_college_pct),
+                                    ("Further education college", s.destinations.further_education_pct),
+                                    ("Apprenticeship", s.destinations.apprenticeship_pct),
+                                    ("Employment", s.destinations.employment_pct),
+                                    ("Not a sustained destination", s.destinations.not_sustained_pct),
+                                ] %}
+                                {% if value is not none %}
+                                <tr><td>{{ label }}</td><td>{{ value }}%</td></tr>
+                                {% endif %}
+                                {% endfor %}
+                                <tr><td>Academic year</td><td>{{ s.destinations.academic_year }}</td></tr>
+                            </table>
+                            <p>
+                                Share of Year 11 leavers in each destination category, 6-12 months after leaving -
+                                broad categories only, not named colleges or sixth forms (DfE doesn't publish
+                                per-pupil institution tracking as open data).
+                            </p>
                         </div>
                     </details>
                 </li>
