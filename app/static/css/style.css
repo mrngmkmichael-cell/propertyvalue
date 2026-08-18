@@ -959,20 +959,14 @@ a {
     width: 220px;
     height: 220px;
     border-radius: 24px;
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    overflow: hidden;
 }
 
-.why-card-icon {
-    display: flex;
-}
-
-.why-card-icon svg {
-    width: 96px;
-    height: 96px;
-    color: #ffffff;
+.why-card-icon-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .why-card-body {
@@ -1028,11 +1022,6 @@ a {
     .why-card-icon-box {
         width: 100%;
         height: 160px;
-    }
-
-    .why-card-icon svg {
-        width: 72px;
-        height: 72px;
     }
 
     .why-card-title {
