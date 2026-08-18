@@ -105,10 +105,210 @@ def fetch_hounslow() -> list[dict]:
     return records
 
 
+_METRES_PER_MILE = 1609.34
+
+# Matches a heading-style line - ALL CAPS, allowing digits/punctuation
+# a school name could contain - used by the text-scan parsers below
+# for councils that don't publish a clean table (school name as a
+# standalone heading line, followed by free-form prose/mini-tables
+# ending in a distance figure).
+_HEADING_RE = re.compile(r"^[A-Z0-9][A-Z0-9\s&',.\-]{4,60}$")
+_HEADING_SKIP_WORDS = ("OFFICIAL", "PAGE", "ADMISSIONS", "APRIL", "SCHOOL PLACES", "ALLOCATED", "OFFERED", "COUNCIL")
+_METRES_OR_MILES_RE = re.compile(r"([\d,]+\.?\d*)\s*(metres|miles|km|m|mi)\b", re.IGNORECASE)
+
+
+def _scan_headings_for_distance(full_text: str, unit_to_miles: float) -> list[dict]:
+    """Generic parser for the "ALL CAPS SCHOOL NAME heading, then
+    free-form text/mini-table ending in a distance figure, next
+    heading" layout (first seen in Wandsworth's PDF, likely to recur -
+    several other authorities format theirs the same way). Takes the
+    LAST distance-shaped number before the next heading, since these
+    documents put the final "furthest distance offered" figure at the
+    end of each school's section."""
+    lines = [ln.strip() for ln in full_text.split("\n") if ln.strip()]
+    records = []
+    current = None
+    buffer: list[str] = []
+
+    def _flush():
+        if not current or not buffer:
+            return
+        text = " ".join(buffer)
+        matches = list(_METRES_OR_MILES_RE.finditer(text))
+        if matches:
+            value = float(matches[-1].group(1).replace(",", ""))
+            records.append({"school_name": current, "last_distance_miles": value / unit_to_miles})
+
+    for line in lines:
+        is_heading = _HEADING_RE.match(line) and not any(w in line for w in _HEADING_SKIP_WORDS)
+        if is_heading:
+            _flush()
+            current = line
+            buffer = []
+        else:
+            buffer.append(line)
+    _flush()
+    return records
+
+
+def fetch_wandsworth() -> list[dict]:
+    """London Borough of Wandsworth's "How places were offered at
+    each Wandsworth school" PDF - republished each spring at a new
+    URL each year (find the current one via wandsworth.gov.uk's own
+    site search, "how places were allocated"). Distances published
+    in metres; each school's name is a standalone heading line rather
+    than a table column, so this uses the generic heading-scan parser.
+    """
+    url = "https://wandsworth.gov.uk/media/xonfunuu/how_places_were_allocated_for_primary_schools_2025.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    full_text = ""
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            full_text += (page.extract_text() or "") + "\n"
+    return _scan_headings_for_distance(full_text, _METRES_PER_MILE)
+
+
+def fetch_brent() -> list[dict]:
+    """London Borough of Brent's "How places were offered - reception"
+    PDF - republished each spring at a new file ID (find the current
+    one via brent.gov.uk's own search). Table has one row per school
+    with a multi-line cell listing every admission criterion (sibling,
+    staff, distance, etc.) each with its own distance figure - this
+    takes the largest (i.e. the true "furthest anyone got in" figure,
+    not just the distance-criterion row) rather than guessing which
+    line is which criterion from the flattened cell text.
+    """
+    url = "https://www.brent.gov.uk/media/16421130/how-places-were-offered-reception-2024.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 3 or not row[0] or not row[2]:
+                    continue
+                name = row[0].split("\n")[0].strip()
+                distances = [float(d) for d in re.findall(r"[\d.]+", row[2])]
+                if name and distances:
+                    records.append({"school_name": name, "last_distance_miles": max(distances) / _METRES_PER_MILE})
+    return records
+
+
+def fetch_bristol() -> list[dict]:
+    """Bristol City Council's "furthest distance table" - a multi-year
+    time series (one column per year, 'D' where distance wasn't the
+    deciding criterion that year) rather than a single latest-year
+    figure. Takes the most recent column with a real value, per
+    school, since a 'D' year doesn't mean no distance was recorded -
+    it means the school wasn't oversubscribed enough for distance to
+    matter that year, which isn't informative for this estimate.
+    Republished periodically at bristol.gov.uk - re-check the file ID
+    if this URL 404s.
+    """
+    url = "https://www.bristol.gov.uk/files/documents/3382-furthest-distance-table/file"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0] or row[0].strip().lower().startswith("name"):
+                    continue
+                name = row[0].strip()
+                # Columns after the name are years, most recent last.
+                for cell in reversed(row[1:]):
+                    if cell and cell.strip().upper() != "D":
+                        try:
+                            records.append({"school_name": name, "last_distance_miles": float(cell.strip())})
+                        except ValueError:
+                            continue
+                        break
+    return records
+
+
+def fetch_leeds() -> list[dict]:
+    """Leeds City Council's primary school cut-off distances PDF -
+    republished each spring at a new URL (find the current one via
+    leeds.gov.uk's own search, "cut off distances"). Already in
+    miles, one clean row per school - the most directly parseable
+    format found so far. Rows reading "All applicants admitted" have
+    no distance (not oversubscribed) and are correctly skipped.
+    """
+    url = "https://www.leeds.gov.uk/sites/default/files/2025-04/primary%20school%20cut%20off%20distances.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 3 or not row[1] or not row[2]:
+                    continue
+                match = re.match(r"[\d.]+", row[2].strip())
+                if match:
+                    name = row[1].replace("\n", " ").strip()
+                    records.append({"school_name": name, "last_distance_miles": float(match.group(0))})
+    return records
+
+
+def fetch_kirklees() -> list[dict]:
+    """Kirklees Council's "Reception by preference and criteria" PDF
+    (Huddersfield/Dewsbury area, West Yorkshire) - republished each
+    spring at a new file ID (find the current one via kirklees.gov.uk
+    admissions pages). Cleanest format found so far: one row per
+    school, last column is literally "Distance of the last on-time
+    place allocated (metres)".
+    """
+    url = "https://www.kirklees.gov.uk/beta/admissions/pdf/reception-by-preference-and-criteria-25.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or len(row) < 2 or not row[0]:
+                    continue
+                distance_cell = (row[-1] or "").strip()
+                try:
+                    distance = float(distance_cell)
+                except ValueError:
+                    continue
+                name = row[0].replace("\n", " ").strip()
+                records.append({"school_name": name, "last_distance_miles": distance / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
     ("Hounslow", "2025/26", fetch_hounslow),
+    ("Wandsworth", "2024/25", fetch_wandsworth),
+    ("Brent", "2023/24", fetch_brent),
+    ("Bristol, City of", "varies", fetch_bristol),
+    ("Leeds", "2024/25", fetch_leeds),
+    ("Kirklees", "2024/25", fetch_kirklees),
 ]
 
 
@@ -147,11 +347,25 @@ def build_records(session) -> list[dict]:
             })
             matched += 1
 
-        print(f"  matched {matched}/{len(rows)} to a school in our database")
+        print(f"  matched {matched}/{len(rows)} to a school in our database (before de-duplication)")
         if unmatched:
             print(f"  unmatched, skipped rather than guessed: {unmatched}")
 
-    return records
+    # A school can appear twice within one authority's own source file
+    # (e.g. split across a page boundary in the raw PDF text) - keep
+    # the first occurrence per URN rather than let a duplicate insert
+    # crash the whole import.
+    by_urn: dict[int, dict] = {}
+    duplicates = 0
+    for r in records:
+        if r["urn"] in by_urn:
+            duplicates += 1
+            continue
+        by_urn[r["urn"]] = r
+    if duplicates:
+        print(f"Dropped {duplicates} duplicate URN(s) (same school matched more than once)")
+
+    return list(by_urn.values())
 
 
 def load_into_db(records: list[dict]) -> None:
