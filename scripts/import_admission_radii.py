@@ -621,6 +621,53 @@ def fetch_surrey() -> list[dict]:
     return records
 
 
+_HERTS_NAME_RE = re.compile(r"^(.+?)\s+Total Applications:\s*\d+", re.MULTILINE)
+_HERTS_DISTANCE_RE = re.compile(r"distance of most distant child admitted\s*([\d,]+\.?\d*)\s*m\b")
+
+_HERTS_URLS = [
+    "https://www.hertfordshire.gov.uk/doc/sch/adm/stats/primary-allocation-summary-reports-26-27.pdf",
+    "https://www.hertfordshire.gov.uk/doc/sch/adm/stats/junior-and-middle-school-allocation-summary-reports-26-27.pdf",
+    "https://www.hertfordshire.gov.uk/media-library/documents/schools-and-education/admissions/"
+    "previous-years-stats/25-26/allocation-summary-reports.pdf",
+]
+
+
+def fetch_hertfordshire() -> list[dict]:
+    """Hertfordshire County Council's "School Allocation Summary
+    Report" PDFs - one for Primary, one for Junior/Middle, one for
+    Secondary/Upper (the secondary one is still on last year's 25-26
+    URL since 26-27's hadn't been published yet at time of writing -
+    check hertfordshire.gov.uk's "previous years' statistics" page for
+    a newer one). One page per school (a large multi-hundred-page
+    document, unlike every other authority so far), always titled
+    "<School Name> Total Applications: N", with the actual metric
+    being "Home to school distance of most distant child admitted X m"
+    - can appear more than once per school (e.g. separate "Nearest
+    School"/"Not Nearest School" or "In Priority Area" rows), so this
+    takes the largest, consistent with the same choice made for other
+    authorities with multiple distance-shaped rows per school (e.g.
+    Brent, Surrey). Already in metres.
+    """
+    records = []
+    for url in _HERTS_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                name_match = _HERTS_NAME_RE.search(text)
+                if not name_match:
+                    continue
+                distances = [float(d.replace(",", "")) for d in _HERTS_DISTANCE_RE.findall(text)]
+                if distances:
+                    records.append({
+                        "school_name": name_match.group(1).strip(),
+                        "last_distance_miles": max(distances) / _METRES_PER_MILE,
+                    })
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -638,6 +685,7 @@ _AUTHORITIES = [
     ("Birmingham", "2023/24", fetch_birmingham),
     ("Newcastle upon Tyne", "varies", fetch_newcastle),
     ("Surrey", "2026/27", fetch_surrey),
+    ("Hertfordshire", "varies", fetch_hertfordshire),
 ]
 
 
