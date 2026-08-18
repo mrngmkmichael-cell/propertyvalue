@@ -2751,6 +2751,62 @@ def fetch_bury() -> list[dict]:
     return records
 
 
+_BOLTON_CATEGORY_URLS = [
+    "https://www.bolton.gov.uk/directory/4/school-directory/category/12",  # Primary
+    "https://www.bolton.gov.uk/directory/4/school-directory/category/15",  # Secondary
+]
+_BOLTON_ROW_RE = re.compile(
+    r"<td>last distance offered</td>((?:\s*<td[^>]*>[^<]*</td>){2,6})", re.IGNORECASE
+)
+_BOLTON_CELL_RE = re.compile(r"<td[^>]*>([^<]*)</td>")
+_BOLTON_DISTANCE_RE = re.compile(r"([\d.]+)\s*miles")
+
+
+def fetch_bolton() -> list[dict]:
+    """Bolton's school directory has an individual HTML profile page
+    per school (crawled from the paginated Primary and Secondary
+    category listings, since the exact page count shifts as schools
+    open/close) with a "last distance offered" table row giving 5
+    years of figures side by side (oldest first) - the rightmost
+    non-blank cell is the most recent oversubscribed year. School name
+    comes from the page's own link text on the category listing page
+    (already the full official name), not re-derived from the profile
+    page itself.
+    """
+    urls: dict[str, str] = {}
+    for category_url in _BOLTON_CATEGORY_URLS:
+        page = 1
+        while True:
+            url = category_url if page == 1 else f"{category_url}/{page}"
+            resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+            resp.raise_for_status()
+            links = re.findall(
+                r'<a class="[^"]*list__link[^"]*" href="(/directory-record/[^"]+)">([^<]+)</a>', resp.text
+            )
+            if not links:
+                break
+            for path, name in links:
+                urls[path] = name.replace("&#039;", "'").replace("&amp;", "&").strip()
+            if f"{category_url}/{page + 1}" not in resp.text:
+                break
+            page += 1
+
+    records = []
+    for path, name in urls.items():
+        resp = httpx.get(f"https://www.bolton.gov.uk{path}", timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        row_match = _BOLTON_ROW_RE.search(resp.text)
+        if not row_match:
+            continue
+        cells = _BOLTON_CELL_RE.findall(row_match.group(1))
+        for cell in reversed(cells):
+            distance_match = _BOLTON_DISTANCE_RE.search(cell)
+            if distance_match:
+                records.append({"school_name": name, "last_distance_miles": float(distance_match.group(1))})
+                break
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2854,6 +2910,7 @@ _AUTHORITIES = [
     ("North Yorkshire", "2025/26", fetch_north_yorkshire),
     ("Reading", "2025/26", fetch_reading),
     ("Bury", "varies", fetch_bury),
+    ("Bolton", "varies", fetch_bolton),
 ]
 
 
