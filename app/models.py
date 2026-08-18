@@ -79,6 +79,65 @@ class School(Base):
     ofsted_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
 
+class SchoolDetail(Base):
+    """Extra GIAS establishment fields + Ofsted's per-category
+    judgement breakdown - address, contact, admissions, capacity, and
+    the Quality of Education/Behaviour/Personal Development/
+    Leadership category grades that make up the single overall
+    Ofsted rating. Kept in its own table rather than added to School
+    directly: School is scanned in full for every property page's
+    5km-radius landscape query, and most of these fields are only
+    ever needed for the one school a user actually opens the detail
+    panel for - no reason to widen that hot-path row for data used a
+    fraction as often. Same source files and import run as School;
+    see scripts/import_schools.py.
+    """
+    __tablename__ = "school_details"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    street: Mapped[str] = mapped_column(String(255), default="")
+    locality: Mapped[str] = mapped_column(String(255), default="")
+    town: Mapped[str] = mapped_column(String(150), default="")
+    county: Mapped[str] = mapped_column(String(150), default="")
+    phone: Mapped[str] = mapped_column(String(50), default="")
+    website: Mapped[str] = mapped_column(String(255), default="")
+    head_teacher: Mapped[str] = mapped_column(String(150), default="")
+
+    gender: Mapped[str] = mapped_column(String(50), default="")
+    religious_character: Mapped[str] = mapped_column(String(100), default="")
+    age_low: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    age_high: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    admissions_policy: Mapped[str] = mapped_column(String(100), default="")
+    has_sixth_form: Mapped[str] = mapped_column(String(50), default="")
+    school_capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    number_on_roll: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    trust_name: Mapped[str] = mapped_column(String(255), default="")
+    local_authority: Mapped[str] = mapped_column(String(150), default="")
+
+    # Ofsted's per-category grades behind the single overall rating -
+    # same 1 Outstanding/2 Good/3 Requires improvement/4 Inadequate
+    # scale, except early_years/sixth_form which are None when a
+    # school has neither (Ofsted marks these "9" - not a real grade).
+    ofsted_quality_of_education: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_behaviour_attitudes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_personal_development: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_leadership_management: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_safeguarding_effective: Mapped[str] = mapped_column(String(10), default="")
+    ofsted_early_years_provision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ofsted_sixth_form_provision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Set only when a school's most recent visit was an *ungraded*
+    # inspection (Ofsted's 2024 report-card reform) - softens "No
+    # current grade" into "last inspected on this date" rather than
+    # implying Ofsted has never visited.
+    ofsted_ungraded_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Income Deprivation Affecting Children Index quintile (1 = most
+    # deprived fifth of areas nationally, 5 = least) for the school's
+    # own location - area-level context, not a per-pupil measure.
+    idaci_quintile: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
 class Deprivation(Base):
     """English Indices of Deprivation 2025, by LSOA (2021 boundaries).
     Populated by scripts/import_area_stats.py from MHCLG's official

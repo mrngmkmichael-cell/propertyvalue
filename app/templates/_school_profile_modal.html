@@ -11,13 +11,34 @@
                         <summary>
                             <span class="school-profile-icon">{{ icons.icon('details') }}</span>
                             <span class="school-profile-label">Details</span>
-                            <span class="school-profile-preview">{{ s.type }}</span>
+                            <span class="school-profile-preview">
+                                {%- if s.detail and s.detail.gender %}{{ s.detail.gender }}{% else %}{{ s.type }}{% endif %}
+                            </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
                             <table>
                                 <tr><td>Phase</td><td>{{ s.phase_group or "Special" }}</td></tr>
                                 <tr><td>Type</td><td>{{ s.type }}</td></tr>
+                                {% if s.detail %}
+                                {% if s.detail.age_low is not none and s.detail.age_high is not none %}
+                                <tr><td>Age range</td><td>{{ s.detail.age_low }}–{{ s.detail.age_high }}</td></tr>
+                                {% endif %}
+                                {% if s.detail.gender %}<tr><td>Gender</td><td>{{ s.detail.gender }}</td></tr>{% endif %}
+                                {% if s.detail.has_sixth_form %}<tr><td>Sixth form</td><td>{{ s.detail.has_sixth_form }}</td></tr>{% endif %}
+                                {% if s.detail.religious_character %}<tr><td>Religious character</td><td>{{ s.detail.religious_character }}</td></tr>{% endif %}
+                                {% if s.detail.admissions_policy %}<tr><td>Admissions policy</td><td>{{ s.detail.admissions_policy }}</td></tr>{% endif %}
+                                {% if s.detail.trust_name %}<tr><td>Trust</td><td>{{ s.detail.trust_name }}</td></tr>{% endif %}
+                                {% if s.detail.local_authority %}<tr><td>Local authority</td><td>{{ s.detail.local_authority }}</td></tr>{% endif %}
+                                {% if s.detail.head_teacher %}<tr><td>Head teacher</td><td>{{ s.detail.head_teacher }}</td></tr>{% endif %}
+                                {% set address = [s.detail.street, s.detail.locality, s.detail.town, s.detail.county] | select | join(', ') %}
+                                {% if address %}<tr><td>Address</td><td>{{ address }}</td></tr>{% endif %}
+                                {% if s.detail.phone %}<tr><td>Phone</td><td>{{ s.detail.phone }}</td></tr>{% endif %}
+                                {% if s.detail.website %}<tr><td>Website</td><td><a href="{{ s.detail.website }}" target="_blank" rel="noopener">{{ s.detail.website }}</a></td></tr>{% endif %}
+                                {% if s.detail.idaci_quintile %}
+                                <tr><td>Area deprivation</td><td>Quintile {{ s.detail.idaci_quintile }} of 5 (1 = most deprived fifth nationally)</td></tr>
+                                {% endif %}
+                                {% endif %}
                                 <tr><td>URN</td><td>{{ s.urn }}</td></tr>
                                 <tr><td>Distance</td><td>{{ s.distance_m | distance }}</td></tr>
                             </table>
@@ -35,19 +56,32 @@
                             <span class="school-profile-icon">{{ icons.icon('pupils') }}</span>
                             <span class="school-profile-label">Pupils</span>
                             <span class="school-profile-preview">
-                                {%- if s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} pupils{% else %}—{% endif %}
+                                {%- if s.detail and s.detail.number_on_roll %}{{ s.detail.number_on_roll }} on roll
+                                {%- elif s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} pupils
+                                {%- else %}—{% endif %}
                             </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
-                            {% if s.exam_results and s.exam_results.pupil_count %}
                             <table>
-                                <tr><td>Pupils ({{ s.exam_results.academic_year }})</td><td>{{ s.exam_results.pupil_count }}</td></tr>
+                                {% if s.detail and s.detail.number_on_roll %}
+                                <tr>
+                                    <td>On roll</td>
+                                    <td>
+                                        {{ s.detail.number_on_roll }}
+                                        {%- if s.detail.school_capacity %} of {{ s.detail.school_capacity }} capacity
+                                            ({{ (s.detail.number_on_roll / s.detail.school_capacity * 100) | round | int }}% full){% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% if s.exam_results and s.exam_results.pupil_count %}
+                                <tr><td>Pupils in exam cohort ({{ s.exam_results.academic_year }})</td><td>{{ s.exam_results.pupil_count }}</td></tr>
+                                {% endif %}
                                 {% if s.fsm_eligible_pct is not none %}
                                 <tr><td>Eligible for free school meals</td><td>{{ s.fsm_eligible_pct }}%</td></tr>
                                 {% endif %}
                             </table>
-                            {% else %}
+                            {% if not (s.detail and s.detail.number_on_roll) and not (s.exam_results and s.exam_results.pupil_count) %}
                             <p>No pupil count on file for this school.</p>
                             {% endif %}
                         </div>
@@ -64,14 +98,35 @@
                         <div class="school-profile-detail">
                             {% if s.ofsted_rating_label %}
                             <table>
-                                <tr><td>Rating</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span></td></tr>
+                                <tr><td>Overall rating</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span></td></tr>
                                 <tr><td>Inspected</td><td>{{ s.ofsted_inspection_date }}</td></tr>
                             </table>
                             {% else %}
                             <p>
                                 No current overall grade - often means a recent inspection under Ofsted's
                                 newer ungraded report-card format, not that the school hasn't been visited.
+                                {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} Last inspected {{ s.detail.ofsted_ungraded_inspection_date }}.{% endif %}
                             </p>
+                            {% endif %}
+                            {% if s.detail and (s.detail.ofsted_quality_of_education or s.detail.ofsted_behaviour_attitudes or s.detail.ofsted_personal_development or s.detail.ofsted_leadership_management) %}
+                            <p style="margin-top: 0.75rem;"><strong>Category judgements</strong></p>
+                            <table>
+                                {% for label, value in [
+                                    ("Quality of education", s.detail.ofsted_quality_of_education),
+                                    ("Behaviour and attitudes", s.detail.ofsted_behaviour_attitudes),
+                                    ("Personal development", s.detail.ofsted_personal_development),
+                                    ("Leadership and management", s.detail.ofsted_leadership_management),
+                                    ("Early years provision", s.detail.ofsted_early_years_provision),
+                                    ("Sixth form provision", s.detail.ofsted_sixth_form_provision),
+                                ] %}
+                                {% if value %}
+                                <tr><td>{{ label }}</td><td><span class="ofsted-badge ofsted-{{ value }}">{{ {1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}[value] }}</span></td></tr>
+                                {% endif %}
+                                {% endfor %}
+                                {% if s.detail.ofsted_safeguarding_effective %}
+                                <tr><td>Safeguarding effective</td><td>{{ s.detail.ofsted_safeguarding_effective }}</td></tr>
+                                {% endif %}
+                            </table>
                             {% endif %}
                             <p>Only the latest graded inspection is shown here - we don't hold a full historical inspection timeline.</p>
                         </div>
@@ -101,10 +156,10 @@
             </ul>
 
             <p class="school-profile-note">
-                Not shown here — no free public data source available: admissions/oversubscription,
-                catchment area, feeder and destination schools, teacher headcount, financial reserves,
-                A-Level results, per-subject entries, or any parent-review sentiment score (that's
-                proprietary to sites like Locrating, not something we can honestly reproduce).
+                Not shown here — no free public data source available: exact admissions/oversubscription
+                numbers, catchment area, feeder and destination schools, teacher headcount, financial
+                reserves, A-Level results, per-subject entries, or any parent-review sentiment score
+                (that's proprietary to sites like Locrating, not something we can honestly reproduce).
             </p>
         </section>
     </div>

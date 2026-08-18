@@ -9,7 +9,7 @@ import math
 from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
-from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics
+from app.models import Ks2Result, Ks4Result, School, SchoolCharacteristics, SchoolDetail
 from app.services import _cache
 
 SEARCH_RADIUS_KM = 5
@@ -231,8 +231,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 r.urn: r.fsm_eligible_pct
                 for r in session.scalars(select(SchoolCharacteristics).where(SchoolCharacteristics.urn.in_(all_urns)))
             }
+            detail_by_urn = {
+                r.urn: r for r in session.scalars(select(SchoolDetail).where(SchoolDetail.urn.in_(all_urns)))
+            }
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
+            e["detail"] = detail_by_urn.get(e["urn"])
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
                 e["exam_results"] = {
