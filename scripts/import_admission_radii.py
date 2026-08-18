@@ -2628,6 +2628,66 @@ def fetch_north_yorkshire() -> list[dict]:
     return records
 
 
+_READING_PRIMARY_URL = "https://brighterfuturesforchildren.org/wp-content/uploads/2025/04/Primary-Junior-Allocations-for-All-Schools-2025.pdf"
+_READING_SECONDARY_URL = "https://brighterfuturesforchildren.org/wp-content/uploads/2025/03/Secondary-Places-2025-Table.pdf"
+_READING_BRACKET_DISTANCE_RE = re.compile(r"\((\d+\.\d+)\)")
+_READING_SECONDARY_NAME_RE = re.compile(r"([A-Z][^\n]{2,80}?)\n(?:Category )?Admission Number")
+_READING_SECONDARY_DISTANCE_RE = re.compile(r"([\d.]+) miles from")
+
+
+def fetch_reading() -> list[dict]:
+    """Reading's (published by its outsourced children's-services
+    trust, Brighter Futures for Children) Primary/Junior allocations
+    table embeds the tie-break distance in brackets within whichever
+    oversubscription-category cell it happened to occur in (e.g.
+    "17 (0.331)", vs a non-distance bracket like "5 (1)" for an EYPP
+    count) - searching the whole row for a bracketed DECIMAL number is
+    the only reliable way to find it, since decimals never appear for
+    plain headcounts. The Secondary document is a different, prose
+    layout with no distinct table per school (short entries are
+    packed onto shared pages) - schools are split apart by matching
+    the school-name line that immediately precedes "Admission Number",
+    then a "<X.XXX> miles from" sentence is searched for within each
+    school's block of text.
+    """
+    records = []
+
+    resp = httpx.get(_READING_PRIMARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table:
+                if not row or not row[0]:
+                    continue
+                name = row[0].replace("\n", " ").strip()
+                if not name or "oversubscription" in name.lower() or "admissions to" in name.lower() or name.lower() == "name of school":
+                    continue
+                joined = " ".join(cell for cell in row if cell)
+                matches = _READING_BRACKET_DISTANCE_RE.findall(joined)
+                if matches:
+                    records.append({"school_name": name, "last_distance_miles": float(matches[-1])})
+
+    resp = httpx.get(_READING_SECONDARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    full_text = ""
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            full_text += (page.extract_text() or "") + "\n"
+    name_matches = list(_READING_SECONDARY_NAME_RE.finditer(full_text))
+    for i, m in enumerate(name_matches):
+        name = m.group(1).rstrip(".").strip()
+        start = m.end()
+        end = name_matches[i + 1].start() if i + 1 < len(name_matches) else len(full_text)
+        distance_match = _READING_SECONDARY_DISTANCE_RE.search(full_text[start:end])
+        if distance_match:
+            records.append({"school_name": name, "last_distance_miles": float(distance_match.group(1))})
+
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2729,6 +2789,7 @@ _AUTHORITIES = [
     ("Cheshire West and Chester", "2025/26", fetch_cheshire_west_and_chester),
     ("Bristol, City of", "varies", fetch_bristol),
     ("North Yorkshire", "2025/26", fetch_north_yorkshire),
+    ("Reading", "2025/26", fetch_reading),
 ]
 
 
