@@ -2011,6 +2011,60 @@ def fetch_greenwich() -> list[dict]:
     return records
 
 
+_SUTTON_PRIMARY_URL = (
+    "https://www.sutton.gov.uk/schools-and-learning/school-admissions/"
+    "national-offer-day-primary-schools/primary-school-allocation-information"
+)
+_SUTTON_SECONDARY_URL = "https://www.sutton.gov.uk/sites/default/files/2026-04/TSS%20Guidance%20Booklet%202026v2.pdf"
+_SUTTON_ROW_RE = re.compile(r"<tr><td>(.*?)</td><td>[^<]*</td><td>[^<]*</td><td>([^<]*)</td></tr>")
+_SUTTON_NAME_SUFFIX_RE = re.compile(r"\s*\((Academy|Foundation|Voluntary-aided|Voluntary-controlled)\)\s*$")
+_SUTTON_DECIMAL_RE = re.compile(r"[\d,]+\.\d+")
+
+
+def fetch_sutton() -> list[dict]:
+    """London Borough of Sutton publishes its primary allocation
+    figures as a live HTML table (not a PDF) on its "primary-school-
+    allocation-information" page, and its secondary figures inside the
+    "Transfer to Secondary School" guidance booklet PDF, republished
+    each year at a new URL under /sites/default/files/YYYY-MM/ (find
+    the current one via sutton.gov.uk's secondary transfer page).
+    Names carry a trailing admission-authority-type annotation (e.g.
+    "Avenue Primary (Academy)") stripped before matching. Distances
+    use comma thousands-separators ("2,697.92") which float() can't
+    parse directly; a school with two sites (e.g. "Cheam High School
+    (Worcester Park Places)") reports two figures on separate lines
+    within one cell - takes the larger, consistent with other
+    multi-figure sources.
+    """
+    records = []
+
+    print(f"  Downloading {_SUTTON_PRIMARY_URL}")
+    resp = httpx.get(_SUTTON_PRIMARY_URL, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    for name, cell in _SUTTON_ROW_RE.findall(resp.text):
+        name = _SUTTON_NAME_SUFFIX_RE.sub("", name).strip()
+        matches = _SUTTON_DECIMAL_RE.findall(cell.replace(",", ""))
+        if matches:
+            records.append({"school_name": name, "last_distance_miles": max(float(m) for m in matches) / _METRES_PER_MILE})
+
+    print(f"  Downloading {_SUTTON_SECONDARY_URL}")
+    resp = httpx.get(_SUTTON_SECONDARY_URL, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or not table[0] or "Distance" not in str(table[0][-1]):
+                continue
+            for row in table[1:]:
+                if not row or not row[0]:
+                    continue
+                matches = _SUTTON_DECIMAL_RE.findall((row[-1] or "").replace(",", ""))
+                if matches:
+                    name = row[0].replace("\n", " ").strip()
+                    records.append({"school_name": name, "last_distance_miles": max(float(m) for m in matches) / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2060,6 +2114,7 @@ _AUTHORITIES = [
     ("Lewisham", "2025/26", fetch_lewisham),
     ("Merton", "varies", fetch_merton),
     ("Greenwich", "2024/25", fetch_greenwich),
+    ("Sutton", "2025/26", fetch_sutton),
 ]
 
 
