@@ -2396,6 +2396,57 @@ def fetch_warwickshire() -> list[dict]:
     return records
 
 
+_STAFFORDSHIRE_URLS = [
+    "https://www.staffordshire.gov.uk/schools-and-learning/school-admissions/admission-oversubscribed-schools/summary-september-2025-0",
+    "https://www.staffordshire.gov.uk/schools-and-learning/school-admissions/admission-oversubscribed-schools/summary-september-2026",
+]
+_STAFFS_TABLE_RE = re.compile(r"<table.*?>(.*?)</table>", re.DOTALL)
+_STAFFS_HEADER_RE = re.compile(r"<th[^>]*>(.*?)</th>", re.DOTALL)
+_STAFFS_ROW_RE = re.compile(r"<tr>(.*?)</tr>", re.DOTALL)
+_STAFFS_CELL_RE = re.compile(r"<td>(.*?)</td>", re.DOTALL)
+
+
+def _staffs_clean(text: str) -> str:
+    text = re.sub(r"<[^>]+>", " ", text).replace("&nbsp;", " ")
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def fetch_staffordshire() -> list[dict]:
+    """Staffordshire's "summary of admission to oversubscribed
+    schools" pages (Primary 2025 + Secondary 2026 - the most recent
+    of each found), one HTML table per school with a "Furthest
+    distance (miles)" column. The exact set of preceding criteria
+    columns (Sibling/Catchment/Staff child/Pupil Premium/etc.) varies
+    per school, so the distance column's index is located dynamically
+    from each table's own header rather than assumed fixed. Schools
+    not oversubscribed on distance show a blank or "N/A" cell there
+    and are skipped.
+    """
+    records = []
+    for url in _STAFFORDSHIRE_URLS:
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        for table_html in _STAFFS_TABLE_RE.findall(resp.text):
+            headers = [_staffs_clean(h) for h in _STAFFS_HEADER_RE.findall(table_html)]
+            dist_idx = next((i for i, h in enumerate(headers) if "furthest distance" in h.lower()), None)
+            if dist_idx is None:
+                continue
+            for row in _STAFFS_ROW_RE.findall(table_html):
+                cells = _STAFFS_CELL_RE.findall(row)
+                if len(cells) != len(headers):
+                    continue
+                name = _staffs_clean(cells[0])
+                dist_text = _staffs_clean(cells[dist_idx])
+                if not name or not dist_text:
+                    continue
+                try:
+                    distance = float(dist_text)
+                except ValueError:
+                    continue
+                records.append({"school_name": name, "last_distance_miles": distance})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2492,6 +2543,7 @@ _AUTHORITIES = [
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
+    ("Staffordshire", "varies", fetch_staffordshire),
 ]
 
 
