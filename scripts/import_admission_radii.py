@@ -1796,6 +1796,94 @@ def fetch_southwark() -> list[dict]:
     return records
 
 
+_LAMBETH_URLS = [
+    "https://www.lambeth.gov.uk/schools-and-education/school-admissions-and-appeals/primary-school-admissions/"
+    "how-offers-were-made-lambeth-primary-schools-national-offer-day-16-april-2025/lambeth-voluntary-aided-schools",
+    "https://www.lambeth.gov.uk/schools-and-education/school-admissions-and-appeals/primary-school-admissions/"
+    "how-offers-were-made-lambeth-primary-schools-national-offer-day-16-april-2025/lambeth-academies",
+    "https://www.lambeth.gov.uk/schools-and-education/school-admissions-and-appeals/primary-school-admissions/"
+    "how-offers-were-made-lambeth-primary-schools-national-offer-day-16-april-2025/lambeth-foundation-schools",
+]
+_LAMBETH_HEADING_RE = re.compile(r"<h3[^>]*>(.*?)</h3>")
+_LAMBETH_DISTANCE_RE = re.compile(r"Distance for last child[^:]{0,60}:\s*(\d+\.?\d*)")
+
+
+def fetch_lambeth() -> list[dict]:
+    """London Borough of Lambeth publishes its "how offers were made"
+    results as plain HTML prose pages (not PDFs), split by admission-
+    authority type (voluntary aided / academies / foundation schools -
+    community schools apparently not published this way, or not
+    oversubscribed), each republished at the same URL pattern each
+    year with just the date in the path changing (find current ones
+    via lambeth.gov.uk's primary-admissions pages). Uses "&nbsp;"
+    entities instead of literal spaces throughout, which breaks any
+    regex expecting whitespace unless replaced first. Some banded
+    schools (Foundation/Open places) report two separate "Distance for
+    last child" figures - this takes the larger, consistent with the
+    same choice made for other multi-criterion authorities (Brent,
+    Surrey). One occurrence (Iqra Primary School) is mislabelled
+    "miles" in the source when the value is unambiguously in metres
+    (consistent with every other entry's magnitude, and no school
+    admits from 1,303 miles away) - all values are therefore always
+    treated as metres regardless of the literal unit word.
+    """
+    records = []
+    for url in _LAMBETH_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        text = resp.text.replace("&nbsp;", " ")
+        current = None
+        for chunk in re.split(r"(<h3[^>]*>.*?</h3>)", text):
+            heading_match = _LAMBETH_HEADING_RE.match(chunk)
+            if heading_match:
+                current = re.sub("<[^>]+>", "", heading_match.group(1)).strip()
+                continue
+            if current:
+                distances = [float(d) for d in _LAMBETH_DISTANCE_RE.findall(chunk)]
+                if distances:
+                    records.append({"school_name": current, "last_distance_miles": max(distances) / _METRES_PER_MILE})
+                current = None
+    return records
+
+
+def fetch_waltham_forest() -> list[dict]:
+    """London Borough of Waltham Forest's "Starting Primary School"
+    brochure PDF - a large prospectus, republished each year at a new
+    URL (find the current one via walthamforest.gov.uk's primary
+    admissions page). Most of the document uses rotated column
+    headers that extract as reversed/garbled text, but the specific
+    "Cut off distances for the past 3 years" table (found by header
+    text "School, <year1>, <year2>, <year3>") is a clean simple table,
+    already in miles - takes the most recent non-blank year, working
+    backwards from the last column, same "most recent real value"
+    approach used for other multi-year sources (Bristol, Solihull,
+    Sandwell).
+    """
+    url = "https://www.walthamforest.gov.uk/sites/default/files/2025-08/1012501%20-%20WF_PRIMARY%20BROCHURE%202026%20-%20WEB.pdf"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table or not table[0] or table[0][0] != "School":
+                continue
+            for row in table[1:]:
+                if not row or not row[0]:
+                    continue
+                for value in reversed(row[1:]):
+                    if value and value.strip():
+                        try:
+                            records.append({"school_name": row[0].strip(), "last_distance_miles": float(value.strip())})
+                        except ValueError:
+                            pass
+                        break
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1840,6 +1928,8 @@ _AUTHORITIES = [
     ("Richmond upon Thames", "2024/25", fetch_richmond_upon_thames),
     ("Kingston upon Thames", "2024/25", fetch_kingston_upon_thames),
     ("Southwark", "2025/26", fetch_southwark),
+    ("Lambeth", "2024/25", fetch_lambeth),
+    ("Waltham Forest", "varies", fetch_waltham_forest),
 ]
 
 
