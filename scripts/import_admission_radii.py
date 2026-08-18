@@ -2065,6 +2065,52 @@ def fetch_sutton() -> list[dict]:
     return records
 
 
+_HARINGEY_URLS = [
+    "https://haringey.gov.uk/schools-learning/schools/school-admissions/how-school-place-offers-were-made/"
+    "cutoff-distance-school-last-child-offered-place/"
+    "primary-schools-distance-school-last-child-offered-place-national-offer-day",
+    "https://haringey.gov.uk/schools-learning/schools/school-admissions/how-school-place-offers-were-made/"
+    "cutoff-distance-school-last-child-offered-place/"
+    "distance-school-last-child-offered-place-1-september",
+]
+_HARINGEY_ROW_RE = re.compile(r"<tr>\s*<td>(.*?)</td>((?:\s*<td>.*?</td>)+)\s*</tr>", re.DOTALL)
+_HARINGEY_CELL_RE = re.compile(r"<td>(.*?)</td>")
+
+
+def fetch_haringey() -> list[dict]:
+    """Haringey Council publishes live HTML tables (not PDFs) of
+    "Distance (in miles) from school of last child offered a place" -
+    one for primary (national offer day, columns newest year first)
+    and one for secondary (1 September, i.e. after the summer's late
+    applications/appeals - same newest-first column order), both
+    already in miles across several years. Takes the first (most
+    recent) non-"N/A" column per row rather than always the newest
+    year, since some schools' most recent year has no distance figure
+    (not oversubscribed that year).
+    """
+    records = []
+    for url in _HARINGEY_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        text = resp.text.replace("&nbsp;", " ")
+        start = text.find("<tbody>")
+        end = text.find("</tbody>")
+        if start < 0 or end < 0:
+            continue
+        for name, cells in _HARINGEY_ROW_RE.findall(text[start:end]):
+            clean_name = re.sub("<[^>]+>", "", name).strip()
+            for value in _HARINGEY_CELL_RE.findall(cells):
+                value = value.strip()
+                if value and value.upper() not in ("N/A", "ALL"):
+                    try:
+                        records.append({"school_name": clean_name, "last_distance_miles": float(value)})
+                    except ValueError:
+                        pass
+                    break
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -2115,6 +2161,7 @@ _AUTHORITIES = [
     ("Merton", "varies", fetch_merton),
     ("Greenwich", "2024/25", fetch_greenwich),
     ("Sutton", "2025/26", fetch_sutton),
+    ("Haringey", "varies", fetch_haringey),
 ]
 
 
