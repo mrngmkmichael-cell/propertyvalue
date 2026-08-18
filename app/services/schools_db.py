@@ -288,6 +288,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "further_education": further_education,
         "higher_education_count": len(higher_education_names),
         "higher_education_names": higher_education_names,
+        # Every included school has exactly one rating bucket, so this
+        # is already the complete deduplicated set - used to render
+        # each school's detail modal exactly once, even though the
+        # same school can appear in both its rating list and its
+        # phase list.
+        "all_schools": all_entries,
     }
 
 

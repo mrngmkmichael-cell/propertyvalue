@@ -1,0 +1,111 @@
+<dialog class="report-modal" id="{{ modal_id }}">
+    <div class="report-modal-inner">
+        <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+        <section class="report-section">
+            <h2>{{ s.name }}</h2>
+            <p class="section-sub">{{ s.type }} — {{ s.distance_m | distance }}</p>
+
+            <ul class="school-profile-menu">
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('details') }}</span>
+                            <span class="school-profile-label">Details</span>
+                            <span class="school-profile-preview">{{ s.type }}</span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            <table>
+                                <tr><td>Phase</td><td>{{ s.phase_group or "Special" }}</td></tr>
+                                <tr><td>Type</td><td>{{ s.type }}</td></tr>
+                                <tr><td>URN</td><td>{{ s.urn }}</td></tr>
+                                <tr><td>Distance</td><td>{{ s.distance_m | distance }}</td></tr>
+                            </table>
+                            <p>
+                                <a href="https://www.get-information-schools.service.gov.uk/Establishments/Establishment/Details/{{ s.urn }}" target="_blank" rel="noopener">
+                                    Full official record on GOV.UK →
+                                </a>
+                            </p>
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('pupils') }}</span>
+                            <span class="school-profile-label">Pupils</span>
+                            <span class="school-profile-preview">
+                                {%- if s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} pupils{% else %}—{% endif %}
+                            </span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            {% if s.exam_results and s.exam_results.pupil_count %}
+                            <table>
+                                <tr><td>Pupils ({{ s.exam_results.academic_year }})</td><td>{{ s.exam_results.pupil_count }}</td></tr>
+                                {% if s.fsm_eligible_pct is not none %}
+                                <tr><td>Eligible for free school meals</td><td>{{ s.fsm_eligible_pct }}%</td></tr>
+                                {% endif %}
+                            </table>
+                            {% else %}
+                            <p>No pupil count on file for this school.</p>
+                            {% endif %}
+                        </div>
+                    </details>
+                </li>
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('ofsted') }}</span>
+                            <span class="school-profile-label">Ofsted Rating</span>
+                            <span class="school-profile-preview">{{ s.ofsted_rating_label or "No current grade" }}</span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            {% if s.ofsted_rating_label %}
+                            <table>
+                                <tr><td>Rating</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span></td></tr>
+                                <tr><td>Inspected</td><td>{{ s.ofsted_inspection_date }}</td></tr>
+                            </table>
+                            {% else %}
+                            <p>
+                                No current overall grade - often means a recent inspection under Ofsted's
+                                newer ungraded report-card format, not that the school hasn't been visited.
+                            </p>
+                            {% endif %}
+                            <p>Only the latest graded inspection is shown here - we don't hold a full historical inspection timeline.</p>
+                        </div>
+                    </details>
+                </li>
+                {% if s.exam_results %}
+                <li>
+                    <details class="school-profile-item">
+                        <summary>
+                            <span class="school-profile-icon">{{ icons.icon('statistics') }}</span>
+                            <span class="school-profile-label">Exam Results</span>
+                            <span class="school-profile-preview">{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</span>
+                            <span class="school-profile-toggle">+</span>
+                        </summary>
+                        <div class="school-profile-detail">
+                            <table>
+                                <tr><td>{{ s.exam_results.headline_label }}</td><td>{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</td></tr>
+                                {% if s.exam_results.grade5_english_maths_pct is not none %}
+                                <tr><td>Grade 5+ English &amp; Maths</td><td>{{ s.exam_results.grade5_english_maths_pct }}%</td></tr>
+                                {% endif %}
+                                <tr><td>Academic year</td><td>{{ s.exam_results.academic_year }}</td></tr>
+                            </table>
+                        </div>
+                    </details>
+                </li>
+                {% endif %}
+            </ul>
+
+            <p class="school-profile-note">
+                Not shown here — no free public data source available: admissions/oversubscription,
+                catchment area, feeder and destination schools, teacher headcount, financial reserves,
+                A-Level results, per-subject entries, or any parent-review sentiment score (that's
+                proprietary to sites like Locrating, not something we can honestly reproduce).
+            </p>
+        </section>
+    </div>
+</dialog>
