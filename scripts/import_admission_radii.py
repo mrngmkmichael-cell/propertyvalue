@@ -863,6 +863,39 @@ def fetch_wokingham() -> list[dict]:
     return records
 
 
+_COVENTRY_ROW_RE = re.compile(r'<a[^>]*>([^<]+?)</a>.*?</tr>', re.DOTALL)
+_COVENTRY_DISTANCE_RE = re.compile(r"distance of\s*([\d.]+)\s*(of a mile|miles?)", re.IGNORECASE)
+
+_COVENTRY_URLS = [
+    "https://www.coventry.gov.uk/school-admissions/primary-school-admissions/4",
+    "https://coventry.gov.uk/school-admissions/secondary-school-admissions/7",
+]
+
+
+def fetch_coventry() -> list[dict]:
+    """Coventry City Council publishes its allocation results as plain
+    HTML tables (not PDFs) - "How primary school places were
+    allocated" and "Allocation of Coventry secondary school places",
+    republished each year at the same URL (just the year in the page
+    text changes, so these URLs are likely stable). One row per
+    school: name is a link to its admissions policy, last column is
+    prose like "...some offered up to a distance of 1.83 miles" or
+    "...0.408 of a mile" - both phrasings handled. Schools that
+    weren't oversubscribed have no distance mentioned and are
+    correctly skipped.
+    """
+    records = []
+    for url in _COVENTRY_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        for name, row in [(m.group(1), m.group(0)) for m in _COVENTRY_ROW_RE.finditer(resp.text)]:
+            match = _COVENTRY_DISTANCE_RE.search(row.replace("&nbsp;", " "))
+            if match:
+                records.append({"school_name": name.strip(), "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -885,6 +918,7 @@ _AUTHORITIES = [
     ("Buckinghamshire", "2026/27", fetch_buckinghamshire),
     ("Cambridgeshire", "2026/27", fetch_cambridgeshire),
     ("Wokingham", "2025/26", fetch_wokingham),
+    ("Coventry", "varies", fetch_coventry),
 ]
 
 
