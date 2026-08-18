@@ -2,10 +2,10 @@
 radius estimates into the `school_admission_radii` table.
 
 NOT run by the deployed app - run manually from a dev machine. Needs
-`pdfplumber` and `openpyxl` installed locally (not production
-dependencies - only used here, for extracting tables from local
-authorities' own PDF/Excel "last distance offered" publications, same
-situation as pyproj in import_schools.py).
+`pdfplumber`, `openpyxl`, and `python-docx` installed locally (not
+production dependencies - only used here, for extracting tables from
+local authorities' own PDF/Excel/Word "last distance offered"
+publications, same situation as pyproj in import_schools.py).
 
 Unlike every other import script in this project, there is no single
 source. Each English local authority publishes its own "how places
@@ -29,6 +29,7 @@ import os
 import re
 import sys
 
+import docx
 import httpx
 import openpyxl
 import pdfplumber
@@ -1609,6 +1610,94 @@ def fetch_leicester() -> list[dict]:
     return records
 
 
+_SANDWELL_URLS = [
+    "https://www.sandwell.gov.uk/downloads/file/388/primary-statistics",
+    "https://www.sandwell.gov.uk/downloads/file/389/secondary-statistics",
+]
+
+
+def fetch_sandwell() -> list[dict]:
+    """Sandwell Council publishes its admission statistics as a Word
+    (.docx) document (not PDF or HTML) - one for primary, one for
+    secondary, both at a stable /downloads/file/<id>/ URL (find the
+    current ids via sandwell.gov.uk if these ever change). Contains
+    several tables; the one we want has the header row "School Name,
+    Distance <year1>, Distance <year2>, Distance <year3>" (multiple
+    years of history, "N/A" for years the school wasn't oversubscribed
+    on distance) - this takes the most recent non-"N/A" year, working
+    backwards from the last column, same "most recent real value"
+    approach used for Bristol/Solihull's multi-year PDFs.
+    """
+    records = []
+    for url in _SANDWELL_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        doc = docx.Document(io.BytesIO(resp.content))
+        for table in doc.tables:
+            if not table.rows:
+                continue
+            header = [c.text.strip() for c in table.rows[0].cells]
+            if not header or header[0] != "School Name" or not any("Distance" in h for h in header[1:]):
+                continue
+            for row in table.rows[1:]:
+                cells = [c.text.strip() for c in row.cells]
+                if not cells or not cells[0]:
+                    continue
+                for value in reversed(cells[1:]):
+                    try:
+                        distance = float(value)
+                    except ValueError:
+                        continue
+                    records.append({"school_name": cells[0], "last_distance_miles": distance})
+                    break
+    return records
+
+
+_DUDLEY_NAME_CLEAN_RE = re.compile(r"\s*PAN\s*\d+/\d+\s*[–-]?\s*\d*")
+
+
+def fetch_dudley() -> list[dict]:
+    """Dudley Council's "Primary School Allocations Breakdown" PDF -
+    a 3-year time series (2023/2024/2025, most recent first per
+    school), republished periodically at a new URL (find the current
+    one via dudley.gov.uk's "primary-reception-intake" page). Only the
+    first row of each school's 3-row block has the name (a merged
+    cell also containing "PAN <year> - <n>", stripped off here); only
+    that first row is taken, so this is always the most recent (2025)
+    year without needing explicit year comparison. "Furthest Distance
+    Admitted" has no unit in the header but is unambiguously in
+    metres, not miles (values run into the thousands - a value like
+    "8299" is nonsensical as miles for a Dudley primary school but a
+    perfectly normal 5.16-mile catchment as metres).
+    """
+    url = ("https://www.dudley.gov.uk/media/clanjdgu/"
+           "dudley-primary-school-allocations-breakdown-from-september-2023-to-september-2025-intakes.pdf")
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            table = page.extract_table()
+            if not table:
+                continue
+            for row in table[1:]:
+                if not row or not row[0] or len(row) < 12:
+                    continue
+                name = _DUDLEY_NAME_CLEAN_RE.sub("", row[0].replace("\n", " ")).strip()
+                cell = row[11]
+                if not cell or cell in ("-", "N/A"):
+                    continue
+                try:
+                    metres = float(cell.replace(",", ""))
+                except ValueError:
+                    continue
+                records.append({"school_name": name, "last_distance_miles": metres / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1648,6 +1737,8 @@ _AUTHORITIES = [
     ("County Durham", "varies", fetch_durham),
     ("Derby", "2026/27", fetch_derby),
     ("Leicester", "varies", fetch_leicester),
+    ("Sandwell", "varies", fetch_sandwell),
+    ("Dudley", "2025", fetch_dudley),
 ]
 
 
