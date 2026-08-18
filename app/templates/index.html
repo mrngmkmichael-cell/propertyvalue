@@ -103,6 +103,54 @@
     </div>
 </section>
 
+<section class="landing-section why-us-section" data-animate>
+    <span class="section-pill">Why PropertyValue</span>
+    <h2 class="landing-heading">Built different, on purpose</h2>
+    <p class="landing-subheading">
+        Five things that set this apart from Rightmove, Zoopla, and paid tools like Crystal Roof or PropBar.
+    </p>
+    <div class="why-carousel" data-carousel>
+        <button class="why-nav why-prev" type="button" aria-label="Previous" data-carousel-prev>&#8249;</button>
+        <div class="why-viewport">
+            <div class="why-track" data-carousel-track>
+                <div class="why-slide">
+                    <span class="why-slide-num">01</span>
+                    <h3>Real school-catchment data, not estimates</h3>
+                    <p>Actual admission distances pulled from council records across dozens of local authorities — not a modelled circle on a map.</p>
+                </div>
+                <div class="why-slide">
+                    <span class="why-slide-num">02</span>
+                    <h3>Zero scraping, zero guesswork</h3>
+                    <p>Every figure traces to an official source — Land Registry, the EPC register, the Environment Agency, Police.uk, Ofsted, the DfE.</p>
+                </div>
+                <div class="why-slide">
+                    <span class="why-slide-num">03</span>
+                    <h3>One report, the full due-diligence stack</h3>
+                    <p>Sold prices, EPC, flood risk, crime, schools, council tax, broadband, mobile signal, radon and more — for one address.</p>
+                </div>
+                <div class="why-slide">
+                    <span class="why-slide-num">04</span>
+                    <h3>A verdict, not a data dump</h3>
+                    <p>The Overview Score turns a wall of numbers into a plain GOOD / AVERAGE / POOR call, with the reasoning shown.</p>
+                </div>
+                <div class="why-slide">
+                    <span class="why-slide-num">05</span>
+                    <h3>Unlimited, for less</h3>
+                    <p>£9.99/month for unlimited searches and reports — a fraction of per-report fees or enterprise pricing elsewhere.</p>
+                </div>
+            </div>
+        </div>
+        <button class="why-nav why-next" type="button" aria-label="Next" data-carousel-next>&#8250;</button>
+    </div>
+    <div class="why-dots" role="tablist" aria-label="Why PropertyValue slides">
+        <button class="why-dot is-active" type="button" aria-label="Slide 1" data-carousel-dot="0"></button>
+        <button class="why-dot" type="button" aria-label="Slide 2" data-carousel-dot="1"></button>
+        <button class="why-dot" type="button" aria-label="Slide 3" data-carousel-dot="2"></button>
+        <button class="why-dot" type="button" aria-label="Slide 4" data-carousel-dot="3"></button>
+        <button class="why-dot" type="button" aria-label="Slide 5" data-carousel-dot="4"></button>
+    </div>
+</section>
+
 <section class="landing-section">
     <span class="section-pill" data-animate>See it in action</span>
     <h2 class="landing-heading" data-animate>See exactly what you get</h2>
@@ -276,6 +324,50 @@
             maxZoom: 19,
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         }).addTo(heroMap);
+    })();
+</script>
+<script>
+    (function () {
+        const root = document.querySelector('[data-carousel]');
+        if (!root) return;
+        const track = root.querySelector('[data-carousel-track]');
+        const slides = Array.from(track.children);
+        const dots = Array.from(document.querySelectorAll('[data-carousel-dot]'));
+        const prevBtn = root.querySelector('[data-carousel-prev]');
+        const nextBtn = root.querySelector('[data-carousel-next]');
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let index = 0;
+        let timer = null;
+
+        function show(i) {
+            index = (i + slides.length) % slides.length;
+            track.style.transform = 'translateX(-' + (index * 100) + '%)';
+            dots.forEach(function (d, di) { d.classList.toggle('is-active', di === index); });
+        }
+        function next() { show(index + 1); }
+        function prev() { show(index - 1); }
+        function stopAutoplay() {
+            if (timer) clearInterval(timer);
+            timer = null;
+        }
+        function startAutoplay() {
+            if (reduceMotion) return;
+            stopAutoplay();
+            timer = setInterval(next, 4500);
+        }
+
+        dots.forEach(function (d, di) {
+            d.addEventListener('click', function () { show(di); startAutoplay(); });
+        });
+        if (nextBtn) nextBtn.addEventListener('click', function () { next(); startAutoplay(); });
+        if (prevBtn) prevBtn.addEventListener('click', function () { prev(); startAutoplay(); });
+        root.addEventListener('mouseenter', stopAutoplay);
+        root.addEventListener('mouseleave', startAutoplay);
+        root.addEventListener('focusin', stopAutoplay);
+        root.addEventListener('focusout', startAutoplay);
+
+        show(0);
+        startAutoplay();
     })();
 </script>
 {% endblock %}
