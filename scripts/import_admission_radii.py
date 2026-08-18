@@ -2,10 +2,10 @@
 radius estimates into the `school_admission_radii` table.
 
 NOT run by the deployed app - run manually from a dev machine. Needs
-`pdfplumber` installed locally (not a production dependency - only
-used here, for extracting tables from local authorities' own PDF
-"last distance offered" publications, same situation as pyproj in
-import_schools.py).
+`pdfplumber` and `openpyxl` installed locally (not production
+dependencies - only used here, for extracting tables from local
+authorities' own PDF/Excel "last distance offered" publications, same
+situation as pyproj in import_schools.py).
 
 Unlike every other import script in this project, there is no single
 source. Each English local authority publishes its own "how places
@@ -30,6 +30,7 @@ import re
 import sys
 
 import httpx
+import openpyxl
 import pdfplumber
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -703,6 +704,59 @@ def fetch_oxfordshire() -> list[dict]:
     return records
 
 
+_BUCKS_MILES_RE = re.compile(r"([\d.]+)\s*miles?", re.IGNORECASE)
+
+# (label, URL, "table" = row-per-school with its own distance column,
+#  "prose" = row-per-school with a free-text description ending in a
+#  distance figure - the Reception/Junior workbooks use the former,
+#  the Secondary one the latter)
+_BUCKS_FILES = [
+    ("table", "https://www.buckinghamshire.gov.uk/documents/41709/"
+              "How_Places_Were_Allocated_Into_Reception_September_2026_as_at_20_May_2026.xlsx"),
+    ("table", "https://www.buckinghamshire.gov.uk/documents/41714/"
+              "How_Places_Were_Allocated_Into_Junior_School_September_2026_as_at_20_May_2026.xlsx"),
+    ("prose", "https://www.buckinghamshire.gov.uk/documents/41705/"
+              "Allocation_Profile_2026_-_Secondary_Second_Round_-_20_May.xlsx"),
+]
+
+
+def fetch_buckinghamshire() -> list[dict]:
+    """Buckinghamshire Council publishes its "How places were
+    allocated" results as Excel workbooks (not PDFs), republished each
+    year at a new document ID (find the current ones via
+    buckinghamshire.gov.uk's "school-place-allocation-statistics"
+    page). Reception and Junior workbooks are a clean table with a
+    "Distance of last allocated child" column already in miles.
+    Secondary is a coarser "school name, free-text description of how
+    places were allocated" layout (grammar/upper/all-ability schools
+    grouped under section-header rows with no distance, which are
+    naturally skipped since they don't match the distance regex) -
+    text ends with "...to X.XXX miles." when the school was
+    oversubscribed enough for distance to matter.
+    """
+    records = []
+    for kind, url in _BUCKS_FILES:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+        ws = wb[wb.sheetnames[0]]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            if not row or not row[0] or not isinstance(row[0], str):
+                continue
+            name = row[0].strip()
+            if kind == "table":
+                cell = row[2] if len(row) > 2 else None
+            else:
+                cell = row[1] if len(row) > 1 else None
+            if not cell or not isinstance(cell, str):
+                continue
+            match = _BUCKS_MILES_RE.search(cell)
+            if match:
+                records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -722,6 +776,7 @@ _AUTHORITIES = [
     ("Surrey", "2026/27", fetch_surrey),
     ("Hertfordshire", "varies", fetch_hertfordshire),
     ("Oxfordshire", "2026/27", fetch_oxfordshire),
+    ("Buckinghamshire", "2026/27", fetch_buckinghamshire),
 ]
 
 
