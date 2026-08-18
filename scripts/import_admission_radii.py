@@ -1436,6 +1436,44 @@ def fetch_east_sussex() -> list[dict]:
     return records
 
 
+_WEST_SUSSEX_URLS = [
+    "https://www.westsussex.gov.uk/media/e3fn402p/starting_school_stats_2026.pdf",
+    "https://www.westsussex.gov.uk/media/p1mlihto/secondary_school_allocation_day_statistics_2026.pdf",
+]
+
+
+def fetch_west_sussex() -> list[dict]:
+    """West Sussex County Council's "allocation day statistics" PDFs
+    (Starting School/Primary + Secondary) - republished each year at
+    new URLs (find the current ones via westsussex.gov.uk's "starting-
+    school-places"/"secondary-school-places" pages). Clean table:
+    School Name, Places, Offers, Last criteria, Distance (metres) -
+    schools that weren't oversubscribed have a long "All applicants...
+    were offered a place" sentence instead of a number in the last
+    column, which fails the float parse and is correctly skipped.
+    """
+    records = []
+    for url in _WEST_SUSSEX_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table[1:]:
+                    if not row or not row[0] or not row[-1]:
+                        continue
+                    try:
+                        distance = float(row[-1].strip())
+                    except ValueError:
+                        continue
+                    name = row[0].replace("\n", " ").strip()
+                    records.append({"school_name": name, "last_distance_miles": distance / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -1471,6 +1509,7 @@ _AUTHORITIES = [
     ("Cheshire East", "2025/26", fetch_cheshire_east),
     ("Suffolk", "2026/27", fetch_suffolk),
     ("East Sussex", "varies", fetch_east_sussex),
+    ("West Sussex", "2025/26", fetch_west_sussex),
 ]
 
 
