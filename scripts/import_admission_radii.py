@@ -2356,6 +2356,46 @@ def fetch_gloucestershire() -> list[dict]:
     return records
 
 
+_WARWICKSHIRE_URLS = [
+    "https://api.warwickshire.gov.uk/documents/WCCC-1990003847-4065",  # Reception 2025
+    "https://api.warwickshire.gov.uk/documents/WCCC-1990003847-4066",  # Junior 2025
+    "https://api.warwickshire.gov.uk/documents/WCCC-1990003847-3909",  # Secondary 2025
+]
+
+
+def fetch_warwickshire() -> list[dict]:
+    """Warwickshire's Reception/Junior/Secondary "breakdown of offers"
+    spreadsheets. Unlike most sources, EVERY row has a "Distance"
+    figure regardless of whether that place was actually decided by
+    proximity - undersubscribed schools that admitted a distant
+    out-of-area applicant report that applicant's (irrelevant, huge)
+    distance too, and the "Last Offer Made Criterion" text doesn't
+    reliably distinguish this case (school-specific naming, and even
+    some "In Priority Area" rows have 90+ mile outliers). Rather than
+    trust or parse that free-text criterion column, distances over 20
+    miles are treated as not representative of a real catchment and
+    dropped (~7% of rows) - the same plausibility-cap approach used
+    for other noisy sources (see Peterborough, Wokingham).
+    """
+    records = []
+    for url in _WARWICKSHIRE_URLS:
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+        ws = wb.worksheets[0]
+        for row in ws.iter_rows(min_row=3, values_only=True):
+            if not row[0] or row[4] is None:
+                continue
+            try:
+                distance = float(row[4])
+            except (TypeError, ValueError):
+                continue
+            if distance > 20:
+                continue
+            records.append({"school_name": row[0], "last_distance_miles": distance})
+    return records
+
+
 def fetch_sefton() -> list[dict]:
     """Sefton Council's "Schools Admissions Information Guide" - a
     huge (200+ page) composite prospectus with a per-school profile
@@ -2451,6 +2491,7 @@ _AUTHORITIES = [
     ("Sefton", "2025/26", fetch_sefton),
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
+    ("Warwickshire", "2025/26", fetch_warwickshire),
 ]
 
 
