@@ -757,6 +757,46 @@ def fetch_buckinghamshire() -> list[dict]:
     return records
 
 
+_CAMBS_DISTANCE_RE = re.compile(r"([\d.]+)")
+
+# Only the "round 1" Reception and Junior PDFs - the cleanest of
+# Cambridgeshire's several allocation-round documents (one table,
+# "School Name, PAN, Offered, Criterion, Distance (miles)"). Round 2,
+# Middle, and Year 7/9 documents use inconsistent/wider layouts not
+# worth the extra parsing complexity for the schools they'd add.
+_CAMBS_URLS = [
+    "https://cambridgeshire.gov.uk/asset-library/Reception-allocation-sheet-2026-round-1.pdf",
+    "https://cambridgeshire.gov.uk/asset-library/Junior-data-sheet-2026-round-1.pdf",
+]
+
+
+def fetch_cambridgeshire() -> list[dict]:
+    """Cambridgeshire County Council's Reception and Junior "round 1"
+    allocation PDFs - republished each year at a new URL under
+    /asset-library/ (find the current ones via cambridgeshire.gov.uk's
+    "school-allocation-information" page). Clean table: School Name,
+    PAN, Offered, Criterion Allocated to, Distance (miles) - already
+    in miles, last column.
+    """
+    records = []
+    for url in _CAMBS_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or len(row) < 5 or not row[0] or not row[4]:
+                        continue
+                    match = _CAMBS_DISTANCE_RE.search(row[4])
+                    if match:
+                        records.append({"school_name": row[0].strip(), "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -777,6 +817,7 @@ _AUTHORITIES = [
     ("Hertfordshire", "varies", fetch_hertfordshire),
     ("Oxfordshire", "2026/27", fetch_oxfordshire),
     ("Buckinghamshire", "2026/27", fetch_buckinghamshire),
+    ("Cambridgeshire", "2026/27", fetch_cambridgeshire),
 ]
 
 
