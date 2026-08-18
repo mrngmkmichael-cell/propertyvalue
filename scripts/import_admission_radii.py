@@ -3227,6 +3227,99 @@ def fetch_hartlepool() -> list[dict]:
     return records
 
 
+_SOUTHEND_DIST_RE = re.compile(r"distance of\s+([\d.]+)\s*mile", re.IGNORECASE)
+
+
+def fetch_southend() -> list[dict]:
+    """Southend-on-Sea City Council's primary admissions booklet - a
+    composite prospectus with one per-school profile page each,
+    republished each year at a new file ID (find the current one via
+    southend.gov.uk's own site search for "primary admission booklet"
+    if this 404s). Each profile page's first line is the school name;
+    somewhere in its "last child admitted" paragraph is a sentence
+    like "...the last child was admitted under admission criterion
+    catchment area at a distance of 0.245 miles from the school" (the
+    exact wording around it varies - "at a distance of" vs "with a
+    distance of" - and it sometimes wraps across two lines, so the
+    page text has its whitespace collapsed before a single regex
+    anchored on "distance of <n> mile(s)" is applied). Most Southend
+    primary schools use catchment areas rather than distance and have
+    no such sentence at all (naturally skipped - no match). The
+    equivalent secondary admissions booklet was checked too but has no
+    per-school distance data anywhere - secondary schools here mostly
+    use defined catchment areas or aptitude, not distance - so only
+    primary schools are covered.
+    """
+    url = "https://www.southend.gov.uk/downloads/file/9043/primary-admission-booklet-2026-27"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text() or ""
+            lines = text.split("\n")
+            if not lines or not lines[0].strip():
+                continue
+            blob = re.sub(r"\s+", " ", text)
+            match = _SOUTHEND_DIST_RE.search(blob)
+            if match:
+                records.append({"school_name": lines[0].strip(), "last_distance_miles": float(match.group(1))})
+    return records
+
+
+_BRACKNELL_NAME_RE = re.compile(r"Offer Day:.*?\d{4}\s+(.+?)\s*\n\s*Preferences Received", re.S)
+_BRACKNELL_DIST_RE = re.compile(r"to a distance of\s+([\d.]+)\s*miles", re.IGNORECASE)
+
+
+def fetch_bracknell_forest() -> list[dict]:
+    """Bracknell Forest Council's "How school places are allocated"
+    page links to one "allocation breakdown" PDF per individual
+    school (primary and secondary), crawled dynamically since the
+    URLs change every year. Two of the linked PDFs ("...community-
+    schools-allocation-breakdown-..." and "...voluntary-schools-
+    allocation-breakdown-...") cover MULTIPLE community/voluntary
+    primary schools in one file with a two-column layout (school
+    name/PAN in one column, prose explanation in the other) that
+    pdfplumber's text extraction interleaves unpredictably between
+    columns - real risk of a distance figure being attributed to the
+    wrong neighbouring school - so those two are deliberately
+    excluded; only genuinely single-school PDFs are used. Each of
+    those has the school's name appearing consistently between
+    "National Offer Day: <date>" and "Preferences Received" (more
+    reliable than the page's opening lines, whose order relative to
+    the "Allocation breakdown for admission to..." header varies
+    between documents), and - only for oversubscribed schools - a
+    sentence ending "...to a distance of X miles from the school".
+    Schools that weren't oversubscribed have no such sentence and
+    are naturally skipped.
+    """
+    index_url = "https://www.bracknell-forest.gov.uk/schools-and-learning/schools/school-admissions/how-school-places-are-allocated"
+    print(f"  Downloading index {index_url}")
+    resp = httpx.get(index_url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    pdf_urls = re.findall(r'href="(https://www\.bracknell-forest\.gov\.uk/sites/default/files/[^"]+?-allocation-breakdown-[^"]+?\.pdf)"', resp.text)
+    pdf_urls = [
+        u for u in dict.fromkeys(pdf_urls)
+        if "community-schools-allocation-breakdown" not in u and "voluntary-schools-allocation-breakdown" not in u
+    ]
+
+    records = []
+    for url in pdf_urls:
+        print(f"  Downloading {url}")
+        r = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        if r.status_code != 200:
+            continue
+        with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+            text = pdf.pages[0].extract_text() or ""
+        name_match = _BRACKNELL_NAME_RE.search(text)
+        dist_match = _BRACKNELL_DIST_RE.search(text)
+        if name_match and dist_match:
+            records.append({"school_name": name_match.group(1).strip(), "last_distance_miles": float(dist_match.group(1))})
+    return records
+
+
 def fetch_islington() -> list[dict]:
     """Islington Council's "Cut-off distance for schools" page - a
     genuine HTML table (two of them: primary, then secondary) with
@@ -3412,6 +3505,8 @@ _AUTHORITIES = [
     ("Hillingdon", "2025/26", fetch_hillingdon),
     ("Middlesbrough", "2025/26", fetch_middlesbrough),
     ("Hartlepool", "2025/26", fetch_hartlepool),
+    ("Southend-on-Sea", "2025/26", fetch_southend),
+    ("Bracknell Forest", "2025/26", fetch_bracknell_forest),
     ("Tameside", "varies", fetch_tameside),
     ("Gloucestershire", "2025/26", fetch_gloucestershire),
     ("Warwickshire", "2025/26", fetch_warwickshire),
