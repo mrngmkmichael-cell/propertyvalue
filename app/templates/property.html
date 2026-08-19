@@ -123,6 +123,7 @@
     {% set aq_worst = (air_quality.pollutants | map(attribute='times_guideline') | list | max) if air_quality and air_quality.pollutants else none %}
     {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
     {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
+    {% set coal_mining_status = 'muted' if coal_mining_error else ('attn' if coal_mining and coal_mining.present else 'ok') %}
     {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
     {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
     {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
@@ -138,6 +139,7 @@
     {% if sewage_status == 'attn' %}{% set _ = attention_items.append(('modal-sewage', 'Frequent sewage discharges nearby')) %}{% endif %}
     {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
     {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
+    {% if coal_mining_status == 'attn' %}{% set _ = attention_items.append(('modal-coal-mining', 'In a Coal Mining Reporting Area')) %}{% endif %}
     {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
     {% if environmental_count %}{% set _ = attention_items.append(('modal-environmental', 'Environmental designations present')) %}{% endif %}
     {% if broadband_status == 'attn' %}{% set _ = attention_items.append(('modal-broadband', 'Poor broadband availability')) %}{% endif %}
@@ -384,6 +386,19 @@
                 {% elif historic_landfill and historic_landfill.status == 'on_site' %}On a former landfill
                 {% elif historic_landfill and historic_landfill.status == 'nearby' %}Former landfill nearby
                 {% elif historic_landfill %}None nearby
+                {% else %}No data available{% endif %}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ coal_mining_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-coal-mining" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            {% if coal_mining_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-mining">{{ icons.icon('mining') }}</span>
+            <span class="dashboard-card-title">Mining Risk</span>
+            <span class="dashboard-card-status">
+                {% if coal_mining_error %}Data unavailable
+                {% elif coal_mining and coal_mining.present %}In a Coal Mining Reporting Area
+                {% elif coal_mining %}Not in a reporting area
                 {% else %}No data available{% endif %}
             </span>
         </button>
@@ -2162,6 +2177,37 @@
             </p>
         {% elif historic_landfill %}
             <p class="notice">No historic landfill sites found nearby.</p>
+        {% else %}
+            <p class="notice">No data available for this location.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-coal-mining">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Mining risk (coal)</h2>
+        <p class="section-sub">
+            From the Coal Authority's National Coal Mining Database — the same Coal Mining Reporting
+            Area a solicitor's CON29M coal mining search is based on for property transactions. Being
+            inside it doesn't mean the property is unsafe, but it means a proper coal mining search
+            (checking for shafts, adits, or other historic workings nearby) is standard practice before
+            buying, and some lenders require one.
+        </p>
+        {% if coal_mining_error %}
+            <p class="notice notice-error">
+                The Coal Authority data service didn't respond. Try again in a moment.
+            </p>
+        {% elif coal_mining and coal_mining.present %}
+            <p class="notice notice-error">
+                <strong>This property is within a Coal Mining Reporting Area</strong>
+                {%- if coal_mining.area_name %} ("{{ coal_mining.area_name }}" coalfield){% endif %}.
+                A coal mining search (CON29M) is recommended before buying.
+            </p>
+        {% elif coal_mining %}
+            <p class="notice">Not within a Coal Mining Reporting Area.</p>
         {% else %}
             <p class="notice">No data available for this location.</p>
         {% endif %}

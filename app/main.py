@@ -19,8 +19,8 @@ from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
 from app.models import User
 from app.services import (
-    air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, crime, demographics,
-    designations, epc, flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi,
+    air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, crime,
+    demographics, designations, epc, flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi,
     mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, schools_db,
     sewage_discharge, valuation,
 )
@@ -589,6 +589,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             hpi.price_trend(location["admin_district"]),
             clay_risk.risk_near(lat, lon),
             sewage_discharge.nearby_outfalls(lat, lon),
+            coal_mining.check_near(lat, lon),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
@@ -603,6 +604,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
         school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
+        coal_mining_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -736,6 +738,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["sewage_error"] = True
     else:
         context["sewage_outfalls"] = sewage_result
+
+    if isinstance(coal_mining_result, Exception) or coal_mining_result is None:
+        context["coal_mining_error"] = True
+    else:
+        context["coal_mining"] = coal_mining_result
 
     if isinstance(heritage_result, Exception):
         context["heritage_error"] = True

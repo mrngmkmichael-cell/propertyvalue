@@ -24,6 +24,7 @@ CONCERN_LABELS = {
     "radon": "Elevated radon risk",
     "air_quality": "Air quality well above WHO guideline",
     "landfill": "Historic landfill on/near site",
+    "coal_mining": "In a Coal Mining Reporting Area",
     "planning": "Planning constraints present",
     "environmental": "Environmental designations present",
     "broadband": "Poor broadband availability",
@@ -57,7 +58,7 @@ _EFFICIENT_EPC_BANDS = {"A", "B", "C"}
 # quality well above WHO guideline" in a free verdict would leak the
 # gated card's actual finding without paying for it, undermining the
 # lock on that card. Premium users get the full set.
-_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill"}
+_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill", "coal_mining"}
 
 
 def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
@@ -97,6 +98,10 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     landfill = context.get("historic_landfill")
     if landfill and landfill.get("status") != "clear":
         concerns.append("landfill")
+
+    coal_mining = context.get("coal_mining")
+    if coal_mining and coal_mining.get("present"):
+        concerns.append("coal_mining")
 
     if context.get("planning_flags"):
         concerns.append("planning")
