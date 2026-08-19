@@ -9,22 +9,19 @@ shown alongside the matching OSM amenity category) - CQC is the
 government inspector for these three categories the way the FSA is for
 restaurants.
 
-IMPORTANT CAVEAT, unlike every other service in this file: this
-integration could not be verified end-to-end. api.cqc.org.uk returned
-403 Forbidden from this project's dev environment on every attempt
-(different User-Agents, and via an actual browser navigation, not just
-one blocked request) - consistent with a CDN/WAF block on datacenter
-IP ranges rather than an auth problem (their docs are explicit that no
-auth is needed). Since the production host is also a datacenter IP,
-the same block may apply there too - if so, this fails soft exactly
-like a normal outage (empty results, nothing shown), never a crash.
-
-The `postcode` list-filter parameter name/behaviour used below is
-inferred from documented UK-gov-API convention (every other source in
-this project - police.uk, FSA, EPC - uses `postcode` the same way),
-NOT confirmed against a live response. If CQC's real filter behaves
-differently, this will simply return nothing rather than error,
-pending a future pass once it can actually be tested.
+CONFIRMED NON-FUNCTIONAL IN PRODUCTION (checked 2026-08-19): api.cqc.org.uk
+returns a clean 403 Forbidden to a well-formed request
+(GET /locations?postcode=M1&perPage=50&partnerCode=propertyvalue) from
+this project's live Render deployment, not just from the dev
+environment - confirmed via a temporary debug log of the raw response.
+Same 403 seen from three independent network paths (local dev, a
+separate fetch path, and Render production), consistent with a
+CDN/WAF block on datacenter IP ranges generally, not an auth problem
+(CQC's own docs say none is needed) and not a bad query parameter.
+Left in place rather than removed because it fails soft exactly like a
+normal outage (empty results, nothing shown, no crash) - if CQC ever
+relaxes this block, or issues an allowlisted partnerCode on request to
+syndicationapi@cqc.org.uk, this starts working with no code changes.
 """
 import asyncio
 import math
@@ -76,11 +73,6 @@ async def _fetch(lat: float, lon: float, postcode: str) -> dict:
                 f"{API_BASE}/locations",
                 params={"postcode": outcode, "perPage": LIST_PAGE_SIZE, "partnerCode": PARTNER_CODE},
             )
-            # TEMPORARY diagnostic - remove once we've confirmed whether
-            # this is a network block or a bad filter param. See
-            # request URL, status and the first 500 chars of the body in
-            # the Render log for whichever property page you load next.
-            print(f"[cqc_ratings DEBUG] GET {list_response.url} -> {list_response.status_code}: {list_response.text[:500]}")
             list_response.raise_for_status()
             summaries = list_response.json().get("locations", [])
             if not summaries:
