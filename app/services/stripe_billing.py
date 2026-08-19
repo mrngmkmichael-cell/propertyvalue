@@ -75,9 +75,9 @@ async def create_checkout_session(
         "customer_email": user_email,
         "client_reference_id": str(user_id),
         "subscription_data[trial_period_days]": trial_days,
-        # Lets a user re-enter checkout without Stripe creating a
-        # second customer record for the same email.
-        "customer_creation": "always",
+        # customer_creation is only valid in payment mode - in
+        # subscription mode Stripe always creates (or reuses) a
+        # Customer automatically, no explicit param needed or allowed.
     }
     try:
         async with httpx.AsyncClient(timeout=15) as client:
