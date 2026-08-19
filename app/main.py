@@ -529,6 +529,21 @@ def methodology(request: Request):
     return templates.TemplateResponse(request, "methodology.html", base_context(request))
 
 
+@app.get("/privacy")
+def privacy(request: Request):
+    return templates.TemplateResponse(request, "privacy.html", base_context(request))
+
+
+@app.get("/terms")
+def terms(request: Request):
+    return templates.TemplateResponse(request, "terms.html", base_context(request))
+
+
+@app.get("/support")
+def support(request: Request):
+    return templates.TemplateResponse(request, "support.html", base_context(request))
+
+
 @app.get("/property")
 async def property_search(request: Request, postcode: str = "", house_number: str = ""):
     postcode = postcode.strip()

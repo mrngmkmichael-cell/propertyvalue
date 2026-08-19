@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Privacy Policy — UKPropertyInsight{% endblock %}
+
+{% block content %}
+<span class="kicker">Legal</span>
+<h1>Privacy Policy</h1>
+<p class="dek">
+    Last updated 19 August 2026. UKPropertyInsight ("we", "us") is operated as a UK-based
+    property due-diligence service at ukpropertyinsight.co.uk. This page explains what
+    personal data we collect, why, and what rights you have over it.
+</p>
+
+<section class="landing-section">
+    <h2 class="landing-heading">What we collect</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Account details</span>
+            <span class="feature-card-blurb">Your email address and a securely hashed password (we never store or can see your actual password) if you create an account.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Content you create</span>
+            <span class="feature-card-blurb">Properties/schools you save to a watchlist or shortlist, and any area or school reviews you submit (shown anonymously, never with your name or email attached).</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Billing information</span>
+            <span class="feature-card-blurb">If you subscribe to Premium, our payment processor Stripe collects and stores your card details directly - we never see or store your full card number ourselves. We keep only your Stripe customer/subscription reference and subscription status.</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Session cookie</span>
+            <span class="feature-card-blurb">A single signed cookie that keeps you logged in. No advertising or analytics cookies, and no third-party tracking scripts run on this site.</span>
+        </div>
+    </div>
+    <p class="section-sub">
+        Searching an address - the core of the site - needs no account and stores nothing about
+        you. The postcode/address you look up is sent to the official public data sources listed
+        on our <a href="/methodology">methodology page</a> purely to fetch the relevant
+        public facts about that location, the same way it would be if you queried each of those
+        sources yourself.
+    </p>
+</section>
+
+<section class="landing-section landing-section-tinted">
+    <h2 class="landing-heading">Why we collect it, and who we share it with</h2>
+    <p class="landing-subheading">
+        Account and billing data exists solely to run the service you've asked for: logging you
+        in, remembering your watchlist, and processing a subscription you've chosen to pay for.
+        We don't sell, rent, or otherwise share your personal data with third parties for
+        marketing purposes.
+    </p>
+    <p class="section-sub">
+        A small number of processors handle data on our behalf, each only for what's needed to
+        run the service: <strong>Stripe</strong> (payment processing), <strong>Neon</strong>
+        (database hosting for accounts/watchlist/reviews), and <strong>Render</strong> (web
+        hosting). Each is contractually bound to only use your data to provide that service to us.
+    </p>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading">Your rights</h2>
+    <p class="landing-subheading">
+        Under UK GDPR, you can ask us at any time to: see a copy of the personal data we hold
+        about you, correct anything that's wrong, delete your account and associated data, or
+        withdraw any consent you've given. Email
+        <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>
+        for any of these - we'll respond within 30 days as required by law. If you're unhappy
+        with how we've handled your data, you also have the right to complain to the
+        <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner's Office (ICO)</a>,
+        the UK's independent data protection regulator.
+    </p>
+</section>
+
+<section class="landing-section landing-section-tinted">
+    <h2 class="landing-heading">Data retention</h2>
+    <p class="landing-subheading">
+        We keep account data for as long as your account is active. If you delete your account
+        (or ask us to), we remove your personal data within 30 days, except where we're legally
+        required to keep billing records for longer (typically 6 years, for UK tax purposes).
+    </p>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading">Other things worth knowing</h2>
+    <p class="landing-subheading">
+        This service isn't directed at children, and we don't knowingly collect data from anyone
+        under 18. We may update this policy from time to time - the "last updated" date at the
+        top will always reflect the latest version, and any significant change will be
+        highlighted here.
+    </p>
+</section>
+
+<p class="section-sub"><a href="/">&larr; Back to search</a></p>
+{% endblock %}
