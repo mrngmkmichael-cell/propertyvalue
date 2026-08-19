@@ -3824,6 +3824,44 @@ def fetch_wirral() -> list[dict]:
     return records
 
 
+_BEDFORD_URLS = [
+    "https://www.bedford.gov.uk/files/appendix-starting-school-2026-late-round-version.pdf",
+    "https://www.bedford.gov.uk/files/appendix-secondary-2026-late-round.pdf",
+]
+_BEDFORD_DISTANCE_RE = re.compile(r"([\d.]+)\s*m\b")
+
+
+def fetch_bedford() -> list[dict]:
+    """Bedford Borough Council's "Starting School" (lower/primary) and
+    "Transfer to Secondary School" (Year 7) allocation appendices -
+    both clean pdfplumber tables with a final "Last place offered,
+    criteria and distance" column already in metres (e.g. "Catchment,
+    3777.25m" or the unicode-quoted "'any other' 1367.52m").
+    Undersubscribed schools read "All offered" with no number and are
+    correctly skipped rather than guessed.
+    """
+    records = []
+    for url in _BEDFORD_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                for table in page.extract_tables():
+                    for row in table:
+                        if not row or not row[0] or row[0].strip() == "School":
+                            continue
+                        cell = row[-1]
+                        if not cell:
+                            continue
+                        match = _BEDFORD_DISTANCE_RE.search(cell.replace("\n", " "))
+                        if not match:
+                            continue
+                        name = row[0].replace("\n", " ").strip()
+                        records.append({"school_name": name, "last_distance_miles": float(match.group(1)) / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3910,6 +3948,7 @@ _AUTHORITIES = [
     ("Kensington and Chelsea", "2025/26", fetch_kensington_and_chelsea),
     ("Tower Hamlets", "2024/25", fetch_tower_hamlets),
     ("Wirral", "2025/26", fetch_wirral),
+    ("Bedford", "2026/27", fetch_bedford),
 ]
 
 

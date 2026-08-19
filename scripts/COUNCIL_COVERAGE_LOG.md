@@ -12,10 +12,10 @@ correctly attributed - never fabricated or guessed). 3 further
 councils (not listed below) are covered via real catchment-area
 polygons rather than a single admission-radius figure.
 
-## Covered (80 councils, in `_AUTHORITIES`)
+## Covered (81 councils, in `_AUTHORITIES`)
 
-Bexley, Birmingham, Bolton, Bracknell Forest, Brent, Brighton and Hove,
-Bristol City of, Bromley, Buckinghamshire, Bury, Calderdale,
+Bedford, Bexley, Birmingham, Bolton, Bracknell Forest, Brent, Brighton
+and Hove, Bristol City of, Bromley, Buckinghamshire, Bury, Calderdale,
 Cambridgeshire, Camden (secondary only), Cheshire East, Cheshire West
 and Chester, County Durham, Coventry, Derby, Dorset, Dudley, Ealing,
 East Sussex, Gloucestershire, Greenwich, Hackney, Haringey, Harrow,
@@ -63,12 +63,70 @@ since last check).
   table columns; not safely parseable without risking wrong figures.
 - **St Helens** - multi-line name wrapping plus page-break
   contamination; not safely parseable.
+- **Devon** - large rural county with many generically-named "St X
+  Church of England Primary" / "St X C of E VA Primary" schools;
+  spot-checking the real "Distance (Metres) of Last Offered Place"
+  primary allocation spreadsheet (linked from
+  devon.gov.uk/educationandfamilies/.../allocation-day-faqs/, hosted
+  as SharePoint .xlsx files, e.g.
+  `https://devoncc.sharepoint.com/:x:/s/PublicDocs/Education/IQAZGIaqfE6QR5cX3ROIlHBfARZCcys1O1yNYsjKocw0CGo?e=uU8aHH&download=1`)
+  through the script's actual `_match_urn` fuzzy matcher produced
+  *confirmed wrong* matches - e.g. "St James C of E - Okehampton"
+  matched to "St Andrew's Church of England Academy", "St Michael's C
+  of E VA Primary School" matched to "The Beacon Church of England
+  Voluntary Aided Primary" - both above the 0.72 cutoff despite being
+  different schools. Same failure mode as Blackburn with Darwen.
+  Devon's secondary-school spreadsheet (same SharePoint folder) shares
+  the same LA-wide candidate pool and would carry the same risk - not
+  attempted.
+
+## Correction (this round): actual remaining-council count
+
+A prior round's "roughly 220 councils... mostly smaller shire
+district/borough councils" estimate for "not yet investigated" was
+wrong - it conflated England's 333 *all-purpose* local authorities
+(most of which are lower-tier district councils with no education
+function at all - schools admissions is run by the 152-ish upper-tier
+councils: county councils, unitary authorities, metropolitan boroughs
+and London boroughs) with the ~152 `SchoolDetail.local_authority`
+values actually used in this project's database. Only councils that
+appear as a `local_authority` value in the `school_details` table can
+ever be matched by this script, so only those are worth investigating.
+
+To regenerate the true remaining list at the start of a future round,
+run (from the repo root, with `.env`'s `DATABASE_URL` set):
+
+```
+python -c "
+import sys; sys.path.insert(0, '.')
+from dotenv import load_dotenv; load_dotenv()
+from app.db import _get_engine
+from sqlalchemy import text
+with _get_engine().connect() as conn:
+    for r in conn.execute(text('SELECT DISTINCT local_authority FROM school_details ORDER BY 1')):
+        print(r[0])
+"
+```
+then exclude Wales/offshore entries, everything in "Covered" above,
+and everything in "Rejected" above. As of this round that left only
+these English councils genuinely uninvestigated:
+
+Barnsley, Blackpool, Bradford, Central Bedfordshire, City of London,
+Cumberland, Darlington, Derbyshire, East Riding of Yorkshire, Halton,
+Herefordshire (County of), Isle of Wight, Isles Of Scilly, Kingston
+upon Hull (City of), Lancashire, Leicestershire, Lincolnshire, Luton,
+North East Lincolnshire, North Lincolnshire, North Northamptonshire,
+Northumberland, Nottingham, Plymouth, Redcar and Cleveland, Rochdale,
+Rutland, Shropshire, Slough, South Tyneside, Stockton-on-Tees,
+Stoke-on-Trent, Torbay, Wakefield, Warrington, West Northamptonshire,
+Westmorland and Furness, Wiltshire, Wolverhampton, York.
+
+(Devon was in that list and has now been moved to Rejected above,
+Bedford has been moved to Covered above.)
 
 ## Ground not yet investigated
 
-Everything else - roughly 220 councils, mostly smaller shire
-district/borough councils that haven't been individually checked yet.
-Prioritise these over re-investigating anything above unless you have
-a concrete reason to believe the earlier blocker has changed (e.g. a
-Cloudflare-blocked site is reachable again, a moved URL has a new
-location).
+See the explicit list immediately above - work through those. If that
+list is ever exhausted, re-run the query above in case the DB's set of
+`local_authority` values has changed (e.g. a school import refresh),
+rather than assuming there's nothing left.
