@@ -316,18 +316,26 @@ out of scope for a single-authority round.
   the seven. These are pure policy/criteria guides with no
   post-allocation statistics appendix, unlike Shropshire's and West
   Northamptonshire's genuinely data-bearing lookalikes.
-- **Herefordshire** - a real-sounding document exists
-  ("Information for parents - Admission to primary school 2026",
-  `herefordshire.gov.uk/downloads/file/21116/...`) but the URL is a
-  JS-driven download-trigger landing page, not the PDF itself or a
-  redirect to it - the actual file host/URL wasn't locatable within
-  this round's time (unlike West Northamptonshire's equivalent
-  Next.js-embedded-JSON case, this page's `__NEXT_DATA__`-equivalent
-  didn't yield a direct link either). Worth a dedicated retry with a
-  full browser-rendering tool next time, not a dead end.
+- **Herefordshire** - checked with a real browser (network-request
+  capture, not just `curl`/`httpx`): the "Information for parents -
+  Admission to primary school 2026" landing page
+  (`herefordshire.gov.uk/downloads/file/21116/...`) actually redirects
+  to a *stale, 404ing* 2025 media URL - the council's own redirect
+  metadata hasn't been updated to point at the 2026 file. Found a
+  mirror of the actual 2026 document hosted on a Herefordshire school's
+  own site (`withington.hereford.sch.uk/attachments/download.asp?
+  file=145&type=pdf`, "Information for parents - Admission to primary
+  school - Commencing September 2026") and scanned it page-by-page -
+  zero numeric-distance-pattern matches across 22 pages. It's a pure
+  policy/criteria booklet (admissions rules, school list, contact
+  details), not a data booklet - genuinely no distance data to find,
+  not a retrieval failure.
 - **Isle of Wight** - `iow.gov.uk/documents/download/educating-your-
   child-booklet-2026-2027` (the parents' guide) returned a 403 to this
-  environment on the specific document path.
+  environment both via a plain HTTP fetch and via a real browser
+  (navigation itself was denied) - confirms this is a genuine
+  environment block (same category as the Cloudflare/WAF group above),
+  not a URL problem worth retrying without different network access.
 
 ## Searched this round via general web search AND direct site
 ## navigation (admissions hub pages fetched and their links listed) -
@@ -400,17 +408,15 @@ round via general web search AND direct site navigation" list a few
 sections up (Blackpool, City of London, East Riding of Yorkshire,
 Luton, North East Lincolnshire, North Lincolnshire, Northumberland,
 Plymouth, Redcar and Cleveland, Rochdale, Stockton-on-Tees, Torbay,
-Wakefield, Westmorland and Furness, Wiltshire - 15 councils) plus two
-councils with a genuine, real-sounding-but-not-yet-retrieved document
-(Herefordshire - JS-driven download page, actual file URL not found
-this round; Isle of Wight - specific document 403'd) worth a dedicated
-retry with better tooling. Every other candidate this round either got
-added (West Northamptonshire), got a specific reject reason recorded
-above (Shropshire, North Northamptonshire, Isles of Scilly, Derbyshire,
-Lincolnshire, York, Wolverhampton, Nottingham, Cumberland, Halton,
-Kingston upon Hull, Barnsley, Lancashire, Leicestershire - the last now
-confirmed environment-blocked rather than merely "not found"), or was
-already covered/rejected in a prior round.
+Wakefield, Westmorland and Furness, Wiltshire - 15 councils). Every
+other candidate this round either got added (West Northamptonshire),
+got a specific reject reason recorded above (Shropshire, North
+Northamptonshire, Isles of Scilly, Derbyshire, Lincolnshire, York,
+Wolverhampton, Nottingham, Cumberland, Halton, Kingston upon Hull,
+Barnsley, Lancashire, Herefordshire, Isle of Wight, Leicestershire -
+the last two now confirmed environment-blocked, via both a plain fetch
+and a real browser, rather than merely "not found"), or was already
+covered/rejected in a prior round.
 
 Two whole rounds of general web search plus one-to-two rounds of
 direct-navigation-of-admissions-pages (including scanning several
