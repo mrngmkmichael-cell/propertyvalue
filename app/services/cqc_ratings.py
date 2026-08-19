@@ -76,6 +76,11 @@ async def _fetch(lat: float, lon: float, postcode: str) -> dict:
                 f"{API_BASE}/locations",
                 params={"postcode": outcode, "perPage": LIST_PAGE_SIZE, "partnerCode": PARTNER_CODE},
             )
+            # TEMPORARY diagnostic - remove once we've confirmed whether
+            # this is a network block or a bad filter param. See
+            # request URL, status and the first 500 chars of the body in
+            # the Render log for whichever property page you load next.
+            print(f"[cqc_ratings DEBUG] GET {list_response.url} -> {list_response.status_code}: {list_response.text[:500]}")
             list_response.raise_for_status()
             summaries = list_response.json().get("locations", [])
             if not summaries:
