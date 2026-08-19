@@ -22,7 +22,7 @@ from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, crime,
     demographics, designations, epc, flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi,
     mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, routing, schools_db,
-    sewage_discharge, valuation,
+    sewage_discharge, surface_water_risk, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -613,6 +613,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             clay_risk.risk_near(lat, lon),
             sewage_discharge.nearby_outfalls(lat, lon),
             coal_mining.check_near(lat, lon),
+            surface_water_risk.risk_for(lat, lon),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
@@ -627,7 +628,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
         school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
-        coal_mining_result,
+        coal_mining_result, surface_water_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -766,6 +767,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["coal_mining_error"] = True
     else:
         context["coal_mining"] = coal_mining_result
+
+    if isinstance(surface_water_result, Exception) or surface_water_result is None:
+        context["surface_water_error"] = True
+    else:
+        context["surface_water"] = surface_water_result
 
     if isinstance(heritage_result, Exception):
         context["heritage_error"] = True

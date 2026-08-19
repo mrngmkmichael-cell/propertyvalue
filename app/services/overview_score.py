@@ -20,6 +20,7 @@ CONCERN_LABELS = {
     "prosperity": "Area house prices falling",
     "extension": "Possible unrecorded extension/change",
     "flood": "Flood risk",
+    "surface_water": "High surface water flood risk",
     "noise": "High noise levels",
     "radon": "Elevated radon risk",
     "air_quality": "Air quality well above WHO guideline",
@@ -78,6 +79,10 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     flood_zone = context.get("flood_zone")
     if context.get("flood_warnings") or (flood_zone and flood_zone.get("zone", 0) >= 3):
         concerns.append("flood")
+
+    surface_water = context.get("surface_water")
+    if surface_water and surface_water.get("label") == "High risk":
+        concerns.append("surface_water")
 
     noise = context.get("noise")
     if noise:
