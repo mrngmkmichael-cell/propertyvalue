@@ -13,6 +13,7 @@ rather than an exact string, since postcodes.io's admin_district
 label ("City of Westminster") exactly.
 """
 import asyncio
+from datetime import date, timedelta
 
 import httpx
 
@@ -71,3 +72,86 @@ async def area_comparison(admin_district: str, region: str, country: str) -> dic
             _latest_for_area(client, country),
         )
     return {"local_authority": local, "region": reg, "country": nat}
+
+
+_SERIES_QUERY_TEMPLATE = """
+prefix ukhpi: <http://landregistry.data.gov.uk/def/ukhpi/>
+prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?refMonth ?averagePrice WHERE {{
+  ?obs ukhpi:refRegion ?region ;
+       ukhpi:refMonth ?refMonth ;
+       ukhpi:averagePrice ?averagePrice .
+  ?region rdfs:label ?label .
+  FILTER(LANG(?label) = "en")
+  FILTER(CONTAINS(LCASE(STR(?label)), LCASE("{name}")))
+  FILTER(?refMonth >= "{cutoff}"^^<http://www.w3.org/2001/XMLSchema#gYearMonth>)
+}}
+ORDER BY ASC(?refMonth)
+"""
+
+MIN_TREND_POINTS = 24  # need at least 2 years of monthly data for a trend worth showing
+PROJECTION_MONTHS = (12, 24)
+
+
+def _linear_regression(points: list[tuple[int, float]]) -> tuple[float, float]:
+    """Least-squares slope/intercept for (x, y) pairs - pure Python, no numpy."""
+    n = len(points)
+    sum_x = sum(p[0] for p in points)
+    sum_y = sum(p[1] for p in points)
+    sum_xy = sum(p[0] * p[1] for p in points)
+    sum_xx = sum(p[0] * p[0] for p in points)
+    denom = n * sum_xx - sum_x * sum_x
+    if denom == 0:
+        return 0.0, sum_y / n
+    slope = (n * sum_xy - sum_x * sum_y) / denom
+    intercept = (sum_y - slope * sum_x) / n
+    return slope, intercept
+
+
+async def price_trend(admin_district: str, years: int = 5) -> dict | None:
+    if not admin_district:
+        return None
+    cutoff = (date.today() - timedelta(days=365 * years)).strftime("%Y-%m")
+    query = _SERIES_QUERY_TEMPLATE.format(name=admin_district.replace('"', ""), cutoff=cutoff)
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.get(
+                SPARQL_ENDPOINT,
+                params={"query": query},
+                headers={"Accept": "application/sparql-results+json"},
+            )
+            response.raise_for_status()
+    except httpx.HTTPError:
+        return None
+
+    bindings = response.json()["results"]["bindings"]
+    series = [
+        {"period": row["refMonth"]["value"][:7], "average_price": float(row["averagePrice"]["value"])}
+        for row in bindings
+    ]
+    if len(series) < MIN_TREND_POINTS:
+        return None
+
+    points = [(i, p["average_price"]) for i, p in enumerate(series)]
+    slope, intercept = _linear_regression(points)
+    last_index = len(series) - 1
+
+    projections = [
+        {"months_ahead": m, "price": intercept + slope * (last_index + m)}
+        for m in PROJECTION_MONTHS
+    ]
+
+    start_price = series[0]["average_price"]
+    current_price = series[-1]["average_price"]
+    pct_change = ((current_price - start_price) / start_price) * 100 if start_price else None
+
+    return {
+        "area_name": admin_district,
+        "series": series,
+        "start_price": start_price,
+        "current_price": current_price,
+        "pct_change": pct_change,
+        "monthly_trend": slope,
+        "projections": projections,
+    }

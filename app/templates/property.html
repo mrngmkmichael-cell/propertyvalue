@@ -227,6 +227,17 @@
                 {% else %}No data available{% endif %}
             </span>
         </button>
+
+        <button type="button" class="dashboard-card status-{{ 'muted' if (price_trend_error or not price_trend) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-price-trend" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            <span class="dashboard-card-icon icon-statistics">{{ icons.icon('statistics') }}</span>
+            <span class="dashboard-card-title">Price Trend &amp; Forecast</span>
+            <span class="dashboard-card-status">
+                {% if price_trend_error %}Data unavailable
+                {% elif price_trend %}{{ "%+.1f"|format(price_trend.pct_change) }}% over 5 years
+                {% else %}Not enough historical data{% endif %}
+            </span>
+        </button>
     </div>
 
     <h3 class="dashboard-category-heading">Property &amp; Condition</h3>
@@ -685,6 +696,80 @@
             <p class="notice">
                 No relevant sale record of a similar-sized property (within 5% floor area) to reference
                 within the last year.
+            </p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-price-trend">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Price trend &amp; forecast</h2>
+        {% if price_trend_error %}
+            <p class="notice notice-error">
+                The house price index data service didn't respond. Try again in a moment.
+            </p>
+        {% elif price_trend %}
+            <p class="section-sub">
+                A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
+                Price Index for {{ price_trend.area_name }} — not a guarantee, just where prices would
+                land if the recent trend continued in a straight line.
+            </p>
+            <svg class="trend-chart" viewBox="0 0 {{ price_trend_chart.width }} {{ price_trend_chart.height }}" role="img" aria-label="5-year house price trend for {{ price_trend.area_name }}, with a 1 and 2 year linear projection">
+                {% for g in price_trend_chart.gridlines %}
+                <line class="trend-chart-grid" x1="{{ price_trend_chart.pad_l }}" y1="{{ g.y }}" x2="{{ price_trend_chart.plot_right }}" y2="{{ g.y }}"/>
+                <text class="trend-chart-axis-label" x="{{ price_trend_chart.pad_l - 8 }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle">{{ g.label }}</text>
+                {% endfor %}
+
+                {% for xl in price_trend_chart.x_labels %}
+                <text class="trend-chart-axis-label" x="{{ xl.x }}" y="{{ price_trend_chart.x_axis_y + 20 }}" text-anchor="middle">{{ xl.label }}</text>
+                {% endfor %}
+
+                <path class="trend-chart-line-actual" d="{{ price_trend_chart.actual_path }}" fill="none"/>
+                <path class="trend-chart-line-projected" d="{{ price_trend_chart.projected_path }}" fill="none"/>
+
+                <circle class="trend-chart-dot" cx="{{ price_trend_chart.end_point.x }}" cy="{{ price_trend_chart.end_point.y }}" r="4"/>
+                <text class="trend-chart-point-label" x="{{ price_trend_chart.end_point.x + 8 }}" y="{{ price_trend_chart.end_point.y - 6 }}" dominant-baseline="middle">Now: {{ price_trend_chart.end_point.label }}</text>
+
+                {% for pt in price_trend_chart.projection_points %}
+                <circle class="trend-chart-dot trend-chart-dot-projected" cx="{{ pt.x }}" cy="{{ pt.y }}" r="4"/>
+                <text class="trend-chart-point-label trend-chart-point-label-projected" x="{{ pt.x + 8 }}" y="{{ pt.y + (loop.index0 * 16) + 6 }}" dominant-baseline="middle">{{ pt.label }}</text>
+                {% endfor %}
+            </svg>
+            <p class="section-sub trend-chart-caption">
+                Solid line: actual monthly average. Dashed: simple linear projection continuing the
+                recent 5-year trend.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Point</th>
+                        <th class="num">Average price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>5 years ago</td>
+                        <td class="num">{{ price_trend.start_price | gbp }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Now</strong></td>
+                        <td class="num"><strong>{{ price_trend.current_price | gbp }}</strong></td>
+                    </tr>
+                    {% for p in price_trend.projections %}
+                    <tr>
+                        <td>Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td>
+                        <td class="num">{{ p.price | gbp }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">
+                Not enough monthly HPI history for {{ location.admin_district if location else "this area" }}
+                to fit a meaningful trend.
             </p>
         {% endif %}
             </section>

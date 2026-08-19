@@ -358,6 +358,78 @@ def _price_position(reference_price: float | None, area_average: float | None) -
     return max(0, min(100, position))
 
 
+_TREND_CHART_W, _TREND_CHART_H = 640, 220
+_TREND_PAD_L, _TREND_PAD_R, _TREND_PAD_T, _TREND_PAD_B = 64, 84, 16, 28
+
+
+def _price_trend_chart(trend: dict) -> dict:
+    """Precompute SVG geometry for the price-trend line chart - point
+    scaling/path-building is much cleaner done here in Python than
+    inside Jinja, which has no real arithmetic-heavy loop support."""
+    series = trend["series"]
+    projections = trend["projections"]
+    n = len(series)
+    max_months_ahead = max(p["months_ahead"] for p in projections)
+    total_span = (n - 1) + max_months_ahead
+
+    values = [p["average_price"] for p in series] + [p["price"] for p in projections]
+    min_val, max_val = min(values), max(values)
+    val_pad = (max_val - min_val) * 0.08 or max_val * 0.05
+    min_val, max_val = min_val - val_pad, max_val + val_pad
+
+    plot_w = _TREND_CHART_W - _TREND_PAD_L - _TREND_PAD_R
+    plot_h = _TREND_CHART_H - _TREND_PAD_T - _TREND_PAD_B
+
+    def x_for(index: float) -> float:
+        return _TREND_PAD_L + (index / total_span) * plot_w
+
+    def y_for(value: float) -> float:
+        return _TREND_PAD_T + plot_h - ((value - min_val) / (max_val - min_val)) * plot_h
+
+    actual_pts = [(x_for(i), y_for(p["average_price"])) for i, p in enumerate(series)]
+    actual_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in actual_pts)
+
+    projected_pts = [actual_pts[-1]] + [
+        (x_for(n - 1 + p["months_ahead"]), y_for(p["price"])) for p in projections
+    ]
+    projected_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in projected_pts)
+
+    gridlines = [
+        {"y": y_for(v), "label": _format_gbp(v)}
+        for v in (min_val + val_pad, (min_val + max_val) / 2, max_val - val_pad)
+    ]
+
+    x_labels = []
+    for i, p in enumerate(series):
+        if i % 12 == 0 or i == n - 1:
+            x_labels.append({"x": x_for(i), "label": p["period"][:4]})
+
+    end_point = {"x": actual_pts[-1][0], "y": actual_pts[-1][1], "label": _format_gbp(series[-1]["average_price"])}
+    projection_points = [
+        {
+            "x": x_for(n - 1 + p["months_ahead"]),
+            "y": y_for(p["price"]),
+            "label": f"{_format_gbp(p['price'])} in {p['months_ahead'] // 12}y",
+        }
+        for p in projections
+    ]
+
+    return {
+        "width": _TREND_CHART_W,
+        "height": _TREND_CHART_H,
+        "pad_l": _TREND_PAD_L,
+        "pad_r": _TREND_PAD_R,
+        "plot_right": _TREND_CHART_W - _TREND_PAD_R,
+        "x_axis_y": _TREND_PAD_T + plot_h,
+        "actual_path": actual_path,
+        "projected_path": projected_path,
+        "gridlines": gridlines,
+        "x_labels": x_labels,
+        "end_point": end_point,
+        "projection_points": projection_points,
+    }
+
+
 def _format_distance(value) -> str:
     try:
         m = float(value)
@@ -498,6 +570,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             historic_landfill.check_near(lat, lon),
             catchment.catchments_for(lat, lon),
             asyncio.to_thread(schools_db.school_landscape, lat, lon),
+            hpi.price_trend(location["admin_district"]),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
@@ -511,7 +584,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
-        school_landscape_result,
+        school_landscape_result, price_trend_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -583,6 +656,12 @@ async def property_search(request: Request, postcode: str = "", house_number: st
                 context["price_position"] = position
                 context["price_position_reference"] = reference_price
                 context["price_position_area"] = area
+
+    if isinstance(price_trend_result, Exception):
+        context["price_trend_error"] = True
+    elif price_trend_result:
+        context["price_trend"] = price_trend_result
+        context["price_trend_chart"] = _price_trend_chart(price_trend_result)
 
     if isinstance(schools_result, Exception):
         context["schools_error"] = True
