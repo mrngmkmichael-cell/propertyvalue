@@ -850,23 +850,42 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if not premium_unlocked and context.get("catchment"):
         context["catchment"] = [{**c, "rings": None} for c in context["catchment"]]
 
-    # Same reasoning as the catchment polygons above - the estimated
-    # admission-distance circle is the map-drawn equivalent of a
-    # Premium-gated finding, so it's omitted entirely (not just
-    # hidden by CSS) for non-premium users. Built as its own small
-    # plain-dict list (not filtered from all_schools directly) since
-    # those entries also carry non-JSON-serializable ORM objects
-    # (e.g. "detail") that would break tojson() in the map script.
-    context["admission_radius_map_data"] = []
-    if premium_unlocked and context.get("school_landscape"):
-        context["admission_radius_map_data"] = [
-            {
-                "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
-                "last_distance_miles": s["admission_radius"]["last_distance_miles"],
-            }
-            for s in context["school_landscape"].get("all_schools", [])
-            if s.get("admission_radius")
-        ]
+    # Same reasoning as the catchment polygons above - the admission-
+    # distance circle (real or modelled-estimate) is the map-drawn
+    # equivalent of a Premium-gated finding, so the full per-school
+    # list (with lat/lon) is omitted entirely (not just hidden by CSS)
+    # for non-premium users. Built as its own small plain-dict list
+    # (not filtered from all_schools directly) since those entries
+    # also carry non-JSON-serializable ORM objects (e.g. "detail")
+    # that would break tojson() in the map script. Covers every school
+    # with *either* a real published distance or a modelled fallback,
+    # so "School Catchment Areas" isn't a dead end everywhere outside
+    # the handful of real-polygon councils.
+    _distance_schools = []
+    if context.get("school_landscape"):
+        for s in context["school_landscape"].get("all_schools", []):
+            if s.get("admission_radius"):
+                _distance_schools.append({
+                    "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
+                    "radius_miles": s["admission_radius"]["last_distance_miles"],
+                    "is_real": True,
+                    "academic_year": s["admission_radius"]["academic_year"],
+                    "source_authority": s["admission_radius"]["source_authority"],
+                })
+            elif s.get("catchment_estimate"):
+                _distance_schools.append({
+                    "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
+                    "radius_miles": s["catchment_estimate"]["radius_miles"],
+                    "is_real": False,
+                    "academic_year": None,
+                    "source_authority": None,
+                })
+
+    context["catchment_distance_schools"] = _distance_schools if premium_unlocked else []
+    # Ungated teaser counts for the dashboard card, matching how other
+    # Premium cards show a summary number before the paywall.
+    context["catchment_distance_count"] = len(_distance_schools)
+    context["catchment_distance_any_real"] = any(s["is_real"] for s in _distance_schools)
 
     return templates.TemplateResponse(request, "property.html", context)
 
