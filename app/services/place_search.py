@@ -17,7 +17,7 @@ from app.services.postcodes import lookup_postcode, outcode_centroid
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 # A dedicated User-Agent identifying the app is required by Nominatim's
 # usage policy - the default httpx one gets silently rate-limited.
-HEADERS = {"User-Agent": "PropertyValue/1.0 (UK property research tool)"}
+HEADERS = {"User-Agent": "UKPropertyInsight/1.0 (UK property research tool)"}
 
 
 async def resolve(query: str) -> dict | None:

@@ -29,7 +29,7 @@ from app.services.postcodes import lookup_postcode, nearby_postcodes
 
 load_dotenv()
 
-app = FastAPI(title="PropertyValue")
+app = FastAPI(title="UKPropertyInsight")
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.environ.get("SESSION_SECRET", "dev-only-insecure-secret"),

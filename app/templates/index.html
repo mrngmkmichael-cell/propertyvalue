@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}PropertyValue — UK Property Lookup{% endblock %}
+{% block title %}UKPropertyInsight — UK Property Lookup{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -265,7 +265,7 @@
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
     <div class="faq-list">
         {% for q, a in [
-            ('What is PropertyValue?', 'A due-diligence tool for any UK postcode — sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
+            ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode — sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
             ('Is it free to use?', 'Searching is free and needs no account — you\'ll see headline verdicts on every check straight away. Creating a free account unlocks the full depth of each report, including exact figures and full history.'),
             ('How is this different from Rightmove or Zoopla?', 'Those are listings portals — they show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
             ('Where does the data come from?', 'Named official sources only, shown below — HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed — every figure traces back to a source.'),
