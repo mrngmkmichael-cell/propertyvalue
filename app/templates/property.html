@@ -1618,12 +1618,11 @@
             </table>
         {% elif catchment_distance_schools %}
             <p class="notice">
-                No real boundary <strong>shape</strong> published for this council, but nearby
-                schools' admission-<strong>distance</strong> figures are drawn as circles on the map
-                above instead — solid orange where a council has published a real figure, dashed
-                grey where none exists and it's a modelled estimate. "In catchment?" compares this
-                property's actual distance against that radius — not a guarantee, since the radius
-                shifts every year with demand.
+                No real boundary <strong>shape</strong> published for this council, so here's each
+                nearby school's admission-<strong>distance</strong> figure instead — "Published" where
+                the council has a real figure on file, "Estimated" where none exists and it's a
+                modelled fallback. "In catchment?" compares this property's actual distance against
+                that radius — not a guarantee, since the radius shifts every year with demand.
             </p>
             {% for phase in ['Primary', 'Secondary', 'Other'] %}
             {% set phase_schools = catchment_distance_schools | selectattr('phase_group', 'equalto', phase) | list %}
