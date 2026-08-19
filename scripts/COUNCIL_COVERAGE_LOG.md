@@ -65,7 +65,9 @@ worth it for one more phase of one authority already covered.
 
 ### Blocked from this environment (Cloudflare / WAF / persistent 403)
 Enfield, Gateshead, West Berkshire, Sunderland, Barnet, Hampshire,
-Manchester.
+Manchester, Leicestershire (whole `leicestershire.gov.uk` domain
+returns 403 to this environment's requests, not just one document -
+confirmed against both a specific PDF and the bare domain root).
 
 ### Unreachable (timeout / connection failure / persistent 5xx)
 North Tyneside (source lives on a different subdomain that times out),
@@ -295,41 +297,61 @@ out of scope for a single-authority round.
   criteria group* (catchment/sibling/distance/religion/etc. counts),
   not an actual distance-in-miles figure. No separate document with
   real distance figures was located on york.gov.uk's admissions pages.
-- **Wolverhampton, Nottingham, Cumberland** - specific documents found
-  and downloaded (`Admission-Arrangements-2026-27-June25.pdf`,
-  `admission-arrangements-20252026-determined.pdf`,
-  `starting_school_in_cumberland_parental_booklet_2025_v1.pdf`
-  respectively) and scanned page-by-page with a generic numeric-
-  distance-pattern regex (`\d\.\d+\s*(miles?|km|metres?|m)`) - zero
-  matches in any of the three. These are pure policy/criteria
-  documents with no post-allocation statistics appendix, unlike
-  Shropshire's superficially similar "Parents' Guide" which does have
-  one.
+- **Wolverhampton, Nottingham, Cumberland, Halton, Kingston upon Hull
+  (City of), Barnsley, Lancashire (North)** - specific composite
+  "parents' guide"/"admission arrangements" documents found and
+  downloaded for each (`Admission-Arrangements-2026-27-June25.pdf`;
+  `admission-arrangements-20252026-determined.pdf`;
+  `starting_school_in_cumberland_parental_booklet_2025_v1.pdf`;
+  `smwst.co.uk/downloads/admissions/primary_booklet_2026__1_.pdf`;
+  `hull.gov.uk/downloads/file/4888/a-guide-to-primary-admissions-2026-
+  to-2027`; `barnsley.gov.uk/media/locjtvek/primary-school-admissions-
+  2026-booklet.pdf`; `lancashire.gov.uk/media/ivsbnufd/primary-school-
+  admissions-in-north-lancashire-2026-27.pdf`) and scanned page-by-page
+  with a generic numeric-distance-pattern regex
+  (`\d\.\d+\s*(miles?|km|metres?|m)`) the same way Shropshire's lookalike
+  document was found to have real data - zero matches (or, for
+  Lancashire North, only a policy-criteria mention of a fixed "2.5
+  miles" catchment radius, not a real last-offered figure) in any of
+  the seven. These are pure policy/criteria guides with no
+  post-allocation statistics appendix, unlike Shropshire's and West
+  Northamptonshire's genuinely data-bearing lookalikes.
+- **Herefordshire** - a real-sounding document exists
+  ("Information for parents - Admission to primary school 2026",
+  `herefordshire.gov.uk/downloads/file/21116/...`) but the URL is a
+  JS-driven download-trigger landing page, not the PDF itself or a
+  redirect to it - the actual file host/URL wasn't locatable within
+  this round's time (unlike West Northamptonshire's equivalent
+  Next.js-embedded-JSON case, this page's `__NEXT_DATA__`-equivalent
+  didn't yield a direct link either). Worth a dedicated retry with a
+  full browser-rendering tool next time, not a dead end.
+- **Isle of Wight** - `iow.gov.uk/documents/download/educating-your-
+  child-booklet-2026-2027` (the parents' guide) returned a 403 to this
+  environment on the specific document path.
 
 ## Searched this round via general web search AND direct site
 ## navigation (admissions hub pages fetched and their links listed) -
 ## no promising document link surfaced either way
-Barnsley, Blackpool, City of London, East Riding of Yorkshire, Halton,
-Herefordshire, Isle of Wight, Kingston upon Hull, Lancashire,
-Leicestershire, Luton, North East Lincolnshire, North Lincolnshire,
-Northumberland, Plymouth, Redcar and Cleveland, Rochdale,
-Stockton-on-Tees, Torbay, Wakefield, Westmorland and Furness,
-Wiltshire. (This is the second round these have been checked, now
-including direct navigation of each council's own admissions landing
-page as well as general web search, per last round's suggestion - and
-it still didn't surface a distance document for this group. That
-still doesn't *prove* one doesn't exist: **Shropshire and North
-Northamptonshire were in this exact "search found nothing" bucket
-after last round's pass and this round's pass alike, right up until a
-JS-rendering-aware fetch and a document-title guess surfaced real data
-for both** - so "not found by search/direct-nav twice" is meaningfully
-stronger evidence of a genuine gap than one pass, but a future round
-that wants to push further should try: (a) a fetch tool that renders
-JavaScript for any site built on a modern JS framework - some of these
-councils' sites, like West Northamptonshire's, only expose real
-document links in the rendered DOM, not the raw HTML/JSON a plain
-`curl`/`httpx` request sees; (b) guessing that a neighbouring/sibling
-council (e.g. one that split from the same former county, or shares a
+Blackpool, City of London, East Riding of Yorkshire, Luton, North East
+Lincolnshire, North Lincolnshire, Northumberland, Plymouth, Redcar and
+Cleveland, Rochdale, Stockton-on-Tees, Torbay, Wakefield, Westmorland
+and Furness, Wiltshire. (This is the second round these have been
+checked, now including direct navigation of each council's own
+admissions landing page as well as general web search, per last
+round's suggestion - and it still didn't surface a distance document
+for this group. That still doesn't *prove* one doesn't exist:
+**Shropshire and North Northamptonshire were in this exact "search
+found nothing" bucket after last round's pass and this round's pass
+alike, right up until a JS-rendering-aware fetch and a document-title
+guess surfaced real data for both** - so "not found by search/
+direct-nav twice" is meaningfully stronger evidence of a genuine gap
+than one pass, but a future round that wants to push further should
+try: (a) a fetch tool that renders JavaScript for any site built on a
+modern JS framework - some of these councils' sites, like West
+Northamptonshire's and Herefordshire's, only expose real document
+links in the rendered DOM, not the raw HTML/JSON a plain `curl`/
+`httpx` request sees; (b) guessing that a neighbouring/sibling council
+(e.g. one that split from the same former county, or shares a
 supplier/CMS) publishes the same page template - this round found West
 Northamptonshire's real data specifically *because* North
 Northamptonshire's sibling page worked; (c) composite "Parents' Guide"
@@ -375,28 +397,36 @@ reasons).
 
 After this round, the true remaining set is exactly the "Searched this
 round via general web search AND direct site navigation" list a few
-sections up (Barnsley, Blackpool, City of London, East Riding of
-Yorkshire, Halton, Herefordshire, Isle of Wight, Kingston upon Hull,
-Lancashire, Leicestershire, Luton, North East Lincolnshire, North
-Lincolnshire, Northumberland, Plymouth, Redcar and Cleveland, Rochdale,
-Stockton-on-Tees, Torbay, Wakefield, Westmorland and Furness,
-Wiltshire - 22 councils). Every other candidate this round either got
+sections up (Blackpool, City of London, East Riding of Yorkshire,
+Luton, North East Lincolnshire, North Lincolnshire, Northumberland,
+Plymouth, Redcar and Cleveland, Rochdale, Stockton-on-Tees, Torbay,
+Wakefield, Westmorland and Furness, Wiltshire - 15 councils) plus two
+councils with a genuine, real-sounding-but-not-yet-retrieved document
+(Herefordshire - JS-driven download page, actual file URL not found
+this round; Isle of Wight - specific document 403'd) worth a dedicated
+retry with better tooling. Every other candidate this round either got
 added (West Northamptonshire), got a specific reject reason recorded
 above (Shropshire, North Northamptonshire, Isles of Scilly, Derbyshire,
-Lincolnshire, York, Wolverhampton, Nottingham, Cumberland), or was
+Lincolnshire, York, Wolverhampton, Nottingham, Cumberland, Halton,
+Kingston upon Hull, Barnsley, Lancashire, Leicestershire - the last now
+confirmed environment-blocked rather than merely "not found"), or was
 already covered/rejected in a prior round.
 
-Two whole rounds of general web search plus one round of direct-
-navigation-of-admissions-pages have now failed to surface a distance
-document for this 22-council list, which is stronger (though still not
+Two whole rounds of general web search plus one-to-two rounds of
+direct-navigation-of-admissions-pages (including scanning several
+composite "parents' guide" PDFs page-by-page for numeric distance
+patterns, the technique that found Shropshire's real document - it
+came up empty again for Wolverhampton, Nottingham, Cumberland, Halton,
+Hull, Barnsley and Lancashire North this round) have now failed to
+surface a *distance-bearing* document for the 15-council list, which is
+stronger (though still not
 conclusive) evidence it's a genuine gap rather than a search-effort
 gap - see the note above this list for concrete ideas a future round
 could try that this round didn't (JS-rendering fetch tools, sibling-
-council template guessing, page-by-page scanning of composite
-prospectus PDFs regardless of title). If that list is ever exhausted,
-re-run the query below in case the DB's set of `local_authority` values
-has changed (e.g. a school import refresh), rather than assuming
-there's nothing left:
+council template guessing). If that list is ever exhausted, re-run the
+query below in case the DB's set of `local_authority` values has
+changed (e.g. a school import refresh), rather than assuming there's
+nothing left:
 
 ```
 python -c "
