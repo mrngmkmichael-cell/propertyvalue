@@ -42,7 +42,11 @@ async def walking_distance(lat1: float, lon1: float, lat2: float, lon2: float) -
         return None
 
     try:
-        summary = response.json()["routes"][0]["summary"]
-        return {"distance_m": summary["distance"], "duration_min": summary["duration"] / 60}
+        # A GET to this endpoint returns GeoJSON by default (not the
+        # "routes"/"summary" shape shown in the API docs, which is
+        # what POSTing a JSON body with format=json gets you) -
+        # confirmed against a live response before writing this.
+        segment = response.json()["features"][0]["properties"]["segments"][0]
+        return {"distance_m": segment["distance"], "duration_min": segment["duration"] / 60}
     except (KeyError, IndexError, TypeError):
         return None
