@@ -9,10 +9,12 @@ is hand-rolled with stdlib hmac/hashlib per Stripe's documented scheme
 - the same "hand-roll standard crypto with stdlib rather than add a
 dependency" choice auth.py already makes for password hashing.
 
-Both plans share a single TRIAL_DAYS free trial, applied at Checkout
-Session creation time via subscription_data rather than relying on a
-trial configured on the Price itself, so it works the same way
-regardless of how the Price was set up in the Stripe dashboard.
+Each plan has its own free trial length (longer for the quarterly plan
+- a bigger up-front commitment gets more time to try it first), applied
+at Checkout Session creation time via subscription_data rather than
+relying on a trial configured on the Price itself, so it works the
+same way regardless of how the Price was set up in the Stripe
+dashboard.
 """
 import hashlib
 import hmac
@@ -22,13 +24,12 @@ import time
 import httpx
 
 API_BASE = "https://api.stripe.com/v1"
-TRIAL_DAYS = 5
 WEBHOOK_TOLERANCE_S = 300  # Stripe's own recommended freshness window
 
-# key -> (env var holding the Stripe Price ID, display label)
+# key -> (env var holding the Stripe Price ID, display label, trial days)
 PLANS = {
-    "monthly": ("STRIPE_PRICE_ID_MONTHLY", "£9.99/month"),
-    "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months"),
+    "monthly": ("STRIPE_PRICE_ID_MONTHLY", "£9.99/month", 5),
+    "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months", 14),
 }
 
 # Subscription statuses that should count as "has Premium access" -
@@ -42,13 +43,13 @@ def is_configured() -> bool:
 
 
 def plan_choices() -> list[dict]:
-    """[{"key": ..., "label": ..., "available": bool}, ...] - available
-    is False if that plan's Price ID env var isn't set, so the
-    template can hide a plan that hasn't been configured yet rather
-    than offering a button that will fail."""
+    """[{"key": ..., "label": ..., "trial_days": ..., "available": bool}, ...]
+    - available is False if that plan's Price ID env var isn't set, so
+    the template can hide a plan that hasn't been configured yet
+    rather than offering a button that will fail."""
     return [
-        {"key": key, "label": label, "available": bool(os.environ.get(price_env))}
-        for key, (price_env, label) in PLANS.items()
+        {"key": key, "label": label, "trial_days": trial_days, "available": bool(os.environ.get(price_env))}
+        for key, (price_env, label, trial_days) in PLANS.items()
     ]
 
 
@@ -60,7 +61,7 @@ async def create_checkout_session(
     Stripe failed."""
     if not is_configured() or plan not in PLANS:
         return None
-    price_env, _ = PLANS[plan]
+    price_env, _, trial_days = PLANS[plan]
     price_id = os.environ.get(price_env)
     if not price_id:
         return None
@@ -73,7 +74,7 @@ async def create_checkout_session(
         "cancel_url": cancel_url,
         "customer_email": user_email,
         "client_reference_id": str(user_id),
-        "subscription_data[trial_period_days]": TRIAL_DAYS,
+        "subscription_data[trial_period_days]": trial_days,
         # Lets a user re-enter checkout without Stripe creating a
         # second customer record for the same email.
         "customer_creation": "always",

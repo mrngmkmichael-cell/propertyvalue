@@ -1151,7 +1151,6 @@ def premium_info(request: Request, checkout: str = "", error: str = ""):
     context = base_context(request)
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
-    context["trial_days"] = stripe_billing.TRIAL_DAYS
     context["checkout_cancelled"] = checkout == "cancelled"
     context["checkout_error"] = bool(error)
     return templates.TemplateResponse(request, "premium.html", context)
