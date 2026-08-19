@@ -27,7 +27,7 @@ from app.services import (
     reviews, routing, schools_db, sewage_discharge, stripe_billing, surface_water_risk, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
-from app.services.postcodes import lookup_postcode, nearby_postcodes
+from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_centroid
 
 load_dotenv()
 
@@ -1123,6 +1123,35 @@ async def api_extension_login(request: Request):
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
+_FULL_POSTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$", re.I)
+
+
+async def _immediate(value):
+    return value
+
+
+async def _resolve_extension_location(postcode: str) -> tuple[dict | None, bool]:
+    """Resolve a postcode the extension detected on a listing page,
+    which is routinely only the outward code (e.g. "BR5") - Rightmove/
+    Zoopla/OnTheMarket deliberately never publish a listed property's
+    full postcode, to stop buyers bypassing the agent. A full postcode
+    geocodes to its exact point as normal; an outward-only one geocodes
+    to its district centroid via a real nearby postcode instead, so the
+    rest of the pipeline gets the same location dict shape either way.
+    The caller gets told which happened so it can avoid presenting
+    address-specific data (sold price, EPC) as if it belonged to this
+    property, when it actually belongs to a geographic neighbour."""
+    if _FULL_POSTCODE_RE.match(postcode):
+        return await lookup_postcode(postcode), False
+    centroid = await outcode_centroid(postcode)
+    if not centroid:
+        return None, True
+    nearby = await nearby_postcodes(centroid["latitude"], centroid["longitude"], radius_m=800, limit=1)
+    if not nearby:
+        return None, True
+    return await lookup_postcode(nearby[0]["postcode"]), True
+
+
 async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:
     """Same idea as /property/comparables, trimmed down - no
     percentile/reference-price maths, just a distance-sorted list of
@@ -1184,7 +1213,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
         premium_unlocked = bool(token_user and token_user.is_premium)
 
     try:
-        location = await lookup_postcode(postcode)
+        location, area_level = await _resolve_extension_location(postcode)
     except httpx.HTTPError:
         return JSONResponse({"error": "lookup_failed"}, status_code=502, headers=_EXTENSION_CORS_HEADERS)
     if location is None:
@@ -1194,7 +1223,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
 
-    cache_key = ("extension_report", canonical)
+    cache_key = ("extension_report", canonical, area_level)
     cached = _cache.get(cache_key, EXTENSION_REPORT_CACHE_TTL_S)
     if cached is not None:
         payload = dict(cached)  # shallow copy - _gate_extension_list must never mutate the cached original
@@ -1208,13 +1237,18 @@ async def api_extension_report(request: Request, postcode: str = ""):
         tx_result, comparables_result, flood_zone_result, crime_result, landscape_result, hpi_result,
         certs_result, deprivation_result, income_result, occupation_result,
     ) = await asyncio.gather(
-        sold_prices_for_postcode(canonical),
+        # In area-level mode `canonical` is a geographic neighbour's
+        # postcode, not this property's - querying its sold prices/EPC
+        # would show that neighbour's real records mislabelled as this
+        # property's, which is worse than showing nothing, so these two
+        # are skipped entirely rather than fetched and discarded.
+        _immediate([]) if area_level else sold_prices_for_postcode(canonical),
         _comparables_for_extension(lat, lon),
         flood_zones.zone_for(lat, lon),
         crime.summary_near(lat, lon),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
-        epc.certificates_for_postcode(canonical),
+        _immediate([]) if area_level else epc.certificates_for_postcode(canonical),
         asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
         asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
@@ -1236,13 +1270,20 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "region": location["region"],
         "latitude": lat,
         "longitude": lon,
-        "report_url": f"/property?postcode={canonical.replace(' ', '+')}",
+        "report_url": None if area_level else f"/property?postcode={canonical.replace(' ', '+')}",
         # Distinguishes "the Land Registry lookup failed" from "it
         # succeeded and genuinely found no sales" - without this the
         # extension can't tell the two apart and always shows the same
         # "no recorded sales" text, which is misleading when it was
         # actually a transient SPARQL error.
         "market_history_error": tx_error,
+        # True when the postcode came from an outward-code-only guess
+        # (see _resolve_extension_location) rather than an exact match -
+        # the extension uses this to label crime/flood/schools/HPI as
+        # genuinely area-level info while telling the user to get the
+        # house number from the agent for anything address-specific.
+        "area_level": area_level,
+        "district": postcode.strip().upper() if area_level else None,
     }
 
     mini_context = {
@@ -1351,7 +1392,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         return JSONResponse({"error": "premium_required"}, status_code=403, headers=_EXTENSION_CORS_HEADERS)
 
     try:
-        location = await lookup_postcode(postcode)
+        location, area_level = await _resolve_extension_location(postcode)
     except httpx.HTTPError:
         return JSONResponse({"error": "lookup_failed"}, status_code=502, headers=_EXTENSION_CORS_HEADERS)
     if location is None:
@@ -1362,7 +1403,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     codes = location.get("codes", {})
     laua = codes.get("admin_district", "")
 
-    cache_key = ("extension_premium_report", canonical)
+    cache_key = ("extension_premium_report", canonical, area_level)
     cached = _cache.get(cache_key, EXTENSION_PREMIUM_CACHE_TTL_S)
     if cached is not None:
         return JSONResponse(cached, headers=_EXTENSION_CORS_HEADERS)
@@ -1377,7 +1418,11 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         hpi.price_trend(location["admin_district"]),
         asyncio.to_thread(rental.rental_for_laua, laua),
-        orientation.orientation_for(lat, lon),
+        # Orientation reads THIS building's own footprint - in
+        # area-level mode `lat, lon` is a geographic neighbour's, so
+        # skip it rather than show a different building's aspect
+        # mislabelled as this property's.
+        _immediate(None) if area_level else orientation.orientation_for(lat, lon),
         surface_water_risk.risk_for(lat, lon),
         sewage_discharge.nearby_outfalls(lat, lon),
         noise.noise_near(lat, lon),
@@ -1451,7 +1496,11 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Property & Condition",
             "cards": [
-                card("Aspect", (f"Garden faces {orientation_data['rear_facing']}" if orientation_data else "No data")),
+                card(
+                    "Aspect",
+                    "Ask agent for exact address" if area_level else (f"Garden faces {orientation_data['rear_facing']}" if orientation_data else "No data"),
+                    "muted" if area_level else "ok",
+                ),
             ],
         },
         {
@@ -1484,7 +1533,12 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         },
     ]
 
-    payload = {"postcode": canonical, "sections": sections}
+    payload = {
+        "postcode": canonical,
+        "sections": sections,
+        "area_level": area_level,
+        "district": postcode.strip().upper() if area_level else None,
+    }
     _cache.set(cache_key, payload)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 

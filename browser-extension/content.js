@@ -429,6 +429,11 @@
     .pv-dash-card:not(.pv-dash-locked) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
     .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
     .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; }
+    .pv-area-notice {
+      display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; padding: 10px 12px;
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+      font-size: 11.5px; color: #92400e; line-height: 1.5;
+    }
     .pv-postcode-bar {
       display: flex; align-items: center; gap: 8px; padding: 7px 24px;
       border-bottom: 1px solid #e4e7ec; background: #f8fafc; flex-shrink: 0;
@@ -569,7 +574,7 @@
     bar.className = "pv-postcode-bar" + (postcodeIsPartial ? " pv-postcode-partial" : "");
     const label = currentPostcode
       ? (postcodeIsPartial
-          ? "We could only detect the area (" + escapeHtml(currentPostcode) + ") - not the exact postcode"
+          ? "Showing area-level data for " + escapeHtml(currentPostcode) + " - not the exact postcode"
           : "Showing data for " + escapeHtml(currentPostcode))
       : "No postcode detected on this page";
     bar.innerHTML =
@@ -644,7 +649,7 @@
     const detail = CARD_DETAILS[title];
     detailEl.textContent = detail || "";
     detailEl.hidden = !detail;
-    backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData ? currentData.report_url : "/premium");
+    backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData && currentData.report_url ? currentData.report_url : "/");
     backdrop.hidden = false;
   }
 
@@ -771,12 +776,17 @@
         "</div>" +
       "</div>";
 
+      if (data.area_level) {
+        html += '<div class="pv-area-notice">📍 <span>Showing area-level information for ' + escapeHtml(data.district || "") +
+          " - Zoopla/Rightmove don't publish this listing's exact address, so crime, flood risk and schools here are genuinely for the surrounding area, not confirmed to this specific property. For sold-price history, EPC and a precise valuation, ask the agent for the house number, then search it directly on UKPropertyInsight.</span></div>";
+      }
+
       html += '<h3 class="pv-category-heading">At a glance</h3><div class="pv-dash-grid">' +
-        dashCard("Avg sold price", gbp(s.avg_price)) +
+        dashCard("Avg sold price", data.area_level ? "Ask agent for address" : gbp(s.avg_price)) +
         dashCard("Flood risk", s.flood_zone) +
         dashCard("Crime nearby", s.crime_total != null ? s.crime_total + " recorded" : null) +
         dashCard("Schools", s.schools_good_pct != null ? s.schools_good_pct + "% Outstanding/Good" : null) +
-        dashCard("EPC rating", s.epc_rating) +
+        dashCard("EPC rating", data.area_level ? "Ask agent for address" : s.epc_rating) +
         "</div>";
 
       const sections = currentPremiumData
@@ -800,6 +810,7 @@
     },
     market: function (data) {
       const rows = data.market_history || [];
+      if (data.area_level) return '<p class="pv-empty">We don’t have this property’s exact address, so we can’t show its sold-price history. Ask the agent for the house number, then search it directly on UKPropertyInsight.</p>';
       if (data.market_history_error) return '<p class="pv-error">Couldn’t check sold prices right now - try refreshing in a moment.</p>';
       if (!rows.length) return '<p class="pv-empty">No recorded sales found for this postcode.</p>';
       const html =
@@ -840,6 +851,7 @@
       return html + (data.premium_unlocked ? "" : gateHtml("schools"));
     },
     epc: function (data) {
+      if (data.area_level) return '<p class="pv-empty">We don’t have this property’s exact address, so we can’t show its EPC certificate. Ask the agent for the house number, then search it directly on UKPropertyInsight.</p>';
       if (!data.epc) return '<p class="pv-empty">No EPC certificate found for this postcode.</p>';
       return (
         '<ul class="pv-stats">' +
@@ -1031,8 +1043,12 @@
         root.querySelector(".pv-header-score-num").textContent = data.overview.score;
         root.querySelector(".pv-header-score-grade").textContent = data.overview.grade || "";
         const reportLink = root.querySelector(".pv-header-report-link");
-        reportLink.href = API_BASE + data.report_url;
-        reportLink.hidden = false;
+        if (data.report_url) {
+          reportLink.href = API_BASE + data.report_url;
+          reportLink.hidden = false;
+        } else {
+          reportLink.hidden = true; // area-level result - no single property page to link to
+        }
         renderTabStrip(root, data);
         refreshActiveTab();
         if (currentToken) loadPremiumReport();
