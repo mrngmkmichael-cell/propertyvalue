@@ -1234,24 +1234,34 @@ async def stripe_webhook(request: Request):
         customer_id, status = data.get("customer"), data.get("status")
         with db.get_session() as session:
             db_user = session.scalar(select(User).where(User.stripe_customer_id == customer_id))
-            if db_user:
-                db_user.subscription_status = status
-                db_user.is_premium = stripe_billing.grants_access(status)
-                db_user.stripe_subscription_id = data.get("id")
-                trial_end = data.get("trial_end")
-                db_user.trial_ends_at = (
-                    datetime.datetime.fromtimestamp(trial_end, tz=datetime.timezone.utc) if trial_end else None
-                )
-                session.commit()
+            if db_user is None:
+                # Stripe doesn't guarantee delivery order between this
+                # event and checkout.session.completed - if that one
+                # hasn't linked stripe_customer_id onto a user yet,
+                # there's genuinely nothing to update against right
+                # now. A non-2xx here makes Stripe retry this same
+                # event later (it does so automatically, for days),
+                # rather than silently losing the update the way
+                # returning 200 with nothing done would.
+                return JSONResponse({"error": "customer_not_linked_yet"}, status_code=409)
+            db_user.subscription_status = status
+            db_user.is_premium = stripe_billing.grants_access(status)
+            db_user.stripe_subscription_id = data.get("id")
+            trial_end = data.get("trial_end")
+            db_user.trial_ends_at = (
+                datetime.datetime.fromtimestamp(trial_end, tz=datetime.timezone.utc) if trial_end else None
+            )
+            session.commit()
 
     elif event_type == "customer.subscription.deleted":
         customer_id = data.get("customer")
         with db.get_session() as session:
             db_user = session.scalar(select(User).where(User.stripe_customer_id == customer_id))
-            if db_user:
-                db_user.subscription_status = "canceled"
-                db_user.is_premium = False
-                session.commit()
+            if db_user is None:
+                return JSONResponse({"error": "customer_not_linked_yet"}, status_code=409)
+            db_user.subscription_status = "canceled"
+            db_user.is_premium = False
+            session.commit()
 
     return JSONResponse({"received": True})
 
