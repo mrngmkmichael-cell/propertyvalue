@@ -1621,21 +1621,34 @@
                 No real boundary <strong>shape</strong> published for this council, but nearby
                 schools' admission-<strong>distance</strong> figures are drawn as circles on the map
                 above instead — solid orange where a council has published a real figure, dashed
-                grey where none exists and it's a modelled estimate.
+                grey where none exists and it's a modelled estimate. "In catchment?" compares this
+                property's actual distance against that radius — not a guarantee, since the radius
+                shifts every year with demand.
             </p>
+            {% for phase in ['Primary', 'Secondary', 'Other'] %}
+            {% set phase_schools = catchment_distance_schools | selectattr('phase_group', 'equalto', phase) | list %}
+            {% if phase_schools %}
+            <h3 class="subsection-heading">{{ phase }}</h3>
             <table class="tx-table">
                 <thead>
                     <tr>
                         <th>School</th>
-                        <th class="num">Distance</th>
+                        <th class="num">Your distance</th>
+                        <th class="num">Catchment radius</th>
+                        <th>In catchment?</th>
                         <th>Source</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for s in catchment_distance_schools %}
+                    {% for s in phase_schools %}
                     <tr>
                         <td>{{ s.name }}</td>
+                        <td class="num">{{ s.property_distance_miles }} mi</td>
                         <td class="num">{{ s.radius_miles }} mi</td>
+                        <td>
+                            {% if s.within_catchment %}<span class="catchment-badge catchment-badge-yes">Likely</span>
+                            {% else %}<span class="catchment-badge catchment-badge-no">Unlikely</span>{% endif %}
+                        </td>
                         <td>
                             {% if s.is_real %}Published ({{ s.academic_year }}, {{ s.source_authority }})
                             {% else %}<span class="estimate-badge">Estimated</span>{% endif %}
@@ -1644,6 +1657,8 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% endif %}
+            {% endfor %}
         {% elif catchment_distance_count %}
             <p class="notice">
                 No real boundary <strong>shape</strong> published for this council, but

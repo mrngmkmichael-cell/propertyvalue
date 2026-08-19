@@ -2588,6 +2588,20 @@ a.school-profile-lock-label:hover {
     vertical-align: middle;
 }
 
+.catchment-badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: #fff;
+}
+
+.catchment-badge-yes { background: var(--good); }
+.catchment-badge-no { background: var(--bad); }
+
 .noise-badge {
     display: inline-block;
     padding: 0.2rem 0.65rem;

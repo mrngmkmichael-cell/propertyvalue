@@ -864,22 +864,29 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     _distance_schools = []
     if context.get("school_landscape"):
         for s in context["school_landscape"].get("all_schools", []):
+            radius_miles, is_real, academic_year, source_authority = None, None, None, None
             if s.get("admission_radius"):
-                _distance_schools.append({
-                    "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
-                    "radius_miles": s["admission_radius"]["last_distance_miles"],
-                    "is_real": True,
-                    "academic_year": s["admission_radius"]["academic_year"],
-                    "source_authority": s["admission_radius"]["source_authority"],
-                })
+                radius_miles = s["admission_radius"]["last_distance_miles"]
+                is_real = True
+                academic_year = s["admission_radius"]["academic_year"]
+                source_authority = s["admission_radius"]["source_authority"]
             elif s.get("catchment_estimate"):
-                _distance_schools.append({
-                    "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
-                    "radius_miles": s["catchment_estimate"]["radius_miles"],
-                    "is_real": False,
-                    "academic_year": None,
-                    "source_authority": None,
-                })
+                radius_miles = s["catchment_estimate"]["radius_miles"]
+                is_real = False
+            else:
+                continue
+
+            property_distance_miles = s["distance_m"] / 1609.34
+            _distance_schools.append({
+                "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
+                "phase_group": s.get("phase_group") or "Other",
+                "radius_miles": radius_miles,
+                "is_real": is_real,
+                "academic_year": academic_year,
+                "source_authority": source_authority,
+                "property_distance_miles": round(property_distance_miles, 2),
+                "within_catchment": property_distance_miles <= radius_miles,
+            })
 
     context["catchment_distance_schools"] = _distance_schools if premium_unlocked else []
     # Ungated teaser counts for the dashboard card, matching how other
