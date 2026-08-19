@@ -221,12 +221,26 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     the watchlist compare view - fetches only the handful of fields
     shown in the comparison table, for however many properties the
     user selected, rather than the full ~28-way gather per property
-    (which would multiply badly across several properties at once)."""
+    (which would multiply badly across several properties at once).
+
+    Was previously uncached, unlike property_search's own gather -
+    every /watchlist page view re-ran this live 6-way gather for
+    every single saved item, on every visit, which is what made the
+    page slow to load with more than a couple of items saved. These
+    are all slow-moving data sources (sold prices, EPC, flood zone,
+    crime, deprivation, HPI) that don't meaningfully change within an
+    hour, so this now reuses the same cache/TTL pattern as
+    property_search's own gather."""
     location = await lookup_postcode(postcode)
     if location is None:
         return {"postcode": postcode, "house_number": house_number, "not_found": True}
 
     canonical = location["postcode"]
+    cache_key = ("comparison_summary", canonical, house_number)
+    cached = _cache.get(cache_key, PROPERTY_SEARCH_CACHE_TTL_S)
+    if cached is not None:
+        return cached
+
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
     epc_configured = epc.is_configured()
@@ -273,6 +287,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
             summary["price_growth_pct"] = growth_area.get("annual_change_pct")
             summary["price_growth_area"] = growth_area.get("name")
 
+    _cache.set(cache_key, summary)
     return summary
 
 
