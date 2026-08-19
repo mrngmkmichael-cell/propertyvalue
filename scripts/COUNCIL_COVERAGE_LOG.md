@@ -94,6 +94,56 @@ since last check).
   the type-word fix), "Penketh South Primary" -> "Penketh Primary" (a
   different, actually-named school in the same document). Too many
   short generically-suffixed "X Primary" names for safe fuzzy matching.
+- **Bradford** - `bradford.gov.uk`'s "Applying for a
+  primary/secondary school - detailed guide" PDFs have a genuine
+  per-school directory ending "(furthest distance N.NNN miles)" for
+  oversubscribed schools, cleanly headed by school name (safe to
+  extract - not a Sheffield/Stoke-style wrapping problem), but
+  spot-checking real extracted names through the script's actual
+  matcher produced *confirmed wrong* matches among Bradford's several
+  "St X Catholic Primary" schools - "St Anthony's Catholic Primary"
+  and "St Francis' Catholic Primary" and "St Walburga's Catholic
+  Primary" (three distinct real schools) all matched to "St Anne's
+  Catholic Primary" instead. Separately, the GIAS data itself has two
+  rows for "St Anthony's Catholic Primary School, A Voluntary Academy"
+  under Bradford with two different URNs (147981 and 147982) - a
+  genuine data-quality issue in the school directory itself that would
+  make that particular school unsafe to target even with perfect name
+  matching. Same failure category as Blackburn with Darwen.
+
+**Known but NOT fixed - `_normalize_school_name` gap, needs careful
+follow-up, not a quick patch**: while investigating Bradford, several
+false matches turned out to be caused by `_normalize_school_name` not
+recognising `"CofE"` (no spaces, no dots - e.g. "St John's CofE
+Primary School") as an abbreviation for "Church of England", even
+though it already handles `"C of E"` (spaced) and standalone `"CE"`.
+Adding `r"\bCofE\b": "Church of England"` to `_ABBREVIATIONS` *did* fix
+those specific false matches, but re-running the full import script
+afterwards showed it silently broke a *different* already-covered,
+previously-trusted authority: Oldham's source document abbreviates as
+`"C.E."` (with dots), which normalizes to a short literal "ce" that
+used to score close enough against the (also then-short) unexpanded
+"cofe" in Oldham's GIAS names - expanding the DB side to the long
+"church of england" broke that balance and dropped Oldham's match rate
+from 26/28 to 20/28, and even changed some individual matches (e.g.
+"St. Martin's C.E. Primary School" started wrongly matching "St Agnes
+Church of England Primary" instead of unmatching or hitting the real
+"St Martin's CofE Junior Infant and Nursery School"). Adding a further
+`r"\bC\.E\.(?=\s|$)"` pattern to also expand the dotted form fixed
+Oldham's specific regression but *still* produced a different wrong
+match for "St. Martin's" there (a pre-existing ambiguity between
+similarly-patterned "St X CofE ... School" names in Oldham that the
+original unexpanded normalization had apparently been avoiding somewhat
+by accident, via shorter/less-similar strings). Given `_ABBREVIATIONS`
+is shared by all 82+ authorities and a change can shift which
+candidate wins for entirely unrelated schools in ways that are hard to
+predict without exhaustively re-checking every existing authority, this
+change was **reverted** rather than shipped under time pressure - the
+repo is unchanged from before this investigation. A future round
+should pick this up specifically (not as a side effect of adding a new
+authority) with time to re-verify every currently-covered authority's
+match set before and after, not just spot-check the one authority
+being newly investigated.
 
 ### Unsafe to parse (real data exists, but extraction risks wrong figures)
 - **Stoke-on-Trent** - `stoke.gov.uk` publishes a genuine "Furthest
@@ -133,7 +183,7 @@ since last check).
 ## Searched this round via general web search only (no promising
 ## document link surfaced) - worth a deeper direct site crawl next
 ## time, not necessarily a dead end
-Barnsley, Blackpool, Bradford, City of London, Cumberland, Derbyshire,
+Barnsley, Blackpool, City of London, Cumberland, Derbyshire,
 East Riding of Yorkshire, Halton, Herefordshire, Isle of Wight, Isles
 of Scilly, Kingston upon Hull, Lancashire, Leicestershire,
 Lincolnshire, Luton, North East Lincolnshire, North Lincolnshire,
@@ -190,8 +240,9 @@ through York, ~32 councils) plus Redcar and Cleveland (not searched at
 all this round). Start there next time - try each council's own
 admissions/"how places were allocated" page directly rather than
 general web search, since that approach found real data for Bedford,
-Central Bedfordshire, Warrington and Stoke-on-Trent this round (the
-latter two ultimately rejected for parsing-safety reasons, not for
-lack of data). If that list is ever exhausted, re-run the query above
+Central Bedfordshire, Warrington, Bradford and Stoke-on-Trent this
+round (the latter three ultimately rejected for name-matching or
+parsing-safety reasons, not for lack of data). If that list is ever
+exhausted, re-run the query above
 in case the DB's set of `local_authority` values has changed (e.g. a
 school import refresh), rather than assuming there's nothing left.
