@@ -155,6 +155,29 @@ async def _epc_flow(
 
 VALUATION_EPC_LOOKUP_CAP = 20  # bounds worst-case added EPC calls regardless of how many recent sales exist
 PROPERTY_SEARCH_CACHE_TTL_S = 3600  # how long a full report is reused for repeat views of the same address
+NEW_BUILD_STAT_YEARS = 3  # wide enough to catch a development finishing mid-window, unlike the 1-year valuation comp window
+NEW_BUILD_STAT_MIN_SAMPLE = 5  # below this, a "new-build share" percentage is noise, not a signal
+
+
+def _new_build_stat(comparables: list[dict]) -> dict | None:
+    """Share of nearby sales in the last NEW_BUILD_STAT_YEARS that were
+    new-build, from the `new_build` flag Land Registry already publishes
+    on every transaction (distinct from `category`, which is their
+    Standard/Additional Price Paid split, not a new-build indicator).
+    A rising share nearby is a proxy for active local development -
+    useful supply/character context a buyer wouldn't otherwise see
+    without reading through the whole sold-price table themselves."""
+    cutoff = (datetime.date.today() - datetime.timedelta(days=365 * NEW_BUILD_STAT_YEARS)).isoformat()
+    recent = [tx for tx in comparables if (tx.get("date") or "") >= cutoff]
+    if len(recent) < NEW_BUILD_STAT_MIN_SAMPLE:
+        return None
+    new_build_count = sum(1 for tx in recent if tx.get("new_build"))
+    return {
+        "pct": round(100 * new_build_count / len(recent)),
+        "count": new_build_count,
+        "total": len(recent),
+        "years": NEW_BUILD_STAT_YEARS,
+    }
 
 
 async def _nearby_comparables(lat: float, lon: float) -> list[dict]:
@@ -758,6 +781,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["valuation"] = valuation.estimate_value(
             comparables_result, subject_floor_area, growth_area["annual_change_pct"] if growth_area else None
         )
+        context["new_build_stat"] = _new_build_stat(comparables_result)
 
     if isinstance(age_profile_result, Exception):
         context["age_profile_error"] = True

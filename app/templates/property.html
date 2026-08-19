@@ -673,6 +673,15 @@
             </table>
         {% endif %}
 
+        {% if new_build_stat %}
+            <p class="section-sub">
+                <strong>{{ new_build_stat.pct }}%</strong> of the {{ new_build_stat.total }} sales recorded
+                nearby in the last {{ new_build_stat.years }} years were new-build ({{ new_build_stat.count }}
+                of {{ new_build_stat.total }}) — a rough signal of how much new development has been going
+                up in the immediate area recently.
+            </p>
+        {% endif %}
+
         {% if price_position is defined %}
             <p class="section-sub">Price position (vs {{ price_position_area.name }} average):</p>
             <div class="price-position-bar">

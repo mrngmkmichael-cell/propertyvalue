@@ -10,7 +10,7 @@ prefix lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 prefix lrcommon: <http://landregistry.data.gov.uk/def/common/>
 prefix skos: <http://www.w3.org/2004/02/skos/core#>
 
-SELECT ?paon ?saon ?street ?postcode ?amount ?date ?category ?propertyType ?estateType
+SELECT ?paon ?saon ?street ?postcode ?amount ?date ?category ?propertyType ?estateType ?newBuild
 WHERE {{
   VALUES ?postcode {{ {postcode_values} }}
   ?addr lrcommon:postcode ?postcode.
@@ -23,6 +23,7 @@ WHERE {{
   OPTIONAL {{?addr lrcommon:street ?street}}
   OPTIONAL {{?transx lrppi:propertyType/skos:prefLabel ?propertyType}}
   OPTIONAL {{?transx lrppi:estateType/skos:prefLabel ?estateType}}
+  OPTIONAL {{?transx lrppi:newBuild ?newBuild}}
 }}
 ORDER BY DESC(?date)
 LIMIT 300
@@ -34,7 +35,7 @@ prefix lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 prefix lrcommon: <http://landregistry.data.gov.uk/def/common/>
 prefix skos: <http://www.w3.org/2004/02/skos/core#>
 
-SELECT ?paon ?saon ?street ?town ?county ?amount ?date ?category ?estateType
+SELECT ?paon ?saon ?street ?town ?county ?amount ?date ?category ?estateType ?newBuild
 WHERE {{
   VALUES ?postcode {{"{postcode}"^^xsd:string}}
   ?addr lrcommon:postcode ?postcode.
@@ -48,6 +49,7 @@ WHERE {{
   OPTIONAL {{?addr lrcommon:street ?street}}
   OPTIONAL {{?addr lrcommon:town ?town}}
   OPTIONAL {{?transx lrppi:estateType/skos:prefLabel ?estateType}}
+  OPTIONAL {{?transx lrppi:newBuild ?newBuild}}
 }}
 ORDER BY DESC(?date)
 """
@@ -92,6 +94,7 @@ async def sold_prices_for_postcodes(postcodes: list[str]) -> list[dict]:
             "category": _binding_value(row, "category"),
             "property_type": _binding_value(row, "propertyType") or None,
             "tenure": _binding_value(row, "estateType") or None,
+            "new_build": _binding_value(row, "newBuild") == "true",
         })
     return transactions
 
@@ -124,5 +127,6 @@ async def sold_prices_for_postcode(canonical_postcode: str) -> list[dict]:
             "date": _binding_value(row, "date")[:10],
             "category": _binding_value(row, "category"),
             "tenure": _binding_value(row, "estateType") or None,
+            "new_build": _binding_value(row, "newBuild") == "true",
         })
     return transactions
