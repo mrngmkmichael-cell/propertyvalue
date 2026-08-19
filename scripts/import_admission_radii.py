@@ -3479,6 +3479,148 @@ def fetch_brighton_and_hove() -> list[dict]:
     return records
 
 
+_BROMLEY_PRIMARY_URL = "https://www.bromley.gov.uk/downloads/file/28/primary-education-in-bromley-2025-2026"
+_BROMLEY_SECONDARY_URL = "https://www.bromley.gov.uk/downloads/file/1863/secondary-education-in-bromley-2024-2025"
+_BROMLEY_TOKEN = r"(?:N/A|Church\s+Criteria|[\d.]+)"
+_BROMLEY_ROWTAIL_RE = re.compile(
+    rf"(?:Information\s+not\s+available|\d{{1,3}}\s+\d{{1,3}})\s+({_BROMLEY_TOKEN})\s+({_BROMLEY_TOKEN})\s+({_BROMLEY_TOKEN})"
+)
+_BROMLEY_FOOTER_RE = re.compile(
+    r"\*?\s*The distance information provided is as at the relevant national offer day\s*"
+    r"|N/A - school undersubscribed LA Allocations made\s*"
+)
+_BROMLEY_SECONDARY_ROW_RE = re.compile(
+    r"^([A-Za-z][A-Za-z0-9'&,.\- ]+?) (?:\d+\s+\d+|N/A\s+N/A|Information not available) "
+    r"([\d.]+|N/A) ([\d.]+|N/A) ([\d.]+|N/A)$"
+)
+
+
+def _bromley_first_distance(tokens) -> float | None:
+    for token in tokens:
+        if re.fullmatch(r"[\d.]+", token):
+            return float(token)
+    return None
+
+
+def fetch_bromley() -> list[dict]:
+    """Bromley Council's "Primary/Secondary Education in Bromley"
+    prospectus booklets each include a "Distances and appeals" table
+    (School / Heard / Upheld / Distance in miles for the last 3 years).
+    Already in miles; takes the first (most recent) available year
+    per school, same convention as Haringey.
+
+    The primary/junior table is prose-wrapped (not a real PDF table)
+    and a handful of faith schools show "Church Criteria" instead of a
+    distance for one or more years, which breaks the normal
+    row-boundary regex and would otherwise merge that school's name
+    with the next school's - two real schools' data smeared into one
+    bogus combined-name record. Any chunk that ends up looking like
+    more than one school (too long, or more than one "School"/
+    "Academy" keyword) is dropped rather than risk that bleed.
+
+    Secondary schools that allocate by banding or test score (grammar/
+    partially-selective schools) have no single "last distance
+    offered" - explicitly skipped rather than picking one band's
+    figure and presenting it as the school's cutoff.
+    """
+    records = []
+
+    print(f"  Downloading {_BROMLEY_PRIMARY_URL}")
+    resp = httpx.get(_BROMLEY_PRIMARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        table_text = ""
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if "Heard" in page_text and "Upheld" in page_text and "Distance in miles" in page_text:
+                table_text += page_text + " "
+
+    text = re.sub(r"\s+", " ", table_text)
+    start = text.find("Alexandra Infant School")
+    matches = list(_BROMLEY_ROWTAIL_RE.finditer(text)) if start >= 0 else []
+    prev_end = start
+    for m in matches:
+        if m.start() < start:
+            continue
+        name_chunk = text[prev_end:m.start()].strip()
+        name_chunk = _BROMLEY_FOOTER_RE.sub(" ", name_chunk).strip()
+        name_chunk = re.split(r"2025\s+2024\s+2023", name_chunk)[-1].strip()
+        name_chunk = re.sub(r"^\d{1,3}\s*", "", name_chunk)
+        name_chunk = re.sub(r"\s+", " ", name_chunk).strip()
+        prev_end = m.end()
+
+        keyword_count = len(re.findall(r"\b(School|Academy)\b", name_chunk))
+        if not name_chunk or len(name_chunk) > 55 or keyword_count > 1:
+            continue
+        distance = _bromley_first_distance(m.groups())
+        if distance is not None:
+            records.append({"school_name": name_chunk, "last_distance_miles": distance})
+
+    print(f"  Downloading {_BROMLEY_SECONDARY_URL}")
+    resp = httpx.get(_BROMLEY_SECONDARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if not ("Heard" in page_text and "Upheld" in page_text and "Distance in miles" in page_text):
+                continue
+            for line in page_text.split("\n"):
+                line = line.strip()
+                if not line or "banding" in line.lower() or "test score" in line.lower():
+                    continue
+                m = _BROMLEY_SECONDARY_ROW_RE.match(line)
+                if not m:
+                    continue
+                distance = _bromley_first_distance(m.groups()[1:])
+                if distance is not None:
+                    records.append({"school_name": m.group(1).strip(), "last_distance_miles": distance})
+
+    return records
+
+
+_CAMDEN_SECONDARY_URL = (
+    "https://www.stlukesschool.org.uk/wp-content/uploads/2025/03/"
+    "Secondary-schools-in-Camden-admissions-guide-2025-WEB.pdf"
+)
+_CAMDEN_ROW_RE = re.compile(r"^([A-Za-z][A-Za-z'&,.\- ]+?) (n/a|[\d.]+) (n/a|[\d.]+)$", re.IGNORECASE)
+
+
+def fetch_camden() -> list[dict]:
+    """Camden's own site (camden.gov.uk) is blocked from this
+    environment, but its "Secondary Schools in Camden" admissions
+    guide - which includes a "cut off distances" table for the
+    previous two years - is also mirrored as a PDF on individual
+    Camden secondary schools' own sites (found here via St Luke's
+    Church of England School). No equivalent primary-school distance
+    table was locatable, so this is secondary-only, same situation as
+    Hartlepool. Already in miles; takes 2024 if present else 2023.
+    Camden School for Girls allocates by 4 separate bands rather than
+    a single distance and is correctly skipped (its row doesn't match
+    the plain "name value value" pattern).
+    """
+    print(f"  Downloading {_CAMDEN_SECONDARY_URL}")
+    resp = httpx.get(_CAMDEN_SECONDARY_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if "cut off distances" not in page_text:
+                continue
+            for line in page_text.split("\n"):
+                line = line.strip()
+                if not line or "Band" in line or line.lower().startswith("school "):
+                    continue
+                m = _CAMDEN_ROW_RE.match(line)
+                if not m:
+                    continue
+                distance = _bromley_first_distance(m.groups()[1:])
+                if distance is not None:
+                    records.append({"school_name": m.group(1).strip(), "last_distance_miles": distance})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3559,6 +3701,8 @@ _AUTHORITIES = [
     ("Salford", "2025/26", fetch_salford),
     ("Knowsley", "2026/27", fetch_knowsley),
     ("Brighton and Hove", "2025/26", fetch_brighton_and_hove),
+    ("Bromley", "2025/26", fetch_bromley),
+    ("Camden", "2024", fetch_camden),
 ]
 
 
