@@ -1618,10 +1618,16 @@
         {% else %}
             <p class="notice">
                 Not covered — this address isn't in one of the local authorities that publishes
-                open catchment-area data.
+                open catchment-area <strong>boundary shapes</strong>.
                 {% if catchment_covered_authorities %}
                 This currently only covers: {{ catchment_covered_authorities | join(', ') }}.
                 {% endif %}
+            </p>
+            <p class="section-sub">
+                That doesn't mean no admission-distance data exists here, though — check the
+                <strong>Schools &amp; Catchment</strong> card and open an individual school: most
+                schools show either a real published admission distance or a clearly-labelled
+                estimate, which covers far more of England than the boundary-shape map above does.
             </p>
         {% endif %}
             </section>
