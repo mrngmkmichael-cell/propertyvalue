@@ -252,11 +252,9 @@
     .pv-badge-outstanding, .pv-badge-good { background: #ecfdf5; color: #059669; }
     .pv-badge-requires-improvement { background: #fffbeb; color: #d97706; }
     .pv-badge-inadequate { background: #fef2f2; color: #dc2626; }
-    .pv-crime-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-    .pv-crime-bar-label { width: 110px; flex-shrink: 0; color: #475569; font-size: 11.5px; text-transform: capitalize; }
-    .pv-crime-bar-track { flex: 1; height: 7px; background: #f1f3f7; border-radius: 4px; overflow: hidden; }
-    .pv-crime-bar-fill { height: 100%; background: #3b5bfd; }
-    .pv-crime-bar-count { width: 30px; text-align: right; color: #667085; font-size: 10.5px; flex-shrink: 0; }
+    .pv-trend-higher { color: #dc2626; font-weight: 700; }
+    .pv-trend-lower { color: #059669; font-weight: 700; }
+    .pv-trend-same { color: #667085; font-weight: 600; }
     .pv-map-frame { width: 100%; height: 220px; border: none; border-radius: 10px; }
     .pv-header-report-link {
       display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
@@ -410,6 +408,12 @@
       background: #ffffff; border-radius: 16px; padding: 28px; width: min(340px, 100%);
       box-shadow: 0 20px 48px rgba(16, 24, 40, 0.25); position: relative; text-align: center;
     }
+    .pv-modal.pv-modal-rich {
+      width: min(520px, 100%); max-height: 82vh; overflow-y: auto; text-align: left;
+    }
+    .pv-modal.pv-modal-rich .pv-modal-title { text-align: center; }
+    .pv-modal-body { text-align: left; }
+    .pv-modal-body .pv-modal-value { margin: 0 0 18px; font-size: 20px; font-weight: 800; color: #12141c; line-height: 1.3; text-align: center; }
     .pv-modal-close {
       position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%;
       border: none; background: #f1f3f7; color: #667085; cursor: pointer; font-size: 13px;
@@ -423,12 +427,12 @@
       margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
       letter-spacing: 0.05em; color: #667085;
     }
-    .pv-modal-value { margin: 0 0 18px; font-size: 20px; font-weight: 800; color: #12141c; line-height: 1.3; }
-    .pv-modal-link { display: inline-block; color: #3b5bfd; font-weight: 700; font-size: 13px; text-decoration: none; }
+    .pv-modal-link { display: block; text-align: center; margin-top: 4px; color: #3b5bfd; font-weight: 700; font-size: 13px; text-decoration: none; }
     .pv-modal-link:hover { text-decoration: underline; }
     .pv-dash-card:not(.pv-dash-locked) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
     .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
-    .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; }
+    .pv-modal-body .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; text-align: center; }
+    .pv-modal.pv-modal-rich .pv-modal-body .pv-modal-detail { text-align: left; }
     .pv-area-notice {
       display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; padding: 10px 12px;
       background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
@@ -524,8 +528,7 @@
         '<button type="button" class="pv-modal-close" aria-label="Close">✕</button>' +
         '<span class="pv-modal-icon"></span>' +
         '<h3 class="pv-modal-title"></h3>' +
-        '<p class="pv-modal-value"></p>' +
-        '<p class="pv-modal-detail"></p>' +
+        '<div class="pv-modal-body"></div>' +
         '<a class="pv-modal-link" href="#" target="_blank" rel="noopener">View full details on UKPropertyInsight →</a>' +
       "</div>";
     shadow.appendChild(modalBackdrop);
@@ -634,21 +637,46 @@
     });
   }
 
+  // "At a glance" cards that mirror an existing tab's real fetched
+  // data (transactions, per-category crime, per-school table) open
+  // that tab's actual renderer in the popup instead of a generic
+  // title+number - the main site's own modals are this detailed, and
+  // for these five cards we already have the data to match it, rather
+  // than re-describing the same number in a bigger box.
+  const CARD_TAB_MAP = {
+    "Avg sold price": "market",
+    "Crime nearby": "crime",
+    "Schools": "schools",
+    "EPC rating": "epc",
+  };
+
   function openCardModal(dashCardEl) {
     if (!shadowRoot) return;
     const title = dashCardEl.querySelector(".pv-dash-card-title").textContent;
     const value = dashCardEl.querySelector(".pv-dash-card-value").textContent;
     const iconEl = dashCardEl.querySelector(".pv-dash-card-icon");
     const backdrop = shadowRoot.querySelector(".pv-modal-backdrop");
+    const modalEl = backdrop.querySelector(".pv-modal");
     const iconTarget = backdrop.querySelector(".pv-modal-icon");
     iconTarget.textContent = iconEl ? iconEl.textContent : "";
     iconTarget.className = "pv-modal-icon" + (iconEl ? " " + iconEl.className.replace("pv-dash-card-icon", "").trim() : "");
     backdrop.querySelector(".pv-modal-title").textContent = title;
-    backdrop.querySelector(".pv-modal-value").textContent = value;
-    const detailEl = backdrop.querySelector(".pv-modal-detail");
-    const detail = CARD_DETAILS[title];
-    detailEl.textContent = detail || "";
-    detailEl.hidden = !detail;
+
+    const bodyEl = backdrop.querySelector(".pv-modal-body");
+    const tabKey = CARD_TAB_MAP[title];
+    const richRenderer = tabKey && RENDERERS[tabKey] && currentData;
+    modalEl.classList.toggle("pv-modal-rich", !!richRenderer);
+    if (richRenderer) {
+      bodyEl.innerHTML = RENDERERS[tabKey](currentData);
+      bodyEl.querySelectorAll(".pv-gate-login-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { closeCardModal(); selectTab("account"); });
+      });
+    } else {
+      const detail = CARD_DETAILS[title];
+      bodyEl.innerHTML =
+        '<p class="pv-modal-value">' + escapeHtml(value) + "</p>" +
+        (detail ? '<p class="pv-modal-detail">' + escapeHtml(detail) + "</p>" : "");
+    }
     backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData && currentData.report_url ? currentData.report_url : "/");
     backdrop.hidden = false;
   }
@@ -873,22 +901,22 @@
     crime: function (data) {
       const c = data.crime;
       if (!c || !c.by_category || !c.by_category.length) return '<p class="pv-empty">No crime data available.</p>';
-      const max = Math.max.apply(null, c.by_category.map(function (x) { return x.count; }));
-      return (
-        '<ul class="pv-stats">' +
-          "<li><span>Total recorded" + (c.month ? " (" + escapeHtml(c.month) + ")" : "") + "</span><span>" + c.total + "</span></li>" +
-        "</ul>" +
-        c.by_category.map(function (cat) {
-          const pct = max ? Math.round((cat.count / max) * 100) : 0;
-          return (
-            '<div class="pv-crime-bar-row">' +
-              '<span class="pv-crime-bar-label">' + escapeHtml(cat.category) + "</span>" +
-              '<span class="pv-crime-bar-track"><span class="pv-crime-bar-fill" style="width:' + pct + '%"></span></span>' +
-              '<span class="pv-crime-bar-count">' + cat.count + "</span>" +
-            "</div>"
-          );
-        }).join("")
-      );
+      const trendLabel = { higher: "Higher", lower: "Lower", same: "About the same" };
+      const trendClass = { higher: "pv-trend-higher", lower: "pv-trend-lower", same: "pv-trend-same" };
+      const rows = c.comparison && c.comparison.length
+        ? c.comparison
+        : c.by_category.map(function (cat) { return { category: cat.category, here: cat.count, area: null, trend: null }; });
+      let html = '<p class="pv-summary-verdict">' + c.total + " crimes recorded within ~1 mile" + (c.month ? " in " + escapeHtml(c.month) : "") +
+        (c.district_total != null ? ", versus " + c.district_total + " in the wider " + escapeHtml(c.outcode || "") + " postcode area." : ".") + "</p>";
+      html += '<table class="pv-table"><thead><tr><th>Category</th><th class="pv-num">Here</th><th class="pv-num">' +
+        escapeHtml(c.outcode || "Area") + '</th><th class="pv-num">Versus area</th></tr></thead><tbody>' +
+        rows.map(function (r) {
+          return "<tr><td style=\"text-transform:capitalize\">" + escapeHtml(r.category) + "</td><td class=\"pv-num\">" + r.here +
+            "</td><td class=\"pv-num\">" + (r.area != null ? r.area : "—") + "</td><td class=\"pv-num\">" +
+            (r.trend ? '<span class="' + trendClass[r.trend] + '">' + trendLabel[r.trend] + "</span>" : "—") + "</td></tr>";
+        }).join("") +
+        "</tbody></table>";
+      return html;
     },
     account: function () {
       if (currentToken) {

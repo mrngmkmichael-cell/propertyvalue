@@ -1234,8 +1234,8 @@ async def api_extension_report(request: Request, postcode: str = ""):
         return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
     (
-        tx_result, comparables_result, flood_zone_result, crime_result, landscape_result, hpi_result,
-        certs_result, deprivation_result, income_result, occupation_result,
+        tx_result, comparables_result, flood_zone_result, crime_result, crime_outcode_result, landscape_result,
+        hpi_result, certs_result, deprivation_result, income_result, occupation_result,
     ) = await asyncio.gather(
         # In area-level mode `canonical` is a geographic neighbour's
         # postcode, not this property's - querying its sold prices/EPC
@@ -1246,6 +1246,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
         _comparables_for_extension(lat, lon),
         flood_zones.zone_for(lat, lon),
         crime.summary_near(lat, lon),
+        crime.summary_for_outcode(location["outcode"]),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         _immediate([]) if area_level else epc.certificates_for_postcode(canonical),
@@ -1348,6 +1349,13 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "total": ok(crime_result)["total"] if ok(crime_result) else None,
         "month": ok(crime_result)["month"] if ok(crime_result) else None,
         "by_category": ok(crime_result)["by_category"] if ok(crime_result) else [],
+        "outcode": location.get("outcode"),
+        "district_total": ok(crime_outcode_result)["total"] if ok(crime_outcode_result) else None,
+        # Same category-by-category "here vs the wider postcode area"
+        # comparison the main site's own Crime modal shows - reuses
+        # that exact function rather than a simplified copy, so the
+        # extension's numbers can never quietly drift from the site's.
+        "comparison": _crime_comparison(ok(crime_result), ok(crime_outcode_result)) if ok(crime_result) and ok(crime_outcode_result) else [],
     }
 
     _cache.set(cache_key, payload)
