@@ -464,7 +464,9 @@
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
                 {% elif stations.rail and stations.rail.city_journeys %}{{ stations.rail.city_journeys[0].minutes }} min train to {{ stations.rail.city_journeys[0].city }}
-                {% elif nearest_transport %}{{ nearest_transport.name }} · {{ nearest_transport.distance_m | distance }}
+                {% elif nearest_transport %}{{ nearest_transport.name }} ·
+                    {%- if nearest_transport.walking_distance_m %} {{ nearest_transport.walking_distance_m | distance }} walk
+                    {%- else %} {{ nearest_transport.distance_m | distance }}{% endif %}
                 {% else %}Nothing nearby{% endif %}
             </span>
         </button>
@@ -1728,7 +1730,9 @@
                     <li>
                         <span class="transport-mode">{{ label }}</span>
                         <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
-                        — {{ s.distance_m | distance }}
+                        —
+                        {%- if s.walking_distance_m %} {{ s.walking_distance_m | distance }} walk ({{ s.walking_duration_min }} min)
+                        {%- else %} {{ s.distance_m | distance }} (straight-line){% endif %}
                         {%- if s.lines %}
                         <span class="line-badge-row">
                             {% for line in s.lines %}

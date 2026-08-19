@@ -11,7 +11,7 @@ import re
 
 import httpx
 
-from app.services import _cache, rail_journey, transit_lines
+from app.services import _cache, rail_journey, routing, transit_lines
 
 # Independent public Overpass instances, raced concurrently (see
 # _query_overpass). The primary is known to reject some
@@ -233,6 +233,7 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
                 stations[mode].append({
                     "id": el["id"], "type": el["type"], "name": name,
                     "network": network, "distance_m": distance_m,
+                    "lat": el_lat, "lon": el_lon,
                     "crs": _crs_code(tags.get("ref:crs")) if mode == "rail" else None,
                     "lines": _line_badges(line_names),
                 })
@@ -290,6 +291,22 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
     # nearest_by_mode holds the same dict objects as `stations` (not
     # copies), so each already carries the "lines" badges attached
     # when it was appended above - nothing further to do here.
+
+    # Real walking-route distance for the nearest station of each mode
+    # a person plausibly walks to (not bus - those are already within
+    # BUS_STOP_RADIUS_M=800m, where straight-line rarely misleads).
+    # distance_m (straight-line) is left untouched as the fallback the
+    # template uses when this isn't configured or the lookup fails.
+    walkable_modes = [m for m in ("rail", "tube", "tram") if m in nearest_by_mode]
+    if walkable_modes and routing.is_configured():
+        walks = await asyncio.gather(*(
+            routing.walking_distance(lat, lon, nearest_by_mode[mode]["lat"], nearest_by_mode[mode]["lon"])
+            for mode in walkable_modes
+        ))
+        for mode, walk in zip(walkable_modes, walks):
+            if walk is not None:
+                nearest_by_mode[mode]["walking_distance_m"] = round(walk["distance_m"])
+                nearest_by_mode[mode]["walking_duration_min"] = round(walk["duration_min"])
 
     if "rail" in nearest_by_mode and nearest_by_mode["rail"].get("crs"):
         journeys = await rail_journey.fastest_to_cities(nearest_by_mode["rail"]["crs"])
