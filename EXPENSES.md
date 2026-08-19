@@ -6,9 +6,9 @@ OpenRouteService, etc.) are not listed here unless/until they start being billed
 
 | Date | Item | Provider | Cost | Billing | Notes |
 |---|---|---|---|---|---|
-| 2026-08-19 | ukpropertyinsight.co.uk — 1 year domain registration | (registrar) | £6.99 | Annual | |
-| 2026-08-19 | Full Domain Protection | (registrar) | £7.99 | Annual | WHOIS privacy/ownership protection |
-| 2026-08-19 | Microsoft 365 Email Essentials — 1 year | (registrar) | £11.88 | Annual | |
+| 2026-08-19 | ukpropertyinsight.co.uk — 1 year domain registration | GoDaddy | £6.99 | Annual | |
+| 2026-08-19 | Full Domain Protection | GoDaddy | £7.99 | Annual | WHOIS privacy/ownership protection |
+| 2026-08-19 | Microsoft 365 Email Essentials — 1 year | GoDaddy | £11.88 | Annual | |
 
 **Total so far: £26.86** (all annual, due again ~August 2027 unless cancelled)
 
