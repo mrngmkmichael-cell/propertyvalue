@@ -1412,6 +1412,35 @@
             </details>
             {% endfor %}
         {% endif %}
+        {% if cqc_ratings and (cqc_ratings.gp or cqc_ratings.dentist or cqc_ratings.care_home) %}
+        <h3 class="subsection-heading">CQC ratings</h3>
+        <p class="section-sub">
+            The Care Quality Commission's official inspection rating for nearby GP practices, dentists
+            and care homes, within {{ (2000 / 1609.34) | round(1) }} miles.
+        </p>
+        {% for key, label in [("gp", "GP practices"), ("dentist", "Dentists"), ("care_home", "Care homes")] %}
+            {% if cqc_ratings[key] %}
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>{{ label }}</th>
+                        <th class="num">Rating</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cqc_ratings[key] %}
+                    <tr>
+                        <td>{{ c.name }}</td>
+                        <td class="num"><span class="epc-badge epc-{{ 'a' if c.rating == 'Outstanding' else ('c' if c.rating == 'Good' else 'g') }}">{{ c.rating }}</span></td>
+                        <td class="num">{{ c.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        {% endfor %}
+        {% endif %}
         <h3 class="subsection-heading">Food hygiene ratings</h3>
         <p class="section-sub">
             From the Food Standards Agency's Food Hygiene Rating Scheme, within half a mile — 0 is
