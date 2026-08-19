@@ -1034,6 +1034,159 @@ async def api_lookup(postcode: str = ""):
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
+EXTENSION_REPORT_CACHE_TTL_S = 3600
+EXTENSION_SCHOOLS_LIMIT = 8
+EXTENSION_MARKET_HISTORY_LIMIT = 10
+EXTENSION_COMPARABLES_LIMIT = 12
+
+
+async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:
+    """Same idea as /property/comparables, trimmed down - no
+    percentile/reference-price maths, just a distance-sorted list of
+    nearby sold transactions for the Comparables tab."""
+    nearby = await nearby_postcodes(lat, lon)
+    distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
+    transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
+    for tx in transactions:
+        tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+    transactions.sort(key=lambda t: (t["distance_m"] is None, t["distance_m"]))
+    return transactions
+
+
+@app.get("/api/extension-report")
+async def api_extension_report(postcode: str = ""):
+    """The full data set behind the browser extension's tabbed overlay
+    (Summary/Market History/Comparables/Schools/EPC/Demographics/
+    Crime/Maps) - richer than /api/lookup's small summary-card subset,
+    but still short of property_search's full ~28-way gather: no
+    premium-gated signals (valuation estimate, risk designations, coal
+    mining, etc.), matching what the free tier of the main site shows.
+    Cached for an hour per postcode, the same TTL and reasoning as
+    property_search's own cache - this can be hit from any listing
+    page a shopper's browsing, not just once per visit to our own site.
+    """
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_failed"}, status_code=502, headers=_EXTENSION_CORS_HEADERS)
+    if location is None:
+        return JSONResponse({"error": "not_found"}, status_code=404, headers=_EXTENSION_CORS_HEADERS)
+
+    canonical = location["postcode"]
+    lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
+
+    cache_key = ("extension_report", canonical)
+    cached = _cache.get(cache_key, EXTENSION_REPORT_CACHE_TTL_S)
+    if cached is not None:
+        return JSONResponse(cached, headers=_EXTENSION_CORS_HEADERS)
+
+    (
+        tx_result, comparables_result, flood_zone_result, crime_result, landscape_result, hpi_result,
+        certs_result, deprivation_result, income_result, occupation_result,
+    ) = await asyncio.gather(
+        sold_prices_for_postcode(canonical),
+        _comparables_for_extension(lat, lon),
+        flood_zones.zone_for(lat, lon),
+        crime.summary_near(lat, lon),
+        asyncio.to_thread(schools_db.school_landscape, lat, lon),
+        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+        epc.certificates_for_postcode(canonical),
+        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
+        asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
+        return_exceptions=True,
+    )
+
+    def ok(result):
+        return result if not isinstance(result, Exception) else None
+
+    tx_result = ok(tx_result) or []
+    comparables_result = ok(comparables_result) or []
+    landscape_result = ok(landscape_result)
+    certs_result = ok(certs_result) or []
+
+    payload = {
+        "postcode": canonical,
+        "admin_district": location["admin_district"],
+        "region": location["region"],
+        "latitude": lat,
+        "longitude": lon,
+        "report_url": f"/property?postcode={canonical.replace(' ', '+')}",
+    }
+
+    mini_context = {
+        "hpi": ok(hpi_result),
+        "flood_zone": ok(flood_zone_result),
+        "school_landscape": landscape_result,
+    }
+    payload["overview"] = overview_score.compute(mini_context, premium_unlocked=False)
+
+    payload["summary"] = {
+        "avg_price": _average_amount(tx_result),
+        "flood_zone": ok(flood_zone_result)["label"] if ok(flood_zone_result) else None,
+        "crime_total": ok(crime_result)["total"] if ok(crime_result) else None,
+        "schools_good_pct": landscape_result.get("good_or_better_pct") if landscape_result else None,
+        "epc_rating": certs_result[0]["rating"] if certs_result else None,
+    }
+
+    payload["market_history"] = [
+        {"address": t["address"], "date": t["date"], "amount": t["amount"], "tenure": t.get("tenure")}
+        for t in tx_result[:EXTENSION_MARKET_HISTORY_LIMIT]
+    ]
+
+    comparable_amounts = sorted(float(t["amount"]) for t in comparables_result if t.get("amount"))
+    payload["comparables"] = {
+        "count": len(comparables_result),
+        "median": _median(comparable_amounts),
+        "transactions": [
+            {
+                "address": t["address"], "postcode": t["postcode"], "date": t["date"], "amount": t["amount"],
+                "distance_m": t.get("distance_m"),
+            }
+            for t in comparables_result[:EXTENSION_COMPARABLES_LIMIT]
+        ],
+    }
+
+    schools_payload = []
+    if landscape_result:
+        for s in sorted(landscape_result.get("all_schools", []), key=lambda s: s["distance_m"])[:EXTENSION_SCHOOLS_LIMIT]:
+            schools_payload.append({
+                "name": s["name"],
+                "distance_m": s["distance_m"],
+                "phase": s.get("phase_group"),
+                "ofsted_rating_label": s.get("ofsted_rating_label"),
+            })
+    payload["schools"] = schools_payload
+
+    payload["epc"] = (
+        {"rating": certs_result[0]["rating"], "date": certs_result[0]["date"]} if certs_result else None
+    )
+
+    deprivation = ok(deprivation_result)
+    income = ok(income_result)
+    occupation = ok(occupation_result)
+    payload["demographics"] = {
+        "imd_decile": deprivation["imd_decile"] if deprivation else None,
+        "imd_label": _imd_label(deprivation["imd_decile"]) if deprivation else None,
+        "household_income": income["here"] if income else None,
+        "professional_pct": occupation["professional_pct"] if occupation else None,
+    }
+
+    payload["crime"] = {
+        "total": ok(crime_result)["total"] if ok(crime_result) else None,
+        "month": ok(crime_result)["month"] if ok(crime_result) else None,
+        "by_category": ok(crime_result)["by_category"] if ok(crime_result) else [],
+    }
+
+    _cache.set(cache_key, payload)
+    return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
+
+
 @app.get("/api/commute")
 async def api_commute(lat: float, lon: float, postcode: str = ""):
     """Real driving/cycling time from a property's coordinates to a
