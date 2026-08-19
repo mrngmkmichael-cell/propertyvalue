@@ -217,11 +217,13 @@
     .pv-crime-bar-fill { height: 100%; background: #3b5bfd; }
     .pv-crime-bar-count { width: 30px; text-align: right; color: #667085; font-size: 10.5px; flex-shrink: 0; }
     .pv-map-frame { width: 100%; height: 220px; border: none; border-radius: 10px; }
-    .pv-cta {
-      display: block; text-align: center; margin-top: 12px;
-      background: #3b5bfd; color: #fff; text-decoration: none;
-      font-weight: 700; padding: 9px 12px; border-radius: 10px;
+    .pv-header-report-link {
+      display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0;
+      background: #3b5bfd; color: #fff; text-decoration: none; font-weight: 700;
+      font-size: 11.5px; padding: 6px 12px; border-radius: 999px; white-space: nowrap;
     }
+    .pv-header-report-link:hover { background: #2c47e0; }
+    .pv-header-report-link[hidden] { display: none; }
     .pv-summary-verdict { color: #334155; margin: 0 0 14px; font-size: 13.5px; }
     .pv-category-heading {
       font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
@@ -349,6 +351,42 @@
       background: none; border: 1px solid #d0d5dd; color: #475569; font-weight: 700; font-size: 12px;
       padding: 7px 14px; border-radius: 8px; cursor: pointer;
     }
+    .pv-resize-handle {
+      height: 8px; flex-shrink: 0; cursor: ns-resize; position: relative; touch-action: none;
+    }
+    .pv-resize-handle::after {
+      content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 40px; height: 4px; border-radius: 999px; background: #d0d5dd;
+    }
+    .pv-resize-handle:hover::after, .pv-resize-handle.pv-resizing::after { background: #3b5bfd; }
+    .pv-modal-backdrop {
+      position: fixed; inset: 0; z-index: 2147483647;
+      background: rgba(15, 17, 23, 0.55); backdrop-filter: blur(2px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .pv-modal-backdrop[hidden] { display: none; }
+    .pv-modal {
+      background: #ffffff; border-radius: 16px; padding: 28px; width: min(340px, 100%);
+      box-shadow: 0 20px 48px rgba(16, 24, 40, 0.25); position: relative; text-align: center;
+    }
+    .pv-modal-close {
+      position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%;
+      border: none; background: #f1f3f7; color: #667085; cursor: pointer; font-size: 13px;
+    }
+    .pv-modal-close:hover { background: #e4e7ec; }
+    .pv-modal-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px; border-radius: 12px; font-size: 22px; margin: 0 auto 12px;
+    }
+    .pv-modal-title {
+      margin: 0 0 8px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #667085;
+    }
+    .pv-modal-value { margin: 0 0 18px; font-size: 20px; font-weight: 800; color: #12141c; line-height: 1.3; }
+    .pv-modal-link { display: inline-block; color: #3b5bfd; font-weight: 700; font-size: 13px; text-decoration: none; }
+    .pv-modal-link:hover { text-decoration: underline; }
+    .pv-dash-card:not(.pv-dash-locked) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
+    .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
   `;
 
   let currentData = null;
@@ -357,12 +395,31 @@
   let currentToken = null;
   let currentEmail = null;
   let root = null;
+  let shadowRoot = null;
+
+  const HEIGHT_STORAGE_KEY = "pv_ext_height";
+  const MIN_CARD_HEIGHT = 160;
+
+  function getStoredHeight() {
+    return new Promise(function (resolve) {
+      if (!chrome?.storage?.local) return resolve(null);
+      chrome.storage.local.get([HEIGHT_STORAGE_KEY], function (result) {
+        resolve(result[HEIGHT_STORAGE_KEY] || null);
+      });
+    });
+  }
+
+  function setStoredHeight(px) {
+    if (!chrome?.storage?.local) return;
+    chrome.storage.local.set({ pv_ext_height: px });
+  }
 
   function buildWidget() {
     const host = document.createElement("div");
     host.id = "pv-overlay-host";
     document.documentElement.appendChild(host);
     const shadow = host.attachShadow({ mode: "open" });
+    shadowRoot = shadow;
     const style = document.createElement("style");
     style.textContent = STYLE;
     shadow.appendChild(style);
@@ -374,6 +431,7 @@
         '<span class="pv-logo"><span class="pv-mark">U</span>UKPropertyInsight</span>' +
         '<span class="pv-header-score"><span class="pv-header-score-num">…</span><span class="pv-header-score-max">/100</span><span class="pv-header-score-grade"></span></span>' +
         '<span class="pv-spacer"></span>' +
+        '<a class="pv-header-report-link" href="#" target="_blank" rel="noopener" hidden>Full report →</a>' +
         '<button class="pv-account-btn" type="button">Log in</button>' +
         '<button class="pv-icon-btn pv-collapse-btn" type="button" aria-label="Collapse">▾</button>' +
         '<button class="pv-icon-btn pv-close-btn" type="button" aria-label="Close">✕</button>' +
@@ -381,8 +439,29 @@
       '<div class="pv-body">' +
         '<div class="pv-tabs"></div>' +
         '<div class="pv-tab-content"><div class="pv-loading-block"><span class="pv-spinner"></span><p class="pv-loading-text">Loading your UKPropertyInsight report…</p></div></div>' +
-      "</div>";
+      "</div>" +
+      '<div class="pv-resize-handle" title="Drag to resize"></div>';
     shadow.appendChild(card);
+
+    const modalBackdrop = document.createElement("div");
+    modalBackdrop.className = "pv-modal-backdrop";
+    modalBackdrop.hidden = true;
+    modalBackdrop.innerHTML =
+      '<div class="pv-modal" role="dialog" aria-modal="true">' +
+        '<button type="button" class="pv-modal-close" aria-label="Close">✕</button>' +
+        '<span class="pv-modal-icon"></span>' +
+        '<h3 class="pv-modal-title"></h3>' +
+        '<p class="pv-modal-value"></p>' +
+        '<a class="pv-modal-link" href="#" target="_blank" rel="noopener">View full details on UKPropertyInsight →</a>' +
+      "</div>";
+    shadow.appendChild(modalBackdrop);
+    modalBackdrop.addEventListener("click", function (e) {
+      if (e.target === modalBackdrop) closeCardModal();
+    });
+    modalBackdrop.querySelector(".pv-modal-close").addEventListener("click", closeCardModal);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeCardModal();
+    });
 
     const body = card.querySelector(".pv-body");
     card.querySelector(".pv-collapse-btn").addEventListener("click", function () {
@@ -397,7 +476,68 @@
       selectTab("account");
     });
 
+    // Cards open a detail popup on click, mirroring the main site's own
+    // dashboard-card behaviour - delegated on the persistent content
+    // element so it keeps working across tab switches without needing
+    // to be re-attached on every re-render.
+    card.querySelector(".pv-tab-content").addEventListener("click", function (e) {
+      const dashCardEl = e.target.closest(".pv-dash-card");
+      if (!dashCardEl || dashCardEl.classList.contains("pv-dash-locked")) return;
+      openCardModal(dashCardEl);
+    });
+
+    wireResizeHandle(card);
+
     return card;
+  }
+
+  function wireResizeHandle(card) {
+    const handle = card.querySelector(".pv-resize-handle");
+    let dragging = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    handle.addEventListener("pointerdown", function (e) {
+      dragging = true;
+      startY = e.clientY;
+      startHeight = card.getBoundingClientRect().height;
+      handle.classList.add("pv-resizing");
+      e.preventDefault();
+    });
+    document.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      const maxHeight = window.innerHeight * 0.92;
+      const newHeight = Math.min(maxHeight, Math.max(MIN_CARD_HEIGHT, startHeight + (e.clientY - startY)));
+      card.style.height = newHeight + "px";
+      card.style.maxHeight = newHeight + "px";
+    });
+    document.addEventListener("pointerup", function () {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove("pv-resizing");
+      setStoredHeight(Math.round(card.getBoundingClientRect().height));
+    });
+  }
+
+  function openCardModal(dashCardEl) {
+    if (!shadowRoot) return;
+    const title = dashCardEl.querySelector(".pv-dash-card-title").textContent;
+    const value = dashCardEl.querySelector(".pv-dash-card-value").textContent;
+    const iconEl = dashCardEl.querySelector(".pv-dash-card-icon");
+    const backdrop = shadowRoot.querySelector(".pv-modal-backdrop");
+    const iconTarget = backdrop.querySelector(".pv-modal-icon");
+    iconTarget.textContent = iconEl ? iconEl.textContent : "";
+    iconTarget.className = "pv-modal-icon" + (iconEl ? " " + iconEl.className.replace("pv-dash-card-icon", "").trim() : "");
+    backdrop.querySelector(".pv-modal-title").textContent = title;
+    backdrop.querySelector(".pv-modal-value").textContent = value;
+    backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData ? currentData.report_url : "/premium");
+    backdrop.hidden = false;
+  }
+
+  function closeCardModal() {
+    if (!shadowRoot) return;
+    const backdrop = shadowRoot.querySelector(".pv-modal-backdrop");
+    if (backdrop) backdrop.hidden = true;
   }
 
   function ratingBadgeClass(label) {
@@ -507,7 +647,6 @@
           "</div>";
       });
 
-      html += '<a class="pv-cta" href="' + API_BASE + data.report_url + '" target="_blank" rel="noopener">See full report →</a>';
       return html;
     },
     map: function (data) {
@@ -519,7 +658,8 @@
     },
     market: function (data) {
       const rows = data.market_history || [];
-      if (!rows.length) return '<p class="pv-empty">No recorded sales at this exact address.</p>';
+      if (data.market_history_error) return '<p class="pv-error">Couldn’t check sold prices right now - try refreshing in a moment.</p>';
+      if (!rows.length) return '<p class="pv-empty">No recorded sales found for this postcode.</p>';
       const html =
         '<table class="pv-table"><thead><tr><th>Address</th><th>Date</th><th class="pv-num">Price</th></tr></thead><tbody>' +
         rows.map(function (t) {
@@ -749,6 +889,9 @@
         root.querySelector(".pv-header-score").className = "pv-header-score " + gradeClass;
         root.querySelector(".pv-header-score-num").textContent = data.overview.score;
         root.querySelector(".pv-header-score-grade").textContent = data.overview.grade || "";
+        const reportLink = root.querySelector(".pv-header-report-link");
+        reportLink.href = API_BASE + data.report_url;
+        reportLink.hidden = false;
         renderTabStrip(root, data);
         refreshActiveTab();
         if (currentToken) loadPremiumReport();
@@ -780,6 +923,12 @@
   function init() {
     if (!extractPostcode()) return;
     root = buildWidget();
+    getStoredHeight().then(function (px) {
+      if (px) {
+        root.style.height = px + "px";
+        root.style.maxHeight = px + "px";
+      }
+    });
     getToken().then(function (token) {
       currentToken = token;
       if (!chrome?.storage?.local) return loadReport();

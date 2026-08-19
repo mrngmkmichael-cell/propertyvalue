@@ -1224,6 +1224,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     def ok(result):
         return result if not isinstance(result, Exception) else None
 
+    tx_error = isinstance(tx_result, Exception)
     tx_result = ok(tx_result) or []
     comparables_result = ok(comparables_result) or []
     landscape_result = ok(landscape_result)
@@ -1236,6 +1237,12 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "latitude": lat,
         "longitude": lon,
         "report_url": f"/property?postcode={canonical.replace(' ', '+')}",
+        # Distinguishes "the Land Registry lookup failed" from "it
+        # succeeded and genuinely found no sales" - without this the
+        # extension can't tell the two apart and always shows the same
+        # "no recorded sales" text, which is misleading when it was
+        # actually a transient SPARQL error.
+        "market_history_error": tx_error,
     }
 
     mini_context = {
