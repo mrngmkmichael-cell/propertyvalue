@@ -46,7 +46,22 @@
   // is false, and which payload key holds that tab's *_full_count.
   const GATED_TABS = { market: "market_history", comparables: "comparables", schools: "schools" };
 
-  function extractPostcode() {
+  // Only the page's own title/meta tags are trusted for postcode
+  // detection - NOT a scan of the whole page's visible text. Rightmove/
+  // Zoopla/OnTheMarket listing pages routinely contain other real,
+  // full postcodes that have nothing to do with the property being
+  // viewed (the estate agent's branch office address, nearby schools,
+  // "similar properties" widgets) - a body-text scan can and does pick
+  // those up instead, silently showing another address's data. The
+  // title/meta tags are reliably about THIS listing, but the sites
+  // deliberately only show the outward code there (e.g. "BR5", not a
+  // full postcode) to stop buyers looking the property up and
+  // bypassing the agent - so a full-postcode match usually isn't even
+  // possible from public listing text, and every lookup here should be
+  // treated as best-effort until the user confirms it.
+  const OUTWARD_RE = /\b([A-Z]{1,2}[0-9][A-Z0-9]?)\b/i;
+
+  function extractLocation() {
     const metaCandidates = [
       'meta[property="og:street-address"]',
       'meta[name="address"]',
@@ -56,11 +71,16 @@
     for (const selector of metaCandidates) {
       const el = document.querySelector(selector);
       const text = el ? el.getAttribute("content") || el.textContent : "";
-      const match = text && text.match(POSTCODE_RE);
-      if (match) return normalizePostcode(match[1]);
+      const full = text && text.match(POSTCODE_RE);
+      if (full) return { postcode: normalizePostcode(full[1]), partial: false };
     }
-    const bodyMatch = document.body.innerText.match(POSTCODE_RE);
-    return bodyMatch ? normalizePostcode(bodyMatch[1]) : null;
+    for (const selector of metaCandidates) {
+      const el = document.querySelector(selector);
+      const text = el ? el.getAttribute("content") || el.textContent : "";
+      const outward = text && text.match(OUTWARD_RE);
+      if (outward) return { postcode: normalizePostcode(outward[1]), partial: true };
+    }
+    return null;
   }
 
   function normalizePostcode(raw) {
@@ -111,6 +131,27 @@
       if (!chrome?.storage?.local) return resolve();
       chrome.storage.local.remove(["pv_ext_token", "pv_ext_email"], resolve);
     });
+  }
+
+  // A user-typed postcode correction for THIS exact listing URL,
+  // remembered so re-opening the same listing doesn't lose it. Keyed
+  // per-URL (not globally) since a wrong auto-detect on one listing
+  // says nothing about the postcode for a different one.
+  function overrideKey() {
+    return "pv_ext_pc_override:" + location.href;
+  }
+
+  function getPostcodeOverride() {
+    return new Promise(function (resolve) {
+      if (!chrome?.storage?.local) return resolve(null);
+      const key = overrideKey();
+      chrome.storage.local.get([key], function (result) { resolve(result[key] || null); });
+    });
+  }
+
+  function setPostcodeOverride(postcode) {
+    if (!chrome?.storage?.local) return;
+    chrome.storage.local.set({ [overrideKey()]: postcode });
   }
 
   const STYLE = `
@@ -387,6 +428,28 @@
     .pv-modal-link:hover { text-decoration: underline; }
     .pv-dash-card:not(.pv-dash-locked) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
     .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
+    .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; }
+    .pv-postcode-bar {
+      display: flex; align-items: center; gap: 8px; padding: 7px 24px;
+      border-bottom: 1px solid #e4e7ec; background: #f8fafc; flex-shrink: 0;
+      font-size: 11.5px; color: #475569; max-width: 1200px; margin: 0 auto; width: 100%;
+    }
+    .pv-postcode-bar.pv-postcode-partial { background: #fffbeb; color: #92400e; }
+    .pv-postcode-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pv-postcode-edit-btn {
+      background: none; border: 1px solid #d0d5dd; color: inherit; font-weight: 700; font-size: 10.5px;
+      padding: 3px 9px; border-radius: 999px; cursor: pointer; flex-shrink: 0;
+    }
+    .pv-postcode-partial .pv-postcode-edit-btn { border-color: #fbbf24; }
+    .pv-postcode-form { display: flex; align-items: center; gap: 6px; flex: 1; }
+    .pv-postcode-form input {
+      flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid #d0d5dd; border-radius: 6px;
+      font-size: 11.5px; font-family: inherit; color: #12141c; background: #ffffff; color-scheme: light;
+    }
+    .pv-postcode-form button {
+      background: #3b5bfd; border: none; color: #fff; font-weight: 700; font-size: 10.5px;
+      padding: 4px 10px; border-radius: 6px; cursor: pointer; flex-shrink: 0;
+    }
   `;
 
   let currentData = null;
@@ -396,6 +459,8 @@
   let currentEmail = null;
   let root = null;
   let shadowRoot = null;
+  let currentPostcode = null;
+  let postcodeIsPartial = false;
 
   const HEIGHT_STORAGE_KEY = "pv_ext_height";
   const MIN_CARD_HEIGHT = 160;
@@ -436,12 +501,15 @@
         '<button class="pv-icon-btn pv-collapse-btn" type="button" aria-label="Collapse">▾</button>' +
         '<button class="pv-icon-btn pv-close-btn" type="button" aria-label="Close">✕</button>' +
       "</div>" +
+      '<div class="pv-postcode-bar"></div>' +
       '<div class="pv-body">' +
         '<div class="pv-tabs"></div>' +
         '<div class="pv-tab-content"><div class="pv-loading-block"><span class="pv-spinner"></span><p class="pv-loading-text">Loading your UKPropertyInsight report…</p></div></div>' +
       "</div>" +
       '<div class="pv-resize-handle" title="Drag to resize"></div>';
     shadow.appendChild(card);
+
+    renderPostcodeBar(card);
 
     const modalBackdrop = document.createElement("div");
     modalBackdrop.className = "pv-modal-backdrop";
@@ -452,6 +520,7 @@
         '<span class="pv-modal-icon"></span>' +
         '<h3 class="pv-modal-title"></h3>' +
         '<p class="pv-modal-value"></p>' +
+        '<p class="pv-modal-detail"></p>' +
         '<a class="pv-modal-link" href="#" target="_blank" rel="noopener">View full details on UKPropertyInsight →</a>' +
       "</div>";
     shadow.appendChild(modalBackdrop);
@@ -489,6 +558,47 @@
     wireResizeHandle(card);
 
     return card;
+  }
+
+  // Always visible, not just when detection looks shaky - the branch-
+  // office mixup above happened on a FULL-looking postcode match too,
+  // so "confirmed" and "partial" both get a visible, editable postcode
+  // rather than silent trust either way.
+  function renderPostcodeBar(card) {
+    const bar = card.querySelector(".pv-postcode-bar");
+    bar.className = "pv-postcode-bar" + (postcodeIsPartial ? " pv-postcode-partial" : "");
+    const label = currentPostcode
+      ? (postcodeIsPartial
+          ? "We could only detect the area (" + escapeHtml(currentPostcode) + ") - not the exact postcode"
+          : "Showing data for " + escapeHtml(currentPostcode))
+      : "No postcode detected on this page";
+    bar.innerHTML =
+      '<span class="pv-postcode-text">📍 ' + label + "</span>" +
+      '<button type="button" class="pv-postcode-edit-btn">' + (currentPostcode ? "Not right? Edit" : "Enter postcode") + "</button>";
+    bar.querySelector(".pv-postcode-edit-btn").addEventListener("click", function () {
+      showPostcodeEditForm(card);
+    });
+  }
+
+  function showPostcodeEditForm(card) {
+    const bar = card.querySelector(".pv-postcode-bar");
+    bar.innerHTML =
+      '<form class="pv-postcode-form">' +
+        '<input type="text" placeholder="e.g. BR5 1AB" value="' + escapeHtml(postcodeIsPartial ? "" : (currentPostcode || "")) + '" autocomplete="off">' +
+        '<button type="submit">Save</button>' +
+      "</form>";
+    const input = bar.querySelector("input");
+    input.focus();
+    bar.querySelector(".pv-postcode-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const typed = normalizePostcode(input.value.trim());
+      if (!typed) return;
+      currentPostcode = typed;
+      postcodeIsPartial = false;
+      setPostcodeOverride(typed);
+      renderPostcodeBar(card);
+      loadReport();
+    });
   }
 
   function wireResizeHandle(card) {
@@ -530,6 +640,10 @@
     iconTarget.className = "pv-modal-icon" + (iconEl ? " " + iconEl.className.replace("pv-dash-card-icon", "").trim() : "");
     backdrop.querySelector(".pv-modal-title").textContent = title;
     backdrop.querySelector(".pv-modal-value").textContent = value;
+    const detailEl = backdrop.querySelector(".pv-modal-detail");
+    const detail = CARD_DETAILS[title];
+    detailEl.textContent = detail || "";
+    detailEl.hidden = !detail;
     backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData ? currentData.report_url : "/premium");
     backdrop.hidden = false;
   }
@@ -597,6 +711,34 @@
     "Listed Buildings": ["🏛", "icon-heritage"],
     "Broadband": ["🌐", "icon-broadband"],
     "Mobile Signal": ["📶", "icon-mobile"],
+  };
+
+  // Same source/methodology explanation the main site's own modal for
+  // each card gives (condensed) - so a popup here is actually
+  // informative, not just the number again in a bigger box.
+  const CARD_DETAILS = {
+    "Avg sold price": "Full sold-transaction history for this postcode, from HM Land Registry Price Paid Data.",
+    "Flood risk": "Environment Agency flood zone (rivers & sea) - Zone 3 is high probability, Zone 2 medium, Zone 1 low.",
+    "Crime nearby": "Crimes recorded within roughly 1 mile, from police.uk's public data.",
+    "Schools": "The 3 nearest schools of each type by proximity - not a catchment-area guarantee, since no free UK-wide catchment dataset exists.",
+    "EPC rating": "From the property's Energy Performance Certificate, checked against the Minimum Energy Efficiency Standard (England & Wales require at least an E rating to legally let).",
+    "Area Prosperity": "5-year sold-price trend for this area, from HM Land Registry's House Price Index.",
+    "Price Trend & Forecast": "A straight-line trend fitted to 5 years of HM Land Registry's House Price Index - not a guarantee, just where prices land if the recent trend continued.",
+    "Rental Analysis": "Typical private-rental price by bedroom count for this area, from ONS's Price Index of Private Rents.",
+    "Aspect": "An estimated facing direction from building footprint and nearest road - not a measured sunlight survey, and doesn't account for trees or neighbouring buildings.",
+    "Surface Water Risk": "Environment Agency's Risk of Flooding from Surface Water map - rainwater that can't drain away, a different risk from the river/sea flood zone above.",
+    "Sewage Discharge": "Storm overflow spill counts within 1.5 miles, from water companies' official Event Duration Monitoring returns.",
+    "Noise": "Modelled day-evening-night noise level from DEFRA's strategic noise maps - a 10m-grid model, not a measurement at this exact address.",
+    "Radon Gas": "% of homes estimated at/above the UK radon Action Level, from the British Geological Survey's radon atlas - modelled at 1km-grid resolution, not measured here.",
+    "Subsidence Risk": "BGS climate data on how much clay shrink-swell subsidence risk is likely to worsen by 2030 - relevant over a long mortgage.",
+    "Air Quality": "Modelled annual pollutant levels from Defra's Pollution Climate Mapping, benchmarked against WHO's 2021 guideline levels.",
+    "Historic Contamination": "Environment Agency's Historic Landfill Sites dataset - old tipping sites that can carry ground-gas risk for decades.",
+    "Mining Risk": "Coal Authority's National Coal Mining Database - the same basis solicitors use for a CON29M mining search.",
+    "Planning Constraints": "Live check against Historic England/planning.data.gov.uk for Tree Preservation Orders, Article 4 Directions and similar building restrictions.",
+    "Environmental Designations": "Live check against Natural England's boundary data for protected natural areas at this exact point.",
+    "Listed Buildings": "Listed buildings within about a third of a mile, from Historic England's National Heritage List - proximity only, not a check on this specific building.",
+    "Broadband": "Fixed-line broadband speed-tier availability for this postcode, from Ofcom's Connected Nations data.",
+    "Mobile Signal": "Ofcom 4G/5G coverage estimate, reported at local-authority level since mobile signal isn't mapped postcode-by-postcode like broadband.",
   };
 
   function dashCard(title, value, locked, status) {
@@ -871,13 +1013,12 @@
   }
 
   function loadReport() {
-    const postcode = extractPostcode();
-    if (!postcode) return Promise.resolve();
+    if (!currentPostcode) return Promise.resolve();
 
     const headers = {};
     if (currentToken) headers["Authorization"] = "Bearer " + currentToken;
 
-    return fetch(API_BASE + "/api/extension-report?postcode=" + encodeURIComponent(postcode), { headers: headers })
+    return fetch(API_BASE + "/api/extension-report?postcode=" + encodeURIComponent(currentPostcode), { headers: headers })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (data.error) {
@@ -902,11 +1043,10 @@
   }
 
   function loadPremiumReport() {
-    const postcode = extractPostcode();
-    if (!postcode || !currentToken) return Promise.resolve();
+    if (!currentPostcode || !currentToken) return Promise.resolve();
 
     premiumLoading = true;
-    return fetch(API_BASE + "/api/extension-premium-report?postcode=" + encodeURIComponent(postcode), {
+    return fetch(API_BASE + "/api/extension-premium-report?postcode=" + encodeURIComponent(currentPostcode), {
       headers: { Authorization: "Bearer " + currentToken },
     })
       .then(function (r) { return r.ok ? r.json() : null; })
@@ -921,7 +1061,21 @@
   }
 
   function init() {
-    if (!extractPostcode()) return;
+    const detected = extractLocation();
+    if (!detected) return;
+    currentPostcode = detected.postcode;
+    postcodeIsPartial = detected.partial;
+
+    getPostcodeOverride().then(function (override) {
+      if (override) {
+        currentPostcode = override;
+        postcodeIsPartial = false;
+      }
+      initWidget();
+    });
+  }
+
+  function initWidget() {
     root = buildWidget();
     getStoredHeight().then(function (px) {
       if (px) {
