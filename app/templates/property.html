@@ -417,11 +417,13 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}" data-modal-target="modal-getting-around" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-getting-around" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
             <span class="dashboard-card-title">Getting Around</span>
             <span class="dashboard-card-status">
                 {% if amenities_error %}Data unavailable
+                {% elif stations.rail and stations.rail.city_journeys %}{{ stations.rail.city_journeys[0].minutes }} min train to {{ stations.rail.city_journeys[0].city }}
                 {% elif nearest_transport %}{{ nearest_transport.name }} · {{ nearest_transport.distance_m | distance }}
                 {% else %}Nothing nearby{% endif %}
             </span>
