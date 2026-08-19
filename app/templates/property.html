@@ -1747,7 +1747,7 @@
                         <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
                         —
                         {%- if s.walking_distance_m %} {{ s.walking_distance_m | distance }} ({{ s.walking_duration_min }} min walk from property)
-                        {%- else %} {{ s.distance_m | distance }} (straight-line){% endif %}
+                        {%- else %} {{ s.distance_m | distance }} (direct distance, not the walking route){% endif %}
                         {%- if s.lines %}
                         <span class="line-badge-row">
                             {% for line in s.lines %}
