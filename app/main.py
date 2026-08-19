@@ -895,6 +895,8 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             _distance_schools.append({
                 "name": s["name"], "latitude": s["latitude"], "longitude": s["longitude"],
                 "phase_group": s.get("phase_group") or "Other",
+                "ofsted_rating": s.get("ofsted_rating"),
+                "ofsted_rating_label": s.get("ofsted_rating_label"),
                 "radius_miles": radius_miles,
                 "is_real": is_real,
                 "academic_year": academic_year,

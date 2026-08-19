@@ -261,8 +261,12 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 r.urn: r for r in session.scalars(select(SchoolDestinations).where(SchoolDestinations.urn.in_(all_urns)))
             }
             admission_radius_by_urn = {
+                # round() here, not at each display site - some authorities'
+                # fetchers store an unrounded metres/miles conversion
+                # (e.g. Hertfordshire), which otherwise displays as
+                # "3.4260877129755056 mi" instead of "3.43 mi".
                 r.urn: {
-                    "last_distance_miles": r.last_distance_miles, "academic_year": r.academic_year,
+                    "last_distance_miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year,
                     "source_authority": r.source_authority,
                 }
                 for r in session.scalars(select(SchoolAdmissionRadius).where(SchoolAdmissionRadius.urn.in_(all_urns)))

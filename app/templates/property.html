@@ -1642,7 +1642,10 @@
                 <tbody>
                     {% for s in phase_schools %}
                     <tr>
-                        <td>{{ s.name }}</td>
+                        <td>
+                            {{ s.name }}
+                            {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>{% endif %}
+                        </td>
                         <td class="num">{{ s.property_distance_miles }} mi</td>
                         <td class="num">{{ s.radius_miles }} mi</td>
                         <td>
