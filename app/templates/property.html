@@ -1714,6 +1714,22 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Getting around</h2>
+
+        {% if routing_configured %}
+        <div class="commute-calculator" data-lat="{{ location.latitude }}" data-lon="{{ location.longitude }}">
+            <h3 class="subsection-heading">Commute time calculator</h3>
+            <p class="section-sub">Real driving and cycling time from this property to anywhere in the UK.</p>
+            <div class="stacked-form commute-calculator-form">
+                <div class="search-form-field">
+                    <label for="commute-postcode">Work postcode</label>
+                    <input type="text" id="commute-postcode" placeholder="e.g. SW1A 1AA" autocomplete="off">
+                </div>
+                <button type="button" id="commute-check-btn">Check commute time</button>
+            </div>
+            <div id="commute-result" class="commute-result" hidden></div>
+        </div>
+        {% endif %}
+
         <p class="section-sub">
             Rail, Tube and tram stations first (closest 5 of each, within ~2 miles), then the nearest
             bus stop — prioritised in that order since trains, the Tube and trams usually matter more
@@ -2691,6 +2707,68 @@ Listed building data from Historic England's
                     row.style.display = (!q || text.includes(q)) ? '' : 'none';
                 });
             });
+        });
+    })();
+</script>
+
+<script>
+    (function () {
+        const btn = document.getElementById('commute-check-btn');
+        if (!btn) return;
+
+        const container = document.querySelector('.commute-calculator');
+        const postcodeInput = document.getElementById('commute-postcode');
+        const resultEl = document.getElementById('commute-result');
+        const lat = container.dataset.lat;
+        const lon = container.dataset.lon;
+
+        function formatLeg(label, leg) {
+            if (!leg) return '<div class="commute-result-leg"><span>' + label + '</span><span>No route found</span></div>';
+            const miles = (leg.distance_m / 1609.34).toFixed(1);
+            return '<div class="commute-result-leg"><span>' + label + '</span><span>' + leg.duration_min + ' min (' + miles + ' mi)</span></div>';
+        }
+
+        async function checkCommute() {
+            const postcode = postcodeInput.value.trim();
+            if (!postcode) return;
+
+            resultEl.hidden = false;
+            resultEl.innerHTML = '<p class="section-sub">Checking…</p>';
+            btn.disabled = true;
+
+            try {
+                const url = '/api/commute?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon) +
+                    '&postcode=' + encodeURIComponent(postcode);
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    const messages = {
+                        not_found: "Couldn't find that postcode — double-check the spelling.",
+                        postcode_required: 'Enter a postcode first.',
+                        not_configured: 'Commute time isn’t available on this deployment right now.',
+                    };
+                    resultEl.innerHTML = '<p class="notice">' + (messages[data.error] || 'Something went wrong — try again.') + '</p>';
+                    return;
+                }
+
+                resultEl.innerHTML =
+                    '<p class="section-sub">To ' + data.destination_postcode + ':</p>' +
+                    formatLeg('Driving', data.driving) +
+                    formatLeg('Cycling', data.cycling);
+            } catch (err) {
+                resultEl.innerHTML = '<p class="notice">Something went wrong — try again.</p>';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        btn.addEventListener('click', checkCommute);
+        postcodeInput.addEventListener('keydown', function (evt) {
+            if (evt.key === 'Enter') {
+                evt.preventDefault();
+                checkCommute();
+            }
         });
     })();
 </script>

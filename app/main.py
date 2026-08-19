@@ -21,7 +21,7 @@ from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, crime,
     demographics, designations, epc, flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi,
-    mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, schools_db,
+    mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, routing, schools_db,
     sewage_discharge, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
@@ -830,6 +830,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["food_hygiene"] = food_hygiene_result
 
     context["google_ratings_configured"] = google_places.is_configured()
+    context["routing_configured"] = routing.is_configured()
     if isinstance(google_ratings_result, Exception):
         context["google_ratings_error"] = True
     else:
@@ -1005,6 +1006,38 @@ async def api_lookup(postcode: str = ""):
     payload["report_url"] = f"/property?postcode={canonical.replace(' ', '+')}"
 
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
+
+
+@app.get("/api/commute")
+async def api_commute(lat: float, lon: float, postcode: str = ""):
+    """Real driving/cycling time from a property's coordinates to a
+    user-typed destination postcode, for the "Getting Around" commute
+    calculator. Called from the property page's own JS, not the
+    browser extension - no CORS headers needed."""
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400)
+    if not routing.is_configured():
+        return JSONResponse({"error": "not_configured"}, status_code=503)
+
+    try:
+        destination = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_failed"}, status_code=502)
+    if destination is None:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    result = await routing.commute_times(lat, lon, destination["latitude"], destination["longitude"])
+    if result is None:
+        return JSONResponse({"error": "not_configured"}, status_code=503)
+
+    payload = {"destination_postcode": destination["postcode"]}
+    for mode in ("driving", "cycling"):
+        leg = result[mode]
+        payload[mode] = (
+            {"distance_m": round(leg["distance_m"]), "duration_min": round(leg["duration_min"])} if leg else None
+        )
+    return JSONResponse(payload)
 
 
 @app.get("/property/comparables")
