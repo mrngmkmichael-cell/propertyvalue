@@ -164,7 +164,7 @@
     <p class="section-sub">Tap a card to see the details in a popup.</p>
 
     {% set premium_unlocked = current_user and current_user.is_premium %}
-    {% set lock_label = "Sign up free to unlock" if not current_user else "Upgrade to Premium to unlock" %}
+    {% set lock_label = "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup" if not current_user else "/premium" %}
 
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
