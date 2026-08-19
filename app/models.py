@@ -588,6 +588,36 @@ class SchoolCharacteristics(Base):
     fsm_eligible_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
+class SchoolDemographics(Base):
+    """Gender split, English-as-additional-language %, and ethnicity
+    breakdown, by school URN - the same DfE "schools, pupils and their
+    characteristics" school census as SchoolCharacteristics (same
+    Explore Education Statistics API, same dataset ID), just querying
+    more of its breakdown dimensions. Populated by
+    scripts/import_school_demographics.py.
+
+    Ethnicity is collapsed to the same five broad categories
+    app/services/demographics.py already uses for LSOA-level Census
+    ethnicity (white/asian/black/mixed/other), by summing DfE's ~19
+    detailed sub-categories into those buckets - deliberately matches
+    the existing area-level categorisation rather than introducing a
+    second taxonomy, so a school's mix can be compared directly
+    against its surrounding area's.
+    """
+    __tablename__ = "school_demographics"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), default="")
+    male_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    female_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    eal_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ethnicity_white_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ethnicity_asian_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ethnicity_black_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ethnicity_mixed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ethnicity_other_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
 class BroadbandCoverage(Base):
     """Fixed-line broadband availability, by full postcode (unit
     level, not just district) - from Ofcom's Connected Nations 2025

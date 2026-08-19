@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.db import get_session, is_configured
 from app.models import (
     Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCatchmentEstimate, SchoolCharacteristics,
-    SchoolDestinations, SchoolDetail,
+    SchoolDemographics, SchoolDestinations, SchoolDetail,
 )
 from app.services import _cache, overview_score, reviews
 
@@ -271,9 +271,13 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 r.urn: {"radius_miles": r.radius_miles}
                 for r in session.scalars(select(SchoolCatchmentEstimate).where(SchoolCatchmentEstimate.urn.in_(all_urns)))
             }
+            demographics_by_urn = {
+                r.urn: r for r in session.scalars(select(SchoolDemographics).where(SchoolDemographics.urn.in_(all_urns)))
+            }
         review_summaries = reviews.summaries_for_many("school", [str(urn) for urn in all_urns])
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
+            e["demographics"] = demographics_by_urn.get(e["urn"])
             e["detail"] = detail_by_urn.get(e["urn"])
             e["destinations"] = destinations_by_urn.get(e["urn"])
             e["review_summary"] = review_summaries.get(str(e["urn"]))

@@ -123,9 +123,41 @@
                                 {% if s.fsm_eligible_pct is not none %}
                                 <tr><td>Eligible for free school meals</td><td>{{ s.fsm_eligible_pct }}%</td></tr>
                                 {% endif %}
+                                {% if s.demographics %}
+                                {% if s.demographics.male_pct is not none and s.demographics.female_pct is not none %}
+                                <tr><td>Gender split</td><td>{{ s.demographics.male_pct }}% boys, {{ s.demographics.female_pct }}% girls</td></tr>
+                                {% endif %}
+                                {% if s.demographics.eal_pct is not none %}
+                                <tr><td>English as an additional language</td><td>{{ s.demographics.eal_pct }}%</td></tr>
+                                {% endif %}
+                                {% set ethnicity_rows = [
+                                    ('White', s.demographics.ethnicity_white_pct),
+                                    ('Asian', s.demographics.ethnicity_asian_pct),
+                                    ('Black', s.demographics.ethnicity_black_pct),
+                                    ('Mixed', s.demographics.ethnicity_mixed_pct),
+                                    ('Other', s.demographics.ethnicity_other_pct),
+                                ] | selectattr('1', 'ne', none) | list %}
+                                {% if ethnicity_rows %}
+                                <tr>
+                                    <td>Ethnicity</td>
+                                    <td>
+                                        {%- for label, pct in ethnicity_rows -%}
+                                            {{ label }} {{ pct }}%{{ ", " if not loop.last }}
+                                        {%- endfor -%}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endif %}
                             </table>
                             {% if not (s.detail and s.detail.number_on_roll) and not (s.exam_results and s.exam_results.pupil_count) %}
                             <p>No pupil count on file for this school.</p>
+                            {% endif %}
+                            {% if s.demographics and (s.demographics.eal_pct is not none or s.demographics.ethnicity_white_pct is not none) %}
+                            <p class="section-sub">
+                                Gender, language and ethnicity figures are from the same DfE school census as free
+                                school meal eligibility — independent/private schools aren't included in this
+                                census, so won't show these rows.
+                            </p>
                             {% endif %}
                         </div>
                     </details>
