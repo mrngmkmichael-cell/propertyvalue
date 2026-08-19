@@ -119,6 +119,7 @@
     {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
     {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
     {% set clay_risk_status = 'muted' if not clay_risk else ('attn' if clay_risk.class_2030 == 'Probable' else 'ok') %}
+    {% set sewage_status = 'muted' if sewage_error else ('attn' if sewage_outfalls and (sewage_outfalls[0].spill_count or 0) >= 20 else 'ok') %}
     {% set aq_worst = (air_quality.pollutants | map(attribute='times_guideline') | list | max) if air_quality and air_quality.pollutants else none %}
     {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
     {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
@@ -134,6 +135,7 @@
     {% if noise_status == 'attn' %}{% set _ = attention_items.append(('modal-noise', 'High noise levels')) %}{% endif %}
     {% if radon_status == 'attn' %}{% set _ = attention_items.append(('modal-radon', 'Elevated radon risk')) %}{% endif %}
     {% if clay_risk_status == 'attn' %}{% set _ = attention_items.append(('modal-clay-risk', 'Rising subsidence risk from climate change')) %}{% endif %}
+    {% if sewage_status == 'attn' %}{% set _ = attention_items.append(('modal-sewage', 'Frequent sewage discharges nearby')) %}{% endif %}
     {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
     {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
     {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
@@ -299,6 +301,18 @@
             {% elif not flood_error %}
             <span class="dashboard-card-substat">No active warnings</span>
             {% endif %}
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ sewage_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-sewage" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            {% if sewage_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-sewage">{{ icons.icon('flood') }}</span>
+            <span class="dashboard-card-title">Sewage Discharge</span>
+            <span class="dashboard-card-status">
+                {% if sewage_error %}Data unavailable
+                {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spills nearby in {{ sewage_outfalls[0].year }}
+                {% else %}No outfalls found nearby{% endif %}
+            </span>
         </button>
 
         {% set noise_max_label = ('Low' if noise_max < 55 else ('Moderate' if noise_max < 65 else ('High' if noise_max < 75 else 'Very high'))) if noise_max is not none else none %}
@@ -1122,6 +1136,54 @@
             </table>
         {% else %}
             <p class="notice">No active flood warnings or alerts nearby.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-sewage">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Sewage discharge</h2>
+        {% if sewage_error %}
+            <p class="notice notice-error">
+                The Environment Agency's storm overflow data service didn't respond. Try again in a
+                moment.
+            </p>
+        {% elif sewage_outfalls %}
+            <p class="section-sub">
+                Storm overflows (combined sewer outfalls) within 1.5 miles, from water companies'
+                Event Duration Monitoring returns to the Environment Agency — how often and for how
+                long each discharged untreated sewage into its receiving watercourse in its most
+                recently reported year. This is a genuine public-interest dataset, published because
+                of sustained pressure over river water quality, not something PropertyValue models
+                or estimates.
+            </p>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Outfall</th>
+                        <th>Into</th>
+                        <th class="num">Spills ({{ sewage_outfalls[0].year }})</th>
+                        <th class="num">Hours</th>
+                        <th class="num">Distance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in sewage_outfalls %}
+                    <tr>
+                        <td>{{ o.name }}<br><span class="section-sub" style="margin:0;">{{ o.water_company }}</span></td>
+                        <td>{{ o.receiving_water }}</td>
+                        <td class="num">{{ o.spill_count if o.spill_count is not none else '—' }}</td>
+                        <td class="num">{{ "%.1f"|format(o.duration_hrs) if o.duration_hrs is not none else '—' }}</td>
+                        <td class="num">{{ o.distance_m | distance }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="notice">No monitored storm overflow found within 1.5 miles of this property.</p>
         {% endif %}
             </section>
         </div>

@@ -21,7 +21,8 @@ from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, crime, demographics,
     designations, epc, flood, flood_zones, food_hygiene, google_places, heritage, historic_landfill, hpi,
-    mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, schools_db, valuation,
+    mobile_coverage, noise, orientation, overview_score, place_search, radon, rental, reviews, schools_db,
+    sewage_discharge, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -572,6 +573,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             asyncio.to_thread(schools_db.school_landscape, lat, lon),
             hpi.price_trend(location["admin_district"]),
             clay_risk.risk_near(lat, lon),
+            sewage_discharge.nearby_outfalls(lat, lon),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
@@ -585,7 +587,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         age_profile_result, housing_result, background_result, wellbeing_result, rental_result,
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
-        school_landscape_result, price_trend_result, clay_risk_result,
+        school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -714,6 +716,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["clay_risk_error"] = True
     elif clay_risk_result:
         context["clay_risk"] = clay_risk_result
+
+    if isinstance(sewage_result, Exception):
+        context["sewage_error"] = True
+    else:
+        context["sewage_outfalls"] = sewage_result
 
     if isinstance(heritage_result, Exception):
         context["heritage_error"] = True
