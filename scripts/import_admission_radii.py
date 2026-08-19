@@ -3911,6 +3911,64 @@ def fetch_central_bedfordshire() -> list[dict]:
     return records
 
 
+_WEST_NORTHANTS_URLS = [
+    # Northampton, Daventry & South, and Junior "allocations" PDFs -
+    # republished each year at new /media/<id>/download IDs (find the
+    # current ones via westnorthants.gov.uk's "Primary school place
+    # offers" page - it's a Next.js app whose main HTML doesn't embed
+    # the document links directly, so re-locate them by view-source or
+    # site search rather than assuming the page's raw HTML lists them).
+    "https://cms.westnorthants.gov.uk/media/29929/download",
+    "https://cms.westnorthants.gov.uk/media/29930/download",
+    "https://cms.westnorthants.gov.uk/media/29931/download",
+]
+# Only the first ("last pupil ... criterion lives X miles from the
+# school") match per cell is taken - later "May/June/July round of
+# reallocations" paragraphs in the same cell describe *different*,
+# later distances (sometimes "from their nearest alternative school",
+# a different figure entirely) for places that became free after
+# National Offer Day, not the on-time figure this registry wants.
+_WEST_NORTHANTS_DISTANCE_RE = re.compile(r"last pupil.*?criterion lives\s*([\d.]+)\s*miles", re.IGNORECASE | re.DOTALL)
+
+
+def fetch_west_northamptonshire() -> list[dict]:
+    """West Northamptonshire Council's "how places were allocated"
+    PDFs (Northampton town, Daventry & South districts, and a separate
+    Junior-school document) - one clean table per document with
+    columns School Name / How places were allocated / Places
+    remaining?, one row per school (multi-line names like "Duston
+    Eldean Primary\\nSchool" wrap consistently mid-name rather than
+    splitting the identifying part across rows, unlike the
+    town-name-prefix wrapping that made Stoke-on-Trent and Shropshire's
+    similarly-formatted booklet unsafe - see COUNCIL_COVERAGE_LOG.md).
+    The distance is embedded in prose within the second column rather
+    than its own column. Secondary allocations are published in a
+    separate, messier document (rotated header cells, cross-page
+    continuation rows with a blank school-name cell, and "linked area"
+    reallocation distances that mean something different) - not
+    attempted here, primary/junior only.
+    """
+    records = []
+    for url in _WEST_NORTHANTS_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=45, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                table = page.extract_table()
+                if not table:
+                    continue
+                for row in table:
+                    if not row or len(row) < 2 or not row[0] or row[0].strip() == "School Name":
+                        continue
+                    name = row[0].replace("\n", " ").strip()
+                    cell = (row[1] or "").replace("\n", " ")
+                    match = _WEST_NORTHANTS_DISTANCE_RE.search(cell)
+                    if match:
+                        records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3999,6 +4057,7 @@ _AUTHORITIES = [
     ("Wirral", "2025/26", fetch_wirral),
     ("Bedford", "2026/27", fetch_bedford),
     ("Central Bedfordshire", "2026/27", fetch_central_bedfordshire),
+    ("West Northamptonshire", "2026/27", fetch_west_northamptonshire),
 ]
 
 
