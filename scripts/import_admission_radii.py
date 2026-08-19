@@ -3862,6 +3862,55 @@ def fetch_bedford() -> list[dict]:
     return records
 
 
+_CENTRAL_BEDS_URLS = [
+    # Starting School (lower/primary), Transfer to Middle, Transfer to Upper -
+    # each year's "on-time" (national offer day) allocation info PDF, hosted
+    # on Central Bedfordshire's SharePoint (linked from
+    # centralbedfordshire.gov.uk's "places offered" pages for each phase -
+    # follow the "On-time offers <year>" link there if these rot).
+    "https://centralbedfordshirecouncil.sharepoint.com/:b:/s/Communications/IQBlmnDltkSeS7o6frAbXLJKASKVyn6jVaifuakjiHLI0gQ?e=iJKMLd&download=1",
+    "https://centralbedfordshirecouncil.sharepoint.com/:b:/s/Communications/IQDv5MX6FJOCSKBdQVjP0zV3ARQPdxpJewGKuEhZhrN_gOQ?e=HX4tLo&download=1",
+    "https://centralbedfordshirecouncil.sharepoint.com/:b:/s/Communications/IQAnVfWdDeEeR7GWklYbHDI6ATUDkMdR8aw48LDh-7Dr6dA?e=yjc7MP&download=1",
+]
+# Each oversubscribed school gets its own breakdown page headed "<Name> -
+# <N> places available" (or "<Name> - places available <N>", order varies) -
+# the separator glyph pdfplumber extracts is a mundane replacement character
+# rather than a real "-", so matched generically as a single non-space char.
+_CBC_HEADING_RE = re.compile(r"^([A-Z][^\n]{1,70}?)\s+\S\s+(?:[\d,]+\s+)?[Pp]laces available", re.MULTILINE)
+_CBC_DISTANCE_RE = re.compile(r"distance of ([\d,]+\.?\d*)\s*metres")
+
+
+def fetch_central_bedfordshire() -> list[dict]:
+    """Central Bedfordshire Council's three-tier (lower/middle/upper)
+    allocation info PDFs. Page 1 is a summary table (no per-school
+    distance); subsequent pages give each oversubscribed school its
+    own prose breakdown ending "...lived at a distance of NNNN.NN
+    metres from the school." - undersubscribed schools get no
+    breakdown page at all and are correctly absent rather than
+    guessed. Schools genuinely ambiguous under fuzzy matching (e.g.
+    two "Greenleas" or two "St Andrew's" sites sharing a base name)
+    come out below the match cutoff and are correctly dropped by the
+    shared matcher rather than handled specially here.
+    """
+    records = []
+    for url in _CENTRAL_BEDS_URLS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            full_text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+        headings = list(_CBC_HEADING_RE.finditer(full_text))
+        for i, m in enumerate(headings):
+            start = m.end()
+            end = headings[i + 1].start() if i + 1 < len(headings) else len(full_text)
+            dist_match = _CBC_DISTANCE_RE.search(full_text[start:end])
+            if not dist_match:
+                continue
+            metres = float(dist_match.group(1).replace(",", ""))
+            records.append({"school_name": m.group(1).strip(), "last_distance_miles": metres / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3949,6 +3998,7 @@ _AUTHORITIES = [
     ("Tower Hamlets", "2024/25", fetch_tower_hamlets),
     ("Wirral", "2025/26", fetch_wirral),
     ("Bedford", "2026/27", fetch_bedford),
+    ("Central Bedfordshire", "2026/27", fetch_central_bedfordshire),
 ]
 
 
