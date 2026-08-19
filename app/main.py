@@ -1439,6 +1439,9 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         designations_result, heritage_result,
         broadband_result, mobile_result,
         flood_zone_result, landscape_result, certs_result, crime_result, crime_outcode_result, deprivation_result,
+        tx_result, comparables_result, nearby_schools_result, catchment_result, amenities_result,
+        income_result, occupation_result, qualification_result, age_profile_result, housing_result,
+        background_result, wellbeing_result,
     ) = await asyncio.gather(
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         hpi.price_trend(location["admin_district"]),
@@ -1471,6 +1474,25 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         crime.summary_near(lat, lon),
         crime.summary_for_outcode(location["outcode"]),
         asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+        # Everything below powers the 20 dashboard cards this endpoint
+        # was still missing (Local Market, Valuation Estimate, Flood
+        # Risk, Crime & Safety, Schools & Catchment, School Catchment
+        # Areas, Nearby Essentials, Getting Around, and the 6 Area &
+        # Community census cards) - same services property_search uses
+        # for these, all keyed by lat/lon or LSOA/MSOA so none of them
+        # need a house number the extension doesn't have.
+        _immediate([]) if area_level else sold_prices_for_postcode(canonical),
+        _nearby_comparables(lat, lon),
+        asyncio.to_thread(schools_db.nearby_schools, lat, lon),
+        catchment.catchments_for(lat, lon),
+        amenities.nearby_amenities_and_station(lat, lon),
+        asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
+        asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
+        asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
         return_exceptions=True,
     )
 
@@ -1494,6 +1516,53 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     listed_buildings = ok(heritage_result) or []
     broadband_data = ok(broadband_result)
     mobile_data = ok(mobile_result)
+    transactions = ok(tx_result) or []
+    comparables_list = ok(comparables_result) or []
+    nearby_schools_grouped = ok(nearby_schools_result) or {}
+    nearby_schools_total = sum(len(v) for v in nearby_schools_grouped.values())
+    catchment_areas = ok(catchment_result) or []
+    amenities_data = ok(amenities_result)
+    income_data = ok(income_result)
+    occupation_data = ok(occupation_result)
+    qualification_data = ok(qualification_result)
+    age_profile_data = ok(age_profile_result)
+    housing_data = ok(housing_result)
+    background_data = ok(background_result)
+    wellbeing_data = ok(wellbeing_result)
+    certs_list = ok(certs_result) or []
+
+    # Same fallback property_search uses when there's no house number
+    # to narrow the estimate by floor area - still a genuine area-based
+    # valuation, not a placeholder.
+    growth_area = (hpi_area.get("local_authority") or hpi_area.get("region")) if hpi_area else None
+    valuation_estimate = (
+        None if isinstance(comparables_result, Exception)
+        else valuation.estimate_value(comparables_list, None, growth_area["annual_change_pct"] if growth_area else None)
+    )
+
+    if amenities_data:
+        nearest_transport = min(amenities_data["stations"].values(), key=lambda s: s["distance_m"], default=None)
+        essentials_count = sum(
+            len(amenities_data["categories"].get(cat, []))
+            for cat in ("restaurant", "supermarket", "pharmacy", "pub", "hospital")
+        )
+    else:
+        nearest_transport = None
+        essentials_count = 0
+
+    # Mirrors property_search's own catchment_distance_schools teaser
+    # count - every school with either a real published admission
+    # radius or a modelled estimate, so "School Catchment Areas" isn't
+    # a dead end outside the handful of councils with real polygons.
+    landscape_data = ok(landscape_result)
+    catchment_distance_count = 0
+    catchment_distance_any_real = False
+    for s in (landscape_data or {}).get("all_schools", []):
+        if s.get("admission_radius"):
+            catchment_distance_count += 1
+            catchment_distance_any_real = True
+        elif s.get("catchment_estimate"):
+            catchment_distance_count += 1
 
     # Same "built_up_area" exclusion property_search applies (see its
     # own planning_flags comment) - being in a built-up area is
@@ -1509,6 +1578,15 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     environmental_flags = [d for d in designations_data.values() if d.get("group") == "environmental" and d.get("present")]
     aq_worst = max((p["times_guideline"] for p in aq_data["pollutants"]), default=None) if aq_data and aq_data.get("pollutants") else None
     noise_max = max((noise_data.get("road_db") or 0, noise_data.get("rail_db") or 0, noise_data.get("airport_db") or 0)) if noise_data else None
+
+    # Synchronous (matches property_search's own un-awaited call to
+    # this) and, in area-level mode, actively skipped rather than run -
+    # reviews are keyed to `canonical`, which in area-level mode is a
+    # geographic neighbour's postcode, and unlike census/crime stats a
+    # review is one specific person's opinion about one specific house,
+    # not a genuine area-level signal to show as if it were about this
+    # property.
+    area_reviews = None if area_level else reviews.summary_for("property", canonical)
 
     def card(title, value, status="ok", sub=None):
         return {"title": title, "value": value, "status": status, "sub": sub}
@@ -1529,11 +1607,45 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     environmental_status = "muted" if isinstance(designations_result, Exception) else ("attn" if environmental_flags else "ok")
     broadband_status = "muted" if not broadband_data else ("attn" if broadband_data.get("below_uso_pct") and broadband_data["below_uso_pct"] >= 5 else "ok")
     mobile_status = "muted" if not mobile_data else ("attn" if mobile_data.get("no_4g_outdoor_pct") and mobile_data["no_4g_outdoor_pct"] >= 5 else "ok")
+    flood_zone_data = ok(flood_zone_result)
+    flood_status = "muted" if isinstance(flood_zone_result, Exception) else ("attn" if flood_zone_data and flood_zone_data.get("zone", 0) >= 3 else "ok")
+    crime_data = ok(crime_result)
+    crime_outcode_data = ok(crime_outcode_result)
+    crime_status = "muted" if isinstance(crime_result, Exception) or not (crime_data and crime_data.get("total")) else "ok"
+    deprivation_data = ok(deprivation_result)
+    deprivation_status = "muted" if not deprivation_data else ("attn" if deprivation_data.get("imd_decile") and deprivation_data["imd_decile"] <= 3 else "ok")
+    local_market_status = "muted" if (isinstance(tx_result, Exception) or not transactions) else "ok"
+    valuation_status = "muted" if (isinstance(comparables_result, Exception) or not valuation_estimate) else "ok"
+    catchment_status = (
+        "muted" if isinstance(catchment_result, Exception)
+        else ("ok" if (catchment_areas or catchment_distance_count) else "muted")
+    )
+    schools_catchment_status = "muted" if (isinstance(nearby_schools_result, Exception) or not nearby_schools_total) else "ok"
+    essentials_status = "muted" if (isinstance(amenities_result, Exception) or not amenities_data) else "ok"
+    transport_status = "muted" if (isinstance(amenities_result, Exception) or not nearest_transport) else "ok"
 
     sections = [
         {
             "heading": "Value & Market",
             "cards": [
+                # Matches the site's own text exactly: most recent
+                # sale amount, not the postcode average (that's the
+                # separate "Avg sold price" card on the free Overview
+                # tab) - skipped in area-level mode like Market
+                # History, since it would otherwise show a geographic
+                # neighbour's own last sale as if it were this
+                # property's.
+                card(
+                    "Local Market",
+                    "Ask agent for exact address" if area_level else (f"{_format_gbp(transactions[0]['amount'])} last sale" if transactions else "No recorded sales"),
+                    "muted" if area_level else local_market_status,
+                ),
+                card(
+                    "Valuation Estimate",
+                    f"{_format_gbp(valuation_estimate['estimate'])}" if valuation_estimate else "Not enough nearby sales",
+                    valuation_status,
+                ),
+                card("Costs & Affordability", "Stamp duty, mortgage, yield"),
                 card("Area Prosperity", (f"{prosperity_area['annual_change_pct']:+.1f}% YoY ({prosperity_area['name']})" if prosperity_area else "No data"), prosperity_status),
                 card("Price Trend & Forecast", (f"{hpi_trend['pct_change']:+.1f}% over 5 years" if hpi_trend and hpi_trend.get("pct_change") is not None else "No data")),
                 card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data")),
@@ -1542,6 +1654,13 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Property & Condition",
             "cards": [
+                card("Energy Efficiency", f"{len(certs_list)} certificate{'s' if len(certs_list) != 1 else ''} found" if certs_list else "No certificates found"),
+                # Genuinely needs an exact address (compares a single
+                # property's own EPC certificates across years) - the
+                # extension never has a house number, on a full
+                # postcode or an area-level one, so this always shows
+                # the site's own "no house number" fallback text.
+                card("Extended or Modified", "Search with a house number", "muted"),
                 card(
                     "Aspect",
                     "Ask agent for exact address" if area_level else (f"Garden faces {orientation_data['rear_facing']}" if orientation_data else "No data"),
@@ -1552,6 +1671,8 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Risk & Safety",
             "cards": [
+                card("Flood Risk", flood_zone_data["label"] if flood_zone_data else "Zone 1 (low probability)", flood_status),
+                card("Crime & Safety", f"{crime_data['total']} crimes recorded" if crime_data and crime_data.get("total") else "No data", crime_status),
                 card("Surface Water Risk", surface_water["label"] if surface_water else "No data", surface_water_status),
                 # Matches property.html's own card text exactly - the
                 # nearest outfall's own spill count for its most recent
@@ -1585,8 +1706,45 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Location & Connectivity",
             "cards": [
+                card("Schools & Catchment", f"{nearby_schools_total} nearby" if nearby_schools_total else "None found nearby", schools_catchment_status),
+                card(
+                    "School Catchment Areas",
+                    (
+                        f"In {len(catchment_areas)} catchment{'s' if len(catchment_areas) != 1 else ''}" if catchment_areas
+                        else (f"{catchment_distance_count} school{'s' if catchment_distance_count != 1 else ''}, {'real + estimated' if catchment_distance_any_real else 'estimated'}" if catchment_distance_count else "Not covered for this area")
+                    ),
+                    catchment_status,
+                ),
+                card("Nearby Essentials", f"{essentials_count} nearby" if amenities_data else "No data", essentials_status),
+                card(
+                    "Getting Around",
+                    (
+                        f"{amenities_data['stations']['rail']['city_journeys'][0]['minutes']} min train to {amenities_data['stations']['rail']['city_journeys'][0]['city']}"
+                        if amenities_data and (amenities_data["stations"].get("rail") or {}).get("city_journeys")
+                        else (f"{nearest_transport['name']} · {_format_distance(nearest_transport.get('walking_distance_m') or nearest_transport['distance_m'])}" if nearest_transport else "Nothing nearby")
+                    ),
+                    transport_status,
+                ),
                 card("Broadband", broadband_data["label"] if broadband_data else "No data", broadband_status),
                 card("Mobile Signal", (f"{mobile_data['coverage_4g_outdoor_all_pct']}% 4G outdoor" if mobile_data else "No data"), mobile_status),
+            ],
+        },
+        {
+            "heading": "Area & Community",
+            "cards": [
+                card("Household Income", f"{_format_gbp(income_data['here'])} p/a" if income_data else "No data"),
+                card("Deprivation", f"Decile {deprivation_data['imd_decile']} of 10" if deprivation_data else "No data", deprivation_status),
+                card("Occupation", f"{occupation_data['professional_pct']}% managerial/professional" if occupation_data else "No data"),
+                card("Qualification", f"{qualification_data['degree_pct']}% degree-educated" if qualification_data else "No data"),
+                card("Age Profile", f"{age_profile_data['under_25_pct']}% under 25" if age_profile_data else "No data"),
+                card("Housing Types & Tenure", f"{housing_data['owned_pct']}% owner-occupied" if housing_data and housing_data.get("owned_pct") is not None else "No data"),
+                card("Ethnicity, Religion & Origin", f"{background_data['born_abroad_pct']}% born outside the UK" if background_data and background_data.get("born_abroad_pct") is not None else "No data"),
+                card("Health, Relationships & Social Grade", f"{wellbeing_data['good_health_pct']}% good or very good health" if wellbeing_data and wellbeing_data.get("good_health_pct") is not None else "No data"),
+                card(
+                    "Resident Reviews",
+                    "Not available for this area" if area_level else (f"{area_reviews['average']}/5 from {area_reviews['count']} review{'s' if area_reviews['count'] != 1 else ''}" if area_reviews and area_reviews.get("count") else "No reviews yet"),
+                    "muted",
+                ),
             ],
         },
     ]
@@ -1599,7 +1757,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     # lighter free-tier score /api/extension-report shows.
     full_context = {
         "hpi": hpi_area,
-        "flood_zone": ok(flood_zone_result),
+        "flood_zone": flood_zone_data,
         "surface_water": surface_water,
         "noise": noise_data,
         "radon": radon_data,
@@ -1610,13 +1768,10 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         "environmental_flags": environmental_flags,
         "broadband": broadband_data,
         "mobile": mobile_data,
-        "deprivation": ok(deprivation_result),
-        "school_landscape": ok(landscape_result),
-        "certificates": ok(certs_result) or [],
-        "crime_comparison": (
-            _crime_comparison(ok(crime_result), ok(crime_outcode_result))
-            if ok(crime_result) and ok(crime_outcode_result) else []
-        ),
+        "deprivation": deprivation_data,
+        "school_landscape": landscape_data,
+        "certificates": certs_list,
+        "crime_comparison": _crime_comparison(crime_data, crime_outcode_data) if crime_data and crime_outcode_data else [],
     }
 
     payload = {

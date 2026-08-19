@@ -321,6 +321,18 @@
     .icon-heritage     { background: #fafaf9; color: #78716c; }
     .icon-broadband    { background: #f0f9ff; color: #0284c7; }
     .icon-mobile       { background: #fdf4ff; color: #a21caf; }
+    .icon-valuation    { background: #fefce8; color: #a16207; }
+    .icon-extension    { background: #f0f9ff; color: #0369a1; }
+    .icon-income       { background: #f0fdfa; color: #0d9488; }
+    .icon-deprivation  { background: #fdf2f8; color: #db2777; }
+    .icon-occupation   { background: #f8fafc; color: #475569; }
+    .icon-qualification{ background: #faf5ff; color: #9333ea; }
+    .icon-age          { background: #eef2ff; color: #4338ca; }
+    .icon-housing      { background: #fff7ed; color: #c2410c; }
+    .icon-ethnicity    { background: #f0fdfa; color: #0f766e; }
+    .icon-wellbeing    { background: #fdf2f8; color: #be185d; }
+    .icon-amenities    { background: #fff7ed; color: #ea580c; }
+    .icon-transport    { background: #eef2ff; color: #4f46e5; }
     .pv-score-card {
       display: flex; align-items: center; gap: 14px; margin: 0 0 16px;
       padding: 12px 14px; border-radius: 12px; border: 1px solid #e4e7ec; background: #fffbeb;
@@ -710,11 +722,12 @@
   // same "see the category exists, log in for the number" pattern the
   // main site's own dashboard grid uses.
   const PREMIUM_SECTIONS = [
-    { heading: "Value & Market", cards: ["Area Prosperity", "Price Trend & Forecast", "Rental Analysis"] },
-    { heading: "Property & Condition", cards: ["Aspect"] },
-    { heading: "Risk & Safety", cards: ["Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
+    { heading: "Value & Market", cards: ["Local Market", "Valuation Estimate", "Costs & Affordability", "Area Prosperity", "Price Trend & Forecast", "Rental Analysis"] },
+    { heading: "Property & Condition", cards: ["Energy Efficiency", "Extended or Modified", "Aspect"] },
+    { heading: "Risk & Safety", cards: ["Flood Risk", "Crime & Safety", "Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
     { heading: "Planning & Heritage", cards: ["Planning Constraints", "Environmental Designations", "Listed Buildings"] },
-    { heading: "Location & Connectivity", cards: ["Broadband", "Mobile Signal"] },
+    { heading: "Location & Connectivity", cards: ["Schools & Catchment", "School Catchment Areas", "Nearby Essentials", "Getting Around", "Broadband", "Mobile Signal"] },
+    { heading: "Area & Community", cards: ["Household Income", "Deprivation", "Occupation", "Qualification", "Age Profile", "Housing Types & Tenure", "Ethnicity, Religion & Origin", "Health, Relationships & Social Grade", "Resident Reviews"] },
   ];
 
   // Icon glyph + colour-class per card title, mirroring the colour
@@ -744,6 +757,26 @@
     "Listed Buildings": ["🏛", "icon-heritage"],
     "Broadband": ["🌐", "icon-broadband"],
     "Mobile Signal": ["📶", "icon-mobile"],
+    "Local Market": ["£", "icon-market"],
+    "Valuation Estimate": ["🏷", "icon-valuation"],
+    "Costs & Affordability": ["🧮", "icon-valuation"],
+    "Energy Efficiency": ["⚡", "icon-energy"],
+    "Extended or Modified": ["🧱", "icon-extension"],
+    "Flood Risk": ["💧", "icon-flood"],
+    "Crime & Safety": ["🚨", "icon-crime"],
+    "Schools & Catchment": ["🎓", "icon-schools"],
+    "School Catchment Areas": ["📍", "icon-schools"],
+    "Nearby Essentials": ["🛒", "icon-amenities"],
+    "Getting Around": ["🚉", "icon-transport"],
+    "Household Income": ["💰", "icon-income"],
+    "Deprivation": ["📉", "icon-deprivation"],
+    "Occupation": ["💼", "icon-occupation"],
+    "Qualification": ["🎓", "icon-qualification"],
+    "Age Profile": ["🎂", "icon-age"],
+    "Housing Types & Tenure": ["🏘", "icon-housing"],
+    "Ethnicity, Religion & Origin": ["🌍", "icon-ethnicity"],
+    "Health, Relationships & Social Grade": ["❤", "icon-wellbeing"],
+    "Resident Reviews": ["⭐", "icon-wellbeing"],
   };
 
   // Same source/methodology explanation the main site's own modal for
@@ -772,6 +805,26 @@
     "Listed Buildings": "Listed buildings within about a third of a mile, from Historic England's National Heritage List - proximity only, not a check on this specific building.",
     "Broadband": "Fixed-line broadband speed-tier availability for this postcode, from Ofcom's Connected Nations data.",
     "Mobile Signal": "Ofcom 4G/5G coverage estimate, reported at local-authority level since mobile signal isn't mapped postcode-by-postcode like broadband.",
+    "Local Market": "Most recent sold price for this postcode, from HM Land Registry Price Paid Data.",
+    "Valuation Estimate": "A range built from recent nearby sold prices and the area's price trend - not narrowed by floor area the way a specific address's estimate would be.",
+    "Costs & Affordability": "Stamp duty, mortgage and rental-yield calculators, on the full report.",
+    "Energy Efficiency": "Energy Performance Certificates recorded for this postcode, from the national EPC register.",
+    "Extended or Modified": "Compares floor area across a single address's own EPC certificates over time - needs an exact house number to check, which listing pages don't publish.",
+    "Flood Risk": "Environment Agency flood zone (rivers & sea) - Zone 3 is high probability, Zone 2 medium, Zone 1 low.",
+    "Crime & Safety": "Crimes recorded within roughly 1 mile, from police.uk's public data.",
+    "Schools & Catchment": "Nearest schools by phase (nursery/primary/secondary), by proximity.",
+    "School Catchment Areas": "Real published admission-distance data where a council provides it, modelled estimates elsewhere - not a catchment guarantee.",
+    "Nearby Essentials": "Restaurants, supermarkets, pharmacies, pubs and hospitals within walking distance, from OpenStreetMap.",
+    "Getting Around": "Nearest train/tube/bus stop, and journey time to the nearest major city where available.",
+    "Household Income": "Modelled average household income for this area (MSOA), from ONS small-area income estimates.",
+    "Deprivation": "English Indices of Deprivation decile for this area (LSOA) - decile 1 is the most deprived 10% nationally, 10 the least.",
+    "Occupation": "% in managerial/professional occupations for this area, from the 2021 Census.",
+    "Qualification": "% educated to degree level or above for this area, from the 2021 Census.",
+    "Age Profile": "% of residents under 25 for this area, from the 2021 Census.",
+    "Housing Types & Tenure": "% owner-occupied housing for this area, from the 2021 Census.",
+    "Ethnicity, Religion & Origin": "% of residents born outside the UK for this area, from the 2021 Census.",
+    "Health, Relationships & Social Grade": "% reporting good or very good health for this area, from the 2021 Census.",
+    "Resident Reviews": "UKPropertyInsight users' own ratings for this address - not available at area level, since a review is about one specific property.",
   };
 
   function dashCard(title, value, locked, status) {
