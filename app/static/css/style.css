@@ -2572,6 +2572,22 @@ a.school-profile-lock-label:hover {
 .clay-Possible { background: #ca8a04; }
 .clay-Probable { background: #dc2626; }
 
+.estimate-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    margin-left: 0.4rem;
+    vertical-align: middle;
+}
+
 .noise-badge {
     display: inline-block;
     padding: 0.2rem 0.65rem;

@@ -10,7 +10,8 @@ from sqlalchemy import func, select
 
 from app.db import get_session, is_configured
 from app.models import (
-    Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCharacteristics, SchoolDestinations, SchoolDetail,
+    Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCatchmentEstimate, SchoolCharacteristics,
+    SchoolDestinations, SchoolDetail,
 )
 from app.services import _cache, overview_score, reviews
 
@@ -266,6 +267,10 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 }
                 for r in session.scalars(select(SchoolAdmissionRadius).where(SchoolAdmissionRadius.urn.in_(all_urns)))
             }
+            catchment_estimate_by_urn = {
+                r.urn: {"radius_miles": r.radius_miles}
+                for r in session.scalars(select(SchoolCatchmentEstimate).where(SchoolCatchmentEstimate.urn.in_(all_urns)))
+            }
         review_summaries = reviews.summaries_for_many("school", [str(urn) for urn in all_urns])
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])
@@ -273,6 +278,10 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             e["destinations"] = destinations_by_urn.get(e["urn"])
             e["review_summary"] = review_summaries.get(str(e["urn"]))
             e["admission_radius"] = admission_radius_by_urn.get(e["urn"])
+            # Modelled fallback only where there's no real published
+            # figure - never shown alongside/instead of real data.
+            if not e["admission_radius"]:
+                e["catchment_estimate"] = catchment_estimate_by_urn.get(e["urn"])
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
                 e["exam_results"] = {

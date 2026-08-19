@@ -52,8 +52,13 @@
                                 {% endif %}
                                 {% if s.admission_radius %}
                                 <tr>
-                                    <td>Estimated admission distance</td>
+                                    <td>Published admission distance</td>
                                     <td><span class="{{ value_lock_class }}">{{ s.admission_radius.last_distance_miles }} mi ({{ s.admission_radius.academic_year }})</span></td>
+                                </tr>
+                                {% elif s.catchment_estimate %}
+                                <tr>
+                                    <td>Estimated admission distance</td>
+                                    <td><span class="{{ value_lock_class }}">{{ s.catchment_estimate.radius_miles }} mi <span class="estimate-badge">Estimated</span></span></td>
                                 </tr>
                                 {% endif %}
                                 <tr><td>URN</td><td>{{ s.urn }}</td></tr>
@@ -61,10 +66,22 @@
                             </table>
                             {% if s.admission_radius %}
                             <p class="section-sub">
-                                Estimated admission distance is a <strong>modelled estimate</strong>, not a real
-                                boundary — how far the furthest-admitted pupil lived last year, per
-                                {{ s.admission_radius.source_authority }} council's own published figures. It
-                                shifts every year with demand and isn't a guarantee.
+                                Published admission distance is a real figure from {{ s.admission_radius.source_authority }}
+                                council's own published records — how far the furthest-admitted pupil lived last
+                                year under the distance criterion. Drawn as a circle for simplicity, since real
+                                admission areas aren't circular, but the distance itself isn't modelled or
+                                guessed. It shifts every year with demand and isn't a guarantee.
+                            </p>
+                            {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
+                            {% elif s.catchment_estimate %}
+                            <p class="section-sub">
+                                {{ s.detail.local_authority if s.detail else "This school's council" }} hasn't
+                                published a real admission-distance figure, so this is a <strong>modelled
+                                estimate</strong> instead — built from local Census population density for this
+                                school's age group versus its intake size, the same class of technique other
+                                school-search sites use as their default catchment indicator when no official
+                                figure exists. Not based on real pupil addresses (nobody outside the school/council
+                                has access to that), and meaningfully less reliable than a published figure.
                             </p>
                             {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% endif %}

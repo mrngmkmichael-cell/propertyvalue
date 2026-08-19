@@ -269,6 +269,44 @@ class AgeProfile(Base):
     age_85_plus: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class LsoaChildDensity(Base):
+    """School-age population by LSOA (Census 2021 TS007A, single-year
+    bands within the published 5-9/10-14 5-year bands) plus land area
+    (ONS Standard Area Measurements) - the two ingredients for a
+    population-density-based *modelled* catchment radius, used only as
+    a fallback for schools whose council hasn't published a real
+    admission-distance figure. Populated by
+    scripts/import_lsoa_child_density.py. Static until the 2031
+    census/next SAM release.
+    """
+    __tablename__ = "lsoa_child_density"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    age_5_9: Mapped[int] = mapped_column(Integer, default=0)
+    age_10_14: Mapped[int] = mapped_column(Integer, default=0)
+    area_km2: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class SchoolCatchmentEstimate(Base):
+    """Precomputed *modelled* catchment radius per school - local
+    age-appropriate population density (LsoaChildDensity) vs. the
+    school's per-year-group intake (SchoolDetail.school_capacity over
+    its number of year groups), converted to a circle radius. Same
+    class of technique competitor sites like Locrating use as their
+    default catchment indicator, since neither they nor we have access
+    to real pupil home addresses (protected personal data). Computed
+    once offline by scripts/import_catchment_estimates.py - only used
+    in the app as a fallback where SchoolAdmissionRadius (the real,
+    published figure) has no row for a school, and always shown
+    labelled as an estimate, never conflated with real data.
+    """
+    __tablename__ = "school_catchment_estimates"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    radius_miles: Mapped[float] = mapped_column(Float)
+    lsoa_code: Mapped[str] = mapped_column(String(16), default="")
+
+
 class HousingType(Base):
     """Census 2021 accommodation type (TS044), by LSOA - households
     by dwelling type. Populated by scripts/import_census_demographics.py.
