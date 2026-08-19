@@ -1,9 +1,15 @@
 """Planning-constraint and environmental designations - is this point
-inside a nationally protected/designated area? All queried live via
+inside a nationally protected/designated area? Most queried live via
 ArcGIS FeatureServer point-in-polygon "intersects" queries against
 Natural England's and Historic England's official open data services
 - no key required, no need to mirror these large national polygon
-datasets ourselves.
+datasets ourselves. Tree Preservation Orders and Article 4 Directions
+(see _PLANNING_DATA_GOV_UK_DATASETS below) instead come from
+planning.data.gov.uk's own /entity.json point-query API - a different
+government aggregator, but the same "real query against an official
+source, not a locked placeholder" principle, and its point-query
+endpoint happens to support requesting several datasets in a single
+call, so those two are fetched together rather than one query each.
 
 This mirrors the checklist categories a paid tool like Propbar shows
 behind a paywall, except every result here is a real query against
@@ -32,6 +38,15 @@ HE_BASE = (
     "https://services-eu1.arcgis.com/ZOdPfBS3aqqDYPUQ/arcgis/rest/services/"
     "National_Heritage_List_for_England_NHLE_v02_VIEW/FeatureServer"
 )
+
+PLANNING_DATA_GOV_UK_URL = "https://www.planning.data.gov.uk/entity.json"
+
+# (key, label, group, planning.data.gov.uk dataset id)
+_PLANNING_DATA_GOV_UK_DATASETS = [
+    ("tpo", "Tree Preservation Order", "planning", "tree-preservation-zone"),
+    ("article_4", "Article 4 Direction (removes some permitted development rights)",
+     "planning", "article-4-direction-area"),
+]
 
 # (key, label, group, query URL, name field)
 _LAYERS = [
@@ -85,6 +100,42 @@ async def _query_layer(client: httpx.AsyncClient, url: str, name_field: str, lat
     return {"present": True, "names": names}
 
 
+async def _query_planning_data_gov_uk(client: httpx.AsyncClient, lat: float, lon: float) -> dict[str, dict]:
+    """One combined point-query for both datasets - the API accepts
+    multiple `dataset` params and does the point-in-polygon filtering
+    server-side, same trust boundary as the ArcGIS `intersects` layers
+    above (not re-verified client-side).
+
+    This endpoint is genuinely slow - measured 13-18s for a first-time
+    (cold) query at a given coordinate regardless of dataset or result
+    count, vs. ~0s for an exact repeat (their own edge cache). A
+    generous timeout is used rather than a short one that would make
+    this fail most of the time: the property page's own gather already
+    tolerates an 8-13s cold load across ~28 other calls, cached for an
+    hour afterwards, so this raises that ceiling rather than changing
+    the shape of the tradeoff."""
+    params = [("latitude", lat), ("longitude", lon), ("limit", 100), ("field", "dataset"), ("field", "name")]
+    for _, _, _, dataset_id in _PLANNING_DATA_GOV_UK_DATASETS:
+        params.append(("dataset", dataset_id))
+
+    try:
+        response = await client.get(PLANNING_DATA_GOV_UK_URL, params=params, timeout=20)
+        response.raise_for_status()
+    except httpx.HTTPError:
+        return {key: {"present": None} for key, *_ in _PLANNING_DATA_GOV_UK_DATASETS}
+
+    entities = response.json().get("entities", [])
+    names_by_dataset: dict[str, set] = {}
+    for e in entities:
+        names_by_dataset.setdefault(e.get("dataset"), set()).add(e.get("name") or "Unnamed")
+
+    out = {}
+    for key, _, _, dataset_id in _PLANNING_DATA_GOV_UK_DATASETS:
+        names = names_by_dataset.get(dataset_id)
+        out[key] = {"present": True, "names": sorted(names)} if names else {"present": False}
+    return out
+
+
 async def check_all(lat: float, lon: float) -> dict:
     key = _cache.coord_key("designations", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
@@ -94,14 +145,21 @@ async def check_all(lat: float, lon: float) -> dict:
     async with httpx.AsyncClient() as client:
         results = await asyncio.gather(
             *(_query_layer(client, url, field, lat, lon) for _, _, _, url, field in _LAYERS),
+            _query_planning_data_gov_uk(client, lat, lon),
             return_exceptions=True,
         )
 
+    *arcgis_results, planning_data_gov_uk_result = results
+    if isinstance(planning_data_gov_uk_result, Exception):
+        planning_data_gov_uk_result = {key: {"present": None} for key, *_ in _PLANNING_DATA_GOV_UK_DATASETS}
+
     out = {}
-    for (key_name, label, group, _, _), result in zip(_LAYERS, results):
+    for (key_name, label, group, _, _), result in zip(_LAYERS, arcgis_results):
         if isinstance(result, Exception):
             result = {"present": None}
         out[key_name] = {"label": label, "group": group, **result}
+    for key_name, label, group, _ in _PLANNING_DATA_GOV_UK_DATASETS:
+        out[key_name] = {"label": label, "group": group, **planning_data_gov_uk_result[key_name]}
 
     _cache.set(key, out)
     return out
