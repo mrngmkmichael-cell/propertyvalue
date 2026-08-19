@@ -3621,6 +3621,112 @@ def fetch_camden() -> list[dict]:
     return records
 
 
+_WESTMINSTER_URL = (
+    "https://www.westminster.gov.uk/sites/default/files/media/documents/"
+    "WCC%20-%20Primary%20Admissions%20Brochure%202025.pdf"
+)
+_WESTMINSTER_NAME_RE = re.compile(r"retsnimtseW\s+(.*?)\s+(?:SCHOOL INFORMATION|SUMMARISED ADMISSION CRITERIA)")
+_WESTMINSTER_DIST_RE = re.compile(r"up to[^.]{0,40}?(\d+\.\d+)[^.]{0,25}?miles?", re.IGNORECASE)
+
+
+def fetch_westminster() -> list[dict]:
+    """Westminster's primary admissions brochure profiles two schools
+    per page, side by side, each with its own "HOW PLACES WERE OFFERED
+    IN 2024" summary. Critically, pdfplumber's default text extraction
+    reads across the whole page rather than down each column, which
+    would interleave the two schools' text and risk attributing one
+    school's distance to its neighbour - so each page is split into a
+    left-half and right-half crop first (using page.width/2) and each
+    half is read independently, keeping every school's text with only
+    that school.
+
+    Even within one half there's a second, smaller two-column split
+    (criteria text vs. an address/phone/email sidebar) that can still
+    drop an odd word into the middle of a sentence (e.g. "...distance
+    Email of 0.505 of a mile..."), so the distance regex tolerates a
+    short run of intervening text between "up to" and the figure
+    rather than requiring an exact phrase match - the page consistently
+    uses "up to ... 0.NNN ... mile(s)" with only one number in that
+    span, so this stays a single unambiguous figure per school rather
+    than a guess. Most schools here are small enough that they never
+    reach the distance criterion at all (admitted on faith/sibling
+    priorities alone) and are correctly left without a figure.
+
+    The reversed "...retsnimtseW" text preceding each school's name is
+    sideways watermark text (page furniture, not a heading);
+    "retsnimtseW" ("Westminster" reversed) is used as the anchor for
+    where each school's real name begins.
+    """
+    print(f"  Downloading {_WESTMINSTER_URL}")
+    resp = httpx.get(_WESTMINSTER_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if "SCHOOL INFORMATION" not in page_text:
+                continue
+            width = page.width
+            for half in (page.crop((0, 0, width / 2, page.height)), page.crop((width / 2, 0, width, page.height))):
+                half_text = re.sub(r"\s+", " ", half.extract_text() or "")
+                name_match = _WESTMINSTER_NAME_RE.search(half_text)
+                dist_match = _WESTMINSTER_DIST_RE.search(half_text)
+                if name_match and dist_match:
+                    name = name_match.group(1).strip().title()
+                    records.append({"school_name": name, "last_distance_miles": float(dist_match.group(1))})
+    return records
+
+
+_RBKC_URL = (
+    "https://www.rbkc.gov.uk/sites/default/files/media/documents/RBKC%20-%20Primary%20Admissions%20Brochure%202026.pdf"
+)
+_RBKC_NAME_RE = re.compile(r"School information\s+(.*?)\s+Summarised admi")
+_RBKC_BLOCK_RE = re.compile(r"How places were offered(.*?)(?:Appeals|Footnote)")
+_RBKC_DIST_RE = re.compile(r"\((?:up to (?:a distance of )?|distance )(\d+\.\d+)[^)]*mile[^)]*\)", re.IGNORECASE)
+
+
+def fetch_kensington_and_chelsea() -> list[dict]:
+    """Royal Borough of Kensington and Chelsea's primary admissions
+    brochure (same shared-service format as neighbouring Westminster's,
+    but one school per page rather than two) has a "How places were
+    offered" box per school listing each oversubscription category in
+    priority order, e.g. faith schools often show both a "Foundation"
+    (faith-priority) figure and an "Open" (general distance) figure,
+    such as "Foundation: 12 pupils (distance 1.217 miles) ... Open: 5
+    pupils (up to a distance of 0.386 miles)". Earlier categories in
+    that list are consistently followed by "(all ... applicants
+    offered)" rather than a distance UNLESS that category itself is
+    where the school's places ran out, so the category that actually
+    determines "last child offered a place" overall is always the
+    LAST distance figure mentioned in the box - taking the first one
+    instead would sometimes report a faith-only cutoff as if it were
+    the general distance cutoff. A small in-page column layout also
+    interleaves unrelated sentence fragments into the middle of this
+    box; whitespace is collapsed to keep the regex working across that
+    noise the same way it does for Westminster.
+    """
+    print(f"  Downloading {_RBKC_URL}")
+    resp = httpx.get(_RBKC_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if "School information" not in page_text or "Summarised admi" not in page_text:
+                continue
+            text = re.sub(r"\s+", " ", page_text)
+            name_match = _RBKC_NAME_RE.search(text)
+            block_match = _RBKC_BLOCK_RE.search(text)
+            if not (name_match and block_match):
+                continue
+            distances = _RBKC_DIST_RE.findall(block_match.group(1))
+            if distances:
+                records.append({"school_name": name_match.group(1).strip(), "last_distance_miles": float(distances[-1])})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3703,6 +3809,8 @@ _AUTHORITIES = [
     ("Brighton and Hove", "2025/26", fetch_brighton_and_hove),
     ("Bromley", "2025/26", fetch_bromley),
     ("Camden", "2024", fetch_camden),
+    ("Westminster", "2024/25", fetch_westminster),
+    ("Kensington and Chelsea", "2025/26", fetch_kensington_and_chelsea),
 ]
 
 
