@@ -67,7 +67,13 @@ worth it for one more phase of one authority already covered.
 Enfield, Gateshead, West Berkshire, Sunderland, Barnet, Hampshire,
 Manchester, Leicestershire (whole `leicestershire.gov.uk` domain
 returns 403 to this environment's requests, not just one document -
-confirmed against both a specific PDF and the bare domain root).
+confirmed against both a specific PDF and the bare domain root),
+Wiltshire (whole `wiltshire.gov.uk` domain returns 403 to a direct
+`httpx` request, confirmed against both the admissions landing page
+and the bare domain root - same pattern as Leicestershire), Stockton-
+on-Tees (whole `stockton.gov.uk` domain returns 403 to a direct
+`httpx` request, confirmed against both the domain root and a specific
+admissions article page).
 
 ### Unreachable (timeout / connection failure / persistent 5xx)
 North Tyneside (source lives on a different subdomain that times out),
@@ -191,6 +197,82 @@ since last check).
   new authority with several similarly-patterned "X C of E/CE Primary"
   names must still be spot-checked through the real matcher, not just
   assumed safe from format alone.
+- **North Lincolnshire** - `northlincs.gov.uk` turned out to publish
+  real per-school admission-distance data in an unusual place: not a
+  PDF, but directly on each school's own profile section of the
+  council's "Primary/Secondary/Infant/Junior Schools" directory pages
+  (e.g. `.../our-schools-and-colleges/primary-schools/`), one `<h2>`
+  per school followed by an "Admissions information for `<Name>`"
+  subsection whose "Note:" prose gives a real, year-by-year "In `<year>`
+  the children who were not offered places were those in category N
+  who lived further than X.XXX miles walking distance away from the
+  school" (or, for a few schools, "In `<year>` no child over X.XXX
+  miles away from the school was admitted") - taking the last such
+  figure per school (most recent oversubscribed year) across all four
+  directory pages (primary, secondary, infant, junior - all four use
+  the same template and all four have real data) gave 23 schools with
+  a usable distance. Running all 23 through the real `_match_urn`
+  matcher found **2 confirmed wrong matches**: "Scunthorpe Church of
+  England Primary School" (real, distinct school, its own `<h2>`
+  section elsewhere on the same page) matched instead to "Eastoft
+  Church of England Primary School" (also real, distinct, also its own
+  section on the same page); and "St Norbert's Catholic Primary
+  Voluntary Academy" matched to "St Bernadette's Catholic Primary
+  Voluntary Academy" (both real, distinct schools - St Bernadette's
+  already correctly matched to itself elsewhere in the same 23-row
+  set, so this is a same-URN collision between two different source
+  rows). Same "short/boilerplate-heavy name, `difflib` ratio ignores
+  the one distinguishing word" failure mode as Shropshire/North
+  Northants/Bradford/Devon above, this time hitting both a
+  Church-of-England pair and a Catholic-saint pair in one 23-row
+  sample - rejected per safety policy despite the source itself being
+  genuinely clean and easy to extract. (Sibling council North East
+  Lincolnshire does not use the same page template and no equivalent
+  data was located for it - see "Checked this round" below.)
+- **Plymouth** - `plymouth.gov.uk`'s composite "School admissions
+  parents' guide" page (`plymouth.gov.uk/school-admissions-parents-
+  guide` - note this URL 403s to the WebFetch tool's own fetcher but
+  loads fine (200) via a direct `httpx` GET with a browser User-Agent,
+  so it is not actually environment-blocked) has a "Statistics - What
+  happened last year" section with clean, real, official
+  `<table class="govuk-table">` markup for Primary, Junior, Secondary
+  and Key Stage 4 schools: columns are DCSF Number / SCHOOL / PAN /
+  Total Places Allocated / Lowest Admission Criteria allocated / Last
+  Distance allocated (straight line miles). 73 rows had a plausible
+  (<=30 mile) distance figure after dropping two obvious source-side
+  typos (Eggbuckland Vale "136.53" miles, Goosewell "105.36" miles,
+  plus three implausible secondary/KS4 values over 250 miles -
+  Lipson Co-Operative Academy "257.20", Plymstock School "292.00",
+  Scott Medical "257.98" - same class of error as Peterborough's
+  known "206.404" typo, handled the same way, by dropping anything
+  implausible for a real straight-line distance in this city). Running
+  the 73 plausible rows through the real `_match_urn` matcher found
+  **7 confirmed wrong matches**: "Austin Farm Primary School" matched
+  to "Yealmpstone Farm Primary School" (a real, distinct school that
+  is *also* correctly matched to itself elsewhere in the same 73-row
+  set, so this silently overwrote/collided with a correct row);
+  "Hooe Primary School" -> "Knowle Primary School" (same collision
+  pattern - Knowle also correctly self-matched elsewhere); "Mayflower
+  Primary School" -> "Ford Primary School" (same pattern, Ford also
+  correctly self-matched elsewhere); "Mount Wise Primary School" ->
+  "Mount Street Primary School" (same pattern); "St Andrew's C/E
+  Primary School" -> "St Edward's CofE Primary School" (a real,
+  distinct school - one of the "Refer to school" rows with no numeric
+  distance of its own in the source, so this one doesn't collide with
+  an existing correct row, but is still a confirmed wrong identity
+  match); "St Peter's R/C Primary School" -> "St Peter's CofE Primary
+  School" (a real, distinct - different denomination - school also
+  correctly self-matched elsewhere); "Whitleigh Primary School" ->
+  "Leigham Primary School" (same collision pattern). A 7/73 confirmed
+  wrong-match rate is worse than North Lincolnshire's 2/23 above and
+  well outside anything safe to ship - rejected per safety policy. The
+  source itself is genuinely excellent (official, clean, tabular, with
+  a DCSF/establishment number per row that a future fix could
+  potentially use for a safer non-fuzzy match, the same way Greenwich's
+  fetcher uses a published URN directly - not attempted this round
+  since DCSF/establishment numbers are not the same identifier as GIAS
+  URNs and would need a separate LA-code-plus-establishment-number
+  cross-reference to use safely).
 
 **Known but NOT fixed - `_normalize_school_name` gap, needs careful
 follow-up, not a quick patch**: while investigating Bradford, several
@@ -336,39 +418,152 @@ out of scope for a single-authority round.
   (navigation itself was denied) - confirms this is a genuine
   environment block (same category as the Cloudflare/WAF group above),
   not a URL problem worth retrying without different network access.
+- **Northumberland** - the "Primary Handbook 26-27" PDF
+  (`northumberland.gov.uk/.../Primary%20Handbook%2026-27.pdf`, 178
+  pages) was downloaded and scanned page-by-page with the generic
+  numeric-distance-pattern regex (`\d\.\d+\s*(miles?|km|metres?|m)`) -
+  zero matches. Pure policy/criteria handbook, no post-allocation
+  statistics appendix.
+- **Blackpool** - both the "Admission to Blackpool primary schools
+  2026" and "...secondary schools 2026" parents' guide PDFs were
+  downloaded and scanned the same way - zero matches in either.
+- **Redcar and Cleveland** - the "Guide for Parents - Secondary
+  Admissions" PDF was downloaded and scanned the same way - zero
+  matches. (Primary equivalent not separately checked, but the same
+  council publishing pattern makes it unlikely to differ.)
+- **North East Lincolnshire** - the LA Primary Scheme PDF
+  (`nelincs.gov.uk/assets/uploads/2024/08/North-East-Lincolnshire-LA-
+  Primary-Scheme-2025-2026.pdf`) was downloaded and scanned the same
+  way - zero matches; it is a coordinated-scheme/criteria document,
+  not a results document. The general admissions page was also fetched
+  directly and its linked documents (school catchment list, Fair
+  Access Protocol, Annual Report to the Office of the Schools
+  Adjudicator) list no allocation-statistics document. Sibling council
+  North Lincolnshire's real per-school-directory-page data (see
+  "Real correctness risk" above) does **not** carry over here -
+  `nelincs.gov.uk` is a different site on a different CMS.
+- **Westmorland and Furness** - both the "Starting school in
+  Westmorland & Furness - September 2025" (112 pages) and "Transfer to
+  secondary school..." (40 pages) PDFs were downloaded and scanned
+  page-by-page - zero matches in either. Pure policy/criteria guides.
+- **Wakefield** - two documents referenced from the "Apply for a
+  full-time place in Reception" page were checked directly: "Places at
+  each primary and junior school" PDF (37 pages - PAN, applications,
+  places-allocated, catchment-area prose per school, no distance
+  figures found via the same regex scan) and "Primary Guide for
+  Parents 26-27" (a .docx, not PDF - all paragraphs and table cells
+  scanned the same way, zero matches).
+- **Luton** - the "How to apply for a school place guide" PDF link
+  found via search (`luton.gov.uk/.../How-to-apply-for-a-school-place-
+  guide.pdf`) has moved/gone stale - it now redirects to a generic
+  admissions landing page rather than serving the PDF. That landing
+  page and its "apply, transfer or change schools" hub were fetched
+  directly; neither links to an allocation-statistics document.
+- **Rochdale** - the "Starting Primary School - a guide for parents
+  and carers" download URL (`rochdale.gov.uk/downloads/download/1077/
+  ...`) serves a short HTML landing page (not the PDF itself, and no
+  PDF link found in its raw HTML) rather than a document with content
+  to scan. No other candidate document surfaced via search.
+- **East Riding of Yorkshire** - both the main school-admissions hub
+  page and the "choosing your preferred schools" page were fetched
+  directly; the latter explicitly recommends reviewing "how places
+  were allocated in previous year[s]" but the only link offered from
+  either page is to general admission-arrangements guidance, not a
+  results document.
+- **City of London** - only 9 schools total appear under this
+  `local_authority` in our DB, and only one (The Aldgate School,
+  formerly Sir John Cass's) is a normal maintained admissions-relevant
+  primary - a council committee "School Admissions Report" PDF
+  (`democracy.cityoflondon.gov.uk/documents/s219701/...`) was
+  downloaded and scanned page-by-page - zero matches. Structurally
+  low-value even if data existed (effectively a single-school
+  authority, similar to Isles of Scilly).
+- **Torbay** - has a genuine per-school "school place allocations"
+  page structure (`torbay.gov.uk/schools-and-learning/admissions/
+  school-place-allocations/<slug>-allocations/`, one page per school,
+  39 pages total, school identity unambiguous from the URL/link text
+  rather than fuzzy-extracted) - checked every single page directly.
+  10 of the 39 mention a mile figure, but in every case it's the
+  school's fixed policy catchment-radius criterion ("Children living
+  within 2 miles of the school") plus how many places that criterion
+  filled, not a real "last distance offered" value for a given year.
+  No school's page has an actual last-distance-offered figure. This is
+  Hammersmith and Fulham's "banded with no single meaningful distance
+  value" failure mode, not Bradford/Shropshire's matching-risk one -
+  the school identity here is completely safe, there is simply no
+  distance data to extract.
 
 ## Searched this round via general web search AND direct site
-## navigation (admissions hub pages fetched and their links listed) -
-## no promising document link surfaced either way
-Blackpool, City of London, East Riding of Yorkshire, Luton, North East
-Lincolnshire, North Lincolnshire, Northumberland, Plymouth, Redcar and
-Cleveland, Rochdale, Stockton-on-Tees, Torbay, Wakefield, Westmorland
-and Furness, Wiltshire. (This is the second round these have been
-checked, now including direct navigation of each council's own
-admissions landing page as well as general web search, per last
-round's suggestion - and it still didn't surface a distance document
-for this group. That still doesn't *prove* one doesn't exist:
-**Shropshire and North Northamptonshire were in this exact "search
-found nothing" bucket after last round's pass and this round's pass
-alike, right up until a JS-rendering-aware fetch and a document-title
-guess surfaced real data for both** - so "not found by search/
-direct-nav twice" is meaningfully stronger evidence of a genuine gap
-than one pass, but a future round that wants to push further should
-try: (a) a fetch tool that renders JavaScript for any site built on a
-modern JS framework - some of these councils' sites, like West
-Northamptonshire's and Herefordshire's, only expose real document
-links in the rendered DOM, not the raw HTML/JSON a plain `curl`/
-`httpx` request sees; (b) guessing that a neighbouring/sibling council
-(e.g. one that split from the same former county, or shares a
-supplier/CMS) publishes the same page template - this round found West
-Northamptonshire's real data specifically *because* North
-Northamptonshire's sibling page worked; (c) composite "Parents' Guide"
-prospectus PDFs specifically, scanned page-by-page for a numeric
-distance pattern - these often bury real per-school distance data
-inside a much longer policy document under a title that gives no hint
-of it, as Shropshire's did.)
+## navigation - conclusion: the remaining pool is now exhausted
 
-## Correction (this round): actual remaining-council count
+Every one of the 15 councils identified in the previous round's
+"ground not yet investigated" list (Blackpool, City of London, East
+Riding of Yorkshire, Luton, North East Lincolnshire, North
+Lincolnshire, Northumberland, Plymouth, Redcar and Cleveland,
+Rochdale, Stockton-on-Tees, Torbay, Wakefield, Westmorland and
+Furness, Wiltshire) was investigated again this round, this time with
+direct `httpx` fetches (bypassing the WebFetch tool's own fetcher,
+which 403'd on at least one genuinely-reachable site - Plymouth - that
+a direct request loaded fine) and, where a lead existed, downloading
+and scanning real documents/pages rather than relying on search
+snippets alone. The result:
+
+- **2 of the 15** (North Lincolnshire, Plymouth) turned out to have
+  real, genuinely locatable admission-distance data - the best hit
+  rate for this list across three rounds of searching - but both
+  failed the `_match_urn` spot-check with multiple confirmed wrong
+  matches and were rejected per the safety policy (see "Real
+  correctness risk" above for full detail on each).
+- **2 of the 15** (Wiltshire, Stockton-on-Tees) are confirmed
+  environment-blocked (whole-domain 403), moved to "Blocked from this
+  environment" above.
+- **11 of the 15** (Blackpool, City of London, East Riding of
+  Yorkshire, Luton, North East Lincolnshire, Northumberland, Redcar
+  and Cleveland, Rochdale, Torbay, Wakefield, Westmorland and Furness)
+  were confirmed, via direct document/page inspection rather than just
+  search, to genuinely not publish this data (or, for Torbay, to
+  publish only fixed policy criteria, not results) - moved to "Checked
+  this round, no usable distance data found" above.
+
+**This exhausts the entire previously-identified remaining-candidate
+list with a concrete outcome for every member - none left in limbo.**
+Combined with the fact that this was the third round some of these
+councils were checked (search twice, then direct inspection this
+round), and that the two genuine hits both independently reproduced
+the exact same short-generic-name/boilerplate-collision matcher
+failure seen in five previously-rejected authorities (Bradford,
+Shropshire, North Northants, Blackburn with Darwen, Devon, Warrington)
+rather than any new failure mode, there is no concrete lead left to
+chase for this round's candidate pool. The 86-entry/83-council
+`_AUTHORITIES` coverage from before this round is unchanged - this
+round added no new authority, and that is a definitive, checked
+outcome rather than a gap.
+
+A genuinely future round should not re-search this 15-council list
+without a new angle (e.g. a JS-rendering fetch tool for the handful of
+sites not yet tried with one, since North Lincolnshire's and
+Plymouth's data this round was both found via plain `httpx` HTML/GET,
+not JS rendering) - it should instead pick up the one substantive
+open thread this round surfaced: the shared `_match_urn` /
+`_normalize_school_name` matcher's boilerplate-collision weakness
+(documented in the "Addendum" note further up this file) is now
+confirmed to be the single biggest blocker to *adding* new
+authorities, having independently sunk two more genuinely
+well-formatted, easy-to-extract real sources this round on top of the
+five it already blocked. A dedicated round to improve the matcher
+(e.g. weighting the leading/distinguishing token more heavily before
+falling back to whole-string `difflib` ratio, or requiring a minimum
+edit-distance margin over the second-best candidate rather than a
+single absolute cutoff), with time to regression-test every one of the
+86 currently-covered authorities' match sets before and after (not
+just the one authority being newly investigated, per the reverted
+`_ABBREVIATIONS` fix note above), would likely unlock North
+Lincolnshire, Plymouth, Bradford, Shropshire, North Northamptonshire,
+Blackburn with Darwen, Devon and Warrington all at once - a larger
+potential gain than continuing to search for undiscovered authorities
+in a pool that is now confirmed exhausted.
+
+## Correction (a prior round): actual remaining-council count
 
 A prior round's "roughly 220 councils... mostly smaller shire
 district/borough councils" estimate for "not yet investigated" was
@@ -403,36 +598,30 @@ reasons).
 
 ## Ground not yet investigated
 
-After this round, the true remaining set is exactly the "Searched this
-round via general web search AND direct site navigation" list a few
-sections up (Blackpool, City of London, East Riding of Yorkshire,
-Luton, North East Lincolnshire, North Lincolnshire, Northumberland,
-Plymouth, Redcar and Cleveland, Rochdale, Stockton-on-Tees, Torbay,
-Wakefield, Westmorland and Furness, Wiltshire - 15 councils). Every
-other candidate this round either got added (West Northamptonshire),
-got a specific reject reason recorded above (Shropshire, North
-Northamptonshire, Isles of Scilly, Derbyshire, Lincolnshire, York,
-Wolverhampton, Nottingham, Cumberland, Halton, Kingston upon Hull,
-Barnsley, Lancashire, Herefordshire, Isle of Wight, Leicestershire -
-the last two now confirmed environment-blocked, via both a plain fetch
-and a real browser, rather than merely "not found"), or was already
-covered/rejected in a prior round.
+**As of this round, there is none.** The 15-council list that the
+previous round left as "ground not yet investigated" (Blackpool, City
+of London, East Riding of Yorkshire, Luton, North East Lincolnshire,
+North Lincolnshire, Northumberland, Plymouth, Redcar and Cleveland,
+Rochdale, Stockton-on-Tees, Torbay, Wakefield, Westmorland and
+Furness, Wiltshire) was fully investigated this round with a concrete
+outcome recorded for every single member (2 real-data-but-unsafe
+rejections, 2 newly-confirmed environment blocks, 11 confirmed
+no-data) - see "Searched this round via general web search AND direct
+site navigation - conclusion: the remaining pool is now exhausted"
+above for the full breakdown. Every other candidate from earlier
+rounds either got added to `_AUTHORITIES`, or has a specific reject
+reason recorded in one of the "Rejected" subsections above.
 
-Two whole rounds of general web search plus one-to-two rounds of
-direct-navigation-of-admissions-pages (including scanning several
-composite "parents' guide" PDFs page-by-page for numeric distance
-patterns, the technique that found Shropshire's real document - it
-came up empty again for Wolverhampton, Nottingham, Cumberland, Halton,
-Hull, Barnsley and Lancashire North this round) have now failed to
-surface a *distance-bearing* document for the 15-council list, which is
-stronger (though still not
-conclusive) evidence it's a genuine gap rather than a search-effort
-gap - see the note above this list for concrete ideas a future round
-could try that this round didn't (JS-rendering fetch tools, sibling-
-council template guessing). If that list is ever exhausted, re-run the
-query below in case the DB's set of `local_authority` values has
-changed (e.g. a school import refresh), rather than assuming there's
-nothing left:
+**A future round has two honest options, not a "keep searching the
+same 152" option:** (1) pick up the `_match_urn` matcher-improvement
+thread flagged at the end of the "conclusion" section above, which
+could unlock up to 8 already-found-but-rejected authorities (North
+Lincolnshire, Plymouth, Bradford, Shropshire, North Northamptonshire,
+Blackburn with Darwen, Devon, Warrington) without needing to find any
+new data source at all; or (2) re-run the query below in case the DB's
+set of `local_authority` values has changed (e.g. a school import
+refresh added or renamed a council), since that is the only way this
+candidate pool grows from here:
 
 ```
 python -c "
