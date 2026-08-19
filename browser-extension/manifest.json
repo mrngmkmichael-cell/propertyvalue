@@ -16,6 +16,6 @@
     }
   ],
   "host_permissions": [
-    "https://YOUR-DEPLOYED-DOMAIN/*"
+    "https://ukpropertyinsight.co.uk/*"
   ]
 }
