@@ -2537,6 +2537,8 @@ a.school-profile-lock-label:hover {
 .icon-orientation  { background: #fefce8; color: #a16207; }
 .icon-air-quality  { background: #eff6ff; color: #1d4ed8; }
 .icon-landfill     { background: #fef2f2; color: #b91c1c; }
+.icon-statistics   { background: #eff6ff; color: #1e40af; }
+.icon-geology      { background: #fff7ed; color: #9a3412; }
 
 .radon-badge {
     display: inline-block;
@@ -2553,6 +2555,21 @@ a.school-profile-lock-label:hover {
 .radon-1, .radon-2 { background: #059669; }
 .radon-3, .radon-4 { background: #ca8a04; }
 .radon-5, .radon-6 { background: #dc2626; }
+
+.clay-badge {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: #fff;
+}
+
+.clay-Improbable { background: #059669; }
+.clay-Possible { background: #ca8a04; }
+.clay-Probable { background: #dc2626; }
 
 .noise-badge {
     display: inline-block;
