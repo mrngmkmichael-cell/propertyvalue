@@ -17,11 +17,15 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
-    # No payment processor wired up yet - this is a manually-flipped
-    # flag (set directly in the DB) gating a couple of detailed school
-    # data sections behind a "Premium" visual lock, ahead of building
-    # real subscription billing.
+    # Driven by Stripe webhook events (see app/services/stripe_billing.py)
+    # once a subscription exists - true while trialing or active, false
+    # otherwise. Can still be flipped manually in the DB for comping a
+    # user, same as before Stripe was wired up.
     is_premium: Mapped[bool] = mapped_column(Boolean, default=False)
+    stripe_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

@@ -1436,6 +1436,73 @@ a {
     font-weight: 600;
 }
 
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    max-width: 44em;
+}
+
+.pricing-card {
+    position: relative;
+    padding: 1.75rem 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.pricing-card-featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent) inset;
+}
+
+.pricing-card-badge {
+    position: absolute;
+    top: -0.65rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-sm);
+}
+
+.pricing-card-price {
+    font-size: 1.6rem;
+    margin: 0.25rem 0 0;
+}
+
+.pricing-card form {
+    margin-top: 1rem;
+}
+
+.pricing-card-cta {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.7rem 1.6rem;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    color: var(--accent-ink);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.pricing-card-cta:hover {
+    background: var(--accent-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
 .section-sub {
     color: var(--ink-soft);
     font-size: 0.92rem;

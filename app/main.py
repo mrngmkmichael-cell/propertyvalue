@@ -14,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
+from sqlalchemy import select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
@@ -22,7 +23,7 @@ from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, cqc_ratings,
     crime, demographics, designations, epc, flood, flood_zones, food_hygiene, google_places, heritage,
     historic_landfill, hpi, mobile_coverage, noise, orientation, overview_score, place_search, radon, rental,
-    reviews, routing, schools_db, sewage_discharge, surface_water_risk, valuation,
+    reviews, routing, schools_db, sewage_discharge, stripe_billing, surface_water_risk, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes
@@ -1119,9 +1120,126 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
 # --- Accounts ---
 
 
+def _public_base_url(request: Request) -> str:
+    configured = os.environ.get("SITE_URL")
+    if configured:
+        return configured.rstrip("/")
+    # Render serves every public request over HTTPS even though the
+    # request this app sees internally may report http (no
+    # --proxy-headers on the uvicorn start command) - force the scheme
+    # rather than trust request.base_url's.
+    return str(request.base_url).rstrip("/").replace("http://", "https://", 1)
+
+
 @app.get("/premium")
-def premium_info(request: Request):
-    return templates.TemplateResponse(request, "premium.html", base_context(request))
+def premium_info(request: Request, checkout: str = "", error: str = ""):
+    context = base_context(request)
+    context["billing_configured"] = stripe_billing.is_configured()
+    context["plans"] = stripe_billing.plan_choices()
+    context["trial_days"] = stripe_billing.TRIAL_DAYS
+    context["checkout_cancelled"] = checkout == "cancelled"
+    context["checkout_error"] = bool(error)
+    return templates.TemplateResponse(request, "premium.html", context)
+
+
+@app.post("/premium/checkout")
+async def premium_checkout(request: Request, plan: str = Form(...)):
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse("/login?next=/premium", status_code=303)
+
+    base_url = _public_base_url(request)
+    checkout_url = await stripe_billing.create_checkout_session(
+        plan=plan,
+        user_id=user["id"],
+        user_email=user["email"],
+        success_url=f"{base_url}/premium/success",
+        cancel_url=f"{base_url}/premium/cancel",
+    )
+    if not checkout_url:
+        return RedirectResponse("/premium?error=checkout_failed", status_code=303)
+    return RedirectResponse(checkout_url, status_code=303)
+
+
+@app.get("/premium/success")
+def premium_success(request: Request):
+    context = base_context(request)
+    return templates.TemplateResponse(request, "premium_success.html", context)
+
+
+@app.get("/premium/cancel")
+def premium_cancel(request: Request):
+    return RedirectResponse("/premium?checkout=cancelled", status_code=303)
+
+
+@app.post("/premium/manage")
+async def premium_manage(request: Request):
+    """Redirects an existing subscriber to Stripe's hosted billing
+    portal, where they can update payment details, switch plan, or
+    cancel - all handled by Stripe, not custom UI here."""
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse("/login?next=/premium", status_code=303)
+
+    with db.get_session() as session:
+        db_user = session.get(User, user["id"])
+        customer_id = db_user.stripe_customer_id if db_user else None
+    if not customer_id:
+        return RedirectResponse("/premium", status_code=303)
+
+    portal_url = await stripe_billing.create_billing_portal_session(
+        customer_id, return_url=f"{_public_base_url(request)}/premium"
+    )
+    if not portal_url:
+        return RedirectResponse("/premium?error=portal_failed", status_code=303)
+    return RedirectResponse(portal_url, status_code=303)
+
+
+@app.post("/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    if not stripe_billing.verify_webhook_signature(payload, sig_header):
+        return JSONResponse({"error": "invalid_signature"}, status_code=400)
+
+    event = json.loads(payload)
+    event_type = event.get("type", "")
+    data = event.get("data", {}).get("object", {})
+
+    if event_type == "checkout.session.completed":
+        user_id, customer_id = data.get("client_reference_id"), data.get("customer")
+        if user_id and customer_id:
+            with db.get_session() as session:
+                db_user = session.get(User, int(user_id))
+                if db_user:
+                    db_user.stripe_customer_id = customer_id
+                    db_user.stripe_subscription_id = data.get("subscription")
+                    session.commit()
+
+    elif event_type in ("customer.subscription.created", "customer.subscription.updated"):
+        customer_id, status = data.get("customer"), data.get("status")
+        with db.get_session() as session:
+            db_user = session.scalar(select(User).where(User.stripe_customer_id == customer_id))
+            if db_user:
+                db_user.subscription_status = status
+                db_user.is_premium = stripe_billing.grants_access(status)
+                db_user.stripe_subscription_id = data.get("id")
+                trial_end = data.get("trial_end")
+                db_user.trial_ends_at = (
+                    datetime.datetime.fromtimestamp(trial_end, tz=datetime.timezone.utc) if trial_end else None
+                )
+                session.commit()
+
+    elif event_type == "customer.subscription.deleted":
+        customer_id = data.get("customer")
+        with db.get_session() as session:
+            db_user = session.scalar(select(User).where(User.stripe_customer_id == customer_id))
+            if db_user:
+                db_user.subscription_status = "canceled"
+                db_user.is_premium = False
+                session.commit()
+
+    return JSONResponse({"received": True})
 
 
 @app.get("/signup")
