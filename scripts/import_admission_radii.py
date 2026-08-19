@@ -3778,6 +3778,52 @@ def fetch_tower_hamlets() -> list[dict]:
     return records
 
 
+_WIRRAL_URL = "https://www.wirral.gov.uk/files/primary-policy-booklet2026-2027-final.pdf/download"
+_WIRRAL_DIST_RE = re.compile(r"Last F2 allocated in 2025:\s*([^\n]*)")
+_WIRRAL_NAME_RE = re.compile(r"[A-Z][A-Za-z'’&.\- ]+?(?:School|Academy)")
+
+
+def fetch_wirral() -> list[dict]:
+    """Wirral Council's primary admissions policy booklet opens with a
+    directory of every primary school, each entry ending "Last F2
+    allocated in 2025: <result>" - either a real category and distance
+    ("Out of Zone (Category 5) - 0.723 miles"), "All on-time applicants
+    offered places" (undersubscribed, correctly skipped), or an
+    applicant/place count for selective schools (no single distance,
+    correctly skipped). Entries are split on the "Admission Policy:
+    Page NN" footer that ends every entry, then the school name is
+    recovered as the last run of capitalised words ending "School" or
+    "Academy" before that entry's distance sentence - taking the last
+    such run (rather than the first) matters at a page break, where
+    the page header/legend text can get prepended to the next entry's
+    name by the text extraction.
+    """
+    print(f"  Downloading {_WIRRAL_URL}")
+    resp = httpx.get(_WIRRAL_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        full_text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+
+    records = []
+    for block in re.split(r"Admission Policy: Page \d+", full_text):
+        dist_match = _WIRRAL_DIST_RE.search(block)
+        if not dist_match:
+            continue
+        distance_match = re.search(r"([\d.]+)\s*miles", dist_match.group(1))
+        if not distance_match:
+            continue
+        pre_text = block[:dist_match.start()].strip()
+        pre_text = re.sub(r"^\d+-\d+\s+\d+\s+\d+\s+(?:Yes|No)\s*", "", pre_text)
+        pre_text = re.sub(r"(?<![A-Za-z])(?:FAC|VC|VA|AC|C)(?![A-Za-z])", " ", pre_text)
+        pre_text = re.sub(r"\s+", " ", pre_text).strip()
+        name_matches = _WIRRAL_NAME_RE.findall(pre_text)
+        name = name_matches[-1].strip() if name_matches else pre_text
+        name = re.sub(r"^(?:Yes|No)\s+", "", name)
+        records.append({"school_name": name, "last_distance_miles": float(distance_match.group(1))})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3863,6 +3909,7 @@ _AUTHORITIES = [
     ("Westminster", "2024/25", fetch_westminster),
     ("Kensington and Chelsea", "2025/26", fetch_kensington_and_chelsea),
     ("Tower Hamlets", "2024/25", fetch_tower_hamlets),
+    ("Wirral", "2025/26", fetch_wirral),
 ]
 
 
