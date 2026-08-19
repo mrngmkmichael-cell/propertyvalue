@@ -1352,7 +1352,7 @@
             </p>
         {% elif amenities %}
             <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
-            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces")] %}
+            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
             <details class="amenity-group">
                 <summary>{{ amenities[key]|length }} {{ label }}</summary>
                 {% if amenities[key] %}

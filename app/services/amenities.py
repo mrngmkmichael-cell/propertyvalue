@@ -1,6 +1,6 @@
 """Local amenities (restaurants, supermarkets, hospitals, pharmacies,
-pubs) and the nearest train/tube station, from OpenStreetMap's free
-Overpass API (no key required).
+pubs, wind turbines, solar farms) and the nearest train/tube station,
+from OpenStreetMap's free Overpass API (no key required).
 
 Schools are handled separately (app/services/schools_db.py), from
 DfE/Ofsted data rather than OSM - see that module for why.
@@ -46,6 +46,11 @@ AMENITY_QUERIES = [
     ("gp", '["amenity"="doctors"]', 2000),
     ("dentist", '["amenity"="dentist"]', 2000),
     ("green_space", '["leisure"~"park|recreation_ground|nature_reserve"]', 1500),
+    # Wider radius than the other categories - a turbine or solar farm
+    # is a visual/noise amenity consideration from much further away
+    # than, say, a restaurant.
+    ("wind_turbine", '["power"="generator"]["generator:source"="wind"]', 5000),
+    ("solar_farm", '["power"="plant"]["plant:source"="solar"]', 3000),
 ]
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
@@ -268,6 +273,16 @@ async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
             categories["gp"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
         elif amenity == "dentist":
             categories["dentist"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
+        elif tags.get("power") == "generator" and tags.get("generator:source") == "wind":
+            categories["wind_turbine"].append({
+                "name": name if name != "Unnamed" else "Wind turbine",
+                "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
+            })
+        elif tags.get("power") == "plant" and tags.get("plant:source") == "solar":
+            categories["solar_farm"].append({
+                "name": name if name != "Unnamed" else "Solar farm",
+                "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
+            })
         elif tags.get("leisure") in ("park", "recreation_ground", "nature_reserve"):
             entry = {
                 "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
