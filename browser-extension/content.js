@@ -445,6 +445,25 @@
     .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
     .pv-modal-body .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; text-align: center; }
     .pv-modal.pv-modal-rich .pv-modal-body .pv-modal-detail { text-align: left; }
+    .pv-calc { text-align: left; }
+    .pv-calc-heading {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      color: #3b5bfd; margin: 18px 0 8px;
+    }
+    .pv-calc-heading:first-child { margin-top: 0; }
+    .pv-calc-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .pv-calc-row label {
+      flex: 1; min-width: 120px; display: block; font-size: 10.5px; font-weight: 700;
+      color: #667085; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .pv-calc-row input, .pv-calc-row select {
+      display: block; width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid #d0d5dd;
+      border-radius: 8px; font-size: 12.5px; font-family: inherit; color: #12141c; background: #ffffff;
+      color-scheme: light;
+    }
+    .pv-calc-result { margin: 8px 0 0; font-size: 13px; color: #12141c; }
+    .pv-calc-result span:first-of-type { font-weight: 800; color: #3b5bfd; }
+    .pv-calc-sdlt-rate, .pv-calc-loan-amount { font-weight: 500 !important; color: #667085 !important; font-size: 11.5px; }
     .pv-area-notice {
       display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; padding: 10px 12px;
       background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
@@ -662,6 +681,21 @@
     "EPC rating": "epc",
   };
 
+  // Finds the raw card object (title/value/status/detail) the premium
+  // endpoint sent for this title, if any - the DOM only carries the
+  // rendered title/value text, not the structured `detail` a card may
+  // have, so a real lookup back into the last-fetched payload is
+  // needed to show anything richer than that.
+  function findPremiumCard(title) {
+    if (!currentPremiumData) return null;
+    for (const section of currentPremiumData.sections) {
+      for (const c of section.cards) {
+        if (c.title === title) return c;
+      }
+    }
+    return null;
+  }
+
   function openCardModal(dashCardEl) {
     if (!shadowRoot) return;
     const title = dashCardEl.querySelector(".pv-dash-card-title").textContent;
@@ -676,13 +710,20 @@
 
     const bodyEl = backdrop.querySelector(".pv-modal-body");
     const tabKey = CARD_TAB_MAP[title];
-    const richRenderer = tabKey && RENDERERS[tabKey] && currentData;
-    modalEl.classList.toggle("pv-modal-rich", !!richRenderer);
-    if (richRenderer) {
+    const premiumCard = findPremiumCard(title);
+    const isRich = (tabKey && RENDERERS[tabKey] && currentData) || (premiumCard && premiumCard.detail);
+    modalEl.classList.toggle("pv-modal-rich", !!isRich);
+
+    if (tabKey && RENDERERS[tabKey] && currentData) {
       bodyEl.innerHTML = RENDERERS[tabKey](currentData);
       bodyEl.querySelectorAll(".pv-gate-login-btn").forEach(function (btn) {
         btn.addEventListener("click", function () { closeCardModal(); selectTab("account"); });
       });
+    } else if (premiumCard && premiumCard.detail) {
+      bodyEl.innerHTML =
+        '<p class="pv-modal-value">' + escapeHtml(value) + "</p>" +
+        renderDetail(premiumCard.detail);
+      if (premiumCard.detail.type === "calculator") wireCalculator(bodyEl, premiumCard.detail);
     } else {
       const detail = CARD_DETAILS[title];
       bodyEl.innerHTML =
@@ -691,6 +732,150 @@
     }
     backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData && currentData.report_url ? currentData.report_url : "/");
     backdrop.hidden = false;
+  }
+
+  function renderDetail(detail) {
+    if (!detail) return "";
+    if (detail.type === "table") {
+      return (
+        '<table class="pv-table"><thead><tr>' +
+          detail.columns.map(function (c) { return "<th>" + escapeHtml(c) + "</th>"; }).join("") +
+        "</tr></thead><tbody>" +
+          detail.rows.map(function (row) {
+            return "<tr>" + row.map(function (cell) { return "<td>" + escapeHtml(cell) + "</td>"; }).join("") + "</tr>";
+          }).join("") +
+        "</tbody></table>"
+      );
+    }
+    if (detail.type === "list") {
+      return '<ul class="pv-stats">' + detail.items.map(function (i) { return "<li><span>" + escapeHtml(i) + "</span></li>"; }).join("") + "</ul>";
+    }
+    if (detail.type === "calculator") return calculatorHtml(detail);
+    return "";
+  }
+
+  // Same stamp duty bands/rates, mortgage amortization formula and
+  // gross-yield formula as property.html's own client-side calculator
+  // (app/templates/property.html) - ported verbatim so a figure here
+  // never quietly diverges from what the same postcode/price would
+  // show on the full report. Rates as of April 2025 - always
+  // changeable by a future Budget, same caveat the site gives.
+  const SDLT_BANDS = {
+    "england-ni": {
+      standard: [[125000, 0], [250000, 0.02], [925000, 0.05], [1500000, 0.10], [Infinity, 0.12]],
+      ftb: [[300000, 0], [500000, 0.05]],
+      ftbCeiling: 500000,
+      surcharge: 0.05,
+    },
+    scotland: {
+      standard: [[145000, 0], [250000, 0.02], [325000, 0.05], [750000, 0.10], [Infinity, 0.12]],
+      ftb: [[175000, 0], [250000, 0.02], [325000, 0.05], [750000, 0.10], [Infinity, 0.12]],
+      ftbCeiling: Infinity,
+      surcharge: 0.08,
+    },
+    wales: {
+      standard: [[225000, 0], [400000, 0.06], [750000, 0.075], [1500000, 0.10], [Infinity, 0.12]],
+      ftb: null,
+      ftbCeiling: 0,
+      surcharge: 0.05,
+    },
+  };
+
+  function marginalTax(price, bands) {
+    let tax = 0;
+    let lower = 0;
+    for (const [upper, rate] of bands) {
+      if (price <= lower) break;
+      tax += (Math.min(price, upper) - lower) * rate;
+      lower = upper;
+    }
+    return tax;
+  }
+
+  function calculatorHtml(detail) {
+    const regionMap = { Scotland: "scotland", Wales: "wales" };
+    const region = regionMap[detail.country] || "england-ni";
+    const price = Math.round(detail.price || 300000);
+    const rent = Math.round(detail.rent || 0);
+    return (
+      '<div class="pv-calc">' +
+        '<h4 class="pv-calc-heading">Stamp duty / transaction tax</h4>' +
+        '<div class="pv-calc-row">' +
+          '<label>Purchase price (£)<input type="number" class="pv-calc-price" value="' + price + '"></label>' +
+          '<label>Buyer type<select class="pv-calc-buyer">' +
+            '<option value="standard">Home mover</option>' +
+            '<option value="ftb">First-time buyer</option>' +
+            '<option value="additional">Additional property</option>' +
+          "</select></label>" +
+          '<label>Tax region<select class="pv-calc-region">' +
+            '<option value="england-ni"' + (region === "england-ni" ? " selected" : "") + '>England / Northern Ireland</option>' +
+            '<option value="scotland"' + (region === "scotland" ? " selected" : "") + ">Scotland</option>" +
+            '<option value="wales"' + (region === "wales" ? " selected" : "") + ">Wales</option>" +
+          "</select></label>" +
+        "</div>" +
+        '<p class="pv-calc-result">Estimated tax: <span class="pv-calc-sdlt-result"></span> <span class="pv-calc-sdlt-rate"></span></p>' +
+
+        '<h4 class="pv-calc-heading">Mortgage repayment</h4>' +
+        '<div class="pv-calc-row">' +
+          '<label>Deposit (%)<input type="number" class="pv-calc-deposit" value="15"></label>' +
+          '<label>Interest rate (% APR)<input type="number" step="0.1" class="pv-calc-rate" value="4.5"></label>' +
+          '<label>Term (years)<input type="number" class="pv-calc-term" value="25"></label>' +
+        "</div>" +
+        '<p class="pv-calc-result">Est. monthly repayment: <span class="pv-calc-mortgage-result"></span> <span class="pv-calc-loan-amount"></span></p>' +
+
+        '<h4 class="pv-calc-heading">Buy-to-let gross yield</h4>' +
+        '<div class="pv-calc-row">' +
+          '<label>Expected monthly rent (£)<input type="number" class="pv-calc-rent" value="' + rent + '"></label>' +
+        "</div>" +
+        '<p class="pv-calc-result">Gross yield: <span class="pv-calc-yield-result"></span></p>' +
+
+        '<p class="pv-modal-detail">Estimates only, computed from published tax bands (correct as of April 2025 - always confirm the exact figure on gov.uk before exchanging, since Budgets change these). Not financial advice.</p>' +
+      "</div>"
+    );
+  }
+
+  function wireCalculator(root, detail) {
+    const priceEl = root.querySelector(".pv-calc-price");
+    const buyerEl = root.querySelector(".pv-calc-buyer");
+    const regionEl = root.querySelector(".pv-calc-region");
+    const sdltResultEl = root.querySelector(".pv-calc-sdlt-result");
+    const sdltRateEl = root.querySelector(".pv-calc-sdlt-rate");
+    const depositEl = root.querySelector(".pv-calc-deposit");
+    const rateEl = root.querySelector(".pv-calc-rate");
+    const termEl = root.querySelector(".pv-calc-term");
+    const mortgageResultEl = root.querySelector(".pv-calc-mortgage-result");
+    const loanAmountEl = root.querySelector(".pv-calc-loan-amount");
+    const rentEl = root.querySelector(".pv-calc-rent");
+    const yieldResultEl = root.querySelector(".pv-calc-yield-result");
+
+    function recalc() {
+      const price = Math.max(0, Number(priceEl.value) || 0);
+      const table = SDLT_BANDS[regionEl.value];
+      const type = buyerEl.value;
+      let bands = table.standard;
+      if (type === "ftb" && table.ftb && price <= table.ftbCeiling) bands = table.ftb;
+      let tax = marginalTax(price, bands);
+      if (type === "additional") tax += price * table.surcharge;
+      sdltResultEl.textContent = gbp(Math.round(tax));
+      sdltRateEl.textContent = "(" + (price > 0 ? (tax / price * 100).toFixed(1) : "0") + "% effective rate)";
+
+      const deposit = price * (Math.min(100, Math.max(0, Number(depositEl.value) || 0)) / 100);
+      const loan = Math.max(0, price - deposit);
+      const annualRate = Math.max(0, Number(rateEl.value) || 0) / 100;
+      const months = Math.max(1, Number(termEl.value) || 1) * 12;
+      const monthlyRate = annualRate / 12;
+      const monthly = monthlyRate === 0 ? loan / months : loan * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
+      loanAmountEl.textContent = "(on a " + gbp(Math.round(loan)) + " loan)";
+      mortgageResultEl.textContent = gbp(Math.round(monthly)) + "/mo";
+
+      const rent = Math.max(0, Number(rentEl.value) || 0);
+      yieldResultEl.textContent = price > 0 && rent > 0 ? ((rent * 12) / price * 100).toFixed(2) + "%" : "—";
+    }
+
+    [priceEl, buyerEl, regionEl, depositEl, rateEl, termEl, rentEl].forEach(function (el) {
+      el.addEventListener("input", recalc);
+    });
+    recalc();
   }
 
   function closeCardModal() {
