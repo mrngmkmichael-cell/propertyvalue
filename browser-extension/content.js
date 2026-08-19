@@ -33,7 +33,7 @@
   const TOKEN_STORAGE_KEY = "pv_ext_token";
 
   const TABS = [
-    { key: "summary", label: "Summary" },
+    { key: "overview", label: "Overview" },
     { key: "map", label: "Map" },
     { key: "market", label: "Market History" },
     { key: "comparables", label: "Comparables" },
@@ -119,24 +119,25 @@
     * { box-sizing: border-box; }
     .pv-card {
       position: fixed;
-      top: 16px; right: 16px;
-      width: 380px;
-      max-height: calc(100vh - 32px);
+      top: 0; left: 0; right: 0;
+      max-height: 70vh;
       display: flex;
       flex-direction: column;
       z-index: 2147483647;
       background: #ffffff;
-      border: 1px solid #e4e7ec;
-      border-radius: 16px;
-      box-shadow: 0 16px 32px rgba(16, 24, 40, 0.10), 0 2px 6px rgba(16, 24, 40, 0.05);
+      border: none;
+      border-bottom: 1px solid #e4e7ec;
+      border-radius: 0;
+      box-shadow: 0 8px 24px rgba(16, 24, 40, 0.10);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       color: #12141c;
       font-size: 13px;
       line-height: 1.45;
     }
     .pv-header {
-      display: flex; align-items: center; gap: 8px;
-      padding: 12px 14px; border-bottom: 1px solid #e4e7ec; flex-shrink: 0;
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px; border-bottom: 1px solid #e4e7ec; flex-shrink: 0;
+      max-width: 1200px; margin: 0 auto; width: 100%;
     }
     .pv-logo { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 13px; }
     .pv-mark {
@@ -157,23 +158,27 @@
     }
     .pv-icon-btn:hover { background: #f1f3f7; color: #667085; }
     .pv-account-btn {
-      background: #f1f3f7; border: none; border-radius: 999px; padding: 4px 10px;
-      font-size: 11px; font-weight: 700; color: #12141c; cursor: pointer; flex-shrink: 0;
-      white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+      background: #f1f3f7; border: none; border-radius: 999px; padding: 5px 12px;
+      font-size: 12px; font-weight: 700; color: #12141c; cursor: pointer; flex-shrink: 0;
+      white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis;
     }
     .pv-account-btn.pv-premium { background: #eef1ff; color: #3b5bfd; }
     .pv-body { overflow-y: auto; flex: 1; min-height: 0; }
     .pv-body.pv-collapsed { display: none; }
     .pv-tabs {
-      display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid #e4e7ec;
+      display: flex; gap: 4px; padding: 0 24px; border-bottom: 1px solid #e4e7ec;
       overflow-x: auto; flex-shrink: 0;
+      max-width: 1200px; margin: 0 auto; width: 100%;
     }
     .pv-tab {
-      background: none; border: none; padding: 9px 9px; font-size: 11.5px; font-weight: 700;
+      background: none; border: none; padding: 10px 12px; font-size: 12.5px; font-weight: 700;
       color: #667085; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
     }
     .pv-tab.pv-active { color: #3b5bfd; border-bottom-color: #3b5bfd; }
-    .pv-tab-content { padding: 14px; min-height: 100px; }
+    .pv-tab-content {
+      padding: 18px 24px 24px; min-height: 100px;
+      max-width: 1200px; margin: 0 auto; width: 100%;
+    }
     .pv-loading, .pv-empty { color: #667085; text-align: center; padding: 20px 0; }
     .pv-error { color: #dc2626; text-align: center; padding: 20px 0; }
     .pv-stats { list-style: none; margin: 0 0 10px; padding: 0; }
@@ -209,7 +214,34 @@
       background: #3b5bfd; color: #fff; text-decoration: none;
       font-weight: 700; padding: 9px 12px; border-radius: 10px;
     }
-    .pv-summary-verdict { color: #334155; margin: 0 0 10px; }
+    .pv-summary-verdict { color: #334155; margin: 0 0 14px; font-size: 13.5px; }
+    .pv-category-heading {
+      font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+      color: #3b5bfd; margin: 20px 0 10px;
+    }
+    .pv-category-heading:first-child { margin-top: 0; }
+    .pv-dash-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px;
+    }
+    .pv-dash-card {
+      position: relative; display: flex; flex-direction: column; gap: 3px;
+      background: #ffffff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 12px;
+    }
+    .pv-dash-card-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #667085;
+    }
+    .pv-dash-card-value { font-size: 13px; font-weight: 600; color: #12141c; line-height: 1.3; }
+    .pv-dash-card.pv-dash-locked .pv-dash-card-value {
+      filter: blur(4px); user-select: none;
+    }
+    .pv-dash-lock-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.55); border-radius: 12px; cursor: pointer;
+    }
+    .pv-dash-lock-icon {
+      width: 22px; height: 22px; border-radius: 999px; background: #eef1ff; color: #3b5bfd;
+      display: flex; align-items: center; justify-content: center; font-size: 12px;
+    }
     .pv-gate {
       margin-top: 10px; padding: 12px; background: #f1f3f7; border-radius: 10px; text-align: center;
     }
@@ -241,6 +273,8 @@
   `;
 
   let currentData = null;
+  let currentPremiumData = null;
+  let premiumLoading = false;
   let currentToken = null;
   let currentEmail = null;
   let root = null;
@@ -304,20 +338,56 @@
     );
   }
 
+  // Mirrors the section/card structure /api/extension-premium-report
+  // returns - used to render locked placeholder cards (title visible,
+  // value hidden behind a lock icon) for a logged-out/free viewer, the
+  // same "see the category exists, log in for the number" pattern the
+  // main site's own dashboard grid uses.
+  const PREMIUM_SECTIONS = [
+    { heading: "Value & Market", cards: ["Area Prosperity", "Price Trend & Forecast", "Rental Analysis"] },
+    { heading: "Property & Condition", cards: ["Aspect"] },
+    { heading: "Risk & Safety", cards: ["Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
+    { heading: "Planning & Heritage", cards: ["Planning Constraints", "Environmental Designations", "Listed Buildings"] },
+    { heading: "Location & Connectivity", cards: ["Broadband", "Mobile Signal"] },
+  ];
+
+  function dashCard(title, value, locked) {
+    return (
+      '<div class="pv-dash-card' + (locked ? " pv-dash-locked" : "") + '">' +
+        '<span class="pv-dash-card-title">' + escapeHtml(title) + "</span>" +
+        '<span class="pv-dash-card-value">' + escapeHtml(value == null ? "No data" : value) + "</span>" +
+        (locked ? '<div class="pv-dash-lock-overlay pv-gate-login-btn"><span class="pv-dash-lock-icon">🔒</span></div>' : "") +
+      "</div>"
+    );
+  }
+
   const RENDERERS = {
-    summary: function (data) {
+    overview: function (data) {
       const s = data.summary;
-      return (
-        '<p class="pv-summary-verdict">' + escapeHtml(data.overview.verdict || "") + "</p>" +
-        '<ul class="pv-stats">' +
-          "<li><span>Avg sold price</span><span>" + gbp(s.avg_price) + "</span></li>" +
-          "<li><span>Flood risk</span><span>" + escapeHtml(s.flood_zone || "No data") + "</span></li>" +
-          "<li><span>Crime nearby</span><span>" + (s.crime_total != null ? s.crime_total + " recorded" : "No data") + "</span></li>" +
-          "<li><span>Schools</span><span>" + (s.schools_good_pct != null ? s.schools_good_pct + "% Outstanding/Good" : "No data") + "</span></li>" +
-          "<li><span>EPC rating</span><span>" + escapeHtml(s.epc_rating || "No data") + "</span></li>" +
-        "</ul>" +
-        '<a class="pv-cta" href="' + API_BASE + data.report_url + '" target="_blank" rel="noopener">See full report →</a>'
-      );
+      let html = "";
+      if (premiumLoading) html += '<p class="pv-loading">Unlocking your full report…</p>';
+      html += '<p class="pv-summary-verdict">' + escapeHtml(data.overview.verdict || "") + "</p>";
+
+      html += '<h3 class="pv-category-heading">At a glance</h3><div class="pv-dash-grid">' +
+        dashCard("Avg sold price", gbp(s.avg_price)) +
+        dashCard("Flood risk", s.flood_zone) +
+        dashCard("Crime nearby", s.crime_total != null ? s.crime_total + " recorded" : null) +
+        dashCard("Schools", s.schools_good_pct != null ? s.schools_good_pct + "% Outstanding/Good" : null) +
+        dashCard("EPC rating", s.epc_rating) +
+        "</div>";
+
+      const sections = currentPremiumData
+        ? currentPremiumData.sections.map(function (s) { return { heading: s.heading, cards: s.cards.map(function (c) { return [c.title, c.value, false]; }) }; })
+        : PREMIUM_SECTIONS.map(function (s) { return { heading: s.heading, cards: s.cards.map(function (title) { return [title, "Premium", true]; }) }; });
+
+      sections.forEach(function (section) {
+        html += '<h3 class="pv-category-heading">' + escapeHtml(section.heading) + '</h3><div class="pv-dash-grid">' +
+          section.cards.map(function (c) { return dashCard(c[0], c[1], c[2]); }).join("") +
+          "</div>";
+      });
+
+      html += '<a class="pv-cta" href="' + API_BASE + data.report_url + '" target="_blank" rel="noopener">See full report →</a>';
+      return html;
     },
     map: function (data) {
       if (!data.latitude || !data.longitude) return '<p class="pv-empty">No location data available.</p>';
@@ -456,8 +526,9 @@
       const logoutBtn = contentEl.querySelector(".pv-logout-btn");
       if (logoutBtn) logoutBtn.addEventListener("click", handleLogout);
     } else {
-      const gateBtn = contentEl.querySelector(".pv-gate-login-btn");
-      if (gateBtn) gateBtn.addEventListener("click", function () { selectTab("account"); });
+      contentEl.querySelectorAll(".pv-gate-login-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () { selectTab("account"); });
+      });
     }
   }
 
@@ -465,6 +536,7 @@
     clearToken().then(function () {
       currentToken = null;
       currentEmail = null;
+      currentPremiumData = null;
       updateAccountButton();
       loadReport(); // re-fetch so gated tabs collapse back to the free teaser
       selectTab("account");
@@ -532,6 +604,11 @@
     root.querySelector(".pv-tab-content").innerHTML = '<p class="pv-error">' + escapeHtml(message) + "</p>";
   }
 
+  function refreshActiveTab() {
+    const activeTab = root.querySelector(".pv-tab.pv-active");
+    renderTabContent(activeTab ? activeTab.dataset.tab : "overview");
+  }
+
   function loadReport() {
     const postcode = extractPostcode();
     if (!postcode) return Promise.resolve();
@@ -551,12 +628,31 @@
         root.querySelector(".pv-header-score").className = "pv-header-score " + gradeClass;
         root.querySelector(".pv-header-score-num").textContent = data.overview.score;
         renderTabStrip(root, data);
-        const activeTab = root.querySelector(".pv-tab.pv-active");
-        renderTabContent(activeTab ? activeTab.dataset.tab : "summary");
+        refreshActiveTab();
+        if (currentToken) loadPremiumReport();
       })
       .catch(function () {
         renderError("Couldn't load UKPropertyInsight data right now.");
       });
+  }
+
+  function loadPremiumReport() {
+    const postcode = extractPostcode();
+    if (!postcode || !currentToken) return Promise.resolve();
+
+    premiumLoading = true;
+    return fetch(API_BASE + "/api/extension-premium-report?postcode=" + encodeURIComponent(postcode), {
+      headers: { Authorization: "Bearer " + currentToken },
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        premiumLoading = false;
+        if (data && data.sections) {
+          currentPremiumData = data;
+          refreshActiveTab();
+        }
+      })
+      .catch(function () { premiumLoading = false; });
   }
 
   function init() {

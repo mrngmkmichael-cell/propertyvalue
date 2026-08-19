@@ -1084,6 +1084,15 @@ async def api_extension_report_options():
     })
 
 
+@app.options("/api/extension-premium-report")
+async def api_extension_premium_report_options():
+    return JSONResponse({}, headers={
+        **_EXTENSION_CORS_HEADERS,
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization",
+    })
+
+
 @app.post("/api/extension-login")
 async def api_extension_login(request: Request):
     """Issues a long-lived signed token (not a session cookie - a
@@ -1300,6 +1309,158 @@ async def api_extension_report(request: Request, postcode: str = ""):
     _gate_extension_list(payload, "market_history", premium_unlocked)
     _gate_extension_list(payload, "comparables", premium_unlocked, subkey="transactions")
     _gate_extension_list(payload, "schools", premium_unlocked)
+    return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
+
+
+EXTENSION_PREMIUM_CACHE_TTL_S = 3600
+
+
+@app.get("/api/extension-premium-report")
+async def api_extension_premium_report(request: Request, postcode: str = ""):
+    """The full dashboard-card set for a logged-in Premium extension
+    user - same category groupings as the property page's own
+    dashboard grid (Value & Market / Property & Condition / Risk &
+    Safety / Planning & Heritage / Location & Connectivity / Area &
+    Community), built from the same underlying services.
+
+    Deliberately a SEPARATE endpoint from /api/extension-report rather
+    than a shared refactor of property_search's own gather: this way a
+    bug here can't touch the main property page, and the free/anonymous
+    extension view (the one that can be hit from any listing page a
+    shopper's browsing) never pays for this much heavier ~20-service
+    gather - only an authenticated Premium request does, which is a
+    smaller, deliberate action, not something that happens on every
+    listing page load.
+    """
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return JSONResponse({"error": "login_required"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
+    token_user = _user_from_extension_token(auth_header[7:])
+    if not token_user or not token_user.is_premium:
+        return JSONResponse({"error": "premium_required"}, status_code=403, headers=_EXTENSION_CORS_HEADERS)
+
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_failed"}, status_code=502, headers=_EXTENSION_CORS_HEADERS)
+    if location is None:
+        return JSONResponse({"error": "not_found"}, status_code=404, headers=_EXTENSION_CORS_HEADERS)
+
+    canonical = location["postcode"]
+    lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
+    laua = codes.get("admin_district", "")
+
+    cache_key = ("extension_premium_report", canonical)
+    cached = _cache.get(cache_key, EXTENSION_PREMIUM_CACHE_TTL_S)
+    if cached is not None:
+        return JSONResponse(cached, headers=_EXTENSION_CORS_HEADERS)
+
+    (
+        hpi_area_result, hpi_trend_result, rental_result, orientation_result,
+        surface_water_result, sewage_result, noise_result, radon_result, clay_result,
+        air_quality_result, landfill_result, coal_result,
+        designations_result, heritage_result,
+        broadband_result, mobile_result,
+    ) = await asyncio.gather(
+        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+        hpi.price_trend(location["admin_district"]),
+        asyncio.to_thread(rental.rental_for_laua, laua),
+        orientation.orientation_for(lat, lon),
+        surface_water_risk.risk_for(lat, lon),
+        sewage_discharge.nearby_outfalls(lat, lon),
+        noise.noise_near(lat, lon),
+        radon.risk_near(lat, lon),
+        clay_risk.risk_near(lat, lon),
+        asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
+        historic_landfill.check_near(lat, lon),
+        coal_mining.check_near(lat, lon),
+        designations.check_all(lat, lon),
+        heritage.nearby_listed_buildings(lat, lon),
+        asyncio.to_thread(broadband.coverage_for_postcode, canonical),
+        asyncio.to_thread(mobile_coverage.coverage_for_laua, laua),
+        return_exceptions=True,
+    )
+
+    def ok(result):
+        return result if not isinstance(result, Exception) else None
+
+    hpi_area = ok(hpi_area_result)
+    prosperity_area = (hpi_area.get("local_authority") or hpi_area.get("region")) if hpi_area else None
+    hpi_trend = ok(hpi_trend_result)
+    rental_data = ok(rental_result)
+    orientation_data = ok(orientation_result)
+    surface_water = ok(surface_water_result)
+    sewage_outfalls = ok(sewage_result) or []
+    noise_data = ok(noise_result)
+    radon_data = ok(radon_result)
+    clay_data = ok(clay_result)
+    aq_data = ok(air_quality_result)
+    landfill = ok(landfill_result)
+    coal = ok(coal_result)
+    designations_data = ok(designations_result) or {}
+    listed_buildings = ok(heritage_result) or []
+    broadband_data = ok(broadband_result)
+    mobile_data = ok(mobile_result)
+
+    planning_flags = [d for k, d in designations_data.items() if d.get("group") == "planning" and d.get("present")]
+    environmental_flags = [d for d in designations_data.values() if d.get("group") == "environmental" and d.get("present")]
+    aq_worst = max((p["times_guideline"] for p in aq_data["pollutants"]), default=None) if aq_data and aq_data.get("pollutants") else None
+
+    def card(title, value, sub=None):
+        return {"title": title, "value": value, "sub": sub}
+
+    sections = [
+        {
+            "heading": "Value & Market",
+            "cards": [
+                card("Area Prosperity", (f"{prosperity_area['annual_change_pct']:+.1f}% YoY ({prosperity_area['name']})" if prosperity_area else "No data")),
+                card("Price Trend & Forecast", (f"{hpi_trend['pct_change']:+.1f}% over 5 years" if hpi_trend and hpi_trend.get("pct_change") is not None else "No data")),
+                card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data")),
+            ],
+        },
+        {
+            "heading": "Property & Condition",
+            "cards": [
+                card("Aspect", (f"Garden faces {orientation_data['rear_facing']}" if orientation_data else "No data")),
+            ],
+        },
+        {
+            "heading": "Risk & Safety",
+            "cards": [
+                card("Surface Water Risk", surface_water["label"] if surface_water else "No data"),
+                card("Sewage Discharge", (f"{len(sewage_outfalls)} outfall{'s' if len(sewage_outfalls) != 1 else ''} nearby" if sewage_outfalls else "None found nearby")),
+                card("Noise", (noise_data.get("road_label") or "No data") if noise_data else "No data"),
+                card("Radon Gas", radon_data["label"] if radon_data else "No data"),
+                card("Subsidence Risk", (f"{clay_data['label_2030']} by 2030" if clay_data else "No data")),
+                card("Air Quality", (f"{aq_worst}× WHO guideline at worst" if aq_worst is not None else "No data")),
+                card("Historic Contamination", ({"on_site": "On a former landfill", "nearby": "Former landfill nearby", "clear": "None nearby"}.get(landfill["status"], "No data") if landfill else "No data")),
+                card("Mining Risk", ("In a Coal Mining Reporting Area" if coal and coal.get("present") else ("Not in a reporting area" if coal else "No data"))),
+            ],
+        },
+        {
+            "heading": "Planning & Heritage",
+            "cards": [
+                card("Planning Constraints", (f"{len(planning_flags)} found" if planning_flags else "None found")),
+                card("Environmental Designations", (f"{len(environmental_flags)} found" if environmental_flags else "None found")),
+                card("Listed Buildings", f"{len(listed_buildings)} nearby"),
+            ],
+        },
+        {
+            "heading": "Location & Connectivity",
+            "cards": [
+                card("Broadband", broadband_data["label"] if broadband_data else "No data"),
+                card("Mobile Signal", (f"{mobile_data['coverage_4g_outdoor_all_pct']}% 4G outdoor" if mobile_data else "No data")),
+            ],
+        },
+    ]
+
+    payload = {"postcode": canonical, "sections": sections}
+    _cache.set(cache_key, payload)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
