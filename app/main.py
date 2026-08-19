@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import select
@@ -1038,6 +1039,79 @@ EXTENSION_REPORT_CACHE_TTL_S = 3600
 EXTENSION_SCHOOLS_LIMIT = 8
 EXTENSION_MARKET_HISTORY_LIMIT = 10
 EXTENSION_COMPARABLES_LIMIT = 12
+EXTENSION_FREE_ROW_LIMIT = 1  # how many rows of a gated list a free/logged-out user sees, as a teaser
+EXTENSION_TOKEN_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days
+
+
+def _extension_token_serializer():
+    # Separate salt from the session cookie signer (main.py's
+    # SessionMiddleware) so a leaked/expired token from one system
+    # can't be replayed against the other, even though both derive
+    # from the same SESSION_SECRET.
+    return URLSafeTimedSerializer(os.environ.get("SESSION_SECRET", "dev-only-insecure-secret"), salt="extension-auth")
+
+
+def _user_from_extension_token(token: str) -> User | None:
+    try:
+        data = _extension_token_serializer().loads(token, max_age=EXTENSION_TOKEN_MAX_AGE_S)
+    except (BadSignature, SignatureExpired):
+        return None
+    with db.get_session() as session:
+        return session.get(User, data.get("user_id"))
+
+
+@app.options("/api/extension-login")
+async def api_extension_login_options():
+    return JSONResponse({}, headers={
+        **_EXTENSION_CORS_HEADERS,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    })
+
+
+@app.options("/api/extension-report")
+async def api_extension_report_options():
+    # A GET carrying a custom "Authorization" header is a non-simple
+    # CORS request, so the browser sends a preflight OPTIONS here
+    # first - without this handler it 405s and the real GET never
+    # fires, which is exactly the failure mode a plain "Couldn't load"
+    # error in the widget would hide (caught this via a real login
+    # test, not by reasoning about it in advance).
+    return JSONResponse({}, headers={
+        **_EXTENSION_CORS_HEADERS,
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Authorization",
+    })
+
+
+@app.post("/api/extension-login")
+async def api_extension_login(request: Request):
+    """Issues a long-lived signed token (not a session cookie - a
+    content script's fetch calls aren't reliably credentialed
+    cross-site) for the extension to send back as
+    "Authorization: Bearer <token>" on /api/extension-report, so a
+    Premium user can unlock the same gated detail in the extension
+    that they'd see logged in on the main site."""
+    if not db.is_configured():
+        return JSONResponse({"error": "not_configured"}, status_code=503, headers=_EXTENSION_CORS_HEADERS)
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, ValueError):
+        return JSONResponse({"error": "invalid_request"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    email = (body.get("email") or "").strip().lower()
+    password = body.get("password") or ""
+    if not email or not password:
+        return JSONResponse({"error": "missing_credentials"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        if user is None or not auth.verify_password(password, user.password_hash):
+            return JSONResponse({"error": "invalid_credentials"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
+        token = _extension_token_serializer().dumps({"user_id": user.id})
+        payload = {"token": token, "email": user.email, "is_premium": user.is_premium}
+
+    return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
 async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:
@@ -1053,21 +1127,52 @@ async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:
     return transactions
 
 
+def _gate_extension_list(payload: dict, key: str, premium_unlocked: bool, subkey: str | None = None) -> None:
+    """Trims a list in `payload` (in place, on a dict the caller
+    already knows is a per-request copy - never the cached original)
+    down to a short teaser for a non-Premium caller, recording the
+    true full count alongside it so the UI can say "N more - log in
+    to see them" rather than just silently showing fewer rows."""
+    container = payload[key] if subkey is None else payload[key][subkey]
+    full_count = len(container)
+    if not premium_unlocked:
+        container = container[:EXTENSION_FREE_ROW_LIMIT]
+    if subkey is None:
+        payload[key] = container
+    else:
+        payload[key] = dict(payload[key])
+        payload[key][subkey] = container
+    payload[key + "_full_count"] = full_count
+
+
 @app.get("/api/extension-report")
-async def api_extension_report(postcode: str = ""):
+async def api_extension_report(request: Request, postcode: str = ""):
     """The full data set behind the browser extension's tabbed overlay
     (Summary/Market History/Comparables/Schools/EPC/Demographics/
     Crime/Maps) - richer than /api/lookup's small summary-card subset,
     but still short of property_search's full ~28-way gather: no
-    premium-gated signals (valuation estimate, risk designations, coal
-    mining, etc.), matching what the free tier of the main site shows.
-    Cached for an hour per postcode, the same TTL and reasoning as
-    property_search's own cache - this can be hit from any listing
-    page a shopper's browsing, not just once per visit to our own site.
+    premium-gated signals like valuation estimate or risk designations.
+
+    Market History, Comparables and Schools are capped to a 1-row
+    teaser unless the request carries a valid "Authorization: Bearer
+    <token>" for a Premium user (see /api/extension-login) - the same
+    "headline free, full list Premium" split those sections use on the
+    main site. The underlying (full-depth) data is what's cached, for
+    an hour per postcode; the free/Premium split is applied fresh to a
+    copy of that cached payload on every request, never baked into the
+    cached object itself, so a free lookup can never leak into or
+    corrupt what a Premium caller sees for the same postcode (or vice
+    versa) via the shared cache.
     """
     postcode = postcode.strip()
     if not postcode:
         return JSONResponse({"error": "postcode_required"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
+
+    premium_unlocked = False
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token_user = _user_from_extension_token(auth_header[7:])
+        premium_unlocked = bool(token_user and token_user.is_premium)
 
     try:
         location = await lookup_postcode(postcode)
@@ -1083,7 +1188,12 @@ async def api_extension_report(postcode: str = ""):
     cache_key = ("extension_report", canonical)
     cached = _cache.get(cache_key, EXTENSION_REPORT_CACHE_TTL_S)
     if cached is not None:
-        return JSONResponse(cached, headers=_EXTENSION_CORS_HEADERS)
+        payload = dict(cached)  # shallow copy - _gate_extension_list must never mutate the cached original
+        payload["premium_unlocked"] = premium_unlocked
+        _gate_extension_list(payload, "market_history", premium_unlocked)
+        _gate_extension_list(payload, "comparables", premium_unlocked, subkey="transactions")
+        _gate_extension_list(payload, "schools", premium_unlocked)
+        return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
     (
         tx_result, comparables_result, flood_zone_result, crime_result, landscape_result, hpi_result,
@@ -1184,6 +1294,12 @@ async def api_extension_report(postcode: str = ""):
     }
 
     _cache.set(cache_key, payload)
+
+    payload = dict(payload)
+    payload["premium_unlocked"] = premium_unlocked
+    _gate_extension_list(payload, "market_history", premium_unlocked)
+    _gate_extension_list(payload, "comparables", premium_unlocked, subkey="transactions")
+    _gate_extension_list(payload, "schools", premium_unlocked)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
