@@ -1264,6 +1264,10 @@ async def api_extension_report(request: Request, postcode: str = ""):
     comparables_result = ok(comparables_result) or []
     landscape_result = ok(landscape_result)
     certs_result = ok(certs_result) or []
+    crime_comparison_rows = (
+        _crime_comparison(ok(crime_result), ok(crime_outcode_result))
+        if ok(crime_result) and ok(crime_outcode_result) else []
+    )
 
     payload = {
         "postcode": canonical,
@@ -1287,12 +1291,24 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "district": postcode.strip().upper() if area_level else None,
     }
 
-    mini_context = {
+    # Everything below is data this endpoint already fetches for its
+    # own free-tier cards - feeding it all into the score means a free
+    # extension user's score reflects the same signals a free (not
+    # logged-in) visitor to the site itself would see. It's still not
+    # the SITE'S full score - the ~10 Premium-only risk signals
+    # (surface water, noise, radon, planning, etc.) require the
+    # heavier gather /api/extension-premium-report does, and only run
+    # for a paying, logged-in request - see that endpoint, which
+    # recomputes this once its own data lands.
+    score_context = {
         "hpi": ok(hpi_result),
         "flood_zone": ok(flood_zone_result),
         "school_landscape": landscape_result,
+        "certificates": certs_result,
+        "deprivation": ok(deprivation_result),
+        "crime_comparison": crime_comparison_rows,
     }
-    payload["overview"] = overview_score.compute(mini_context, premium_unlocked=False)
+    payload["overview"] = overview_score.compute(score_context, premium_unlocked=False)
 
     payload["summary"] = {
         "avg_price": _average_amount(tx_result),
@@ -1355,7 +1371,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
         # comparison the main site's own Crime modal shows - reuses
         # that exact function rather than a simplified copy, so the
         # extension's numbers can never quietly drift from the site's.
-        "comparison": _crime_comparison(ok(crime_result), ok(crime_outcode_result)) if ok(crime_result) and ok(crime_outcode_result) else [],
+        "comparison": crime_comparison_rows,
     }
 
     _cache.set(cache_key, payload)
@@ -1422,6 +1438,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         air_quality_result, landfill_result, coal_result,
         designations_result, heritage_result,
         broadband_result, mobile_result,
+        flood_zone_result, landscape_result, certs_result, crime_result, crime_outcode_result, deprivation_result,
     ) = await asyncio.gather(
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         hpi.price_trend(location["admin_district"]),
@@ -1443,6 +1460,17 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         heritage.nearby_listed_buildings(lat, lon),
         asyncio.to_thread(broadband.coverage_for_postcode, canonical),
         asyncio.to_thread(mobile_coverage.coverage_for_laua, laua),
+        # Fetched here (not just in /api/extension-report) so this
+        # endpoint can recompute the Overview Score from the SAME full
+        # signal set property_search uses for a logged-in user, instead
+        # of leaving it at the lighter free-tier score even after a
+        # Premium user has paid for the full gather.
+        flood_zones.zone_for(lat, lon),
+        asyncio.to_thread(schools_db.school_landscape, lat, lon),
+        _immediate([]) if area_level else epc.certificates_for_postcode(canonical),
+        crime.summary_near(lat, lon),
+        crime.summary_for_outcode(location["outcode"]),
+        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
         return_exceptions=True,
     )
 
@@ -1467,7 +1495,17 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     broadband_data = ok(broadband_result)
     mobile_data = ok(mobile_result)
 
-    planning_flags = [d for k, d in designations_data.items() if d.get("group") == "planning" and d.get("present")]
+    # Same "built_up_area" exclusion property_search applies (see its
+    # own planning_flags comment) - being in a built-up area is
+    # completely ordinary for most searches, not a real constraint, so
+    # it shouldn't count as a "Check this" here either. Missing this
+    # was a real, confirmed discrepancy: the site showed "None found"
+    # for S70 1SH's Planning Constraints while this endpoint showed
+    # "1 found" for the exact same postcode.
+    planning_flags = [
+        d for k, d in designations_data.items()
+        if d.get("group") == "planning" and d.get("present") and k != "built_up_area"
+    ]
     environmental_flags = [d for d in designations_data.values() if d.get("group") == "environmental" and d.get("present")]
     aq_worst = max((p["times_guideline"] for p in aq_data["pollutants"]), default=None) if aq_data and aq_data.get("pollutants") else None
     noise_max = max((noise_data.get("road_db") or 0, noise_data.get("rail_db") or 0, noise_data.get("airport_db") or 0)) if noise_data else None
@@ -1515,7 +1553,19 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
             "heading": "Risk & Safety",
             "cards": [
                 card("Surface Water Risk", surface_water["label"] if surface_water else "No data", surface_water_status),
-                card("Sewage Discharge", (f"{len(sewage_outfalls)} outfall{'s' if len(sewage_outfalls) != 1 else ''} nearby" if sewage_outfalls else "None found nearby"), sewage_status),
+                # Matches property.html's own card text exactly - the
+                # nearest outfall's own spill count for its most recent
+                # reported year, not a count of how many outfalls are
+                # nearby (a genuine mismatch this had before: "3
+                # outfalls nearby" vs the site's "53 spills nearby in
+                # 2025" for the same postcode - different metrics
+                # entirely, not just different wording).
+                card(
+                    "Sewage Discharge",
+                    "Data unavailable" if isinstance(sewage_result, Exception)
+                    else (f"{sewage_outfalls[0]['spill_count']} spills nearby in {sewage_outfalls[0]['year']}" if sewage_outfalls else "No outfalls found nearby"),
+                    sewage_status,
+                ),
                 card("Noise", (noise_data.get("road_label") or "No data") if noise_data else "No data", noise_status),
                 card("Radon Gas", radon_data["label"] if radon_data else "No data", radon_status),
                 card("Subsidence Risk", (f"{clay_data['label_2030']} by 2030" if clay_data else "No data"), clay_risk_status),
@@ -1541,11 +1591,40 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         },
     ]
 
+    # Same full signal set property_search feeds overview_score.compute
+    # for a logged-in user (bar extension_signal, which needs an exact
+    # address neither this endpoint nor a postcode-only site search
+    # has) - a Premium extension user's score now matches what they'd
+    # see logging into the site itself for this postcode, not the
+    # lighter free-tier score /api/extension-report shows.
+    full_context = {
+        "hpi": hpi_area,
+        "flood_zone": ok(flood_zone_result),
+        "surface_water": surface_water,
+        "noise": noise_data,
+        "radon": radon_data,
+        "air_quality": aq_data,
+        "historic_landfill": landfill,
+        "coal_mining": coal,
+        "planning_flags": planning_flags,
+        "environmental_flags": environmental_flags,
+        "broadband": broadband_data,
+        "mobile": mobile_data,
+        "deprivation": ok(deprivation_result),
+        "school_landscape": ok(landscape_result),
+        "certificates": ok(certs_result) or [],
+        "crime_comparison": (
+            _crime_comparison(ok(crime_result), ok(crime_outcode_result))
+            if ok(crime_result) and ok(crime_outcode_result) else []
+        ),
+    }
+
     payload = {
         "postcode": canonical,
         "sections": sections,
         "area_level": area_level,
         "district": postcode.strip().upper() if area_level else None,
+        "overview": overview_score.compute(full_context, premium_unlocked=True),
     }
     _cache.set(cache_key, payload)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)

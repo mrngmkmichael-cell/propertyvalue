@@ -1052,6 +1052,20 @@
     renderTabContent(activeTab ? activeTab.dataset.tab : "overview");
   }
 
+  // The free /api/extension-report score only reflects the ~6 signals
+  // that endpoint fetches anyway; /api/extension-premium-report's own
+  // "overview" (once it lands for a logged-in Premium user) is
+  // recomputed from the full ~16-signal gather, matching what the same
+  // postcode would score on the site itself - this swaps the header/
+  // score-card display over to that fuller number without a second
+  // fetch, since loadPremiumReport() already has it.
+  function applyOverviewScore(overview) {
+    const gradeClass = "pv-grade-" + String(overview.grade || "").toLowerCase().replace(/\s+/g, "-");
+    root.querySelector(".pv-header-score").className = "pv-header-score " + gradeClass;
+    root.querySelector(".pv-header-score-num").textContent = overview.score;
+    root.querySelector(".pv-header-score-grade").textContent = overview.grade || "";
+  }
+
   function loadReport() {
     if (!currentPostcode) return Promise.resolve();
 
@@ -1066,10 +1080,7 @@
           return;
         }
         currentData = data;
-        const gradeClass = "pv-grade-" + String(data.overview.grade || "").toLowerCase().replace(/\s+/g, "-");
-        root.querySelector(".pv-header-score").className = "pv-header-score " + gradeClass;
-        root.querySelector(".pv-header-score-num").textContent = data.overview.score;
-        root.querySelector(".pv-header-score-grade").textContent = data.overview.grade || "";
+        applyOverviewScore(data.overview);
         const reportLink = root.querySelector(".pv-header-report-link");
         if (data.report_url) {
           reportLink.href = API_BASE + data.report_url;
@@ -1098,6 +1109,10 @@
         premiumLoading = false;
         if (data && data.sections) {
           currentPremiumData = data;
+          if (data.overview && currentData) {
+            currentData.overview = data.overview;
+            applyOverviewScore(data.overview);
+          }
           refreshActiveTab();
         }
       })
