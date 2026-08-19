@@ -3727,6 +3727,57 @@ def fetch_kensington_and_chelsea() -> list[dict]:
     return records
 
 
+_TOWER_HAMLETS_URL = "https://stebon.org.uk/wp-content/uploads/2025/01/Primary-School-prospectus.pdf"
+_TOWER_HAMLETS_ROW_RE = re.compile(r"^([A-Za-z][A-Za-z0-9'&,.\- ]*?) ((?:\d+ ){2,}\d+)$")
+
+
+def fetch_tower_hamlets() -> list[dict]:
+    """Tower Hamlets Council's own site wasn't checked directly - its
+    "Starting Primary School" prospectus (which only covers community
+    schools, the only ones for which the Council itself is the
+    admission authority) is also mirrored on individual schools' own
+    sites (found here via Stebon Primary School). Its "Summary of last
+    year's application and offers" table is watermark-rotated (each
+    column heading is reversed character-by-character, e.g. "loohcS"
+    for "School") but the data rows themselves read normally: name
+    followed by 12 numbers, of which the second-to-last is "Offered
+    distance (metres)" and the last is the total number of places -
+    confirmed by the last number consistently matching the school's
+    published admission number (PAN). Converted from metres to miles.
+
+    The table lists schools by a short, sometimes-abbreviated name
+    (e.g. "Bygrove" rather than "Bygrove Primary School") that's too
+    short relative to the full GIAS name to pass the fuzzy-match
+    cutoff on its own - "Primary School" is appended to any name that
+    doesn't already contain "School" before matching. One row
+    ("Bonner Bethnal Green") doesn't correspond to any real Tower
+    Hamlets school under that name (the actual school is "Bonner
+    Primary School") and is correctly left unmatched rather than
+    guessed at.
+    """
+    print(f"  Downloading {_TOWER_HAMLETS_URL}")
+    resp = httpx.get(_TOWER_HAMLETS_URL, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    records = []
+    with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if "Summary of last" not in page_text or "dereffO" not in page_text:
+                continue
+            for line in page_text.split("\n"):
+                m = _TOWER_HAMLETS_ROW_RE.match(line.strip())
+                if not m:
+                    continue
+                name = m.group(1).strip()
+                if "school" not in name.lower():
+                    name += " Primary School"
+                numbers = m.group(2).split()
+                distance_metres = int(numbers[-2])
+                records.append({"school_name": name, "last_distance_miles": distance_metres / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3811,6 +3862,7 @@ _AUTHORITIES = [
     ("Camden", "2024", fetch_camden),
     ("Westminster", "2024/25", fetch_westminster),
     ("Kensington and Chelsea", "2025/26", fetch_kensington_and_chelsea),
+    ("Tower Hamlets", "2024/25", fetch_tower_hamlets),
 ]
 
 
