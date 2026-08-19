@@ -3441,6 +3441,44 @@ def fetch_southampton() -> list[dict]:
     return records
 
 
+_BRIGHTON_HOVE_HEADER_RE = re.compile(r"([A-Z][A-Za-z'&,.\- ]{2,60}?(?:School)) - \d+ places")
+_BRIGHTON_HOVE_DISTANCE_RE = re.compile(r"furthest child offered a place in priority \d+ lives ([\d.]+) metres")
+
+
+def fetch_brighton_and_hove() -> list[dict]:
+    """Brighton & Hove City Council publishes its Reception allocation
+    outcomes as prose HTML (not a table) - one paragraph per
+    oversubscribed school reading "<School> - NN places ... The
+    furthest child offered a place in priority 5 lives NNN.NN metres
+    from the school." Only schools that were actually oversubscribed
+    down to the "other children" priority carry this sentence, so most
+    schools on the page are correctly skipped rather than guessed at.
+    Distances are in metres, converted to miles here.
+    """
+    url = (
+        "https://www.brighton-hove.gov.uk/schools-and-learning/school-policies-reports-strategies-and-other-documents/"
+        "allocation-infantprimary-school-reception-places-september-2025"
+    )
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+
+    text = re.sub(r"<[^>]+>", " ", resp.text)
+    text = text.replace("&amp;", "&").replace("&rsquo;", "'").replace("&lsquo;", "'").replace("&ndash;", "-")
+    text = re.sub(r"\s+", " ", text)
+
+    records = []
+    headers = list(_BRIGHTON_HOVE_HEADER_RE.finditer(text))
+    for i, m in enumerate(headers):
+        name = m.group(1).strip()
+        chunk_end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        chunk = text[m.end():chunk_end]
+        dm = _BRIGHTON_HOVE_DISTANCE_RE.search(chunk)
+        if dm:
+            records.append({"school_name": name, "last_distance_miles": float(dm.group(1)) / _METRES_PER_MILE})
+    return records
+
+
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
 _AUTHORITIES = [
@@ -3520,6 +3558,7 @@ _AUTHORITIES = [
     ("Bolton", "varies", fetch_bolton),
     ("Salford", "2025/26", fetch_salford),
     ("Knowsley", "2026/27", fetch_knowsley),
+    ("Brighton and Hove", "2025/26", fetch_brighton_and_hove),
 ]
 
 
@@ -3533,7 +3572,16 @@ def build_records(session) -> list[dict]:
     records = []
     for authority, academic_year, fetch_fn in _AUTHORITIES:
         print(f"Fetching {authority}...")
-        rows = fetch_fn()
+        try:
+            rows = fetch_fn()
+        except Exception as exc:
+            # A single authority's source URL rotting/going down (these are
+            # re-published every year at a new address, sometimes behind a
+            # WAF that blocks this environment) shouldn't take down the
+            # whole import - skip it and keep going, rather than lose every
+            # other authority's data too.
+            print(f"  SKIPPED - {authority} fetch failed: {exc}")
+            continue
         print(f"  {len(rows)} schools with a distance figure in the source file")
 
         schools_in_la = session.execute(
