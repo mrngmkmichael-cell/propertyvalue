@@ -11,11 +11,10 @@
  * durable approach than hardcoded selectors.
  *
  * Renders inside a Shadow DOM so the host page's global CSS can't
- * bleed into (or be broken by) the widget, and vice versa. A compact
- * card pinned to the top-right of the viewport, expanded by default -
- * unlike a full-width bar, it never competes with the listing photos
- * for horizontal space, and the report is immediately visible rather
- * than needing a click to reveal.
+ * bleed into (or be broken by) the widget, and vice versa. A full-width
+ * bar pinned to the top of the page (like Propbar), expanded by default
+ * but height-capped so the underlying listing stays visible and
+ * scrollable beneath it.
  *
  * Colours/type/spacing below are hardcoded to match
  * app/static/css/style.css's design tokens exactly - a Shadow DOM
@@ -120,7 +119,7 @@
     .pv-card {
       position: fixed;
       top: 0; left: 0; right: 0;
-      max-height: 70vh;
+      max-height: 44vh;
       display: flex;
       flex-direction: column;
       z-index: 2147483647;
@@ -145,12 +144,21 @@
       width: 22px; height: 22px; border-radius: 8px; background: #3b5bfd; color: #fff;
       font-size: 13px; font-weight: 800; flex-shrink: 0;
     }
-    .pv-header-score { display: flex; align-items: baseline; gap: 3px; margin-left: 4px; flex-shrink: 0; }
+    .pv-header-score { display: flex; align-items: baseline; gap: 4px; margin-left: 4px; flex-shrink: 0; }
     .pv-header-score-num { font-size: 16px; font-weight: 800; }
+    .pv-header-score-max { font-size: 10px; color: #98a2b3; margin-right: 2px; }
+    .pv-header-score-grade {
+      font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+      padding: 2px 6px; border-radius: 999px;
+    }
     .pv-grade-excellent .pv-header-score-num { color: #059669; }
+    .pv-grade-excellent .pv-header-score-grade { background: #d1fae5; color: #059669; }
     .pv-grade-good .pv-header-score-num { color: #3b5bfd; }
+    .pv-grade-good .pv-header-score-grade { background: #dbeafe; color: #3b5bfd; }
     .pv-grade-fair .pv-header-score-num { color: #d97706; }
+    .pv-grade-fair .pv-header-score-grade { background: #fef3c7; color: #d97706; }
     .pv-grade-below-average .pv-header-score-num, .pv-grade-poor .pv-header-score-num { color: #dc2626; }
+    .pv-grade-below-average .pv-header-score-grade, .pv-grade-poor .pv-header-score-grade { background: #fee2e2; color: #dc2626; }
     .pv-spacer { flex: 1; }
     .pv-icon-btn {
       background: none; border: none; cursor: pointer; color: #98a2b3;
@@ -221,11 +229,21 @@
     }
     .pv-category-heading:first-child { margin-top: 0; }
     .pv-dash-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
     }
     .pv-dash-card {
       position: relative; display: flex; flex-direction: column; gap: 3px;
-      background: #ffffff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 12px;
+      background: #ffffff; border: 1px solid #e4e7ec; border-radius: 12px; padding: 10px;
+    }
+    .pv-dash-card.pv-dash-attn { border-color: #fde68a; background: #fffbeb; }
+    .pv-dash-card-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 8px; font-size: 13px; margin-bottom: 2px;
+    }
+    .pv-check-this-tag {
+      position: absolute; top: 8px; right: 8px; padding: 1px 7px; border-radius: 999px;
+      background: #fef3c7; font-size: 8.5px; font-weight: 700; letter-spacing: 0.03em;
+      text-transform: uppercase; color: #92400e;
     }
     .pv-dash-card-title {
       font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #667085;
@@ -242,6 +260,67 @@
       width: 22px; height: 22px; border-radius: 999px; background: #eef1ff; color: #3b5bfd;
       display: flex; align-items: center; justify-content: center; font-size: 12px;
     }
+    .icon-market       { background: #eff6ff; color: #2563eb; }
+    .icon-energy       { background: #fffbeb; color: #d97706; }
+    .icon-flood        { background: #ecfeff; color: #0891b2; }
+    .icon-crime        { background: #fff1f2; color: #e11d48; }
+    .icon-schools      { background: #f5f3ff; color: #7c3aed; }
+    .icon-prosperity   { background: #ecfdf5; color: #059669; }
+    .icon-rental       { background: #ecfeff; color: #0e7490; }
+    .icon-orientation  { background: #fefce8; color: #a16207; }
+    .icon-sewage       { background: #f5f5f4; color: #57534e; }
+    .icon-noise        { background: #fefce8; color: #ca8a04; }
+    .icon-radon        { background: #f7fee7; color: #65a30d; }
+    .icon-geology      { background: #fff7ed; color: #9a3412; }
+    .icon-air-quality  { background: #eff6ff; color: #1d4ed8; }
+    .icon-landfill     { background: #fef2f2; color: #b91c1c; }
+    .icon-mining       { background: #fef3c7; color: #92400e; }
+    .icon-planning     { background: #eef2ff; color: #3730a3; }
+    .icon-environmental{ background: #ecfdf5; color: #047857; }
+    .icon-heritage     { background: #fafaf9; color: #78716c; }
+    .icon-broadband    { background: #f0f9ff; color: #0284c7; }
+    .icon-mobile       { background: #fdf4ff; color: #a21caf; }
+    .pv-score-card {
+      display: flex; align-items: center; gap: 14px; margin: 0 0 16px;
+      padding: 12px 14px; border-radius: 12px; border: 1px solid #e4e7ec; background: #fffbeb;
+    }
+    .pv-score-num { display: flex; align-items: baseline; flex-shrink: 0; }
+    .pv-score-value { font-size: 26px; font-weight: 800; line-height: 1; }
+    .pv-score-max { font-size: 11px; color: #667085; margin-left: 2px; }
+    .pv-score-body { min-width: 0; }
+    .pv-score-grade {
+      display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px; margin-bottom: 4px;
+    }
+    .pv-score-verdict { margin: 0; font-size: 12.5px; color: #12141c; }
+    .pv-score-card.pv-grade-excellent { background: #ecfdf5; border-color: #a7f3d0; }
+    .pv-score-card.pv-grade-excellent .pv-score-value,
+    .pv-score-card.pv-grade-excellent .pv-score-grade { color: #059669; }
+    .pv-score-card.pv-grade-excellent .pv-score-grade { background: #d1fae5; }
+    .pv-score-card.pv-grade-good { background: #eff6ff; border-color: #bfdbfe; }
+    .pv-score-card.pv-grade-good .pv-score-value,
+    .pv-score-card.pv-grade-good .pv-score-grade { color: #3b5bfd; }
+    .pv-score-card.pv-grade-good .pv-score-grade { background: #dbeafe; }
+    .pv-score-card.pv-grade-fair { background: #fffbeb; border-color: #fde68a; }
+    .pv-score-card.pv-grade-fair .pv-score-value,
+    .pv-score-card.pv-grade-fair .pv-score-grade { color: #d97706; }
+    .pv-score-card.pv-grade-fair .pv-score-grade { background: #fef3c7; }
+    .pv-score-card.pv-grade-below-average, .pv-score-card.pv-grade-poor { background: #fef2f2; border-color: #fecaca; }
+    .pv-score-card.pv-grade-below-average .pv-score-value, .pv-score-card.pv-grade-below-average .pv-score-grade,
+    .pv-score-card.pv-grade-poor .pv-score-value, .pv-score-card.pv-grade-poor .pv-score-grade { color: #dc2626; }
+    .pv-score-card.pv-grade-below-average .pv-score-grade, .pv-score-card.pv-grade-poor .pv-score-grade { background: #fee2e2; }
+    .pv-loading-block {
+      display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px 0;
+    }
+    .pv-loading-row { display: flex; align-items: center; gap: 8px; color: #667085; font-size: 12px; margin-bottom: 12px; }
+    .pv-spinner {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      border: 3px solid #eef1ff; border-top-color: #3b5bfd;
+      animation: pv-spin 0.8s linear infinite;
+    }
+    .pv-spinner-sm { width: 15px; height: 15px; border-width: 2px; }
+    @keyframes pv-spin { to { transform: rotate(360deg); } }
+    .pv-loading-text { color: #667085; font-size: 12.5px; margin: 0; }
     .pv-gate {
       margin-top: 10px; padding: 12px; background: #f1f3f7; border-radius: 10px; text-align: center;
     }
@@ -293,7 +372,7 @@
     card.innerHTML =
       '<div class="pv-header">' +
         '<span class="pv-logo"><span class="pv-mark">U</span>UKPropertyInsight</span>' +
-        '<span class="pv-header-score"><span class="pv-header-score-num">…</span></span>' +
+        '<span class="pv-header-score"><span class="pv-header-score-num">…</span><span class="pv-header-score-max">/100</span><span class="pv-header-score-grade"></span></span>' +
         '<span class="pv-spacer"></span>' +
         '<button class="pv-account-btn" type="button">Log in</button>' +
         '<button class="pv-icon-btn pv-collapse-btn" type="button" aria-label="Collapse">▾</button>' +
@@ -301,7 +380,7 @@
       "</div>" +
       '<div class="pv-body">' +
         '<div class="pv-tabs"></div>' +
-        '<div class="pv-tab-content"><p class="pv-loading">Loading…</p></div>' +
+        '<div class="pv-tab-content"><div class="pv-loading-block"><span class="pv-spinner"></span><p class="pv-loading-text">Loading your UKPropertyInsight report…</p></div></div>' +
       "</div>";
     shadow.appendChild(card);
 
@@ -351,9 +430,42 @@
     { heading: "Location & Connectivity", cards: ["Broadband", "Mobile Signal"] },
   ];
 
-  function dashCard(title, value, locked) {
+  // Icon glyph + colour-class per card title, mirroring the colour
+  // families app/static/css/style.css assigns each dashboard-card-icon
+  // on the main site (icon-flood, icon-noise, etc.) so the extension's
+  // cards read as the same visual language, not a plain text list.
+  const CARD_ICONS = {
+    "Avg sold price": ["£", "icon-market"],
+    "Flood risk": ["💧", "icon-flood"],
+    "Crime nearby": ["🚨", "icon-crime"],
+    "Schools": ["🎓", "icon-schools"],
+    "EPC rating": ["⚡", "icon-energy"],
+    "Area Prosperity": ["📈", "icon-prosperity"],
+    "Price Trend & Forecast": ["📊", "icon-market"],
+    "Rental Analysis": ["🏠", "icon-rental"],
+    "Aspect": ["🧭", "icon-orientation"],
+    "Surface Water Risk": ["💧", "icon-flood"],
+    "Sewage Discharge": ["🚱", "icon-sewage"],
+    "Noise": ["🔊", "icon-noise"],
+    "Radon Gas": ["☢", "icon-radon"],
+    "Subsidence Risk": ["🪨", "icon-geology"],
+    "Air Quality": ["🌫", "icon-air-quality"],
+    "Historic Contamination": ["🗑", "icon-landfill"],
+    "Mining Risk": ["⛏", "icon-mining"],
+    "Planning Constraints": ["📏", "icon-planning"],
+    "Environmental Designations": ["🌳", "icon-environmental"],
+    "Listed Buildings": ["🏛", "icon-heritage"],
+    "Broadband": ["🌐", "icon-broadband"],
+    "Mobile Signal": ["📶", "icon-mobile"],
+  };
+
+  function dashCard(title, value, locked, status) {
+    const iconInfo = CARD_ICONS[title];
+    const attn = !locked && status === "attn";
     return (
-      '<div class="pv-dash-card' + (locked ? " pv-dash-locked" : "") + '">' +
+      '<div class="pv-dash-card' + (locked ? " pv-dash-locked" : "") + (attn ? " pv-dash-attn" : "") + '">' +
+        (attn ? '<span class="pv-check-this-tag">Check this</span>' : "") +
+        (iconInfo ? '<span class="pv-dash-card-icon ' + iconInfo[1] + '">' + iconInfo[0] + "</span>" : "") +
         '<span class="pv-dash-card-title">' + escapeHtml(title) + "</span>" +
         '<span class="pv-dash-card-value">' + escapeHtml(value == null ? "No data" : value) + "</span>" +
         (locked ? '<div class="pv-dash-lock-overlay pv-gate-login-btn"><span class="pv-dash-lock-icon">🔒</span></div>' : "") +
@@ -364,9 +476,18 @@
   const RENDERERS = {
     overview: function (data) {
       const s = data.summary;
+      const o = data.overview;
       let html = "";
-      if (premiumLoading) html += '<p class="pv-loading">Unlocking your full report…</p>';
-      html += '<p class="pv-summary-verdict">' + escapeHtml(data.overview.verdict || "") + "</p>";
+      if (premiumLoading) html += '<div class="pv-loading-row"><span class="pv-spinner pv-spinner-sm"></span><span>Unlocking your full report…</span></div>';
+
+      const gradeClass = "pv-grade-" + String(o.grade || "").toLowerCase().replace(/\s+/g, "-");
+      html += '<div class="pv-score-card ' + gradeClass + '">' +
+        '<div class="pv-score-num"><span class="pv-score-value">' + escapeHtml(o.score) + '</span><span class="pv-score-max">/100</span></div>' +
+        '<div class="pv-score-body">' +
+          '<span class="pv-score-grade">' + escapeHtml(o.grade || "") + '</span>' +
+          '<p class="pv-score-verdict">' + escapeHtml(o.verdict || "") + "</p>" +
+        "</div>" +
+      "</div>";
 
       html += '<h3 class="pv-category-heading">At a glance</h3><div class="pv-dash-grid">' +
         dashCard("Avg sold price", gbp(s.avg_price)) +
@@ -377,12 +498,12 @@
         "</div>";
 
       const sections = currentPremiumData
-        ? currentPremiumData.sections.map(function (s) { return { heading: s.heading, cards: s.cards.map(function (c) { return [c.title, c.value, false]; }) }; })
-        : PREMIUM_SECTIONS.map(function (s) { return { heading: s.heading, cards: s.cards.map(function (title) { return [title, "Premium", true]; }) }; });
+        ? currentPremiumData.sections.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (c) { return [c.title, c.value, false, c.status]; }) }; })
+        : PREMIUM_SECTIONS.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (title) { return [title, "Premium", true, null]; }) }; });
 
       sections.forEach(function (section) {
         html += '<h3 class="pv-category-heading">' + escapeHtml(section.heading) + '</h3><div class="pv-dash-grid">' +
-          section.cards.map(function (c) { return dashCard(c[0], c[1], c[2]); }).join("") +
+          section.cards.map(function (c) { return dashCard(c[0], c[1], c[2], c[3]); }).join("") +
           "</div>";
       });
 
@@ -627,6 +748,7 @@
         const gradeClass = "pv-grade-" + String(data.overview.grade || "").toLowerCase().replace(/\s+/g, "-");
         root.querySelector(".pv-header-score").className = "pv-header-score " + gradeClass;
         root.querySelector(".pv-header-score-num").textContent = data.overview.score;
+        root.querySelector(".pv-header-score-grade").textContent = data.overview.grade || "";
         renderTabStrip(root, data);
         refreshActiveTab();
         if (currentToken) loadPremiumReport();

@@ -1410,15 +1410,33 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     planning_flags = [d for k, d in designations_data.items() if d.get("group") == "planning" and d.get("present")]
     environmental_flags = [d for d in designations_data.values() if d.get("group") == "environmental" and d.get("present")]
     aq_worst = max((p["times_guideline"] for p in aq_data["pollutants"]), default=None) if aq_data and aq_data.get("pollutants") else None
+    noise_max = max((noise_data.get("road_db") or 0, noise_data.get("rail_db") or 0, noise_data.get("airport_db") or 0)) if noise_data else None
 
-    def card(title, value, sub=None):
-        return {"title": title, "value": value, "sub": sub}
+    def card(title, value, status="ok", sub=None):
+        return {"title": title, "value": value, "status": status, "sub": sub}
+
+    # Status thresholds mirror property.html's own {% set %}_status blocks
+    # exactly, so a card flagged "Check this" here matches what the same
+    # signal would show on the main site's dashboard.
+    prosperity_status = "muted" if not prosperity_area else ("ok" if prosperity_area["annual_change_pct"] >= 0 else "attn")
+    surface_water_status = "muted" if not surface_water else ("attn" if surface_water["label"] == "High risk" else "ok")
+    noise_status = "muted" if noise_max is None else ("attn" if noise_max >= 65 else "ok")
+    radon_status = "muted" if not radon_data else ("attn" if int(radon_data["class"]) >= 4 else "ok")
+    clay_risk_status = "muted" if not clay_data else ("attn" if clay_data["class_2030"] == "Probable" else "ok")
+    sewage_status = "muted" if isinstance(sewage_result, Exception) else ("attn" if sewage_outfalls and (sewage_outfalls[0].get("spill_count") or 0) >= 20 else "ok")
+    aq_status = "muted" if not aq_data else ("attn" if aq_worst is not None and aq_worst >= 3 else "ok")
+    landfill_status = "muted" if isinstance(landfill_result, Exception) else ("attn" if landfill and landfill["status"] != "clear" else "ok")
+    coal_mining_status = "muted" if isinstance(coal_result, Exception) else ("attn" if coal and coal.get("present") else "ok")
+    planning_status = "muted" if isinstance(designations_result, Exception) else ("attn" if planning_flags else "ok")
+    environmental_status = "muted" if isinstance(designations_result, Exception) else ("attn" if environmental_flags else "ok")
+    broadband_status = "muted" if not broadband_data else ("attn" if broadband_data.get("below_uso_pct") and broadband_data["below_uso_pct"] >= 5 else "ok")
+    mobile_status = "muted" if not mobile_data else ("attn" if mobile_data.get("no_4g_outdoor_pct") and mobile_data["no_4g_outdoor_pct"] >= 5 else "ok")
 
     sections = [
         {
             "heading": "Value & Market",
             "cards": [
-                card("Area Prosperity", (f"{prosperity_area['annual_change_pct']:+.1f}% YoY ({prosperity_area['name']})" if prosperity_area else "No data")),
+                card("Area Prosperity", (f"{prosperity_area['annual_change_pct']:+.1f}% YoY ({prosperity_area['name']})" if prosperity_area else "No data"), prosperity_status),
                 card("Price Trend & Forecast", (f"{hpi_trend['pct_change']:+.1f}% over 5 years" if hpi_trend and hpi_trend.get("pct_change") is not None else "No data")),
                 card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data")),
             ],
@@ -1432,29 +1450,29 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Risk & Safety",
             "cards": [
-                card("Surface Water Risk", surface_water["label"] if surface_water else "No data"),
-                card("Sewage Discharge", (f"{len(sewage_outfalls)} outfall{'s' if len(sewage_outfalls) != 1 else ''} nearby" if sewage_outfalls else "None found nearby")),
-                card("Noise", (noise_data.get("road_label") or "No data") if noise_data else "No data"),
-                card("Radon Gas", radon_data["label"] if radon_data else "No data"),
-                card("Subsidence Risk", (f"{clay_data['label_2030']} by 2030" if clay_data else "No data")),
-                card("Air Quality", (f"{aq_worst}× WHO guideline at worst" if aq_worst is not None else "No data")),
-                card("Historic Contamination", ({"on_site": "On a former landfill", "nearby": "Former landfill nearby", "clear": "None nearby"}.get(landfill["status"], "No data") if landfill else "No data")),
-                card("Mining Risk", ("In a Coal Mining Reporting Area" if coal and coal.get("present") else ("Not in a reporting area" if coal else "No data"))),
+                card("Surface Water Risk", surface_water["label"] if surface_water else "No data", surface_water_status),
+                card("Sewage Discharge", (f"{len(sewage_outfalls)} outfall{'s' if len(sewage_outfalls) != 1 else ''} nearby" if sewage_outfalls else "None found nearby"), sewage_status),
+                card("Noise", (noise_data.get("road_label") or "No data") if noise_data else "No data", noise_status),
+                card("Radon Gas", radon_data["label"] if radon_data else "No data", radon_status),
+                card("Subsidence Risk", (f"{clay_data['label_2030']} by 2030" if clay_data else "No data"), clay_risk_status),
+                card("Air Quality", (f"{aq_worst}× WHO guideline at worst" if aq_worst is not None else "No data"), aq_status),
+                card("Historic Contamination", ({"on_site": "On a former landfill", "nearby": "Former landfill nearby", "clear": "None nearby"}.get(landfill["status"], "No data") if landfill else "No data"), landfill_status),
+                card("Mining Risk", ("In a Coal Mining Reporting Area" if coal and coal.get("present") else ("Not in a reporting area" if coal else "No data")), coal_mining_status),
             ],
         },
         {
             "heading": "Planning & Heritage",
             "cards": [
-                card("Planning Constraints", (f"{len(planning_flags)} found" if planning_flags else "None found")),
-                card("Environmental Designations", (f"{len(environmental_flags)} found" if environmental_flags else "None found")),
+                card("Planning Constraints", (f"{len(planning_flags)} found" if planning_flags else "None found"), planning_status),
+                card("Environmental Designations", (f"{len(environmental_flags)} found" if environmental_flags else "None found"), environmental_status),
                 card("Listed Buildings", f"{len(listed_buildings)} nearby"),
             ],
         },
         {
             "heading": "Location & Connectivity",
             "cards": [
-                card("Broadband", broadband_data["label"] if broadband_data else "No data"),
-                card("Mobile Signal", (f"{mobile_data['coverage_4g_outdoor_all_pct']}% 4G outdoor" if mobile_data else "No data")),
+                card("Broadband", broadband_data["label"] if broadband_data else "No data", broadband_status),
+                card("Mobile Signal", (f"{mobile_data['coverage_4g_outdoor_all_pct']}% 4G outdoor" if mobile_data else "No data"), mobile_status),
             ],
         },
     ]
