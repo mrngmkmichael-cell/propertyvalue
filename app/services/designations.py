@@ -46,6 +46,8 @@ _PLANNING_DATA_GOV_UK_DATASETS = [
     ("tpo", "Tree Preservation Order", "planning", "tree-preservation-zone"),
     ("article_4", "Article 4 Direction (removes some permitted development rights)",
      "planning", "article-4-direction-area"),
+    ("conservation_area", "Conservation Area", "planning", "conservation-area"),
+    ("green_belt", "Green Belt", "planning", "green-belt"),
 ]
 
 # (key, label, group, query URL, name field)
