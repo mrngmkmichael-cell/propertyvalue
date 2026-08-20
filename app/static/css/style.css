@@ -1227,6 +1227,28 @@ a {
     transform: translateY(-1px);
 }
 
+.ext-cta-btn {
+    display: inline-block;
+    padding: 0.85rem 2rem;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--accent-ink);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.ext-cta-btn:hover {
+    background: var(--accent-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
 .watchlist-form {
     max-width: none;
 }
