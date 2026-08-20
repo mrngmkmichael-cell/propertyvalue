@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{% if outcode %}{{ outcode }} area guide — house prices, schools & crime | UKPropertyInsight{% else %}Area not found — UKPropertyInsight{% endif %}{% endblock %}
+
+{% block extra_head %}
+{% if outcode %}
+<meta name="description" content="{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.">
+<link rel="canonical" href="{{ request.url_for('area_guide', outcode=outcode) }}">
+{% if has_data %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Place",
+    "name": "{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}",
+    "url": "{{ request.url }}"
+}
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if not outcode %}
+<span class="kicker">Area guide</span>
+<h1>Area not found</h1>
+<p class="dek">
+    "{{ query }}" doesn't look like a UK postcode district (e.g. <code>SW1A</code>, <code>M1</code>,
+    <code>EH1</code>). Try a district code, or <a href="/">search a full postcode or address</a> instead.
+</p>
+{% else %}
+
+<span class="kicker">Area guide</span>
+<h1>Living in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
+<p class="dek">
+    What the open data says about house prices, schools, crime and flood risk around
+    {{ outcode }}{% if admin_district %} in {{ admin_district }}{% endif %} — built from the same
+    sources as every property report on this site, not opinion or marketing copy.
+</p>
+
+{% if not has_data %}
+<p class="notice notice-error">
+    We couldn't pull any data for {{ outcode }} right now — the underlying services may be
+    temporarily unavailable. Try again shortly, or
+    <a href="/property?postcode={{ outcode }}">search {{ outcode }} directly</a>.
+</p>
+{% else %}
+
+<section class="report-section">
+    <h2>House prices</h2>
+    {% if hpi and hpi.local_authority %}
+    <p class="section-sub">
+        Average price in {{ hpi.local_authority.name }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
+        {% if hpi.local_authority.annual_change_pct >= 0 %}up{% else %}down{% endif %}
+        {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}% on a year ago
+        ({{ hpi.local_authority.period[:7] }}).
+        {% if hpi.region %}
+        The wider {{ hpi.region.name }} average is {{ hpi.region.average_price | gbp }}.
+        {% endif %}
+    </p>
+    {% else %}
+    <p class="notice">House price index data isn't available for this area right now.</p>
+    {% endif %}
+    <p class="section-sub">
+        <a href="/property?postcode={{ outcode }}">Check sold prices for a specific address in {{ outcode }} →</a>
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Schools nearby</h2>
+    {% if landscape and landscape.total_schools %}
+    <p class="section-sub">
+        {{ landscape.total_schools }} school{{ "s" if landscape.total_schools != 1 else "" }} within
+        {{ landscape.radius_km }}km
+        {% if landscape.good_or_better_pct is not none %}
+        — <strong>{{ landscape.good_or_better_pct }}%</strong> rated Outstanding or Good by Ofsted.
+        {% endif %}
+    </p>
+    {% else %}
+    <p class="notice">No Ofsted-rated schools found within range of {{ outcode }}.</p>
+    {% endif %}
+    <p class="section-sub"><a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} →</a></p>
+</section>
+
+<section class="report-section">
+    <h2>Crime</h2>
+    {% if crime and crime.total is not none %}
+    <p class="section-sub">
+        {{ crime.total }} crime{{ "s" if crime.total != 1 else "" }} recorded within roughly a mile of
+        central {{ outcode }} in {{ crime.month }}{% if crime.by_category %}, most commonly
+        <strong>{{ crime.by_category[0].category }}</strong>{% endif %}.
+    </p>
+    {% else %}
+    <p class="notice">Crime data isn't available for this area right now.</p>
+    {% endif %}
+</section>
+
+<section class="report-section">
+    <h2>Flood risk</h2>
+    {% if flood_zone %}
+    <p class="section-sub{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
+        <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %} — {{ flood_zone.source }} flooding{% endif %}.
+        This is the Environment Agency's flood zone for the area's centre point — an individual
+        property's own risk can differ, especially near a specific watercourse.
+    </p>
+    {% else %}
+    <p class="notice">{{ outcode }} is not in a mapped flood risk zone (Zone 1, low probability).</p>
+    {% endif %}
+</section>
+
+{% if deprivation and deprivation.imd_decile %}
+<section class="report-section">
+    <h2>Deprivation</h2>
+    <p class="section-sub">
+        This area falls in decile {{ deprivation.imd_decile }} of 10 on the Index of Multiple
+        Deprivation ({{ "most" if deprivation.imd_decile <= 3 else ("least" if deprivation.imd_decile >= 8 else "moderately") }}
+        deprived {{ "nationally" if deprivation.imd_decile <= 3 or deprivation.imd_decile >= 8 else "" }}),
+        based on {{ deprivation.la_name }}'s figures.
+    </p>
+</section>
+{% endif %}
+
+{% if amenity_summary %}
+<section class="report-section">
+    <h2>Getting around & nearby essentials</h2>
+    <p class="section-sub">
+        {% for a in amenity_summary %}{{ a.count }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+        within range of central {{ outcode }}.
+    </p>
+</section>
+{% endif %}
+
+<section class="report-section">
+    <h2>Want the full picture for a specific property?</h2>
+    <p class="section-sub">
+        This page covers {{ outcode }} as a whole. For sold price history, EPC rating, exact-address
+        crime and flood risk, school catchment areas and 30+ other checks on one specific property,
+        search its full postcode.
+    </p>
+    <form action="/property" method="get" class="search-form">
+        <div class="search-form-field">
+            <label for="area-guide-postcode">Full postcode</label>
+            <input type="text" id="area-guide-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>
+        </div>
+        <button type="submit">Get the full report</button>
+    </form>
+</section>
+
+{% endif %}
+{% endif %}
+{% endblock %}

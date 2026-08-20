@@ -11,7 +11,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
@@ -556,6 +556,68 @@ async def server_error_handler(request: Request, exc: Exception):
 @app.get("/")
 def index(request: Request):
     return templates.TemplateResponse(request, "index.html", base_context(request))
+
+
+# A starting seed of major UK city/town postcode districts, not an
+# exhaustive list (there are ~11,000 outcodes nationally) - /area/{outcode}
+# works for any valid one regardless of sitemap inclusion, this just
+# gives crawlers a fast, curated starting point. Worth growing over
+# time (e.g. from real search/watchlist activity) rather than trying
+# to enumerate the whole country in one go.
+AREA_GUIDE_SEED_OUTCODES = [
+    "EC1A", "EC2A", "EC3A", "EC4A", "W1A", "WC1A", "WC2A", "SW1A", "SW3", "SW7", "SE1", "N1", "E1", "E14", "NW1", "NW3",
+    "M1", "M2", "M3", "M4", "M15", "M20",
+    "B1", "B2", "B3", "B15", "B16",
+    "LS1", "LS2", "LS6",
+    "L1", "L2", "L18",
+    "S1", "S2", "S10",
+    "NE1", "NE2",
+    "BS1", "BS8",
+    "BN1", "BN2",
+    "CB1", "CB2",
+    "OX1", "OX2", "OX4",
+    "CF10", "CF11", "CF24",
+    "EH1", "EH2", "EH3", "EH6",
+    "G1", "G2", "G3", "G12",
+    "AB10", "AB11", "AB24",
+    "DD1", "DD2",
+    "BT1", "BT9",
+    "SO14", "SO15",
+    "PO1", "PO5",
+    "NG1", "NG7",
+    "LE1", "LE2",
+    "CV1", "CV3",
+    "PL1", "PL4",
+    "EX1", "EX4",
+    "YO1", "YO10",
+    "DE1", "DE22",
+    "NR1", "NR2",
+    "RG1", "RG6",
+    "SN1", "SN3",
+    "GL1", "GL50",
+    "CT1", "CT2",
+    "ME1", "ME4",
+]
+
+
+@app.get("/sitemap.xml")
+def sitemap(request: Request):
+    base = _public_base_url(request)
+    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support"]
+    urls = [f"{base}{p}" for p in static_paths] + [f"{base}/area/{o}" for o in AREA_GUIDE_SEED_OUTCODES]
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls)
+        + "</urlset>"
+    )
+    return Response(content=body, media_type="application/xml")
+
+
+@app.get("/robots.txt")
+def robots(request: Request):
+    body = f"User-agent: *\nAllow: /\nDisallow: /watchlist\nDisallow: /internal/\nSitemap: {_public_base_url(request)}/sitemap.xml\n"
+    return Response(content=body, media_type="text/plain")
 
 
 @app.get("/methodology")
@@ -2128,6 +2190,91 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
         context["comparables_error"] = True
 
     return templates.TemplateResponse(request, "comparables.html", context)
+
+
+_OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
+AREA_GUIDE_CACHE_TTL_S = 86400  # public, crawler-facing - a day's staleness is a fair trade for not re-running this gather on every crawl hit
+
+
+@app.get("/area/{outcode}")
+async def area_guide(request: Request, outcode: str):
+    """A standing SEO landing page per UK postcode district (e.g.
+    /area/SW1A), separate from /property?postcode=X: that page is
+    written for someone evaluating one specific purchase and runs the
+    full ~15-service gather; this one is written for someone browsing
+    an area generally (the actual search intent behind "SW1A house
+    prices"-style queries), so it stays to a lighter, area-only signal
+    set and genuinely different copy - not just the same page under a
+    cleaner URL. Cached a full day since search crawlers are the
+    primary audience and this data doesn't move that fast anyway."""
+    outcode = outcode.strip().upper()
+    context = base_context(request)
+    context["query"] = outcode
+
+    if not _OUTCODE_RE.match(outcode):
+        return templates.TemplateResponse(request, "area_guide.html", context, status_code=404)
+
+    location, _ = await _resolve_extension_location(outcode)
+    if location is None:
+        return templates.TemplateResponse(request, "area_guide.html", context, status_code=404)
+
+    # location["outcode"] can legitimately be a NEIGHBOURING district
+    # (e.g. requesting SW1A can resolve via SW1Y) when the requested
+    # one has no real postcode within _resolve_extension_location's own
+    # search radius - common for districts that are mostly non-
+    # residential. The area-level data is still representative (the
+    # neighbour is close enough to the requested centroid to be a fair
+    # stand-in), but the page's own identity - title, H1, cache key -
+    # stays the outcode actually requested, not the one that happened
+    # to supply the geocoding.
+    lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
+    context["outcode"] = outcode
+    context["admin_district"] = location["admin_district"]
+    context["region"] = location["region"]
+
+    cache_key = ("area_guide", outcode)
+    cached = _cache.get(cache_key, AREA_GUIDE_CACHE_TTL_S)
+    if cached is not None:
+        context.update(cached)
+        return templates.TemplateResponse(request, "area_guide.html", context)
+
+    hpi_result, crime_result, landscape_result, flood_zone_result, deprivation_result, amenities_result = await asyncio.gather(
+        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+        crime.summary_for_outcode(outcode),
+        asyncio.to_thread(schools_db.school_landscape, lat, lon),
+        flood_zones.zone_for(lat, lon),
+        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
+        amenities.nearby_amenities_and_station(lat, lon, lite=True),
+        return_exceptions=True,
+    )
+
+    def ok(result):
+        return result if not isinstance(result, Exception) else None
+
+    amenities_data = ok(amenities_result)
+    amenity_plurals = {
+        "supermarket": "supermarkets", "pharmacy": "pharmacies", "restaurant": "restaurants",
+        "pub": "pubs", "hospital": "hospitals",
+    }
+    amenity_summary = [
+        {"count": len(amenities_data["categories"][cat]), "label": label if len(amenities_data["categories"][cat]) != 1 else cat}
+        for cat, label in amenity_plurals.items()
+        if amenities_data and amenities_data["categories"].get(cat)
+    ]
+
+    page_data = {
+        "hpi": ok(hpi_result),
+        "crime": ok(crime_result),
+        "landscape": ok(landscape_result),
+        "flood_zone": ok(flood_zone_result),
+        "deprivation": ok(deprivation_result),
+        "amenity_summary": amenity_summary,
+        "has_data": any([ok(hpi_result), ok(crime_result), ok(landscape_result), ok(flood_zone_result)]),
+    }
+    _cache.set(cache_key, page_data)
+    context.update(page_data)
+    return templates.TemplateResponse(request, "area_guide.html", context)
 
 
 # --- Accounts ---
