@@ -421,6 +421,8 @@
       position: fixed; inset: 0; z-index: 2147483647;
       background: rgba(15, 17, 23, 0.55); backdrop-filter: blur(2px);
       display: flex; align-items: center; justify-content: center; padding: 20px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: #12141c; font-size: 13px; line-height: 1.45;
     }
     .pv-modal-backdrop[hidden] { display: none; }
     .pv-modal {
@@ -527,7 +529,26 @@
     chrome.storage.local.set({ pv_ext_height: px });
   }
 
+  // The Shadow DOM's `font-family: 'Inter', ...` only matches an
+  // *installed/loaded* Inter - the CSS declaring it isn't enough on
+  // its own. The main site loads Inter via this exact same Google
+  // Fonts URL in its <head>; a listing page's own <head> never does,
+  // so without this the extension silently fell back to the next
+  // stack entry (Segoe UI on Windows) and looked visibly different
+  // from the site despite the CSS matching. Fonts aren't shadow-DOM-
+  // scoped, so a <link> anywhere in the host page's document makes
+  // Inter available inside the shadow root too.
+  function ensureInterFontLoaded() {
+    if (document.getElementById("pv-inter-font")) return;
+    const link = document.createElement("link");
+    link.id = "pv-inter-font";
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap";
+    document.head.appendChild(link);
+  }
+
   function buildWidget() {
+    ensureInterFontLoaded();
     const host = document.createElement("div");
     host.id = "pv-overlay-host";
     document.documentElement.appendChild(host);
