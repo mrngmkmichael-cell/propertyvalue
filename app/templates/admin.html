@@ -34,7 +34,7 @@
         {% for d in daily_pageviews %}
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;" title="{{ d.date }}: {{ d.count }}">
             <div style="width:100%; background:var(--accent); border-radius:3px 3px 0 0; height:{{ (d.count / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
-            <span style="font-size:0.6rem; color:var(--ink-mute);">{{ d.date[5:] }}</span>
+            <span style="font-size:0.6rem; color:var(--ink-faint);">{{ d.date[5:] }}</span>
         </div>
         {% endfor %}
     </div>
@@ -68,8 +68,8 @@
         {% set max_signups = daily_signups | map(attribute='count') | max %}
         {% for d in daily_signups %}
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;" title="{{ d.date }}: {{ d.count }}">
-            <div style="width:100%; background:var(--ink-mute); opacity:0.55; border-radius:3px 3px 0 0; height:{{ (d.count / max_signups * 80) if max_signups else 0 }}px; min-height:2px;"></div>
-            <span style="font-size:0.6rem; color:var(--ink-mute);">{{ d.date[5:] }}</span>
+            <div style="width:100%; background:var(--ink-faint); border-radius:3px 3px 0 0; height:{{ (d.count / max_signups * 80) if max_signups else 0 }}px; min-height:2px;"></div>
+            <span style="font-size:0.6rem; color:var(--ink-faint);">{{ d.date[5:] }}</span>
         </div>
         {% endfor %}
     </div>
