@@ -71,7 +71,7 @@ async def sold_prices_for_postcodes(postcodes: list[str]) -> list[dict]:
     values_clause = " ".join(f'"{pc}"' for pc in postcodes)
     query = _NEARBY_QUERY_TEMPLATE.format(postcode_values=values_clause)
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(
             SPARQL_ENDPOINT,
             params={"query": query},
@@ -104,7 +104,7 @@ async def sold_prices_for_postcode(canonical_postcode: str) -> list[dict]:
     formatted postcode (e.g. 'PL6 8RU'). Returns newest first."""
     query = _QUERY_TEMPLATE.format(postcode=canonical_postcode)
 
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(
             SPARQL_ENDPOINT,
             params={"query": query},

@@ -88,7 +88,7 @@ async def _fetch_zone(lat: float, lon: float) -> dict | None:
         "f": "json",
     }
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(FEATURES_URL, params=params)
         response.raise_for_status()
     except httpx.HTTPError:

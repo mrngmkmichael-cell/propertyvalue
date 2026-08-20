@@ -65,7 +65,7 @@ async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
 
 
 async def area_comparison(admin_district: str, region: str, country: str) -> dict:
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         local, reg, nat = await asyncio.gather(
             _latest_for_area(client, admin_district),
             _latest_for_area(client, region),
@@ -115,7 +115,7 @@ async def price_trend(admin_district: str, years: int = 5) -> dict | None:
     cutoff = (date.today() - timedelta(days=365 * years)).strftime("%Y-%m")
     query = _SERIES_QUERY_TEMPLATE.format(name=admin_district.replace('"', ""), cutoff=cutoff)
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
+        async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
                 SPARQL_ENDPOINT,
                 params={"query": query},
