@@ -627,7 +627,7 @@ AREA_GUIDE_SEED_OUTCODES = [
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
-    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
+    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/buying-guide", "/embed"]
     urls = [f"{base}{p}" for p in static_paths] + [f"{base}/area/{o}" for o in AREA_GUIDE_SEED_OUTCODES]
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -662,18 +662,6 @@ def terms(request: Request):
 @app.get("/support")
 def support(request: Request):
     return templates.TemplateResponse(request, "support.html", base_context(request))
-
-
-# Set once the Chrome Web Store listing is approved and live - None shows
-# a "pending review" state on /browser-extension instead of a dead link.
-EXTENSION_STORE_URL = None
-
-
-@app.get("/browser-extension")
-def browser_extension_page(request: Request):
-    context = base_context(request)
-    context["store_url"] = EXTENSION_STORE_URL
-    return templates.TemplateResponse(request, "browser_extension.html", context)
 
 
 @app.get("/embed")
