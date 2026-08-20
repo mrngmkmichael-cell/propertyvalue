@@ -175,6 +175,15 @@
     {% set lock_label = "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup" if not current_user else "/premium" %}
 
+    <p class="section-sub">
+        {% if premium_unlocked %}
+        <a href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">Download PDF summary →</a>
+        — a one-page reference you can share with a solicitor or broker.
+        {% else %}
+        <a href="{{ lock_redirect }}">Upgrade to Premium</a> to download a shareable PDF summary of this property.
+        {% endif %}
+    </p>
+
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>

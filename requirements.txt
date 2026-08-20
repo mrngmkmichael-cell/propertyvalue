@@ -7,3 +7,4 @@ python-dotenv==1.0.1
 sqlalchemy==2.0.35
 psycopg[binary]==3.2.10
 itsdangerous==2.2.0
+xhtml2pdf==0.2.17
