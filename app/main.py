@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import secrets
+import statistics
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -2488,6 +2489,24 @@ def _is_admin(user: dict | None) -> bool:
     return bool(admin_email and user and user.get("email", "").lower() == admin_email)
 
 
+def _pct_change(old: int, new: int) -> float | None:
+    """None means "no baseline to compare against" (old was zero) -
+    callers show "new" rather than a meaningless divide-by-zero %."""
+    if old == 0:
+        return None
+    return round((new - old) / old * 100, 1)
+
+
+def _fmt_change(pct: float | None) -> str:
+    if pct is None:
+        return "new"
+    if pct > 0:
+        return f"↑{pct}%"
+    if pct < 0:
+        return f"↓{abs(pct)}%"
+    return "flat"
+
+
 def _admin_metrics(session, now: datetime.datetime) -> dict:
     """The query set behind /admin, factored out so the daily Telegram
     summary (see /internal/send-daily-summary below) reads the exact
@@ -2536,6 +2555,32 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     ).all()
     signup_counts = {str(d): c for d, c in signup_rows}
     m["daily_signups"] = [{"date": str(d), "count": signup_counts.get(str(d), 0)} for d in date_range]
+
+    # Trend: day-on-day and week-on-week % change, so a single number
+    # ("35 today") gets context ("...which is up from 4 yesterday")
+    # instead of standing alone with no sense of direction.
+    m["pageviews_yesterday"] = pageview_counts.get(str(date_range[-2]), 0)
+    m["pageviews_dod_change"] = _pct_change(m["pageviews_yesterday"], m["pageviews_today"])
+
+    prev_week_start = week_start - datetime.timedelta(days=7)
+    m["pageviews_prev_week"] = session.scalar(
+        select(func.count()).select_from(PageView)
+        .where(PageView.created_at >= prev_week_start, PageView.created_at < week_start)
+    ) or 0
+    m["pageviews_wow_change"] = _pct_change(m["pageviews_prev_week"], m["pageviews_week"])
+
+    m["signups_prev_week"] = session.scalar(
+        select(func.count()).select_from(User)
+        .where(User.created_at >= prev_week_start, User.created_at < week_start)
+    ) or 0
+    m["signups_wow_change"] = _pct_change(m["signups_prev_week"], m["signups_week"])
+
+    # Variance: how much daily pageviews normally swing around their own
+    # 14-day average, so a busy or quiet single day can be read against
+    # what's actually typical rather than compared to nothing.
+    daily_counts = [d["count"] for d in m["daily_pageviews"]]
+    m["pageviews_avg_14d"] = round(statistics.mean(daily_counts), 1) if daily_counts else 0
+    m["pageviews_stdev_14d"] = round(statistics.pstdev(daily_counts), 1) if len(daily_counts) > 1 else 0
 
     # Top pages in the last 30 days - what's actually getting looked at.
     top_pages_rows = session.execute(
@@ -2634,10 +2679,13 @@ async def send_daily_summary(request: Request):
     lines = [
         f"<b>UKPropertyInsight — {now.strftime('%A %d %B %Y')}</b>",
         "",
-        f"\U0001F441 Pageviews: <b>{m['pageviews_today']}</b> today, {m['pageviews_week']} this week",
-        f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week ({m['signups_total']} total)",
+        f"\U0001F441 Pageviews: <b>{m['pageviews_today']}</b> today ({_fmt_change(m['pageviews_dod_change'])} vs yesterday), "
+        f"{m['pageviews_week']} this week ({_fmt_change(m['pageviews_wow_change'])} vs last week)",
+        f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week "
+        f"({_fmt_change(m['signups_wow_change'])} vs last week), {m['signups_total']} total",
         f"⭐ Premium: <b>{m['premium_total']}</b> of {m['signups_total']} accounts",
-        f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month ({m['active_subscriber_count']} active{trialing_note})",
+        f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month — {m['active_subscriber_count']} active{trialing_note}",
+        f"\U0001F4CA 14-day trend: avg {m['pageviews_avg_14d']}/day, typical swing ±{m['pageviews_stdev_14d']}",
         f"\U0001F51D Top page: {top_page}",
     ]
     sent = await telegram.send_message("\n".join(lines))
