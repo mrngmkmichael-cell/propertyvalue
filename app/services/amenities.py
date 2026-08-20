@@ -52,6 +52,12 @@ AMENITY_QUERIES = [
     ("wind_turbine", '["power"="generator"]["generator:source"="wind"]', 5000),
     ("solar_farm", '["power"="plant"]["plant:source"="solar"]', 3000),
 ]
+# The subset of AMENITY_QUERIES the extension's premium report actually
+# displays (see main.py's essentials_detail) - gp/dentist/green_space/
+# parking/ev_charging/wind_turbine/solar_farm are fetched for the main
+# site's own dashboard but never shown there, so a lite fetch skips
+# them entirely rather than paying their Overpass cost for nothing.
+LITE_AMENITY_LABELS = {"restaurant", "supermarket", "pharmacy", "pub", "hospital"}
 STATION_RADIUS_M = 3000
 BUS_STOP_RADIUS_M = 800
 STATION_LIST_LIMIT = 5
@@ -131,12 +137,16 @@ async def _query_overpass(query: str) -> list[dict]:
                 t.cancel()
 
 
-async def nearby_amenities_and_station(lat: float, lon: float) -> dict:
-    key = _cache.coord_key("amenities", lat, lon)
+async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
+    # "lite" is its own cache key, not just a fetch-time filter of the
+    # full result - a lite response is missing entire categories, so
+    # serving it back out to a full-fetch caller (or vice versa) would
+    # silently show wrong/incomplete data instead of just being slower.
+    key = _cache.coord_key("amenities_lite" if lite else "amenities", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:
         return cached
-    result = await _fetch_amenities_and_station(lat, lon)
+    result = await _fetch_amenities_and_station(lat, lon, lite=lite)
     _cache.set(key, result)
     return result
 
@@ -168,9 +178,10 @@ def _station_mode(tags: dict) -> str:
     return "rail"
 
 
-async def _fetch_amenities_and_station(lat: float, lon: float) -> dict:
+async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
+    queries = [q for q in AMENITY_QUERIES if not lite or q[0] in LITE_AMENITY_LABELS]
     clauses = "".join(
-        f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in AMENITY_QUERIES
+        f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in queries
     )
     clauses += (
         f'nwr["railway"~"station|halt"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'

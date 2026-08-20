@@ -1300,7 +1300,10 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "region": location["region"],
         "latitude": lat,
         "longitude": lon,
-        "report_url": None if area_level else f"/property?postcode={canonical.replace(' ', '+')}",
+        # Always a valid link, area-level or not - /property?postcode=X
+        # renders the same area-level report the extension itself is
+        # showing, rather than dead-ending at the bare homepage.
+        "report_url": f"/property?postcode={canonical.replace(' ', '+')}",
         # Distinguishes "the Land Registry lookup failed" from "it
         # succeeded and genuinely found no sales" - without this the
         # extension can't tell the two apart and always shows the same
@@ -1510,7 +1513,13 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         _nearby_comparables(lat, lon),
         asyncio.to_thread(schools_db.nearby_schools, lat, lon),
         catchment.catchments_for(lat, lon),
-        amenities.nearby_amenities_and_station(lat, lon),
+        # lite=True: this endpoint only ever displays 5 of the 12
+        # categories nearby_amenities_and_station can fetch (see
+        # essentials_detail below) - skipping the other 7 (including
+        # the 5km-radius wind turbine search) cuts the Overpass query
+        # this extension gather was consistently slowest on, without
+        # dropping anything the extension actually shows.
+        amenities.nearby_amenities_and_station(lat, lon, lite=True),
         asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
         asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
@@ -1803,7 +1812,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     ) if orientation_data else None
 
     essentials_detail = list_detail([
-        f"{cat.replace('_', ' ').title()}: " + ", ".join(p["name"] for p in amenities_data["categories"].get(cat, [])[:5])
+        f"{cat.replace('_', ' ').title()}: " + ", ".join(p["name"] for p in amenities_data["categories"].get(cat, [])[:3])
         for cat in ("restaurant", "supermarket", "pharmacy", "pub", "hospital")
         if amenities_data["categories"].get(cat)
     ]) if amenities_data else None
@@ -1812,7 +1821,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     all_stations.sort(key=lambda s: s.get("distance_m") or 0)
     stations_detail = table_detail(
         ["Station", "Type", "Distance"],
-        [[s["name"], s["type"], _format_distance(s.get("distance_m"))] for s in all_stations[:8]],
+        [[s["name"], s["type"], _format_distance(s.get("distance_m"))] for s in all_stations[:3]],
     ) if all_stations else None
 
     catchment_schools_detail = table_detail(

@@ -765,7 +765,9 @@
         '<p class="pv-modal-value">' + escapeHtml(value) + "</p>" +
         (detail ? '<p class="pv-modal-detail">' + escapeHtml(detail) + "</p>" : "");
     }
-    backdrop.querySelector(".pv-modal-link").href = API_BASE + (currentData && currentData.report_url ? currentData.report_url : "/");
+    const linkTarget = (currentData && currentData.report_url)
+      || (currentPostcode ? "/property?postcode=" + encodeURIComponent(currentPostcode) : "/");
+    backdrop.querySelector(".pv-modal-link").href = API_BASE + linkTarget;
     backdrop.hidden = false;
   }
 
