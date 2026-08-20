@@ -28,7 +28,7 @@ from app.services import (
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
-    stripe_billing, surface_water_risk, valuation,
+    stripe_billing, surface_water_risk, telegram, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_centroid
@@ -2488,6 +2488,105 @@ def _is_admin(user: dict | None) -> bool:
     return bool(admin_email and user and user.get("email", "").lower() == admin_email)
 
 
+def _admin_metrics(session, now: datetime.datetime) -> dict:
+    """The query set behind /admin, factored out so the daily Telegram
+    summary (see /internal/send-daily-summary below) reads the exact
+    same numbers rather than a second, driftable copy of this logic."""
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = now - datetime.timedelta(days=7)
+    month_start = now - datetime.timedelta(days=30)
+
+    m: dict = {}
+    m["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start)) or 0
+    m["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
+    m["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
+    m["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView)) or 0
+
+    m["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
+    m["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
+    m["signups_month"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= month_start)) or 0
+    m["signups_total"] = session.scalar(select(func.count()).select_from(User)) or 0
+
+    m["premium_total"] = session.scalar(select(func.count()).select_from(User).where(User.is_premium.is_(True))) or 0
+
+    plan_rows = session.execute(
+        select(User.plan, func.count()).where(User.is_premium.is_(True)).group_by(User.plan)
+    ).all()
+    m["plan_breakdown"] = [{"plan": p or "Comped / no plan on file", "count": c} for p, c in plan_rows]
+
+    # Daily pageviews and signups for the last 14 days, zero-filled so
+    # every day appears even with no activity - without this, a single
+    # active day among mostly-zero days renders as one bar filling the
+    # whole chart width, since the bars split width evenly across
+    # however many rows the query actually returned.
+    date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(13, -1, -1)]
+
+    daily_rows = session.execute(
+        select(func.date(PageView.created_at), func.count())
+        .where(PageView.created_at >= today_start - datetime.timedelta(days=13))
+        .group_by(func.date(PageView.created_at))
+    ).all()
+    pageview_counts = {str(d): c for d, c in daily_rows}
+    m["daily_pageviews"] = [{"date": str(d), "count": pageview_counts.get(str(d), 0)} for d in date_range]
+
+    signup_rows = session.execute(
+        select(func.date(User.created_at), func.count())
+        .where(User.created_at >= today_start - datetime.timedelta(days=13))
+        .group_by(func.date(User.created_at))
+    ).all()
+    signup_counts = {str(d): c for d, c in signup_rows}
+    m["daily_signups"] = [{"date": str(d), "count": signup_counts.get(str(d), 0)} for d in date_range]
+
+    # Top pages in the last 30 days - what's actually getting looked at.
+    top_pages_rows = session.execute(
+        select(PageView.path, func.count())
+        .where(PageView.created_at >= month_start)
+        .group_by(PageView.path)
+        .order_by(func.count().desc())
+        .limit(15)
+    ).all()
+    m["top_pages"] = [{"path": p, "count": c} for p, c in top_pages_rows]
+
+    # Revenue: estimated MRR from ACTIVE subscriptions only (trialing
+    # ones aren't paying yet, so they're surfaced separately rather
+    # than folded into the total). Monthly-equivalent prices here
+    # mirror stripe_billing.PLANS - keep them in sync if pricing changes.
+    _monthly_equiv = {"monthly": 9.99, "quarterly": 24.99 / 3}
+    active_plan_rows = session.execute(
+        select(User.plan, func.count()).where(User.subscription_status == "active").group_by(User.plan)
+    ).all()
+    m["mrr_estimate"] = round(sum(_monthly_equiv.get(p, 0) * c for p, c in active_plan_rows), 2)
+    m["active_subscriber_count"] = sum(c for _, c in active_plan_rows)
+    m["trialing_count"] = session.scalar(
+        select(func.count()).select_from(User).where(User.subscription_status == "trialing")
+    ) or 0
+
+    status_rows = session.execute(
+        select(User.subscription_status, func.count())
+        .where(User.stripe_subscription_id.is_not(None))
+        .group_by(User.subscription_status)
+    ).all()
+    m["subscription_status_breakdown"] = [{"status": s or "unknown", "count": c} for s, c in status_rows]
+
+    referral_rows = session.execute(
+        select(User.referred_by, func.count())
+        .where(User.referred_by.is_not(None))
+        .group_by(User.referred_by)
+        .order_by(func.count().desc())
+    ).all()
+    m["referral_breakdown"] = [{"code": code, "count": c} for code, c in referral_rows]
+
+    recent = session.scalars(select(User).order_by(User.created_at.desc()).limit(20)).all()
+    m["recent_signups"] = [
+        {
+            "email": u.email, "created_at": u.created_at, "is_premium": u.is_premium,
+            "plan": u.plan, "subscription_status": u.subscription_status, "referred_by": u.referred_by,
+        }
+        for u in recent
+    ]
+    return m
+
+
 @app.get("/admin")
 def admin_dashboard(request: Request):
     """A single daily-review page, not a full admin panel - traffic,
@@ -2502,101 +2601,47 @@ def admin_dashboard(request: Request):
     if not _is_admin(context["current_user"]):
         return templates.TemplateResponse(request, "404.html", context, status_code=404)
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    week_start = now - datetime.timedelta(days=7)
-    month_start = now - datetime.timedelta(days=30)
-
     with db.get_session() as session:
-        context["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start)) or 0
-        context["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
-        context["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
-        context["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView)) or 0
-
-        context["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
-        context["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
-        context["signups_month"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= month_start)) or 0
-        context["signups_total"] = session.scalar(select(func.count()).select_from(User)) or 0
-
-        context["premium_total"] = session.scalar(select(func.count()).select_from(User).where(User.is_premium.is_(True))) or 0
-
-        plan_rows = session.execute(
-            select(User.plan, func.count()).where(User.is_premium.is_(True)).group_by(User.plan)
-        ).all()
-        context["plan_breakdown"] = [{"plan": p or "Comped / no plan on file", "count": c} for p, c in plan_rows]
-
-        # Daily pageviews and signups for the last 14 days, zero-filled
-        # so every day appears even with no activity - without this, a
-        # single active day among mostly-zero days renders as one bar
-        # filling the whole chart width, since the bars split width
-        # evenly across however many rows the query actually returned.
-        date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(13, -1, -1)]
-
-        daily_rows = session.execute(
-            select(func.date(PageView.created_at), func.count())
-            .where(PageView.created_at >= today_start - datetime.timedelta(days=13))
-            .group_by(func.date(PageView.created_at))
-        ).all()
-        pageview_counts = {str(d): c for d, c in daily_rows}
-        context["daily_pageviews"] = [{"date": str(d), "count": pageview_counts.get(str(d), 0)} for d in date_range]
-
-        signup_rows = session.execute(
-            select(func.date(User.created_at), func.count())
-            .where(User.created_at >= today_start - datetime.timedelta(days=13))
-            .group_by(func.date(User.created_at))
-        ).all()
-        signup_counts = {str(d): c for d, c in signup_rows}
-        context["daily_signups"] = [{"date": str(d), "count": signup_counts.get(str(d), 0)} for d in date_range]
-
-        # Top pages in the last 30 days - what's actually getting looked at.
-        top_pages_rows = session.execute(
-            select(PageView.path, func.count())
-            .where(PageView.created_at >= month_start)
-            .group_by(PageView.path)
-            .order_by(func.count().desc())
-            .limit(15)
-        ).all()
-        context["top_pages"] = [{"path": p, "count": c} for p, c in top_pages_rows]
-
-        # Revenue: estimated MRR from ACTIVE subscriptions only (trialing
-        # ones aren't paying yet, so they're surfaced separately rather
-        # than folded into the total). Monthly-equivalent prices here
-        # mirror stripe_billing.PLANS - keep them in sync if pricing changes.
-        _monthly_equiv = {"monthly": 9.99, "quarterly": 24.99 / 3}
-        active_plan_rows = session.execute(
-            select(User.plan, func.count()).where(User.subscription_status == "active").group_by(User.plan)
-        ).all()
-        context["mrr_estimate"] = round(sum(_monthly_equiv.get(p, 0) * c for p, c in active_plan_rows), 2)
-        context["active_subscriber_count"] = sum(c for _, c in active_plan_rows)
-        context["trialing_count"] = session.scalar(
-            select(func.count()).select_from(User).where(User.subscription_status == "trialing")
-        ) or 0
-
-        status_rows = session.execute(
-            select(User.subscription_status, func.count())
-            .where(User.stripe_subscription_id.is_not(None))
-            .group_by(User.subscription_status)
-        ).all()
-        context["subscription_status_breakdown"] = [{"status": s or "unknown", "count": c} for s, c in status_rows]
-
-        referral_rows = session.execute(
-            select(User.referred_by, func.count())
-            .where(User.referred_by.is_not(None))
-            .group_by(User.referred_by)
-            .order_by(func.count().desc())
-        ).all()
-        context["referral_breakdown"] = [{"code": code, "count": c} for code, c in referral_rows]
-
-        recent = session.scalars(select(User).order_by(User.created_at.desc()).limit(20)).all()
-        context["recent_signups"] = [
-            {
-                "email": u.email, "created_at": u.created_at, "is_premium": u.is_premium,
-                "plan": u.plan, "subscription_status": u.subscription_status, "referred_by": u.referred_by,
-            }
-            for u in recent
-        ]
+        context.update(_admin_metrics(session, datetime.datetime.now(datetime.timezone.utc)))
 
     return templates.TemplateResponse(request, "admin.html", context)
+
+
+@app.post("/internal/send-daily-summary")
+async def send_daily_summary(request: Request):
+    """Scheduled job (see .github/workflows/daily-summary.yml) - posts a
+    short morning digest of the /admin dashboard's key numbers to
+    Telegram, so there's no need to open the dashboard just to see
+    whether anything happened overnight. Reuses _admin_metrics() so
+    this never drifts from what /admin itself shows.
+
+    Gated by the same shared secret as the watchlist-alerts job - both
+    are cron triggers with no user attached, no need for a second one."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    if not telegram.is_configured():
+        return JSONResponse({"error": "telegram_not_configured"}, status_code=503)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    with db.get_session() as session:
+        m = _admin_metrics(session, now)
+
+    top_page = m["top_pages"][0]["path"] if m["top_pages"] else "—"
+    trialing_note = f", {m['trialing_count']} trialing" if m["trialing_count"] else ""
+    lines = [
+        f"<b>UKPropertyInsight — {now.strftime('%A %d %B %Y')}</b>",
+        "",
+        f"\U0001F441 Pageviews: <b>{m['pageviews_today']}</b> today, {m['pageviews_week']} this week",
+        f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week ({m['signups_total']} total)",
+        f"⭐ Premium: <b>{m['premium_total']}</b> of {m['signups_total']} accounts",
+        f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month ({m['active_subscriber_count']} active{trialing_note})",
+        f"\U0001F51D Top page: {top_page}",
+    ]
+    sent = await telegram.send_message("\n".join(lines))
+    return JSONResponse({"sent": sent})
 
 
 # --- Accounts ---
