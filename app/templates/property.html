@@ -29,16 +29,35 @@
 
 {% else %}
     <div class="report-head">
-        {% set breadcrumb_parts = [] %}
-        {% for part in [location.get("country", ""), location.region, location.admin_district] %}
-            {% if part and part not in breadcrumb_parts %}{% set _ = breadcrumb_parts.append(part) %}{% endif %}
-        {% endfor %}
-        {% if breadcrumb_parts %}
-        <nav class="breadcrumb">{{ breadcrumb_parts | join(" › ") }}</nav>
-        {% endif %}
-        <span class="kicker">Property report</span>
-        <h1>{{ location.postcode }}</h1>
-        <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+        {% set premium_unlocked = current_user and current_user.is_premium %}
+        {% set lock_redirect = "/signup" if not current_user else "/premium" %}
+        <div class="report-head-top">
+            <div class="report-head-main">
+                {% set breadcrumb_parts = [] %}
+                {% for part in [location.get("country", ""), location.region, location.admin_district] %}
+                    {% if part and part not in breadcrumb_parts %}{% set _ = breadcrumb_parts.append(part) %}{% endif %}
+                {% endfor %}
+                {% if breadcrumb_parts %}
+                <nav class="breadcrumb">{{ breadcrumb_parts | join(" › ") }}</nav>
+                {% endif %}
+                <span class="kicker">Property report</span>
+                <h1>{{ location.postcode }}</h1>
+                <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+            </div>
+            <div class="report-head-actions">
+                {% if premium_unlocked %}
+                <a class="pdf-download-btn" href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+                    Download full PDF report
+                </a>
+                {% else %}
+                <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                    PDF report — Premium
+                </a>
+                {% endif %}
+            </div>
+        </div>
 
         {% if overview %}
         <div class="overview-score-card overview-grade-{{ overview.grade | lower | replace(' ', '-') }}" data-animate>
@@ -174,15 +193,6 @@
     {% set premium_unlocked = current_user and current_user.is_premium %}
     {% set lock_label = "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup" if not current_user else "/premium" %}
-
-    <p class="section-sub">
-        {% if premium_unlocked %}
-        <a href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">Download PDF summary →</a>
-        — a one-page reference you can share with a solicitor or broker.
-        {% else %}
-        <a href="{{ lock_redirect }}">Upgrade to Premium</a> to download a shareable PDF summary of this property.
-        {% endif %}
-    </p>
 
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
