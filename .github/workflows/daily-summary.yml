@@ -2,9 +2,13 @@ name: Daily admin summary
 
 on:
   schedule:
-    # 07:00 UTC - a morning digest year-round regardless of British
-    # Summer Time shifts (07:00 UTC = 8am BST / 7am GMT).
-    - cron: "0 7 * * *"
+    # 09:00 UTC = 10am UK time while British Summer Time is in effect
+    # (roughly late March - late October). GitHub Actions cron is
+    # always UTC with no DST awareness, so once clocks go back this
+    # will fire at 9am UK time instead of 10am - bump to "0 10 * * *"
+    # around then if exact timing matters, or leave it (an hour early
+    # in winter is harmless for a morning digest).
+    - cron: "0 9 * * *"
   workflow_dispatch: {}
 
 jobs:
