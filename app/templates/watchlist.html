@@ -6,6 +6,10 @@
 <span class="kicker">Saved properties</span>
 <h1>Your watchlist</h1>
 
+{% if alerts_configured and items %}
+<p class="section-sub">We'll also email you if anything on this list changes — no need to keep checking back.</p>
+{% endif %}
+
 {% if changed_item_count %}
 <div class="watchlist-alert-banner" data-animate>
     <span class="watchlist-alert-count">{{ changed_item_count }}</span>

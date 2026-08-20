@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import hmac
 import json
 import logging
 import os
@@ -24,9 +25,10 @@ from app.services import _cache
 from app.models import User
 from app.services import (
     air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, cqc_ratings,
-    crime, demographics, designations, epc, flood, flood_zones, food_hygiene, google_places, heritage,
-    historic_landfill, hpi, mobile_coverage, noise, orientation, overview_score, place_search, radon, rental,
-    reviews, routing, schools_db, sewage_discharge, stripe_billing, surface_water_risk, valuation,
+    crime, demographics, designations, email as email_service, epc, flood, flood_zones, food_hygiene,
+    google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation, overview_score,
+    place_search, radon, rental, reviews, routing, schools_db, sewage_discharge, stripe_billing,
+    surface_water_risk, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_centroid
@@ -2345,6 +2347,7 @@ async def watchlist_view(request: Request):
             watchlist.update_snapshot(context["current_user"]["id"], item["id"], json.dumps(fresh, default=str))
     context["items"] = items
     context["changed_item_count"] = sum(1 for item in items if item["changes"])
+    context["alerts_configured"] = email_service.is_configured()
     return templates.TemplateResponse(request, "watchlist.html", context)
 
 
@@ -2367,6 +2370,71 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
     else:
         context["columns"] = []
     return templates.TemplateResponse(request, "compare.html", context)
+
+
+def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:
+    items_html = "".join(
+        f'<li style="margin-bottom:14px;"><strong>{e["label"]}</strong>'
+        f'<ul>{"".join(f"<li>{c}</li>" for c in e["changes"])}</ul></li>'
+        for e in entries
+    )
+    return (
+        '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">'
+        "<h2>Your watchlist has updates</h2>"
+        f'<ul style="list-style:none;padding:0;">{items_html}</ul>'
+        f'<p><a href="{watchlist_url}">View your full watchlist →</a></p>'
+        '<p style="color:#667085;font-size:12px;">'
+        "You're getting this because these properties/areas are on your UKPropertyInsight watchlist. "
+        f'Remove any of them any time from <a href="{watchlist_url}">your watchlist page</a>.'
+        "</p></div>"
+    )
+
+
+@app.post("/internal/run-watchlist-alerts")
+async def run_watchlist_alerts(request: Request):
+    """Scheduled job (see .github/workflows/watchlist-alerts.yml), not a
+    user-facing route - re-checks every watchlist item across every user
+    the same way the /watchlist page itself does on each visit, and
+    emails anyone whose items picked up a meaningful change since last
+    checked. A page visit and this job both update the same
+    last_snapshot, so whichever happens first "consumes" a change -
+    nobody gets double-notified via both paths.
+
+    Gated by a shared secret header rather than a session/login check,
+    since the caller is a cron trigger with no user attached."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    if not email_service.is_configured():
+        return JSONResponse({"error": "email_not_configured"}, status_code=503)
+
+    items = watchlist.all_items_with_owner_email()
+    changes_by_email: dict[str, list[dict]] = {}
+
+    for item in items:
+        try:
+            fresh = await _comparison_summary(item["postcode"], item["house_number"])
+        except Exception:
+            continue
+        old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
+        changes = _snapshot_changes(old, fresh) if old else []
+        watchlist.update_snapshot(item["user_id"], item["id"], json.dumps(fresh, default=str))
+        if changes:
+            label = item["postcode"] + (f", {item['house_number']}" if item["house_number"] else "")
+            changes_by_email.setdefault(item["email"], []).append({"label": label, "changes": changes})
+
+    watchlist_url = f"{_public_base_url(request)}/watchlist"
+    notified = 0
+    for to_email, entries in changes_by_email.items():
+        sent = await email_service.send_email(
+            to_email, "Changes to your UKPropertyInsight watchlist", _watchlist_alert_email_html(entries, watchlist_url)
+        )
+        if sent:
+            notified += 1
+
+    return JSONResponse({"checked": len(items), "users_with_changes": len(changes_by_email), "emails_sent": notified})
 
 
 @app.post("/watchlist/save")

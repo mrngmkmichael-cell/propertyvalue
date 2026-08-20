@@ -5,7 +5,7 @@ app/services/.
 from sqlalchemy import select
 
 from app.db import get_session
-from app.models import WatchlistItem
+from app.models import User, WatchlistItem
 
 
 def get_item(user_id: int, postcode: str, house_number: str = "") -> dict | None:
@@ -37,6 +37,25 @@ def list_items(user_id: int) -> list[dict]:
                 "last_snapshot": i.last_snapshot,
             }
             for i in items
+        ]
+
+
+def all_items_with_owner_email() -> list[dict]:
+    """Every watchlist item across every user, with the owner's email -
+    used only by the scheduled alert check (main.py), never by a
+    per-user route, since it deliberately ignores the user_id ownership
+    boundary every other function here enforces."""
+    with get_session() as session:
+        rows = session.execute(
+            select(WatchlistItem, User.email).join(User, WatchlistItem.user_id == User.id)
+        ).all()
+        return [
+            {
+                "id": item.id, "user_id": item.user_id, "email": email,
+                "postcode": item.postcode, "house_number": item.house_number,
+                "last_snapshot": item.last_snapshot,
+            }
+            for item, email in rows
         ]
 
 

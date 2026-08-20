@@ -1,0 +1,18 @@
+name: Watchlist alerts
+
+on:
+  schedule:
+    # 07:00 UTC daily - well after the underlying data sources (sold
+    # prices, EPC, flood, crime) do their own periodic updates, and
+    # once a day is plenty given none of them change faster than that.
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger watchlist alert check
+        run: |
+          curl -sf -X POST "https://ukpropertyinsight.co.uk/internal/run-watchlist-alerts" \
+            -H "x-alerts-secret: ${{ secrets.ALERTS_CRON_SECRET }}"
