@@ -2366,13 +2366,16 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
 
 @app.get("/property/pdf")
 async def property_pdf(request: Request, postcode: str = "", house_number: str = ""):
-    """A one-page shareable summary - the thing a buyer can actually
-    hand to a solicitor or mortgage broker, unlike a link to a live
-    interactive page. Deliberately NOT a dump of all 37 dashboard cards:
-    reuses _comparison_summary's already-curated, already-cached field
-    set (the same one the watchlist page shows) rather than the site's
-    full ~28-service gather, since this is meant to read as a clean
-    reference document, not a second copy of the whole report.
+    """A full, printable due-diligence document - the thing a buyer can
+    actually hand to a solicitor or mortgage broker, unlike a link to a
+    live interactive page. Reuses _full_property_gather (the same
+    ~28-service dataset /property itself shows) so this report and the
+    live page can never drift apart - it's the same data, just laid
+    out for paper instead of a browser. A few things are deliberately
+    left out because they don't translate to a static document: the
+    interactive map, live train times, and a handful of lower-priority
+    cards (food hygiene, CQC ratings, Google ratings) that are about
+    the neighbourhood rather than the property's own due diligence.
 
     A Premium feature: gated the same way dashboard-card-locking is
     everywhere else, via premium_unlocked on the current session."""
@@ -2388,21 +2391,27 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     if not current_user.get("is_premium"):
         return RedirectResponse(f"/premium?postcode={postcode}", status_code=303)
 
-    summary = await _comparison_summary(postcode, house_number)
-    if summary.get("not_found"):
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return RedirectResponse(f"/property?postcode={quote(postcode)}", status_code=303)
+    if location is None:
         return RedirectResponse("/", status_code=303)
 
-    html = templates.get_template("pdf_report.html").render({
-        **summary,
+    report = await _full_property_gather(location, house_number, premium_unlocked=True)
+
+    html = templates.get_template("pdf_report_full.html").render({
+        **report,
+        "house_number": house_number,
         "generated_date": datetime.date.today().strftime("%d %B %Y"),
-        "postcode_url": quote(summary["postcode"]),
+        "postcode_url": quote(location["postcode"]),
         "house_number_url": quote(house_number),
     })
     pdf_bytes = pdf_export.html_to_pdf(html)
     if pdf_bytes is None:
         return RedirectResponse(f"/property?postcode={quote(postcode)}", status_code=303)
 
-    filename = f"UKPropertyInsight-{summary['postcode'].replace(' ', '')}.pdf"
+    filename = f"UKPropertyInsight-{location['postcode'].replace(' ', '')}.pdf"
     return Response(
         content=pdf_bytes, media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},

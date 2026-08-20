@@ -2,7 +2,7 @@
 unlike WeasyPrint or a headless-browser renderer, both of which need
 build tooling this app's Render deployment doesn't have configured for).
 xhtml2pdf's CSS support is limited to basic box-model properties - no
-flexbox/grid - so app/templates/pdf_report.html is deliberately a
+flexbox/grid - so app/templates/pdf_report_full.html is deliberately a
 separate, simpler template rather than a reuse of the site's own CSS.
 """
 from io import BytesIO

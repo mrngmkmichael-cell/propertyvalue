@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+    @page { size: A4; margin: 2cm; }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #171d2b; }
+    h1 { font-size: 20pt; margin: 0 0 4pt; color: #171d2b; }
+    .subtitle { font-size: 10pt; color: #667085; margin: 0 0 4pt; }
+    .subtitle2 { font-size: 9pt; color: #98a2b3; margin: 0 0 16pt; }
+    h2 { font-size: 13pt; margin: 18pt 0 6pt; padding-bottom: 4pt; border-bottom: 1.5px solid #2f5fe0; color: #2f5fe0; page-break-after: avoid; }
+    h3 { font-size: 10.5pt; margin: 10pt 0 4pt; color: #171d2b; page-break-after: avoid; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; page-break-inside: avoid; }
+    td, th { padding: 3.5pt 4pt; font-size: 9.5pt; vertical-align: top; text-align: left; }
+    th { color: #667085; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #dde2ea; }
+    td.label { width: 42%; color: #667085; }
+    td.value { font-weight: bold; }
+    td.num { text-align: right; }
+    th.num { text-align: right; }
+    .row-table tr:nth-child(even) { background: #f7f8fa; }
+    .note { font-size: 8pt; color: #667085; margin-top: 2pt; }
+    .section { page-break-inside: avoid; margin-bottom: 4pt; }
+    .flag-list { margin: 0; padding-left: 14pt; }
+    .flag-list li { font-size: 9.5pt; margin-bottom: 2pt; }
+    .score-box { border: 1.5px solid #2f5fe0; border-radius: 6pt; padding: 10pt 14pt; margin-bottom: 6pt; }
+    .score-value { font-size: 26pt; font-weight: bold; color: #2f5fe0; }
+    .score-grade { font-size: 12pt; font-weight: bold; color: #171d2b; margin-left: 6pt; }
+    .score-verdict { font-size: 10pt; color: #344054; margin-top: 4pt; }
+    .two-col { width: 100%; }
+    .two-col td { width: 50%; vertical-align: top; padding: 0 8pt 0 0; }
+    .footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #dde2ea; font-size: 7.5pt; color: #98a2b3; }
+</style>
+</head>
+<body>
+
+<h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
+<p class="subtitle">Full property due-diligence report — generated {{ generated_date }} by UKPropertyInsight</p>
+<p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} — Premium report</p>
+
+{% if overview %}
+<div class="score-box section">
+    <span class="score-value">{{ overview.score }}</span><span class="score-grade">{{ overview.grade }}</span>
+    <p class="score-verdict">{{ overview.verdict }}</p>
+    {% if overview.positives %}
+    <p class="note" style="margin-top:6pt;"><strong>Working in its favour:</strong> {{ overview.positives | join(", ") }}</p>
+    {% endif %}
+    {% if overview.concerns %}
+    <p class="note"><strong>Worth checking further:</strong> {{ overview.concerns | join(", ") }}</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>Sold prices</h2>
+<div class="section">
+    <table>
+        {% if avg_price %}
+        <tr><td class="label">Average sold price (postcode)</td><td class="value">{{ avg_price | gbp }}</td></tr>
+        {% else %}
+        <tr><td class="label">Average sold price (postcode)</td><td class="value">No recorded sales</td></tr>
+        {% endif %}
+        {% if price_position is defined and price_position_area %}
+        {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
+        <tr><td class="label">Versus {{ price_position_area.name }} average ({{ price_position_area.average_price | gbp }})</td>
+            <td class="value">{{ "%.0f"|format(diff_pct | abs) }}% {{ "above" if diff_pct >= 0 else "below" }}</td></tr>
+        {% endif %}
+    </table>
+    {% if transactions %}
+    <table class="row-table">
+        <tr><th>Address</th><th>Date</th><th class="num">Price</th><th>Tenure</th></tr>
+        {% for tx in transactions[:15] %}
+        <tr><td>{{ tx.address }}</td><td>{{ tx.date }}</td><td class="num">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or "—" }}</td></tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</div>
+
+{% if valuation or rental %}
+<h2>Valuation &amp; rental</h2>
+<div class="section">
+    <table class="two-col"><tr>
+        <td>
+            {% if valuation %}
+            <h3>Estimated value</h3>
+            <table>
+                <tr><td class="label">Estimate</td><td class="value">{{ valuation.estimate | gbp }}</td></tr>
+                <tr><td class="label">Range</td><td class="value">{{ valuation.low | gbp }} – {{ valuation.high | gbp }}</td></tr>
+            </table>
+            <p class="note">Based on {{ valuation.sample_size }} comparable sale{{ "s" if valuation.sample_size != 1 else "" }} within ~0.6 miles, last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}.</p>
+            {% endif %}
+        </td>
+        <td>
+            {% if rental %}
+            <h3>Typical rent nearby</h3>
+            <table>
+                <tr><td class="label">All bedroom counts</td><td class="value">{{ rental.price_all | gbp }}/month</td></tr>
+            </table>
+            <p class="note">{{ rental.la_name }}, ONS Price Index of Private Rents{% if rental.period %} ({{ rental.period }}){% endif %}.</p>
+            {% endif %}
+        </td>
+    </tr></table>
+</div>
+{% endif %}
+
+{% if price_trend or hpi %}
+<h2>Price trend &amp; area comparison</h2>
+<div class="section">
+    {% if price_trend %}
+    <table>
+        <tr><td class="label">5 years ago ({{ price_trend.area_name }})</td><td class="value">{{ price_trend.start_price | gbp }}</td></tr>
+        <tr><td class="label">Current</td><td class="value">{{ price_trend.current_price | gbp }}</td></tr>
+        <tr><td class="label">Change</td><td class="value">{{ "%+.1f"|format(price_trend.pct_change) }}%</td></tr>
+        {% for p in price_trend.projections %}
+        <tr><td class="label">Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td><td class="value">{{ p.price | gbp }}</td></tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% if hpi %}
+    <table class="row-table">
+        <tr><th>Area</th><th class="num">Average price</th><th class="num">Annual change</th></tr>
+        {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
+        {% if area %}
+        <tr><td>{{ area.name if area.name else "" }}</td><td class="num">{{ area.average_price | gbp }}</td><td class="num">{{ "%+.1f"|format(area.annual_change_pct) }}%</td></tr>
+        {% endif %}
+        {% endfor %}
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>Property &amp; energy</h2>
+<div class="section">
+    <table>
+        {% if property_detail %}
+        <tr><td class="label">Dwelling type</td><td class="value">{{ property_detail.dwelling_type or "Not available" }}</td></tr>
+        <tr><td class="label">Floor area</td><td class="value">{% if property_detail.total_floor_area %}{{ property_detail.total_floor_area }} m&sup2;{% else %}Not available{% endif %}</td></tr>
+        <tr><td class="label">Habitable rooms</td><td class="value">{{ property_detail.habitable_room_count or "Not available" }}</td></tr>
+        <tr><td class="label">Year built (band)</td><td class="value">{{ property_detail.year_built or "Not available" }}</td></tr>
+        {% endif %}
+        {% if mees_compliant is not none %}
+        <tr><td class="label">MEES compliant (min. lettable rating)</td><td class="value">{{ "Yes" if mees_compliant else "No — rated F or G" }}</td></tr>
+        {% endif %}
+        {% if lead_plumbing_era %}
+        <tr><td class="label">Lead plumbing era risk</td><td class="value">Built before ~1970 — lead water pipes possible, worth a plumber's check</td></tr>
+        {% endif %}
+        {% if extension_signal and extension_signal.likely_extended %}
+        <tr><td class="label">Possible unrecorded extension</td><td class="value">Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}% since last EPC record</td></tr>
+        {% endif %}
+    </table>
+    {% if certificates %}
+    <table class="row-table">
+        <tr><th>Address</th><th>Date</th><th class="num">EPC rating</th></tr>
+        {% for cert in certificates[:10] %}
+        <tr><td>{{ cert.address }}</td><td>{{ cert.date }}</td><td class="num">{{ cert.rating }}</td></tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</div>
+
+<h2>Risk &amp; environment</h2>
+<div class="section">
+    <table>
+        <tr><td class="label">Flood zone (rivers &amp; sea)</td><td class="value">{{ flood_zone.label if flood_zone else "Not mapped (Zone 1, low probability)" }}</td></tr>
+        {% if flood_warnings %}
+        <tr><td class="label">Active flood alerts</td><td class="value">{{ flood_warnings | length }}</td></tr>
+        {% endif %}
+        {% if surface_water %}
+        <tr><td class="label">Surface water flood risk</td><td class="value">{{ surface_water.label }}</td></tr>
+        {% endif %}
+        {% if radon %}
+        <tr><td class="label">Radon risk</td><td class="value">{{ radon.label if radon.label else radon }}</td></tr>
+        {% endif %}
+        {% if clay_risk %}
+        <tr><td class="label">Clay shrink-swell (subsidence) risk, 2030</td><td class="value">{{ clay_risk.label_2030 or "Not available" }}</td></tr>
+        <tr><td class="label">Clay shrink-swell (subsidence) risk, 2050</td><td class="value">{{ clay_risk.label_2050 or "Not available" }}</td></tr>
+        {% endif %}
+        {% if coal_mining and coal_mining.present %}
+        <tr><td class="label">Coal Mining Reporting Area</td><td class="value">Yes{% if coal_mining.area_name %} — {{ coal_mining.area_name }}{% endif %} — a coal mining search is recommended</td></tr>
+        {% endif %}
+        {% if sewage_outfalls %}
+        <tr><td class="label">Nearby sewage outfalls</td><td class="value">{{ sewage_outfalls | length }} within range</td></tr>
+        {% endif %}
+        {% if historic_landfill and historic_landfill.status != "clear" %}
+        <tr><td class="label">Historic landfill</td>
+            <td class="value">{% if historic_landfill.status == "on_site" %}On the site itself — {{ historic_landfill.site_name }}
+                {%- else %}{{ historic_landfill.distance_m }}m away — {{ historic_landfill.site_name }}{% endif %}</td></tr>
+        {% endif %}
+        {% if air_quality and air_quality.pollutants %}
+        {% set aq_worst = air_quality.pollutants | map(attribute="times_guideline") | list | max %}
+        <tr><td class="label">Air quality, worst pollutant vs WHO guideline</td>
+            <td class="value">{{ "%.1f"|format(aq_worst) }}&times; guideline{% if aq_worst >= 3 %} — well above{% endif %}</td></tr>
+        {% endif %}
+    </table>
+    {% if noise and (noise.road_db is not none or noise.rail_db is not none or noise.airport_db is not none) %}
+    <table class="row-table">
+        <tr><th>Noise source</th><th class="num">Level</th><th>Rating</th></tr>
+        {% if noise.road_db is not none %}<tr><td>Road</td><td class="num">{{ noise.road_db }} dB(A)</td><td>{{ noise.road_label }}</td></tr>{% endif %}
+        {% if noise.rail_db is not none %}<tr><td>Rail</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ noise.rail_label }}</td></tr>{% endif %}
+        {% if noise.airport_db is not none %}<tr><td>Aircraft</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ noise.airport_label }}</td></tr>{% endif %}
+    </table>
+    {% endif %}
+    {% if heritage %}
+    <p class="note"><strong>{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby — may affect permitted development rights.</p>
+    {% endif %}
+</div>
+
+{% if planning_flags or environmental_flags %}
+<h2>Planning &amp; designations</h2>
+<div class="section">
+    {% if planning_flags %}
+    <h3>Planning constraints present</h3>
+    <ul class="flag-list">{% for d in planning_flags %}<li>{{ d.label }}</li>{% endfor %}</ul>
+    {% endif %}
+    {% if environmental_flags %}
+    <h3>Environmental designations present</h3>
+    <ul class="flag-list">{% for d in environmental_flags %}<li>{{ d.label }}</li>{% endfor %}</ul>
+    {% endif %}
+</div>
+{% endif %}
+
+<h2>Crime</h2>
+<div class="section">
+    <table>
+        <tr><td class="label">Recorded crime within ~1 mile{% if crime.month %} ({{ crime.month }}){% endif %}</td>
+            <td class="value">{% if crime and crime.total is not none %}{{ crime.total }} incidents{% else %}Not available{% endif %}</td></tr>
+        {% if district_crime and district_crime.total is not none %}
+        <tr><td class="label">Wider {{ location.outcode }} postcode area</td><td class="value">{{ district_crime.total }} incidents</td></tr>
+        {% endif %}
+    </table>
+    {% if crime and crime.by_category %}
+    <table class="row-table">
+        <tr><th>Category</th><th class="num">Count</th></tr>
+        {% for cat in crime.by_category[:10] %}
+        <tr><td>{{ cat.category }}</td><td class="num">{{ cat.count }}</td></tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</div>
+
+{% if schools_total %}
+<h2>Schools nearby ({{ schools_total }})</h2>
+<div class="section">
+    {% for group, list in schools.items() %}
+    {% if list %}
+    <h3>{{ group }}</h3>
+    <table class="row-table">
+        <tr><th>Name</th><th>Type</th><th class="num">Distance</th><th>Ofsted</th></tr>
+        {% for s in list[:8] %}
+        <tr><td>{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td>{{ s.ofsted_rating_label or "—" }}</td></tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<h2>Local area &amp; demographics</h2>
+<div class="section">
+    <table class="two-col"><tr>
+        <td>
+            <table>
+                {% if deprivation %}<tr><td class="label">Deprivation decile</td><td class="value">{{ deprivation.imd_decile }} of 10 {% if imd_label %}({{ imd_label }}){% endif %}</td></tr>{% endif %}
+                {% if household_income %}<tr><td class="label">Median household income</td><td class="value">{{ household_income.here | gbp }}/yr</td></tr>{% endif %}
+                {% if occupation %}<tr><td class="label">Managerial/professional</td><td class="value">{{ occupation.professional_pct }}%</td></tr>{% endif %}
+                {% if qualification %}<tr><td class="label">Degree-educated</td><td class="value">{{ qualification.degree_pct }}%</td></tr>{% endif %}
+            </table>
+        </td>
+        <td>
+            <table>
+                {% if age_profile %}<tr><td class="label">Under 25</td><td class="value">{{ age_profile.under_25_pct }}%</td></tr>{% endif %}
+                {% if housing and housing.owned_pct is not none %}<tr><td class="label">Owner-occupied</td><td class="value">{{ housing.owned_pct }}%</td></tr>{% endif %}
+                {% if background and background.born_abroad_pct is not none %}<tr><td class="label">Born outside the UK</td><td class="value">{{ background.born_abroad_pct }}%</td></tr>{% endif %}
+                {% if wellbeing and wellbeing.good_health_pct is not none %}<tr><td class="label">Good/very good health</td><td class="value">{{ wellbeing.good_health_pct }}%</td></tr>{% endif %}
+            </table>
+        </td>
+    </tr></table>
+    <p class="note">Census/ONS figures are for the surrounding local area (LSOA/MSOA), not this specific property.</p>
+</div>
+
+{% if broadband or mobile %}
+<h2>Connectivity</h2>
+<div class="section">
+    <table>
+        {% if broadband %}
+        <tr><td class="label">Broadband</td><td class="value">{{ broadband.label }}</td></tr>
+        {% if broadband.gigabit_pct %}<tr><td class="label">Gigabit-capable</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
+        {% if broadband.below_uso_pct %}<tr><td class="label">Below Universal Service Obligation</td><td class="value">{{ broadband.below_uso_pct }}%</td></tr>{% endif %}
+        {% endif %}
+        {% if mobile %}
+        <tr><td class="label">4G outdoor coverage (all networks)</td><td class="value">{{ mobile.coverage_4g_outdoor_all_pct }}%</td></tr>
+        {% endif %}
+    </table>
+</div>
+{% endif %}
+
+{% if nearest_transport %}
+<h2>Transport</h2>
+<div class="section">
+    <table>
+        <tr><td class="label">Nearest station</td>
+            <td class="value">{{ nearest_transport.name }} — {% if nearest_transport.walking_distance_m %}{{ nearest_transport.walking_distance_m | distance }} walk{% else %}{{ nearest_transport.distance_m | distance }}{% endif %}</td></tr>
+    </table>
+</div>
+{% endif %}
+
+<div class="footer">
+    Generated by UKPropertyInsight from HM Land Registry, EPC Register, Environment Agency, Police.uk, ONS,
+    Department for Education, Ofsted and other official UK sources (Open Government Licence v3.0). This is a
+    summary for reference only, not a substitute for a RICS survey or solicitor's searches. Full live report:
+    ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}
+</div>
+
+</body>
+</html>
