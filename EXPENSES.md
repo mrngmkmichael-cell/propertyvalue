@@ -9,8 +9,9 @@ OpenRouteService, etc.) are not listed here unless/until they start being billed
 | 2026-08-19 | ukpropertyinsight.co.uk — 1 year domain registration | GoDaddy | £6.99 | Annual | |
 | 2026-08-19 | Full Domain Protection | GoDaddy | £7.99 | Annual | WHOIS privacy/ownership protection |
 | 2026-08-19 | Microsoft 365 Email Essentials — 1 year | GoDaddy | £11.88 | Annual | |
+| 2026-08-20 | Chrome Web Store developer registration | Google | $5.00 | One-off | One-time fee to publish the browser extension; not recurring |
 
-**Total so far: £26.86** (all annual, due again ~August 2027 unless cancelled)
+**Total so far: £26.86 + $5.00** (the £26.86 is annual, due again ~August 2027 unless cancelled; the $5.00 is a one-off, not billed again)
 
 ## Recurring renewal reminders
 
