@@ -24,7 +24,16 @@
     <header class="site-header">
         <div class="site-header-inner">
             <div class="brand-block">
-                <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">U</span>UKPropertyInsight</a>
+                <a class="brand" href="/">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 10 L4 24 L32 24 Z" fill="currentColor"/>
+                            <rect x="7" y="22" width="22" height="17" fill="currentColor"/>
+                            <circle cx="29" cy="32" r="10.5" fill="var(--accent)"/>
+                            <circle cx="29" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="3.6"/>
+                            <line x1="34.5" y1="37.5" x2="41" y2="44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+                        </svg>
+                    </span>UKPropertyInsight</a>
                 <span class="tagline">UK Property Intelligence</span>
             </div>
             {% if accounts_configured %}
