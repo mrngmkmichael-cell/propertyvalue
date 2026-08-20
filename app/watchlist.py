@@ -74,10 +74,10 @@ def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None
         session.commit()
 
 
-def update_snapshot(item_id: int, snapshot_json: str) -> None:
+def update_snapshot(user_id: int, item_id: int, snapshot_json: str) -> None:
     with get_session() as session:
         item = session.get(WatchlistItem, item_id)
-        if item:
+        if item and item.user_id == user_id:
             item.last_snapshot = snapshot_json
             session.commit()
 

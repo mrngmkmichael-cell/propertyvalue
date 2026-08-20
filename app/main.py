@@ -1,8 +1,10 @@
 import asyncio
 import datetime
 import json
+import logging
 import os
 import re
+import secrets
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -31,10 +33,29 @@ from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_ce
 
 load_dotenv()
 
+# Render sets this automatically on every deployed service - used to tell a
+# production run from a local one, since only production is reachable over
+# HTTPS (the session cookie's Secure flag would otherwise break local dev).
+IS_PRODUCTION = bool(os.environ.get("RENDER"))
+
+SESSION_SECRET = os.environ.get("SESSION_SECRET")
+if not SESSION_SECRET:
+    # A hardcoded fallback would let anyone forge a signed session/extension
+    # token for this app. A random one still lets the process run (sessions
+    # just won't survive a restart) without being guessable.
+    SESSION_SECRET = secrets.token_hex(32)
+    logging.critical(
+        "SESSION_SECRET is not set - using a random secret for this process only. "
+        "Sessions and extension logins will not survive a restart. Set SESSION_SECRET "
+        "in the environment to fix this."
+    )
+
 app = FastAPI(title="UKPropertyInsight")
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get("SESSION_SECRET", "dev-only-insecure-secret"),
+    secret_key=SESSION_SECRET,
+    https_only=IS_PRODUCTION,
+    same_site="lax",
 )
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -54,6 +75,16 @@ def _format_gbp(value) -> str:
         return f"£{int(float(value)):,}"
     except (TypeError, ValueError):
         return str(value)
+
+
+def _safe_next(next_url: str) -> str:
+    # `next` comes from a query/form param an attacker fully controls, and
+    # gets used as a post-login redirect target - without this check a
+    # crafted link (e.g. "/login?next=https://evil.example") would send a
+    # logged-in user off-site straight after they authenticate.
+    if not next_url or not next_url.startswith("/") or next_url.startswith("//"):
+        return "/"
+    return next_url
 
 
 def _average_amount(transactions: list[dict]) -> float | None:
@@ -894,18 +925,12 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["lead_plumbing_era"] = _likely_pre_1970(context["property_detail"]["year_built"])
 
     if context["current_user"]:
-        try:
-            context["watchlist_item"] = watchlist.get_item(
-                context["current_user"]["id"], canonical, house_number
-            )
-        except Exception:
-            context["watchlist_item"] = None
-        try:
-            context["shortlisted_urns"] = {
-                item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
-            }
-        except Exception:
-            context["shortlisted_urns"] = set()
+        context["watchlist_item"] = watchlist.get_item(
+            context["current_user"]["id"], canonical, house_number
+        )
+        context["shortlisted_urns"] = {
+            item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
+        }
 
     if context["accounts_configured"]:
         context["area_reviews"] = reviews.summary_for("property", canonical)
@@ -1048,7 +1073,7 @@ def _extension_token_serializer():
     # SessionMiddleware) so a leaked/expired token from one system
     # can't be replayed against the other, even though both derive
     # from the same SESSION_SECRET.
-    return URLSafeTimedSerializer(os.environ.get("SESSION_SECRET", "dev-only-insecure-secret"), salt="extension-auth")
+    return URLSafeTimedSerializer(SESSION_SECRET, salt="extension-auth")
 
 
 def _user_from_extension_token(token: str) -> User | None:
@@ -2278,7 +2303,7 @@ def login_submit(
             return templates.TemplateResponse(request, "login.html", context)
         request.session["user_id"] = user.id
 
-    return RedirectResponse(next or "/", status_code=303)
+    return RedirectResponse(_safe_next(next), status_code=303)
 
 
 @app.post("/logout")
@@ -2308,7 +2333,7 @@ async def watchlist_view(request: Request):
                 continue
             old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
             item["changes"] = _snapshot_changes(old, fresh) if old else []
-            watchlist.update_snapshot(item["id"], json.dumps(fresh, default=str))
+            watchlist.update_snapshot(context["current_user"]["id"], item["id"], json.dumps(fresh, default=str))
     context["items"] = items
     context["changed_item_count"] = sum(1 for item in items if item["changes"])
     return templates.TemplateResponse(request, "watchlist.html", context)
@@ -2459,10 +2484,11 @@ def reviews_submit(
     request: Request, target_type: str = Form(...), target_key: str = Form(...),
     rating: int = Form(...), body: str = Form(""), next: str = Form("/"),
 ):
+    safe_next = _safe_next(next)
     user = auth.current_user(request)
     if not user:
-        return RedirectResponse(f"/login?next={next}", status_code=303)
+        return RedirectResponse(f"/login?next={quote(safe_next, safe='')}", status_code=303)
     if target_type not in ("property", "school") or not (1 <= rating <= 5):
-        return RedirectResponse(next, status_code=303)
+        return RedirectResponse(safe_next, status_code=303)
     reviews.submit(user["id"], target_type, target_key, rating, body)
-    return RedirectResponse(next, status_code=303)
+    return RedirectResponse(safe_next, status_code=303)
