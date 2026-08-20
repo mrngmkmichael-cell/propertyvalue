@@ -94,6 +94,13 @@
     return "£" + Math.round(n).toLocaleString("en-GB");
   }
 
+  function gbpCompact(amount) {
+    const n = Number(amount) || 0;
+    if (n >= 1000000) return "£" + (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + "m";
+    if (n >= 1000) return "£" + Math.round(n / 1000) + "k";
+    return "£" + Math.round(n);
+  }
+
   function distanceText(m) {
     if (m === null || m === undefined) return "";
     if (m < 1000) return Math.round(m) + " m";
@@ -464,6 +471,7 @@
     .pv-calc-result { margin: 8px 0 0; font-size: 13px; color: #12141c; }
     .pv-calc-result span:first-of-type { font-weight: 800; color: #3b5bfd; }
     .pv-calc-sdlt-rate, .pv-calc-loan-amount { font-weight: 500 !important; color: #667085 !important; font-size: 11.5px; }
+    .pv-chart { display: block; width: 100%; height: auto; margin: 0 0 14px; }
     .pv-area-notice {
       display: flex; gap: 8px; align-items: flex-start; margin: 0 0 16px; padding: 10px 12px;
       background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
@@ -734,10 +742,50 @@
     backdrop.hidden = false;
   }
 
+  // A compact version of the same line chart the site's own "Sold
+  // price history" modal draws (hand-rolled inline SVG there too, no
+  // charting library) - area fill under a single accent-coloured
+  // line, endpoint price labelled, so Local Market/Area Prosperity's
+  // popup shows the trend at a glance, not just a table of rows.
+  function priceChartSvg(points) {
+    if (!points || points.length < 2) return "";
+    const W = 460, H = 150, PAD_L = 46, PAD_R = 12, PAD_T = 14, PAD_B = 22;
+    const amounts = points.map(function (p) { return p.amount; });
+    const minAmount = 0;
+    const maxAmount = Math.max.apply(null, amounts) * 1.08;
+    const x = function (i) { return PAD_L + (i / (points.length - 1)) * (W - PAD_L - PAD_R); };
+    const y = function (v) { return PAD_T + (1 - (v - minAmount) / (maxAmount - minAmount)) * (H - PAD_T - PAD_B); };
+    const linePoints = points.map(function (p, i) { return x(i) + "," + y(p.amount); }).join(" ");
+    const areaPoints = linePoints + " " + x(points.length - 1) + "," + y(0) + " " + x(0) + "," + y(0);
+    const gridCount = 3;
+    let gridlines = "";
+    for (let g = 0; g <= gridCount; g++) {
+      const v = (maxAmount / gridCount) * g;
+      const gy = y(v);
+      gridlines += '<line x1="' + PAD_L + '" y1="' + gy + '" x2="' + (W - PAD_R) + '" y2="' + gy + '" stroke="#eef0f4" stroke-width="1"/>' +
+        '<text x="' + (PAD_L - 6) + '" y="' + (gy + 3) + '" font-size="9" fill="#98a2b3" text-anchor="end">' + gbpCompact(v) + "</text>";
+    }
+    const last = points[points.length - 1];
+    const lastX = x(points.length - 1), lastY = y(last.amount);
+    const dateLabel = function (d) { const parts = (d || "").split("-"); return parts.length >= 2 ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][parseInt(parts[1], 10) - 1] + " " + parts[0] : d; };
+    return (
+      '<svg viewBox="0 0 ' + W + " " + H + '" class="pv-chart" preserveAspectRatio="none">' +
+        gridlines +
+        '<polygon points="' + areaPoints + '" fill="#3b5bfd" fill-opacity="0.08"/>' +
+        '<polyline points="' + linePoints + '" fill="none" stroke="#3b5bfd" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>' +
+        '<circle cx="' + lastX + '" cy="' + lastY + '" r="3.5" fill="#3b5bfd"/>' +
+        '<text x="' + Math.min(lastX, W - 60) + '" y="' + Math.max(lastY - 8, 12) + '" font-size="10" font-weight="700" fill="#12141c">' + gbp(last.amount) + "</text>" +
+        '<text x="' + PAD_L + '" y="' + (H - 6) + '" font-size="9" fill="#98a2b3">' + escapeHtml(dateLabel(points[0].date)) + "</text>" +
+        '<text x="' + (W - PAD_R) + '" y="' + (H - 6) + '" font-size="9" fill="#98a2b3" text-anchor="end">' + escapeHtml(dateLabel(last.date)) + "</text>" +
+      "</svg>"
+    );
+  }
+
   function renderDetail(detail) {
     if (!detail) return "";
     if (detail.type === "table") {
       return (
+        (detail.chart ? priceChartSvg(detail.chart) : "") +
         '<table class="pv-table"><thead><tr>' +
           detail.columns.map(function (c) { return "<th>" + escapeHtml(c) + "</th>"; }).join("") +
         "</tr></thead><tbody>" +

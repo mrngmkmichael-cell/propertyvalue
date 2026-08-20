@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as icons %}
 
 {% block title %}Premium — UKPropertyInsight{% endblock %}
 
@@ -23,6 +24,64 @@
     rental analysis, exact flood/subsidence/radon/mining/air quality figures, full school
     catchment areas with detailed Ofsted judgements, and complete local area demographics.
 </p>
+
+{% set premium_preview = [
+    {
+        "heading": "Value & Market",
+        "cards": [
+            {"icon": "valuation", "title": "Valuation Estimate", "text": "A data-backed price range from real nearby sales"},
+            {"icon": "valuation", "title": "Costs &amp; Affordability", "text": "Stamp duty, mortgage and rental-yield calculators"},
+            {"icon": "rental", "title": "Rental Analysis", "text": "Typical rent for this area, by bedroom count"},
+            {"icon": "statistics", "title": "Price Trend &amp; Forecast", "text": "5-year price history and a 2-year forecast"},
+        ],
+    },
+    {
+        "heading": "Property & Condition",
+        "cards": [
+            {"icon": "extension", "title": "Extended or Modified", "text": "Spot undisclosed extensions from EPC history"},
+            {"icon": "orientation", "title": "Aspect", "text": "Which way the garden and rooms face"},
+        ],
+    },
+    {
+        "heading": "Risk & Safety",
+        "cards": [
+            {"icon": "flood", "title": "Sewage Discharge", "text": "Every storm overflow nearby, spill counts and hours"},
+            {"icon": "geology", "title": "Subsidence Risk", "text": "Clay shrink-swell risk through 2030 and 2050"},
+            {"icon": "air_quality", "title": "Air Quality", "text": "Pollutant levels against WHO guideline limits"},
+            {"icon": "landfill", "title": "Historic Contamination", "text": "Former landfill sites nearby"},
+            {"icon": "mining", "title": "Mining Risk", "text": "Coal Authority reporting area status"},
+        ],
+    },
+    {
+        "heading": "Location & Connectivity",
+        "cards": [
+            {"icon": "schools", "title": "School Catchment Areas", "text": "Real admission-distance data, not just proximity"},
+            {"icon": "transport", "title": "Getting Around", "text": "Nearest stations, live train times to major cities"},
+        ],
+    },
+    {
+        "heading": "Area & Community",
+        "cards": [
+            {"icon": "income", "title": "Household Income", "text": "Compared against the borough and region"},
+            {"icon": "wellbeing", "title": "Health, Relationships &amp; Social Grade", "text": "Health, marital status and social grade breakdown"},
+        ],
+    },
+] %}
+
+<p class="premium-preview-lede">Everything below is locked on the free plan — unlock it on any property with Premium:</p>
+{% for section in premium_preview %}
+<h3 class="dashboard-category-heading">{{ section.heading }}</h3>
+<div class="dashboard-grid">
+    {% for card in section.cards %}
+    <div class="dashboard-card dashboard-card-locked" data-animate>
+        <div class="dashboard-card-lock-overlay"><span class="dashboard-card-lock-label">Premium</span></div>
+        <span class="dashboard-card-icon icon-{{ card.icon | replace('_', '-') }}">{{ icons.icon(card.icon) }}</span>
+        <span class="dashboard-card-title">{{ card.title | safe }}</span>
+        <span class="dashboard-card-status">{{ card.text }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
 
 {% if checkout_cancelled %}
 <p class="notice">Checkout was cancelled - no payment was taken.</p>

@@ -1436,6 +1436,29 @@ a {
     font-weight: 600;
 }
 
+.premium-preview-lede {
+    margin: 1.75rem 0 0.25rem;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    color: var(--ink);
+}
+
+/* Static preview cards on the Premium page - same dashboard-card
+   look as the real thing, but never clickable, so the lift/pointer
+   affordance that implies "this opens something" is switched off. */
+.premium-preview-lede + .dashboard-category-heading {
+    margin-top: 1.25rem;
+}
+
+.premium-preview-lede ~ .dashboard-grid .dashboard-card {
+    cursor: default;
+}
+
+.premium-preview-lede ~ .dashboard-grid .dashboard-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+}
+
 .pricing-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

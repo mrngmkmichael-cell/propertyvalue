@@ -1658,6 +1658,17 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         ["Address", "Date", "Price", "Tenure"],
         [[t["address"], t["date"], _format_gbp(t["amount"]), t.get("tenure") or "—"] for t in transactions[:15]],
     ) if transactions else None
+    if sold_price_detail:
+        # Same line-chart data the site's own "Sold price history" modal
+        # plots (oldest first, unlike the table above which stays
+        # newest-first to match the site's transaction list ordering).
+        try:
+            sold_price_detail["chart"] = sorted(
+                [{"date": t["date"], "amount": float(t["amount"])} for t in transactions if t.get("date") and t.get("amount")],
+                key=lambda p: p["date"],
+            )
+        except (TypeError, ValueError):
+            pass
 
     price_trend_detail = table_detail(
         ["", "Price"],
