@@ -820,8 +820,37 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["error"] = "not_found"
         return templates.TemplateResponse(request, "property.html", context)
 
-    context["location"] = location
     context["active_tab"] = "summary"
+    premium_unlocked = bool(context["current_user"] and context["current_user"].get("is_premium"))
+    context.update(await _full_property_gather(location, house_number, premium_unlocked))
+    canonical = location["postcode"]
+
+    if context["current_user"]:
+        context["watchlist_item"] = watchlist.get_item(
+            context["current_user"]["id"], canonical, house_number
+        )
+        context["shortlisted_urns"] = {
+            item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
+        }
+
+    if context["accounts_configured"]:
+        context["area_reviews"] = reviews.summary_for("property", canonical)
+        if context["current_user"]:
+            context["my_area_review"] = reviews.user_review(context["current_user"]["id"], "property", canonical)
+    else:
+        context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
+
+    return templates.TemplateResponse(request, "property.html", context)
+
+
+async def _full_property_gather(location: dict, house_number: str, premium_unlocked: bool) -> dict:
+    """The full ~28-service data gather behind /property and its full
+    PDF export (/property/pdf) - every dashboard card's worth of data
+    for one address. Deliberately excludes anything user-specific
+    (watchlist status, shortlist, area reviews) - those stay in
+    property_search itself, since a PDF export has no session-relative
+    "your watchlist" concept, only the address's own data."""
+    context: dict = {"location": location}
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
@@ -1147,22 +1176,6 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if context.get("property_detail", {}).get("year_built"):
         context["lead_plumbing_era"] = _likely_pre_1970(context["property_detail"]["year_built"])
 
-    if context["current_user"]:
-        context["watchlist_item"] = watchlist.get_item(
-            context["current_user"]["id"], canonical, house_number
-        )
-        context["shortlisted_urns"] = {
-            item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
-        }
-
-    if context["accounts_configured"]:
-        context["area_reviews"] = reviews.summary_for("property", canonical)
-        if context["current_user"]:
-            context["my_area_review"] = reviews.user_review(context["current_user"]["id"], "property", canonical)
-    else:
-        context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
-
-    premium_unlocked = bool(context["current_user"] and context["current_user"].get("is_premium"))
     context["overview"] = overview_score.compute(context, premium_unlocked=premium_unlocked)
 
     # Catchment polygon shapes are the visual equivalent of the
@@ -1218,7 +1231,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     context["catchment_distance_count"] = len(_distance_schools)
     context["catchment_distance_any_real"] = any(s["is_real"] for s in _distance_schools)
 
-    return templates.TemplateResponse(request, "property.html", context)
+    return context
 
 
 # --- Lightweight public JSON API (browser extension) ---
