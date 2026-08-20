@@ -218,7 +218,7 @@
             <span class="dashboard-card-title">Rental Analysis</span>
             <span class="dashboard-card-status">
                 {% if rental_error %}Data unavailable
-                {% elif rental %}{{ rental.price_all | gbp }} pcm typical
+                {% elif rental %}{{ rental.price_all | gbp }}/month typical
                 {% else %}No data available{% endif %}
             </span>
             {% if rental %}
@@ -717,7 +717,7 @@
             <section class="report-section">
         <h2>Valuation estimate</h2>
         <p class="section-sub">
-            A rough DIY estimate from public sold-price data, not a professional valuation — there's
+            A rough DIY estimate from public sold price data, not a professional valuation — there's
             no free equivalent to a lender's automated valuation model, so this is fully transparent
             about its method instead of pretending to more precision than it has.
         </p>
@@ -854,7 +854,7 @@
             2025 — always confirm the exact figure on
             <a href="https://www.gov.uk/stamp-duty-land-tax" target="_blank" rel="noopener">gov.uk</a>,
             <a href="https://www.revenue.scot/land-buildings-transaction-tax" target="_blank" rel="noopener">Revenue Scotland</a>
-            or <a href="https://www.gov.uk/land-transaction-tax" target="_blank" rel="noopener">the WRA</a>
+            or <a href="https://www.gov.uk/land-transaction-tax" target="_blank" rel="noopener">the Welsh Revenue Authority</a>
             before exchanging, since Budgets change these). Not financial advice.
         </p>
 
@@ -923,7 +923,7 @@
         <h2>Rental analysis</h2>
         <p class="section-sub">
             Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
-            ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold-price
+            ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold price
             register for rents — tenancies aren't publicly registered the way sales are — so this is an
             area + bedroom-count typical rent, not a comparison against specific nearby lettings.
         </p>
@@ -936,7 +936,7 @@
                 <thead>
                     <tr>
                         <th>Bedrooms</th>
-                        <th class="num">Typical rent (pcm)</th>
+                        <th class="num">Typical rent (per month)</th>
                         <th class="num">Year on year</th>
                     </tr>
                 </thead>
@@ -1611,7 +1611,7 @@
                         <tr>
                             <th>School</th>
                             <th>Ofsted rating</th>
-                            <th class="num">FSM eligible</th>
+                            <th class="num">Free school meals</th>
                             {% if group_name != "Nursery" %}<th>Exam results</th>{% endif %}
                             <th class="num">Distance</th>
                             {% if accounts_configured %}<th class="num"></th>{% endif %}
@@ -1974,7 +1974,7 @@
         {% elif occupation %}
             <p class="section-sub">
                 Occupation of usual residents aged 16+ in employment, from Census 2021 — this
-                small area (LSOA), not a per-property figure.
+                small area, not a per-property figure.
             </p>
             <table class="tx-table">
                 <thead>
@@ -2011,7 +2011,7 @@
         {% elif qualification %}
             <p class="section-sub">
                 Highest qualification held by usual residents aged 16+, from Census 2021 — this
-                small area (LSOA), not a per-property figure.
+                small area, not a per-property figure.
             </p>
             <table class="tx-table">
                 <thead>
@@ -2451,7 +2451,7 @@
             <section class="report-section">
         <h2>Age profile</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood (LSOA) by age band, from Census 2021 — not a
+            Usual residents of this neighbourhood by age band, from Census 2021 — not a
             per-property figure.
         </p>
         {% if age_profile_error %}
@@ -2488,7 +2488,7 @@
             <section class="report-section">
         <h2>Housing types, tenure &amp; occupancy</h2>
         <p class="section-sub">
-            Households in this neighbourhood (LSOA), from Census 2021 — not a per-property figure,
+            Households in this neighbourhood, from Census 2021 — not a per-property figure,
             and not specific to this particular home.
         </p>
         {% if housing_error %}
@@ -2546,7 +2546,7 @@
             <section class="report-section">
         <h2>Ethnicity, religion &amp; country of birth</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood (LSOA), from Census 2021 — not a per-property
+            Usual residents of this neighbourhood, from Census 2021 — not a per-property
             figure.
         </p>
         {% if background_error %}
@@ -2600,7 +2600,7 @@
             <section class="report-section">
         <h2>Health, relationships &amp; social grade</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood (LSOA), from Census 2021 — not a per-property
+            Usual residents of this neighbourhood, from Census 2021 — not a per-property
             figure. "Social grade" here is NS-SEC, the official occupation-based socio-economic
             classification — not the same as commercial market-research social grade (AB/C1/C2/DE),
             which isn't published as free open data; NS-SEC is the closest free equivalent.

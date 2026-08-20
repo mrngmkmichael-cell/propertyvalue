@@ -1042,7 +1042,7 @@
     "Crime nearby": "Crimes recorded within roughly 1 mile, from police.uk's public data.",
     "Schools": "The 3 nearest schools of each type by proximity - not a catchment-area guarantee, since no free UK-wide catchment dataset exists.",
     "EPC rating": "From the property's Energy Performance Certificate, checked against the Minimum Energy Efficiency Standard (England & Wales require at least an E rating to legally let).",
-    "Area Prosperity": "5-year sold-price trend for this area, from HM Land Registry's House Price Index.",
+    "Area Prosperity": "5-year sold price trend for this area, from HM Land Registry's House Price Index.",
     "Price Trend & Forecast": "A straight-line trend fitted to 5 years of HM Land Registry's House Price Index - not a guarantee, just where prices land if the recent trend continued.",
     "Rental Analysis": "Typical private-rental price by bedroom count for this area, from ONS's Price Index of Private Rents.",
     "Aspect": "An estimated facing direction from building footprint and nearest road - not a measured sunlight survey, and doesn't account for trees or neighbouring buildings.",
@@ -1070,8 +1070,8 @@
     "School Catchment Areas": "Real published admission-distance data where a council provides it, modelled estimates elsewhere - not a catchment guarantee.",
     "Nearby Essentials": "Restaurants, supermarkets, pharmacies, pubs and hospitals within walking distance, from OpenStreetMap.",
     "Getting Around": "Nearest train/tube/bus stop, and journey time to the nearest major city where available.",
-    "Household Income": "Modelled average household income for this area (MSOA), from ONS small-area income estimates.",
-    "Deprivation": "English Indices of Deprivation decile for this area (LSOA) - decile 1 is the most deprived 10% nationally, 10 the least.",
+    "Household Income": "Modelled average household income for this small area, from ONS small-area income estimates.",
+    "Deprivation": "English Indices of Deprivation decile for this small area - decile 1 is the most deprived 10% nationally, 10 the least.",
     "Occupation": "% in managerial/professional occupations for this area, from the 2021 Census.",
     "Qualification": "% educated to degree level or above for this area, from the 2021 Census.",
     "Age Profile": "% of residents under 25 for this area, from the 2021 Census.",
@@ -1113,7 +1113,7 @@
 
       if (data.area_level) {
         html += '<div class="pv-area-notice">📍 <span>Showing area-level information for ' + escapeHtml(data.district || "") +
-          " - Zoopla/Rightmove don't publish this listing's exact address, so crime, flood risk and schools here are genuinely for the surrounding area, not confirmed to this specific property. For sold-price history, EPC and a precise valuation, ask the agent for the house number, then search it directly on UKPropertyInsight.</span></div>";
+          " - Zoopla/Rightmove don't publish this listing's exact address, so crime, flood risk and schools here are genuinely for the surrounding area, not confirmed to this specific property. For sold price history, EPC and a precise valuation, ask the agent for the house number, then search it directly on UKPropertyInsight.</span></div>";
       }
 
       html += '<h3 class="pv-category-heading">At a glance</h3><div class="pv-dash-grid">' +
@@ -1145,7 +1145,7 @@
     },
     market: function (data) {
       const rows = data.market_history || [];
-      if (data.area_level) return '<p class="pv-empty">We don’t have this property’s exact address, so we can’t show its sold-price history. Ask the agent for the house number, then search it directly on UKPropertyInsight.</p>';
+      if (data.area_level) return '<p class="pv-empty">We don’t have this property’s exact address, so we can’t show its sold price history. Ask the agent for the house number, then search it directly on UKPropertyInsight.</p>';
       if (data.market_history_error) return '<p class="pv-error">Couldn’t check sold prices right now - try refreshing in a moment.</p>';
       if (!rows.length) return '<p class="pv-empty">No recorded sales found for this postcode.</p>';
       const html =

@@ -1846,7 +1846,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                     "ok" if hpi_trend and hpi_trend.get("pct_change") is not None else "muted",
                     detail=price_trend_detail,
                 ),
-                card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data"), "ok" if rental_data else "muted"),
+                card("Rental Analysis", (f"£{rental_data['price_all']:,}/month typical" if rental_data else "No data"), "ok" if rental_data else "muted"),
             ],
         },
         {
