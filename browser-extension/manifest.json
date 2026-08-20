@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "UKPropertyInsight Overlay",
   "version": "2.1.0",
-  "description": "See sold prices, comparables, schools, EPC, demographics, crime and more for any Rightmove, Zoopla or OnTheMarket listing, without leaving the page.",
+  "description": "Sold price history, EPC, schools, flood risk and crime data for Rightmove, Zoopla and OnTheMarket listings.",
   "permissions": ["storage"],
   "icons": {
     "16": "icons/icon16.png",
