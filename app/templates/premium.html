@@ -25,6 +25,45 @@
     catchment areas with detailed Ofsted judgements, and complete local area demographics.
 </p>
 
+{% if checkout_cancelled %}
+<p class="notice">Checkout was cancelled - no payment was taken.</p>
+{% endif %}
+{% if checkout_error %}
+<p class="notice notice-error">Something went wrong starting checkout. Please try again.</p>
+{% endif %}
+
+{% if current_user and current_user.is_premium %}
+<p class="notice" style="background: var(--good-bg); color: var(--good);">
+    <strong>You're on Premium.</strong> Manage your plan, payment details, or cancel any time.
+</p>
+<form action="/premium/manage" method="post" class="stacked-form" style="max-width: 20em;">
+    <button type="submit">Manage subscription</button>
+</form>
+
+{% else %}
+<div class="pricing-grid">
+    {% for plan in plans %}
+    <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
+        {% if plan.key == 'quarterly' %}<span class="pricing-card-badge">Best value</span>{% endif %}
+        <h2 class="pricing-card-price">{{ plan.label }}</h2>
+        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }} — cancel any time.</p>
+        {% if plan.available %}
+            {% if current_user %}
+            <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
+                <input type="hidden" name="plan" value="{{ plan.key }}">
+                <button type="submit">Start free trial</button>
+            </form>
+            {% else %}
+            <a href="/signup?next=/premium" class="pricing-card-cta">Sign up to start trial</a>
+            {% endif %}
+        {% else %}
+            <p class="notice">Not available yet.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 {% set premium_preview = [
     {
         "heading": "Value & Market",
@@ -83,43 +122,5 @@
 </div>
 {% endfor %}
 
-{% if checkout_cancelled %}
-<p class="notice">Checkout was cancelled - no payment was taken.</p>
-{% endif %}
-{% if checkout_error %}
-<p class="notice notice-error">Something went wrong starting checkout. Please try again.</p>
-{% endif %}
-
-{% if current_user and current_user.is_premium %}
-<p class="notice" style="background: var(--good-bg); color: var(--good);">
-    <strong>You're on Premium.</strong> Manage your plan, payment details, or cancel any time.
-</p>
-<form action="/premium/manage" method="post" class="stacked-form" style="max-width: 20em;">
-    <button type="submit">Manage subscription</button>
-</form>
-
-{% else %}
-<div class="pricing-grid">
-    {% for plan in plans %}
-    <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
-        {% if plan.key == 'quarterly' %}<span class="pricing-card-badge">Best value</span>{% endif %}
-        <h2 class="pricing-card-price">{{ plan.label }}</h2>
-        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }} — cancel any time.</p>
-        {% if plan.available %}
-            {% if current_user %}
-            <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
-                <input type="hidden" name="plan" value="{{ plan.key }}">
-                <button type="submit">Start free trial</button>
-            </form>
-            {% else %}
-            <a href="/signup?next=/premium" class="pricing-card-cta">Sign up to start trial</a>
-            {% endif %}
-        {% else %}
-            <p class="notice">Not available yet.</p>
-        {% endif %}
-    </div>
-    {% endfor %}
-</div>
-{% endif %}
 {% endif %}
 {% endblock %}
