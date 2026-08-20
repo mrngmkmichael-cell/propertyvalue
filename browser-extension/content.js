@@ -308,6 +308,11 @@
       width: 22px; height: 22px; border-radius: 999px; background: #eef1ff; color: #3b5bfd;
       display: flex; align-items: center; justify-content: center; font-size: 12px;
     }
+    .pv-dash-card.pv-dash-card-loading .pv-dash-card-title { color: #98a2b3; }
+    .pv-dash-loading-overlay {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.7); border-radius: 12px;
+    }
     .icon-market       { background: #eff6ff; color: #2563eb; }
     .icon-energy       { background: #fffbeb; color: #d97706; }
     .icon-flood        { background: #ecfeff; color: #0891b2; }
@@ -450,8 +455,8 @@
     }
     .pv-modal-link { display: block; text-align: center; margin-top: 4px; color: #3b5bfd; font-weight: 700; font-size: 13px; text-decoration: none; }
     .pv-modal-link:hover { text-decoration: underline; }
-    .pv-dash-card:not(.pv-dash-locked) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
-    .pv-dash-card:not(.pv-dash-locked):hover { border-color: #98a2b3; transform: translateY(-1px); }
+    .pv-dash-card:not(.pv-dash-locked):not(.pv-dash-card-loading) { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
+    .pv-dash-card:not(.pv-dash-locked):not(.pv-dash-card-loading):hover { border-color: #98a2b3; transform: translateY(-1px); }
     .pv-modal-body .pv-modal-detail { margin: 0 0 18px; font-size: 12px; color: #667085; line-height: 1.5; text-align: center; }
     .pv-modal.pv-modal-rich .pv-modal-body .pv-modal-detail { text-align: left; }
     .pv-calc { text-align: left; }
@@ -505,6 +510,7 @@
   let currentData = null;
   let currentPremiumData = null;
   let premiumLoading = false;
+  let premiumDenied = false; // a logged-in user whose account isn't actually Premium (confirmed via a 403), vs. one whose report just hasn't loaded yet
   let currentToken = null;
   let currentEmail = null;
   let root = null;
@@ -619,7 +625,7 @@
     // to be re-attached on every re-render.
     card.querySelector(".pv-tab-content").addEventListener("click", function (e) {
       const dashCardEl = e.target.closest(".pv-dash-card");
-      if (!dashCardEl || dashCardEl.classList.contains("pv-dash-locked")) return;
+      if (!dashCardEl || dashCardEl.classList.contains("pv-dash-locked") || dashCardEl.classList.contains("pv-dash-card-loading")) return;
       openCardModal(dashCardEl);
     });
 
@@ -1081,16 +1087,17 @@
     "Resident Reviews": "UKPropertyInsight users' own ratings for this address - not available at area level, since a review is about one specific property.",
   };
 
-  function dashCard(title, value, locked, status) {
+  function dashCard(title, value, locked, status, loading) {
     const iconInfo = CARD_ICONS[title];
-    const attn = !locked && status === "attn";
+    const attn = !locked && !loading && status === "attn";
     return (
-      '<div class="pv-dash-card' + (locked ? " pv-dash-locked" : "") + (attn ? " pv-dash-attn" : "") + '">' +
+      '<div class="pv-dash-card' + (locked ? " pv-dash-locked" : "") + (loading ? " pv-dash-card-loading" : "") + (attn ? " pv-dash-attn" : "") + '">' +
         (attn ? '<span class="pv-check-this-tag">Check this</span>' : "") +
         (iconInfo ? '<span class="pv-dash-card-icon ' + iconInfo[1] + '">' + iconInfo[0] + "</span>" : "") +
         '<span class="pv-dash-card-title">' + escapeHtml(title) + "</span>" +
-        '<span class="pv-dash-card-value">' + escapeHtml(value == null ? "No data" : value) + "</span>" +
+        '<span class="pv-dash-card-value">' + (loading ? "" : escapeHtml(value == null ? "No data" : value)) + "</span>" +
         (locked ? '<div class="pv-dash-lock-overlay pv-gate-login-btn"><span class="pv-dash-lock-icon">🔒</span></div>' : "") +
+        (loading ? '<div class="pv-dash-loading-overlay"><span class="pv-spinner pv-spinner-sm"></span></div>' : "") +
       "</div>"
     );
   }
@@ -1099,8 +1106,13 @@
     overview: function (data) {
       const s = data.summary;
       const o = data.overview;
+      // A first-time Premium fetch runs a ~20-source data gather and can
+      // take several seconds - without this distinction the cards below
+      // render exactly like the "not Premium, upgrade to unlock" state
+      // while that's in flight, which reads as broken rather than loading.
+      const showLoading = !!(currentToken && premiumLoading && !premiumDenied);
       let html = "";
-      if (premiumLoading) html += '<div class="pv-loading-row"><span class="pv-spinner pv-spinner-sm"></span><span>Unlocking your full report…</span></div>';
+      if (showLoading) html += '<div class="pv-loading-row"><span class="pv-spinner pv-spinner-sm"></span><span>Unlocking your full report - this can take up to 30 seconds on a new postcode…</span></div>';
 
       const gradeClass = "pv-grade-" + String(o.grade || "").toLowerCase().replace(/\s+/g, "-");
       html += '<div class="pv-score-card ' + gradeClass + '">' +
@@ -1125,12 +1137,12 @@
         "</div>";
 
       const sections = currentPremiumData
-        ? currentPremiumData.sections.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (c) { return [c.title, c.value, false, c.status]; }) }; })
-        : PREMIUM_SECTIONS.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (title) { return [title, "Premium", true, null]; }) }; });
+        ? currentPremiumData.sections.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (c) { return [c.title, c.value, false, c.status, false]; }) }; })
+        : PREMIUM_SECTIONS.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (title) { return [title, showLoading ? null : "Premium", !showLoading, null, showLoading]; }) }; });
 
       sections.forEach(function (section) {
         html += '<h3 class="pv-category-heading">' + escapeHtml(section.heading) + '</h3><div class="pv-dash-grid">' +
-          section.cards.map(function (c) { return dashCard(c[0], c[1], c[2], c[3]); }).join("") +
+          section.cards.map(function (c) { return dashCard(c[0], c[1], c[2], c[3], c[4]); }).join("") +
           "</div>";
       });
 
@@ -1287,6 +1299,7 @@
       currentToken = null;
       currentEmail = null;
       currentPremiumData = null;
+      premiumDenied = false;
       updateAccountButton();
       loadReport(); // re-fetch so gated tabs collapse back to the free teaser
       selectTab("account");
@@ -1408,10 +1421,15 @@
     if (!currentPostcode || !currentToken) return Promise.resolve();
 
     premiumLoading = true;
+    premiumDenied = false;
+    refreshActiveTab(); // show the loading state immediately, not just once the fetch resolves
     return fetch(API_BASE + "/api/extension-premium-report?postcode=" + encodeURIComponent(currentPostcode), {
       headers: { Authorization: "Bearer " + currentToken },
     })
-      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (r) {
+        if (r.status === 403) premiumDenied = true; // logged in, but this account isn't actually Premium
+        return r.ok ? r.json() : null;
+      })
       .then(function (data) {
         premiumLoading = false;
         if (data && data.sections) {
@@ -1420,10 +1438,10 @@
             currentData.overview = data.overview;
             applyOverviewScore(data.overview);
           }
-          refreshActiveTab();
         }
+        refreshActiveTab();
       })
-      .catch(function () { premiumLoading = false; });
+      .catch(function () { premiumLoading = false; refreshActiveTab(); });
   }
 
   function init() {
