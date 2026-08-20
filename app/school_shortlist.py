@@ -7,17 +7,6 @@ from app.db import get_session
 from app.models import School, SchoolShortlistItem
 
 
-def get_item(user_id: int, urn: int) -> dict | None:
-    with get_session() as session:
-        item = session.scalar(
-            select(SchoolShortlistItem).where(
-                SchoolShortlistItem.user_id == user_id,
-                SchoolShortlistItem.urn == urn,
-            )
-        )
-        return {"id": item.id, "note": item.note} if item else None
-
-
 def list_items(user_id: int) -> list[dict]:
     with get_session() as session:
         items = session.scalars(
