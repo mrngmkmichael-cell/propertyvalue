@@ -2619,7 +2619,8 @@ def premium_info(request: Request, checkout: str = "", error: str = ""):
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
     context["checkout_cancelled"] = checkout == "cancelled"
-    context["checkout_error"] = bool(error)
+    context["checkout_error"] = error == "checkout_failed"
+    context["portal_error"] = error == "portal_failed"
     return templates.TemplateResponse(request, "premium.html", context)
 
 

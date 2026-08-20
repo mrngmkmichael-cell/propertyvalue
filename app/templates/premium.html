@@ -31,6 +31,9 @@
 {% if checkout_error %}
 <p class="notice notice-error">Something went wrong starting checkout. Please try again.</p>
 {% endif %}
+{% if portal_error %}
+<p class="notice notice-error">Something went wrong opening your billing portal. Please try again.</p>
+{% endif %}
 
 {% if current_user and current_user.is_premium %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
