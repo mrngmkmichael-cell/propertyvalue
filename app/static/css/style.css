@@ -1447,6 +1447,21 @@ a {
     margin-top: 1rem;
 }
 
+.guide-steps {
+    margin: 0.75rem 0;
+    padding-left: 1.3rem;
+    color: var(--ink-soft);
+}
+
+.guide-steps li {
+    margin-bottom: 0.9rem;
+    line-height: 1.6;
+}
+
+.guide-steps li strong {
+    color: var(--ink);
+}
+
 .calc-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

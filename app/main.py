@@ -24,11 +24,11 @@ from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
 from app.models import User
 from app.services import (
-    air_quality, amenities, area_stats, broadband, catchment, census_stats, clay_risk, coal_mining, cqc_ratings,
-    crime, demographics, designations, email as email_service, epc, flood, flood_zones, food_hygiene,
-    google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation, overview_score,
-    pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge, stripe_billing,
-    surface_water_risk, valuation,
+    air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
+    cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
+    food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
+    overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
+    stripe_billing, surface_water_risk, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_centroid
@@ -627,7 +627,7 @@ AREA_GUIDE_SEED_OUTCODES = [
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
-    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/embed"]
+    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/buying-guide", "/embed"]
     urls = [f"{base}{p}" for p in static_paths] + [f"{base}/area/{o}" for o in AREA_GUIDE_SEED_OUTCODES]
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -743,6 +743,13 @@ async def market_report(request: Request):
     _cache.set(("market_report",), page_data)
     context.update(page_data)
     return templates.TemplateResponse(request, "market_report.html", context)
+
+
+@app.get("/buying-guide")
+async def buying_guide(request: Request):
+    context = base_context(request)
+    context["boe"] = await boe_rate.current_rate()
+    return templates.TemplateResponse(request, "buying_guide.html", context)
 
 
 @app.get("/property")
