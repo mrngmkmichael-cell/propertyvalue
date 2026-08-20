@@ -2,6 +2,11 @@
 {% import "_icons.html" as icons %}
 
 {% block title %}Chrome Extension — UKPropertyInsight{% endblock %}
+{% block og_title %}UKPropertyInsight — Free Chrome Extension{% endblock %}
+{% block og_description %}See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page.{% endblock %}
+{% block og_image %}{{ request.url_for('static', path='img/extension/overview.png') }}{% endblock %}
+{% block og_image_width %}1220{% endblock %}
+{% block og_image_height %}688{% endblock %}
 
 {% block extra_head %}
 <meta name="description" content="See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.">
