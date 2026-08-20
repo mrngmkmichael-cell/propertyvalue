@@ -62,9 +62,42 @@
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_total }}</span>
         </div>
     </div>
+
+    {% if daily_signups %}
+    <div style="display:flex; align-items:flex-end; gap:4px; height:100px; margin-top:1.5rem; padding:0 0.25rem;">
+        {% set max_signups = daily_signups | map(attribute='count') | max %}
+        {% for d in daily_signups %}
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;" title="{{ d.date }}: {{ d.count }}">
+            <div style="width:100%; background:var(--ink-mute); opacity:0.55; border-radius:3px 3px 0 0; height:{{ (d.count / max_signups * 80) if max_signups else 0 }}px; min-height:2px;"></div>
+            <span style="font-size:0.6rem; color:var(--ink-mute);">{{ d.date[5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="section-sub">Last 14 days</p>
+    {% endif %}
 </section>
 
 <section class="landing-section">
+    <h2 class="landing-heading">Revenue</h2>
+    <p class="landing-subheading">
+        Estimated <strong>£{{ "%.2f"|format(mrr_estimate) }}/month</strong> in monthly recurring revenue from
+        {{ active_subscriber_count }} active subscriber{{ "s" if active_subscriber_count != 1 else "" }}
+        {% if trialing_count %}, plus {{ trialing_count }} on a free trial (not yet counted in MRR){% endif %}.
+        A quarterly plan's £24.99/3 months is shown at its monthly-equivalent rate here.
+    </p>
+    {% if subscription_status_breakdown %}
+    <table class="tx-table">
+        <thead><tr><th>Subscription status</th><th class="num">Accounts</th></tr></thead>
+        <tbody>
+            {% for s in subscription_status_breakdown %}
+            <tr><td>{{ s.status|capitalize }}</td><td class="num">{{ s.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</section>
+
+<section class="landing-section landing-section-tinted">
     <h2 class="landing-heading">Premium</h2>
     <p class="landing-subheading">
         <strong>{{ premium_total }}</strong> premium user{{ "s" if premium_total != 1 else "" }} of {{ signups_total }} total accounts
@@ -81,6 +114,21 @@
     </table>
     {% endif %}
 </section>
+
+{% if top_pages %}
+<section class="landing-section">
+    <h2 class="landing-heading">Top pages</h2>
+    <p class="landing-subheading">Last 30 days, by pageviews.</p>
+    <table class="tx-table">
+        <thead><tr><th>Page</th><th class="num">Views</th></tr></thead>
+        <tbody>
+            {% for p in top_pages %}
+            <tr><td>{{ p.path }}</td><td class="num">{{ p.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
 
 {% if referral_breakdown %}
 <section class="landing-section landing-section-tinted">

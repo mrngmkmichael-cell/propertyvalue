@@ -2525,15 +2525,59 @@ def admin_dashboard(request: Request):
         ).all()
         context["plan_breakdown"] = [{"plan": p or "Comped / no plan on file", "count": c} for p, c in plan_rows]
 
-        # Daily pageviews for the last 14 days, oldest first - a quick
-        # trend glance without needing a full charting library.
+        # Daily pageviews and signups for the last 14 days, zero-filled
+        # so every day appears even with no activity - without this, a
+        # single active day among mostly-zero days renders as one bar
+        # filling the whole chart width, since the bars split width
+        # evenly across however many rows the query actually returned.
+        date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(13, -1, -1)]
+
         daily_rows = session.execute(
             select(func.date(PageView.created_at), func.count())
-            .where(PageView.created_at >= now - datetime.timedelta(days=14))
+            .where(PageView.created_at >= today_start - datetime.timedelta(days=13))
             .group_by(func.date(PageView.created_at))
-            .order_by(func.date(PageView.created_at))
         ).all()
-        context["daily_pageviews"] = [{"date": str(d), "count": c} for d, c in daily_rows]
+        pageview_counts = {str(d): c for d, c in daily_rows}
+        context["daily_pageviews"] = [{"date": str(d), "count": pageview_counts.get(str(d), 0)} for d in date_range]
+
+        signup_rows = session.execute(
+            select(func.date(User.created_at), func.count())
+            .where(User.created_at >= today_start - datetime.timedelta(days=13))
+            .group_by(func.date(User.created_at))
+        ).all()
+        signup_counts = {str(d): c for d, c in signup_rows}
+        context["daily_signups"] = [{"date": str(d), "count": signup_counts.get(str(d), 0)} for d in date_range]
+
+        # Top pages in the last 30 days - what's actually getting looked at.
+        top_pages_rows = session.execute(
+            select(PageView.path, func.count())
+            .where(PageView.created_at >= month_start)
+            .group_by(PageView.path)
+            .order_by(func.count().desc())
+            .limit(15)
+        ).all()
+        context["top_pages"] = [{"path": p, "count": c} for p, c in top_pages_rows]
+
+        # Revenue: estimated MRR from ACTIVE subscriptions only (trialing
+        # ones aren't paying yet, so they're surfaced separately rather
+        # than folded into the total). Monthly-equivalent prices here
+        # mirror stripe_billing.PLANS - keep them in sync if pricing changes.
+        _monthly_equiv = {"monthly": 9.99, "quarterly": 24.99 / 3}
+        active_plan_rows = session.execute(
+            select(User.plan, func.count()).where(User.subscription_status == "active").group_by(User.plan)
+        ).all()
+        context["mrr_estimate"] = round(sum(_monthly_equiv.get(p, 0) * c for p, c in active_plan_rows), 2)
+        context["active_subscriber_count"] = sum(c for _, c in active_plan_rows)
+        context["trialing_count"] = session.scalar(
+            select(func.count()).select_from(User).where(User.subscription_status == "trialing")
+        ) or 0
+
+        status_rows = session.execute(
+            select(User.subscription_status, func.count())
+            .where(User.stripe_subscription_id.is_not(None))
+            .group_by(User.subscription_status)
+        ).all()
+        context["subscription_status_breakdown"] = [{"status": s or "unknown", "count": c} for s, c in status_rows]
 
         referral_rows = session.execute(
             select(User.referred_by, func.count())
