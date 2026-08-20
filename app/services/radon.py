@@ -45,11 +45,14 @@ async def _fetch_risk(lat: float, lon: float) -> dict | None:
         "returnGeometry": "false",
         "f": "json",
     }
-    try:
-        response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return None
+    # Left to raise - the caller's gather(return_exceptions=True)
+    # distinguishes "the API call failed" from "it succeeded and found
+    # nothing" (the `if not results` case below, a genuine result).
+    # Catching and returning None for both here made a live BGS outage
+    # indistinguishable from "no radon risk here", and risk_near below
+    # would then cache that wrong answer for 30 days.
+    response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
+    response.raise_for_status()
 
     results = response.json().get("results", [])
     if not results:

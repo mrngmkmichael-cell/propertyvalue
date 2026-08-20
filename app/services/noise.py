@@ -59,11 +59,13 @@ async def _query_layer(client: httpx.AsyncClient, dataset_id: str, layer: str, l
         "J": "1",
         "INFO_FORMAT": "application/json",
     }
-    try:
-        response = await client.get(f"{WMS_BASE}/{dataset_id}/wms", params=params, timeout=10)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return None
+    # Left to raise on request - see radon.py's identical comment.
+    # noise_near below gathers all three layers with
+    # return_exceptions=True and only treats a TOTAL failure (all
+    # three layers erroring) as an error; one flaky layer degrades to
+    # "no data for that source" rather than losing the other two.
+    response = await client.get(f"{WMS_BASE}/{dataset_id}/wms", params=params, timeout=10)
+    response.raise_for_status()
 
     features = response.json().get("features", [])
     if not features:
@@ -90,7 +92,20 @@ async def noise_near(lat: float, lon: float) -> dict:
             _query_layer(client, ROAD_DATASET_ID, ROAD_LAYER, lat, lon),
             _query_layer(client, RAIL_DATASET_ID, RAIL_LAYER, lat, lon),
             _query_layer(client, AIRPORT_DATASET_ID, AIRPORT_LAYER, lat, lon),
+            return_exceptions=True,
         )
+
+    # All three layers erroring means the WMS endpoint itself is down,
+    # not "no noise sources near this point" - raise so the caller's
+    # own gather sees this as a real failure instead of caching a
+    # false "quiet" reading for a day. One or two layers failing while
+    # the others succeed degrades gracefully to "no data" for just
+    # that source instead.
+    if isinstance(road_db, Exception) and isinstance(rail_db, Exception) and isinstance(airport_db, Exception):
+        raise road_db
+    road_db = None if isinstance(road_db, Exception) else road_db
+    rail_db = None if isinstance(rail_db, Exception) else rail_db
+    airport_db = None if isinstance(airport_db, Exception) else airport_db
 
     result = {
         "road_db": road_db,

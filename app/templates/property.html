@@ -455,7 +455,7 @@
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-modal-target="modal-schools" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
-            <span class="dashboard-card-title">Schools &amp; Catchment</span>
+            <span class="dashboard-card-title">Schools Nearby</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
                 {% elif schools_total %}{{ schools_total }} nearby
@@ -2817,7 +2817,7 @@ Listed building data from Historic England's
                     const messages = {
                         not_found: "Couldn't find that postcode — double-check the spelling.",
                         postcode_required: 'Enter a postcode first.',
-                        not_configured: 'Commute time isn’t available on this deployment right now.',
+                        not_configured: 'Commute time isn\'t available on this deployment right now.',
                     };
                     resultEl.innerHTML = '<p class="notice">' + (messages[data.error] || 'Something went wrong — try again.') + '</p>';
                     return;

@@ -38,12 +38,13 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
         "pageSize": RESULT_LIMIT,
     }
     headers = {"x-api-version": "2", "Accept": "application/json"}
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(API_BASE, params=params, headers=headers)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return []
+    # Left to raise - see radon.py's identical comment. Catching this
+    # and returning [] made a live FSA outage indistinguishable from
+    # "nothing rated nearby", and nearby_ratings below would cache
+    # that wrong answer for 3 days.
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(API_BASE, params=params, headers=headers)
+    response.raise_for_status()
 
     establishments = response.json().get("establishments", [])
     results = []

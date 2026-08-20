@@ -54,11 +54,12 @@ async def _fetch_risk(lat: float, lon: float) -> dict | None:
         "returnGeometry": "false",
         "f": "json",
     }
-    try:
-        response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return None
+    # Left to raise - see radon.py's identical comment. Catching this
+    # and returning None made a live BGS outage indistinguishable from
+    # "no shrink-swell data here", and risk_near below would cache
+    # that wrong answer for 30 days.
+    response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
+    response.raise_for_status()
 
     by_horizon = {}
     for res in response.json().get("results", []):

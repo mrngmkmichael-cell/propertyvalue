@@ -980,7 +980,7 @@
     { heading: "Property & Condition", cards: ["Energy Efficiency", "Extended or Modified", "Aspect"] },
     { heading: "Risk & Safety", cards: ["Flood Risk", "Crime & Safety", "Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
     { heading: "Planning & Heritage", cards: ["Planning Constraints", "Environmental Designations", "Listed Buildings"] },
-    { heading: "Location & Connectivity", cards: ["Schools & Catchment", "School Catchment Areas", "Nearby Essentials", "Getting Around", "Broadband", "Mobile Signal"] },
+    { heading: "Location & Connectivity", cards: ["Schools Nearby", "School Catchment Areas", "Nearby Essentials", "Getting Around", "Broadband", "Mobile Signal"] },
     { heading: "Area & Community", cards: ["Household Income", "Deprivation", "Occupation", "Qualification", "Age Profile", "Housing Types & Tenure", "Ethnicity, Religion & Origin", "Health, Relationships & Social Grade", "Resident Reviews"] },
   ];
 
@@ -1018,7 +1018,7 @@
     "Extended or Modified": ["🧱", "icon-extension"],
     "Flood Risk": ["💧", "icon-flood"],
     "Crime & Safety": ["🚨", "icon-crime"],
-    "Schools & Catchment": ["🎓", "icon-schools"],
+    "Schools Nearby": ["🎓", "icon-schools"],
     "School Catchment Areas": ["📍", "icon-schools"],
     "Nearby Essentials": ["🛒", "icon-amenities"],
     "Getting Around": ["🚉", "icon-transport"],
@@ -1066,7 +1066,7 @@
     "Extended or Modified": "Compares floor area across a single address's own EPC certificates over time - needs an exact house number to check, which listing pages don't publish.",
     "Flood Risk": "Environment Agency flood zone (rivers & sea) - Zone 3 is high probability, Zone 2 medium, Zone 1 low.",
     "Crime & Safety": "Crimes recorded within roughly 1 mile, from police.uk's public data.",
-    "Schools & Catchment": "Nearest schools by phase (nursery/primary/secondary), by proximity.",
+    "Schools Nearby": "Nearest schools by phase (nursery/primary/secondary), by proximity.",
     "School Catchment Areas": "Real published admission-distance data where a council provides it, modelled estimates elsewhere - not a catchment guarantee.",
     "Nearby Essentials": "Restaurants, supermarkets, pharmacies, pubs and hospitals within walking distance, from OpenStreetMap.",
     "Getting Around": "Nearest train/tube/bus stop, and journey time to the nearest major city where available.",

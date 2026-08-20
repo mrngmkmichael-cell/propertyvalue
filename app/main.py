@@ -1476,7 +1476,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
         # Everything below powers the 20 dashboard cards this endpoint
         # was still missing (Local Market, Valuation Estimate, Flood
-        # Risk, Crime & Safety, Schools & Catchment, School Catchment
+        # Risk, Crime & Safety, Schools Nearby, School Catchment
         # Areas, Nearby Essentials, Getting Around, and the 6 Area &
         # Community census cards) - same services property_search uses
         # for these, all keyed by lat/lon or LSOA/MSOA so none of them
@@ -1618,7 +1618,13 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     sewage_status = "muted" if isinstance(sewage_result, Exception) else ("attn" if sewage_outfalls and (sewage_outfalls[0].get("spill_count") or 0) >= 20 else "ok")
     aq_status = "muted" if not aq_data else ("attn" if aq_worst is not None and aq_worst >= 3 else "ok")
     landfill_status = "muted" if isinstance(landfill_result, Exception) else ("attn" if landfill and landfill["status"] != "clear" else "ok")
-    coal_mining_status = "muted" if isinstance(coal_result, Exception) else ("attn" if coal and coal.get("present") else "ok")
+    # coal_mining.check_near() catches its own HTTP errors and returns
+    # None rather than raising, so an isinstance(..., Exception) check
+    # alone never catches a failed fetch here - it always falls through
+    # to "ok" even when the API call genuinely failed, mislabeling
+    # "unknown" as "not at risk". property_search gets this right by
+    # also checking the result isn't None; mirrored here.
+    coal_mining_status = "muted" if isinstance(coal_result, Exception) or coal is None else ("attn" if coal.get("present") else "ok")
     planning_status = "muted" if isinstance(designations_result, Exception) else ("attn" if planning_flags else "ok")
     environmental_status = "muted" if isinstance(designations_result, Exception) else ("attn" if environmental_flags else "ok")
     broadband_status = "muted" if not broadband_data else ("attn" if broadband_data.get("below_uso_pct") and broadband_data["below_uso_pct"] >= 5 else "ok")
@@ -1837,15 +1843,16 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card(
                     "Price Trend & Forecast",
                     (f"{hpi_trend['pct_change']:+.1f}% over 5 years" if hpi_trend and hpi_trend.get("pct_change") is not None else "No data"),
+                    "ok" if hpi_trend and hpi_trend.get("pct_change") is not None else "muted",
                     detail=price_trend_detail,
                 ),
-                card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data")),
+                card("Rental Analysis", (f"£{rental_data['price_all']:,} pcm typical" if rental_data else "No data"), "ok" if rental_data else "muted"),
             ],
         },
         {
             "heading": "Property & Condition",
             "cards": [
-                card("Energy Efficiency", f"{len(certs_list)} certificate{'s' if len(certs_list) != 1 else ''} found" if certs_list else "No certificates found"),
+                card("Energy Efficiency", f"{len(certs_list)} certificate{'s' if len(certs_list) != 1 else ''} found" if certs_list else "No certificates found", "ok" if certs_list else "muted"),
                 # Genuinely needs an exact address (compares a single
                 # property's own EPC certificates across years) - the
                 # extension never has a house number, on a full
@@ -1901,13 +1908,13 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
             "cards": [
                 card("Planning Constraints", (f"{len(planning_flags)} found" if planning_flags else "None found"), planning_status, detail=planning_detail),
                 card("Environmental Designations", (f"{len(environmental_flags)} found" if environmental_flags else "None found"), environmental_status, detail=environmental_detail),
-                card("Listed Buildings", f"{len(listed_buildings)} nearby", detail=heritage_detail),
+                card("Listed Buildings", f"{len(listed_buildings)} nearby", "ok" if listed_buildings else "muted", detail=heritage_detail),
             ],
         },
         {
             "heading": "Location & Connectivity",
             "cards": [
-                card("Schools & Catchment", f"{nearby_schools_total} nearby" if nearby_schools_total else "None found nearby", schools_catchment_status),
+                card("Schools Nearby", f"{nearby_schools_total} nearby" if nearby_schools_total else "None found nearby", schools_catchment_status),
                 card(
                     "School Catchment Areas",
                     (
@@ -1935,14 +1942,14 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Area & Community",
             "cards": [
-                card("Household Income", f"{_format_gbp(income_data['here'])} p/a" if income_data else "No data", detail=income_detail),
+                card("Household Income", f"{_format_gbp(income_data['here'])} p/a" if income_data else "No data", "ok" if income_data else "muted", detail=income_detail),
                 card("Deprivation", f"Decile {deprivation_data['imd_decile']} of 10" if deprivation_data else "No data", deprivation_status, detail=deprivation_detail),
-                card("Occupation", f"{occupation_data['professional_pct']}% managerial/professional" if occupation_data else "No data", detail=occupation_detail),
-                card("Qualification", f"{qualification_data['degree_pct']}% degree-educated" if qualification_data else "No data", detail=qualification_detail),
-                card("Age Profile", f"{age_profile_data['under_25_pct']}% under 25" if age_profile_data else "No data", detail=age_profile_detail),
-                card("Housing Types & Tenure", f"{housing_data['owned_pct']}% owner-occupied" if housing_data and housing_data.get("owned_pct") is not None else "No data", detail=housing_detail),
-                card("Ethnicity, Religion & Origin", f"{background_data['born_abroad_pct']}% born outside the UK" if background_data and background_data.get("born_abroad_pct") is not None else "No data", detail=background_detail),
-                card("Health, Relationships & Social Grade", f"{wellbeing_data['good_health_pct']}% good or very good health" if wellbeing_data and wellbeing_data.get("good_health_pct") is not None else "No data", detail=wellbeing_detail),
+                card("Occupation", f"{occupation_data['professional_pct']}% managerial/professional" if occupation_data else "No data", "ok" if occupation_data else "muted", detail=occupation_detail),
+                card("Qualification", f"{qualification_data['degree_pct']}% degree-educated" if qualification_data else "No data", "ok" if qualification_data else "muted", detail=qualification_detail),
+                card("Age Profile", f"{age_profile_data['under_25_pct']}% under 25" if age_profile_data else "No data", "ok" if age_profile_data else "muted", detail=age_profile_detail),
+                card("Housing Types & Tenure", f"{housing_data['owned_pct']}% owner-occupied" if housing_data and housing_data.get("owned_pct") is not None else "No data", "ok" if housing_data else "muted", detail=housing_detail),
+                card("Ethnicity, Religion & Origin", f"{background_data['born_abroad_pct']}% born outside the UK" if background_data and background_data.get("born_abroad_pct") is not None else "No data", "ok" if background_data else "muted", detail=background_detail),
+                card("Health, Relationships & Social Grade", f"{wellbeing_data['good_health_pct']}% good or very good health" if wellbeing_data and wellbeing_data.get("good_health_pct") is not None else "No data", "ok" if wellbeing_data else "muted", detail=wellbeing_detail),
                 card(
                     "Resident Reviews",
                     "Not available for this area" if area_level else (f"{area_reviews['average']}/5 from {area_reviews['count']} review{'s' if area_reviews['count'] != 1 else ''}" if area_reviews and area_reviews.get("count") else "No reviews yet"),

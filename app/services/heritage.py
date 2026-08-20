@@ -54,12 +54,13 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
         "returnGeometry": "true",
         "f": "json",
     }
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(QUERY_URL, params=params)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return []
+    # Left to raise - see radon.py's identical comment. Catching this
+    # and returning [] made a live NHLE outage indistinguishable from
+    # "no listed buildings nearby", and nearby_listed_buildings below
+    # would cache that wrong answer for 7 days.
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(QUERY_URL, params=params)
+    response.raise_for_status()
 
     buildings = []
     for feat in response.json().get("features", []):

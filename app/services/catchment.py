@@ -149,6 +149,15 @@ async def catchments_for(lat: float, lon: float) -> list[dict]:
             return_exceptions=True,
         )
 
+    # One council's ArcGIS endpoint being down is routine and handled
+    # per-source below (skip it, keep the other ~20 authorities'
+    # results) - but if EVERY source failed at once, that's a real
+    # outage (e.g. a shared network issue), not "no council here
+    # publishes a catchment", so raise rather than cache an empty
+    # result as if it were a genuine "not covered" answer.
+    if results and all(isinstance(r, Exception) for r in results):
+        raise results[0]
+
     matches = []
     for (authority, phase, _, _), result in zip(_SOURCES, results):
         if isinstance(result, Exception) or not result:

@@ -71,12 +71,13 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
         "X-Goog-Api-Key": os.environ["GOOGLE_PLACES_API_KEY"],
         "X-Goog-FieldMask": FIELD_MASK,
     }
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.post(API_URL, json=body, headers=headers)
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return []
+    # Left to raise - see radon.py's identical comment. Catching this
+    # and returning [] made a live/quota-exceeded Places API outage
+    # indistinguishable from "nothing rated nearby", and
+    # nearby_food_ratings above would cache that wrong answer for 24h.
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.post(API_URL, json=body, headers=headers)
+    response.raise_for_status()
 
     results = []
     for p in response.json().get("places", []):

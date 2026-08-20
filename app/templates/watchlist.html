@@ -47,10 +47,9 @@
                 <td>{{ item.note or "—" }}</td>
                 <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
                 <td class="num">
-                    <form action="/watchlist/remove" method="post" class="nav-form">
-                        <input type="hidden" name="item_id" value="{{ item.id }}">
-                        <button type="submit">Remove</button>
-                    </form>
+                    <span class="nav-form">
+                        <button type="submit" formaction="/watchlist/remove" formmethod="post" name="item_id" value="{{ item.id }}">Remove</button>
+                    </span>
                 </td>
             </tr>
             {% endfor %}
