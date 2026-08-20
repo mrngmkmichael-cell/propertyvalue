@@ -10,6 +10,25 @@
 
 {% block extra_head %}
 <meta name="description" content="See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.">
+{# No aggregateRating here - there are no real reviews yet, and Google's
+own structured-data guidelines say not to include one without genuine
+review data. Only factual fields below. #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "UKPropertyInsight Overlay",
+    "applicationCategory": "BrowserApplication",
+    "operatingSystem": "Chrome",
+    "description": "Shows sold price history, EPC rating, flood risk, crime statistics and nearby schools on Rightmove, Zoopla and OnTheMarket property listings.",
+    "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "GBP"
+    },
+    "url": "{{ request.url }}"
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -112,13 +131,16 @@
 
 <section class="landing-section">
     <h2 class="landing-heading">See it in action</h2>
+    <p class="landing-subheading">Tap any card in the summary bar for the full detail, right there on the listing page.</p>
     <div class="feature-grid">
-        <div>
-            <img src="/static/img/extension/crime-detail.png" alt="Crime detail popup showing a breakdown of recorded crime categories" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border);">
-        </div>
-        <div>
-            <img src="/static/img/extension/schools-detail.png" alt="Schools detail popup listing nearby schools with distance and Ofsted rating" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border);">
-        </div>
+        <figure style="margin:0;">
+            <img src="/static/img/extension/crime-detail.png" alt="Crime detail popup showing a breakdown of recorded crime categories" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
+            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Crime card, expanded</figcaption>
+        </figure>
+        <figure style="margin:0;">
+            <img src="/static/img/extension/schools-detail.png" alt="Schools detail popup listing nearby schools with distance and Ofsted rating" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
+            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Schools card, expanded</figcaption>
+        </figure>
     </div>
 </section>
 
