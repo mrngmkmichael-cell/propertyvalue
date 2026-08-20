@@ -29,6 +29,54 @@ review data. Only factual fields below. #}
     "url": "{{ request.url }}"
 }
 </script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {
+            "@type": "Question",
+            "name": "Is the extension safe to install? What can it see?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page — it can't see anything on any other site, and it doesn't have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Does it cost anything?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Installing it and seeing the free preview data on every listing costs nothing and needs no account. A UKPropertyInsight Premium account unlocks the full report on every card."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Do I need a UKPropertyInsight account to use it?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No — install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Will it slow down Rightmove or Zoopla?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar — it doesn't modify or interfere with the rest of the page."
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket — it simply reads the postcode from a listing you're already viewing to show official public data alongside it."
+            }
+        }
+    ]
+}
+</script>
 {% endblock %}
 
 {% block content %}
@@ -119,7 +167,7 @@ review data. Only factual fields below. #}
         <div class="feature-card">
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
             <span class="feature-card-title">Demographics</span>
-            <span class="feature-card-blurb">Household income, deprivation and occupation data for the local area, from the 2021 Census.</span>
+            <span class="feature-card-blurb">Household income, deprivation and occupation data for the local area, from Census 2021.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
@@ -127,6 +175,33 @@ review data. Only factual fields below. #}
             <span class="feature-card-blurb">Recorded crime nearby, broken down by category, from Police.uk.</span>
         </div>
     </div>
+</section>
+
+<section class="sources-strip" data-animate>
+    <span class="sources-strip-heading">
+        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
+    </span>
+    <div class="sources-strip-list">
+        {% for icon_name, label, url in [
+            ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
+            ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
+            ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
+            ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
+            ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
+            ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
+            ('crime', 'Police.uk', 'https://www.police.uk'),
+        ] %}
+        <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener">
+            <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
+            <span class="sources-strip-name">{{ label }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    <p class="sources-strip-note">
+        Never listings scraped from Rightmove, Zoopla or OnTheMarket — every figure traces back to
+        an official, openly licensed government or public data source. See the
+        <a href="/methodology">full methodology</a> for the complete list.
+    </p>
 </section>
 
 <section class="landing-section">
@@ -163,9 +238,34 @@ review data. Only factual fields below. #}
     </p>
 </section>
 
-{% if store_url %}
-<section class="landing-section landing-section-tinted" style="text-align:center;">
-    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome — Free</a>
+<section class="landing-section">
+    <span class="section-pill" data-animate>Questions</span>
+    <h2 class="landing-heading" data-animate>Questions people ask first</h2>
+    <div class="faq-list">
+        {% for q, a in [
+            ('Is the extension safe to install? What can it see?', 'It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page — it can\'t see anything on any other site, and it doesn\'t have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings.'),
+            ('Does it cost anything?', 'Installing it and seeing the free preview data on every listing costs nothing and needs no account. A UKPropertyInsight Premium account unlocks the full report on every card.'),
+            ('Do I need a UKPropertyInsight account to use it?', 'No — install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest.'),
+            ('Will it slow down Rightmove or Zoopla?', 'No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar — it doesn\'t modify or interfere with the rest of the page.'),
+            ('Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?', 'No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket — it simply reads the postcode from a listing you\'re already viewing to show official public data alongside it.'),
+        ] %}
+        <details class="faq-item" data-animate>
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
 </section>
-{% endif %}
+
+<section class="landing-section landing-section-tinted" style="text-align:center;">
+    {% if store_url %}
+    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome — Free</a>
+    {% else %}
+    <div class="notice" style="max-width:420px; margin:0 auto;">
+        <strong>Submitted to the Chrome Web Store, pending review.</strong> This page will
+        link straight to the install page as soon as it's approved — check back soon, or
+        <a href="/support">contact us</a> to be notified.
+    </div>
+    {% endif %}
+</section>
 {% endblock %}
