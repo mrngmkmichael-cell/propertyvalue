@@ -26,6 +26,11 @@ class User(Base):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Which of stripe_billing.PLANS ("monthly"/"quarterly") this
+    # subscription is on - set from the price ID on the Stripe
+    # subscription webhook, not stored anywhere else. None for a
+    # comped/manually-flipped premium user with no real subscription.
+    plan: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Whatever ?ref= code was present when this person first landed
     # (see main.py's _REFERRAL_COOKIE handling) - a partner/agent code,
     # or None for organic signups. Free text, not a foreign key to a
@@ -711,6 +716,23 @@ class RentalPrice(Base):
     change_3bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     price_4plus_bed: Mapped[int | None] = mapped_column(Integer, nullable=True)
     change_4plus_bed_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class PageView(Base):
+    """A first-party, cookie-less pageview counter for the /admin
+    dashboard - deliberately minimal (no IP, no user-agent, no
+    referrer, no per-visitor identifier) so it stays aggregate-only
+    and doesn't contradict the privacy policy's "no tracking" promise.
+    user_id is set only when the viewer happens to be logged in
+    already (from their existing session), never used to identify an
+    anonymous visitor. Logged by capture_pageview() in main.py, for
+    real page routes only - not static assets, APIs, or webhooks."""
+    __tablename__ = "page_views"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    path: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
 # --- Live external lookups below don't need their own DB models -

@@ -42,6 +42,19 @@ def is_configured() -> bool:
     return bool(os.environ.get("STRIPE_SECRET_KEY"))
 
 
+def plan_for_price_id(price_id: str | None) -> str | None:
+    """Reverse lookup: which PLANS key (if any) a Stripe Price ID
+    belongs to - used to record which plan a subscription webhook
+    event is actually for, since Stripe's own payload only carries the
+    price ID, not our own "monthly"/"quarterly" label."""
+    if not price_id:
+        return None
+    for key, (price_env, _, _) in PLANS.items():
+        if os.environ.get(price_env) == price_id:
+            return key
+    return None
+
+
 def plan_choices() -> list[dict]:
     """[{"key": ..., "label": ..., "trial_days": ..., "available": bool}, ...]
     - available is False if that plan's Price ID env var isn't set, so

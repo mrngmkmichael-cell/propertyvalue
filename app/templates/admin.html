@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — UKPropertyInsight{% endblock %}
+
+{% block content %}
+<span class="kicker">Admin</span>
+<h1>Daily overview</h1>
+<p class="dek">Traffic, signups and Premium conversion, from this app's own data — no third-party analytics.</p>
+
+<section class="landing-section">
+    <h2 class="landing-heading">Pageviews</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Today</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_today }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Last 7 days</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_week }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Last 30 days</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_month }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">All time</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_total }}</span>
+        </div>
+    </div>
+
+    {% if daily_pageviews %}
+    <div style="display:flex; align-items:flex-end; gap:4px; height:100px; margin-top:1.5rem; padding:0 0.25rem;">
+        {% set max_count = daily_pageviews | map(attribute='count') | max %}
+        {% for d in daily_pageviews %}
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;" title="{{ d.date }}: {{ d.count }}">
+            <div style="width:100%; background:var(--accent); border-radius:3px 3px 0 0; height:{{ (d.count / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
+            <span style="font-size:0.6rem; color:var(--ink-mute);">{{ d.date[5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="section-sub">Last 14 days</p>
+    {% endif %}
+</section>
+
+<section class="landing-section landing-section-tinted">
+    <h2 class="landing-heading">Signups</h2>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Today</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_today }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Last 7 days</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_week }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Last 30 days</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_month }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">All time</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_total }}</span>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section">
+    <h2 class="landing-heading">Premium</h2>
+    <p class="landing-subheading">
+        <strong>{{ premium_total }}</strong> premium user{{ "s" if premium_total != 1 else "" }} of {{ signups_total }} total accounts
+        {% if signups_total %}({{ "%.1f"|format(premium_total / signups_total * 100) }}% conversion){% endif %}.
+    </p>
+    {% if plan_breakdown %}
+    <table class="tx-table">
+        <thead><tr><th>Plan</th><th class="num">Users</th></tr></thead>
+        <tbody>
+            {% for p in plan_breakdown %}
+            <tr><td>{{ p.plan }}</td><td class="num">{{ p.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</section>
+
+{% if referral_breakdown %}
+<section class="landing-section landing-section-tinted">
+    <h2 class="landing-heading">Referral sources</h2>
+    <table class="tx-table">
+        <thead><tr><th>Code</th><th class="num">Signups</th></tr></thead>
+        <tbody>
+            {% for r in referral_breakdown %}
+            <tr><td>{{ r.code }}</td><td class="num">{{ r.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endif %}
+
+<section class="landing-section">
+    <h2 class="landing-heading">Recent signups</h2>
+    <table class="tx-table">
+        <thead>
+            <tr><th>Email</th><th>Joined</th><th>Premium</th><th>Plan</th><th>Status</th><th>Referred by</th></tr>
+        </thead>
+        <tbody>
+            {% for u in recent_signups %}
+            <tr>
+                <td>{{ u.email }}</td>
+                <td>{{ u.created_at.strftime("%d %b %Y") }}</td>
+                <td>{{ "Yes" if u.is_premium else "No" }}</td>
+                <td>{{ u.plan or "—" }}</td>
+                <td>{{ u.subscription_status or "—" }}</td>
+                <td>{{ u.referred_by or "—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

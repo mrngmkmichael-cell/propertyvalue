@@ -18,11 +18,11 @@ from fastapi.exception_handlers import http_exception_handler as default_http_ex
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
-from app.models import User
+from app.models import PageView, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -81,6 +81,40 @@ async def capture_referral(request: Request, call_next):
             response.set_cookie(
                 REFERRAL_COOKIE, safe_ref, max_age=REFERRAL_COOKIE_MAX_AGE_S, httponly=True, samesite="lax"
             )
+    return response
+
+
+# Any prefix here never counts as a "page" - static assets, the JSON
+# API the extension uses, internal cron endpoints, and the Stripe
+# webhook are all real traffic but not what "how many people viewed
+# the site" is asking about.
+_PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
+_PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
+
+
+@app.middleware("http")
+async def capture_pageview(request: Request, call_next):
+    """A first-party, cookie-less pageview count for the /admin
+    dashboard (see models.py's PageView for why this is deliberately
+    minimal - no IP, no user-agent, nothing that could re-identify an
+    anonymous visitor). Logged after the response so a DB hiccup here
+    can never be the reason a real page fails to load."""
+    response = await call_next(request)
+    path = request.url.path
+    if (
+        request.method == "GET"
+        and response.status_code == 200
+        and path not in _PAGEVIEW_EXCLUDE_PATHS
+        and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)
+        and db.is_configured()
+    ):
+        try:
+            user = auth.current_user(request)
+            with db.get_session() as session:
+                session.add(PageView(path=path, user_id=user["id"] if user else None))
+                session.commit()
+        except Exception:
+            pass
     return response
 
 
@@ -2446,6 +2480,81 @@ async def area_guide(request: Request, outcode: str):
     return templates.TemplateResponse(request, "area_guide.html", context)
 
 
+# --- Admin ---
+
+
+def _is_admin(user: dict | None) -> bool:
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    return bool(admin_email and user and user.get("email", "").lower() == admin_email)
+
+
+@app.get("/admin")
+def admin_dashboard(request: Request):
+    """A single daily-review page, not a full admin panel - traffic,
+    signups, Premium conversion and plan mix, all from data this app
+    already has (no new third-party analytics service, which would
+    also contradict the "no tracking" line in /privacy). Gated by
+    ADMIN_EMAIL rather than a real roles/permissions system - there's
+    exactly one person who needs this, so a proper roles table would
+    be solving a problem that doesn't exist yet. 404s (not 403) for
+    anyone else, so the route's existence isn't advertised either."""
+    context = base_context(request)
+    if not _is_admin(context["current_user"]):
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = now - datetime.timedelta(days=7)
+    month_start = now - datetime.timedelta(days=30)
+
+    with db.get_session() as session:
+        context["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start)) or 0
+        context["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
+        context["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
+        context["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView)) or 0
+
+        context["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
+        context["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
+        context["signups_month"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= month_start)) or 0
+        context["signups_total"] = session.scalar(select(func.count()).select_from(User)) or 0
+
+        context["premium_total"] = session.scalar(select(func.count()).select_from(User).where(User.is_premium.is_(True))) or 0
+
+        plan_rows = session.execute(
+            select(User.plan, func.count()).where(User.is_premium.is_(True)).group_by(User.plan)
+        ).all()
+        context["plan_breakdown"] = [{"plan": p or "Comped / no plan on file", "count": c} for p, c in plan_rows]
+
+        # Daily pageviews for the last 14 days, oldest first - a quick
+        # trend glance without needing a full charting library.
+        daily_rows = session.execute(
+            select(func.date(PageView.created_at), func.count())
+            .where(PageView.created_at >= now - datetime.timedelta(days=14))
+            .group_by(func.date(PageView.created_at))
+            .order_by(func.date(PageView.created_at))
+        ).all()
+        context["daily_pageviews"] = [{"date": str(d), "count": c} for d, c in daily_rows]
+
+        referral_rows = session.execute(
+            select(User.referred_by, func.count())
+            .where(User.referred_by.is_not(None))
+            .group_by(User.referred_by)
+            .order_by(func.count().desc())
+        ).all()
+        context["referral_breakdown"] = [{"code": code, "count": c} for code, c in referral_rows]
+
+        recent = session.scalars(select(User).order_by(User.created_at.desc()).limit(20)).all()
+        context["recent_signups"] = [
+            {
+                "email": u.email, "created_at": u.created_at, "is_premium": u.is_premium,
+                "plan": u.plan, "subscription_status": u.subscription_status, "referred_by": u.referred_by,
+            }
+            for u in recent
+        ]
+
+    return templates.TemplateResponse(request, "admin.html", context)
+
+
 # --- Accounts ---
 
 
@@ -2561,6 +2670,9 @@ async def stripe_webhook(request: Request):
             db_user.subscription_status = status
             db_user.is_premium = stripe_billing.grants_access(status)
             db_user.stripe_subscription_id = data.get("id")
+            items = data.get("items", {}).get("data", [])
+            price_id = items[0].get("price", {}).get("id") if items else None
+            db_user.plan = stripe_billing.plan_for_price_id(price_id)
             trial_end = data.get("trial_end")
             db_user.trial_ends_at = (
                 datetime.datetime.fromtimestamp(trial_end, tz=datetime.timezone.utc) if trial_end else None
