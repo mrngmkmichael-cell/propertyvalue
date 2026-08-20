@@ -26,6 +26,12 @@ class User(Base):
     stripe_subscription_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     subscription_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Whatever ?ref= code was present when this person first landed
+    # (see main.py's _REFERRAL_COOKIE handling) - a partner/agent code,
+    # or None for organic signups. Free text, not a foreign key to a
+    # partners table: there's no partner management UI yet, just this
+    # raw attribution string to query manually until one exists.
+    referred_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

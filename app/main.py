@@ -60,6 +60,30 @@ app.add_middleware(
     same_site="lax",
 )
 
+REFERRAL_COOKIE = "pv_ref"
+REFERRAL_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days between clicking a partner link and actually signing up is generous but not unreasonable
+_SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
+
+
+@app.middleware("http")
+async def capture_referral(request: Request, call_next):
+    """A ?ref=CODE on any URL (not just /signup) gets remembered in a
+    cookie, so a partner's link can point at a normal property/search
+    page - not force everyone through /signup first - and still get
+    credit if that visit later turns into a real signup. First-touch
+    attribution: an existing cookie is never overwritten by a later ref,
+    so whoever actually brought the person here keeps the credit."""
+    ref = request.query_params.get("ref")
+    response = await call_next(request)
+    if ref and REFERRAL_COOKIE not in request.cookies:
+        safe_ref = _SAFE_REF_RE.sub("", ref)[:64]
+        if safe_ref:
+            response.set_cookie(
+                REFERRAL_COOKIE, safe_ref, max_age=REFERRAL_COOKIE_MAX_AGE_S, httponly=True, samesite="lax"
+            )
+    return response
+
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 # Cache-busting query string for static assets, tied to the CSS
@@ -638,6 +662,32 @@ def terms(request: Request):
 @app.get("/support")
 def support(request: Request):
     return templates.TemplateResponse(request, "support.html", base_context(request))
+
+
+@app.get("/embed")
+def embed_generator(request: Request, postcode: str = "", ref: str = ""):
+    """Self-serve badge generator for estate agents/partners - no
+    partner-management UI or approval step exists yet, so this is
+    intentionally open to anyone: the value is in agents linking back
+    to a free report (and, if they use their own ref= code, getting
+    attributed via the same cookie capture_referral() sets everywhere
+    else), not in gatekeeping who can embed a badge."""
+    context = base_context(request)
+    postcode = postcode.strip().upper()
+    ref = _SAFE_REF_RE.sub("", ref)[:64]
+    context["postcode"] = postcode
+    context["ref"] = ref
+    if postcode:
+        base = _public_base_url(request)
+        link = f"{base}/property?postcode={quote(postcode)}"
+        if ref:
+            link += f"&ref={quote(ref)}"
+        context["embed_link"] = link
+        context["embed_snippet"] = (
+            f'<a href="{link}" target="_blank" rel="noopener">'
+            f'<img src="{base}/static/badge.svg" alt="View free UK property report on UKPropertyInsight" width="220" height="40"></a>'
+        )
+    return templates.TemplateResponse(request, "embed.html", context)
 
 
 @app.get("/property")
@@ -2475,7 +2525,10 @@ def signup_submit(request: Request, email: str = Form(...), password: str = Form
             context["error"] = "An account with that email already exists."
             return templates.TemplateResponse(request, "signup.html", context)
 
-        user = User(email=email, password_hash=auth.hash_password(password))
+        user = User(
+            email=email, password_hash=auth.hash_password(password),
+            referred_by=request.cookies.get(REFERRAL_COOKIE),
+        )
         session.add(user)
         session.commit()
         session.refresh(user)

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="40" viewBox="0 0 220 40">
+    <rect width="220" height="40" rx="8" fill="#f4f6f9" stroke="#dde2ea"/>
+    <rect x="8" y="8" width="24" height="24" rx="6" fill="#3b5bfd"/>
+    <text x="20" y="25" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="800" fill="#ffffff" text-anchor="middle">U</text>
+    <text x="42" y="18" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="700" fill="#171d2b">UKPropertyInsight</text>
+    <text x="42" y="30" font-family="Arial, Helvetica, sans-serif" font-size="8" fill="#667085">View free property report &#8594;</text>
+</svg>
