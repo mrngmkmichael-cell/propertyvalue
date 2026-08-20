@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}UK house price snapshot: {{ generated_date }} — UKPropertyInsight{% endblock %}
+
+{% block extra_head %}
+<meta name="description" content="Average house prices and annual price growth across {{ areas|length }} major UK cities, from HM Land Registry's House Price Index, updated {{ generated_date }}.">
+{% endblock %}
+
+{% block content %}
+<span class="kicker">Market snapshot</span>
+<h1>UK house prices by city</h1>
+<p class="dek">
+    Average price and annual change across {{ areas|length }} major UK cities, straight from HM Land
+    Registry's House Price Index — the same source every property report on this site uses, not a
+    press release or a one-off article. Updated {{ generated_date }}.
+</p>
+
+{% if areas %}
+<table class="tx-table">
+    <thead>
+        <tr>
+            <th>Area</th>
+            <th class="num">Average price</th>
+            <th class="num">Annual change</th>
+            <th>As of</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in areas %}
+        <tr>
+            <td>{{ a.name }}</td>
+            <td class="num">{{ a.average_price | gbp }}</td>
+            <td class="num" style="color: {{ '#1a8a5f' if a.annual_change_pct >= 0 else '#c23b3b' }};">
+                {{ "%+.1f"|format(a.annual_change_pct) }}%
+            </td>
+            <td>{{ a.period[:7] }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p class="section-sub">
+    {% set biggest_riser = areas | sort(attribute="annual_change_pct", reverse=True) | first %}
+    {% set biggest_faller = areas | sort(attribute="annual_change_pct") | first %}
+    Fastest growing: <strong>{{ biggest_riser.name }}</strong> ({{ "%+.1f"|format(biggest_riser.annual_change_pct) }}%).
+    Steepest falling: <strong>{{ biggest_faller.name }}</strong> ({{ "%+.1f"|format(biggest_faller.annual_change_pct) }}%).
+</p>
+{% else %}
+<p class="notice notice-error">Couldn't load house price data right now — try again shortly.</p>
+{% endif %}
+
+<section class="report-section">
+    <h2>Check a specific area</h2>
+    <p class="section-sub">
+        This snapshot covers city-wide averages. For a specific postcode's own sold price history,
+        schools, crime and flood risk, <a href="/">search it directly</a> — or browse an
+        <a href="/area/SW1A">area guide</a> for any UK postcode district.
+    </p>
+</section>
+{% endblock %}

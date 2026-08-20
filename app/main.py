@@ -627,7 +627,7 @@ AREA_GUIDE_SEED_OUTCODES = [
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
-    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support"]
+    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/embed"]
     urls = [f"{base}{p}" for p in static_paths] + [f"{base}/area/{o}" for o in AREA_GUIDE_SEED_OUTCODES]
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -688,6 +688,61 @@ def embed_generator(request: Request, postcode: str = "", ref: str = ""):
             f'<img src="{base}/static/badge.svg" alt="View free UK property report on UKPropertyInsight" width="220" height="40"></a>'
         )
     return templates.TemplateResponse(request, "embed.html", context)
+
+
+MARKET_REPORT_AREAS = [
+    "Westminster", "Manchester", "Birmingham", "Leeds", "Liverpool", "Sheffield", "Bristol",
+    "Newcastle upon Tyne", "Nottingham", "Leicester", "Brighton and Hove", "Oxford", "Cambridge",
+    "Cardiff", "Edinburgh", "Glasgow", "Aberdeen", "Belfast",
+]
+MARKET_REPORT_CACHE_TTL_S = 86400  # HPI itself only updates monthly - a day's staleness costs nothing real
+# Every area here resolves individually (confirmed live), but firing all
+# 18 through the shared Land Registry SPARQL endpoint at once (each one
+# is itself 3 concurrent sub-queries - 54 total) started silently
+# failing most of them, presumably the endpoint rate-limiting a burst
+# from one client. A cap of 4 concurrent area_comparison() calls fixed
+# it in testing without making the page noticeably slower (still fully
+# parallel, just not ALL 18 at literally the same instant).
+_MARKET_REPORT_CONCURRENCY = asyncio.Semaphore(4)
+
+
+async def _market_report_area(name: str) -> dict | None:
+    async with _MARKET_REPORT_CONCURRENCY:
+        return await hpi.area_comparison(name, "", "")
+
+
+@app.get("/market-report")
+async def market_report(request: Request):
+    """A live, always-current "state of the market" page built from
+    the same HPI service every property report already uses, rather
+    than a one-off hand-written article that goes stale the day it's
+    published. Areas that don't resolve are silently dropped, not
+    shown as an error - this is presented as a ranked snapshot of
+    however many areas resolved, not a promise that all N will."""
+    context = base_context(request)
+
+    cached = _cache.get(("market_report",), MARKET_REPORT_CACHE_TTL_S)
+    if cached is not None:
+        context.update(cached)
+        return templates.TemplateResponse(request, "market_report.html", context)
+
+    results = await asyncio.gather(
+        *(_market_report_area(name) for name in MARKET_REPORT_AREAS),
+        return_exceptions=True,
+    )
+    areas = [
+        r["local_authority"] for r in results
+        if not isinstance(r, Exception) and r and r.get("local_authority")
+    ]
+    areas.sort(key=lambda a: a["annual_change_pct"], reverse=True)
+
+    page_data = {
+        "areas": areas,
+        "generated_date": datetime.date.today().strftime("%d %B %Y"),
+    }
+    _cache.set(("market_report",), page_data)
+    context.update(page_data)
+    return templates.TemplateResponse(request, "market_report.html", context)
 
 
 @app.get("/property")
