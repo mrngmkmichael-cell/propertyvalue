@@ -200,6 +200,82 @@ a {
     background: var(--accent-soft);
 }
 
+.nav-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.nav-toggle-bars {
+    position: relative;
+    display: block;
+    width: 1.1rem;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+}
+
+.nav-toggle-bars::before,
+.nav-toggle-bars::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.nav-toggle-bars::before { top: -0.35rem; }
+.nav-toggle-bars::after { top: 0.35rem; }
+
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars { background: transparent; }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::before { transform: translateY(0.35rem) rotate(45deg); }
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars::after { transform: translateY(-0.35rem) rotate(-45deg); }
+
+/* Small viewports don't have room for the full nav inline (it was
+   wrapping into a cramped, hard-to-tap mess next to the logo) -
+   collapse it behind a standard hamburger toggle instead. */
+@media (max-width: 640px) {
+    .nav-toggle {
+        display: inline-flex;
+    }
+
+    .site-nav {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.15rem;
+        width: 100%;
+        order: 3;
+        padding-top: 0.75rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .site-nav.nav-open {
+        display: flex;
+    }
+
+    .site-nav a,
+    .site-nav button,
+    .site-nav .nav-form,
+    .site-nav .nav-form button {
+        width: 100%;
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+    }
+}
+
 /* Main */
 
 .site-main {

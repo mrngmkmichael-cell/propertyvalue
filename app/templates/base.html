@@ -28,7 +28,10 @@
                 <span class="tagline">UK Property Intelligence</span>
             </div>
             {% if accounts_configured %}
-            <nav class="site-nav">
+            <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu" aria-label="Menu">
+                <span class="nav-toggle-bars"></span>
+            </button>
+            <nav class="site-nav" id="site-nav-menu">
                 <a href="/methodology">Why trust this</a>
                 <a href="/schools/guide">School Guide</a>
                 <a href="/premium">Pricing</a>
@@ -67,6 +70,31 @@
             </p>
         </div>
     </footer>
+    <script>
+        (function () {
+            const toggle = document.getElementById('nav-toggle');
+            const menu = document.getElementById('site-nav-menu');
+            if (!toggle || !menu) return;
+            toggle.addEventListener('click', function () {
+                const open = menu.classList.toggle('nav-open');
+                toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+            // A same-page nav link (or resizing past the mobile
+            // breakpoint) shouldn't leave the menu stuck open.
+            menu.addEventListener('click', function (e) {
+                if (e.target.closest('a')) {
+                    menu.classList.remove('nav-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 640) {
+                    menu.classList.remove('nav-open');
+                    toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
+    </script>
     <script>
         (function () {
             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
