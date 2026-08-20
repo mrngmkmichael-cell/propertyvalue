@@ -4,6 +4,11 @@
   "version": "2.1.0",
   "description": "See sold prices, comparables, schools, EPC, demographics, crime and more for any Rightmove, Zoopla or OnTheMarket listing, without leaving the page.",
   "permissions": ["storage"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "content_scripts": [
     {
       "matches": [
