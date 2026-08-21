@@ -2,9 +2,8 @@
 
 {% block title %}UK house price snapshot: {{ generated_date }} — UKPropertyInsight{% endblock %}
 
-{% block meta_description %}A snapshot of UK house prices from Land Registry and ONS figures — regional averages, recent movement, and what the official data actually shows this month.{% endblock %}
+{% block meta_description %}Average house prices and annual price growth across {{ areas|length }} major UK cities, from HM Land Registry's House Price Index, updated {{ generated_date }}.{% endblock %}
 {% block extra_head %}
-<meta name="description" content="Average house prices and annual price growth across {{ areas|length }} major UK cities, from HM Land Registry's House Price Index, updated {{ generated_date }}.">
 {% endblock %}
 
 {% block content %}
