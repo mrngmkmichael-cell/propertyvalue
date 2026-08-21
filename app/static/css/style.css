@@ -60,9 +60,14 @@
     --bg: #f5f6f8;
     --surface: #ffffff;
     --surface-2: #f1f3f7;
+    /* All three carry body text on --bg/--surface-2, so each has to
+       clear 4.5:1 against the lightest of them (#f1f3f7). That puts a
+       floor under how faint --ink-faint can go: it lands at 4.63:1,
+       and --ink-soft is kept well past its own minimum so the two
+       stay visibly distinct rather than collapsing together. */
     --ink: #12141c;
-    --ink-soft: #667085;
-    --ink-faint: #98a2b3;
+    --ink-soft: #4f5768;
+    --ink-faint: #626e84;
     --border: #e4e7ec;
     --border-strong: #d0d5dd;
 
@@ -71,14 +76,17 @@
     --accent-soft: #eef1ff;
     --accent-ink: #ffffff;
 
-    --cta-orange: #f97316;
-    --cta-orange-hover: #ea580c;
+    /* Deeper than they look like they should be, on purpose: a bright
+       orange on a near-white page cannot reach the 4.5:1 WCAG AA text
+       contrast ratio at any size. #f97316 measured 2.52:1. */
+    --cta-orange: #b74e05;
+    --cta-orange-hover: #a83f09;
 
-    --good: #059669;
+    --good: #047e58;
     --good-bg: #ecfdf5;
-    --warn: #d97706;
+    --warn: #a65b05;
     --warn-bg: #fffbeb;
-    --bad: #dc2626;
+    --bad: #d52222;
     --bad-bg: #fef2f2;
 
     --radius-lg: 16px;
