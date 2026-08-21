@@ -4,6 +4,7 @@ account and a bearer token (see .env.example) — the search
 returns [] rather than raising when no token is configured, so
 the rest of the site still works if this layer isn't set up yet.
 """
+import datetime
 import os
 
 import httpx
@@ -108,8 +109,18 @@ def detect_extension(history: list[dict]) -> dict | None:
     }
 
 
+EPC_VALIDITY_YEARS = 10  # a certificate's statutory validity period, gov.uk EPC guidance
+
+
+def _cost(data: dict, key: str) -> int | None:
+    """current/potential cost fields come back as {"value": N, "currency": "GBP"}."""
+    entry = data.get(key)
+    return entry.get("value") if isinstance(entry, dict) else None
+
+
 async def certificate_detail(certificate_number: str) -> dict | None:
-    """Extra fields (floor area, dwelling type, room count) not
+    """Extra fields (floor area, dwelling type, room count, current/
+    potential energy score and estimated annual running costs) not
     included in the search results - a separate API call per
     certificate, so only fetch this for one representative property
     (the property header), not the whole list."""
@@ -151,9 +162,30 @@ async def certificate_detail(certificate_number: str) -> dict | None:
     if isinstance(dwelling_type, dict):
         dwelling_type = dwelling_type.get("value", "")
 
+    inspection_date = data.get("inspection_date") or data.get("registration_date")
+    valid_until = None
+    if inspection_date:
+        try:
+            d = datetime.date.fromisoformat(inspection_date)
+            valid_until = d.replace(year=d.year + EPC_VALIDITY_YEARS).isoformat()
+        except ValueError:
+            pass
+
     return {
         "dwelling_type": dwelling_type,
         "total_floor_area": data.get("total_floor_area"),
         "habitable_room_count": data.get("habitable_room_count"),
         "year_built": year_built,
+        "current_score": data.get("energy_rating_current"),
+        "potential_score": data.get("energy_rating_potential"),
+        "current_band": (data.get("current_energy_efficiency_band") or "").upper() or None,
+        "potential_band": (data.get("potential_energy_efficiency_band") or "").upper() or None,
+        "inspection_date": inspection_date,
+        "valid_until": valid_until,
+        "heating_cost_current": _cost(data, "heating_cost_current"),
+        "heating_cost_potential": _cost(data, "heating_cost_potential"),
+        "lighting_cost_current": _cost(data, "lighting_cost_current"),
+        "lighting_cost_potential": _cost(data, "lighting_cost_potential"),
+        "hot_water_cost_current": _cost(data, "hot_water_cost_current"),
+        "hot_water_cost_potential": _cost(data, "hot_water_cost_potential"),
     }

@@ -999,6 +999,66 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Energy performance certificates</h2>
+        {% if property_detail and property_detail.current_score and property_detail.current_band %}
+        <div class="epc-hero">
+            <div class="epc-hero-bar">
+                <span class="epc-hero-band epc-g" style="flex-basis: 20%">G</span>
+                <span class="epc-hero-band epc-f" style="flex-basis: 18%">F</span>
+                <span class="epc-hero-band epc-e" style="flex-basis: 16%">E</span>
+                <span class="epc-hero-band epc-d" style="flex-basis: 14%">D</span>
+                <span class="epc-hero-band epc-c" style="flex-basis: 12%">C</span>
+                <span class="epc-hero-band epc-b" style="flex-basis: 11%">B</span>
+                <span class="epc-hero-band epc-a" style="flex-basis: 9%">A</span>
+            </div>
+            <div class="epc-hero-track">
+                <span class="epc-hero-marker" style="left: {{ property_detail.current_score }}%">Current</span>
+                {% if property_detail.potential_score and property_detail.potential_band and property_detail.potential_score > property_detail.current_score %}
+                <span class="epc-hero-marker epc-hero-marker-potential" style="left: {{ property_detail.potential_score }}%">Potential</span>
+                {% endif %}
+            </div>
+            <div class="epc-hero-scores">
+                <div class="epc-hero-score">
+                    <span class="epc-hero-score-label">Current rating</span>
+                    <span class="epc-badge epc-hero-badge epc-{{ property_detail.current_band | lower }}">{{ property_detail.current_band }}</span>
+                    <span class="epc-hero-score-num">{{ property_detail.current_score }}</span>
+                </div>
+                {% if property_detail.potential_score and property_detail.potential_band and property_detail.potential_score > property_detail.current_score %}
+                <div class="epc-hero-score">
+                    <span class="epc-hero-score-label">Potential rating</span>
+                    <span class="epc-badge epc-hero-badge epc-{{ property_detail.potential_band | lower }}">{{ property_detail.potential_band }}</span>
+                    <span class="epc-hero-score-num">{{ property_detail.potential_score }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% if property_detail.valid_until %}
+        <p class="property-detail-note">Certificate for the most recent match at this postcode, valid until {{ property_detail.valid_until }}.</p>
+        {% endif %}
+        {% if property_detail.heating_cost_current or property_detail.lighting_cost_current or property_detail.hot_water_cost_current %}
+        <h3 class="subsection-heading">Estimated annual running costs</h3>
+        <div class="epc-cost-grid">
+            {% if property_detail.heating_cost_current %}
+            <div class="epc-cost-card">
+                <span class="epc-cost-label">Heating</span>
+                <span class="epc-cost-value">£{{ "{:,}".format(property_detail.heating_cost_current) }}<span class="epc-cost-unit">/year</span></span>
+            </div>
+            {% endif %}
+            {% if property_detail.lighting_cost_current %}
+            <div class="epc-cost-card">
+                <span class="epc-cost-label">Lighting</span>
+                <span class="epc-cost-value">£{{ "{:,}".format(property_detail.lighting_cost_current) }}<span class="epc-cost-unit">/year</span></span>
+            </div>
+            {% endif %}
+            {% if property_detail.hot_water_cost_current %}
+            <div class="epc-cost-card">
+                <span class="epc-cost-label">Hot water</span>
+                <span class="epc-cost-value">£{{ "{:,}".format(property_detail.hot_water_cost_current) }}<span class="epc-cost-unit">/year</span></span>
+            </div>
+            {% endif %}
+        </div>
+        <p class="property-detail-note">Modelled by the EPC assessor from standardised assumptions (occupancy, heating pattern) — a guide to compare properties, not a bill forecast.</p>
+        {% endif %}
+        {% endif %}
         {% if epc_error %}
             <p class="notice notice-error">
                 The EPC data service didn't respond. Try again in a moment.
@@ -1304,38 +1364,29 @@
                 The noise data service didn't respond. Try again in a moment.
             </p>
         {% elif noise %}
-            <table class="tx-table">
-                <thead>
-                    <tr>
-                        <th>Source</th>
-                        <th class="num">Level</th>
-                        <th>Band</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if noise.road_db is not none %}
-                    <tr>
-                        <td>Road</td>
-                        <td class="num">{{ noise.road_db }} dB(A)</td>
-                        <td><span class="noise-badge noise-{{ noise.road_label | lower | replace(' ', '-') }}">{{ noise.road_label }}</span></td>
-                    </tr>
-                    {% endif %}
-                    {% if noise.rail_db is not none %}
-                    <tr>
-                        <td>Rail</td>
-                        <td class="num">{{ noise.rail_db }} dB(A)</td>
-                        <td><span class="noise-badge noise-{{ noise.rail_label | lower | replace(' ', '-') }}">{{ noise.rail_label }}</span></td>
-                    </tr>
-                    {% endif %}
-                    {% if noise.airport_db is not none %}
-                    <tr>
-                        <td>Aircraft</td>
-                        <td class="num">{{ noise.airport_db }} dB(A)</td>
-                        <td><span class="noise-badge noise-{{ noise.airport_label | lower | replace(' ', '-') }}">{{ noise.airport_label }}</span></td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+            <div class="modal-stat-grid">
+                {% if noise.road_db is not none %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Road</span>
+                    <span class="noise-badge noise-{{ noise.road_label | lower | replace(' ', '-') }}">{{ noise.road_label }}</span>
+                    <span class="modal-stat-card-value">{{ noise.road_db }} dB(A)</span>
+                </div>
+                {% endif %}
+                {% if noise.rail_db is not none %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Rail</span>
+                    <span class="noise-badge noise-{{ noise.rail_label | lower | replace(' ', '-') }}">{{ noise.rail_label }}</span>
+                    <span class="modal-stat-card-value">{{ noise.rail_db }} dB(A)</span>
+                </div>
+                {% endif %}
+                {% if noise.airport_db is not none %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Aircraft</span>
+                    <span class="noise-badge noise-{{ noise.airport_label | lower | replace(' ', '-') }}">{{ noise.airport_label }}</span>
+                    <span class="modal-stat-card-value">{{ noise.airport_db }} dB(A)</span>
+                </div>
+                {% endif %}
+            </div>
         {% else %}
             <p class="notice">No modelled road, rail or aircraft noise near this address — DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
         {% endif %}
@@ -2073,34 +2124,30 @@
                 Fixed-line broadband availability for this exact postcode, from Ofcom's Connected
                 Nations data.
             </p>
-            <table class="tx-table">
-                <thead>
-                    <tr>
-                        <th>Speed tier</th>
-                        <th class="num">Availability</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Gigabit-capable</td>
-                        <td class="num">{{ broadband.gigabit_pct }}%</td>
-                    </tr>
-                    <tr>
-                        <td>Ultrafast (100Mbit/s+)</td>
-                        <td class="num">{{ broadband.ultrafast_pct }}%</td>
-                    </tr>
-                    <tr>
-                        <td>Superfast (30Mbit/s+)</td>
-                        <td class="num">{{ broadband.superfast_pct }}%</td>
-                    </tr>
-                    {% if broadband.below_uso_pct %}
-                    <tr>
-                        <td>Below the Universal Service Obligation</td>
-                        <td class="num">{{ broadband.below_uso_pct }}%</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+            <div class="modal-stat-grid">
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Gigabit-capable</span>
+                    <span class="modal-stat-card-value">{{ broadband.gigabit_pct }}%</span>
+                    <span class="modal-stat-card-sub">of premises here</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Ultrafast (100Mbit/s+)</span>
+                    <span class="modal-stat-card-value">{{ broadband.ultrafast_pct }}%</span>
+                    <span class="modal-stat-card-sub">of premises here</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Superfast (30Mbit/s+)</span>
+                    <span class="modal-stat-card-value">{{ broadband.superfast_pct }}%</span>
+                    <span class="modal-stat-card-sub">of premises here</span>
+                </div>
+                {% if broadband.below_uso_pct %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Below the USO</span>
+                    <span class="modal-stat-card-value">{{ broadband.below_uso_pct }}%</span>
+                    <span class="noise-badge noise-high">Worth checking</span>
+                </div>
+                {% endif %}
+            </div>
         {% else %}
             <p class="notice">No broadband coverage data available for this postcode.</p>
         {% endif %}
@@ -2123,36 +2170,33 @@
                 level — mobile signal isn't mapped to individual postcodes the way fixed-line
                 broadband is).
             </p>
-            <table class="tx-table">
-                <thead>
-                    <tr>
-                        <th>Coverage</th>
-                        <th class="num">% of premises</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>4G outdoors, from all networks</td>
-                        <td class="num">{{ mobile.coverage_4g_outdoor_all_pct }}%</td>
-                    </tr>
-                    <tr>
-                        <td>4G indoors, from all networks</td>
-                        <td class="num">{{ mobile.coverage_4g_indoor_all_pct }}%</td>
-                    </tr>
-                    {% if mobile.coverage_5g_outdoor_pct %}
-                    <tr>
-                        <td>5G outdoors, from all networks</td>
-                        <td class="num">{{ mobile.coverage_5g_outdoor_pct }}%</td>
-                    </tr>
-                    {% endif %}
-                    {% if mobile.no_4g_outdoor_pct %}
-                    <tr>
-                        <td>No 4G outdoor coverage at all</td>
-                        <td class="num">{{ mobile.no_4g_outdoor_pct }}%</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+            <div class="modal-stat-grid">
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 4G outdoors</span>
+                    <span class="modal-stat-card-value">{{ mobile.coverage_4g_outdoor_all_pct }}%</span>
+                    <span class="modal-stat-card-sub">premises covered by at least one network</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 4G indoors</span>
+                    <span class="modal-stat-card-value">{{ mobile.coverage_4g_indoor_all_pct }}%</span>
+                    <span class="modal-stat-card-sub">premises covered by at least one network</span>
+                </div>
+                {% if mobile.coverage_5g_outdoor_pct %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 5G outdoors</span>
+                    <span class="modal-stat-card-value">{{ mobile.coverage_5g_outdoor_pct }}%</span>
+                    <span class="modal-stat-card-sub">premises covered by at least one network</span>
+                </div>
+                {% endif %}
+                {% if mobile.no_4g_outdoor_pct %}
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} No 4G outdoors</span>
+                    <span class="modal-stat-card-value">{{ mobile.no_4g_outdoor_pct }}%</span>
+                    <span class="noise-badge noise-high">No network reaches here</span>
+                </div>
+                {% endif %}
+            </div>
+            <p class="property-detail-note">Combined across all networks — Ofcom doesn't publish a per-operator (EE/O2/Three/Vodafone) breakdown at this geography.</p>
         {% else %}
             <p class="notice">No mobile coverage data available for this area.</p>
         {% endif %}

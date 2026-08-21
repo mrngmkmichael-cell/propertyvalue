@@ -3013,6 +3013,182 @@ dialog.report-modal .report-section {
     overflow-x: visible;
 }
 
+/* EPC hero: current/potential score against the real G-A band widths */
+
+.epc-hero {
+    margin-top: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+}
+
+.epc-hero-bar {
+    display: flex;
+    height: 2.25rem;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.epc-hero-band {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.4rem;
+    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-size: 0.78rem;
+}
+
+.epc-hero-track {
+    position: relative;
+    margin-top: 0.6rem;
+    height: 1.4rem;
+}
+
+.epc-hero-marker {
+    position: absolute;
+    top: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
+.epc-hero-marker::before {
+    content: "";
+    width: 2px;
+    height: 0.5rem;
+    background: var(--ink);
+    margin-bottom: 0.15rem;
+}
+
+.epc-hero-marker-potential {
+    color: var(--good);
+}
+
+.epc-hero-marker-potential::before {
+    background: var(--good);
+}
+
+.epc-hero-scores {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 1.1rem;
+}
+
+.epc-hero-score {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.epc-hero-score-label {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
+.epc-hero-score-num {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.epc-hero-badge {
+    font-size: 0.85rem;
+    min-width: 1.9rem;
+    padding: 0.25rem 0.7rem;
+}
+
+.epc-cost-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.epc-cost-card {
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.epc-cost-label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+}
+
+.epc-cost-value {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.epc-cost-unit {
+    font-weight: 500;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    margin-left: 0.2rem;
+}
+
+/* Generic modal stat cards - Noise / Broadband / Mobile */
+
+.modal-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.modal-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+}
+
+.modal-stat-card-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--ink);
+}
+
+.modal-stat-card-label svg {
+    width: 18px;
+    height: 18px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+}
+
+.modal-stat-card-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.modal-stat-card-sub {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+}
+
 /* Scroll-in animation */
 
 [data-animate] {
