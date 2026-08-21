@@ -6,13 +6,16 @@
     <meta name="google-site-verification" content="ONmACMSK2QA9zket2_0CImCu-k6LpfkSXOOcsopY9Po" />
     <title>{% block title %}UKPropertyInsight{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    {# Inter is self-hosted (see the @font-face block at the top of
-    style.css). The preload matters: @font-face lives inside style.css,
-    so without this the browser would not discover the font file until
-    that stylesheet had arrived and parsed. This starts it in parallel
-    instead. Only the latin file is preloaded - latin-ext and italic
-    load on demand, and preloading an unused font wastes the bytes. #}
-    <link rel="preload" href="/static/fonts/inter-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
+    {# Both typefaces are self-hosted (see the @font-face block at the
+    top of style.css). These preloads matter: @font-face lives inside
+    style.css, so without them the browser would not discover the font
+    files until that stylesheet had arrived and parsed. This starts them
+    in parallel instead. Only the two latin files are preloaded -
+    latin-ext and italic load on demand, and preloading an unused font
+    wastes the bytes. Together they are 40.9 KiB, less than Inter alone
+    used to cost. #}
+    <link rel="preload" href="/static/fonts/instrument-sans-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/static/fonts/jetbrains-mono-labels.woff2" as="font" type="font/woff2" crossorigin>
 
     {# Inlined rather than linked: a <link> here cost ~290ms of
     render-blocking time, one whole round trip before the browser could
