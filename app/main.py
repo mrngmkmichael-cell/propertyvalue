@@ -2853,7 +2853,7 @@ async def stripe_webhook(request: Request):
 
 
 @app.get("/signup")
-def signup_form(request: Request, next: str = "/watchlist"):
+def signup_form(request: Request, next: str = "/"):
     context = base_context(request)
     context["next"] = next
     return templates.TemplateResponse(request, "signup.html", context)
@@ -2861,7 +2861,7 @@ def signup_form(request: Request, next: str = "/watchlist"):
 
 @app.post("/signup")
 def signup_submit(
-    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/watchlist")
+    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/")
 ):
     context = base_context(request)
     context["next"] = next
