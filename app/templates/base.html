@@ -10,12 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css?v={{ css_version }}">
 
+    <link rel="canonical" href="{{ canonical_url }}">
+
     {# Sensible site-wide defaults for link previews (Slack, WhatsApp,
     Twitter/X, etc.) - any page can override og_title/og_description/
     og_image individually without needing to redeclare the rest. #}
     <meta property="og:site_name" content="UKPropertyInsight">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:url" content="{{ canonical_url }}">
     <meta property="og:title" content="{% block og_title %}UKPropertyInsight{% endblock %}">
     <meta property="og:description" content="{% block og_description %}Sold prices, EPC, flood risk, crime and schools for any UK postcode — all in one place, sourced from official public data.{% endblock %}">
     <meta property="og:image" content="{% block og_image %}{{ request.url_for('static', path='img/og-default.png') }}{% endblock %}">

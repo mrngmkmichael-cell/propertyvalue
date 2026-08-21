@@ -99,7 +99,15 @@ async def capture_pageview(request: Request, call_next):
     dashboard (see models.py's PageView for why this is deliberately
     minimal - no IP, no user-agent, nothing that could re-identify an
     anonymous visitor). Logged after the response so a DB hiccup here
-    can never be the reason a real page fails to load."""
+    can never be the reason a real page fails to load.
+
+    Skips logging entirely when the visitor is logged in as the admin
+    account - otherwise every time the site owner checks their own
+    dashboard or clicks around while logged in, it inflates the very
+    traffic numbers that dashboard is supposed to report. This only
+    catches logged-in browsing (no way to distinguish the owner from
+    a stranger while logged out without IP/fingerprinting, which the
+    privacy policy explicitly promises not to do)."""
     response = await call_next(request)
     path = request.url.path
     if (
@@ -111,6 +119,8 @@ async def capture_pageview(request: Request, call_next):
     ):
         try:
             user = auth.current_user(request)
+            if _is_admin(user):
+                return response
             with db.get_session() as session:
                 session.add(PageView(path=path, user_id=user["id"] if user else None))
                 session.commit()
@@ -589,6 +599,12 @@ def base_context(request: Request) -> dict:
         "current_user": auth.current_user(request),
         "accounts_configured": db.is_configured(),
         "google_maps_api_key": os.environ.get("GOOGLE_MAPS_API_KEY", ""),
+        # Default canonical is the current path with no query string - so a
+        # link carrying ?ref=... or ?utm_source=... for tracking doesn't get
+        # indexed as a separate page from the clean URL. Routes whose actual
+        # content varies by query param (e.g. /property?postcode=...) set
+        # their own normalized canonical_url after resolving that param.
+        "canonical_url": f"{_public_base_url(request)}{request.url.path}",
     }
 
 
@@ -624,37 +640,83 @@ def index(request: Request):
 # time (e.g. from real search/watchlist activity) rather than trying
 # to enumerate the whole country in one go.
 AREA_GUIDE_SEED_OUTCODES = [
-    "EC1A", "EC2A", "EC3A", "EC4A", "W1A", "WC1A", "WC2A", "SW1A", "SW3", "SW7", "SE1", "N1", "E1", "E14", "NW1", "NW3",
-    "M1", "M2", "M3", "M4", "M15", "M20",
-    "B1", "B2", "B3", "B15", "B16",
-    "LS1", "LS2", "LS6",
-    "L1", "L2", "L18",
-    "S1", "S2", "S10",
-    "NE1", "NE2",
-    "BS1", "BS8",
-    "BN1", "BN2",
-    "CB1", "CB2",
-    "OX1", "OX2", "OX4",
-    "CF10", "CF11", "CF24",
-    "EH1", "EH2", "EH3", "EH6",
-    "G1", "G2", "G3", "G12",
+    # Every entry here has been verified against postcodes.io's real
+    # /outcodes/{outcode} endpoint (see scripts/validate_outcodes.py) -
+    # nothing hand-guessed, so the sitemap never links to a broken
+    # /area/{outcode} page. London.
+    "EC1A", "EC2A", "EC3A", "EC4A", "W1A", "WC1A", "WC2A",
+    "SW1A", "SW1P", "SW1V", "SW1W", "SW1X", "SW1Y",
+    "SW2", "SW3", "SW4", "SW5", "SW6", "SW7", "SW8", "SW9", "SW10", "SW11", "SW12", "SW13", "SW14", "SW15", "SW16", "SW17", "SW18", "SW19", "SW20",
+    "W2", "W3", "W4", "W5", "W6", "W7", "W8", "W9", "W10", "W11", "W12", "W13", "W14",
+    "N1", "N2", "N3", "N4", "N5", "N6", "N7", "N8", "N9", "N10", "N11", "N12", "N13", "N14", "N15", "N16", "N17", "N18", "N19", "N20", "N21", "N22",
+    "NW1", "NW2", "NW3", "NW4", "NW5", "NW6", "NW7", "NW8", "NW9", "NW10", "NW11",
+    "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9", "E10", "E11", "E12", "E13", "E14", "E15", "E16", "E17", "E18", "E20",
+    "SE1", "SE2", "SE3", "SE4", "SE5", "SE6", "SE7", "SE8", "SE9", "SE10", "SE11", "SE12", "SE13", "SE14", "SE15", "SE16", "SE17", "SE18", "SE19", "SE20", "SE21", "SE22", "SE23", "SE24", "SE25", "SE26", "SE27", "SE28",
+    # Manchester
+    "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9", "M11", "M12", "M13", "M14", "M15", "M16", "M17", "M18", "M19", "M20", "M21", "M22", "M23", "M25", "M30", "M40", "M50",
+    # Birmingham
+    "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12", "B13", "B14", "B15", "B16", "B17", "B18", "B19", "B20", "B21", "B23", "B24", "B25", "B26", "B27", "B28", "B29", "B30", "B31", "B32", "B33", "B34", "B35", "B36",
+    # Leeds
+    "LS1", "LS2", "LS3", "LS4", "LS5", "LS6", "LS7", "LS8", "LS9", "LS10", "LS11", "LS12", "LS13", "LS14", "LS15", "LS16", "LS17",
+    # Liverpool
+    "L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L11", "L12", "L13", "L14", "L15", "L17", "L18", "L19", "L25",
+    # Bristol
+    "BS1", "BS2", "BS3", "BS4", "BS5", "BS6", "BS7", "BS8", "BS9", "BS10", "BS13", "BS14", "BS15", "BS16",
+    # Glasgow
+    "G1", "G2", "G3", "G4", "G5", "G11", "G12", "G13", "G14", "G20", "G21", "G31", "G41", "G42", "G43", "G44", "G51", "G52",
+    # Edinburgh
+    "EH1", "EH2", "EH3", "EH4", "EH5", "EH6", "EH7", "EH8", "EH9", "EH10", "EH11", "EH12", "EH13", "EH14", "EH15", "EH16", "EH17",
+    # Cardiff
+    "CF10", "CF11", "CF14", "CF15", "CF23", "CF24",
+    # Sheffield
+    "S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11", "S12",
+    # Newcastle
+    "NE1", "NE2", "NE3", "NE4", "NE5", "NE6", "NE7",
+    # Nottingham
+    "NG1", "NG2", "NG3", "NG5", "NG7", "NG8", "NG9",
+    # Leicester
+    "LE1", "LE2", "LE3", "LE4", "LE5",
+    # Southampton
+    "SO14", "SO15", "SO16", "SO17", "SO18", "SO19",
+    # Brighton
+    "BN1", "BN2", "BN3",
+    # Oxford
+    "OX1", "OX2", "OX3", "OX4",
+    # Cambridge
+    "CB1", "CB2", "CB3", "CB4",
+    # Bath
+    "BA1", "BA2",
+    # York
+    "YO1", "YO10", "YO24", "YO26",
+    # Reading
+    "RG1", "RG2", "RG6",
+    # Milton Keynes
+    "MK1", "MK2", "MK9",
+    # Coventry
+    "CV1", "CV2", "CV3", "CV4", "CV5", "CV6",
+    # Aberdeen
     "AB10", "AB11", "AB24",
+    # Dundee
     "DD1", "DD2",
+    # Belfast
     "BT1", "BT9",
-    "SO14", "SO15",
+    # Portsmouth
     "PO1", "PO5",
-    "NG1", "NG7",
-    "LE1", "LE2",
-    "CV1", "CV3",
+    # Plymouth
     "PL1", "PL4",
+    # Exeter
     "EX1", "EX4",
-    "YO1", "YO10",
+    # Derby
     "DE1", "DE22",
+    # Norwich
     "NR1", "NR2",
-    "RG1", "RG6",
+    # Swindon
     "SN1", "SN3",
+    # Gloucester
     "GL1", "GL50",
+    # Canterbury
     "CT1", "CT2",
+    # Medway
     "ME1", "ME4",
 ]
 
@@ -819,6 +881,17 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if location is None:
         context["error"] = "not_found"
         return templates.TemplateResponse(request, "property.html", context)
+
+    # Overrides base_context's path-only default: postcode is a query
+    # param here, not part of the path, and the content genuinely varies
+    # by it - but it varies by the *normalized* postcode (location's, not
+    # whatever spacing/case the visitor typed), so "sw1a1aa", "SW1A 1AA"
+    # and "SW1A1AA" all canonicalize to the one URL instead of splitting
+    # ranking signal across three.
+    canonical_qs = f"postcode={quote(location['postcode'])}"
+    if house_number:
+        canonical_qs += f"&house_number={quote(house_number)}"
+    context["canonical_url"] = f"{_public_base_url(request)}/property?{canonical_qs}"
 
     context["active_tab"] = "summary"
     premium_unlocked = bool(context["current_user"] and context["current_user"].get("is_premium"))
@@ -2436,6 +2509,10 @@ async def area_guide(request: Request, outcode: str):
     outcode = outcode.strip().upper()
     context = base_context(request)
     context["query"] = outcode
+    # Path-based, but not case-normalized in the URL itself - without this
+    # override, /area/sw1a and /area/SW1A canonicalize to two different
+    # URLs for identical content.
+    context["canonical_url"] = f"{_public_base_url(request)}/area/{outcode}"
 
     if not _OUTCODE_RE.match(outcode):
         return templates.TemplateResponse(request, "area_guide.html", context, status_code=404)

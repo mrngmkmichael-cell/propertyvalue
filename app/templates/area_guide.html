@@ -5,7 +5,6 @@
 {% block extra_head %}
 {% if outcode %}
 <meta name="description" content="{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.">
-<link rel="canonical" href="{{ request.url_for('area_guide', outcode=outcode) }}">
 {% if has_data %}
 <script type="application/ld+json">
 {
