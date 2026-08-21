@@ -17,6 +17,10 @@
     <p class="notice notice-error">{{ error }}</p>
 {% endif %}
 
+{% if google_oauth_configured %}
+{% include "_google_button.html" %}
+{% endif %}
+
 <form class="stacked-form" action="/signup" method="post">
     <input type="hidden" name="next" value="{{ next or '/' }}">
     <div class="search-form-field">

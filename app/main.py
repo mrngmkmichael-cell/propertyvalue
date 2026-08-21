@@ -27,7 +27,7 @@ from app.models import PageView, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
-    food_hygiene, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
+    food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     stripe_billing, surface_water_risk, telegram, valuation,
 )
@@ -617,6 +617,10 @@ def base_context(request: Request) -> dict:
     return {
         "current_user": auth.current_user(request),
         "accounts_configured": db.is_configured(),
+        # Set here rather than on the two auth routes so the button
+        # survives a re-render after a form error, which is exactly when
+        # someone is most likely to reach for it.
+        "google_oauth_configured": google_oauth.is_configured(),
         "google_maps_api_key": os.environ.get("GOOGLE_MAPS_API_KEY", ""),
         # Default canonical is the current path with no query string - so a
         # link carrying ?ref=... or ?utm_source=... for tracking doesn't get
@@ -2824,6 +2828,24 @@ def _public_base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/").replace("http://", "https://", 1)
 
 
+def _oauth_redirect_uri(request: Request) -> str:
+    """Where Google sends the browser back to after sign-in.
+
+    Deliberately not _public_base_url(): that forces https, which is
+    correct in production but produces https://127.0.0.1:8000 locally,
+    and Google rejects a redirect_uri that doesn't match the console
+    entry exactly.
+    """
+    configured = os.environ.get("SITE_URL")
+    if configured:
+        base = configured.rstrip("/")
+    elif IS_PRODUCTION:
+        base = _public_base_url(request)
+    else:
+        base = str(request.base_url).rstrip("/")
+    return f"{base}/auth/google/callback"
+
+
 @app.get("/premium")
 def premium_info(request: Request, checkout: str = "", error: str = ""):
     context = base_context(request)
@@ -2948,10 +2970,22 @@ async def stripe_webhook(request: Request):
     return JSONResponse({"received": True})
 
 
+# Google hands back an opaque code on failure; each maps to something a
+# person can act on. Never render the raw value - it comes from the query
+# string and lands straight in the page.
+_AUTH_ERRORS = {
+    "google_unavailable": "Google sign-in isn't set up right now — use your email and password.",
+    "google_state": "That Google sign-in link had expired. Please try again.",
+    "google_failed": "Couldn't finish signing in with Google. Please try again.",
+    "accounts_unavailable": "Accounts are temporarily unavailable. Please try again shortly.",
+}
+
+
 @app.get("/signup")
-def signup_form(request: Request, next: str = "/"):
+def signup_form(request: Request, next: str = "/", error: str = ""):
     context = base_context(request)
     context["next"] = next
+    context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "signup.html", context)
 
 
@@ -2985,9 +3019,10 @@ def signup_submit(
 
 
 @app.get("/login")
-def login_form(request: Request, next: str = "/"):
+def login_form(request: Request, next: str = "/", error: str = ""):
     context = base_context(request)
     context["next"] = next
+    context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "login.html", context)
 
 
@@ -3013,6 +3048,66 @@ def login_submit(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/auth/google")
+def google_login(request: Request, next: str = "/"):
+    if not google_oauth.is_configured():
+        return RedirectResponse("/login?error=google_unavailable", status_code=303)
+    if not db.is_configured():
+        return RedirectResponse("/login?error=accounts_unavailable", status_code=303)
+
+    # The state token is what stops a third party from feeding this app a
+    # code they obtained themselves: it has to come back matching the one
+    # we just put in this browser's signed session cookie.
+    state = secrets.token_urlsafe(32)
+    request.session["google_oauth_state"] = state
+    request.session["google_oauth_next"] = _safe_next(next)
+    return RedirectResponse(
+        google_oauth.authorization_url(_oauth_redirect_uri(request), state),
+        status_code=303,
+    )
+
+
+@app.get("/auth/google/callback")
+async def google_callback(
+    request: Request, code: str = "", state: str = "", error: str = ""
+):
+    expected_state = request.session.pop("google_oauth_state", None)
+    next_url = _safe_next(request.session.pop("google_oauth_next", "/"))
+
+    # error=access_denied is the normal "user clicked Cancel" path, not a
+    # fault - put them back on the login page without an alarming message.
+    if error or not code:
+        return RedirectResponse("/login", status_code=303)
+    if not expected_state or not hmac.compare_digest(state, expected_state):
+        return RedirectResponse("/login?error=google_state", status_code=303)
+    if not db.is_configured():
+        return RedirectResponse("/login?error=accounts_unavailable", status_code=303)
+
+    email = await google_oauth.fetch_verified_email(code, _oauth_redirect_uri(request))
+    if not email:
+        return RedirectResponse("/login?error=google_failed", status_code=303)
+
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        if user is None:
+            user = User(
+                email=email,
+                password_hash=auth.GOOGLE_ACCOUNT_PLACEHOLDER,
+                referred_by=request.cookies.get(REFERRAL_COOKIE),
+            )
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+        # An existing password account with this address gets signed in
+        # rather than rejected as a duplicate. Google has verified the
+        # person controls the mailbox, which is the same thing the
+        # password proves, so this is a second key to their own door -
+        # their password keeps working too.
+        request.session["user_id"] = user.id
+
+    return RedirectResponse(next_url, status_code=303)
 
 
 # --- Watchlist ---

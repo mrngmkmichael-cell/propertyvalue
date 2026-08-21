@@ -3365,3 +3365,65 @@ dialog.report-modal .report-section {
         padding: 1.25rem;
     }
 }
+
+/* --- Google Sign-In button (login/signup) --- */
+
+.oauth-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    width: 100%;
+    max-width: 24rem;
+    margin-top: 1.5rem;
+    padding: 0.7rem 1.2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.oauth-btn:hover {
+    background: var(--surface-2);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.oauth-btn-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* Rule either side of the word, drawn with borders on the ::before and
+   ::after so it stays centred whatever the label's length. */
+.oauth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-width: 24rem;
+    margin: 1.25rem 0 0;
+    color: var(--ink-soft);
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid var(--border);
+}
+
+.stacked-form + .section-sub,
+.oauth-divider + .stacked-form {
+    margin-top: 1rem;
+}

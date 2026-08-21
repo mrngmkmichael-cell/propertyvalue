@@ -15,6 +15,13 @@ from app.models import User
 
 _ITERATIONS = 260_000
 
+# Stored in password_hash for accounts created through Google Sign-In,
+# which have no password at all. The column is NOT NULL and adding a
+# nullable one would mean migrating a live database, so a sentinel does
+# the job instead: verify_password() splits the stored value on "$" and
+# returns False when that fails, so this can never match any password.
+GOOGLE_ACCOUNT_PLACEHOLDER = "google-oauth-no-password"
+
 
 def hash_password(password: str) -> str:
     salt = os.urandom(16)
