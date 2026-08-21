@@ -3,9 +3,15 @@
 {% block title %}Sign up — UKPropertyInsight{% endblock %}
 
 {% block content %}
+{% if next and next.startswith('/premium') %}
+<span class="kicker">One step from Premium</span>
+<h1>Create your account</h1>
+<p class="dek">You'll land straight back on the Premium plans to start your free trial — no card details needed yet.</p>
+{% else %}
 <span class="kicker">Create account</span>
 <h1>Sign up</h1>
 <p class="dek">Save properties to your watchlist with notes, and check back on them any time.</p>
+{% endif %}
 
 {% if error %}
     <p class="notice notice-error">{{ error }}</p>
