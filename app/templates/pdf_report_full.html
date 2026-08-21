@@ -5,52 +5,101 @@
 <style>
     @page { size: A4; margin: 2cm; }
     body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #171d2b; }
-    h1 { font-size: 20pt; margin: 0 0 4pt; color: #171d2b; }
+    h1 { font-size: 22pt; margin: 0 0 4pt; color: #171d2b; }
     .subtitle { font-size: 10pt; color: #667085; margin: 0 0 4pt; }
     .subtitle2 { font-size: 9pt; color: #98a2b3; margin: 0 0 16pt; }
-    h2 { font-size: 13pt; margin: 18pt 0 6pt; padding-bottom: 4pt; border-bottom: 1.5px solid #2f5fe0; color: #2f5fe0; page-break-after: avoid; }
-    h3 { font-size: 10.5pt; margin: 10pt 0 4pt; color: #171d2b; page-break-after: avoid; }
+    h2 { font-size: 12.5pt; margin: 18pt 0 8pt; padding: 0 0 5pt 0; border-bottom: 2px solid #3b5bfd; color: #171d2b; page-break-after: avoid; }
+    h2 .h2-tick { display: inline-block; width: 8pt; height: 8pt; background: #3b5bfd; border-radius: 2pt; margin-right: 6pt; }
+    h3 { font-size: 10.5pt; margin: 10pt 0 4pt; color: #344054; page-break-after: avoid; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; page-break-inside: avoid; }
-    td, th { padding: 3.5pt 4pt; font-size: 9.5pt; vertical-align: top; text-align: left; }
-    th { color: #667085; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid #dde2ea; }
-    td.label { width: 42%; color: #667085; }
-    td.value { font-weight: bold; }
+    td, th { padding: 5pt 6pt; font-size: 9.5pt; vertical-align: middle; text-align: left; }
+    th { color: #98a2b3; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #eaecf0; padding-bottom: 6pt; }
+    td.label { width: 44%; color: #667085; }
+    td.value { font-weight: 700; color: #171d2b; }
     td.num { text-align: right; }
     th.num { text-align: right; }
-    .row-table tr:nth-child(even) { background: #f7f8fa; }
-    .note { font-size: 8pt; color: #667085; margin-top: 2pt; }
+    .row-table tr { border-bottom: 1px solid #f2f4f7; }
+    .row-table tr:last-child { border-bottom: none; }
+    .note { font-size: 8pt; color: #98a2b3; margin-top: 3pt; }
     .section { page-break-inside: avoid; margin-bottom: 4pt; }
-    .flag-list { margin: 0; padding-left: 14pt; }
-    .flag-list li { font-size: 9.5pt; margin-bottom: 2pt; }
-    .score-box { border: 1.5px solid #2f5fe0; border-radius: 6pt; padding: 10pt 14pt; margin-bottom: 6pt; }
-    .score-value { font-size: 26pt; font-weight: bold; color: #2f5fe0; }
-    .score-grade { font-size: 12pt; font-weight: bold; color: #171d2b; margin-left: 6pt; }
-    .score-verdict { font-size: 10pt; color: #344054; margin-top: 4pt; }
     .two-col { width: 100%; }
-    .two-col td { width: 50%; vertical-align: top; padding: 0 8pt 0 0; }
-    .footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #dde2ea; font-size: 7.5pt; color: #98a2b3; }
+    .two-col td { width: 50%; vertical-align: top; padding: 0 10pt 0 0; }
+
+    /* Badges: colored pill on tinted background, used for risk/status words */
+    .badge { display: inline-block; padding: 2pt 8pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 700; white-space: nowrap; }
+    .badge-good { background: #ecfdf5; color: #059669; }
+    .badge-warn { background: #fffbeb; color: #d97706; }
+    .badge-bad { background: #fef2f2; color: #dc2626; }
+    .badge-neutral { background: #f2f4f7; color: #667085; }
+
+    /* Solid pills: white text on solid color, used for EPC/Ofsted letter grades */
+    .pill { display: inline-block; min-width: 1.3em; padding: 2pt 8pt; border-radius: 10pt; color: #fff; font-weight: 700; font-size: 8.5pt; text-align: center; }
+
+    /* Score box, colored by overview grade */
+    .score-box { border: 1.5px solid #dde2ea; border-radius: 10pt; padding: 14pt 16pt; margin-bottom: 8pt; }
+    .score-box-top { margin-bottom: 6pt; }
+    .score-value { font-size: 30pt; font-weight: 800; }
+    .score-max { font-size: 12pt; color: #98a2b3; font-weight: 400; }
+    .score-grade-pill { display: inline-block; padding: 3pt 10pt; border-radius: 10pt; font-size: 10pt; font-weight: 700; margin-left: 8pt; }
+    .score-verdict { font-size: 10pt; color: #344054; margin: 6pt 0 0; line-height: 1.4; }
+    .grade-excellent { background: #ecfdf5; border-color: #a7f3d0; }
+    .grade-excellent .score-value { color: #059669; }
+    .grade-excellent .score-grade-pill { color: #059669; background: #d1fae5; }
+    .grade-good { background: #eff6ff; border-color: #bfdbfe; }
+    .grade-good .score-value { color: #3b5bfd; }
+    .grade-good .score-grade-pill { color: #3b5bfd; background: #dbeafe; }
+    .grade-fair { background: #fffbeb; border-color: #fde68a; }
+    .grade-fair .score-value { color: #d97706; }
+    .grade-fair .score-grade-pill { color: #d97706; background: #fef3c7; }
+    .grade-below-average, .grade-poor { background: #fef2f2; border-color: #fecaca; }
+    .grade-below-average .score-value, .grade-poor .score-value { color: #dc2626; }
+    .grade-below-average .score-grade-pill, .grade-poor .score-grade-pill { color: #dc2626; background: #fee2e2; }
+
+    .chip-row-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; color: #98a2b3; margin: 8pt 0 3pt; }
+    .chip-table { width: auto; margin-bottom: 4pt; }
+    .chip-table td { padding: 2pt 0; border: none; }
+    .chip { display: inline-block; padding: 3pt 9pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 600; }
+    .chip-good { background: #ecfdf5; color: #059669; }
+    .chip-warn { background: #fffbeb; color: #b45309; }
+
+    .footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #eaecf0; font-size: 7.5pt; color: #98a2b3; }
 </style>
 </head>
 <body>
+
+{% macro badge(label) %}{% if label %}{% set l = label|lower %}{% if 'improbable' in l %}{% set cls = 'badge-good' %}{% elif 'very high' in l or 'high' in l or 'likely' in l or 'probable' in l or 'poor' in l or 'on the site' in l %}{% set cls = 'badge-bad' %}{% elif 'moderate' in l or 'possible' in l or 'medium' in l %}{% set cls = 'badge-warn' %}{% elif 'low' in l or 'none' in l or 'clear' in l %}{% set cls = 'badge-good' %}{% else %}{% set cls = 'badge-neutral' %}{% endif %}<span class="badge {{ cls }}">{{ label }}</span>{% endif %}{% endmacro %}
+
+{% macro epc_badge(rating) %}{% set colors = {'A': '#059669', 'B': '#10b981', 'C': '#65a30d', 'D': '#ca8a04', 'E': '#ea580c', 'F': '#dc2626', 'G': '#b91c1c'} %}<span class="pill" style="background:{{ colors.get(rating, '#98a2b3') }};">{{ rating }}</span>{% endmacro %}
+
+{% macro ofsted_badge(label) %}{% if label %}{% set colors = {'Outstanding': '#059669', 'Good': '#10b981', 'Requires improvement': '#ca8a04', 'Inadequate': '#dc2626'} %}<span class="pill" style="background:{{ colors.get(label, '#98a2b3') }};">{{ label }}</span>{% else %}<span style="color:#98a2b3;">&mdash;</span>{% endif %}{% endmacro %}
 
 <h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
 <p class="subtitle">Full property due-diligence report — generated {{ generated_date }} by UKPropertyInsight</p>
 <p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} — Premium report</p>
 
 {% if overview %}
-<div class="score-box section">
-    <span class="score-value">{{ overview.score }}</span><span class="score-grade">{{ overview.grade }}</span>
+<div class="score-box grade-{{ overview.grade | lower | replace(' ', '-') }} section">
+    <table style="width:auto; margin-bottom:6pt;"><tr>
+        <td style="border:none; padding:0;"><span class="score-value">{{ overview.score }}</span><span class="score-max">/100</span></td>
+        <td style="border:none; padding:0 0 0 8pt;"><span class="score-grade-pill">{{ overview.grade }}</span></td>
+    </tr></table>
     <p class="score-verdict">{{ overview.verdict }}</p>
-    {% if overview.positives %}
-    <p class="note" style="margin-top:6pt;"><strong>Working in its favour:</strong> {{ overview.positives | join(", ") }}</p>
-    {% endif %}
-    {% if overview.concerns %}
-    <p class="note"><strong>Worth checking further:</strong> {{ overview.concerns | join(", ") }}</p>
-    {% endif %}
 </div>
+{% if overview.positives %}
+<p class="chip-row-label">Working in its favour</p>
+<table class="chip-table">
+    {% for p in overview.positives %}<tr><td><span class="chip chip-good">{{ p }}</span></td></tr>{% endfor %}
+</table>
+{% endif %}
+{% if overview.concerns %}
+<p class="chip-row-label">Worth checking further</p>
+<table class="chip-table">
+    {% for c in overview.concerns %}<tr><td><span class="chip chip-warn">{{ c }}</span></td></tr>{% endfor %}
+</table>
+{% endif %}
 {% endif %}
 
-<h2>Sold prices</h2>
+<h2><span class="h2-tick"></span>Sold prices</h2>
 <div class="section">
     <table>
         {% if avg_price %}
@@ -75,7 +124,7 @@
 </div>
 
 {% if valuation or rental %}
-<h2>Valuation &amp; rental</h2>
+<h2><span class="h2-tick"></span>Valuation &amp; rental</h2>
 <div class="section">
     <table class="two-col"><tr>
         <td>
@@ -102,13 +151,14 @@
 {% endif %}
 
 {% if price_trend or hpi %}
-<h2>Price trend &amp; area comparison</h2>
+<h2><span class="h2-tick"></span>Price trend &amp; area comparison</h2>
 <div class="section">
     {% if price_trend %}
     <table>
         <tr><td class="label">5 years ago ({{ price_trend.area_name }})</td><td class="value">{{ price_trend.start_price | gbp }}</td></tr>
         <tr><td class="label">Current</td><td class="value">{{ price_trend.current_price | gbp }}</td></tr>
-        <tr><td class="label">Change</td><td class="value">{{ "%+.1f"|format(price_trend.pct_change) }}%</td></tr>
+        <tr><td class="label">Change</td><td class="value">
+            <span class="badge {{ 'badge-good' if price_trend.pct_change >= 0 else 'badge-bad' }}">{{ "%+.1f"|format(price_trend.pct_change) }}%</span></td></tr>
         {% for p in price_trend.projections %}
         <tr><td class="label">Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td><td class="value">{{ p.price | gbp }}</td></tr>
         {% endfor %}
@@ -119,7 +169,8 @@
         <tr><th>Area</th><th class="num">Average price</th><th class="num">Annual change</th></tr>
         {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
         {% if area %}
-        <tr><td>{{ area.name if area.name else "" }}</td><td class="num">{{ area.average_price | gbp }}</td><td class="num">{{ "%+.1f"|format(area.annual_change_pct) }}%</td></tr>
+        <tr><td>{{ area.name if area.name else "" }}</td><td class="num">{{ area.average_price | gbp }}</td>
+            <td class="num"><span class="badge {{ 'badge-good' if area.annual_change_pct >= 0 else 'badge-bad' }}">{{ "%+.1f"|format(area.annual_change_pct) }}%</span></td></tr>
         {% endif %}
         {% endfor %}
     </table>
@@ -127,7 +178,7 @@
 </div>
 {% endif %}
 
-<h2>Property &amp; energy</h2>
+<h2><span class="h2-tick"></span>Property &amp; energy</h2>
 <div class="section">
     <table>
         {% if property_detail %}
@@ -137,87 +188,91 @@
         <tr><td class="label">Year built (band)</td><td class="value">{{ property_detail.year_built or "Not available" }}</td></tr>
         {% endif %}
         {% if mees_compliant is not none %}
-        <tr><td class="label">MEES compliant (min. lettable rating)</td><td class="value">{{ "Yes" if mees_compliant else "No — rated F or G" }}</td></tr>
+        <tr><td class="label">MEES compliant (min. lettable rating)</td><td class="value">
+            <span class="badge {{ 'badge-good' if mees_compliant else 'badge-bad' }}">{{ "Yes" if mees_compliant else "No — rated F or G" }}</span></td></tr>
         {% endif %}
         {% if lead_plumbing_era %}
-        <tr><td class="label">Lead plumbing era risk</td><td class="value">Built before ~1970 — lead water pipes possible, worth a plumber's check</td></tr>
+        <tr><td class="label">Lead plumbing era risk</td><td class="value"><span class="badge badge-warn">Built before ~1970</span></td></tr>
         {% endif %}
         {% if extension_signal and extension_signal.likely_extended %}
-        <tr><td class="label">Possible unrecorded extension</td><td class="value">Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}% since last EPC record</td></tr>
+        <tr><td class="label">Possible unrecorded extension</td><td class="value"><span class="badge badge-warn">Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}% since last EPC</span></td></tr>
         {% endif %}
     </table>
     {% if certificates %}
     <table class="row-table">
         <tr><th>Address</th><th>Date</th><th class="num">EPC rating</th></tr>
         {% for cert in certificates[:10] %}
-        <tr><td>{{ cert.address }}</td><td>{{ cert.date }}</td><td class="num">{{ cert.rating }}</td></tr>
+        <tr><td>{{ cert.address }}</td><td>{{ cert.date }}</td><td class="num">{{ epc_badge(cert.rating) }}</td></tr>
         {% endfor %}
     </table>
     {% endif %}
 </div>
 
-<h2>Risk &amp; environment</h2>
+<h2><span class="h2-tick"></span>Risk &amp; environment</h2>
 <div class="section">
     <table>
-        <tr><td class="label">Flood zone (rivers &amp; sea)</td><td class="value">{{ flood_zone.label if flood_zone else "Not mapped (Zone 1, low probability)" }}</td></tr>
+        <tr><td class="label">Flood zone (rivers &amp; sea)</td><td class="value">{{ badge(flood_zone.label if flood_zone else "Zone 1 (low probability)") }}</td></tr>
         {% if flood_warnings %}
-        <tr><td class="label">Active flood alerts</td><td class="value">{{ flood_warnings | length }}</td></tr>
+        <tr><td class="label">Active flood alerts</td><td class="value"><span class="badge badge-bad">{{ flood_warnings | length }} active</span></td></tr>
         {% endif %}
         {% if surface_water %}
-        <tr><td class="label">Surface water flood risk</td><td class="value">{{ surface_water.label }}</td></tr>
+        <tr><td class="label">Surface water flood risk</td><td class="value">{{ badge(surface_water.label) }}</td></tr>
         {% endif %}
         {% if radon %}
-        <tr><td class="label">Radon risk</td><td class="value">{{ radon.label if radon.label else radon }}</td></tr>
+        <tr><td class="label">Radon risk</td><td class="value">{{ badge(radon.label if radon.label else radon) }}</td></tr>
         {% endif %}
         {% if clay_risk %}
-        <tr><td class="label">Clay shrink-swell (subsidence) risk, 2030</td><td class="value">{{ clay_risk.label_2030 or "Not available" }}</td></tr>
-        <tr><td class="label">Clay shrink-swell (subsidence) risk, 2050</td><td class="value">{{ clay_risk.label_2050 or "Not available" }}</td></tr>
+        <tr><td class="label">Subsidence risk, 2030 / 2050</td><td class="value">{{ badge(clay_risk.label_2030) }} &nbsp;/&nbsp; {{ badge(clay_risk.label_2050) }}</td></tr>
         {% endif %}
         {% if coal_mining and coal_mining.present %}
-        <tr><td class="label">Coal Mining Reporting Area</td><td class="value">Yes{% if coal_mining.area_name %} — {{ coal_mining.area_name }}{% endif %} — a coal mining search is recommended</td></tr>
+        <tr><td class="label">Coal Mining Reporting Area</td><td class="value"><span class="badge badge-warn">Yes{% if coal_mining.area_name %} — {{ coal_mining.area_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if sewage_outfalls %}
         <tr><td class="label">Nearby sewage outfalls</td><td class="value">{{ sewage_outfalls | length }} within range</td></tr>
         {% endif %}
         {% if historic_landfill and historic_landfill.status != "clear" %}
         <tr><td class="label">Historic landfill</td>
-            <td class="value">{% if historic_landfill.status == "on_site" %}On the site itself — {{ historic_landfill.site_name }}
-                {%- else %}{{ historic_landfill.distance_m }}m away — {{ historic_landfill.site_name }}{% endif %}</td></tr>
+            <td class="value"><span class="badge badge-warn">{% if historic_landfill.status == "on_site" %}On the site itself — {{ historic_landfill.site_name }}
+                {%- else %}{{ historic_landfill.distance_m }}m away — {{ historic_landfill.site_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if air_quality and air_quality.pollutants %}
         {% set aq_worst = air_quality.pollutants | map(attribute="times_guideline") | list | max %}
         <tr><td class="label">Air quality, worst pollutant vs WHO guideline</td>
-            <td class="value">{{ "%.1f"|format(aq_worst) }}&times; guideline{% if aq_worst >= 3 %} — well above{% endif %}</td></tr>
+            <td class="value"><span class="badge {{ 'badge-bad' if aq_worst >= 3 else ('badge-warn' if aq_worst >= 1.5 else 'badge-good') }}">{{ "%.1f"|format(aq_worst) }}&times; guideline</span></td></tr>
         {% endif %}
     </table>
     {% if noise and (noise.road_db is not none or noise.rail_db is not none or noise.airport_db is not none) %}
     <table class="row-table">
         <tr><th>Noise source</th><th class="num">Level</th><th>Rating</th></tr>
-        {% if noise.road_db is not none %}<tr><td>Road</td><td class="num">{{ noise.road_db }} dB(A)</td><td>{{ noise.road_label }}</td></tr>{% endif %}
-        {% if noise.rail_db is not none %}<tr><td>Rail</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ noise.rail_label }}</td></tr>{% endif %}
-        {% if noise.airport_db is not none %}<tr><td>Aircraft</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ noise.airport_label }}</td></tr>{% endif %}
+        {% if noise.road_db is not none %}<tr><td>Road</td><td class="num">{{ noise.road_db }} dB(A)</td><td>{{ badge(noise.road_label) }}</td></tr>{% endif %}
+        {% if noise.rail_db is not none %}<tr><td>Rail</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ badge(noise.rail_label) }}</td></tr>{% endif %}
+        {% if noise.airport_db is not none %}<tr><td>Aircraft</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ badge(noise.airport_label) }}</td></tr>{% endif %}
     </table>
     {% endif %}
     {% if heritage %}
-    <p class="note"><strong>{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby — may affect permitted development rights.</p>
+    <p class="note" style="font-size:9pt; color:#667085;"><strong style="color:#171d2b;">{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby — may affect permitted development rights.</p>
     {% endif %}
 </div>
 
 {% if planning_flags or environmental_flags %}
-<h2>Planning &amp; designations</h2>
+<h2><span class="h2-tick"></span>Planning &amp; designations</h2>
 <div class="section">
     {% if planning_flags %}
-    <h3>Planning constraints present</h3>
-    <ul class="flag-list">{% for d in planning_flags %}<li>{{ d.label }}</li>{% endfor %}</ul>
+    <p class="chip-row-label">Planning constraints present</p>
+    <table class="chip-table">
+        {% for d in planning_flags %}<tr><td><span class="chip chip-warn">{{ d.label }}</span></td></tr>{% endfor %}
+    </table>
     {% endif %}
     {% if environmental_flags %}
-    <h3>Environmental designations present</h3>
-    <ul class="flag-list">{% for d in environmental_flags %}<li>{{ d.label }}</li>{% endfor %}</ul>
+    <p class="chip-row-label">Environmental designations present</p>
+    <table class="chip-table">
+        {% for d in environmental_flags %}<tr><td><span class="chip chip-warn">{{ d.label }}</span></td></tr>{% endfor %}
+    </table>
     {% endif %}
 </div>
 {% endif %}
 
-<h2>Crime</h2>
+<h2><span class="h2-tick"></span>Crime</h2>
 <div class="section">
     <table>
         <tr><td class="label">Recorded crime within ~1 mile{% if crime.month %} ({{ crime.month }}){% endif %}</td>
@@ -237,7 +292,7 @@
 </div>
 
 {% if schools_total %}
-<h2>Schools nearby ({{ schools_total }})</h2>
+<h2><span class="h2-tick"></span>Schools nearby ({{ schools_total }})</h2>
 <div class="section">
     {% for group, list in schools.items() %}
     {% if list %}
@@ -245,7 +300,7 @@
     <table class="row-table">
         <tr><th>Name</th><th>Type</th><th class="num">Distance</th><th>Ofsted</th></tr>
         {% for s in list[:8] %}
-        <tr><td>{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td>{{ s.ofsted_rating_label or "—" }}</td></tr>
+        <tr><td>{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td>{{ ofsted_badge(s.ofsted_rating_label) }}</td></tr>
         {% endfor %}
     </table>
     {% endif %}
@@ -253,7 +308,7 @@
 </div>
 {% endif %}
 
-<h2>Local area &amp; demographics</h2>
+<h2><span class="h2-tick"></span>Local area &amp; demographics</h2>
 <div class="section">
     <table class="two-col"><tr>
         <td>
@@ -277,13 +332,13 @@
 </div>
 
 {% if broadband or mobile %}
-<h2>Connectivity</h2>
+<h2><span class="h2-tick"></span>Connectivity</h2>
 <div class="section">
     <table>
         {% if broadband %}
-        <tr><td class="label">Broadband</td><td class="value">{{ broadband.label }}</td></tr>
+        <tr><td class="label">Broadband</td><td class="value">{{ badge(broadband.label) }}</td></tr>
         {% if broadband.gigabit_pct %}<tr><td class="label">Gigabit-capable</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
-        {% if broadband.below_uso_pct %}<tr><td class="label">Below Universal Service Obligation</td><td class="value">{{ broadband.below_uso_pct }}%</td></tr>{% endif %}
+        {% if broadband.below_uso_pct %}<tr><td class="label">Below Universal Service Obligation</td><td class="value"><span class="badge badge-warn">{{ broadband.below_uso_pct }}%</span></td></tr>{% endif %}
         {% endif %}
         {% if mobile %}
         <tr><td class="label">4G outdoor coverage (all networks)</td><td class="value">{{ mobile.coverage_4g_outdoor_all_pct }}%</td></tr>
@@ -293,7 +348,7 @@
 {% endif %}
 
 {% if nearest_transport %}
-<h2>Transport</h2>
+<h2><span class="h2-tick"></span>Transport</h2>
 <div class="section">
     <table>
         <tr><td class="label">Nearest station</td>
@@ -303,10 +358,9 @@
 {% endif %}
 
 <div class="footer">
-    Generated by UKPropertyInsight from HM Land Registry, EPC Register, Environment Agency, Police.uk, ONS,
-    Department for Education, Ofsted and other official UK sources (Open Government Licence v3.0). This is a
-    summary for reference only, not a substitute for a RICS survey or solicitor's searches. Full live report:
-    ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}
+    Generated by UKPropertyInsight from HM Land Registry, EPC Register, Environment Agency, Police.uk, ONS, Department for Education,
+    Ofsted and other official UK sources (Open Government Licence v3.0). This is a summary for reference only, not a substitute for a RICS survey
+    or solicitor's searches. Full live report: ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}
 </div>
 
 </body>
