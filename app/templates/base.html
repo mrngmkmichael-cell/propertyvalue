@@ -13,7 +13,13 @@
     instead. Only the latin file is preloaded - latin-ext and italic
     load on demand, and preloading an unused font wastes the bytes. #}
     <link rel="preload" href="/static/fonts/inter-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/style.css?v={{ css_version }}">
+
+    {# Inlined rather than linked: a <link> here cost ~290ms of
+    render-blocking time, one whole round trip before the browser could
+    paint. See inline_css() in main.py for why the entire sheet goes in
+    rather than a critical subset. The file is still served at
+    /static/css/style.css for anything that wants it. #}
+    <style>{{ inline_css() }}</style>
 
     {# One block feeds both the search-result snippet and the link
     preview, so a page can never end up with two different summaries of

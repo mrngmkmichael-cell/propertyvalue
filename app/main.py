@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
@@ -150,14 +151,61 @@ async def capture_pageview(request: Request, call_next):
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-# Cache-busting query string for static assets, tied to the CSS
-# file's own mtime - without this, browsers (and Render's static
-# asset caching) can keep serving a stale stylesheet indefinitely
-# after a deploy, which happened repeatedly during development.
-try:
-    templates.env.globals["css_version"] = int(os.path.getmtime("app/static/css/style.css"))
-except OSError:
-    templates.env.globals["css_version"] = 0
+
+STYLESHEET_PATH = "app/static/css/style.css"
+_CSS_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+_css_cache: tuple[float, Markup] | None = None
+
+
+def inline_css() -> Markup:
+    """The whole stylesheet, for embedding in <head> as a <style> block.
+
+    Returns Markup so Jinja doesn't HTML-escape it. Without that the
+    quotes in `font-family: 'Inter', ...` become &#39; and every child
+    combinator becomes &gt;, which silently drops the whole page back to
+    Times New Roman - it renders, so it is easy to miss.
+
+    It used to be a <link>, which PageSpeed flagged as ~290ms of
+    render-blocking time: one extra round trip after the HTML before the
+    browser could paint anything. Only 13% of these rules are needed
+    above the fold, so extracting a "critical" subset was the obvious
+    alternative - but a hand-maintained critical extract silently rots
+    every time a style changes, and the failure mode is unstyled content
+    flashing on a live page. Inlining all of it has no such trap.
+
+    The cost is ~12.7 KiB gzipped on every HTML response, and losing the
+    browser cache between page views. That trade favours this site:
+    most visits arrive from search, read one report and leave, and even
+    a three-page visit saves more in round trips than it spends in
+    repeated bytes.
+
+    Comments are stripped from the served copy - this file carries a lot
+    of prose worth keeping in the source but not worth shipping. Cached
+    against the file's mtime so editing CSS in dev shows up on the next
+    request without a restart.
+    """
+    global _css_cache
+    try:
+        mtime = os.path.getmtime(STYLESHEET_PATH)
+    except OSError:
+        return Markup("")
+    if _css_cache is not None and _css_cache[0] == mtime:
+        return _css_cache[1]
+
+    with open(STYLESHEET_PATH, encoding="utf-8") as fh:
+        css = fh.read()
+    css = _CSS_COMMENT.sub("", css)
+    # Collapse the blank lines the comments leave behind. Deliberately
+    # not a real minifier: gzip already handles indentation, and a regex
+    # that rewrites declarations is a good way to break a stylesheet.
+    css = re.sub(r"\n\s*\n+", "\n", css).strip()
+
+    safe = Markup(css)
+    _css_cache = (mtime, safe)
+    return safe
+
+
+templates.env.globals["inline_css"] = inline_css
 
 
 def _format_gbp(value) -> str:
