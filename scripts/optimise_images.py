@@ -1,4 +1,4 @@
-"""Generate WebP versions of the PNGs the site actually serves.
+"""Generate the WebP versions of the PNGs the site actually serves.
 
 Run after adding or replacing any image under app/static/img/, then
 reference the .webp from the template. The .png originals stay in the
@@ -7,19 +7,25 @@ template points at the .webp.
 
     .venv/Scripts/python.exe scripts/optimise_images.py
 
-Two findings worth keeping, both measured rather than assumed:
+Three findings behind the settings below, all measured rather than
+assumed:
 
-1. Do NOT resize these down to their displayed size. The why-card
-   illustrations are flat art with fourteen unique colours; resampling
-   anti-aliases those edges into thousands of colours and DOUBLES the
-   encoded size. The usual "serve images at display size" advice
-   backfires on flat vector-style art.
+1. Each file is encoded every available way and the smallest wins. One
+   setting does not suit both kinds of image here: the why-card art is
+   flat with fourteen unique colours and compresses best losslessly,
+   while the extension screenshots have thousands of colours and do
+   better at quality 85.
 
-2. Lossless beats lossy on that same flat art (fewer colours compress
-   perfectly), while the extension screenshots - thousands of colours,
-   photographic-ish - do better at quality 85. So each file is encoded
-   every way and the smallest wins, rather than picking one setting for
-   everything.
+2. Resizing flat art to its displayed size makes the file BIGGER, which
+   is the opposite of the usual advice. Resampling anti-aliases fourteen
+   colours into two thousand and doubles the encoded size - a 792x620
+   illustration went from 19.5 KiB to 39.4 KiB when scaled to 440px.
+
+3. ...unless you quantize afterwards, which puts the colour count back
+   where it started and makes the resize pay off properly. Resize plus a
+   16-colour quantize took the why-cards from 61.7 KiB to 29.4 KiB, at a
+   mean per-channel error of under 1/255 measured at real display size
+   against the card background - invisible.
 
 og-default.png is deliberately excluded: it is the Open Graph preview
 image, never loaded by a browser, and WhatsApp/Facebook/LinkedIn link
@@ -35,63 +41,91 @@ from PIL import Image
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMG_ROOT = os.path.join(REPO_ROOT, "app", "static", "img")
 
-# Only what a browser actually downloads. The full-size originals in
-# why-cards/ (as opposed to why-cards/transparent/) are unreferenced
-# working files, so converting them would just add weight to the repo.
-PATTERNS = [
-    "why-cards/transparent/*.png",
-    "extension/*.png",
+# max_px is twice the largest box the layout gives the image, so it stays
+# sharp on a 2x display and no sharper. None means keep full resolution.
+# quantize applies only where the source is flat art (see note 3 above);
+# on a photographic screenshot it would band the gradients.
+GROUPS = [
+    {
+        "pattern": "why-cards/transparent/*.png",
+        # .why-card-icon-box is 220x220 (desktop) / full-width x 120 (mobile)
+        "max_px": 440,
+        "quantize": 16,
+    },
+    {
+        # Displayed near full width on /browser-extension, and photographic -
+        # neither resizing nor quantizing suits them.
+        "pattern": "extension/*.png",
+        "max_px": None,
+        "quantize": None,
+    },
 ]
 
 EXCLUDE = {"og-default.png"}
 
-ENCODINGS = [
-    ("lossless", {"lossless": True, "method": 6}),
-    ("q85", {"quality": 85, "method": 6}),
-    ("q92", {"quality": 92, "method": 6}),
-]
 
-
-def encode(im: Image.Image, opts: dict) -> bytes:
+def encode(im, **opts):
     buf = io.BytesIO()
-    im.save(buf, "WEBP", **opts)
+    im.save(buf, "WEBP", method=6, **opts)
     return buf.getvalue()
+
+
+def candidates(im, max_px, quantize):
+    """Every encoding worth trying for this image, as {label: bytes}."""
+    out = {
+        "lossless": encode(im, lossless=True),
+        "q85": encode(im, quality=85),
+        "q92": encode(im, quality=92),
+    }
+    if max_px and max(im.size) > max_px:
+        small = im.copy()
+        small.thumbnail((max_px, max_px), Image.LANCZOS)
+        out[f"{max_px}px lossless"] = encode(small, lossless=True)
+        out[f"{max_px}px q85"] = encode(small, quality=85)
+        if quantize:
+            # FASTOCTREE is the only quantizer Pillow offers for RGBA, and
+            # dithering would scatter noise across the flat areas that make
+            # this worth doing at all.
+            q = small.quantize(
+                colors=quantize, method=Image.FASTOCTREE, dither=Image.NONE
+            ).convert("RGBA")
+            out[f"{max_px}px {quantize}-colour"] = encode(q, lossless=True)
+    return out
 
 
 def main() -> None:
     total_png = total_webp = 0
     converted = 0
 
-    print(f"{'file':<34}{'PNG':>9}{'WebP':>9}{'saving':>9}  encoding")
-    for pattern in PATTERNS:
-        for path in sorted(glob.glob(os.path.join(IMG_ROOT, pattern))):
+    print(f"{'file':<34}{'PNG':>9}{'WebP':>9}{'saving':>8}  encoding")
+    for group in GROUPS:
+        pattern = os.path.join(IMG_ROOT, group["pattern"])
+        for path in sorted(glob.glob(pattern)):
             name = os.path.basename(path)
             if name in EXCLUDE:
                 continue
 
             im = Image.open(path).convert("RGBA")
-            best_name, best_bytes = None, None
-            for label, opts in ENCODINGS:
-                data = encode(im, opts)
-                if best_bytes is None or len(data) < len(best_bytes):
-                    best_name, best_bytes = label, data
+            opts = candidates(im, group["max_px"], group["quantize"])
+            best_label = min(opts, key=lambda k: len(opts[k]))
+            best = opts[best_label]
 
             png_size = os.path.getsize(path)
-            if len(best_bytes) >= png_size:
-                print(f"{name:<34}{png_size/1024:8.1f}K "
-                      f"{'':>8} {'':>8}  skipped, PNG already smaller")
+            if len(best) >= png_size:
+                print(f"{name:<34}{png_size/1024:8.1f}K{'':>9}{'':>8}  "
+                      f"skipped, PNG already smaller")
                 continue
 
             out_path = os.path.splitext(path)[0] + ".webp"
             with open(out_path, "wb") as fh:
-                fh.write(best_bytes)
+                fh.write(best)
 
             rel = os.path.relpath(out_path, IMG_ROOT).replace("\\", "/")
             total_png += png_size
-            total_webp += len(best_bytes)
+            total_webp += len(best)
             converted += 1
-            print(f"{rel:<34}{png_size/1024:8.1f}K{len(best_bytes)/1024:8.1f}K"
-                  f"{100*(png_size-len(best_bytes))/png_size:8.0f}%  {best_name}")
+            print(f"{rel:<34}{png_size/1024:8.1f}K{len(best)/1024:8.1f}K"
+                  f"{100*(png_size-len(best))/png_size:7.0f}%  {best_label}")
 
     if not converted:
         print("\nNothing to convert.")

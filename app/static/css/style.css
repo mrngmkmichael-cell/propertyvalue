@@ -393,17 +393,50 @@ a {
     width: 100%;
     height: 100%;
     filter: grayscale(0.6) contrast(0.85) brightness(1.18) saturate(1.4) blur(1.5px);
-    /* Leaflet is injected at idle and only on wide screens (see the
-       loader in index.html), so this starts empty and fades in when the
-       tiles arrive rather than snapping into place. Below 861px it stays
-       empty, and the near-opaque .hero-map-fade over it is the same
-       colour as the page background, so nothing looks missing. */
-    opacity: 0;
-    transition: opacity 0.4s ease;
 }
 
-#hero-map.is-loaded {
-    opacity: 1;
+/* The map is a single baked image rather than live tiles - it is a fixed,
+   non-interactive, blurred view, so a tile engine was fetching 277 KiB of
+   PNGs and 56 KiB of Leaflet to draw what is effectively a photograph.
+   See scripts/build_hero_map.py.
+
+   Declared only inside this media query on purpose: below 861px the
+   .hero-map-fade over it is #f5f6f8 at 90-98% opacity - the same colour
+   as the page background - so there is nothing to see, and a background
+   image in an unmatched media query is never downloaded. Mobile pays
+   nothing at all for this. */
+@media (min-width: 861px) {
+    #hero-map {
+        background-image: url('/static/img/hero-map.webp');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+}
+
+/* ODbL credit for the tiles baked into that image. Deliberately quiet,
+   but it must stay legible - it is a licence condition, not decoration. */
+.hero-map-credit {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.5rem;
+    z-index: 2;
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 0.6875rem;
+    color: var(--ink-soft);
+}
+
+.hero-map-credit a {
+    color: inherit;
+    text-decoration: underline;
+}
+
+@media (max-width: 860px) {
+    /* No map behind the hero at this width, so nothing to credit. */
+    .hero-map-credit {
+        display: none;
+    }
 }
 
 .hero-map-fade {
