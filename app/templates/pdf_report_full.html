@@ -349,7 +349,7 @@
     <table>
         {% if broadband %}
         <tr><td class="label">Broadband</td><td class="value">{{ badge(broadband.label) }}</td></tr>
-        {% if broadband.gigabit_pct %}<tr><td class="label">Gigabit-capable</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
+        {% if broadband.gigabit_pct %}<tr><td class="label">Premises gigabit-capable</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
         {% if broadband.below_uso_pct %}<tr><td class="label">Below Universal Service Obligation</td><td class="value"><span class="badge badge-warn">{{ broadband.below_uso_pct }}%</span></td></tr>{% endif %}
         {% endif %}
         {% if mobile %}
