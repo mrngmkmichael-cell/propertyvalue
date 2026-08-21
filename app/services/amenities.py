@@ -13,7 +13,7 @@ import httpx
 
 from app.services import _cache, rail_journey, routing, transit_lines
 
-# Independent public Overpass instances, raced concurrently (see
+# Independent public Overpass instances, tried with hedging (see
 # _query_overpass). The primary is known to reject some
 # hosting-provider IP ranges outright, and the shared public
 # instances occasionally go down together under load - observed
@@ -28,10 +28,21 @@ OVERPASS_ENDPOINTS = [
     "https://overpass.openstreetmap.fr/api/interpreter",
     "https://overpass.osm.ch/api/interpreter",
 ]
-# Per-attempt timeout - since all mirrors are raced concurrently now
-# (not tried one at a time), this bounds total worst-case latency
-# rather than accumulating across mirrors.
+# Per-attempt timeout, bounding how long any single mirror can hold
+# up the hedge chain.
 OVERPASS_TIMEOUT_S = 8
+# How long a mirror gets to answer before the next one is also asked.
+# The whole point of hedging is that a healthy mirror answers well
+# inside this, so the other four are never contacted at all.
+OVERPASS_HEDGE_DELAY_S = 2.5
+
+# Index into OVERPASS_ENDPOINTS of whichever mirror answered last.
+# Public Overpass instances flap - one that 502s now is often fine an
+# hour later and vice versa - so rather than hammering a known-bad
+# primary on every request, start from whatever worked most recently.
+# Module-level and best-effort: resets on restart, and a stale value
+# costs one hedge delay, not a failure.
+_preferred_endpoint_index = 0
 CACHE_TTL_S = 3600  # OSM POI data doesn't change fast enough to need per-request freshness
 
 # (label, overpass tag filter, search radius in metres)
@@ -107,34 +118,95 @@ def _is_healthy_response(data: dict) -> bool:
     return bool(re.match(r"^\d{4}-\d{2}-\d{2}", timestamp))
 
 
-async def _try_endpoint(client: httpx.AsyncClient, endpoint: str, query: str) -> list[dict]:
-    response = await client.post(endpoint, data={"data": query}, headers={"User-Agent": "curl/8.7.1"})
+async def _try_endpoint(
+    client: httpx.AsyncClient, endpoint: str, query: str
+) -> tuple[str, list[dict]]:
+    # Sending "curl/8.7.1" rather than something identifying us is
+    # not a preference. Measured against every mirror: overpass-api.de
+    # answers 406 and overpass.openstreetmap.fr answers 403 to ANY
+    # other User-Agent - a bare product token, one with a contact
+    # address, one with a URL, a Mozilla-compatible string, even
+    # httpx's own default. They run an allowlist that admits generic
+    # clients and refuses named ones, which is backwards from what
+    # every usage policy asks for, but it is what they do. If that
+    # ever changes, an identifying string belongs here.
+    response = await client.post(
+        endpoint, data={"data": query}, headers={"User-Agent": "curl/8.7.1"}
+    )
     response.raise_for_status()
     data = response.json()
     if not _is_healthy_response(data):
         raise RuntimeError(f"{endpoint} returned an unhealthy response")
-    return data.get("elements", [])
+    return endpoint, data.get("elements", [])
 
 
 async def _query_overpass(query: str) -> list[dict]:
-    # Race all mirrors concurrently rather than trying them one at a
-    # time - a sequential fallback means a bad run of dead/slow
-    # mirrors adds their timeouts one after another (observed: up to
-    # ~26s cold). Racing bounds worst-case latency to roughly the
-    # single timeout window instead of the sum of every mirror tried.
+    """Ask mirrors one at a time, overlapping only when one goes quiet.
+
+    This used to fire all five concurrently and keep whichever answered
+    first. That bounded latency, which was the goal, but it put every
+    single lookup onto five separate volunteer-run servers and threw
+    four of the answers away - five times the load actually needed, on
+    donated infrastructure, with each operator seeing us as a constant
+    client. That is how you get blocked, and being blocked by all five
+    at once is a far worse outcome than a slow page.
+
+    Hedging keeps the latency guarantee without the cost: ask one, and
+    only bring in the next if the current one has not answered within
+    OVERPASS_HEDGE_DELAY_S. A healthy mirror answers in well under
+    that, so the common case is exactly one request. A mirror that
+    fails fast (403, 502) doesn't even cost the delay - the next starts
+    the moment it errors. Only a genuinely slow mirror causes overlap,
+    which is precisely when a second opinion is worth asking for.
+    """
+    global _preferred_endpoint_index
+
+    start = _preferred_endpoint_index
+    order = OVERPASS_ENDPOINTS[start:] + OVERPASS_ENDPOINTS[:start]
+
+    pending: set = set()
+    last_error: Exception | None = None
+
+    def _harvest(done):
+        """First successful result wins; remember which mirror gave it."""
+        nonlocal last_error
+        global _preferred_endpoint_index
+        for task in done:
+            try:
+                endpoint, elements = task.result()
+            except (httpx.HTTPError, RuntimeError, asyncio.CancelledError) as exc:
+                last_error = exc if not isinstance(exc, asyncio.CancelledError) else last_error
+                continue
+            _preferred_endpoint_index = OVERPASS_ENDPOINTS.index(endpoint)
+            return elements
+        return None
+
     async with httpx.AsyncClient(timeout=OVERPASS_TIMEOUT_S) as client:
-        tasks = [asyncio.ensure_future(_try_endpoint(client, ep, query)) for ep in OVERPASS_ENDPOINTS]
-        last_error = None
         try:
-            for coro in asyncio.as_completed(tasks):
-                try:
-                    return await coro
-                except (httpx.HTTPError, RuntimeError) as exc:
-                    last_error = exc
-            raise last_error
+            for endpoint in order:
+                pending.add(asyncio.ensure_future(_try_endpoint(client, endpoint, query)))
+                done, pending = await asyncio.wait(
+                    pending,
+                    timeout=OVERPASS_HEDGE_DELAY_S,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                result = _harvest(done)
+                if result is not None:
+                    return result
+
+            # Everything has been asked; wait out whatever is still running.
+            while pending:
+                done, pending = await asyncio.wait(
+                    pending, return_when=asyncio.FIRST_COMPLETED
+                )
+                result = _harvest(done)
+                if result is not None:
+                    return result
+
+            raise last_error or RuntimeError("no Overpass mirror returned a usable response")
         finally:
-            for t in tasks:
-                t.cancel()
+            for task in pending:
+                task.cancel()
 
 
 async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
