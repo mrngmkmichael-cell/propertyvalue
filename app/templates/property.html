@@ -5,7 +5,7 @@
 {% block title %}{{ query }} — UKPropertyInsight{% endblock %}
 
 {% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} — UKPropertyInsight{% endblock %}
-{% block og_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }} — free UK property due-diligence report from official public data.{% else %}Sold prices, EPC, flood risk, crime and schools for any UK postcode — all in one place, sourced from official public data.{% endif %}{% endblock %}
+{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }} — free UK property due-diligence report from official public data.{% else %}Sold prices, EPC, flood risk, crime and schools for any UK postcode — all in one place, sourced from official public data.{% endif %}{% endblock %}
 
 {% block content %}
 <a class="back-link" href="/">&larr; New search</a>

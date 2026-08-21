@@ -15,6 +15,14 @@
     <link rel="preload" href="/static/fonts/inter-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/style.css?v={{ css_version }}">
 
+    {# One block feeds both the search-result snippet and the link
+    preview, so a page can never end up with two different summaries of
+    itself. Pages that don't override it inherit the site-wide line,
+    which is fine for account pages but weak for anything indexable -
+    Google treats a description repeated across many pages much as it
+    treats a missing one. #}
+    <meta name="description" content="{% block meta_description %}Sold prices, EPC, flood risk, crime and schools for any UK postcode — all in one place, sourced from official public data.{% endblock %}">
+
     <link rel="canonical" href="{{ canonical_url }}">
 
     {# Sensible site-wide defaults for link previews (Slack, WhatsApp,
@@ -24,7 +32,7 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ canonical_url }}">
     <meta property="og:title" content="{% block og_title %}UKPropertyInsight{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Sold prices, EPC, flood risk, crime and schools for any UK postcode — all in one place, sourced from official public data.{% endblock %}">
+    <meta property="og:description" content="{{ self.meta_description() }}">
     <meta property="og:image" content="{% block og_image %}{{ request.url_for('static', path='img/og-default.png') }}{% endblock %}">
     <meta property="og:image:width" content="{% block og_image_width %}1200{% endblock %}">
     <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">

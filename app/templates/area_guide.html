@@ -2,6 +2,7 @@
 
 {% block title %}{% if outcode %}{{ outcode }} area guide — house prices, schools & crime | UKPropertyInsight{% else %}Area not found — UKPropertyInsight{% endif %}{% endblock %}
 
+{% block meta_description %}{% if outcode %}House prices, schools, crime and flood risk across the {{ outcode }} postcode area — a free area guide built from official UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block extra_head %}
 {% if outcode %}
 <meta name="description" content="{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.">
