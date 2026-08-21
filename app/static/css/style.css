@@ -329,6 +329,17 @@ a {
     width: 100%;
     height: 100%;
     filter: grayscale(0.6) contrast(0.85) brightness(1.18) saturate(1.4) blur(1.5px);
+    /* Leaflet is injected at idle and only on wide screens (see the
+       loader in index.html), so this starts empty and fades in when the
+       tiles arrive rather than snapping into place. Below 861px it stays
+       empty, and the near-opaque .hero-map-fade over it is the same
+       colour as the page background, so nothing looks missing. */
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+#hero-map.is-loaded {
+    opacity: 1;
 }
 
 .hero-map-fade {

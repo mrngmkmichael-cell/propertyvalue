@@ -3,10 +3,9 @@
 
 {% block title %}UKPropertyInsight — UK Property Lookup{% endblock %}
 
-{% block extra_head %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
-{% endblock %}
+{# Leaflet's CSS and JS are NOT loaded here - the hero map is decorative
+   and only visible on wide screens, so both are injected at idle time by
+   the loader at the bottom of this template. See there for why. #}
 
 {% block content %}
 <section class="hero">
@@ -313,22 +312,81 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
+    /* The hero map is pure decoration: non-interactive, blurred and
+       desaturated, and sitting under .hero-map-fade. On screens narrower
+       than 861px that fade is #f5f6f8 at 90-98% opacity - the same colour
+       as the page background - so the map contributes a barely-perceptible
+       grey texture while costing ~244 KiB of OpenStreetMap tiles plus
+       Leaflet itself, over two extra third-party connections. Those tiles
+       are on OSM's server, so they can't be recompressed or served as
+       WebP; the only lever is not requesting them.
+
+       So: load nothing on mobile, and on desktop - where the fade is
+       largely transparent and the map genuinely shows - load it at idle,
+       off the critical path. The container is absolutely positioned at a
+       fixed size, so arriving late shifts no layout. */
     (function () {
         const el = document.getElementById('hero-map');
         if (!el) return;
-        const heroMap = L.map('hero-map', {
-            center: [52.6, -3.2], zoom: 6.4,
-            zoomControl: false,
-            dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
-            boxZoom: false, keyboard: false, touchZoom: false, tap: false,
-        });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(heroMap);
+
+        const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        const LEAFLET_CSS_SRI = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        const LEAFLET_JS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        const LEAFLET_JS_SRI = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+
+        // Matches the .hero-map-fade breakpoint in style.css - below this
+        // the overlay is near-opaque and there is nothing to look at.
+        const wideEnough = window.matchMedia('(min-width: 861px)');
+        let started = false;
+
+        function load(tag, attrs) {
+            return new Promise(function (resolve, reject) {
+                const node = document.createElement(tag);
+                Object.assign(node, attrs);
+                node.onload = resolve;
+                node.onerror = reject;
+                document.head.appendChild(node);
+            });
+        }
+
+        function draw() {
+            const heroMap = L.map('hero-map', {
+                center: [52.6, -3.2], zoom: 6.4,
+                zoomControl: false,
+                dragging: false, scrollWheelZoom: false, doubleClickZoom: false,
+                boxZoom: false, keyboard: false, touchZoom: false, tap: false,
+            });
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            }).addTo(heroMap);
+            el.classList.add('is-loaded');
+        }
+
+        function start() {
+            if (started || !wideEnough.matches) return;
+            started = true;
+            Promise.all([
+                load('link', {
+                    rel: 'stylesheet', href: LEAFLET_CSS,
+                    integrity: LEAFLET_CSS_SRI, crossOrigin: '',
+                }),
+                load('script', {
+                    src: LEAFLET_JS, async: true,
+                    integrity: LEAFLET_JS_SRI, crossOrigin: '',
+                }),
+            ]).then(draw).catch(function () {
+                /* Decoration - if unpkg is unreachable the hero just stays
+                   flat, which is what mobile sees anyway. */
+            });
+        }
+
+        const idle = window.requestIdleCallback ||
+            function (fn) { return setTimeout(fn, 1200); };
+        idle(start, { timeout: 3000 });
+        // Someone rotating a tablet or dragging a window wider still gets it.
+        wideEnough.addEventListener('change', function () { idle(start); });
     })();
 </script>
 {% endblock %}
