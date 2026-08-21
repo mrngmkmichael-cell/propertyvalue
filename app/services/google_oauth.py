@@ -18,6 +18,14 @@ Setup, once, in the Google Cloud console (console.cloud.google.com):
      They must match byte for byte or Google refuses with redirect_uri_mismatch.
   4. Put the client ID and secret in .env locally, and in Render's
      environment variables for production.
+  5. Audience -> Publish app, or only test users can sign in. No review
+     is needed: "openid email" are non-sensitive scopes, so the 100-user
+     cap shown on that page never applies either.
+
+Do NOT upload a logo on the Branding page. It forces the app into
+Google's manual verification queue - days to weeks, during which
+sign-in stays restricted to test users. The consent screen shows the app
+name and domain without one, which is enough.
 
 The site works fine without any of this configured - the "Continue with
 Google" button simply doesn't render, same pattern as the other optional
