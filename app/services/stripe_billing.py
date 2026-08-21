@@ -27,9 +27,10 @@ API_BASE = "https://api.stripe.com/v1"
 WEBHOOK_TOLERANCE_S = 300  # Stripe's own recommended freshness window
 
 # key -> (env var holding the Stripe Price ID, display label, trial days)
+# No free trial on either plan - billing starts immediately at checkout.
 PLANS = {
-    "monthly": ("STRIPE_PRICE_ID_MONTHLY", "£9.99/month", 5),
-    "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months", 14),
+    "monthly": ("STRIPE_PRICE_ID_MONTHLY", "£9.99/month", 0),
+    "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months", 0),
 }
 
 # Subscription statuses that should count as "has Premium access" -
@@ -87,11 +88,12 @@ async def create_checkout_session(
         "cancel_url": cancel_url,
         "customer_email": user_email,
         "client_reference_id": str(user_id),
-        "subscription_data[trial_period_days]": trial_days,
         # customer_creation is only valid in payment mode - in
         # subscription mode Stripe always creates (or reuses) a
         # Customer automatically, no explicit param needed or allowed.
     }
+    if trial_days:
+        data["subscription_data[trial_period_days]"] = trial_days
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(

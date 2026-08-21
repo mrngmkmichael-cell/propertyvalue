@@ -49,15 +49,19 @@
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
         {% if plan.key == 'quarterly' %}<span class="pricing-card-badge">Best value</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
+        {% if plan.trial_days %}
         <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }} — cancel any time.</p>
+        {% else %}
+        <p class="section-sub">{{ plan.label }}, billed from today — cancel any time.</p>
+        {% endif %}
         {% if plan.available %}
             {% if current_user %}
             <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
                 <input type="hidden" name="plan" value="{{ plan.key }}">
-                <button type="submit">Start free trial</button>
+                <button type="submit">{{ "Start free trial" if plan.trial_days else "Subscribe" }}</button>
             </form>
             {% else %}
-            <a href="/signup?next=/premium" class="pricing-card-cta">Sign up to start trial</a>
+            <a href="/signup?next=/premium" class="pricing-card-cta">{{ "Sign up to start trial" if plan.trial_days else "Sign up to subscribe" }}</a>
             {% endif %}
         {% else %}
             <p class="notice">Not available yet.</p>
