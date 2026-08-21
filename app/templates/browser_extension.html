@@ -4,6 +4,10 @@
 {% block title %}Chrome Extension — UKPropertyInsight{% endblock %}
 {% block og_title %}UKPropertyInsight — Free Chrome Extension{% endblock %}
 {% block og_description %}See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page.{% endblock %}
+{# PNG on purpose: this is the Open Graph preview, fetched by social
+   crawlers rather than browsers, and WhatsApp/Facebook/LinkedIn
+   previews are unreliable with WebP. The in-page <img> below does
+   use the .webp. #}
 {% block og_image %}{{ request.url_for('static', path='img/extension/overview.png') }}{% endblock %}
 {% block og_image_width %}1220{% endblock %}
 {% block og_image_height %}688{% endblock %}
@@ -105,7 +109,7 @@ review data. Only factual fields below. #}
         </div>
 
         <div class="hero-art" aria-hidden="true">
-            <img src="/static/img/extension/overview.png" alt="UKPropertyInsight extension overlaid on a property listing page, showing the full data dashboard" style="width:100%; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: 0 24px 48px -12px rgba(20,30,70,0.25);">
+            <img src="/static/img/extension/overview.webp" alt="UKPropertyInsight extension overlaid on a property listing page, showing the full data dashboard" style="width:100%; border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: 0 24px 48px -12px rgba(20,30,70,0.25);">
         </div>
     </div>
 </section>
@@ -209,11 +213,11 @@ review data. Only factual fields below. #}
     <p class="landing-subheading">Tap any card in the summary bar for the full detail, right there on the listing page.</p>
     <div class="feature-grid">
         <figure style="margin:0;">
-            <img src="/static/img/extension/crime-detail.png" alt="Crime detail popup showing a breakdown of recorded crime categories" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
+            <img src="/static/img/extension/crime-detail.webp" alt="Crime detail popup showing a breakdown of recorded crime categories" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
             <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Crime card, expanded</figcaption>
         </figure>
         <figure style="margin:0;">
-            <img src="/static/img/extension/schools-detail.png" alt="Schools detail popup listing nearby schools with distance and Ofsted rating" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
+            <img src="/static/img/extension/schools-detail.webp" alt="Schools detail popup listing nearby schools with distance and Ofsted rating" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
             <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Schools card, expanded</figcaption>
         </figure>
     </div>
