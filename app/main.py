@@ -61,6 +61,25 @@ app.add_middleware(
     same_site="lax",
 )
 
+
+@app.middleware("http")
+async def support_head_requests(request: Request, call_next):
+    """Plain @app.get(...) routes only ever register GET, so a HEAD request
+    to any page (Google's sitemap fetcher and many crawlers/uptime checks
+    HEAD a URL before GET-ing it) gets a 405 even though the same URL works
+    fine over GET - this was silently breaking Search Console's ability to
+    fetch /sitemap.xml. Routing this internally as GET and stripping the
+    body afterwards fixes HEAD site-wide without touching every route.
+    Runs after capture_pageview so that middleware still sees the real
+    original method and its existing GET-only check keeps HEAD probes out
+    of the pageview counts."""
+    if request.method != "HEAD":
+        return await call_next(request)
+    request.scope["method"] = "GET"
+    response = await call_next(request)
+    return Response(status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
+
+
 REFERRAL_COOKIE = "pv_ref"
 REFERRAL_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days between clicking a partner link and actually signing up is generous but not unreasonable
 _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
