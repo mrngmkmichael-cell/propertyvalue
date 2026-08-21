@@ -48,24 +48,20 @@
     /* Solid pills: white text on solid color, used for EPC/Ofsted letter grades */
     .pill { display: inline-block; min-width: 1.3em; padding: 2pt 8pt; border-radius: 10pt; color: #fff; font-weight: 700; font-size: 8.5pt; text-align: center; }
 
-    /* Score box, colored by overview grade */
-    .score-box { border: 1.5px solid #dde2ea; border-radius: 10pt; padding: 14pt 16pt; margin-bottom: 8pt; }
-    .score-value { font-size: 30pt; font-weight: 800; }
+    /* Score box - always the site's own brand blue, not tinted by grade.
+       Grading a Fair or Poor result with a big amber/red box read as an
+       error/warning banner rather than a branded summary card; the grade
+       word itself still gets its own small colored pill so the signal
+       isn't lost, it's just not shouting from the whole box. */
+    .score-box { background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10pt; padding: 14pt 16pt; margin-bottom: 8pt; }
+    .score-value { font-size: 30pt; font-weight: 800; color: #3b5bfd; }
     .score-max { font-size: 12pt; color: #98a2b3; font-weight: 400; }
     .score-grade-pill { display: inline-block; padding: 3pt 10pt; border-radius: 10pt; font-size: 10pt; font-weight: 700; }
     .score-verdict { font-size: 10pt; color: #344054; margin: 6pt 0 0; line-height: 1.4; }
-    .grade-excellent { background: #ecfdf5; border-color: #a7f3d0; }
-    .grade-excellent .score-value { color: #059669; }
-    .grade-excellent .score-grade-pill { color: #059669; background: #d1fae5; }
-    .grade-good { background: #eff6ff; border-color: #bfdbfe; }
-    .grade-good .score-value { color: #3b5bfd; }
-    .grade-good .score-grade-pill { color: #3b5bfd; background: #dbeafe; }
-    .grade-fair { background: #fffbeb; border-color: #fde68a; }
-    .grade-fair .score-value { color: #d97706; }
-    .grade-fair .score-grade-pill { color: #d97706; background: #fef3c7; }
-    .grade-below-average, .grade-poor { background: #fef2f2; border-color: #fecaca; }
-    .grade-below-average .score-value, .grade-poor .score-value { color: #dc2626; }
-    .grade-below-average .score-grade-pill, .grade-poor .score-grade-pill { color: #dc2626; background: #fee2e2; }
+    .grade-pill-excellent { color: #059669; background: #d1fae5; }
+    .grade-pill-good { color: #3b5bfd; background: #dbeafe; }
+    .grade-pill-fair { color: #d97706; background: #fef3c7; }
+    .grade-pill-below-average, .grade-pill-poor { color: #dc2626; background: #fee2e2; }
 
     .chip-row-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; color: #98a2b3; margin: 8pt 0 3pt; }
     .chip-table { width: auto; margin-bottom: 4pt; }
@@ -100,10 +96,10 @@
 <p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} — Premium report</p>
 
 {% if overview %}
-<div class="score-box grade-{{ overview.grade | lower | replace(' ', '-') }}">
+<div class="score-box">
     <table style="width:auto; margin-bottom:6pt;"><tr>
         <td style="border:none; padding:0;"><span class="score-value">{{ overview.score }}</span><span class="score-max">/100</span></td>
-        <td style="border:none; padding:0 0 0 8pt;"><span class="score-grade-pill">{{ overview.grade }}</span></td>
+        <td style="border:none; padding:0 0 0 8pt;"><span class="score-grade-pill grade-pill-{{ overview.grade | lower | replace(' ', '-') }}">{{ overview.grade }}</span></td>
     </tr></table>
     <p class="score-verdict">{{ overview.verdict }}</p>
 </div>
@@ -121,7 +117,7 @@
 {% endif %}
 {% endif %}
 
-{% call card("£", "#eff6ff", "#2563eb", "Sold prices") %}
+{% call card("£", "#eff6ff", "#3b5bfd", "Sold prices") %}
     <table>
         {% if avg_price %}
         <tr><td class="label">Average sold price (postcode)</td><td class="value">{{ avg_price | gbp }}</td></tr>
@@ -145,7 +141,7 @@
 {% endcall %}
 
 {% if valuation or rental %}
-{% call card("V", "#fefce8", "#a16207", "Valuation & rental") %}
+{% call card("V", "#eff6ff", "#3b5bfd", "Valuation & rental") %}
     <table class="two-col"><tr>
         <td>
             {% if valuation %}
@@ -171,7 +167,7 @@
 {% endif %}
 
 {% if price_trend or hpi %}
-{% call card("%", "#eff6ff", "#1e40af", "Price trend & area comparison") %}
+{% call card("%", "#eff6ff", "#3b5bfd", "Price trend & area comparison") %}
     {% if price_trend %}
     <table>
         <tr><td class="label">5 years ago ({{ price_trend.area_name }})</td><td class="value">{{ price_trend.start_price | gbp }}</td></tr>
@@ -197,7 +193,7 @@
 {% endcall %}
 {% endif %}
 
-{% call card("E", "#fffbeb", "#d97706", "Property & energy") %}
+{% call card("E", "#eff6ff", "#3b5bfd", "Property & energy") %}
     <table>
         {% if property_detail %}
         <tr><td class="label">Dwelling type</td><td class="value">{{ property_detail.dwelling_type or "Not available" }}</td></tr>
@@ -226,7 +222,7 @@
     {% endif %}
 {% endcall %}
 
-{% call card("!", "#ecfeff", "#0891b2", "Risk & environment") %}
+{% call card("!", "#eff6ff", "#3b5bfd", "Risk & environment") %}
     <table>
         <tr><td class="label">Flood zone (rivers &amp; sea)</td><td class="value">{{ badge(flood_zone.label if flood_zone else "Zone 1 (low probability)") }}</td></tr>
         {% if flood_warnings %}
@@ -272,7 +268,7 @@
 {% endcall %}
 
 {% if planning_flags or environmental_flags %}
-{% call card("P", "#eef2ff", "#3730a3", "Planning & designations") %}
+{% call card("P", "#eff6ff", "#3b5bfd", "Planning & designations") %}
     {% if planning_flags %}
     <p class="chip-row-label">Planning constraints present</p>
     <table class="chip-table">
@@ -288,7 +284,7 @@
 {% endcall %}
 {% endif %}
 
-{% call card("C", "#fff1f2", "#e11d48", "Crime") %}
+{% call card("C", "#eff6ff", "#3b5bfd", "Crime") %}
     <table>
         <tr><td class="label">Recorded crime within ~1 mile{% if crime.month %} ({{ crime.month }}){% endif %}</td>
             <td class="value">{% if crime and crime.total is not none %}{{ crime.total }} incidents{% else %}Not available{% endif %}</td></tr>
@@ -307,7 +303,7 @@
 {% endcall %}
 
 {% if schools_total %}
-{% call card("S", "#f5f3ff", "#7c3aed", "Schools nearby (" ~ schools_total ~ ")") %}
+{% call card("S", "#eff6ff", "#3b5bfd", "Schools nearby (" ~ schools_total ~ ")") %}
     {% for group, list in schools.items() %}
     {% if list %}
     <h3>{{ group }}</h3>
@@ -322,7 +318,7 @@
 {% endcall %}
 {% endif %}
 
-{% call card("D", "#f0fdfa", "#0d9488", "Local area & demographics") %}
+{% call card("D", "#eff6ff", "#3b5bfd", "Local area & demographics") %}
     <table class="two-col"><tr>
         <td>
             <table>
@@ -345,7 +341,7 @@
 {% endcall %}
 
 {% if broadband or mobile %}
-{% call card("N", "#f0f9ff", "#0284c7", "Connectivity") %}
+{% call card("N", "#eff6ff", "#3b5bfd", "Connectivity") %}
     <table>
         {% if broadband %}
         <tr><td class="label">Broadband</td><td class="value">{{ badge(broadband.label) }}</td></tr>
@@ -360,7 +356,7 @@
 {% endif %}
 
 {% if nearest_transport %}
-{% call card("T", "#eef2ff", "#4f46e5", "Transport") %}
+{% call card("T", "#eff6ff", "#3b5bfd", "Transport") %}
     <table>
         <tr><td class="label">Nearest station</td>
             <td class="value">{{ nearest_transport.name }} — {% if nearest_transport.walking_distance_m %}{{ nearest_transport.walking_distance_m | distance }} walk{% else %}{{ nearest_transport.distance_m | distance }}{% endif %}</td></tr>
