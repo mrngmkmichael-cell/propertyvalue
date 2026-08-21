@@ -2853,13 +2853,18 @@ async def stripe_webhook(request: Request):
 
 
 @app.get("/signup")
-def signup_form(request: Request):
-    return templates.TemplateResponse(request, "signup.html", base_context(request))
+def signup_form(request: Request, next: str = "/watchlist"):
+    context = base_context(request)
+    context["next"] = next
+    return templates.TemplateResponse(request, "signup.html", context)
 
 
 @app.post("/signup")
-def signup_submit(request: Request, email: str = Form(...), password: str = Form(...)):
+def signup_submit(
+    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/watchlist")
+):
     context = base_context(request)
+    context["next"] = next
     email = email.strip().lower()
 
     if len(password) < 8:
@@ -2880,7 +2885,7 @@ def signup_submit(request: Request, email: str = Form(...), password: str = Form
         session.refresh(user)
         request.session["user_id"] = user.id
 
-    return RedirectResponse("/watchlist", status_code=303)
+    return RedirectResponse(_safe_next(next), status_code=303)
 
 
 @app.get("/login")

@@ -12,6 +12,7 @@
 {% endif %}
 
 <form class="stacked-form" action="/signup" method="post">
+    <input type="hidden" name="next" value="{{ next or '/watchlist' }}">
     <div class="search-form-field">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required autocomplete="email">
