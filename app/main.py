@@ -2828,7 +2828,9 @@ async def area_guide(request: Request, outcode: str):
     cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
-        return templates.TemplateResponse(request, "area_guide.html", context)
+        response = templates.TemplateResponse(request, "area_guide.html", context)
+        response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
+        return response
 
     async def _bounded(coro, seconds: float):
         """Give a slow upstream a hard budget on this page only. The task
@@ -2883,8 +2885,7 @@ async def area_guide(request: Request, outcode: str):
     context.update(page_data)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     timing = _server_timing_header()
-    if timing:
-        response.headers["Server-Timing"] = timing
+    response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{_cache.last_outcome}"'
     return response
 
 
