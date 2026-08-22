@@ -103,3 +103,52 @@ them.
 - `Cache-Control` header missing on static assets
 - `noindex` on /login, /signup, /compare
 - /property takes ~14s to load — worth profiling, it's your commercial page
+
+---
+
+# Third pass, 22 August 2026 (evening)
+
+Rather than more polish, this pass looked for what was still genuinely
+weak. Three findings, all live.
+
+## Interaction: the report's long pole
+
+Every live service behind `/property` was timed on a cold cache. The
+Environment Agency flood-warnings call was the long pole at **7.75s**;
+the page waits for its slowest call, so every visitor paid for it. The
+EA endpoint is slow regardless of filter, and there were zero active
+warnings nationally (August). `flood.py` now fetches the national list
+once, holds it ten minutes, filters by distance in memory, and refreshes
+in the background. Measured: 0.000s per postcode after the first.
+
+A `Server-Timing` header now reports the twelve slowest services on every
+cold report. Open DevTools → Network → click the document → Timing tab.
+From Render, the remaining picture is:
+
+| service | cold |
+|---|---|
+| Overpass (amenities, nearest station) | ~7.9s |
+| Comparables (postcodes.io → Land Registry → EPC ×2) | ~5.7s |
+| everything else | ≤3s |
+
+A repeat view of the same postcode is 0.7s. A cold one is 8-10s, set by
+those two. Neither can be made fast from here: Overpass is volunteer
+mirrors that are slower from hosting IPs, and comparables is a four-stage
+chain by nature. The durable fix is the one already proven fourteen times
+in `scripts/import_*.py`: bulk-import Land Registry price-paid data and
+OSM points of interest. That is a multi-hour job with a ~4 GB download,
+worth scheduling deliberately rather than squeezing in overnight.
+
+## Visual: the card art was still the old blue
+
+The five why-card illustrations were generic line icons with the
+pre-redesign electric blue baked into the image - the one thing the
+palette change could not reach. Replaced with the site's own inline
+icon set in `currentColor`. The homepage now loads exactly one image.
+
+## Content: the maker's note
+
+First-person, after the hero, built only from facts already published in
+the r/HousingUK post. It is the one section with no kicker, heading or
+card, on purpose. **Michael: it is a draft. Roughen it up.** It lives in
+`index.html` under "Who built this".
