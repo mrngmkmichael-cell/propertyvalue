@@ -53,6 +53,13 @@
                 <button type="submit">Search</button>
             </form>
 
+            {% if not current_user %}
+            <p class="hero-signup">
+                <a href="/signup" class="hero-signup-btn">Sign up free</a>
+                <span class="hero-signup-note">Full Premium report on your first three properties. No card.</span>
+            </p>
+            {% endif %}
+
             {# Count-up on scroll. The figures are real: 23 check
                categories across free+premium, 13 named sources in the
                strip below, ~1.7M postcodes in the broadband import. #}
@@ -122,24 +129,6 @@
     </div>
 </section>
 
-{# ---- Who built this ----
-   MICHAEL: this is a draft in your voice, built only from things you
-   have already said publicly in your r/HousingUK post. Edit it freely -
-   the scrappier the better. It is deliberately the one section on the
-   page with no kicker, no heading and no card, so it reads as a person
-   talking rather than a template. Its job is to be the thing no
-   competitor can copy. #}
-<section class="maker-note" data-animate>
-    <div class="maker-note-inner">
-        <p class="maker-note-text">
-            I'm Michael. I'm not a developer. I built this from scratch, learning as I went, because checking a property properly meant a dozen government websites open at once and a notebook. Every figure here comes from one of those official sources, nothing is scraped from listings, and where a number is an estimate it says so on the number. Searching is free and always will be.
-        </p>
-        <p class="maker-note-sig">
-            <span class="maker-note-name">Michael</span>
-            <span class="maker-note-meta">Built solo on FastAPI and Postgres &middot; First shared on r/HousingUK</span>
-        </p>
-    </div>
-</section>
 
 <section class="landing-section why-us-section" data-animate>
     <div class="why-header-row">

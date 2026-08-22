@@ -3854,50 +3854,6 @@ summary:focus-visible, [tabindex]:focus-visible {
     button:active { transform: none; }
 }
 
-/* ---- Maker's note: the one section without the scaffold ---- */
-.maker-note {
-    margin-top: 5rem;
-    padding-top: 3rem;
-    border-top: 1px solid var(--border);
-}
-
-.maker-note-inner {
-    max-width: 640px;
-}
-
-.maker-note-text {
-    margin: 0 0 1.25rem;
-    font-size: var(--text-lg);
-    line-height: 1.6;
-    color: var(--ink);
-}
-
-.maker-note-sig {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem 1rem;
-    margin: 0;
-}
-
-.maker-note-name {
-    font-weight: var(--weight-semi);
-    color: var(--ink);
-}
-
-.maker-note-meta {
-    font-family: var(--font-mono);
-    font-size: var(--text-xs);
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-}
-
-@media (max-width: 860px) {
-    .maker-note { margin-top: 3.5rem; padding-top: 2rem; }
-    .maker-note-text { font-size: var(--text-base); }
-}
-
 /* ---------------------------------------------------------------
    Scroll animation, pass two. The original reveal was a 16px slide
    over half a second, fired once an element was already 10% into the
@@ -3998,8 +3954,7 @@ html { scroll-behavior: smooth; }
         [data-animate].section-pill,
         [data-animate].landing-heading,
         [data-animate].landing-subheading,
-        [data-animate].why-us-section .why-header-row,
-        [data-animate].maker-note .maker-note-inner {
+        [data-animate].why-us-section .why-header-row {
             opacity: 1;
             transform: none;
             transition: none;
@@ -4115,4 +4070,38 @@ html { scroll-behavior: smooth; }
     color: inherit;
     text-decoration: underline;
     text-underline-offset: 3px;
+}
+
+/* ---- Hero sign-up CTA ---- */
+.hero-signup {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1rem;
+    margin: 1.25rem 0 0;
+}
+
+.hero-signup-btn {
+    display: inline-block;
+    padding: 0.65rem 1.3rem;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
+    font-weight: var(--weight-semi);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.hero-signup-btn:hover {
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.hero-signup-note {
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
 }
