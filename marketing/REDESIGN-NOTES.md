@@ -152,3 +152,11 @@ First-person, after the hero, built only from facts already published in
 the r/HousingUK post. It is the one section with no kicker, heading or
 card, on purpose. **Michael: it is a draft. Roughen it up.** It lives in
 `index.html` under "Who built this".
+
+## Persistent page cache (22 Aug, late)
+
+Area guides now cache in a `page_cache` table in Postgres as well as in
+memory, so a deploy no longer empties them. Verified by warming
+`/area/BA1`, deploying again (a full restart), and re-fetching: served
+from the database with no upstream calls. The property report's gather
+is still memory-only; its results aren't plain JSON yet.
