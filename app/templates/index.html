@@ -21,7 +21,7 @@
         <div class="hero-copy">
             <span class="kicker">Due diligence, made simple</span>
             <h1>Know a property <em class="hl-accent">before you commit</em>.</h1>
-            <p class="dek">Sold price history, energy rating, flood risk, crime, schools and more for any UK postcode. All in one place, sourced from official public data. Free to search. £9.99/month unlocks the full Premium report.</p>
+            <p class="dek">Every check that matters, for any UK postcode. Straight from official government data.</p>
 
             <form class="search-form" action="/property" method="get">
                 <div class="search-form-field">
@@ -34,6 +34,17 @@
                 </div>
                 <button type="submit">Search</button>
             </form>
+
+            {# Count-up on scroll. The figures are real: 23 check
+               categories across free+premium, 13 named sources in the
+               strip below, ~1.7M postcodes in the broadband import. #}
+            <p class="hero-stats" aria-label="23 checks, 13 official sources, 1.7 million postcodes covered">
+                <span><span class="stat-count" data-target="23">0</span> checks</span>
+                <span class="hero-stats-sep">·</span>
+                <span><span class="stat-count" data-target="13">0</span> official sources</span>
+                <span class="hero-stats-sep">·</span>
+                <span><span class="stat-count" data-target="1.7" data-decimals="1">0</span>M postcodes</span>
+            </p>
         </div>
 
         <div class="hero-art" aria-hidden="true">
@@ -99,11 +110,11 @@
         <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
     </div>
     {% set why_cards = [
-        ('school.webp', 'School Catchment Data', 'Real distances,', 'clearly labelled.', 'Actual admission distances pulled from council records, and honestly flagged as an estimate on the schools where none has been published.'),
-        ('verified.webp', 'Verified Sources', 'Every figure', 'has a source.', 'Land Registry, Ofsted, the Environment Agency and a dozen others, each named on the report itself.'),
-        ('report.webp', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools and tax, all for one address.'),
-        ('score.webp', 'Overview Score', 'One clear', 'verdict.', 'A plain GOOD, AVERAGE or POOR call, with the reasoning shown underneath.'),
-        ('pricing.webp', 'Simple Pricing', 'Unlimited,', 'for less.', 'A fraction of per-report fees or enterprise pricing elsewhere.'),
+        ('school.webp', 'School Catchment Data', 'Real distances,', 'clearly labelled.', 'Council-published admission distances. Estimates are labelled as estimates.'),
+        ('verified.webp', 'Verified Sources', 'Every figure', 'has a source.', 'Land Registry, Ofsted, the Environment Agency. Each figure names its source.'),
+        ('report.webp', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax. One address.'),
+        ('score.webp', 'Overview Score', 'One clear', 'verdict.', 'GOOD, AVERAGE or POOR, with the reasoning shown.'),
+        ('pricing.webp', 'Simple Pricing', 'Unlimited,', 'for less.', 'Unlimited reports for less than one search fee elsewhere.'),
     ] %}
     <div class="why-carousel-wrap">
         <div class="why-cards">
@@ -129,9 +140,9 @@
     <span class="section-pill" data-animate>See it in action</span>
     <h2 class="landing-heading" data-animate>See exactly what you get</h2>
     <p class="landing-subheading" data-animate>
-        Here is what one search actually returns.
+        This is a real report. Tap it to open the live version.
     </p>
-    <div class="report-preview" data-animate>
+    <a class="report-preview report-preview-link" data-animate href="/property?postcode=SW1A+1AA" aria-label="Open the live report for SW1A 1AA">
         <div class="report-preview-chrome">
             <span class="report-preview-dot" style="background: #f87171;"></span>
             <span class="report-preview-dot" style="background: #fbbf24;"></span>
@@ -173,35 +184,35 @@
                 <span class="report-preview-tile-sub">58 dB(A) road noise at its loudest</span>
             </div>
         </div>
-    </div>
+        <span class="report-preview-open">Open the live report &rsaquo;</span>
+    </a>
 </section>
 
 <section class="landing-section" id="whats-included">
     <span class="section-pill" data-animate>What's included</span>
     <h2 class="landing-heading" data-animate>Everything we check, in one report</h2>
     <p class="landing-subheading" data-animate>
-        One postcode search pulls together sold prices, official risk designations and area
-        statistics that would otherwise mean checking a dozen different government websites.
+        One search replaces a dozen government websites.
     </p>
 
     <div class="tier-block" data-animate>
         <div class="tier-header">
             <h3 class="tier-title">Free, always</h3>
-            <p class="tier-desc">No card required. Search any postcode and see this straight away.</p>
+            <p class="tier-desc">No card, no account. Search and see this straight away.</p>
         </div>
         <div class="feature-grid">
             {% for icon_name, label, blurb in [
-                ('market', 'Sold Prices', 'Full transaction history from HM Land Registry'),
-                ('energy', 'Energy Efficiency', 'EPC rating, floor area and year built'),
-                ('flood', 'Flood Risk', 'Official flood zone plus live warnings'),
-                ('crime', 'Crime & Safety', 'Local crime stats vs the wider area'),
-                ('schools', 'Schools Nearby', 'Ofsted ratings and exam results nearby'),
-                ('noise', 'Noise', 'Modelled road, rail and aircraft noise'),
-                ('planning', 'Planning Constraints', 'Listed status, conservation and heritage'),
-                ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more'),
-                ('broadband', 'Broadband & Mobile', 'Fixed-line speed and signal coverage'),
-                ('deprivation', 'Area Statistics', 'Deprivation, occupation and demographics nearby'),
-                ('reviews', 'Reviews', 'Real feedback on the property, area and schools'),
+                ('market', 'Sold Prices', 'Every sale since 1995'),
+                ('energy', 'Energy Efficiency', 'EPC, floor area, year built'),
+                ('flood', 'Flood Risk', 'Zone plus live warnings'),
+                ('crime', 'Crime & Safety', 'Local stats vs the wider area'),
+                ('schools', 'Schools Nearby', 'Ofsted ratings and exam results'),
+                ('noise', 'Noise', 'Road, rail and aircraft'),
+                ('planning', 'Planning Constraints', 'Listed status and conservation'),
+                ('environmental', 'Environmental Designations', 'National Parks, SSSIs'),
+                ('broadband', 'Broadband & Mobile', 'Speed and signal coverage'),
+                ('deprivation', 'Area Statistics', 'Deprivation and demographics'),
+                ('reviews', 'Reviews', 'On the property, area and schools'),
             ] %}
             <div class="feature-card" data-animate>
                 <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
@@ -215,22 +226,22 @@
     <div class="tier-block tier-block-premium" data-animate>
         <div class="tier-header">
             <h3 class="tier-title">Premium <span class="tier-badge">£9.99/month</span></h3>
-            <p class="tier-desc">Unlocks the deeper checks, including our real school catchment data.</p>
+            <p class="tier-desc">The deeper checks, including real school catchment data.</p>
         </div>
         <div class="feature-grid">
             {% for icon_name, label, blurb in [
-                ('schools', 'School Catchment Radius', 'Real admission distances where published, clearly labelled estimates elsewhere'),
-                ('transport', 'Getting Around', 'Live train times to your nearest major city, as well as the distance'),
-                ('statistics', 'Price Trend & Forecast', '5-year price history with a simple linear projection'),
-                ('valuation', 'Valuation Estimate', 'A DIY estimate from nearby comparables'),
-                ('rental', 'Rental Analysis', 'Typical rent by bedroom count nearby'),
-                ('extension', 'Extension Potential', 'Permitted development and planning headroom'),
-                ('orientation', 'Sunlight & Orientation', 'Which way the garden and rooms face'),
-                ('landfill', 'Historic Landfill', 'Proximity to former landfill sites'),
-                ('geology', 'Subsidence Risk', 'BGS clay shrink-swell risk under future climate change'),
-                ('flood', 'Sewage Discharge', 'How often nearby storm overflows spilled into rivers, from EA data'),
-                ('income', 'Household Income', 'Estimated income levels nearby'),
-                ('wellbeing', 'Wellbeing Index', 'Life satisfaction and anxiety scores nearby'),
+                ('schools', 'School Catchment Radius', 'Real admission distances, labelled estimates elsewhere'),
+                ('transport', 'Getting Around', 'Live train times to the nearest city'),
+                ('statistics', 'Price Trend & Forecast', '5-year history and projection'),
+                ('valuation', 'Valuation Estimate', 'From nearby comparables'),
+                ('rental', 'Rental Analysis', 'Typical rent by bedroom count'),
+                ('extension', 'Extension Potential', 'Permitted development headroom'),
+                ('orientation', 'Sunlight & Orientation', 'Which way the garden faces'),
+                ('landfill', 'Historic Landfill', 'Former landfill sites nearby'),
+                ('geology', 'Subsidence Risk', 'BGS clay shrink-swell risk'),
+                ('flood', 'Sewage Discharge', 'Storm overflow spills nearby'),
+                ('income', 'Household Income', 'Estimated levels nearby'),
+                ('wellbeing', 'Wellbeing Index', 'Life satisfaction scores nearby'),
             ] %}
             <div class="feature-card feature-card-premium" data-animate>
                 <span class="feature-card-lock">{{ icons.icon('lock') }}</span>
@@ -250,17 +261,17 @@
         <div class="step-card" data-animate>
             <span class="step-number">1</span>
             <span class="step-title">Enter a postcode</span>
-            <span class="step-blurb">Add a house or flat number if you want results filtered to one address.</span>
+            <span class="step-blurb">Add a house number to filter to one address.</span>
         </div>
         <div class="step-card" data-animate>
             <span class="step-number">2</span>
             <span class="step-title">We check the official sources</span>
-            <span class="step-blurb">Land Registry, EPC, Environment Agency, ONS, Ofsted and more. Queried live from the source.</span>
+            <span class="step-blurb">Land Registry, EPC, Environment Agency, Ofsted and more, queried live.</span>
         </div>
         <div class="step-card" data-animate>
             <span class="step-number">3</span>
             <span class="step-title">Get your report</span>
-            <span class="step-blurb">A full due-diligence report in seconds, with every figure sourced and dated.</span>
+            <span class="step-blurb">Every figure sourced and dated, in seconds.</span>
         </div>
     </div>
 </section>
@@ -288,34 +299,98 @@
     <span class="sources-strip-heading">
         Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
     </span>
-    <div class="sources-strip-list">
-        {% for icon_name, label, url in [
-            ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
-            ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
-            ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
-            ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
-            ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
-            ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
-            ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
-            ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
-            ('heritage', 'Historic England', 'https://historicengland.org.uk'),
-            ('crime', 'Police.uk', 'https://www.police.uk'),
-            ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
-            ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
-            ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
-        ] %}
-        <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener">
-            <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
-            <span class="sources-strip-name">{{ label }}</span>
-        </a>
-        {% endfor %}
+    {# A continuous ticker of the sources, the strongest content this
+       site has. Two passes of the same list make the loop seamless;
+       hover or keyboard focus pauses it; prefers-reduced-motion stops
+       it entirely and falls back to a wrapped row. #}
+    <div class="sources-marquee">
+        <div class="sources-marquee-track">
+            {% for pass_num in range(2) %}
+            {% for icon_name, label, url in [
+                ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
+                ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
+                ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
+                ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
+                ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
+                ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
+                ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
+                ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
+                ('heritage', 'Historic England', 'https://historicengland.org.uk'),
+                ('crime', 'Police.uk', 'https://www.police.uk'),
+                ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
+                ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
+                ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
+            ] %}
+            <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener"{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
+                <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
+                <span class="sources-strip-name">{{ label }}</span>
+            </a>
+            {% endfor %}
+            {% endfor %}
+        </div>
     </div>
     <p class="sources-strip-note">
-        Never listings scraped from Rightmove or Zoopla. Every figure here traces back to an
-        official, openly licensed government or public data source.
+        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
     </p>
 </section>
 {% endblock %}
 
-{# No extra scripts: the hero map is a static background image now,
-   set in style.css. See scripts/build_hero_map.py. #}
+{% block extra_scripts %}
+<script>
+    (function () {
+        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        /* Typing demo in the postcode field: cycles real postcodes in
+           the placeholder with a caret, exactly the affordance the
+           reference site uses on its prompt box. Placeholder only - it
+           stops being visible the instant someone focuses or types, so
+           it can never interfere with real input. */
+        var input = document.getElementById('postcode');
+        if (input && !reduced) {
+            var samples = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
+            var si = 0, ci = 0, deleting = false;
+            (function tick() {
+                var word = samples[si];
+                if (document.activeElement !== input && !input.value) {
+                    input.placeholder = word.slice(0, ci) + '▏';
+                }
+                var delay;
+                if (!deleting && ci < word.length) { ci++; delay = 110; }
+                else if (!deleting) { deleting = true; delay = 1600; }
+                else if (ci > 0) { ci--; delay = 45; }
+                else { deleting = false; si = (si + 1) % samples.length; delay = 350; }
+                setTimeout(tick, delay);
+            })();
+        }
+
+        /* Count-up for the hero stats, fired once when scrolled into
+           view. Values live in data-target so the markup stays honest
+           for no-JS readers and crawlers. */
+        var counters = document.querySelectorAll('.stat-count');
+        if (counters.length && 'IntersectionObserver' in window) {
+            var seen = new WeakSet();
+            var io = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting || seen.has(entry.target)) return;
+                    seen.add(entry.target);
+                    var el = entry.target;
+                    var target = parseFloat(el.dataset.target);
+                    var decimals = parseInt(el.dataset.decimals || '0', 10);
+                    if (reduced) { el.textContent = target.toFixed(decimals); return; }
+                    var start = null;
+                    function step(t) {
+                        if (!start) start = t;
+                        var p = Math.min((t - start) / 900, 1);
+                        /* ease-out so the last digits settle gently */
+                        p = 1 - Math.pow(1 - p, 3);
+                        el.textContent = (target * p).toFixed(decimals);
+                        if (p < 1) requestAnimationFrame(step);
+                    }
+                    requestAnimationFrame(step);
+                });
+            }, { threshold: 0.6 });
+            counters.forEach(function (c) { io.observe(c); });
+        }
+    })();
+</script>
+{% endblock %}

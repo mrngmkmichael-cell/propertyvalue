@@ -3652,3 +3652,181 @@ table,
 [class*="-pct"] {
     font-variant-numeric: tabular-nums;
 }
+
+/* ---------------------------------------------------------------
+   Interaction layer, added with the second redesign pass. Everything
+   here is decoration on top of working functionality: with CSS off,
+   scripts off, or prefers-reduced-motion set, every element still
+   reads and works.
+   --------------------------------------------------------------- */
+
+/* Hero stats: count-up figures under the search form. */
+.hero-stats {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 1.25rem 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.hero-stats .stat-count {
+    color: var(--ink);
+    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
+}
+
+.hero-stats-sep { color: var(--border-strong); }
+
+/* The report preview is now a real link to the live SW1A 1AA report.
+   Whole-card link, lifts on hover, and the "open" line brightens. */
+a.report-preview-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+a.report-preview-link:hover,
+a.report-preview-link:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-strong);
+}
+
+.report-preview-open {
+    display: block;
+    padding: 0.7rem 1.2rem;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: center;
+    transition: background-color 0.15s ease;
+}
+
+a.report-preview-link:hover .report-preview-open {
+    background: var(--accent-soft);
+}
+
+/* Sources marquee: a continuous ticker of the official sources. The
+   old .sources-strip-list rules still exist and become the
+   reduced-motion fallback layout. */
+.sources-marquee {
+    overflow: hidden;
+    margin-bottom: 1.75rem;
+    -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.sources-marquee-track {
+    display: flex;
+    align-items: flex-start;
+    gap: 3rem;
+    width: max-content;
+    animation: sources-scroll 45s linear infinite;
+}
+
+/* A keyboard user tabbing through the links, or anyone hovering to
+   read one, pauses the belt. */
+.sources-marquee:hover .sources-marquee-track,
+.sources-marquee:focus-within .sources-marquee-track {
+    animation-play-state: paused;
+}
+
+@keyframes sources-scroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sources-marquee { mask-image: none; -webkit-mask-image: none; }
+    .sources-marquee-track {
+        animation: none;
+        flex-wrap: wrap;
+        width: auto;
+        justify-content: center;
+        row-gap: 1.75rem;
+    }
+    /* The duplicate pass exists only to make the loop seamless. */
+    .sources-marquee-track a[aria-hidden="true"] { display: none; }
+}
+
+/* ---- Site-wide micro-interactions ---- */
+
+/* Every button acknowledges the press. */
+button, .search-form button, .stacked-form button, .oauth-btn, .ext-cta-btn {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease,
+                transform 0.15s ease, border-color 0.15s ease;
+}
+
+button:active, .oauth-btn:active, .ext-cta-btn:active {
+    transform: scale(0.98);
+}
+
+/* Inputs glow softly on focus rather than snapping. */
+.search-form input:focus, .stacked-form input:focus,
+.address-filter-field input:focus, .calc-grid input:focus,
+.calc-grid select:focus {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Content links get a sliding underline; nav and card links keep their
+   own treatments. */
+main p a:not([class]), .faq-item p a, .landing-subheading a {
+    text-decoration: none;
+    color: var(--accent);
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    transition: background-size 0.2s ease;
+}
+
+main p a:not([class]):hover, .faq-item p a:hover, .landing-subheading a:hover {
+    background-size: 100% 1px;
+}
+
+/* Cards lift a little; the border firms up rather than a heavy shadow. */
+.feature-card, .step-card, .why-card, .faq-item {
+    transition: transform 0.18s ease, border-color 0.18s ease,
+                box-shadow 0.18s ease;
+}
+
+.feature-card:hover, .step-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-strong);
+}
+
+/* One visible, consistent keyboard focus ring everywhere. */
+a:focus-visible, button:focus-visible, input:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* The fake URL bar carries a long address; on a phone it must clip
+   with an ellipsis rather than push the page wider. */
+.report-preview-chrome { overflow: hidden; }
+.report-preview-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    a.report-preview-link, button, .feature-card, .step-card,
+    .why-card, .faq-item, main p a:not([class]) {
+        transition: none;
+    }
+    a.report-preview-link:hover { transform: none; }
+    button:active { transform: none; }
+}
