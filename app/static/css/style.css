@@ -4113,10 +4113,42 @@ html { scroll-behavior: smooth; }
 
 /* ---- Homepage promo banner ---- */
 .promo-banner {
-    background: var(--accent);
+    position: relative;
+    overflow: hidden;
+    background: var(--good);
+}
+
+.promo-banner::before {
+    /* A slow diagonal light sweep - deliberately faint and slow so it
+       reads as "special offer" rather than a flashing ad. */
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        100deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.16) 45%,
+        rgba(255, 255, 255, 0.16) 50%,
+        transparent 65%
+    );
+    background-size: 220% 100%;
+    animation: promo-banner-shimmer 5s ease-in-out infinite;
+}
+
+@keyframes promo-banner-shimmer {
+    0% { background-position: 120% 0; }
+    50% { background-position: -20% 0; }
+    100% { background-position: -20% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .promo-banner::before {
+        animation: none;
+    }
 }
 
 .promo-banner-inner {
+    position: relative;
     max-width: var(--site-width);
     margin: 0 auto;
     padding: 0.9rem 2rem;
@@ -4142,17 +4174,30 @@ html { scroll-behavior: smooth; }
     flex-shrink: 0;
     padding: 0.5rem 1.2rem;
     background: var(--accent-ink);
-    color: var(--accent);
+    color: var(--good);
     border-radius: var(--radius-sm);
     font-weight: var(--weight-semi);
     font-size: var(--text-sm);
     text-decoration: none;
+    animation: promo-banner-pulse 2.4s ease-in-out infinite;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .promo-banner-btn:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
+    animation-play-state: paused;
+}
+
+@keyframes promo-banner-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.55); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .promo-banner-btn {
+        animation: none;
+    }
 }
 
 /* ---- Base rate step chart (buying guide) ---- */
