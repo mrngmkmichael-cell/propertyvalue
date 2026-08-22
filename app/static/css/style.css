@@ -4269,3 +4269,14 @@ main:focus { outline: none; }
 }
 .snap-cards .snap-card:nth-child(2) { transition-delay: 0.08s; }
 .snap-cards .snap-card:nth-child(3) { transition-delay: 0.16s; }
+
+/* ---- School guide: sub-headings inside each area card ---- */
+.school-guide-subhead {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 1.25rem 0 0.5rem;
+}

@@ -3725,8 +3725,12 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
     for i, area in enumerate(area_list):
         landscape = await asyncio.to_thread(schools_db.school_landscape, area["latitude"], area["longitude"])
         remaining = area_list[:i] + area_list[i + 1:]
+        label = (area.get("label") or "").strip().upper()
         areas_with_stats.append({
             **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
+            # A search that was a postcode district gets a link to its area
+            # guide; a town or full postcode doesn't have one.
+            "outcode": label if _OUTCODE_RE.match(label) else None,
         })
     context["areas"] = areas_with_stats
     context["areas_param"] = _areas_param(area_list)
