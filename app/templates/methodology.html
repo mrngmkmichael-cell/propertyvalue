@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_icons.html" as icons %}
 
 {% block title %}Why trust this | UKPropertyInsight{% endblock %}
 
@@ -10,11 +11,23 @@
 
 <section class="landing-section">
     <h2 class="landing-heading">How each check works</h2>
-    <ul class="snap-points snap-points-centred">
-        <li><strong>Queried live, from the body that holds the data.</strong> Land Registry, the Environment Agency, Police.uk, at the moment you search.</li>
-        <li><strong>Never scraped, never re-packaged.</strong> No listings sites, no third-party aggregators.</li>
-        <li><strong>A few come from bulk files.</strong> Ofsted ratings, census figures, air quality are published that way. Each one says so on its card.</li>
-    </ul>
+    <div class="snap-cards">
+        <div class="snap-card" data-animate>
+            <span class="snap-card-icon">{{ icons.icon('broadband') }}</span>
+            <h3>Queried live</h3>
+            <p>Straight from the body that holds the data, at the moment you search. Land Registry, the Environment Agency, Police.uk.</p>
+        </div>
+        <div class="snap-card" data-animate>
+            <span class="snap-card-icon">{{ icons.icon('details') }}</span>
+            <h3>Never scraped</h3>
+            <p>No listings sites. No third-party aggregators re-packaging someone else's numbers.</p>
+        </div>
+        <div class="snap-card" data-animate>
+            <span class="snap-card-icon">{{ icons.icon('statistics') }}</span>
+            <h3>A few from bulk files</h3>
+            <p>Ofsted ratings, census figures and air quality are only published that way. Each one says so on its card.</p>
+        </div>
+    </div>
 </section>
 
 <section class="landing-section landing-section-tinted">

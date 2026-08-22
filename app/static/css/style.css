@@ -4226,3 +4226,46 @@ main:focus { outline: none; }
     margin-left: auto;
     margin-right: auto;
 }
+
+/* ---- Snap cards: three points side by side, each with a glyph ---- */
+.snap-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.75rem;
+}
+.snap-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem 1.4rem 1.4rem;
+    text-align: left;
+    transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.snap-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
+.snap-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    margin-bottom: 0.9rem;
+}
+.snap-card-icon svg { width: 22px; height: 22px; }
+.snap-card h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-semi);
+    margin: 0 0 0.35rem;
+    letter-spacing: -0.01em;
+}
+.snap-card p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    line-height: 1.55;
+}
+.snap-cards .snap-card:nth-child(2) { transition-delay: 0.08s; }
+.snap-cards .snap-card:nth-child(3) { transition-delay: 0.16s; }
