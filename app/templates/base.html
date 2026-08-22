@@ -118,14 +118,21 @@
                has the full search form in its hero. Same action and field
                name as that form, so it is one search, two entry points. #}
             {% if request.url.path != "/" %}
-            <form class="header-search" action="/property" method="get" role="search">
+            <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
-                    <label for="header-postcode" class="visually-hidden">Search a postcode</label>
-                    <input type="text" id="header-postcode" name="postcode" placeholder="Search a postcode, e.g. SW1A 1AA" autocomplete="off" required>
-                    <button type="submit" aria-label="Search">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-                    </button>
+                    <label for="header-postcode" class="visually-hidden">Postcode</label>
+                    <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" required>
                 </div>
+                {# Slides open when the postcode field is used, so the
+                   collapsed header stays narrow enough for one row. Always
+                   open on the stacked layouts where there is room. #}
+                <div class="header-search-house">
+                    <label for="header-house" class="visually-hidden">House or flat number (optional)</label>
+                    <input type="text" id="header-house" name="house_number" placeholder="No. / Flat" autocomplete="off">
+                </div>
+                <button type="submit" class="header-search-go" aria-label="Search">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                </button>
             </form>
             {% endif %}
             {% if accounts_configured %}
@@ -199,6 +206,50 @@
         </div>
     </footer>
     <script>
+        (function () {
+            /* Header search: the postcode field types example postcodes
+               in its placeholder (the same demo as the homepage hero),
+               and the house-number field slides open the moment the
+               postcode field is used, collapsing again if both are left
+               empty. */
+            const form = document.getElementById('header-search');
+            if (!form) return;
+            const pc = document.getElementById('header-postcode');
+            const house = document.getElementById('header-house');
+            const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            function expand() { form.classList.add('is-open'); }
+            function maybeCollapse() {
+                setTimeout(function () {
+                    if (document.activeElement === pc || document.activeElement === house) return;
+                    if (!pc.value && !house.value) form.classList.remove('is-open');
+                }, 120);
+            }
+            pc.addEventListener('focus', expand);
+            pc.addEventListener('input', expand);
+            pc.addEventListener('blur', maybeCollapse);
+            house.addEventListener('blur', maybeCollapse);
+
+            if (!reduced) {
+                const samples = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
+                let si = 0, ci = 0, deleting = false;
+                (function tick() {
+                    const word = samples[si];
+                    if (document.activeElement !== pc && !pc.value) {
+                        pc.placeholder = word.slice(0, ci) + '▏';
+                    } else {
+                        pc.placeholder = 'Postcode';
+                    }
+                    let delay;
+                    if (!deleting && ci < word.length) { ci++; delay = 110; }
+                    else if (!deleting) { deleting = true; delay = 1600; }
+                    else if (ci > 0) { ci--; delay = 45; }
+                    else { deleting = false; si = (si + 1) % samples.length; delay = 350; }
+                    setTimeout(tick, delay);
+                })();
+            }
+        })();
+
         (function () {
             const toggle = document.getElementById('nav-toggle');
             const menu = document.getElementById('site-nav-menu');
