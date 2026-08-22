@@ -1912,37 +1912,43 @@ a {
 
 /* Tables */
 
+/* Locked (Premium) cards. These used to blur the value and wash the
+   lower half of the card out - which, to a first-time visitor, reads
+   as "broken" or "didn't load" rather than "gated", and since half the
+   grid is locked for a logged-out visitor, half the page looked dead.
+   Now the value is simply absent and a small tag says why; the title
+   and icon stay, so the card still sells what's behind the gate. */
 .dashboard-card-locked {
     position: relative;
     text-decoration: none;
+    border-style: dashed;
+    border-color: var(--border-strong);
+    background: var(--bg);
 }
 
 .dashboard-card-locked .dashboard-card-status,
 .dashboard-card-locked .dashboard-card-substat {
-    filter: blur(5px);
-    user-select: none;
+    display: none;
 }
 
 .dashboard-card-lock-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
+    /* Sits first in the markup but is flexed to the end of the card. */
+    order: 10;
+    margin-top: auto;
+    align-self: flex-start;
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 0.3rem;
-    padding-bottom: 1rem;
-    /* Transparent over the icon/title (kept crisp, unblurred, to sell
-       what's behind the lock) - only washes out the lower half, where
-       the actual blurred status/substat text sits. */
-    background: linear-gradient(to bottom, transparent 0%, transparent 42%, rgba(255, 255, 255, 0.85) 58%);
-    border-radius: var(--radius-lg);
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    background: var(--accent-soft);
+    border-radius: var(--radius-pill);
 }
 
 .dashboard-card-lock-overlay svg {
-    width: 20px;
-    height: 20px;
+    width: 13px;
+    height: 13px;
     color: var(--accent);
+    flex-shrink: 0;
 }
 
 .dashboard-card-lock-label {
@@ -1950,8 +1956,14 @@ a {
     font-size: var(--text-xs);
     font-weight: var(--weight-semi);
     color: var(--accent);
-    text-align: center;
-    padding: 0 0.75rem;
+    line-height: 1.2;
+}
+
+/* The Premium page's preview cards reuse the locked look but their
+   "status" line is the feature description, which is the whole point
+   of that page - keep it visible there. */
+.premium-preview-lede ~ .dashboard-grid .dashboard-card-locked .dashboard-card-status {
+    display: block;
 }
 
 .watchlist-changes {
@@ -4123,6 +4135,131 @@ html { scroll-behavior: smooth; }
 .hero-signup-note {
     font-size: var(--text-sm);
     color: var(--ink-soft);
+}
+
+/* ---- Report: highlights strip ---- */
+.highlights {
+    margin: 1.25rem 0 0;
+}
+
+.highlights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.highlight {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-md);
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.highlight:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.highlight-good { border-left-color: var(--good); }
+.highlight-warn { border-left-color: var(--warn); }
+
+.highlight-value {
+    font-family: var(--font-sans);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-semi);
+    line-height: 1.1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+
+.highlight-label {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    line-height: 1.35;
+}
+
+/* ---- Report: keep exploring ---- */
+.keep-exploring {
+    margin-top: 2.5rem;
+    padding: 1.75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.keep-exploring-head h2 {
+    font-size: var(--text-lg);
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+.keep-exploring-head .section-sub {
+    margin: 0.25rem 0 1rem;
+}
+
+.keep-exploring-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.keep-exploring-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 1.1rem 1.2rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.keep-exploring-tile:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent);
+}
+
+.keep-exploring-icon svg {
+    width: 22px;
+    height: 22px;
+    color: var(--accent);
+}
+
+.keep-exploring-title {
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semi);
+    color: var(--ink);
+}
+
+.keep-exploring-desc {
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    line-height: 1.45;
+}
+
+.search-form.keep-exploring-search {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    max-width: 480px;
 }
 
 /* ---- Homepage promo banner ---- */

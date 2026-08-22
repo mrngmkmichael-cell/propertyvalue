@@ -217,6 +217,69 @@
     </div>
     {% endif %}
 
+    {# The most notable findings for THIS property, pulled above the grid
+       in larger type. The grid gives every check the same weight, so the
+       genuinely interesting facts (a street that's 63% under-25s, prices
+       up 30% in five years) sat at the same size as "Radon: low" and the
+       page read as a data dump. Only ever built from cards that are
+       unlocked for everyone - a locked card's value must never appear
+       here, or the lock is pointless. Candidates are in priority order
+       and the first four that apply are shown. #}
+    {% set highlights = [] %}
+    {% if transactions %}
+        {% set _ = highlights.append((transactions[0].amount | gbp, 'last sold here, ' ~ transactions[0].date[:4], 'modal-sold-price-history', '')) %}
+    {% endif %}
+    {% if school_landscape and school_landscape.good_or_better_pct is not none and school_landscape.total_schools %}
+        {% set _ = highlights.append((school_landscape.good_or_better_pct ~ '%', 'of nearby schools rated Good or Outstanding', 'modal-schools', 'good' if school_landscape.good_or_better_pct >= 70 else '')) %}
+    {% endif %}
+    {% if prosperity_area %}
+        {% set _ = highlights.append(("%+.1f"|format(prosperity_area.annual_change_pct) ~ '%', 'house prices year on year, ' ~ prosperity_area.name, 'modal-sold-price-history', 'good' if prosperity_area.annual_change_pct >= 0 else 'warn')) %}
+    {% endif %}
+    {% if crime_comparison %}
+        {% set lower = crime_comparison | selectattr('trend', 'equalto', 'lower') | list | length %}
+        {% set higher = crime_comparison | selectattr('trend', 'equalto', 'higher') | list | length %}
+        {% if lower > higher %}
+            {% set _ = highlights.append(('Lower', 'crime than the surrounding area', 'modal-crime', 'good')) %}
+        {% elif higher > lower %}
+            {% set _ = highlights.append(('Higher', 'crime than the surrounding area', 'modal-crime', 'warn')) %}
+        {% endif %}
+    {% endif %}
+    {% if certificates and certificates[0].rating in ['A', 'B', 'C'] %}
+        {% set _ = highlights.append(('EPC ' ~ certificates[0].rating, 'energy rating, cheaper than most to run', 'modal-epc', 'good')) %}
+    {% endif %}
+    {% if broadband and broadband.label in ['Gigabit-capable', 'Ultrafast'] %}
+        {% set _ = highlights.append((broadband.label, 'broadband available at this postcode', 'modal-broadband', 'good')) %}
+    {% endif %}
+    {% if age_profile and age_profile.under_25_pct >= 45 %}
+        {% set _ = highlights.append((age_profile.under_25_pct ~ '%', 'of residents are under 25', 'modal-age-profile', '')) %}
+    {% endif %}
+    {% if qualification and qualification.degree_pct >= 50 %}
+        {% set _ = highlights.append((qualification.degree_pct ~ '%', 'of adults here are degree-educated', 'modal-qualification', '')) %}
+    {% endif %}
+    {% if housing and housing.owned_pct is not none and housing.owned_pct <= 35 %}
+        {% set _ = highlights.append((housing.owned_pct ~ '%', 'owner-occupied, so mostly a renting area', 'modal-housing', '')) %}
+    {% endif %}
+    {% if heritage and heritage | length >= 3 %}
+        {% set _ = highlights.append((heritage | length, 'listed buildings within walking distance', 'modal-heritage', '')) %}
+    {% endif %}
+    {% if noise and noise_max is not none and noise_max < 55 %}
+        {% set _ = highlights.append(('Quiet', noise_max ~ ' dB(A) at its loudest, a calm residential street', 'modal-noise', 'good')) %}
+    {% endif %}
+
+    {% if highlights | length >= 2 %}
+    <div class="highlights" data-animate>
+        <h3 class="dashboard-category-heading">What stands out</h3>
+        <div class="highlights-grid">
+            {% for value, label, modal_id, tone in highlights[:4] %}
+            <button type="button" class="highlight{% if tone %} highlight-{{ tone }}{% endif %}" data-modal-target="{{ modal_id }}">
+                <span class="highlight-value">{{ value }}</span>
+                <span class="highlight-label">{{ label }}</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <p class="section-sub">Tap a card to see the details in a popup.</p>
 
     {# premium_unlocked comes from the route: per-property, not per-account. #}
@@ -657,6 +720,42 @@
             </span>
         </button>
     </div>
+
+    {# The report used to just stop at the last card. Pageview data
+       showed that was where almost every visit ended too - 496 report
+       views, 36 went on to Comparables - so give the reader somewhere
+       to go next that's actually related to what they just read. #}
+    {% set kx_outcode = location.outcode %}
+    <section class="keep-exploring" data-animate>
+        <div class="keep-exploring-head">
+            <h2>Keep exploring</h2>
+            <p class="section-sub">Three places to go from here.</p>
+        </div>
+        <div class="keep-exploring-grid">
+            <a class="keep-exploring-tile" href="/area/{{ kx_outcode }}">
+                <span class="keep-exploring-icon">{{ icons.icon('statistics') }}</span>
+                <span class="keep-exploring-title">{{ kx_outcode }} area guide</span>
+                <span class="keep-exploring-desc">How the wider {{ kx_outcode }} district compares on prices, schools, crime and flood risk.</span>
+            </a>
+            <a class="keep-exploring-tile" href="/property/comparables?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
+                <span class="keep-exploring-icon">{{ icons.icon('market') }}</span>
+                <span class="keep-exploring-title">What sold nearby</span>
+                <span class="keep-exploring-desc">Recent sales within a short walk, so you can see what this price is being measured against.</span>
+            </a>
+            <a class="keep-exploring-tile" href="/schools/guide?q={{ kx_outcode }}">
+                <span class="keep-exploring-icon">{{ icons.icon('schools') }}</span>
+                <span class="keep-exploring-title">Schools around {{ kx_outcode }}</span>
+                <span class="keep-exploring-desc">Every Ofsted-rated school nearby, with catchment distances where the council publishes them.</span>
+            </a>
+        </div>
+        <form action="/property" method="get" class="search-form keep-exploring-search">
+            <div class="search-form-field">
+                <label for="keep-exploring-postcode">Check another postcode</label>
+                <input type="text" id="keep-exploring-postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+            </div>
+            <button type="submit">Search</button>
+        </form>
+    </section>
 
     <dialog class="report-modal" id="modal-sold-price-history">
         <div class="report-modal-inner">
