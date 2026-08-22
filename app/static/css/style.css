@@ -1226,11 +1226,34 @@ a {
     justify-content: center;
 }
 
-.why-card-icon-img {
-    display: block;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+/* A large glyph on a soft tinted disc, replacing the image cards. The
+   disc gives the card a focal point; the glyph inherits the accent. */
+.why-card-glyph {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    transition: transform 0.25s ease, background-color 0.25s ease;
+}
+
+.why-card-glyph svg {
+    width: 64px;
+    height: 64px;
+    stroke-width: 1.5;
+}
+
+.why-card:hover .why-card-glyph {
+    transform: scale(1.06) rotate(-3deg);
+    background: var(--surface-2);
+}
+
+@media (max-width: 860px) {
+    .why-card-glyph { width: 96px; height: 96px; }
+    .why-card-glyph svg { width: 44px; height: 44px; }
 }
 
 .why-card-body {
@@ -3829,4 +3852,48 @@ summary:focus-visible, [tabindex]:focus-visible {
     }
     a.report-preview-link:hover { transform: none; }
     button:active { transform: none; }
+}
+
+/* ---- Maker's note: the one section without the scaffold ---- */
+.maker-note {
+    margin-top: 5rem;
+    padding-top: 3rem;
+    border-top: 1px solid var(--border);
+}
+
+.maker-note-inner {
+    max-width: 640px;
+}
+
+.maker-note-text {
+    margin: 0 0 1.25rem;
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--ink);
+}
+
+.maker-note-sig {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 1rem;
+    margin: 0;
+}
+
+.maker-note-name {
+    font-weight: var(--weight-semi);
+    color: var(--ink);
+}
+
+.maker-note-meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+@media (max-width: 860px) {
+    .maker-note { margin-top: 3.5rem; padding-top: 2rem; }
+    .maker-note-text { font-size: var(--text-base); }
 }

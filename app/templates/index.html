@@ -104,25 +104,48 @@
     </div>
 </section>
 
+{# ---- Who built this ----
+   MICHAEL: this is a draft in your voice, built only from things you
+   have already said publicly in your r/HousingUK post. Edit it freely -
+   the scrappier the better. It is deliberately the one section on the
+   page with no kicker, no heading and no card, so it reads as a person
+   talking rather than a template. Its job is to be the thing no
+   competitor can copy. #}
+<section class="maker-note" data-animate>
+    <div class="maker-note-inner">
+        <p class="maker-note-text">
+            I'm Michael. I'm not a developer. I built this from scratch, learning as I went, because checking a property properly meant a dozen government websites open at once and a notebook. Every figure here comes from one of those official sources, nothing is scraped from listings, and where a number is an estimate it says so on the number. Searching is free and always will be.
+        </p>
+        <p class="maker-note-sig">
+            <span class="maker-note-name">Michael</span>
+            <span class="maker-note-meta">Built solo on FastAPI and Postgres &middot; First shared on r/HousingUK</span>
+        </p>
+    </div>
+</section>
+
 <section class="landing-section why-us-section" data-animate>
     <div class="why-header-row">
-        <h2 class="why-heading">Built different,<br>on purpose.</h2>
+        <h2 class="why-heading">What makes it<br>different.</h2>
         <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
     </div>
     {% set why_cards = [
-        ('school.webp', 'School Catchment Data', 'Real distances,', 'clearly labelled.', 'Council-published admission distances. Estimates are labelled as estimates.'),
-        ('verified.webp', 'Verified Sources', 'Every figure', 'has a source.', 'Land Registry, Ofsted, the Environment Agency. Each figure names its source.'),
-        ('report.webp', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax. One address.'),
-        ('score.webp', 'Overview Score', 'One clear', 'verdict.', 'GOOD, AVERAGE or POOR, with the reasoning shown.'),
-        ('pricing.webp', 'Simple Pricing', 'Unlimited,', 'for less.', 'Unlimited reports for less than one search fee elsewhere.'),
+        ('schools', 'School Catchment Data', 'Real distances,', 'clearly labelled.', 'Council-published admission distances. Estimates are labelled as estimates.'),
+        ('land_registry', 'Verified Sources', 'Every figure', 'has a source.', 'Land Registry, Ofsted, the Environment Agency. Each figure names its source.'),
+        ('details', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax. One address.'),
+        ('statistics', 'Overview Score', 'One clear', 'verdict.', 'GOOD, AVERAGE or POOR, with the reasoning shown.'),
+        ('valuation', 'Simple Pricing', 'Unlimited,', 'for less.', 'Unlimited reports for less than one search fee elsewhere.'),
     ] %}
     <div class="why-carousel-wrap">
         <div class="why-cards">
             {% for pass_num in range(2) %}
-                {% for img_file, eyebrow, title_main, title_hl, desc in why_cards %}
+                {% for icon_name, eyebrow, title_main, title_hl, desc in why_cards %}
                 <div class="why-card"{% if pass_num == 1 %} aria-hidden="true"{% endif %}>
-                    <div class="why-card-icon-box">
-                        <img class="why-card-icon-img" src="/static/img/why-cards/transparent/{{ img_file }}" alt="{{ eyebrow }}" loading="lazy">
+                    {# The site's own icon set, in currentColor. The old
+                       illustrations were baked in the pre-redesign electric
+                       blue and read as stock art; these sit in the palette
+                       and cost no requests at all. #}
+                    <div class="why-card-icon-box" aria-hidden="true">
+                        <span class="why-card-glyph">{{ icons.icon(icon_name) }}</span>
                     </div>
                     <div class="why-card-body">
                         <span class="why-card-eyebrow">{{ eyebrow }}</span>
