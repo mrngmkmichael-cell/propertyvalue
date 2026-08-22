@@ -1,10 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}{% if outcode %}{{ outcode }} area guide: house prices, schools & crime | UKPropertyInsight{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
+{% block title %}{% if outcode %}{{ outcode }}{% if admin_district %} {{ admin_district }}{% endif %}: House Prices, Schools, Crime & Flood Risk{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
 {% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block extra_head %}
 {% if outcode %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+        {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://ukpropertyinsight.co.uk/"},
+        {"@type": "ListItem", "position": 2, "name": "Area guides", "item": "https://ukpropertyinsight.co.uk/areas"},
+        {"@type": "ListItem", "position": 3, "name": "{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}", "item": "{{ canonical_url }}"}
+    ]
+}
+</script>
 {% if has_data %}
 <script type="application/ld+json">
 {

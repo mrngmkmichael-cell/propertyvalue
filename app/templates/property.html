@@ -3,6 +3,7 @@
 {% import "_tabs.html" as tabnav %}
 
 {% block title %}{{ query }} | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} | UKPropertyInsight{% endblock %}
 {% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}

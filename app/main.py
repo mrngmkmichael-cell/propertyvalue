@@ -150,7 +150,19 @@ async def capture_pageview(request: Request, call_next):
     return response
 
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+class _CachedStaticFiles(StaticFiles):
+    """Static assets with a one-year cache header. Everything here is
+    immutable-by-filename in practice: the fonts and images only ever
+    change by being replaced with a new file, and the stylesheet is
+    inlined into every page so browsers never fetch it by URL."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+app.mount("/static", _CachedStaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 
 STYLESHEET_PATH = "app/static/css/style.css"
@@ -711,6 +723,16 @@ def index(request: Request):
 # gives crawlers a fast, curated starting point. Worth growing over
 # time (e.g. from real search/watchlist activity) rather than trying
 # to enumerate the whole country in one go.
+# Every real UK postcode district, validated against postcodes.io by
+# scripts/build_outcode_list.py. Drives the sitemap and the /areas index.
+# 2,943 entries; the hand-picked seed list below is kept only as the
+# fallback if the file is ever missing.
+try:
+    with open("app/data/outcodes.json", encoding="utf-8") as _fh:
+        ALL_OUTCODES: list[dict] = json.load(_fh)
+except OSError:
+    ALL_OUTCODES = []
+
 AREA_GUIDE_SEED_OUTCODES = [
     # Every entry here has been verified against postcodes.io's real
     # /outcodes/{outcode} endpoint (see scripts/validate_outcodes.py) -
@@ -796,15 +818,45 @@ AREA_GUIDE_SEED_OUTCODES = [
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
-    static_paths = ["/", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms", "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
-    urls = [f"{base}{p}" for p in static_paths] + [f"{base}/area/{o}" for o in AREA_GUIDE_SEED_OUTCODES]
+    # lastmod is the deploy's own timestamp: a guide's data changes on
+    # the cadence of the imports behind it, and every deploy re-reads
+    # those, so this is honest without tracking per-page dates.
+    lastmod = datetime.date.today().isoformat()
+    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
+                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
+    outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
+    entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
+    entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>{u}</loc></url>\n" for u in urls)
+        + "".join(f"  <url><loc>{u}</loc><lastmod>{lastmod}</lastmod><priority>{pr}</priority></url>\n"
+                  for u, pr in entries)
         + "</urlset>"
     )
     return Response(content=body, media_type="application/xml")
+
+
+@app.get("/areas")
+def areas_index(request: Request):
+    """Every area guide, grouped by region then district. Exists so the
+    2,943 guides are reachable by a crawler (and a person) through real
+    links rather than only via the sitemap - orphaned pages rank poorly
+    however good they are."""
+    context = base_context(request)
+    grouped: dict[str, dict[str, list[str]]] = {}
+    for o in ALL_OUTCODES:
+        region = o.get("region") or o.get("country") or "Other"
+        district = o.get("district") or "Other"
+        grouped.setdefault(region, {}).setdefault(district, []).append(o["outcode"])
+    # Regions in a sensible reading order, districts A-Z within each.
+    order = ["London", "South East", "South West", "East of England", "East Midlands",
+             "West Midlands", "Yorkshire and The Humber", "North West", "North East",
+             "Wales", "Scotland", "Northern Ireland"]
+    regions = sorted(grouped, key=lambda r: (order.index(r) if r in order else 99, r))
+    context["regions"] = [(r, sorted(grouped[r].items())) for r in regions]
+    context["total"] = len(ALL_OUTCODES)
+    return templates.TemplateResponse(request, "areas.html", context)
 
 
 @app.get("/robots.txt")

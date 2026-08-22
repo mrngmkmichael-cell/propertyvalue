@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -47,6 +47,43 @@
     <meta property="og:image:height" content="{% block og_image_height %}630{% endblock %}">
     <meta name="twitter:card" content="summary_large_image">
 
+    {# Pages that should never rank: account, utility and the
+       per-postcode report. The report is noindexed on purpose - it is
+       an unbounded URL space (1.7M postcodes) that renders slowly cold,
+       and letting Googlebot loose on it would spend the crawl budget
+       the area guides need. Flip the block on property.html if that
+       trade ever changes. #}
+    {% block robots %}{% endblock %}
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": "https://ukpropertyinsight.co.uk/#org",
+                "name": "UKPropertyInsight",
+                "url": "https://ukpropertyinsight.co.uk",
+                "logo": "{{ request.url_for('static', path='img/og-default.png') }}",
+                "email": "support@ukpropertyinsight.co.uk",
+                "areaServed": "GB"
+            },
+            {
+                "@type": "WebSite",
+                "@id": "https://ukpropertyinsight.co.uk/#site",
+                "url": "https://ukpropertyinsight.co.uk",
+                "name": "UKPropertyInsight",
+                "publisher": {"@id": "https://ukpropertyinsight.co.uk/#org"},
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": {"@type": "EntryPoint", "urlTemplate": "https://ukpropertyinsight.co.uk/property?postcode={postcode}"},
+                    "query-input": "required name=postcode"
+                }
+            }
+        ]
+    }
+    </script>
+
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -79,6 +116,7 @@
                 <span class="nav-toggle-bars"></span>
             </button>
             <nav class="site-nav" id="site-nav-menu">
+                <a href="/areas">Area guides</a>
                 <a href="/methodology">Why trust this</a>
                 <a href="/schools/guide">School Guide</a>
                 <a href="/buying-guide">Buying Guide</a>
@@ -118,6 +156,7 @@
                 &middot; <a href="/terms">Terms of Service</a>
                 &middot; <a href="/market-report">Market Report</a>
                 &middot; <a href="/buying-guide">Buying Guide</a>
+                &middot; <a href="/areas">Area Guides</a>
                 &middot; <a href="/embed">For Agents</a>
             </p>
         </div>

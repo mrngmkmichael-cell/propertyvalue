@@ -1,12 +1,29 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}UKPropertyInsight | UK Property Lookup{% endblock %}
+{% block title %}Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime{% endblock %}
 
 {% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report, built entirely from official government data.{% endblock %}
 {# No Leaflet on this page. The hero map is a fixed, non-interactive,
    blurred view, so it is baked into a single static image and set as a
    background in style.css - see scripts/build_hero_map.py. #}
+
+{% block extra_head %}
+{# FAQ rich result: the five questions at the foot of the page, verbatim. #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "What is UKPropertyInsight?", "acceptedAnswer": {"@type": "Answer", "text": "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we show the facts about a property and its area."}},
+        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. A free account unlocks the full depth of each report; Premium adds the deeper checks for £9.99 a month."}},
+        {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
+        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
+        {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
+    ]
+}
+</script>
+{% endblock %}
 
 {% block content %}
 <section class="hero">

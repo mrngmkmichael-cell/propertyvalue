@@ -4042,3 +4042,48 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
     [data-animate] { opacity: 1; transform: none; transition: none; }
 }
+
+/* ---- /areas: the index of every area guide ---- */
+.areas-jump {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 1.5rem 0 2.5rem;
+}
+.areas-jump a {
+    padding: 0.35rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+.areas-jump a:hover { border-color: var(--border-strong); color: var(--ink); }
+.areas-region { margin-top: 3rem; scroll-margin-top: 1.5rem; }
+.areas-region h2 {
+    font-size: var(--text-xl);
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--border);
+}
+.areas-districts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.25rem 2rem;
+    margin-top: 1.25rem;
+}
+.areas-district h3 { font-size: var(--text-base); margin: 0 0 0.3rem; }
+.areas-codes { margin: 0; line-height: 1.9; }
+.areas-codes a {
+    display: inline-block;
+    margin-right: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--accent);
+    text-decoration: none;
+}
+.areas-codes a:hover { text-decoration: underline; }

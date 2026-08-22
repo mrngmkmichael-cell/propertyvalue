@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}Sign up | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
 {% if next and next.startswith('/premium') %}

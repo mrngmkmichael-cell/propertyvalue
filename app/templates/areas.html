@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}UK Area Guides by Postcode District: House Prices, Schools & Crime | UKPropertyInsight{% endblock %}
+{% block meta_description %}Free area guides for all {{ total }} UK postcode districts: average house prices, school ratings, crime levels and flood risk, every figure from official government data.{% endblock %}
+
+{% block extra_head %}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "name": "UK area guides by postcode district",
+    "description": "Area guides for every UK postcode district, built from official government data.",
+    "url": "{{ canonical_url }}",
+    "isPartOf": {"@type": "WebSite", "name": "UKPropertyInsight", "url": "https://ukpropertyinsight.co.uk"}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<span class="kicker">Area guides</span>
+<h1>Every UK postcode district, one guide each</h1>
+<p class="dek">{{ total }} districts. House prices, schools, crime and flood risk for each, from the same official sources as a full property report.</p>
+
+<nav class="areas-jump" aria-label="Jump to region">
+    {% for region, districts in regions %}
+    <a href="#region-{{ loop.index }}">{{ region }}</a>
+    {% endfor %}
+</nav>
+
+{% for region, districts in regions %}
+<section class="areas-region" id="region-{{ loop.index }}">
+    <h2>{{ region }}</h2>
+    <div class="areas-districts">
+        {% for district, outcodes in districts %}
+        <div class="areas-district">
+            <h3>{{ district }}</h3>
+            <p class="areas-codes">
+                {% for oc in outcodes %}<a href="/area/{{ oc }}">{{ oc }}</a>{% endfor %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% endblock %}
