@@ -120,15 +120,15 @@ async def _national_warnings() -> list[dict] | None:
     if it has expired, refresh once in the background for the next
     caller. Only the very first request after a cold start waits."""
     global _refresh_task
-    fresh = _cache.get(_NATIONAL_KEY, CACHE_TTL_S)
+    fresh = _cache.get(_NATIONAL_KEY, CACHE_TTL_S, keep_expired=True)
     if fresh is not None:
         return fresh
 
-    stale_entry = _cache._store.get(_NATIONAL_KEY)
-    if stale_entry is not None:
+    stale = _cache.get_stale(_NATIONAL_KEY)
+    if stale is not None:
         if _refresh_task is None:
             _refresh_task = asyncio.create_task(_refresh_national())
-        return stale_entry[1]
+        return stale
 
     # Cold start: nothing to serve yet, so this one caller waits.
     if _refresh_task is None:

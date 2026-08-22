@@ -7,28 +7,62 @@ to build and read far more often than they change - area guides are the
 canonical case. Everything here is best-effort: a database hiccup falls
 through to tier 1, then to a rebuild, and never to an error page.
 """
+import collections
 import datetime
 import decimal
 import json
 import logging
 import time
 
-_store: dict = {}
+_store: "collections.OrderedDict" = collections.OrderedDict()
 # Outcome of the most recent persistent read/write, for the Server-Timing
 # diagnostic on pages that use it. Render's logs aren't reachable from a
 # dev machine; the response header is.
 last_outcome: str = ""
 
+# Tier 1 is bounded and least-recently-used. It used to be a plain dict
+# that nothing ever removed from: an expired entry simply stopped being
+# returned, and sat there until the process restarted. Every property
+# report leaves behind a full ~30-service gather result (hundreds of KB)
+# plus one small entry per service, so on a 512 MB Render instance that
+# was a slow, certain climb to the memory limit and a forced restart
+# (observed 2026-08-23). Expired entries are now dropped on read, and
+# the store evicts its oldest entry once it's full. Dict insertion order
+# is the LRU order: a hit moves the key to the end.
+MAX_ENTRIES = 1500
 
-def get(key, ttl_seconds: float):
+
+def get(key, ttl_seconds: float, keep_expired: bool = False):
+    """keep_expired leaves an expired entry in place (still returning
+    None) so a caller can follow up with get_stale() and serve it while
+    a refresh runs - see flood._national_warnings."""
     entry = _store.get(key)
-    if entry and time.time() - entry[0] < ttl_seconds:
-        return entry[1]
-    return None
+    if entry is None:
+        return None
+    if time.time() - entry[0] >= ttl_seconds:
+        if not keep_expired:
+            _store.pop(key, None)
+        return None
+    _store.move_to_end(key)
+    return entry[1]
+
+
+def get_stale(key):
+    """The cached value regardless of age, or None if never cached (or
+    since evicted). For stale-while-revalidate callers only."""
+    entry = _store.get(key)
+    return entry[1] if entry is not None else None
+
+
+def _put(key, stored_at: float, value) -> None:
+    _store.pop(key, None)
+    _store[key] = (stored_at, value)
+    while len(_store) > MAX_ENTRIES:
+        _store.popitem(last=False)
 
 
 def set(key, value) -> None:
-    _store[key] = (time.time(), value)
+    _put(key, time.time(), value)
 
 
 def coord_key(prefix: str, lat: float, lon: float) -> tuple:
@@ -97,7 +131,7 @@ def get_persistent(key, ttl_seconds: float):
 
     # Keep tier 1's clock honest: it inherits the row's remaining life
     # rather than starting a fresh TTL from now.
-    _store[key] = (time.time() - age, value)
+    _put(key, time.time() - age, value)
     return value
 
 
