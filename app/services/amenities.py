@@ -34,7 +34,11 @@ OVERPASS_TIMEOUT_S = 8
 # How long a mirror gets to answer before the next one is also asked.
 # The whole point of hedging is that a healthy mirror answers well
 # inside this, so the other four are never contacted at all.
-OVERPASS_HEDGE_DELAY_S = 2.5
+# 1.5s rather than 2.5: after the flood fix this is the page's long
+# pole, and from Render's IP range the primary is often the slow one, so
+# the second mirror is worth asking a second earlier. A healthy mirror
+# still answers inside this, so the common case is still one request.
+OVERPASS_HEDGE_DELAY_S = 1.5
 
 # Index into OVERPASS_ENDPOINTS of whichever mirror answered last.
 # Public Overpass instances flap - one that 502s now is often fine an
