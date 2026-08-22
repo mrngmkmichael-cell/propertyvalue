@@ -21,6 +21,9 @@
 <p class="section-sub"><a href="/schools/shortlist">My shortlisted schools</a></p>
 {% endif %}
 
+{% if not areas %}
+<p class="section-sub" style="margin-bottom: 0.25rem;">Type an exact postcode for the most accurate result, or pick a district from the list below.</p>
+{% endif %}
 <form action="/schools/guide" method="get" class="search-form" style="margin: 1.5rem 0;">
     <input type="hidden" name="areas" value="{{ areas_param }}">
     <div class="search-form-field">
@@ -143,20 +146,8 @@
     {% endfor %}
 </div>
 {% elif not search_error %}
-<section class="report-section">
-    <h2>Try an area</h2>
-    <p class="section-sub">A few to start with, or <a href="/areas">browse every postcode district</a>.</p>
-    <p class="areas-codes">
-        {% for q in ['SW1A', 'M1', 'LS6', 'B15', 'BS8', 'EH1', 'Oxford', 'Cambridge', 'Bath', 'York'] %}<a href="/schools/guide?q={{ q | urlencode }}">{{ q }}</a>{% endfor %}
-    </p>
-</section>
-<section class="report-section">
-    <h2>What you get</h2>
-    <ul class="snap-points">
-        <li><strong>The share rated Outstanding or Good,</strong> against the national figure{% if national_baseline %} of {{ national_baseline.good_or_better_pct }}%{% endif %}.</li>
-        <li><strong>Every school by rating and by phase,</strong> each one opening to its Ofsted report, exam results and catchment distance.</li>
-        <li><strong>Up to three areas side by side.</strong> Useful when the shortlist is down to two streets.</li>
-    </ul>
-</section>
+<p class="dek" style="margin-top: 2rem;">{{ total }} postcode districts. Pick one to see its schools.</p>
+{% set link_prefix = "/schools/guide?q=" %}
+{% include "_area_index.html" %}
 {% endif %}
 {% endblock %}

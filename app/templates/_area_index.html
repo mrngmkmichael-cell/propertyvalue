@@ -1,0 +1,24 @@
+{# Every postcode district grouped by region and council district.
+   Used by /areas (links to area guides) and the school guide's landing
+   state (links to a school search). `link_prefix` decides which. #}
+<nav class="areas-jump" aria-label="Jump to region">
+    {% for region, districts in regions %}
+    <a href="#region-{{ loop.index }}">{{ region }}</a>
+    {% endfor %}
+</nav>
+
+{% for region, districts in regions %}
+<section class="areas-region" id="region-{{ loop.index }}">
+    <h2>{{ region }}</h2>
+    <div class="areas-districts">
+        {% for district, outcodes in districts %}
+        <div class="areas-district">
+            <h3>{{ district }}</h3>
+            <p class="areas-codes">
+                {% for oc in outcodes %}<a href="{{ link_prefix }}{{ oc }}">{{ oc }}</a>{% endfor %}
+            </p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}

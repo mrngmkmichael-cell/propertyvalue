@@ -863,6 +863,22 @@ def sitemap(request: Request):
     return Response(content=body, media_type="application/xml")
 
 
+def _area_index() -> list[tuple[str, list[tuple[str, list[str]]]]]:
+    """Every postcode district grouped by region, then council district,
+    regions in reading order and districts A-Z. Shared by /areas and the
+    school guide's landing state, so the two indexes can never drift."""
+    grouped: dict[str, dict[str, list[str]]] = {}
+    for o in ALL_OUTCODES:
+        region = o.get("region") or o.get("country") or "Other"
+        district = o.get("district") or "Other"
+        grouped.setdefault(region, {}).setdefault(district, []).append(o["outcode"])
+    order = ["London", "South East", "South West", "East of England", "East Midlands",
+             "West Midlands", "Yorkshire and The Humber", "North West", "North East",
+             "Wales", "Scotland", "Northern Ireland"]
+    regions = sorted(grouped, key=lambda r: (order.index(r) if r in order else 99, r))
+    return [(r, sorted(grouped[r].items())) for r in regions]
+
+
 @app.get("/areas")
 def areas_index(request: Request):
     """Every area guide, grouped by region then district. Exists so the
@@ -870,17 +886,7 @@ def areas_index(request: Request):
     links rather than only via the sitemap - orphaned pages rank poorly
     however good they are."""
     context = base_context(request)
-    grouped: dict[str, dict[str, list[str]]] = {}
-    for o in ALL_OUTCODES:
-        region = o.get("region") or o.get("country") or "Other"
-        district = o.get("district") or "Other"
-        grouped.setdefault(region, {}).setdefault(district, []).append(o["outcode"])
-    # Regions in a sensible reading order, districts A-Z within each.
-    order = ["London", "South East", "South West", "East of England", "East Midlands",
-             "West Midlands", "Yorkshire and The Humber", "North West", "North East",
-             "Wales", "Scotland", "Northern Ireland"]
-    regions = sorted(grouped, key=lambda r: (order.index(r) if r in order else 99, r))
-    context["regions"] = [(r, sorted(grouped[r].items())) for r in regions]
+    context["regions"] = _area_index()
     context["total"] = len(ALL_OUTCODES)
     return templates.TemplateResponse(request, "areas.html", context)
 
@@ -3735,6 +3741,11 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
     context["areas"] = areas_with_stats
     context["areas_param"] = _areas_param(area_list)
     context["can_add_more"] = len(area_list) < MAX_COMPARE_AREAS
+    # The landing state shows the full district index under the search
+    # box, like /areas does; the results page does not carry it.
+    if not areas_with_stats:
+        context["regions"] = _area_index()
+        context["total"] = len(ALL_OUTCODES)
 
     return templates.TemplateResponse(request, "schools_guide.html", context)
 
