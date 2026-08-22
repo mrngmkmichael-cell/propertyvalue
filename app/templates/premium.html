@@ -36,7 +36,10 @@
 <p class="notice notice-error">Something went wrong opening your billing portal. Please try again.</p>
 {% endif %}
 
-{% if current_user and current_user.is_premium %}
+{# Three states, not two: subscribed, on the free signup trial, or
+   neither. A trial user has full access but nothing to "manage", so
+   showing them a billing-portal button would be a dead end. #}
+{% if current_user and current_user.subscribed %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
     <strong>You're on Premium.</strong> Manage your plan, payment details, or cancel any time.
 </p>
@@ -45,6 +48,15 @@
 </form>
 
 {% else %}
+{# A trial user still sees the pricing, because the trial is exactly
+   when they are deciding. What they must not see is a "manage
+   subscription" button - there is no subscription to manage. #}
+{% if current_user and current_user.on_trial %}
+<p class="notice" style="background: var(--good-bg); color: var(--good);">
+    <strong>Your free Premium trial is running.</strong>
+    {{ current_user.trial_days_left }} day{{ "s" if current_user.trial_days_left != 1 else "" }} left, with every check below already unlocked. Subscribe whenever you like, or do nothing and it just ends.
+</p>
+{% endif %}
 <div class="pricing-grid">
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">

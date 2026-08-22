@@ -136,6 +136,24 @@
         </div>
     </header>
 
+    {# Trial status, shown on every page while it runs. Deliberately
+       calm rather than a countdown-with-urgency: the promise on the
+       signup page was "nothing to cancel", and a nagging banner would
+       break that. Turns into a soft prompt only in the last three
+       days. #}
+    {% if current_user and current_user.on_trial %}
+    <div class="trial-banner{{ ' trial-banner-ending' if current_user.trial_days_left <= 3 else '' }}">
+        <span class="trial-banner-text">
+            {% if current_user.trial_days_left <= 3 %}
+                Your free Premium trial ends in {{ current_user.trial_days_left }} day{{ "s" if current_user.trial_days_left != 1 else "" }}.
+            {% else %}
+                Premium trial: {{ current_user.trial_days_left }} days left, every check unlocked.
+            {% endif %}
+        </span>
+        <a href="/premium">See plans</a>
+    </div>
+    {% endif %}
+
     <main class="site-main">
         {% block content %}{% endblock %}
     </main>

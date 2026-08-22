@@ -1610,7 +1610,8 @@ async def api_extension_login(request: Request):
         if user is None or not auth.verify_password(password, user.password_hash):
             return JSONResponse({"error": "invalid_credentials"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
         token = _extension_token_serializer().dumps({"user_id": user.id})
-        payload = {"token": token, "email": user.email, "is_premium": user.is_premium}
+        payload = {"token": token, "email": user.email,
+                   "is_premium": auth.premium_state(user)["is_premium"]}
 
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
@@ -1702,7 +1703,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         token_user = _user_from_extension_token(auth_header[7:])
-        premium_unlocked = bool(token_user and token_user.is_premium)
+        premium_unlocked = bool(token_user and auth.premium_state(token_user)["is_premium"])
 
     try:
         location, area_level = await _resolve_extension_location(postcode)
@@ -1907,7 +1908,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     if not auth_header.startswith("Bearer "):
         return JSONResponse({"error": "login_required"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
     token_user = _user_from_extension_token(auth_header[7:])
-    if not token_user or not token_user.is_premium:
+    if not token_user or not auth.premium_state(token_user)["is_premium"]:
         return JSONResponse({"error": "premium_required"}, status_code=403, headers=_EXTENSION_CORS_HEADERS)
 
     try:
@@ -2784,6 +2785,15 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["signups_total"] = session.scalar(select(func.count()).select_from(User)) or 0
 
     m["premium_total"] = session.scalar(select(func.count()).select_from(User).where(User.is_premium.is_(True))) or 0
+    # Signup trials: an unexpired trial_ends_at with no Stripe
+    # subscription behind it. Counted apart from premium_total so a
+    # room full of free trials never reads as paying customers.
+    m["signup_trial_count"] = session.scalar(
+        select(func.count()).select_from(User).where(
+            User.trial_ends_at > datetime.datetime.now(datetime.timezone.utc),
+            User.stripe_subscription_id.is_(None),
+        )
+    ) or 0
 
     plan_rows = session.execute(
         select(User.plan, func.count()).where(User.is_premium.is_(True)).group_by(User.plan)
@@ -3145,6 +3155,7 @@ def signup_submit(
             email=email, password_hash=auth.hash_password(password),
             referred_by=request.cookies.get(REFERRAL_COOKIE),
         )
+        auth.start_signup_trial(user)
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -3232,6 +3243,7 @@ async def google_callback(
                 password_hash=auth.GOOGLE_ACCOUNT_PLACEHOLDER,
                 referred_by=request.cookies.get(REFERRAL_COOKIE),
             )
+            auth.start_signup_trial(user)
             session.add(user)
             session.commit()
             session.refresh(user)

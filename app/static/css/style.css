@@ -4087,3 +4087,32 @@ html { scroll-behavior: smooth; }
     text-decoration: none;
 }
 .areas-codes a:hover { text-decoration: underline; }
+
+/* ---- Free trial banner ---- */
+.trial-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem 1rem;
+    padding: 0.6rem 1.25rem;
+    background: var(--good-bg);
+    border-bottom: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--good);
+}
+
+/* Last few days: warm rather than alarming. */
+.trial-banner-ending {
+    background: var(--warn-bg);
+    color: var(--warn);
+}
+
+.trial-banner a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
