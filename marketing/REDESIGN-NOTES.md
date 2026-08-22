@@ -156,7 +156,21 @@ card, on purpose. **Michael: it is a draft. Roughen it up.** It lives in
 ## Persistent page cache (22 Aug, late)
 
 Area guides now cache in a `page_cache` table in Postgres as well as in
-memory, so a deploy no longer empties them. Verified by warming
-`/area/BA1`, deploying again (a full restart), and re-fetching: served
-from the database with no upstream calls. The property report's gather
-is still memory-only; its results aren't plain JSON yet.
+memory, so a deploy no longer empties them. Verified on Render: warmed
+`/area/TA1` (4.9s, `db-write-ok`), deployed again (a full restart), and
+re-fetched: 1.0s, `db-hit`, no upstream calls, page complete.
+
+Two things it took to get there, both only visible in production:
+Postgres returns `Decimal` and real dates where SQLite returns floats
+and strings, and the school landscape embeds database rows per school
+from a dataset that isn't imported locally. Both are now serialised. The
+cache reports its outcome in the `Server-Timing` header on every area
+guide (`cache;desc="db-hit"` etc.), which is how this was diagnosed
+without access to Render's logs.
+
+The property report's gather is still memory-only: its results include
+exception objects, which is a separate piece of work.
+
+Also found: with the database unreachable, every page used to hang
+indefinitely. The connection now times out after five seconds and the
+page renders without the database.
