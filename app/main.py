@@ -2823,7 +2823,9 @@ async def area_guide(request: Request, outcode: str):
     context["region"] = location["region"]
 
     cache_key = ("area_guide", outcode)
-    cached = _cache.get(cache_key, AREA_GUIDE_CACHE_TTL_S)
+    # Persistent tier: survives deploys, which is what keeps the 2,943
+    # guides warm for crawlers. The DB round trip runs off the event loop.
+    cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
         return templates.TemplateResponse(request, "area_guide.html", context)
@@ -2877,7 +2879,7 @@ async def area_guide(request: Request, outcode: str):
         "amenity_summary": amenity_summary,
         "has_data": any([ok(hpi_result), ok(crime_result), ok(landscape_result), ok(flood_zone_result)]),
     }
-    _cache.set(cache_key, page_data)
+    await asyncio.to_thread(_cache.set_persistent, cache_key, page_data)
     context.update(page_data)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     timing = _server_timing_header()

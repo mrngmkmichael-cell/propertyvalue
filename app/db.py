@@ -30,7 +30,12 @@ def _get_engine():
         # the psycopg3 driver spelled out explicitly.
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+psycopg://", 1)
-        _engine = create_engine(url, pool_pre_ping=True)
+        # Fail fast if Postgres is unreachable. Without a connect timeout a
+        # dead database made every page hang for minutes, because the
+        # session lookup on each request sat waiting on the socket. Five
+        # seconds is long enough for Neon to wake a sleeping instance.
+        connect_args = {"connect_timeout": 5} if url.startswith("postgresql") else {}
+        _engine = create_engine(url, pool_pre_ping=True, connect_args=connect_args)
         _SessionLocal = sessionmaker(bind=_engine, expire_on_commit=False)
     return _engine
 

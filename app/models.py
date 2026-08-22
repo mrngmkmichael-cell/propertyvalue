@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -62,6 +62,27 @@ class WatchlistItem(Base):
     last_snapshot: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
+
+
+class PageCache(Base):
+    """Second tier of the page cache, behind the in-memory one.
+
+    The in-memory cache in app/services/_cache.py is fast but lives in
+    the process, and Render starts a fresh process on every deploy. On a
+    day with twenty deploys every area guide was cold twenty times, while
+    Googlebot was crawling all 2,943 of them. Rows here survive restarts.
+
+    Values are JSON text. Only data that serialises cleanly is stored -
+    the write path checks and simply skips anything that doesn't, so a
+    non-serialisable result degrades to memory-only rather than failing.
+    Expiry is checked on read against created_at, so stale rows cost
+    nothing but a little disk until they are overwritten."""
+
+    __tablename__ = "page_cache"
+
+    cache_key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class PremiumUnlock(Base):
