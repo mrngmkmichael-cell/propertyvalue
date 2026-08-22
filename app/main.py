@@ -978,10 +978,77 @@ async def market_report(request: Request):
     return templates.TemplateResponse(request, "market_report.html", context)
 
 
+def _boe_chart(history: list[dict]) -> dict | None:
+    """Geometry for the base-rate step chart on the buying guide.
+
+    Done here rather than in the template because Jinja is a poor place
+    for coordinate maths. Returns a viewBox-relative path plus tick
+    positions; the template draws it as inline SVG, which scales to any
+    width, needs no library, and inherits the site's colours.
+
+    A step chart, not a line: the rate is constant between Monetary
+    Policy Committee decisions, and a sloped line between two points
+    would invent a gradual change that never happened."""
+    if not history or len(history) < 2:
+        return None
+    W, H = 720.0, 240.0
+    L, R, T, B = 44.0, 16.0, 18.0, 30.0   # plot margins: y labels left, x labels below
+
+    def ts(d: str) -> float:
+        y, m, dd = (int(x) for x in d.split("-"))
+        return y + (m - 1) / 12 + (dd - 1) / 365
+
+    xs = [ts(h["date"]) for h in history]
+    today = datetime.date.today()
+    x_end = today.year + (today.month - 1) / 12 + (today.day - 1) / 365
+    x0, x1 = xs[0], x_end
+    ymax = max(6.0, max(h["rate"] for h in history) + 0.5)
+
+    def X(x): return L + (x - x0) / (x1 - x0) * (W - L - R)
+    def Y(y): return T + (1 - y / ymax) * (H - T - B)
+
+    # Step path: hold each rate flat until the next change.
+    pts = []
+    for i, h in enumerate(history):
+        x_from = X(xs[i])
+        x_to = X(xs[i + 1]) if i + 1 < len(history) else X(x1)
+        y = Y(h["rate"])
+        if i == 0:
+            pts.append(f"M{x_from:.1f},{y:.1f}")
+        else:
+            pts.append(f"V{y:.1f}")
+        pts.append(f"H{x_to:.1f}")
+    path = " ".join(pts)
+
+    # Hit zones for hover, one per holding period.
+    steps = []
+    for i, h in enumerate(history):
+        x_from = X(xs[i])
+        x_to = X(xs[i + 1]) if i + 1 < len(history) else X(x1)
+        steps.append({
+            "x": round(x_from, 1), "w": round(max(x_to - x_from, 2.0), 1),
+            "y": round(Y(h["rate"]), 1), "rate": h["rate"], "date": h["date"],
+        })
+
+    y_ticks = [{"v": v, "y": round(Y(v), 1)} for v in range(0, int(ymax) + 1)]
+    first_year = int(x0) + 1
+    x_ticks = [{"label": str(yr), "x": round(X(float(yr)), 1)}
+               for yr in range(first_year, today.year + 1)
+               if X(float(yr)) > L + 14 and X(float(yr)) < W - R - 14]
+    last = history[-1]
+    return {
+        "w": W, "h": H, "path": path, "steps": steps,
+        "y_ticks": y_ticks, "x_ticks": x_ticks,
+        "plot": {"l": L, "r": W - R, "t": T, "b": H - B},
+        "current": {"x": round(X(x1), 1), "y": round(Y(last["rate"]), 1), "rate": last["rate"]},
+    }
+
+
 @app.get("/buying-guide")
 async def buying_guide(request: Request):
     context = base_context(request)
     context["boe"] = await boe_rate.current_rate()
+    context["boe_chart"] = _boe_chart(context["boe"]["history"]) if context["boe"] else None
     return templates.TemplateResponse(request, "buying_guide.html", context)
 
 

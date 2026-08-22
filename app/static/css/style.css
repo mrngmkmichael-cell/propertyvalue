@@ -4105,3 +4105,56 @@ html { scroll-behavior: smooth; }
     font-size: var(--text-sm);
     color: var(--ink-soft);
 }
+
+/* ---- Base rate step chart (buying guide) ---- */
+.rate-chart { margin: 1.5rem 0 0.75rem; }
+.rate-chart-caption {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.75rem;
+}
+.rate-chart-title { font-weight: var(--weight-semi); }
+.rate-chart-hint { font-size: var(--text-sm); color: var(--ink-faint); }
+.rate-chart-frame { position: relative; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* The viewBox scales the whole drawing with the width, labels included.
+   On a phone that would shrink 11px labels to 4px, so below a sensible
+   width the chart keeps its size and the frame scrolls sideways instead. */
+.rate-chart-svg { display: block; width: 100%; min-width: 560px; height: auto; overflow: visible; }
+.rate-chart-grid { stroke: var(--border); stroke-width: 1; }
+.rate-chart-ylabel, .rate-chart-xlabel, .rate-chart-nowlabel {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    fill: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+}
+.rate-chart-ylabel { text-anchor: end; dominant-baseline: middle; }
+.rate-chart-xlabel { text-anchor: middle; }
+.rate-chart-nowlabel { fill: var(--ink); font-weight: 500; text-anchor: end; }
+.rate-chart-area { fill: var(--accent); fill-opacity: 0.07; }
+.rate-chart-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.rate-chart-now { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.rate-chart-hit { fill: transparent; cursor: crosshair; }
+.rate-chart-cursor-line { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 3 3; }
+.rate-chart-cursor-dot { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.rate-chart-tip {
+    position: absolute;
+    pointer-events: none;
+    padding: 0.35rem 0.6rem;
+    background: var(--ink);
+    color: var(--surface);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+}
+.rate-chart-tip strong { font-variant-numeric: tabular-nums; }
+.rate-table { margin-top: 0.5rem; }
+.rate-table summary {
+    cursor: pointer;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    padding: 0.4rem 0;
+}
+.rate-table table { margin-top: 0.5rem; }

@@ -32,14 +32,55 @@
         means cheaper new mortgage deals; a higher one means dearer ones, which is also why the base
         rate is one of the biggest levers on how much people can afford to pay for a property.
     </p>
-    <table class="tx-table">
-        <thead><tr><th>Changed</th><th class="num">New rate</th></tr></thead>
-        <tbody>
-            {% for h in boe.history[-8:] | reverse %}
-            <tr><td>{{ h.date }}</td><td class="num">{{ "%.2f"|format(h.rate) }}%</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% if boe_chart %}
+    {% set c = boe_chart %}
+    <figure class="rate-chart" data-animate>
+        <figcaption class="rate-chart-caption">
+            <span class="rate-chart-title">Base rate, last ten years</span>
+            <span class="rate-chart-hint">Each step is a Bank decision. Hover for the date.</span>
+        </figcaption>
+        <div class="rate-chart-frame">
+            <svg viewBox="0 0 {{ c.w }} {{ c.h }}" class="rate-chart-svg" role="img"
+                 aria-label="Bank of England base rate over the last ten years, currently {{ '%.2f'|format(c.current.rate) }} percent">
+                {# Recessive grid: one hairline per whole percent. #}
+                {% for t in c.y_ticks %}
+                <line x1="{{ c.plot.l }}" x2="{{ c.plot.r }}" y1="{{ t.y }}" y2="{{ t.y }}" class="rate-chart-grid"/>
+                <text x="{{ c.plot.l - 8 }}" y="{{ t.y }}" class="rate-chart-ylabel">{{ t.v }}%</text>
+                {% endfor %}
+                {% for t in c.x_ticks %}
+                <text x="{{ t.x }}" y="{{ c.h - 8 }}" class="rate-chart-xlabel">{{ t.label }}</text>
+                {% endfor %}
+                {# Soft fill under the step, then the 2px step line itself. #}
+                <path d="{{ c.path }} V{{ c.plot.b }} H{{ c.plot.l }} Z" class="rate-chart-area"/>
+                <path d="{{ c.path }}" class="rate-chart-line"/>
+                {# Current value, direct-labelled: the one number that matters. #}
+                <circle cx="{{ c.current.x }}" cy="{{ c.current.y }}" r="4.5" class="rate-chart-now"/>
+                <text x="{{ c.current.x - 8 }}" y="{{ c.current.y - 10 }}" class="rate-chart-nowlabel">{{ '%.2f'|format(c.current.rate) }}%</text>
+                {# Hover layer: one invisible zone per holding period. #}
+                {% for st in c.steps %}
+                <rect x="{{ st.x }}" y="{{ c.plot.t }}" width="{{ st.w }}" height="{{ c.plot.b - c.plot.t }}"
+                      class="rate-chart-hit" data-date="{{ st.date }}" data-rate="{{ '%.2f'|format(st.rate) }}" data-y="{{ st.y }}"/>
+                {% endfor %}
+                <g class="rate-chart-cursor" hidden>
+                    <line class="rate-chart-cursor-line" y1="{{ c.plot.t }}" y2="{{ c.plot.b }}"/>
+                    <circle class="rate-chart-cursor-dot" r="5"/>
+                </g>
+            </svg>
+            <div class="rate-chart-tip" hidden></div>
+        </div>
+    </figure>
+    {% endif %}
+    <details class="rate-table">
+        <summary>Every change, as a table</summary>
+        <table class="tx-table">
+            <thead><tr><th>Changed</th><th class="num">New rate</th></tr></thead>
+            <tbody>
+                {% for h in boe.history | reverse %}
+                <tr><td>{{ h.date }}</td><td class="num">{{ "%.2f"|format(h.rate) }}%</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </details>
     <p class="note">Source: Bank of England Interactive Statistical Database (series IUDBEDR).</p>
     {% else %}
     <p class="notice">Couldn't load the current rate right now. Try again shortly.</p>
@@ -151,4 +192,41 @@
         just shortens the process once you have.</li>
     </ul>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        var frame = document.querySelector('.rate-chart-frame');
+        if (!frame) return;
+        var svg = frame.querySelector('svg'), tip = frame.querySelector('.rate-chart-tip');
+        var cursor = svg.querySelector('.rate-chart-cursor');
+        var cLine = cursor.querySelector('line'), cDot = cursor.querySelector('circle');
+        function fmt(d) {
+            var p = d.split('-');
+            return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        function svgX(e) {
+            var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse()).x;
+        }
+        svg.addEventListener('mousemove', function (e) {
+            var hit = e.target.closest('.rate-chart-hit');
+            if (!hit) return;
+            var r = hit.getBBox();
+            var x = Math.max(r.x, Math.min(r.x + r.width, svgX(e)));
+            cLine.setAttribute('x1', x); cLine.setAttribute('x2', x);
+            cDot.setAttribute('cx', x); cDot.setAttribute('cy', hit.dataset.y);
+            cursor.hidden = false;
+            tip.innerHTML = '<strong>' + hit.dataset.rate + '%</strong> from ' + fmt(hit.dataset.date);
+            tip.hidden = false;
+            var fr = frame.getBoundingClientRect();
+            var left = e.clientX - fr.left + 14;
+            if (left + tip.offsetWidth > fr.width - 8) left = e.clientX - fr.left - tip.offsetWidth - 14;
+            tip.style.left = left + 'px';
+            tip.style.top = (e.clientY - fr.top - 36) + 'px';
+        });
+        svg.addEventListener('mouseleave', function () { cursor.hidden = true; tip.hidden = true; });
+    })();
+</script>
 {% endblock %}
