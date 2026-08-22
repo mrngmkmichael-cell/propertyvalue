@@ -4111,6 +4111,50 @@ html { scroll-behavior: smooth; }
     color: var(--ink-soft);
 }
 
+/* ---- Homepage promo banner ---- */
+.promo-banner {
+    background: var(--accent);
+}
+
+.promo-banner-inner {
+    max-width: var(--site-width);
+    margin: 0 auto;
+    padding: 0.9rem 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem 1.5rem;
+    text-align: center;
+}
+
+.promo-banner-text {
+    color: var(--accent-ink);
+    font-size: var(--text-sm);
+}
+
+.promo-banner-price {
+    text-decoration: line-through;
+    opacity: 0.75;
+}
+
+.promo-banner-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 1.2rem;
+    background: var(--accent-ink);
+    color: var(--accent);
+    border-radius: var(--radius-sm);
+    font-weight: var(--weight-semi);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.promo-banner-btn:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
 /* ---- Base rate step chart (buying guide) ---- */
 .rate-chart { margin: 1.5rem 0 0.75rem; }
 .rate-chart-caption {

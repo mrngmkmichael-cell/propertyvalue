@@ -129,6 +129,17 @@
     </div>
 </section>
 
+{% if not current_user %}
+<section class="promo-banner">
+    <div class="promo-banner-inner">
+        <p class="promo-banner-text">
+            <strong>Sign up free</strong> and get 3 full Premium property reports on us — normally
+            <span class="promo-banner-price">£9.99/month</span>. No card required.
+        </p>
+        <a href="/signup" class="promo-banner-btn">Sign up free</a>
+    </div>
+</section>
+{% endif %}
 
 <section class="landing-section why-us-section" data-animate>
     <div class="why-header-row">
