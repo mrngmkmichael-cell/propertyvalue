@@ -114,6 +114,20 @@
                     </span>UKPropertyInsight</a>
                 <span class="tagline">UK Property Intelligence</span>
             </div>
+            {# A postcode box on every page except the homepage, which
+               has the full search form in its hero. Same action and field
+               name as that form, so it is one search, two entry points. #}
+            {% if request.url.path != "/" %}
+            <form class="header-search" action="/property" method="get" role="search">
+                <div class="header-search-field">
+                    <label for="header-postcode" class="visually-hidden">Search a postcode</label>
+                    <input type="text" id="header-postcode" name="postcode" placeholder="Search a postcode, e.g. SW1A 1AA" autocomplete="off" required>
+                    <button type="submit" aria-label="Search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+                    </button>
+                </div>
+            </form>
+            {% endif %}
             {% if accounts_configured %}
             <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu" aria-label="Menu">
                 <span class="nav-toggle-bars"></span>
