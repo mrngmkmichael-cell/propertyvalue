@@ -6,64 +6,52 @@
 {% block content %}
 <span class="kicker">Methodology</span>
 <h1>Why trust this?</h1>
-<p class="dek">
-    Every figure on this site traces back to a named official source. Never a guess, never a
-    proprietary model dressed up as fact, never something scraped from a listings site
-    without a licence to use it. Here's exactly how that works, and just as importantly,
-    what we deliberately don't show and why.
-</p>
+<p class="dek">Every figure has a named official source. Here is how, and what we leave out on purpose.</p>
 
 <section class="landing-section">
     <h2 class="landing-heading">How each check works</h2>
-    <p class="landing-subheading">
-        Almost everything in a report is queried live, at the moment you search, directly
-        against the government or public body that actually holds the data. Not a cache of scraped
-        listings, not a third-party aggregator's re-packaging of someone else's numbers.
-        A handful of checks (school Ofsted ratings, census demographics, air quality) come from
-        periodic bulk files the relevant body publishes, imported on our own schedule rather
-        than live, since that's genuinely how those particular datasets are distributed. Every such case is labelled as such inline, in that card's own detail view.
-    </p>
+    <ul class="snap-points snap-points-centred">
+        <li><strong>Queried live, from the body that holds the data.</strong> Land Registry, the Environment Agency, Police.uk, at the moment you search.</li>
+        <li><strong>Never scraped, never re-packaged.</strong> No listings sites, no third-party aggregators.</li>
+        <li><strong>A few come from bulk files.</strong> Ofsted ratings, census figures, air quality are published that way. Each one says so on its card.</li>
+    </ul>
 </section>
 
 <section class="landing-section landing-section-tinted">
     <h2 class="landing-heading">What we deliberately don't show</h2>
-    <p class="landing-subheading">
-        The property-data market has real gaps that no free source fills. Rather than paper
-        over them with an estimate, a model, or someone else's licensed data, we say so
-        plainly. If it isn't listed below, it's because we found a genuine free source for it.
-    </p>
+    <p class="landing-subheading">No free official source exists for these. We say so rather than estimate.</p>
     <div class="feature-grid">
         <div class="feature-card">
             <span class="feature-card-title">Council Tax band</span>
-            <span class="feature-card-blurb">Not published as free open data anywhere. The VOA's banding list is a paid product.</span>
+            <span class="feature-card-blurb">The VOA's banding list is a paid product.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Live "for sale" listings</span>
-            <span class="feature-card-blurb">Rightmove/Zoopla listings are licensed data. We show sold price history from HM Land Registry instead, the free, official equivalent.</span>
+            <span class="feature-card-blurb">Licensed to Rightmove and Zoopla. We show Land Registry sold prices instead.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">School catchment areas (most of the UK)</span>
-            <span class="feature-card-blurb">Most English school admissions don't have a fixed catchment at all. Distance is only a tie-breaker, and it shifts yearly. We show a council's own real published boundary shape where one exists; failing that, a radius built from that authority's own published "last distance offered" figures; failing that, a modelled estimate from local population density versus school capacity, the same technique paid competitors use as their default. Every one of the three is clearly labelled for which it is. We never show a modelled figure as if it were a real boundary.</span>
+            <span class="feature-card-blurb">Most English schools have no fixed catchment. We show the council's boundary where one exists, its last-distance-offered figures where not, and a labelled estimate as the last resort.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Service charge / ground rent amounts</span>
-            <span class="feature-card-blurb">Private lease information, only disclosed to a solicitor during an actual purchase. We do show Freehold/Leasehold status from Land Registry, which is free.</span>
+            <span class="feature-card-blurb">Private lease data, disclosed only to a solicitor. We show freehold or leasehold from Land Registry.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Brownfield land status</span>
-            <span class="feature-card-blurb">Self-published per-council in ~300 different registers with no single live national feed.</span>
+            <span class="feature-card-blurb">Around 300 separate council registers, no national feed.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Full planning application history</span>
-            <span class="feature-card-blurb">No unified national API across England's local planning authorities.</span>
+            <span class="feature-card-blurb">No national API across England's planning authorities.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Actual sunlight hours / overshadowing</span>
-            <span class="feature-card-blurb">Needs LIDAR-based shadow modelling, not a live lookup. We show garden/frontage compass orientation instead, as an honest proxy.</span>
+            <span class="feature-card-blurb">Needs LIDAR shadow modelling. We show which way the garden faces instead.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Corporate/overseas property ownership</span>
-            <span class="feature-card-blurb">Land Registry's CCOD/OCOD dataset sits behind a licence click-through, not a straightforward open download.</span>
+            <span class="feature-card-blurb">Land Registry's dataset sits behind a licence click-through.</span>
         </div>
     </div>
 </section>
