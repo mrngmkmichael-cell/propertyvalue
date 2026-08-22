@@ -3897,3 +3897,148 @@ summary:focus-visible, [tabindex]:focus-visible {
     .maker-note { margin-top: 3.5rem; padding-top: 2rem; }
     .maker-note-text { font-size: var(--text-base); }
 }
+
+/* ---------------------------------------------------------------
+   Scroll animation, pass two. The original reveal was a 16px slide
+   over half a second, fired once an element was already 10% into the
+   viewport - technically present, practically invisible. Two layers
+   now:
+
+   1. A stronger enter reveal (every browser): bigger travel, a real
+      ease-out curve, and children of grids staggering in one after
+      another instead of the whole grid blinking on at once.
+
+   2. True scroll-driven motion where the browser supports CSS scroll
+      timelines (Chrome, Edge, Safari 26+): the hero map drifts slower
+      than the page for depth, section headings rise as they enter,
+      the report preview scales up into place. These are scrubbed to
+      the scroll position - move the page and they move with it - not
+      fired once. Browsers without support get layer 1 and nothing
+      breaks.
+
+   All of it is gated on prefers-reduced-motion, as before. On Windows
+   that maps to Settings > Accessibility > Visual effects > Animation
+   effects: with it off, this whole block is inert by design.
+   --------------------------------------------------------------- */
+
+[data-animate] {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s cubic-bezier(0.2, 0.7, 0.2, 1),
+                transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* Children of a grid cascade in. The grid container itself is the
+   thing observed; each child picks up its own delay from its index. */
+.feature-grid .feature-card:nth-child(1)  { transition-delay: 0.00s; }
+.feature-grid .feature-card:nth-child(2)  { transition-delay: 0.05s; }
+.feature-grid .feature-card:nth-child(3)  { transition-delay: 0.10s; }
+.feature-grid .feature-card:nth-child(4)  { transition-delay: 0.15s; }
+.feature-grid .feature-card:nth-child(5)  { transition-delay: 0.20s; }
+.feature-grid .feature-card:nth-child(6)  { transition-delay: 0.25s; }
+.feature-grid .feature-card:nth-child(7)  { transition-delay: 0.30s; }
+.feature-grid .feature-card:nth-child(8)  { transition-delay: 0.35s; }
+.feature-grid .feature-card:nth-child(9)  { transition-delay: 0.40s; }
+.feature-grid .feature-card:nth-child(10) { transition-delay: 0.45s; }
+.feature-grid .feature-card:nth-child(11) { transition-delay: 0.50s; }
+.feature-grid .feature-card:nth-child(12) { transition-delay: 0.55s; }
+.steps-row .step-card:nth-child(2) { transition-delay: 0.12s; }
+.steps-row .step-card:nth-child(3) { transition-delay: 0.24s; }
+.faq-list .faq-item:nth-child(2) { transition-delay: 0.06s; }
+.faq-list .faq-item:nth-child(3) { transition-delay: 0.12s; }
+.faq-list .faq-item:nth-child(4) { transition-delay: 0.18s; }
+.faq-list .faq-item:nth-child(5) { transition-delay: 0.24s; }
+
+html { scroll-behavior: smooth; }
+
+@supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+
+        /* Hero depth: the map moves at a fraction of scroll speed and
+           eases back in scale; the illustration drifts up a touch
+           faster than the copy. Classic parallax, no JavaScript. */
+        .hero-map-bg {
+            animation: hero-map-drift linear both;
+            animation-timeline: scroll(root);
+            animation-range: 0 700px;
+        }
+        @keyframes hero-map-drift {
+            from { transform: translateY(0) scale(1.04); }
+            to   { transform: translateY(120px) scale(1); }
+        }
+
+        .hero-art {
+            animation: hero-art-drift linear both;
+            animation-timeline: scroll(root);
+            animation-range: 0 700px;
+        }
+        @keyframes hero-art-drift {
+            from { transform: translateY(0); }
+            to   { transform: translateY(-60px); }
+        }
+
+        /* Desktop only: on a phone the hero is ~900px tall, so fading
+           the copy over the first 500px would dim the search form while
+           someone is still looking at it. */
+        @media (min-width: 861px) {
+            .hero-copy {
+                animation: hero-copy-fade linear both;
+                animation-timeline: scroll(root);
+                animation-range: 0 500px;
+            }
+        }
+        @keyframes hero-copy-fade {
+            from { opacity: 1; transform: translateY(0); }
+            to   { opacity: 0.2; transform: translateY(-30px); }
+        }
+
+        /* Section openers rise as they cross into view, scrubbed to
+           scroll. These take over from the one-shot reveal, which is
+           neutralised for them so the two don't fight. */
+        [data-animate].section-pill,
+        [data-animate].landing-heading,
+        [data-animate].landing-subheading,
+        [data-animate].why-us-section .why-header-row,
+        [data-animate].maker-note .maker-note-inner {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: rise-in linear both;
+            animation-timeline: view();
+            animation-range: entry 0% entry 70%;
+        }
+        @keyframes rise-in {
+            from { opacity: 0; transform: translateY(40px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* The report preview grows into place. */
+        a.report-preview-link[data-animate] {
+            opacity: 1;
+            transform: none;
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
+            animation: scale-in linear both;
+            animation-timeline: view();
+            animation-range: entry 0% entry 80%;
+        }
+        @keyframes scale-in {
+            from { opacity: 0; transform: translateY(40px) scale(0.94); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Tinted band reveals its background as a sweep. */
+        .landing-section-tinted {
+            animation: band-in linear both;
+            animation-timeline: view();
+            animation-range: entry 0% entry 50%;
+        }
+        @keyframes band-in {
+            from { clip-path: inset(0 0 100% 0 round var(--radius-lg)); }
+            to   { clip-path: inset(0 0 0 0 round var(--radius-lg)); }
+        }
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-animate] { opacity: 1; transform: none; transition: none; }
+}
