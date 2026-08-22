@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}School Guide — UKPropertyInsight{% endblock %}
+{% block title %}School Guide | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}How UK school catchment areas, Ofsted ratings and admission distances actually work — and how to check the schools near any postcode before you buy.{% endblock %}
+{% block meta_description %}How UK school catchment areas, Ofsted ratings and admission distances actually work, and how to check the schools near any postcode before you buy.{% endblock %}
 {% block content %}
 <span class="kicker">School Guide</span>
 <h1>Find and compare school quality by area</h1>
 <p class="dek">
-    Search any postcode or town to see the Ofsted picture for schools nearby — how many are
-    Outstanding, Good, or not currently graded, what types are in the area, and how it stacks up
+    Search any postcode or town to see the Ofsted picture for schools nearby: how many are Outstanding,
+    Good, or not currently graded, what types are in the area, and how it stacks up
     against the national average. Add a second or third area to compare side by side.
 </p>
 
@@ -28,7 +28,7 @@
 
 {% if search_error %}
 <p class="notice notice-error">
-    Couldn't find "{{ query }}" as a postcode or place name — try a UK postcode, postcode district
+    Couldn't find "{{ query }}" as a postcode or place name. Try a UK postcode, postcode district
     (e.g. "OX1"), or a town/city name.
 </p>
 {% elif search_duplicate %}
@@ -75,7 +75,7 @@
                         {% for s in r.schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -94,7 +94,7 @@
                         {% for s in p.schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -111,7 +111,7 @@
                         {% for s in area.landscape.special_schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -131,7 +131,7 @@
             {% endfor %}
         {% else %}
             <p class="notice">
-                No Ofsted/GIAS school data available here — our schools database only covers England
+                No Ofsted/GIAS school data available here. Our schools database only covers England
                 (Scotland, Wales and Northern Ireland have their own separate inspection bodies we
                 don't yet source from).
             </p>

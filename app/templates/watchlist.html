@@ -1,21 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Your watchlist — UKPropertyInsight{% endblock %}
+{% block title %}Your watchlist | UKPropertyInsight{% endblock %}
 
 {% block content %}
 <span class="kicker">Saved properties</span>
 <h1>Your watchlist</h1>
 
 {% if alerts_configured and items %}
-<p class="section-sub">We'll also email you if anything on this list changes — no need to keep checking back.</p>
+<p class="section-sub">We'll also email you if anything on this list changes. No need to keep checking back.</p>
 {% endif %}
 
 {% if changed_item_count %}
 <div class="watchlist-alert-banner" data-animate>
     <span class="watchlist-alert-count">{{ changed_item_count }}</span>
     <span>
-        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked —
-        see the highlighted rows below.
+        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked. See the highlighted rows below.
     </span>
 </div>
 {% endif %}
@@ -48,7 +47,7 @@
                     </div>
                     {% endif %}
                 </td>
-                <td>{{ item.note or "—" }}</td>
+                <td>{{ item.note or " — " }}</td>
                 <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
                 <td class="num">
                     <span class="nav-form">

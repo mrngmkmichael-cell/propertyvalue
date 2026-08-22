@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}UK house price snapshot: {{ generated_date }} — UKPropertyInsight{% endblock %}
+{% block title %}UK house price snapshot: {{ generated_date }} | UKPropertyInsight{% endblock %}
 
 {% block meta_description %}Average house prices and annual price growth across {{ areas|length }} major UK cities, from HM Land Registry's House Price Index, updated {{ generated_date }}.{% endblock %}
 {% block extra_head %}
@@ -11,7 +11,7 @@
 <h1>UK house prices by city</h1>
 <p class="dek">
     Average price and annual change across {{ areas|length }} major UK cities, straight from HM Land
-    Registry's House Price Index — the same source every property report on this site uses, not a
+    Registry's House Price Index, the same source every property report on this site uses, not a
     press release or a one-off article. Updated {{ generated_date }}.
 </p>
 
@@ -46,14 +46,14 @@
     Steepest falling: <strong>{{ biggest_faller.name }}</strong> ({{ "%+.1f"|format(biggest_faller.annual_change_pct) }}%).
 </p>
 {% else %}
-<p class="notice notice-error">Couldn't load house price data right now — try again shortly.</p>
+<p class="notice notice-error">Couldn't load house price data right now. Try again shortly.</p>
 {% endif %}
 
 <section class="report-section">
     <h2>Check a specific area</h2>
     <p class="section-sub">
         This snapshot covers city-wide averages. For a specific postcode's own sold price history,
-        schools, crime and flood risk, <a href="/">search it directly</a> — or browse an
+        schools, crime and flood risk, <a href="/">search it directly</a>, or browse an
         <a href="/area/SW1A">area guide</a> for any UK postcode district.
     </p>
 </section>

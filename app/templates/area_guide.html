@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if outcode %}{{ outcode }} area guide — house prices, schools & crime | UKPropertyInsight{% else %}Area not found — UKPropertyInsight{% endif %}{% endblock %}
+{% block title %}{% if outcode %}{{ outcode }} area guide: house prices, schools & crime | UKPropertyInsight{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
 {% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block extra_head %}
@@ -32,13 +32,13 @@
 <h1>Living in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
 <p class="dek">
     What the open data says about house prices, schools, crime and flood risk around
-    {{ outcode }}{% if admin_district %} in {{ admin_district }}{% endif %} — built from the same
-    sources as every property report on this site, not opinion or marketing copy.
+    {{ outcode }}{% if admin_district %} in {{ admin_district }}{% endif %}. Built from the same sources
+    as every property report on this site, not opinion or marketing copy.
 </p>
 
 {% if not has_data %}
 <p class="notice notice-error">
-    We couldn't pull any data for {{ outcode }} right now — the underlying services may be
+    We couldn't pull any data for {{ outcode }} right now, the underlying services may be
     temporarily unavailable. Try again shortly, or
     <a href="/property?postcode={{ outcode }}">search {{ outcode }} directly</a>.
 </p>
@@ -71,7 +71,7 @@
         {{ landscape.total_schools }} school{{ "s" if landscape.total_schools != 1 else "" }} within
         {{ landscape.radius_km }}km
         {% if landscape.good_or_better_pct is not none %}
-        — <strong>{{ landscape.good_or_better_pct }}%</strong> rated Outstanding or Good by Ofsted.
+        , of which <strong>{{ landscape.good_or_better_pct }}%</strong> are rated Outstanding or Good by Ofsted.
         {% endif %}
     </p>
     {% else %}
@@ -97,8 +97,8 @@
     <h2>Flood risk</h2>
     {% if flood_zone %}
     <p class="section-sub{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
-        <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %} — {{ flood_zone.source }} flooding{% endif %}.
-        This is the Environment Agency's flood zone for the area's centre point — an individual
+        <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} flooding{% endif %}.
+        This is the Environment Agency's flood zone for the area's centre point, an individual
         property's own risk can differ, especially near a specific watercourse.
     </p>
     {% else %}

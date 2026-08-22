@@ -92,8 +92,8 @@
 {% endmacro %}
 
 <h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
-<p class="subtitle">Full property due-diligence report — generated {{ generated_date }} by UKPropertyInsight</p>
-<p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} — Premium report</p>
+<p class="subtitle">Full property due-diligence report, generated {{ generated_date }} by UKPropertyInsight</p>
+<p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} . Premium report</p>
 
 {% if overview %}
 <div class="score-box">
@@ -134,7 +134,7 @@
     <table class="row-table">
         <tr><th>Address</th><th>Date</th><th class="num">Price</th><th>Tenure</th></tr>
         {% for tx in transactions[:15] %}
-        <tr><td>{{ tx.address }}</td><td>{{ tx.date }}</td><td class="num">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or "—" }}</td></tr>
+        <tr><td>{{ tx.address }}</td><td>{{ tx.date }}</td><td class="num">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or " — " }}</td></tr>
         {% endfor %}
     </table>
     {% endif %}
@@ -203,7 +203,7 @@
         {% endif %}
         {% if mees_compliant is not none %}
         <tr><td class="label">MEES compliant (min. lettable rating)</td><td class="value">
-            <span class="badge {{ 'badge-good' if mees_compliant else 'badge-bad' }}">{{ "Yes" if mees_compliant else "No — rated F or G" }}</span></td></tr>
+            <span class="badge {{ 'badge-good' if mees_compliant else 'badge-bad' }}">{{ "Yes" if mees_compliant else "No, rated F or G" }}</span></td></tr>
         {% endif %}
         {% if lead_plumbing_era %}
         <tr><td class="label">Lead plumbing era risk</td><td class="value"><span class="badge badge-warn">Built before ~1970</span></td></tr>
@@ -238,15 +238,15 @@
         <tr><td class="label">Subsidence risk, 2030 / 2050</td><td class="value">{{ badge(clay_risk.label_2030) }} &nbsp;/&nbsp; {{ badge(clay_risk.label_2050) }}</td></tr>
         {% endif %}
         {% if coal_mining and coal_mining.present %}
-        <tr><td class="label">Coal Mining Reporting Area</td><td class="value"><span class="badge badge-warn">Yes{% if coal_mining.area_name %} — {{ coal_mining.area_name }}{% endif %}</span></td></tr>
+        <tr><td class="label">Coal Mining Reporting Area</td><td class="value"><span class="badge badge-warn">Yes{% if coal_mining.area_name %}, {{ coal_mining.area_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if sewage_outfalls %}
         <tr><td class="label">Nearby sewage outfalls</td><td class="value">{{ sewage_outfalls | length }} within range</td></tr>
         {% endif %}
         {% if historic_landfill and historic_landfill.status != "clear" %}
         <tr><td class="label">Historic landfill</td>
-            <td class="value"><span class="badge badge-warn">{% if historic_landfill.status == "on_site" %}On the site itself — {{ historic_landfill.site_name }}
-                {%- else %}{{ historic_landfill.distance_m }}m away — {{ historic_landfill.site_name }}{% endif %}</span></td></tr>
+            <td class="value"><span class="badge badge-warn">{% if historic_landfill.status == "on_site" %}On the site itself: {{ historic_landfill.site_name }}
+                {%- else %}{{ historic_landfill.distance_m }}m away: {{ historic_landfill.site_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if air_quality and air_quality.pollutants %}
         {% set aq_worst = air_quality.pollutants | map(attribute="times_guideline") | list | max %}
@@ -263,7 +263,7 @@
     </table>
     {% endif %}
     {% if heritage %}
-    <p class="note" style="font-size:9pt; color:#667085;"><strong style="color:#171d2b;">{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby — may affect permitted development rights.</p>
+    <p class="note" style="font-size:9pt; color:#667085;"><strong style="color:#171d2b;">{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby. May affect permitted development rights.</p>
     {% endif %}
 {% endcall %}
 
@@ -359,7 +359,7 @@
 {% call card("T", "#eff6ff", "#3b5bfd", "Transport") %}
     <table>
         <tr><td class="label">Nearest station</td>
-            <td class="value">{{ nearest_transport.name }} — {% if nearest_transport.walking_distance_m %}{{ nearest_transport.walking_distance_m | distance }} walk{% else %}{{ nearest_transport.distance_m | distance }}{% endif %}</td></tr>
+            <td class="value">{{ nearest_transport.name }} &middot; {% if nearest_transport.walking_distance_m %}{{ nearest_transport.walking_distance_m | distance }} walk{% else %}{{ nearest_transport.distance_m | distance }}{% endif %}</td></tr>
     </table>
 {% endcall %}
 {% endif %}

@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Admin — UKPropertyInsight{% endblock %}
+{% block title %}Admin | UKPropertyInsight{% endblock %}
 
 {% block content %}
 <span class="kicker">Admin</span>
 <h1>Daily overview</h1>
-<p class="dek">Traffic, signups and Premium conversion, from this app's own data — no third-party analytics.</p>
+<p class="dek">Traffic, signups and Premium conversion, from this app's own data. No third-party analytics.</p>
 
 <section class="landing-section">
     <h2 class="landing-heading">Pageviews</h2>
@@ -156,9 +156,9 @@
                 <td>{{ u.email }}</td>
                 <td>{{ u.created_at.strftime("%d %b %Y") }}</td>
                 <td>{{ "Yes" if u.is_premium else "No" }}</td>
-                <td>{{ u.plan or "—" }}</td>
-                <td>{{ u.subscription_status or "—" }}</td>
-                <td>{{ u.referred_by or "—" }}</td>
+                <td>{{ u.plan or " — " }}</td>
+                <td>{{ u.subscription_status or " — " }}</td>
+                <td>{{ u.referred_by or " — " }}</td>
             </tr>
             {% endfor %}
         </tbody>

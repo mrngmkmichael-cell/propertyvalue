@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Why trust this — UKPropertyInsight{% endblock %}
+{% block title %}Why trust this | UKPropertyInsight{% endblock %}
 
 {% block meta_description %}Every figure traces back to a named government source. See which datasets UKPropertyInsight uses, how current each is, and what we deliberately don't estimate.{% endblock %}
 {% block content %}
 <span class="kicker">Methodology</span>
 <h1>Why trust this?</h1>
 <p class="dek">
-    Every figure on this site traces back to a named official source — never a guess, never
-    a proprietary model dressed up as fact, never something scraped from a listings site
+    Every figure on this site traces back to a named official source. Never a guess, never a
+    proprietary model dressed up as fact, never something scraped from a listings site
     without a licence to use it. Here's exactly how that works, and just as importantly,
     what we deliberately don't show and why.
 </p>
@@ -17,12 +17,11 @@
     <h2 class="landing-heading">How each check works</h2>
     <p class="landing-subheading">
         Almost everything in a report is queried live, at the moment you search, directly
-        against the government or public body that actually holds the data — not a cache of
-        scraped listings, not a third-party aggregator's re-packaging of someone else's numbers.
+        against the government or public body that actually holds the data. Not a cache of scraped
+        listings, not a third-party aggregator's re-packaging of someone else's numbers.
         A handful of checks (school Ofsted ratings, census demographics, air quality) come from
         periodic bulk files the relevant body publishes, imported on our own schedule rather
-        than live, since that's genuinely how those particular datasets are distributed —
-        every such case is labelled as such inline, in that card's own detail view.
+        than live, since that's genuinely how those particular datasets are distributed. Every such case is labelled as such inline, in that card's own detail view.
     </p>
 </section>
 
@@ -36,15 +35,15 @@
     <div class="feature-grid">
         <div class="feature-card">
             <span class="feature-card-title">Council Tax band</span>
-            <span class="feature-card-blurb">Not published as free open data anywhere — the VOA's banding list is a paid product.</span>
+            <span class="feature-card-blurb">Not published as free open data anywhere. The VOA's banding list is a paid product.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Live "for sale" listings</span>
-            <span class="feature-card-blurb">Rightmove/Zoopla listings are licensed data. We show sold price history from HM Land Registry instead — the free, official equivalent.</span>
+            <span class="feature-card-blurb">Rightmove/Zoopla listings are licensed data. We show sold price history from HM Land Registry instead, the free, official equivalent.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">School catchment areas (most of the UK)</span>
-            <span class="feature-card-blurb">Most English school admissions don't have a fixed catchment at all — distance is only a tie-breaker, and it shifts yearly. We show a council's own real published boundary shape where one exists; failing that, a radius built from that authority's own published "last distance offered" figures; failing that, a modelled estimate from local population density versus school capacity, the same technique paid competitors use as their default. Every one of the three is clearly labelled for which it is — we never show a modelled figure as if it were a real boundary.</span>
+            <span class="feature-card-blurb">Most English school admissions don't have a fixed catchment at all. Distance is only a tie-breaker, and it shifts yearly. We show a council's own real published boundary shape where one exists; failing that, a radius built from that authority's own published "last distance offered" figures; failing that, a modelled estimate from local population density versus school capacity, the same technique paid competitors use as their default. Every one of the three is clearly labelled for which it is. We never show a modelled figure as if it were a real boundary.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Service charge / ground rent amounts</span>

@@ -11,7 +11,7 @@
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
         <section class="report-section">
             <h2>{{ s.name }}</h2>
-            <p class="section-sub">{{ s.type }} — {{ s.distance_m | distance }}</p>
+            <p class="section-sub">{{ s.type }} &middot; {{ s.distance_m | distance }}</p>
             {% if s.verdict %}
             <p class="school-profile-verdict">{{ s.verdict }}</p>
             {% endif %}
@@ -67,7 +67,7 @@
                             {% if s.admission_radius %}
                             <p class="section-sub">
                                 Published admission distance is a real figure from {{ s.admission_radius.source_authority }}
-                                council's own published records — how far the furthest-admitted pupil lived last
+                                council's own published records: how far the furthest-admitted pupil lived last
                                 year under the distance criterion. Drawn as a circle for simplicity, since real
                                 admission areas aren't circular, but the distance itself isn't modelled or
                                 guessed. It shifts every year with demand and isn't a guarantee.
@@ -77,7 +77,7 @@
                             <p class="section-sub">
                                 {{ s.detail.local_authority if s.detail else "This school's council" }} hasn't
                                 published a real admission-distance figure, so this is a <strong>modelled
-                                estimate</strong> instead — built from local Census population density for this
+                                estimate</strong> instead, built from local Census population density for this
                                 school's age group versus its intake size, the same class of technique other
                                 school-search sites use as their default catchment indicator when no official
                                 figure exists. Not based on real pupil addresses (nobody outside the school/council
@@ -155,7 +155,7 @@
                             {% if s.demographics and (s.demographics.eal_pct is not none or s.demographics.ethnicity_white_pct is not none) %}
                             <p class="section-sub">
                                 Gender, language and ethnicity figures are from the same DfE school census as free
-                                school meal eligibility — independent/private schools aren't included in this
+                                school meal eligibility. Independent and private schools aren't included in this
                                 census, so won't show these rows.
                             </p>
                             {% endif %}
@@ -178,7 +178,7 @@
                             </table>
                             {% else %}
                             <p>
-                                No current overall grade — often means a recent inspection under Ofsted's
+                                No current overall grade, often means a recent inspection under Ofsted's
                                 newer ungraded report-card format, not that the school hasn't been visited.
                                 {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} Last inspected {{ s.detail.ofsted_ungraded_inspection_date }}.{% endif %}
                             </p>
@@ -204,7 +204,7 @@
                             </table>
                             {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% endif %}
-                            <p>Only the latest graded inspection is shown here — we don't hold a full historical inspection timeline.</p>
+                            <p>Only the latest graded inspection is shown here. We don't hold a full historical inspection timeline.</p>
                         </div>
                     </details>
                 </li>
@@ -231,7 +231,7 @@
                                 {% for t in s.exam_trend %}
                                 <tr>
                                     <td>{{ t.academic_year }}</td>
-                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else "—" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
+                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else " — " }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
                                 </tr>
                                 {% endfor %}
                             </table>
@@ -292,7 +292,7 @@
                             {% if s.review_summary and s.review_summary.count %}
                             <p class="review-average" style="margin: 0 0 0.5rem;">{{ s.review_summary.average }}/5 <span class="section-sub">from {{ s.review_summary.count }} review{{ "s" if s.review_summary.count != 1 }}</span></p>
                             {% else %}
-                            <p>No parent reviews yet for this school — be the first.</p>
+                            <p>No parent reviews yet for this school. Be the first.</p>
                             {% endif %}
                             {% if current_user %}
                             <form class="stacked-form" action="/reviews/submit" method="post">
@@ -322,7 +322,7 @@
             </ul>
 
             <p class="school-profile-note">
-                Not shown here — no free public data source available: exact admissions/oversubscription
+                Not shown here. No free public data source available: exact admissions/oversubscription
                 numbers, catchment area, feeder and destination schools, teacher headcount, financial
                 reserves, A-Level results, or per-subject entries.
             </p>

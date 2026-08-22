@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Your school shortlist — UKPropertyInsight{% endblock %}
+{% block title %}Your school shortlist | UKPropertyInsight{% endblock %}
 
 {% block content %}
 <span class="kicker">Saved schools</span>
@@ -20,7 +20,7 @@
             {% for item in items %}
             <tr>
                 <td>{{ item.name }}</td>
-                <td>{{ item.note or "—" }}</td>
+                <td>{{ item.note or " — " }}</td>
                 <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
                 <td class="num">
                     <form action="/schools/shortlist/remove" method="post" class="nav-form">

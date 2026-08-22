@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}Premium — UKPropertyInsight{% endblock %}
+{% block title %}Premium | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time — postcode search stays free.{% endblock %}
+{% block meta_description %}Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.{% endblock %}
 {% block content %}
 <span class="kicker">Premium</span>
 
@@ -13,7 +13,7 @@
     Valuation estimates, cost/affordability calculators, rental analysis, extension detection,
     air quality, historic contamination, school catchment areas, detailed Ofsted category
     judgements, and multi-year exam trends are being reserved for a paid Premium tier. We're
-    still building the billing side of this — check back soon, or <a href="mailto:support@ukpropertyinsight.co.uk">email us</a> if you'd like early access.
+    still building the billing side of this. Check back soon, or <a href="mailto:support@ukpropertyinsight.co.uk">email us</a> if you'd like early access.
 </p>
 <p class="section-sub"><a href="/">&larr; Back to search</a></p>
 
@@ -21,13 +21,13 @@
 <h1>Every check, in full</h1>
 <p class="section-sub">
     Free access already shows a headline verdict on every check. Premium replaces "upgrade to
-    see more" with the real numbers — valuation estimates, cost and affordability calculators,
+    see more" with the real numbers: valuation estimates, cost and affordability calculators,
     rental analysis, exact flood/subsidence/radon/mining/air quality figures, full school
     catchment areas with detailed Ofsted judgements, and complete local area demographics.
 </p>
 
 {% if checkout_cancelled %}
-<p class="notice">Checkout was cancelled — no payment was taken.</p>
+<p class="notice">Checkout was cancelled. No payment was taken.</p>
 {% endif %}
 {% if checkout_error %}
 <p class="notice notice-error">Something went wrong starting checkout. Please try again.</p>
@@ -51,9 +51,9 @@
         {% if plan.key == 'quarterly' %}<span class="pricing-card-badge">Best value</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}
-        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }} — cancel any time.</p>
+        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }}. Cancel any time.</p>
         {% else %}
-        <p class="section-sub">{{ plan.label }}, billed from today — cancel any time.</p>
+        <p class="section-sub">{{ plan.label }}, billed from today. Cancel any time.</p>
         {% endif %}
         {% if plan.available %}
             {% if current_user %}
@@ -115,7 +115,7 @@
     },
 ] %}
 
-<p class="premium-preview-lede">Everything below is locked on the free plan — unlock it on any property with Premium:</p>
+<p class="premium-preview-lede">Everything below is locked on the free plan. Unlock it on any property with Premium:</p>
 {% for section in premium_preview %}
 <h3 class="dashboard-category-heading">{{ section.heading }}</h3>
 <div class="dashboard-grid">

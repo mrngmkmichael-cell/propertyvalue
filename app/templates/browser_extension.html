@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}Chrome Extension — UKPropertyInsight{% endblock %}
-{% block og_title %}UKPropertyInsight — Free Chrome Extension{% endblock %}
+{% block title %}Chrome Extension | UKPropertyInsight{% endblock %}
+{% block og_title %}UKPropertyInsight . Free Chrome Extension{% endblock %}
 {% block meta_description %}See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.{% endblock %}
 {# PNG on purpose: this is the Open Graph preview, fetched by social
    crawlers rather than browsers, and WhatsApp/Facebook/LinkedIn
@@ -42,7 +42,7 @@ review data. Only factual fields below. #}
             "name": "Is the extension safe to install? What can it see?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page — it can't see anything on any other site, and it doesn't have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings."
+                "text": "It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page. It can't see anything on any other site, and it doesn't have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings."
             }
         },
         {
@@ -58,7 +58,7 @@ review data. Only factual fields below. #}
             "name": "Do I need a UKPropertyInsight account to use it?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "No — install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
+                "text": "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
             }
         },
         {
@@ -66,7 +66,7 @@ review data. Only factual fields below. #}
             "name": "Will it slow down Rightmove or Zoopla?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar — it doesn't modify or interfere with the rest of the page."
+                "text": "No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar. It doesn't modify or interfere with the rest of the page."
             }
         },
         {
@@ -74,7 +74,7 @@ review data. Only factual fields below. #}
             "name": "Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket — it simply reads the postcode from a listing you're already viewing to show official public data alongside it."
+                "text": "No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket. It simply reads the postcode from a listing you're already viewing to show official public data alongside it."
             }
         }
     ]
@@ -90,18 +90,18 @@ review data. Only factual fields below. #}
             <h1>Property data <em class="hl-accent">on every listing</em> you browse.</h1>
             <p class="dek">
                 UKPropertyInsight adds a summary bar to Rightmove, Zoopla and OnTheMarket listing
-                pages — sold prices, EPC rating, flood risk, crime stats and nearby schools, pulled
+                pages: sold prices, EPC rating, flood risk, crime stats and nearby schools, pulled
                 from the same official UK data as every report on this site, right where you're
                 already looking.
             </p>
 
             {% if store_url %}
-            <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome — Free</a>
+            <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome . Free</a>
             <p class="section-sub" style="margin-top:0.75rem;">No account needed to try it. Log in for the full report.</p>
             {% else %}
             <div class="notice" style="max-width:420px;">
                 <strong>Submitted to the Chrome Web Store, pending review.</strong> This page will
-                link straight to the install page as soon as it's approved — check back soon, or
+                link straight to the install page as soon as it's approved. Check back soon, or
                 <a href="/support">contact us</a> to be notified.
             </div>
             {% endif %}
@@ -126,7 +126,7 @@ review data. Only factual fields below. #}
         </div>
         <div class="feature-card">
             <span class="feature-card-title">3. See the data instantly</span>
-            <span class="feature-card-blurb">A summary bar appears automatically — click it for the full tabbed report, no extra searching.</span>
+            <span class="feature-card-blurb">A summary bar appears automatically. Click it for the full tabbed report, no extra searching.</span>
         </div>
     </div>
 </section>
@@ -134,7 +134,7 @@ review data. Only factual fields below. #}
 <section class="landing-section landing-section-tinted">
     <h2 class="landing-heading">Eight tabs of real data, every time</h2>
     <p class="landing-subheading">
-        The same official sources as the full site — not the listing's own marketing copy.
+        The same official sources as the full site, never the listing's own marketing copy.
     </p>
     <div class="feature-grid">
         <div class="feature-card">
@@ -201,7 +201,7 @@ review data. Only factual fields below. #}
         {% endfor %}
     </div>
     <p class="sources-strip-note">
-        Never listings scraped from Rightmove, Zoopla or OnTheMarket — every figure traces back to
+        Never listings scraped from Rightmove, Zoopla or OnTheMarket. Every figure traces back to
         an official, openly licensed government or public data source. See the
         <a href="/methodology">full methodology</a> for the complete list.
     </p>
@@ -226,7 +226,7 @@ review data. Only factual fields below. #}
     <h2 class="landing-heading">Free to install, more with an account</h2>
     <p class="landing-subheading">
         Market History, Comparables and Schools show a free preview on every listing. Log in with a
-        UKPropertyInsight account — <a href="/premium">Premium</a> unlocks the full lists and every
+        UKPropertyInsight account. <a href="/premium">Premium</a> unlocks the full lists and every
         other card the main site's own property reports have.
     </p>
 </section>
@@ -235,7 +235,7 @@ review data. Only factual fields below. #}
     <h2 class="landing-heading">Nothing extra running in the background</h2>
     <p class="landing-subheading">
         The extension only activates on Rightmove, Zoopla and OnTheMarket listing pages, and only
-        reads the postcode from the page — nothing else. No ads, no analytics, no tracking of your
+        reads the postcode from the page. Nothing else. No ads, no analytics, no tracking of your
         browsing elsewhere. Full detail in the
         <a href="/privacy">privacy policy</a>.
     </p>
@@ -246,11 +246,11 @@ review data. Only factual fields below. #}
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
     <div class="faq-list">
         {% for q, a in [
-            ('Is the extension safe to install? What can it see?', 'It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page — it can\'t see anything on any other site, and it doesn\'t have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings.'),
+            ('Is the extension safe to install? What can it see?', 'It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page. It can\'t see anything on any other site, and it doesn\'t have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings.'),
             ('Does it cost anything?', 'Installing it and seeing the free preview data on every listing costs nothing and needs no account. A UKPropertyInsight Premium account unlocks the full report on every card.'),
-            ('Do I need a UKPropertyInsight account to use it?', 'No — install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest.'),
-            ('Will it slow down Rightmove or Zoopla?', 'No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar — it doesn\'t modify or interfere with the rest of the page.'),
-            ('Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?', 'No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket — it simply reads the postcode from a listing you\'re already viewing to show official public data alongside it.'),
+            ('Do I need a UKPropertyInsight account to use it?', 'No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest.'),
+            ('Will it slow down Rightmove or Zoopla?', 'No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar. It doesn\'t modify or interfere with the rest of the page.'),
+            ('Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?', 'No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket. It simply reads the postcode from a listing you\'re already viewing to show official public data alongside it.'),
         ] %}
         <details class="faq-item" data-animate>
             <summary>{{ q }}</summary>
@@ -262,11 +262,11 @@ review data. Only factual fields below. #}
 
 <section class="landing-section landing-section-tinted" style="text-align:center;">
     {% if store_url %}
-    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome — Free</a>
+    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome . Free</a>
     {% else %}
     <div class="notice" style="max-width:420px; margin:0 auto;">
         <strong>Submitted to the Chrome Web Store, pending review.</strong> This page will
-        link straight to the install page as soon as it's approved — check back soon, or
+        link straight to the install page as soon as it's approved. Check back soon, or
         <a href="/support">contact us</a> to be notified.
     </div>
     {% endif %}

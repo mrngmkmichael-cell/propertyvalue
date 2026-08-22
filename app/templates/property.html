@@ -2,10 +2,10 @@
 {% import "_icons.html" as icons %}
 {% import "_tabs.html" as tabnav %}
 
-{% block title %}{{ query }} — UKPropertyInsight{% endblock %}
+{% block title %}{{ query }} | UKPropertyInsight{% endblock %}
 
-{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} — UKPropertyInsight{% endblock %}
-{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }} — free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode — free due-diligence report from official public data.{% endif %}{% endblock %}
+{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} | UKPropertyInsight{% endblock %}
+{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
 
 {% block content %}
 <a class="back-link" href="/">&larr; New search</a>
@@ -19,7 +19,7 @@
     <span class="kicker">Not found</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
-        We couldn't find that postcode. Double-check the spelling — it should look like
+        We couldn't find that postcode. Double-check the spelling. It should look like
         <code>SW1A 1AA</code>.
     </p>
 
@@ -56,7 +56,7 @@
                 {% else %}
                 <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                    PDF report — Premium
+                    PDF report . Premium
                 </a>
                 {% endif %}
             </div>
@@ -87,7 +87,7 @@
             {% if property_detail.habitable_room_count %}· {{ property_detail.habitable_room_count }} habitable rooms{% endif %}
             {% if property_detail.year_built %}· Built {{ property_detail.year_built }}{% endif %}
         </p>
-        <p class="property-detail-note">Based on the most recent EPC certificate for this postcode — may not exactly match a specific unit.</p>
+        <p class="property-detail-note">Based on the most recent EPC certificate for this postcode, so it may not exactly match a specific unit.</p>
         {% endif %}
         <div class="location-visual">
             <div id="globe-intro" class="globe-container"></div>
@@ -108,7 +108,7 @@
                     {% if house_number %}
                     <p class="section-sub">Saved against this specific house/flat number ({{ house_number }}), not just the postcode.</p>
                     {% else %}
-                    <p class="section-sub">No house/flat number filter is set, so this saves the postcode as a whole — the property details shown above may not match a specific unit. Use the filter below to narrow to one address first.</p>
+                    <p class="section-sub">No house/flat number filter is set, so this saves the postcode as a whole, the property details shown above may not match a specific unit. Use the filter below to narrow to one address first.</p>
                     {% endif %}
                 </form>
             {% else %}
@@ -126,8 +126,8 @@
         <input type="text" id="address-filter" placeholder="e.g. 37 or Avalon Road" autocomplete="off" value="{{ house_number }}">
         {% if house_number %}
             <p class="section-sub">
-                Showing only results matching "{{ house_number }}" —
-                <a href="/property?postcode={{ location.postcode }}">show all results for this postcode</a>.
+                Showing only results matching "{{ house_number }}". <a
+                href="/property?postcode={{ location.postcode }}">show all results for this postcode</a>.
             </p>
         {% endif %}
     </div>
@@ -624,7 +624,7 @@
             <span class="dashboard-card-title">Resident Reviews</span>
             <span class="dashboard-card-status">
                 {% if area_reviews.count %}{{ area_reviews.average }}/5 from {{ area_reviews.count }} review{{ "s" if area_reviews.count != 1 }}
-                {% else %}No reviews yet — be the first{% endif %}
+                {% else %}No reviews yet. Be the first{% endif %}
             </span>
         </button>
     </div>
@@ -641,7 +641,7 @@
         {% elif transactions %}
             <p class="section-sub">
                 {{ transactions|length }} sales recorded
-                {% if avg_price %}— postcode average {{ avg_price | gbp }}{% endif %}
+                {% if avg_price %}, postcode average {{ avg_price | gbp }}{% endif %}
             </p>
             {% if transactions|length >= 2 %}
             <div class="price-chart" id="price-chart" data-transactions='{{ transactions | tojson }}'></div>
@@ -661,14 +661,14 @@
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.tenure or "—" }}</td>
+                        <td>{{ tx.tenure or " — " }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             {% if transactions and transactions[0].tenure == "Leasehold" %}
             <p class="section-sub">
-                Most recent sale here was recorded as <strong>leasehold</strong> — expect a service
+                Most recent sale here was recorded as <strong>leasehold</strong>. Expect a service
                 charge and ground rent. We can't show the amount: that's private lease information,
                 not published anywhere as open data (only disclosed to a buyer's solicitor during an
                 actual purchase, via an LPE1 form from the managing agent).
@@ -712,7 +712,7 @@
             <p class="section-sub">
                 <strong>{{ new_build_stat.pct }}%</strong> of the {{ new_build_stat.total }} sales recorded
                 nearby in the last {{ new_build_stat.years }} years were new-build ({{ new_build_stat.count }}
-                of {{ new_build_stat.total }}) — a rough signal of how much new development has been going
+                of {{ new_build_stat.total }}), a rough signal of how much new development has been going
                 up in the immediate area recently.
             </p>
         {% endif %}
@@ -739,7 +739,7 @@
             <section class="report-section">
         <h2>Valuation estimate</h2>
         <p class="section-sub">
-            A rough DIY estimate from public sold price data, not a professional valuation — there's
+            A rough DIY estimate from public sold price data, not a professional valuation. There's
             no free equivalent to a lender's automated valuation model, so this is fully transparent
             about its method instead of pretending to more precision than it has.
         </p>
@@ -779,7 +779,7 @@
             </table>
         {% elif not valuation_floor_area_known %}
             <p class="notice">
-                We don't have a floor area for this property to compare against — try adding a house
+                We don't have a floor area for this property to compare against. Try adding a house
                 or flat number to the search above to narrow it down to one address.
             </p>
         {% else %}
@@ -804,7 +804,7 @@
         {% elif price_trend %}
             <p class="section-sub">
                 A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
-                Price Index for {{ price_trend.area_name }} — not a guarantee, just where prices would
+                Price Index for {{ price_trend.area_name }}. Not a guarantee, just where prices would
                 land if the recent trend continued in a straight line.
             </p>
             <svg class="trend-chart" viewBox="0 0 {{ price_trend_chart.width }} {{ price_trend_chart.height }}" role="img" aria-label="5-year house price trend for {{ price_trend.area_name }}, with a 1 and 2 year linear projection">
@@ -873,7 +873,7 @@
         <h2>Costs &amp; affordability</h2>
         <p class="section-sub">
             Estimates only, computed in your browser from published tax bands (correct as of April
-            2025 — always confirm the exact figure on
+            2025. Always confirm the exact figure on
             <a href="https://www.gov.uk/stamp-duty-land-tax" target="_blank" rel="noopener">gov.uk</a>,
             <a href="https://www.revenue.scot/land-buildings-transaction-tax" target="_blank" rel="noopener">Revenue Scotland</a>
             or <a href="https://www.gov.uk/land-transaction-tax" target="_blank" rel="noopener">the Welsh Revenue Authority</a>
@@ -947,7 +947,7 @@
         <p class="section-sub">
             Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
             ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold price
-            register for rents — tenancies aren't publicly registered the way sales are — so this is an
+            register for rents. Tenancies aren't publicly registered the way sales are, so this is an
             area + bedroom-count typical rent, not a comparison against specific nearby lettings.
         </p>
         {% if rental_error %}
@@ -1056,7 +1056,7 @@
             </div>
             {% endif %}
         </div>
-        <p class="property-detail-note">Modelled by the EPC assessor from standardised assumptions (occupancy, heating pattern) — a guide to compare properties, not a bill forecast.</p>
+        <p class="property-detail-note">Modelled by the EPC assessor from standardised assumptions (occupancy, heating pattern), a guide to compare properties, not a bill forecast.</p>
         {% endif %}
         {% endif %}
         {% if epc_error %}
@@ -1086,25 +1086,25 @@
             <h3 class="subsection-heading">MEES compliance</h3>
             {% if mees_compliant %}
             <p class="section-sub">
-                Rated {{ certificates[0].rating }} — meets the Minimum Energy Efficiency Standard
+                Rated {{ certificates[0].rating }}, which meets the Minimum Energy Efficiency Standard
                 (England & Wales requires at least an E rating to legally let a property, with some
                 exemptions).
             </p>
             {% else %}
             <p class="notice">
-                Rated {{ certificates[0].rating }} — below the Minimum Energy Efficiency Standard.
+                Rated {{ certificates[0].rating }}, below the Minimum Energy Efficiency Standard.
                 A property must be at least an E rating to be legally let in England & Wales unless
-                a valid exemption is registered — worth checking if you're planning to rent this out.
+                a valid exemption is registered. Worth checking if you're planning to rent this out.
             </p>
             {% endif %}
             {% endif %}
             {% if lead_plumbing_era is defined and lead_plumbing_era %}
             <h3 class="subsection-heading">Potential lead plumbing</h3>
             <p class="notice">
-                Built {{ property_detail.year_built }} — UK regulations only phased out lead water
+                Built {{ property_detail.year_built }}. UK regulations only phased out lead water
                 supply pipes around the 1970s, so older properties like this one sometimes still have
                 them (usually just the supply pipe from the street, not necessarily the internal
-                plumbing). Not a certainty — worth asking about or getting checked, not something
+                plumbing). Not a certainty, but worth asking about or getting checked, not something
                 EPC data can confirm directly.
             </p>
             {% endif %}
@@ -1124,42 +1124,38 @@
             <section class="report-section">
         <h2>Extended or modified?</h2>
         <p class="section-sub">
-            Comparing the floor area on this address's earliest and latest EPC certificates —
-            a real signal since these are independent measurements taken by different assessors,
+            Comparing the floor area on this address's earliest and latest EPC certificates, a real signal since these are independent measurements taken by different assessors,
             not self-reported, but not certain: floor area can also drift a little between
             assessments just from measurement differences, with no work actually done.
         </p>
         {% if not house_number %}
             <p class="notice">
-                Search with a house or flat number to check this specific address — with just a
+                Search with a house or flat number to check this specific address, with just a
                 postcode we can't tell which property's EPC history to compare.
             </p>
         {% elif not extension_signal %}
             <p class="notice">
-                Not enough EPC history for this address — we need at least two certificates with a
+                Not enough EPC history for this address. We need at least two certificates with a
                 recorded floor area to compare, and this address doesn't have that many on file.
             </p>
         {% elif extension_signal.likely_extended %}
             <p class="notice">
-                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>
-                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
                 to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
                 Large enough that this property has probably been extended or had a loft/garage
                 conversion since the earlier certificate.
             </p>
         {% elif extension_signal.change_pct <= -15 %}
             <p class="notice">
-                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>
-                — from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
+                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
                 to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
-                No sign of an extension, but that's a large enough drop to be worth asking about —
+                No sign of an extension, but that's a large enough drop to be worth asking about. It
                 could mean the unit was subdivided, or just a re-measurement.
             </p>
         {% else %}
             <p class="notice">
                 {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
-                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }})
-                — no meaningful change, no sign of an extension from this data.
+                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}). No meaningful change, no sign of an extension from this data.
             </p>
         {% endif %}
             </section>
@@ -1173,7 +1169,7 @@
         <h2>Aspect</h2>
         <p class="section-sub">
             An estimate of which way the property faces, worked out from its building footprint and
-            the nearest named road — not a measured sunlight or overshadowing survey, and there's no
+            the nearest named road. Not a measured sunlight or overshadowing survey, and there's no
             free UK data source for that (it needs proper LIDAR-based shadow modelling). This assumes
             a typical street-fronting layout and doesn't account for trees or neighbouring buildings
             that might shade the garden.
@@ -1201,7 +1197,7 @@
             </p>
         {% else %}
             <p class="notice">
-                No estimate available — either no building footprint or no named road was found
+                No estimate available, either no building footprint or no named road was found
                 nearby in OpenStreetMap for this location.
             </p>
         {% endif %}
@@ -1216,8 +1212,7 @@
         <h2>Flood risk</h2>
         <h3 class="subsection-heading">Flood zone</h3>
         <p class="section-sub">
-            The Environment Agency's long-term planning flood risk classification (rivers and sea) —
-            Zone 3 is high probability (1% or greater annual river risk, or 0.5%+ from the sea), Zone
+            The Environment Agency's long-term planning flood risk classification (rivers and sea) . Zone 3 is high probability (1% or greater annual river risk, or 0.5%+ from the sea), Zone
             2 is medium, and Zone 1 (unmapped) is low probability.
         </p>
         {% if flood_zone_error %}
@@ -1226,14 +1221,14 @@
             </p>
         {% elif flood_zone %}
             <p class="notice{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
-                <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %} — {{ flood_zone.source }} flooding{% endif %}
+                <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} flooding{% endif %}
             </p>
         {% else %}
             <p class="notice">No flood zone data available for this location.</p>
         {% endif %}
 
         <h3 class="subsection-heading">Active warnings</h3>
-        <p class="section-sub">Active warnings and alerts within 6 miles right now — not the long-term zone above.</p>
+        <p class="section-sub">Active warnings and alerts within 6 miles right now. Not the long-term zone above.</p>
         {% if flood_error %}
             <p class="notice notice-error">
                 The flood warning service didn't respond. Try again in a moment.
@@ -1270,11 +1265,11 @@
             <section class="report-section">
         <h2>Surface water flood risk</h2>
         <p class="section-sub">
-            From the Environment Agency's Risk of Flooding from Surface Water map — a different flood
+            From the Environment Agency's Risk of Flooding from Surface Water map, a different flood
             mechanism from the Flood Zone above, which only covers rivers and the sea. This is about
             rainwater that can't drain away fast enough and pools or flows over the ground. A property
             can be Flood Zone 1 (low river/sea risk) and still have a real surface water flood risk, or
-            the other way round — the two don't move together.
+            the other way round, the two don't move together.
         </p>
         {% if surface_water_error %}
             <p class="notice notice-error">
@@ -1283,7 +1278,7 @@
             </p>
         {% elif surface_water %}
             <p class="notice{{ ' notice-error' if surface_water.label == 'High risk' else '' }}">
-                <strong>{{ surface_water.label }}</strong> — annual chance of surface water flooding:
+                <strong>{{ surface_water.label }}</strong> &middot; annual chance of surface water flooding:
                 {{ surface_water.probability }}.
             </p>
         {% else %}
@@ -1306,8 +1301,7 @@
         {% elif sewage_outfalls %}
             <p class="section-sub">
                 Storm overflows (combined sewer outfalls) within 1.5 miles, from water companies'
-                Event Duration Monitoring returns to the Environment Agency — how often and for how
-                long each discharged untreated sewage into its receiving watercourse in its most
+                Event Duration Monitoring returns to the Environment Agency: how often and for how long each discharged untreated sewage into its receiving watercourse in its most
                 recently reported year. This is a genuine public-interest dataset, published because
                 of sustained pressure over river water quality, not something UKPropertyInsight models
                 or estimates.
@@ -1327,8 +1321,8 @@
                     <tr>
                         <td>{{ o.name }}<br><span class="section-sub" style="margin:0;">{{ o.water_company }}</span></td>
                         <td>{{ o.receiving_water }}</td>
-                        <td class="num">{{ o.spill_count if o.spill_count is not none else '—' }}</td>
-                        <td class="num">{{ "%.1f"|format(o.duration_hrs) if o.duration_hrs is not none else '—' }}</td>
+                        <td class="num">{{ o.spill_count if o.spill_count is not none else ' — ' }}</td>
+                        <td class="num">{{ "%.1f"|format(o.duration_hrs) if o.duration_hrs is not none else ' — ' }}</td>
                         <td class="num">{{ o.distance_m | distance }}</td>
                     </tr>
                     {% endfor %}
@@ -1348,11 +1342,11 @@
         <h2>Noise</h2>
         <p class="section-sub">
             Modelled Lden (day-evening-night average) noise level in dB(A), from DEFRA's strategic
-            noise maps (2022) — a 10m-grid model, not a measurement at this specific address.
+            noise maps (2022): a 10m-grid model, not a measurement at this specific address.
         </p>
         <p class="section-sub">
             The dB(A) number on its own doesn't mean much without context, and there's no official
-            "acceptable" cut-off — DEFRA just groups the same measurement into four bands.
+            "acceptable" cut-off. DEFRA just groups the same measurement into four bands.
             Roughly: <strong>Low</strong> (under 55 dB(A)) is a quiet residential street;
             <strong>Moderate</strong> (55–65 dB(A)) is normal conversation, or a road heard from
             indoors with windows shut; <strong>High</strong> (65–75 dB(A)) is a busy road right
@@ -1388,7 +1382,7 @@
                 {% endif %}
             </div>
         {% else %}
-            <p class="notice">No modelled road, rail or aircraft noise near this address — DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
+            <p class="notice">No modelled road, rail or aircraft noise near this address. DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
         {% endif %}
             </section>
         </div>
@@ -1430,7 +1424,7 @@
                 </tbody>
             </table>
             <p class="section-sub">
-                Same ~1 mile radius sample as above, just centred on the {{ location.outcode }} postcode area instead — not a population-weighted local authority crime rate, which isn't available as clean open data.
+                Same ~1 mile radius sample as above, just centred on the {{ location.outcode }} postcode area instead. Not a population-weighted local authority crime rate, which isn't available as clean open data.
             </p>
             {% else %}
             <table class="tx-table">
@@ -1517,8 +1511,8 @@
         {% endif %}
         <h3 class="subsection-heading">Food hygiene ratings</h3>
         <p class="section-sub">
-            From the Food Standards Agency's Food Hygiene Rating Scheme, within half a mile — 0 is
-            urgent improvement needed, 5 is very good.
+            From the Food Standards Agency's Food Hygiene Rating Scheme, within half a mile. 0 is urgent
+            improvement needed, 5 is very good.
         </p>
         {% if food_hygiene_error %}
             <p class="notice notice-error">
@@ -1550,8 +1544,8 @@
         {% endif %}
         <h3 class="subsection-heading">Google ratings</h3>
         <p class="section-sub">
-            Public star ratings from Google for nearby restaurants and cafes, within half a mile —
-            a "what's it like" signal, separate from the official hygiene scores above.
+            Public star ratings from Google for nearby restaurants and cafes, within half a mile. A
+            "what's it like" signal, separate from the official hygiene scores above.
         </p>
         {% if not google_ratings_configured %}
             <p class="notice">Not set up on this deployment.</p>
@@ -1575,7 +1569,7 @@
                         <td>{{ g.name }}</td>
                         <td>{{ g.type }}</td>
                         <td class="num"><span class="epc-badge epc-{{ 'a' if g.rating >= 4 else ('c' if g.rating >= 3 else 'g') }}">{{ g.rating }}{% if g.rating_count %} <span class="section-sub">({{ g.rating_count }})</span>{% endif %}</span></td>
-                        <td class="num">{{ g.distance_m | distance if g.distance_m is not none else "—" }}</td>
+                        <td class="num">{{ g.distance_m | distance if g.distance_m is not none else " — " }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1593,7 +1587,7 @@
             <section class="report-section">
         <h2>Schools nearby</h2>
         <p class="section-sub">
-            Nearest 3 of each type, by proximity only — not a catchment area or admissions guarantee.
+            Nearest 3 of each type, by proximity only. Not a catchment area or admissions guarantee.
             No reliable free UK-wide catchment data exists, so we can't say whether this address falls
             within any school's admission area.
         </p>
@@ -1614,7 +1608,7 @@
                         {% for s in r.schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -1633,7 +1627,7 @@
                         {% for s in p.schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -1650,7 +1644,7 @@
                         {% for s in school_landscape.special_schools[:25] %}
                         <li>
                             <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> — {{ s.type }} — {{ s.distance_m | distance }}
+                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
                         {% endfor %}
@@ -1753,13 +1747,12 @@
             <section class="report-section">
         <h2>School catchment areas</h2>
         <p class="section-sub">
-            There's no free UK-wide catchment-area dataset — most English school admissions
+            There's no free UK-wide catchment-area dataset. Most English school admissions
             (especially secondaries, mostly academies now) don't have a fixed catchment at all;
             places go by priority criteria with distance only as a tie-breaker, which shifts every
             year. This first checks for a real, published catchment-<strong>boundary shape</strong>
             from the handful of local authorities that openly publish one; where none exists, it
-            falls back to nearby schools' admission-<strong>distance</strong> figures instead — a
-            real published number where the council has one, or a clearly-labelled modelled
+            falls back to nearby schools' admission-<strong>distance</strong> figures instead, a real published number where the council has one, or a clearly-labelled modelled
             estimate where it doesn't. A real boundary shape is each council's current boundary,
             not a historical year-by-year archive, since none of these sources publish past years'
             shapes either.
@@ -1793,7 +1786,7 @@
                 nearby school's admission-<strong>distance</strong> figure instead — "Published" where
                 the council has a real figure on file, "Estimated" where none exists and it's a
                 modelled fallback. "In catchment?" compares this property's actual distance against
-                that radius — not a guarantee, since the radius shifts every year with demand.
+                that radius. Not a guarantee, since the radius shifts every year with demand.
             </p>
             {% for phase in ['Primary', 'Secondary', 'Other'] %}
             {% set phase_schools = catchment_distance_schools | selectattr('phase_group', 'equalto', phase) | list %}
@@ -1838,11 +1831,11 @@
                 {{ catchment_distance_count }} nearby school{{ "s" if catchment_distance_count != 1 else "" }}
                 {{ "have" if catchment_distance_count != 1 else "has" }} a
                 {{ "real or estimated" if catchment_distance_any_real else "modelled estimated" }}
-                admission distance instead — upgrade to Premium to see them.
+                admission distance instead. Upgrade to Premium to see them.
             </p>
         {% else %}
             <p class="notice">
-                Not covered — this address isn't in one of the local authorities that publishes
+                Not covered. This address isn't in one of the local authorities that publishes
                 open catchment-area <strong>boundary shapes</strong>, and no nearby school has a
                 published or modelled admission distance either.
                 {% if catchment_covered_authorities %}
@@ -1877,7 +1870,7 @@
 
         <p class="section-sub">
             Rail, Tube and tram stations first (closest 5 of each, within ~2 miles), then the nearest
-            bus stop — prioritised in that order since trains, the Tube and trams usually matter more
+            bus stop, prioritised in that order since trains, the Tube and trams usually matter more
             for a commute than the nearest bus stop.
         </p>
         {% if amenities_error %}
@@ -1891,7 +1884,7 @@
                     {% for j in stations.rail.city_journeys %}
                     <li>
                         <strong>{{ j.minutes }} min</strong> to {{ j.city }} from {{ stations.rail.name }}
-                        — departs {{ j.departs }}, arrives {{ j.arrives }}
+                        &middot; departs {{ j.departs }}, arrives {{ j.arrives }}
                         {%- if j.operator %} ({{ j.operator }}){% endif %}.
                     </li>
                     {% endfor %}
@@ -1899,11 +1892,11 @@
                 {% else %}
                 <p class="notice">
                     No direct train to a major UK city found in Rail Data's live departures from
-                    {{ stations.rail.name }} — may still be reachable changing trains.
+                    {{ stations.rail.name }}, but may still be reachable changing trains.
                 </p>
                 {% endif %}
                 <p class="section-sub" style="margin-top: -0.5rem;">
-                    Live scheduled trains, checked just now — a slower result late at night or early
+                    Live scheduled trains, checked just now, a slower result late at night or early
                     morning reflects reduced off-peak service, not the typical daytime journey.
                 </p>
             {% endif %}
@@ -1915,7 +1908,7 @@
                     <li>
                         <span class="transport-mode">{{ label }}</span>
                         <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
-                        —
+                        &middot;
                         {%- if s.walking_distance_m %} {{ s.walking_distance_m | distance }} ({{ s.walking_duration_min }} min walk from property)
                         {%- else %} {{ s.distance_m | distance }} (direct distance, not the walking route){% endif %}
                         {%- if s.lines %}
@@ -1935,8 +1928,7 @@
             <ul class="transport-list">
                 <li>
                     <span class="transport-mode">Bus</span>
-                    <strong>{{ stations_list.bus[0].name }}</strong>
-                    — {{ stations_list.bus[0].distance_m | distance }}
+                    <strong>{{ stations_list.bus[0].name }}</strong> &middot; {{ stations_list.bus[0].distance_m | distance }}
                 </li>
             </ul>
             {% endif %}
@@ -1959,7 +1951,7 @@
         {% elif household_income %}
             <p class="section-sub">
                 Modelled estimate of average total annual household income for this neighbourhood,
-                from ONS's small-area income statistics (financial year ending 2023) — not a
+                from ONS's small-area income statistics (financial year ending 2023). Not a
                 per-property figure.
             </p>
             <table class="tx-table">
@@ -2006,8 +1998,8 @@
             </p>
         {% elif deprivation %}
             <p class="section-sub">
-                From the official English Indices of Deprivation (IMD 2025) — decile 1 is the most
-                deprived 10% of small areas in England, decile 10 the least. {{ imd_label }}.
+                From the official English Indices of Deprivation (IMD 2025). Decile 1 is the most deprived
+                10% of small areas in England, decile 10 the least. {{ imd_label }}.
             </p>
             <table class="tx-table">
                 <thead>
@@ -2047,7 +2039,7 @@
             </p>
         {% elif occupation %}
             <p class="section-sub">
-                Occupation of usual residents aged 16+ in employment, from Census 2021 — this
+                Occupation of usual residents aged 16+ in employment, from Census 2021. This
                 small area, not a per-property figure.
             </p>
             <table class="tx-table">
@@ -2084,7 +2076,7 @@
             </p>
         {% elif qualification %}
             <p class="section-sub">
-                Highest qualification held by usual residents aged 16+, from Census 2021 — this
+                Highest qualification held by usual residents aged 16+, from Census 2021. This
                 small area, not a per-property figure.
             </p>
             <table class="tx-table">
@@ -2167,7 +2159,7 @@
         {% elif mobile %}
             <p class="section-sub">
                 Ofcom's Connected Nations coverage estimates for {{ mobile.la_name }} (local authority
-                level — mobile signal isn't mapped to individual postcodes the way fixed-line
+                level, because mobile signal isn't mapped to individual postcodes the way fixed-line
                 broadband is).
             </p>
             <div class="modal-stat-grid">
@@ -2196,7 +2188,7 @@
                 </div>
                 {% endif %}
             </div>
-            <p class="property-detail-note">Combined across all networks — Ofcom doesn't publish a per-operator (EE/O2/Three/Vodafone) breakdown at this geography.</p>
+            <p class="property-detail-note">Combined across all networks . Ofcom doesn't publish a per-operator (EE/O2/Three/Vodafone) breakdown at this geography.</p>
         {% else %}
             <p class="notice">No mobile coverage data available for this area.</p>
         {% endif %}
@@ -2215,8 +2207,7 @@
             </p>
         {% elif radon %}
             <p class="section-sub">
-                From the British Geological Survey's Indicative Atlas of Radon (1km grid square) —
-                the percentage of homes estimated to be at or above the UK radon Action Level.
+                From the British Geological Survey's Indicative Atlas of Radon (1km grid square), the percentage of homes estimated to be at or above the UK radon Action Level.
             </p>
             <p><span class="radon-badge radon-{{ radon.class }}">Class {{ radon.class }}</span> {{ radon.label }}</p>
         {% else %}
@@ -2237,7 +2228,7 @@
             </p>
         {% elif clay_risk %}
             <p class="section-sub">
-                From the British Geological Survey's open GeoClimate dataset — not a rating of the
+                From the British Geological Survey's open GeoClimate dataset. Not a rating of the
                 current baseline hazard (BGS's precise GeoSure product for that is commercially
                 licensed), but how likely a warming climate is to worsen clay shrink-swell
                 susceptibility here, which is what drives ground movement and subsidence claims. A
@@ -2277,7 +2268,7 @@
         <p class="section-sub">
             Modelled annual mean background concentrations from Defra's national Pollution Climate
             Mapping (1km grid), compared against the World Health Organization's 2021 Air Quality
-            Guideline levels — a stricter, health-based reference point than the UK's own (much
+            Guideline levels, a stricter, health-based reference point than the UK's own (much
             older) legal limits.
         </p>
         {% if air_quality_error %}
@@ -2319,8 +2310,7 @@
             <section class="report-section">
         <h2>Historic contamination</h2>
         <p class="section-sub">
-            From the Environment Agency's Historic Landfill Sites dataset — old (mostly pre-1994
-            regulation) tipping sites, which can carry ground gas or leachate risks for decades
+            From the Environment Agency's Historic Landfill Sites dataset: old (mostly pre-1994 regulation) tipping sites, which can carry ground gas or leachate risks for decades
             after closing. Being nearby isn't automatically disqualifying, but it's worth asking
             about site investigation reports and any gas protection measures if buying.
         </p>
@@ -2335,7 +2325,7 @@
             </p>
         {% elif historic_landfill and historic_landfill.status == 'nearby' %}
             <p class="notice">
-                <strong>A former landfill site is nearby</strong> — "{{ historic_landfill.site_name }}",
+                <strong>A former landfill site is nearby</strong> &middot; "{{ historic_landfill.site_name }}",
                 about {{ historic_landfill.distance_m | distance }} away.
             </p>
         {% elif historic_landfill %}
@@ -2353,7 +2343,7 @@
             <section class="report-section">
         <h2>Mining risk (coal)</h2>
         <p class="section-sub">
-            From the Coal Authority's National Coal Mining Database — the same Coal Mining Reporting
+            From the Coal Authority's National Coal Mining Database, the same Coal Mining Reporting
             Area a solicitor's CON29M coal mining search is based on for property transactions. Being
             inside it doesn't mean the property is unsafe, but it means a proper coal mining search
             (checking for shafts, adits, or other historic workings nearby) is standard practice before
@@ -2384,7 +2374,7 @@
             <section class="report-section">
         <h2>Listed buildings nearby</h2>
         <p class="section-sub">
-            Within about a third of a mile, from Historic England's National Heritage List — proximity only, not a
+            Within about a third of a mile, from Historic England's National Heritage List. Proximity only, and not a
             statement about this specific address. We don't match individual building footprints
             to addresses, so we can't say whether this property itself is listed.
         </p>
@@ -2426,7 +2416,7 @@
         <p class="section-sub">
             Whether this exact point falls inside a nationally designated planning-constraint area,
             queried live against Historic England's, ONS's and planning.data.gov.uk's official
-            boundary data — the same source a paid planning-constraint checker would use, not a
+            boundary data, the same source a paid planning-constraint checker would use, not a
             locked placeholder. Tree Preservation Orders and Article 4 Directions are a genuine
             "can I build/extend/landscape here" signal, not just a formality.
         </p>
@@ -2458,7 +2448,7 @@
                 </tbody>
             </table>
             <p class="section-sub">
-                Not included: Brownfield Land — unlike the checks above, this isn't published as one
+                Not included: Brownfield Land. Unlike the checks above, this isn't published as one
                 national dataset, only as ~300 separate council registers with no reliable central
                 source, so we're not guessing at it.
             </p>
@@ -2518,7 +2508,7 @@
             <section class="report-section">
         <h2>Age profile</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood by age band, from Census 2021 — not a
+            Usual residents of this neighbourhood by age band, from Census 2021. Not a
             per-property figure.
         </p>
         {% if age_profile_error %}
@@ -2555,7 +2545,7 @@
             <section class="report-section">
         <h2>Housing types, tenure &amp; occupancy</h2>
         <p class="section-sub">
-            Households in this neighbourhood, from Census 2021 — not a per-property figure,
+            Households in this neighbourhood, from Census 2021. Not a per-property figure,
             and not specific to this particular home.
         </p>
         {% if housing_error %}
@@ -2588,8 +2578,7 @@
             {% if housing.occupancy_breakdown %}
             <h3 class="subsection-heading">Occupancy rating for bedrooms</h3>
             <p class="section-sub">
-                Whether households have more or fewer bedrooms than the standard calls for — a
-                negative rating suggests overcrowding, a positive one suggests spare rooms.
+                Whether households have more or fewer bedrooms than the standard calls for, a negative rating suggests overcrowding, a positive one suggests spare rooms.
             </p>
             <table class="tx-table">
                 <thead><tr><th>Rating</th><th class="num">Share</th></tr></thead>
@@ -2613,7 +2602,7 @@
             <section class="report-section">
         <h2>Ethnicity, religion &amp; country of birth</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood, from Census 2021 — not a per-property
+            Usual residents of this neighbourhood, from Census 2021. Not a per-property
             figure.
         </p>
         {% if background_error %}
@@ -2667,9 +2656,9 @@
             <section class="report-section">
         <h2>Health, relationships &amp; social grade</h2>
         <p class="section-sub">
-            Usual residents of this neighbourhood, from Census 2021 — not a per-property
+            Usual residents of this neighbourhood, from Census 2021. Not a per-property
             figure. "Social grade" here is NS-SEC, the official occupation-based socio-economic
-            classification — not the same as commercial market-research social grade (AB/C1/C2/DE),
+            classification. Not the same as commercial market-research social grade (AB/C1/C2/DE),
             which isn't published as free open data; NS-SEC is the closest free equivalent.
         </p>
         {% if wellbeing_error %}
@@ -2723,7 +2712,7 @@
             <section class="report-section">
         <h2>Resident reviews</h2>
         <p class="section-sub">
-            What it's like to live here, from people who actually do — the one thing none of our
+            What it's like to live here, from people who actually do, the one thing none of our
             open-data sources can tell you. Starts empty for most areas; be the first to add one.
         </p>
         {% if area_reviews.count %}
@@ -2794,21 +2783,21 @@ Local amenities and station data from
 School data from the Department for Education's
 <a href="https://www.get-information-schools.service.gov.uk" target="_blank" rel="noopener">Get Information about Schools</a>
 register. Ofsted ratings from
-<a href="https://www.gov.uk/government/statistical-data-sets/monthly-management-information-ofsteds-school-inspections-outcomes" target="_blank" rel="noopener">Ofsted's published inspection outcomes</a>
-— state-funded schools only, and only the latest graded inspection.
+<a href="https://www.gov.uk/government/statistical-data-sets/monthly-management-information-ofsteds-school-inspections-outcomes" target="_blank" rel="noopener">Ofsted's published inspection outcomes</a>:
+state-funded schools only, and only the latest graded inspection.
 Exam results from the Department for Education's
-<a href="https://explore-education-statistics.service.gov.uk/" target="_blank" rel="noopener">Explore Education Statistics</a> service
-— state-funded schools only.
+<a href="https://explore-education-statistics.service.gov.uk/" target="_blank" rel="noopener">Explore Education Statistics</a> service:
+state-funded schools only.
 Deprivation data from the Ministry of Housing, Communities and Local Government's
 <a href="https://www.gov.uk/government/statistics/english-indices-of-deprivation-2025" target="_blank" rel="noopener">English Indices of Deprivation 2025</a>.
 Household income estimates from the
-<a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales" target="_blank" rel="noopener">Office for National Statistics</a>
-— modelled estimates, financial year ending 2023.
+<a href="https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/smallareaincomeestimatesformiddlelayersuperoutputareasenglandandwales" target="_blank" rel="noopener">Office for National Statistics</a>:
+modelled estimates, financial year ending 2023.
 Occupation, qualification, age, housing, ethnicity, religion, country of birth, general health,
 marital status and socio-economic classification data from
 <a href="https://www.nomisweb.co.uk/sources/census_2021" target="_blank" rel="noopener">Census 2021</a>, via Nomis.
 Valuation estimates are computed by this site from Land Registry sold prices and UK HPI growth
-rates — not a professional valuation or lender AVM.
+rates. Not a professional valuation or lender AVM.
 Rental price data from the Office for National Statistics'
 <a href="https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/priceindexofprivaterentsukmonthlypricestatistics" target="_blank" rel="noopener">Price Index of Private Rents</a>.
 Noise data from DEFRA's
@@ -2882,11 +2871,11 @@ Listed building data from Historic England's
 
                 if (!response.ok) {
                     const messages = {
-                        not_found: "Couldn't find that postcode — double-check the spelling.",
+                        not_found: "Couldn't find that postcode. Double-check the spelling.",
                         postcode_required: 'Enter a postcode first.',
                         not_configured: 'Commute time isn\'t available on this deployment right now.',
                     };
-                    resultEl.innerHTML = '<p class="notice">' + (messages[data.error] || 'Something went wrong — try again.') + '</p>';
+                    resultEl.innerHTML = '<p class="notice">' + (messages[data.error] || 'Something went wrong. Try again.') + '</p>';
                     return;
                 }
 
@@ -2895,7 +2884,7 @@ Listed building data from Historic England's
                     formatLeg('Driving', data.driving) +
                     formatLeg('Cycling', data.cycling);
             } catch (err) {
-                resultEl.innerHTML = '<p class="notice">Something went wrong — try again.</p>';
+                resultEl.innerHTML = '<p class="notice">Something went wrong. Try again.</p>';
             } finally {
                 btn.disabled = false;
             }
@@ -3005,7 +2994,7 @@ Listed building data from Historic England's
             const price = Math.max(0, Number(priceInput.value) || 0);
             const rent = Math.max(0, Number(rentInput.value) || 0);
             if (price <= 0 || rent <= 0) {
-                yieldResult.textContent = '—';
+                yieldResult.textContent = ' — ';
                 return;
             }
             const annualRent = rent * 12;
@@ -3135,7 +3124,7 @@ Listed building data from Historic England's
 
             tooltip.style.display = '';
             tooltip.style.left = (px / W * 100) + '%';
-            tooltip.textContent = fmt.format(p.date) + ' — £' + Math.round(p.amount).toLocaleString('en-GB');
+            tooltip.textContent = fmt.format(p.date) + ' · £' + Math.round(p.amount).toLocaleString('en-GB');
         });
 
         svg.addEventListener('mouseleave', function () {
@@ -3184,8 +3173,8 @@ Listed building data from Historic England's
                 fillColor: color, fillOpacity: 0.06,
             }).addListener('click', function () {
                 const label = s.is_real
-                    ? s.name + ' — published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
-                    : s.name + ' — estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
+                    ? s.name + ' · published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
+                    : s.name + ' · estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
                 new google.maps.InfoWindow({ content: label }).setPosition({ lat: s.latitude, lng: s.longitude });
             });
         });
@@ -3218,8 +3207,8 @@ Listed building data from Historic England's
     ({{ catchment_distance_schools | tojson }}).forEach(function (s) {
         const color = s.is_real ? '#d97706' : '#78716c';
         const label = s.is_real
-            ? s.name + ' — published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
-            : s.name + ' — estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
+            ? s.name + ' · published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
+            : s.name + ' · estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
         L.circle([s.latitude, s.longitude], {
             radius: s.radius_miles * 1609.34,
             color: color, weight: 2, opacity: s.is_real ? 0.8 : 0.6, fillOpacity: 0.06,

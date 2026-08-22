@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_tabs.html" as tabnav %}
 
-{% block title %}{{ query }} — Comparables — UKPropertyInsight{% endblock %}
+{% block title %}{{ query }} . Comparables | UKPropertyInsight{% endblock %}
 
 {% block content %}
 <a class="back-link" href="/">&larr; New search</a>
@@ -15,7 +15,7 @@
     <span class="kicker">Not found</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
-        We couldn't find that postcode. Double-check the spelling — it should look like
+        We couldn't find that postcode. Double-check the spelling. It should look like
         <code>SW1A 1AA</code>.
     </p>
 
@@ -40,9 +40,9 @@
             </p>
         {% elif comparables %}
             <p class="section-sub">
-                {{ comparables_count }} sold prices recorded nearby (up to 0.6 miles, most recent first) — from
+                {{ comparables_count }} sold prices recorded nearby (up to 0.6 miles, most recent first), from
                 HM Land Registry, the same source as the Sold Price History section. Not "for sale" or
-                "to let" listings — that's licensed data (Rightmove/Zoopla) we don't have free access to,
+                "to let" listings. That's licensed data (Rightmove/Zoopla) we don't have free access to,
                 so it can't appear here or anywhere on this site.
             </p>
 
@@ -60,8 +60,7 @@
             <p class="price-position-caption">
                 {{ comparables_reference_price | gbp }}
                 {% if house_number %}(for "{{ house_number }}"){% endif %}
-                sits above {{ comparables_percentile }}% of the {{ comparables_count }} nearby sold prices —
-                from {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
+                sits above {{ comparables_percentile }}% of the {{ comparables_count }} nearby sold prices, from {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
             </p>
             {% else %}
             <div class="price-position-bar"></div>
@@ -89,11 +88,11 @@
                     <tr>
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.postcode }}</td>
-                        <td class="capitalize">{{ tx.property_type or "—" }}</td>
-                        <td>{{ tx.tenure or "—" }}</td>
+                        <td class="capitalize">{{ tx.property_type or " — " }}</td>
+                        <td>{{ tx.tenure or " — " }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.date }}</td>
-                        <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "—" }}</td>
+                        <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else " — " }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -165,7 +164,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
                 },
             });
             marker.addListener('click', function () {
-                infoWindow.setContent(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> — ' + c.date);
+                infoWindow.setContent(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
                 infoWindow.open(map, marker);
             });
         });
@@ -198,7 +197,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
             fillOpacity: 0.9,
         })
             .addTo(compMap)
-            .bindPopup(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> — ' + c.date);
+            .bindPopup(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
     });
 </script>
 {% endif %}

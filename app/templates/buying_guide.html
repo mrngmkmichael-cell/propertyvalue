@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}UK Property Buying Guide — UKPropertyInsight{% endblock %}
+{% block title %}UK Property Buying Guide | UKPropertyInsight{% endblock %}
 
 {% block meta_description %}The Bank of England base rate, how a UK property purchase actually works, Stamp Duty and other property taxes explained, and what to check before you commit.{% endblock %}
 {% block extra_head %}
@@ -11,7 +11,7 @@
 <h1>Buying a property in the UK</h1>
 <p class="dek">
     The Bank of England base rate, how a purchase actually proceeds from offer to completion, the taxes
-    involved, and what's worth checking before you commit — background for the due-diligence this site
+    involved, and what's worth checking before you commit. Background for the due-diligence this site
     already does on any specific address.
 </p>
 
@@ -27,7 +27,7 @@
     {% if boe %}
     <p class="section-sub">
         Currently <strong>{{ "%.2f"|format(boe.rate) }}%</strong>, unchanged since {{ boe.since }}.
-        This is the rate the Bank of England charges other banks — it's the single biggest driver of
+        This is the rate the Bank of England charges other banks. It's the single biggest driver of
         mortgage rates, since lenders price fixed and tracker deals off it. A lower base rate generally
         means cheaper new mortgage deals; a higher one means dearer ones, which is also why the base
         rate is one of the biggest levers on how much people can afford to pay for a property.
@@ -42,7 +42,7 @@
     </table>
     <p class="note">Source: Bank of England Interactive Statistical Database (series IUDBEDR).</p>
     {% else %}
-    <p class="notice">Couldn't load the current rate right now — try again shortly.</p>
+    <p class="notice">Couldn't load the current rate right now. Try again shortly.</p>
     {% endif %}
 </section>
 
@@ -51,14 +51,14 @@
     <ol class="guide-steps">
         <li>
             <strong>Get your finances in order.</strong> A mortgage Agreement in Principle (AIP) from a
-            lender shows sellers you can actually borrow what you're offering — most estate agents
+            lender shows sellers you can actually borrow what you're offering. Most estate agents
             expect one before taking an offer seriously. Budget beyond the purchase price itself: Stamp
             Duty (or LTT/LBTT), solicitor's fees, survey costs, mortgage arrangement fees, and removals
             all add up separately.
         </li>
         <li>
             <strong>Find a property and make an offer.</strong> Offers in England, Wales and Northern
-            Ireland aren't legally binding until contracts are exchanged (step 5) — either side can walk
+            Ireland aren't legally binding until contracts are exchanged (step 5), either side can walk
             away up to that point, which is why UK purchases can fall through late. Scotland works
             differently: an accepted offer there is typically binding much earlier, once missives are
             concluded.
@@ -68,11 +68,11 @@
             solicitor handles contracts, searches and the legal transfer; a survey (see
             <a href="#tips">Things to check</a> below) tells you about the property's physical condition,
             separately from your lender's own valuation (which just confirms the property's worth enough
-            to lend against — it isn't a survey and won't flag defects).
+            to lend against. It isn't a survey and won't flag defects).
         </li>
         <li>
             <strong>Apply for your formal mortgage offer</strong> once a price is agreed and the survey's
-            done — the lender needs a specific property and price to underwrite against, not just your
+            done, the lender needs a specific property and price to underwrite against, not just your
             general affordability from the AIP stage.
         </li>
         <li>
@@ -84,13 +84,13 @@
         </li>
         <li>
             <strong>Completion.</strong> The remaining balance is paid, ownership transfers, and you get
-            the keys — typically anywhere from a few days to a few weeks after exchange, by agreement
+            the keys, typically anywhere from a few days to a few weeks after exchange, by agreement
             between both sides.
         </li>
         <li>
             <strong>After completion.</strong> Your solicitor normally handles submitting the Stamp Duty
             return and registering the change of ownership with HM Land Registry (or the equivalent in
-            Scotland/Northern Ireland) — worth confirming this is included in their fee, not billed
+            Scotland and Northern Ireland). Worth confirming this is included in their fee, not billed
             separately.
         </li>
     </ol>
@@ -101,19 +101,18 @@
 
     <h3 class="subsection-heading">Stamp Duty (or equivalent)</h3>
     <p class="section-sub">
-        A one-off tax paid on completion, based on the purchase price — Stamp Duty Land Tax (SDLT) in
+        A one-off tax paid on completion, based on the purchase price . Stamp Duty Land Tax (SDLT) in
         England and Northern Ireland, Land Transaction Tax (LTT) in Wales, Land and Buildings Transaction
         Tax (LBTT) in Scotland. Rates are banded (you pay each band's rate only on the portion of the
         price within it, not the whole price at the top rate), and there are different bands for
         first-time buyers and for additional properties. Bands change with government budgets, so rather
-        than list figures here that can go stale, use the calculator on any property report on this site
-        — it's kept current and does the banding maths for you.
+        than list figures here that can go stale, use the calculator on any property report on this site. It's kept current and does the banding maths for you.
     </p>
 
     <h3 class="subsection-heading">Capital Gains Tax</h3>
     <p class="section-sub">
-        Applies when you <em>sell</em> a property that isn't your only or main home — a second home or a
-        buy-to-let, typically — on the gain in value, not the sale price itself. Your main residence is
+        Applies when you <em>sell</em> a property that isn't your only or main home, a second home or a
+        buy-to-let, typically, on the gain in value, not the sale price itself. Your main residence is
         normally exempt under Private Residence Relief. Rates and the tax-free allowance change
         periodically; check <a href="https://www.gov.uk/capital-gains-tax-on-property" target="_blank" rel="noopener">gov.uk's Capital Gains Tax on property page</a>
         for current figures.
@@ -122,11 +121,11 @@
     <h3 class="subsection-heading">Council Tax</h3>
     <p class="section-sub">
         An ongoing annual charge from your local council, based on which valuation band the property
-        falls into (A to H in England and Scotland, a different set of bands in Wales) — set by the
-        property's estimated value back in 1991 (England/Scotland) or 2003 (Wales), not its current
-        price. We don't look up a specific property's band here — England and Wales's Valuation Office
-        Agency doesn't publish that as open data, only as a lookup tool — but you can check any address
-        for free at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>.
+        falls into (A to H in England and Scotland, a different set of bands in Wales), set by the property's
+        estimated value back in 1991 (England/Scotland) or 2003 (Wales), not its current
+        price. We don't look up a specific property's band here . England and Wales's Valuation Office
+        Agency doesn't publish that as open data, only as a lookup tool, but you can check any address for
+        free at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>.
     </p>
 </section>
 
@@ -135,7 +134,7 @@
     <ul class="guide-steps">
         <li><strong>Freehold or leasehold.</strong> A flat is almost always leasehold; a house usually
         isn't. A short remaining lease (under about 80 years) gets expensive to extend and can make a
-        property hard to mortgage or resell — always check the years remaining, ground rent, and any
+        property hard to mortgage or resell. Always check the years remaining, ground rent, and any
         service charge before offering.</li>
         <li><strong>Which survey level you need.</strong> A lender's valuation isn't a survey. A
         Level 1 (Condition Report) suits a newer property in good order; Level 2 (HomeBuyer Report) is
@@ -143,13 +142,12 @@
         properties where hidden structural issues are more likely.</li>
         <li><strong>Everything a report on this site already checks.</strong> Flood risk, subsidence
         (clay shrink-swell), radon, historic land contamination, coal mining risk, planning constraints
-        and heritage designations, sold price history, EPC rating, crime levels, and school catchment —
-        search any address to see it before you're paying survey and search fees to find out formally.</li>
+        and heritage designations, sold price history, EPC rating, crime levels, and school catchment. Search any address to see it before you're paying survey and search fees to find out formally.</li>
         <li><strong>Chain position.</strong> Buying from a chain-free seller (a new build, probate sale,
         or someone who's already moved) removes one of the most common reasons a purchase collapses or
         drags on.</li>
         <li><strong>Get quotes and get moving early.</strong> Solicitor and survey costs vary
-        meaningfully between providers, and both can be booked before you've had an offer accepted — it
+        meaningfully between providers, and both can be booked before you've had an offer accepted. It
         just shortens the process once you have.</li>
     </ul>
 </section>
