@@ -65,6 +65,32 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """The standard set that an audit expects and that cost nothing.
+
+    Not here: Content-Security-Policy. This site inlines its stylesheet
+    and several scripts deliberately (see inline_css), so a CSP would
+    need per-request nonces threaded through every template before it
+    could be anything stricter than 'unsafe-inline', which is not worth
+    shipping. Clickjacking and MIME sniffing are covered below; CSP is
+    the one to revisit if the inline scripts ever move to files.
+
+    X-Frame-Options is safe to set: the /embed feature for agents is a
+    link plus an image, not an iframe of this site."""
+    response = await call_next(request)
+    h = response.headers
+    # Only meaningful over HTTPS, and only production is. One year,
+    # subdomains included, no preload until the owner opts in.
+    if IS_PRODUCTION:
+        h.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("X-Frame-Options", "SAMEORIGIN")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+    return response
+
+
+@app.middleware("http")
 async def support_head_requests(request: Request, call_next):
     """Plain @app.get(...) routes only ever register GET, so a HEAD request
     to any page (Google's sitemap fetcher and many crawlers/uptime checks
@@ -1071,7 +1097,9 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     if location is None:
         context["error"] = "not_found"
-        return templates.TemplateResponse(request, "property.html", context)
+        # A postcode that does not exist is a 404, not a 200 with an
+        # apology on it - crawlers and uptime checks read the status.
+        return templates.TemplateResponse(request, "property.html", context, status_code=404)
 
     # Overrides base_context's path-only default: postcode is a query
     # param here, not part of the path, and the content genuinely varies
@@ -2800,13 +2828,29 @@ async def area_guide(request: Request, outcode: str):
         context.update(cached)
         return templates.TemplateResponse(request, "area_guide.html", context)
 
+    async def _bounded(coro, seconds: float):
+        """Give a slow upstream a hard budget on this page only. The task
+        keeps running past the deadline (shielded), so its own cache
+        still fills for the next visitor - we just stop waiting."""
+        task = asyncio.ensure_future(coro)
+        try:
+            return await asyncio.wait_for(asyncio.shield(task), timeout=seconds)
+        except asyncio.TimeoutError:
+            return None
+
+    # Amenities come from Overpass, which measured 10.6s cold against
+    # under 4s for everything else here. Area guides exist to be crawled
+    # and ranked, and a crawler will not wait ten seconds for "12
+    # supermarkets, 40 pubs". Three seconds, then the line is simply
+    # omitted - the template already copes with it missing.
+    _last_gather_timings.clear()
     hpi_result, crime_result, landscape_result, flood_zone_result, deprivation_result, amenities_result = await asyncio.gather(
-        hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
-        crime.summary_for_outcode(outcode),
-        asyncio.to_thread(schools_db.school_landscape, lat, lon),
-        flood_zones.zone_for(lat, lon),
-        asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
-        amenities.nearby_amenities_and_station(lat, lon, lite=True),
+        _timed("hpi", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
+        _timed("crime", crime.summary_for_outcode(outcode)),
+        _timed("school-landscape", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
+        _timed("flood-zone", flood_zones.zone_for(lat, lon)),
+        _timed("deprivation", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
+        _timed("amenities", _bounded(amenities.nearby_amenities_and_station(lat, lon, lite=True), 3.0)),
         return_exceptions=True,
     )
 
@@ -2835,7 +2879,11 @@ async def area_guide(request: Request, outcode: str):
     }
     _cache.set(cache_key, page_data)
     context.update(page_data)
-    return templates.TemplateResponse(request, "area_guide.html", context)
+    response = templates.TemplateResponse(request, "area_guide.html", context)
+    timing = _server_timing_header()
+    if timing:
+        response.headers["Server-Timing"] = timing
+    return response
 
 
 # --- Admin ---
