@@ -8,6 +8,7 @@ canonical case. Everything here is best-effort: a database hiccup falls
 through to tier 1, then to a rebuild, and never to an error page.
 """
 import datetime
+import decimal
 import json
 import logging
 import time
@@ -28,6 +29,18 @@ def set(key, value) -> None:
 
 def coord_key(prefix: str, lat: float, lon: float) -> tuple:
     return (prefix, round(lat, 3), round(lon, 3))
+
+
+def _json_default(value):
+    """Postgres hands back Decimal for numeric columns and real dates for
+    date columns; SQLite hands back floats and strings. A cache that
+    works in dev and silently stays memory-only in production is worse
+    than no cache, so both are normalised here."""
+    if isinstance(value, decimal.Decimal):
+        return float(value)
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value.isoformat()
+    raise TypeError(f"not JSON-serialisable: {type(value).__name__}")
 
 
 def _db_key(key) -> str:
@@ -79,7 +92,7 @@ def set_persistent(key, value) -> None:
     if not db.is_configured():
         return
     try:
-        payload = json.dumps(value)
+        payload = json.dumps(value, default=_json_default)
     except (TypeError, ValueError) as exc:
         logging.info("page cache: %s not JSON-serialisable (%s); memory only", _db_key(key), exc)
         return
