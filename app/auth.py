@@ -9,10 +9,11 @@ import os
 from typing import Optional
 
 from fastapi import Request
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 
 from app.db import get_session, is_configured
-from app.models import User
+from app.models import PremiumUnlock, User
 
 _ITERATIONS = 260_000
 
@@ -41,56 +42,84 @@ def verify_password(password: str, stored: str) -> bool:
     return hmac.compare_digest(actual, expected)
 
 
-# Every new account gets this long with the Premium checks unlocked, no
-# card required. Chosen over a card-first Stripe trial deliberately: the
-# whole pitch is that searching is free, and asking for card details at
-# signup would contradict that and collapse the signup rate. The cost of
-# a trial user is a handful of extra API calls on data we already fetch.
-SIGNUP_TRIAL_DAYS = 14
+# How many full Premium reports a new account gets before the paywall.
+# Usage-based rather than a time-limited trial, deliberately: buying a
+# house is episodic. Someone signs up, browses, then views nothing for
+# three weeks - a 14-day clock would expire before they ever used it on
+# a real decision, and they would never have seen what they were paying
+# for. Three unlocks survive that gap and match the actual job: check
+# the two or three places you are seriously considering.
+FREE_PREMIUM_UNLOCKS = 3
 
 
-def premium_state(user) -> dict:
+def property_key(postcode: str, house_number: str = "") -> tuple[str, str]:
+    """Canonical (postcode, house_number) an unlock is recorded against.
+    Matches the watchlist's key so the same property means the same
+    thing everywhere."""
+    return (postcode or "").strip().upper(), (house_number or "").strip()
+
+
+def unlocks_used(db, user_id: int) -> int:
+    return db.scalar(
+        select(func.count()).select_from(PremiumUnlock).where(PremiumUnlock.user_id == user_id)
+    ) or 0
+
+
+def has_unlocked(db, user_id: int, postcode: str, house_number: str = "") -> bool:
+    pc, hn = property_key(postcode, house_number)
+    return db.scalar(
+        select(PremiumUnlock.id).where(
+            PremiumUnlock.user_id == user_id,
+            PremiumUnlock.postcode == pc,
+            PremiumUnlock.house_number == hn,
+        )
+    ) is not None
+
+
+def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> bool:
+    """Spend a free unlock on this property, if one is needed and one is
+    left. Returns whether the user should now see the full report.
+
+    Returns True without spending anything when this property is already
+    unlocked, which is the common case for a refresh or a return visit.
+    The IntegrityError branch covers two tabs racing on the same new
+    property: the unique constraint rejects the second write, and the
+    user still gets access because the first one succeeded."""
+    pc, hn = property_key(postcode, house_number)
+    if has_unlocked(db, user_id, pc, hn):
+        return True
+    if unlocks_used(db, user_id) >= FREE_PREMIUM_UNLOCKS:
+        return False
+
+    db.add(PremiumUnlock(user_id=user_id, postcode=pc, house_number=hn))
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+    return True
+
+
+def premium_state(user, db=None) -> dict:
     """Effective Premium access for a user row.
 
-    Access comes from either a paid/trialing Stripe subscription
-    (is_premium, set by webhook) or an unexpired signup trial
-    (trial_ends_at). They are deliberately kept as separate fields
-    rather than just flipping is_premium at signup: is_premium is owned
-    by the Stripe webhook and would be overwritten by it, and keeping
-    them apart is what lets the UI say "3 days of your trial left"
-    rather than "you are subscribed".
+    Two independent sources: a paid or trialing Stripe subscription
+    (is_premium, owned by the webhook) and the free unlock allowance.
+    They are kept apart rather than folded into is_premium because the
+    webhook overwrites that field and would silently revoke a free
+    user's remaining unlocks.
 
-    A signup trial is identifiable as one because no Stripe subscription
-    sits behind it - which is why this needs no extra column."""
-    now = datetime.datetime.now(datetime.timezone.utc)
-    ends = user.trial_ends_at
-    if ends is not None and ends.tzinfo is None:
-        # Postgres can hand back a naive datetime depending on driver
-        # and column type; treat it as UTC rather than crashing on the
-        # comparison below.
-        ends = ends.replace(tzinfo=datetime.timezone.utc)
-
-    trial_active = bool(ends and ends > now)
-    on_signup_trial = trial_active and not user.stripe_subscription_id
-    days_left = max(0, (ends - now).days + 1) if trial_active else 0
-
+    is_premium here means "subscribed", not "can see this property" -
+    per-property access needs the postcode, so it is decided by
+    claim_unlock at the point of viewing."""
+    subscribed = bool(user.is_premium)
+    used = unlocks_used(db, user.id) if db is not None else 0
     return {
-        "is_premium": bool(user.is_premium) or trial_active,
-        "subscribed": bool(user.is_premium) and bool(user.stripe_subscription_id),
-        "on_trial": on_signup_trial,
-        "trial_days_left": days_left if on_signup_trial else 0,
+        "is_premium": subscribed,
+        "subscribed": subscribed,
+        "free_unlocks_total": FREE_PREMIUM_UNLOCKS,
+        "free_unlocks_used": used,
+        "free_unlocks_left": max(0, FREE_PREMIUM_UNLOCKS - used) if not subscribed else 0,
     }
-
-
-def start_signup_trial(user) -> None:
-    """Give a brand-new account its free Premium window. Only ever called
-    at account creation, and never overwrites an existing value, so a
-    returning user cannot restart the clock by any route."""
-    if user.trial_ends_at is None:
-        user.trial_ends_at = (
-            datetime.datetime.now(datetime.timezone.utc)
-            + datetime.timedelta(days=SIGNUP_TRIAL_DAYS)
-        )
 
 
 def current_user(request: Request) -> Optional[dict]:
@@ -104,7 +133,7 @@ def current_user(request: Request) -> Optional[dict]:
             user = db.get(User, user_id)
             if user is None:
                 return None
-            return {"id": user.id, "email": user.email, **premium_state(user)}
+            return {"id": user.id, "email": user.email, **premium_state(user, db)}
     except Exception:
         # base_context() calls this on every page load, including the
         # error pages themselves - a transient DB hiccup shouldn't take

@@ -4,7 +4,10 @@
     <a href="{{ '/signup' if not current_user else '/premium' }}" class="school-profile-lock-label">Upgrade to Premium to unlock →</a>
 </div>
 {% endmacro %}
-{% set premium_unlocked = current_user and current_user.is_premium %}
+{# Included from the property report, which sets premium_unlocked per
+   property, and from the schools guide, which has no property in scope
+   and so falls back to whether the account is subscribed. #}
+{% set premium_unlocked = premium_unlocked if premium_unlocked is defined else (current_user and current_user.subscribed) %}
 {% set value_lock_class = '' if premium_unlocked else 'school-profile-value-locked' %}
 <dialog class="report-modal" id="{{ modal_id }}">
     <div class="report-modal-inner">

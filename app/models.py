@@ -64,6 +64,33 @@ class WatchlistItem(Base):
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 
 
+class PremiumUnlock(Base):
+    """One row per property a user has spent a free unlock on.
+
+    New accounts get FREE_PREMIUM_UNLOCKS (see auth.py) full Premium
+    reports before the paywall appears. Recording which properties were
+    unlocked - rather than just counting down an integer - is what makes
+    it fair: coming back to a property you already unlocked never costs
+    another one, so a refresh, a bookmark or a second look days later is
+    free. The unique constraint enforces that at the database level, so
+    a double-submit or a race between two tabs cannot burn two.
+
+    Kept forever rather than expiring: someone who unlocked a property
+    in March should still see it in June. Three rows per free user is
+    nothing to store."""
+
+    __tablename__ = "premium_unlocks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "postcode", "house_number", name="uq_unlock_user_property"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    postcode: Mapped[str] = mapped_column(String(16))
+    house_number: Mapped[str] = mapped_column(String(32), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class Review(Base):
     """A logged-in user's rating + optional text for either an area
     (target_type="property", target_key=postcode - reviews are about

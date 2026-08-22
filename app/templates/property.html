@@ -33,7 +33,7 @@
 
 {% else %}
     <div class="report-head">
-        {% set premium_unlocked = current_user and current_user.is_premium %}
+        {# premium_unlocked comes from the route: per-property, not per-account. #}
         {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
         <div class="report-head-top">
             <div class="report-head-main">
@@ -194,11 +194,11 @@
 
     <p class="section-sub">Tap a card to see the details in a popup.</p>
 
-    {% set premium_unlocked = current_user and current_user.is_premium %}
+    {# premium_unlocked comes from the route: per-property, not per-account. #}
     {# Logged-out visitors have a free trial waiting, so say that rather
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
-    {% set lock_label = "Unlock free for 14 days" if not current_user else "Upgrade to Premium to unlock" %}
+    {% set lock_label = "Sign up: 3 free full reports" if not current_user else "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
 
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>

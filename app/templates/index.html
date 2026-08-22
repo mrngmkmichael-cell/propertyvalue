@@ -16,8 +16,8 @@
     "@type": "FAQPage",
     "mainEntity": [
         {"@type": "Question", "name": "What is UKPropertyInsight?", "acceptedAnswer": {"@type": "Answer", "text": "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we show the facts about a property and its area."}},
-        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. Creating an account is free and gives you 14 days of Premium with every check unlocked, no card required. After that your account stays free."}},
-        {"@type": "Question", "name": "What happens when the free trial ends?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing you have to do. There is no card on file, so nothing is charged and there is nothing to cancel. The Premium checks lock, your account and watchlist keep working, and you can subscribe later."}},
+        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. Creating an account is free and unlocks every Premium check on the first three properties you look at, no card required."}},
+        {"@type": "Question", "name": "What happens after the three free reports?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good. Opening a new one needs a subscription, and postcode search stays free either way."}},
         {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
         {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
         {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
@@ -267,7 +267,7 @@
     <div class="tier-block tier-block-premium" data-animate>
         <div class="tier-header">
             <h3 class="tier-title">Premium <span class="tier-badge">£9.99/month</span></h3>
-            <p class="tier-desc">Free for 14 days on every new account, no card. The deeper checks, including real school catchment data.</p>
+            <p class="tier-desc">Free on your first three properties, no card. The deeper checks, including real school catchment data.</p>
         </div>
         <div class="feature-grid">
             {% for icon_name, label, blurb in [
@@ -323,8 +323,8 @@
     <div class="faq-list">
         {% for q, a in [
             ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
-            ('Is it free to use?', 'Searching is free and needs no account. You\'ll see headline verdicts on every check straight away. Creating an account is also free, and gives you 14 days of Premium with every check unlocked, no card required. After that your account stays free, with the deeper checks locked unless you subscribe.'),
-            ('What happens when the free trial ends?', 'Nothing you have to do. There is no card on file, so nothing is charged and there is nothing to cancel. The Premium checks lock, your account and watchlist carry on working, and you can subscribe later if you want them back.'),
+            ('Is it free to use?', 'Searching is free and needs no account. You\'ll see headline verdicts on every check straight away. Creating an account is also free, and unlocks every Premium check on the first three properties you look at, no card required. After that the deeper checks lock unless you subscribe.'),
+            ('What happens after the three free reports?', 'Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good, so you can go back to them any time. Opening a new one needs a subscription, and postcode search stays free either way.'),
             ('How is this different from Rightmove or Zoopla?', 'Those are listings portals. They show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
             ('Where does the data come from?', 'Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every figure traces back to a source.'),
             ('Which parts of the UK are covered?', 'Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where a council has published that data openly. Where something isn\'t covered for an address, the report says so rather than leaving a gap unexplained.'),
