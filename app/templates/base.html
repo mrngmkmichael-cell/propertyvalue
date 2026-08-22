@@ -87,6 +87,9 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    {# First focusable thing on every page: lets a keyboard or screen-reader
+       user jump past the nav. Visually hidden until it receives focus. #}
+    <a class="skip-link" href="#main">Skip to content</a>
     <div id="page-loading-overlay" aria-hidden="true">
         <div class="page-loading-inner">
             <div class="page-loading-spinner"></div>
@@ -153,7 +156,10 @@
     </div>
     {% endif %}
 
-    <main class="site-main">
+    <main class="site-main" id="main" tabindex="-1">
+        {% if request.query_params.get("reset") == "done" %}
+        <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Password changed.</strong> You're signed in.</p>
+        {% endif %}
         {% block content %}{% endblock %}
     </main>
 

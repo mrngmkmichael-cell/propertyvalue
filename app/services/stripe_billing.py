@@ -33,6 +33,11 @@ PLANS = {
     "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months", 0),
 }
 
+# Saving against paying monthly, shown on the pricing card. £24.99 for
+# three months is £8.33 a month against £9.99: 17%. Stated as a number
+# because "Best value" on its own asks the reader to do the division.
+PLAN_SAVING_PCT = {"quarterly": 17}
+
 # Subscription statuses that should count as "has Premium access" -
 # trialing and active both grant access; past_due/canceled/unpaid/
 # incomplete/incomplete_expired do not.
@@ -62,7 +67,8 @@ def plan_choices() -> list[dict]:
     the template can hide a plan that hasn't been configured yet
     rather than offering a button that will fail."""
     return [
-        {"key": key, "label": label, "trial_days": trial_days, "available": bool(os.environ.get(price_env))}
+        {"key": key, "label": label, "trial_days": trial_days, "available": bool(os.environ.get(price_env)),
+         "saving_pct": PLAN_SAVING_PCT.get(key)}
         for key, (price_env, label, trial_days) in PLANS.items()
     ]
 

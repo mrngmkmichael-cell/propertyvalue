@@ -65,7 +65,7 @@
 <div class="pricing-grid">
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
-        {% if plan.key == 'quarterly' %}<span class="pricing-card-badge">Best value</span>{% endif %}
+        {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}
         <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }}. Cancel any time.</p>

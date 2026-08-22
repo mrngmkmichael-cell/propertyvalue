@@ -3350,6 +3350,133 @@ def logout(request: Request):
     return RedirectResponse("/", status_code=303)
 
 
+# ---- Password reset ----
+#
+# Signed, time-limited token in the email link, nothing stored: the
+# token carries the user id and is checked against the account's
+# CURRENT password hash, so it is single-use by construction - the
+# moment the password changes, every outstanding token for that account
+# stops verifying. Same itsdangerous pattern as the extension login,
+# under its own salt so the two token kinds can never be swapped.
+RESET_TOKEN_MAX_AGE_S = 60 * 60  # one hour
+
+
+def _reset_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(SESSION_SECRET, salt="password-reset")
+
+
+def _reset_token_for(user: User) -> str:
+    # The hash fingerprint is what makes the link single-use. Only a
+    # prefix is embedded, which is plenty to detect a change and avoids
+    # putting the whole hash in a URL.
+    return _reset_serializer().dumps({"uid": user.id, "h": user.password_hash[:16]})
+
+
+def _user_for_reset_token(session, token: str) -> User | None:
+    try:
+        data = _reset_serializer().loads(token, max_age=RESET_TOKEN_MAX_AGE_S)
+    except (BadSignature, SignatureExpired):
+        return None
+    user = session.get(User, data.get("uid"))
+    if user is None or user.password_hash[:16] != data.get("h"):
+        return None
+    return user
+
+
+_RESET_ERRORS = {
+    "invalid": "That reset link has expired or already been used. Request a new one below.",
+    "short": "Password must be at least 8 characters.",
+    "mismatch": "The two passwords didn't match.",
+}
+
+
+@app.get("/forgot-password")
+def forgot_password_form(request: Request):
+    context = base_context(request)
+    context["email_configured"] = email_service.is_configured()
+    return templates.TemplateResponse(request, "forgot_password.html", context)
+
+
+@app.post("/forgot-password")
+async def forgot_password_submit(request: Request, email: str = Form(...)):
+    context = base_context(request)
+    context["email_configured"] = email_service.is_configured()
+    email = email.strip().lower()
+
+    # Always the same response whether or not the address exists: the
+    # form must not be usable to discover which emails have accounts.
+    context["sent_to"] = email
+
+    if not db.is_configured() or not email_service.is_configured():
+        return templates.TemplateResponse(request, "forgot_password.html", context)
+
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        if user is None:
+            return templates.TemplateResponse(request, "forgot_password.html", context)
+        link = f"{_public_base_url(request)}/reset-password?token={_reset_token_for(user)}"
+
+    await email_service.send_email(
+        email,
+        "Reset your UKPropertyInsight password",
+        _reset_email_html(link),
+    )
+    return templates.TemplateResponse(request, "forgot_password.html", context)
+
+
+def _reset_email_html(link: str) -> str:
+    return (
+        '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">'
+        "<h2>Reset your password</h2>"
+        "<p>Someone asked to reset the password for this UKPropertyInsight account. "
+        "If that was you, the link below works for one hour and can be used once.</p>"
+        f'<p><a href="{link}" style="display:inline-block;padding:10px 18px;background:#2b4c8c;'
+        'color:#fff;border-radius:6px;text-decoration:none;">Choose a new password</a></p>'
+        '<p style="color:#667085;font-size:12px;">If you did not ask for this, ignore it. '
+        "Your password has not changed and nothing else needs doing.</p>"
+        "</div>"
+    )
+
+
+@app.get("/reset-password")
+def reset_password_form(request: Request, token: str = "", error: str = ""):
+    context = base_context(request)
+    context["token"] = token
+    context["error"] = _RESET_ERRORS.get(error)
+    if not db.is_configured():
+        context["error"] = _RESET_ERRORS["invalid"]
+        return templates.TemplateResponse(request, "reset_password.html", context)
+    with db.get_session() as session:
+        if _user_for_reset_token(session, token) is None:
+            context["error"] = _RESET_ERRORS["invalid"]
+            context["token"] = ""
+    return templates.TemplateResponse(request, "reset_password.html", context)
+
+
+@app.post("/reset-password")
+def reset_password_submit(
+    request: Request, token: str = Form(...), password: str = Form(...), confirm: str = Form(...)
+):
+    if len(password) < 8:
+        return RedirectResponse(f"/reset-password?token={token}&error=short", status_code=303)
+    if password != confirm:
+        return RedirectResponse(f"/reset-password?token={token}&error=mismatch", status_code=303)
+    if not db.is_configured():
+        return RedirectResponse("/reset-password?error=invalid", status_code=303)
+
+    with db.get_session() as session:
+        user = _user_for_reset_token(session, token)
+        if user is None:
+            return RedirectResponse("/reset-password?error=invalid", status_code=303)
+        user.password_hash = auth.hash_password(password)
+        session.commit()
+        # Sign them in: they have just proved control of the mailbox,
+        # which is what logging in proves too.
+        request.session["user_id"] = user.id
+
+    return RedirectResponse("/?reset=done", status_code=303)
+
+
 @app.get("/auth/google")
 def google_login(request: Request, next: str = "/"):
     if not google_oauth.is_configured():
