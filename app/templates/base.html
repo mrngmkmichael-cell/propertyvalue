@@ -116,8 +116,8 @@
                 <span class="nav-toggle-bars"></span>
             </button>
             <nav class="site-nav" id="site-nav-menu">
-                <a href="/areas">Area guides</a>
                 <a href="/methodology">Why trust this</a>
+                <a href="/areas">Area Guides</a>
                 <a href="/schools/guide">School Guide</a>
                 <a href="/buying-guide">Buying Guide</a>
                 <a href="/browser-extension">Extension</a>
@@ -304,7 +304,18 @@
                 showTimer = setTimeout(showOverlay, 200);
             }
 
-            document.addEventListener('submit', function () {
+            /* Only the pages that genuinely gather a report from ~30
+               upstream sources get the overlay. Everything else - nav
+               tabs, guides, pricing, log out - renders in well under a
+               second, and flashing "Gathering your report" on the way to
+               the pricing page was both wrong and irritating. */
+            const REPORT_PATHS = ['/property', '/comparables', '/compare'];
+
+            document.addEventListener('submit', function (e) {
+                /* Same rule for forms: the postcode search gathers a
+                   report; log-out, login and review forms do not. */
+                const action = (e.target.getAttribute('action') || window.location.pathname);
+                if (!REPORT_PATHS.some(function (p) { return action.startsWith(p); })) return;
                 scheduleOverlay();
             });
 
@@ -317,6 +328,7 @@
                 if (url.origin !== window.location.origin) return;
                 const samePage = url.pathname === window.location.pathname && url.search === window.location.search;
                 if (samePage) return;
+                if (!REPORT_PATHS.some(function (p) { return url.pathname.startsWith(p); })) return;
                 scheduleOverlay();
             });
 
