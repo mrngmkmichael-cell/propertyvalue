@@ -4175,3 +4175,46 @@ html { scroll-behavior: smooth; }
 }
 .skip-link:focus { top: 1rem; outline: 2px solid var(--accent); outline-offset: 2px; }
 main:focus { outline: none; }
+
+/* ---- Snap format: a key point you can read at a glance, one line why ---- */
+.snap-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0.75rem;
+}
+.snap-stat-value {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-bold);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+.snap-stat-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+.snap-points {
+    list-style: none;
+    margin: 0.75rem 0 1rem;
+    padding: 0;
+    display: grid;
+    gap: 0.6rem;
+}
+.snap-points li {
+    padding-left: 1rem;
+    border-left: 2px solid var(--border-strong);
+    color: var(--ink-soft);
+    line-height: 1.5;
+}
+.snap-points li strong {
+    display: block;
+    color: var(--ink);
+    font-weight: var(--weight-semi);
+}
+/* The numbered steps and checklist get the same two-line rhythm. */
+.guide-steps li strong { display: block; }
+.guide-steps li { margin-bottom: 1rem; }
