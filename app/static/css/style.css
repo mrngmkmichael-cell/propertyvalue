@@ -2156,6 +2156,20 @@ a {
     font-size: var(--text-base);
 }
 
+.notice-list {
+    margin: 0.75rem 0;
+    padding-left: 1.25rem;
+    font-size: var(--text-base);
+    color: var(--ink-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.notice-list strong {
+    color: var(--ink);
+}
+
 .notice-error {
     border-left-color: var(--bad);
     background: var(--bad-bg);

@@ -32,6 +32,31 @@
     </p>
 
 {% else %}
+    {% if is_scotland %}
+    <dialog class="report-modal" id="modal-scotland-notice">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+                <h2>This report has real gaps for Scotland</h2>
+                <p class="section-sub">
+                    Several of our sources only cover England &amp; Wales, with no Scottish
+                    equivalent wired up yet:
+                </p>
+                <ul class="notice-list">
+                    <li><strong>Sold prices &amp; comparables</strong> — from HM Land Registry, England &amp; Wales only. Not shown for this address.</li>
+                    <li><strong>EPC rating</strong> — from the England &amp; Wales EPC register. Scotland runs a separate register we don't query yet. Not shown.</li>
+                    <li><strong>Schools</strong> — ratings come from Ofsted, which doesn't operate in Scotland. Not shown.</li>
+                    <li><strong>Flood risk</strong> — from the Environment Agency (England only). The "Zone 1 (low probability)" reading below is what we get when no data covers a point at all, not a verified assessment — treat it as unknown, not low risk.</li>
+                    <li><strong>Crime</strong> — from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count below will read far lower than actual local crime levels.</li>
+                </ul>
+                <p class="notice">
+                    Flood risk and crime in particular can look reassuring here when they're really
+                    just missing — please don't rely on either for this property.
+                </p>
+            </section>
+        </div>
+    </dialog>
+    {% endif %}
     <div class="report-head">
         {# premium_unlocked comes from the route: per-property, not per-account. #}
         {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
@@ -2823,6 +2848,14 @@ Listed building data from Historic England's
 {% endblock %}
 
 {% block extra_scripts %}
+{% if is_scotland %}
+<script>
+    (function () {
+        const dialog = document.getElementById('modal-scotland-notice');
+        if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+    })();
+</script>
+{% endif %}
 {% if location %}
 <script>
     (function () {

@@ -1107,6 +1107,17 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         # apology on it - crawlers and uptime checks read the status.
         return templates.TemplateResponse(request, "property.html", context, status_code=404)
 
+    # Several of this report's sources are England & Wales-only
+    # infrastructure (Land Registry, the E&W EPC register, Ofsted, the
+    # Environment Agency's flood maps) with no Scottish equivalent
+    # wired up - and two of them (flood zone, crime) don't just come
+    # back empty, they silently default to a falsely-reassuring reading
+    # (Zone 1 "low probability" when no EA polygon covers the point at
+    # all; a near-zero crime count from data.police.uk, which only
+    # carries British Transport Police records for Scotland). Flagged
+    # in the UI rather than left implicit.
+    context["is_scotland"] = location.get("country") == "Scotland"
+
     # Overrides base_context's path-only default: postcode is a query
     # param here, not part of the path, and the content genuinely varies
     # by it - but it varies by the *normalized* postcode (location's, not
