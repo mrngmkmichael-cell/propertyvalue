@@ -7,6 +7,7 @@ import os
 import re
 import secrets
 import statistics
+import time
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -984,7 +985,40 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     else:
         context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
 
-    return templates.TemplateResponse(request, "property.html", context)
+    response = templates.TemplateResponse(request, "property.html", context)
+    timing = _server_timing_header()
+    if timing:
+        response.headers["Server-Timing"] = timing
+    return response
+
+
+# Per-service timings from the most recent cold gather, surfaced on the
+# property response as a standard Server-Timing header. Browsers show it
+# in DevTools' Network panel and it costs nothing; it exists because the
+# report took 8-13s cold on Render while every service measured under
+# 2s from a dev machine, and there was no other way to see which
+# upstream was slow from the hosting network specifically.
+_last_gather_timings: dict[str, float] = {}
+
+
+async def _timed(name: str, coro):
+    """Run one gather member and record how long it took. Exceptions are
+    returned rather than raised so the surrounding gather's
+    return_exceptions=True semantics are unchanged."""
+    t0 = time.perf_counter()
+    try:
+        return await coro
+    except Exception as exc:  # noqa: BLE001 - mirrors return_exceptions=True
+        return exc
+    finally:
+        _last_gather_timings[name] = time.perf_counter() - t0
+
+
+def _server_timing_header() -> str:
+    if not _last_gather_timings:
+        return ""
+    top = sorted(_last_gather_timings.items(), key=lambda kv: -kv[1])[:12]
+    return ", ".join(f"{k};dur={v * 1000:.0f}" for k, v in top)
 
 
 async def _full_property_gather(location: dict, house_number: str, premium_unlocked: bool) -> dict:
@@ -1020,45 +1054,46 @@ async def _full_property_gather(location: dict, house_number: str, premium_unloc
     gather_cache_key = ("property_search_gather", canonical, house_number)
     gather_results = _cache.get(gather_cache_key, PROPERTY_SEARCH_CACHE_TTL_S)
     if gather_results is None:
+        _last_gather_timings.clear()
         gather_results = await asyncio.gather(
-            sold_prices_for_postcode(canonical),
-            _epc_flow(canonical, house_number, context["epc_configured"]),
-            flood.warnings_near(lat, lon),
-            crime.summary_near(lat, lon),
-            crime.summary_for_outcode(location["outcode"]),
-            amenities.nearby_amenities_and_station(lat, lon),
-            hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
-            noise.noise_near(lat, lon),
-            asyncio.to_thread(schools_db.nearby_schools, lat, lon),
-            asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
-            asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(broadband.coverage_for_postcode, canonical),
-            asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", "")),
-            radon.risk_near(lat, lon),
-            heritage.nearby_listed_buildings(lat, lon),
-            _nearby_comparables(lat, lon),
-            asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", "")),
-            asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
-            designations.check_all(lat, lon),
-            food_hygiene.nearby_ratings(lat, lon),
-            flood_zones.zone_for(lat, lon),
-            google_places.nearby_food_ratings(lat, lon),
-            orientation.orientation_for(lat, lon),
-            asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings")),
-            historic_landfill.check_near(lat, lon),
-            catchment.catchments_for(lat, lon),
-            asyncio.to_thread(schools_db.school_landscape, lat, lon),
-            hpi.price_trend(location["admin_district"]),
-            clay_risk.risk_near(lat, lon),
-            sewage_discharge.nearby_outfalls(lat, lon),
-            coal_mining.check_near(lat, lon),
-            surface_water_risk.risk_for(lat, lon),
-            cqc_ratings.nearby_ratings(lat, lon, canonical),
+            _timed("sold-prices-for-postcode", sold_prices_for_postcode(canonical)),
+            _timed("-epc-flow", _epc_flow(canonical, house_number, context["epc_configured"])),
+            _timed("flood-warnings-near", flood.warnings_near(lat, lon)),
+            _timed("crime-summary-near", crime.summary_near(lat, lon)),
+            _timed("crime-summary-for-outcode", crime.summary_for_outcode(location["outcode"])),
+            _timed("amenities-nearby-amenities-and-station", amenities.nearby_amenities_and_station(lat, lon)),
+            _timed("hpi-area-comparison", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
+            _timed("noise-noise-near", noise.noise_near(lat, lon)),
+            _timed("schools-db-nearby-schools, lat, lon)", asyncio.to_thread(schools_db.nearby_schools, lat, lon)),
+            _timed("area-stats-deprivation-for-lsoa, codes-get", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
+            _timed("area-stats-income-for-msoa, codes-get", asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", ""))),
+            _timed("census-stats-occupation-for-lsoa, codes-get", asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", ""))),
+            _timed("census-stats-qualification-for-lsoa, codes-get", asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", ""))),
+            _timed("broadband-coverage-for-postcode, canonical)", asyncio.to_thread(broadband.coverage_for_postcode, canonical)),
+            _timed("mobile-coverage-coverage-for-laua, codes-get", asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", ""))),
+            _timed("radon-risk-near", radon.risk_near(lat, lon)),
+            _timed("heritage-nearby-listed-buildings", heritage.nearby_listed_buildings(lat, lon)),
+            _timed("-nearby-comparables", _nearby_comparables(lat, lon)),
+            _timed("demographics-age-profile-for-lsoa, codes-get", asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", ""))),
+            _timed("demographics-housing-for-lsoa, codes-get", asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", ""))),
+            _timed("demographics-background-for-lsoa, codes-get", asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", ""))),
+            _timed("demographics-wellbeing-for-lsoa, codes-get", asyncio.to_thread(demographics.wellbeing_for_lsoa, codes.get("lsoa", ""))),
+            _timed("rental-rental-for-laua, codes-get", asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", ""))),
+            _timed("designations-check-all", designations.check_all(lat, lon)),
+            _timed("food-hygiene-nearby-ratings", food_hygiene.nearby_ratings(lat, lon)),
+            _timed("flood-zones-zone-for", flood_zones.zone_for(lat, lon)),
+            _timed("google-places-nearby-food-ratings", google_places.nearby_food_ratings(lat, lon)),
+            _timed("orientation-orientation-for", orientation.orientation_for(lat, lon)),
+            _timed("air-quality-for-location, location-get", asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings"))),
+            _timed("historic-landfill-check-near", historic_landfill.check_near(lat, lon)),
+            _timed("catchment-catchments-for", catchment.catchments_for(lat, lon)),
+            _timed("schools-db-school-landscape, lat, lon)", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
+            _timed("hpi-price-trend", hpi.price_trend(location["admin_district"])),
+            _timed("clay-risk-risk-near", clay_risk.risk_near(lat, lon)),
+            _timed("sewage-discharge-nearby-outfalls", sewage_discharge.nearby_outfalls(lat, lon)),
+            _timed("coal-mining-check-near", coal_mining.check_near(lat, lon)),
+            _timed("surface-water-risk-risk-for", surface_water_risk.risk_for(lat, lon)),
+            _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
             return_exceptions=True,
         )
         _cache.set(gather_cache_key, gather_results)
