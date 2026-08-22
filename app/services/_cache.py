@@ -44,6 +44,14 @@ def _json_default(value):
         return float(value)
     if isinstance(value, (datetime.date, datetime.datetime)):
         return value.isoformat()
+    # A SQLAlchemy row (the school landscape embeds several per school):
+    # store its columns as a dict. Jinja reads `row.field` and
+    # `dict.field` identically, so templates are unaffected; only Python
+    # code doing getattr() on one would notice, and the pages that cache
+    # through here read aggregate counts, not rows.
+    table = getattr(value, "__table__", None)
+    if table is not None:
+        return {c.name: getattr(value, c.name, None) for c in table.columns}
     raise TypeError(f"not JSON-serialisable: {type(value).__name__}")
 
 
