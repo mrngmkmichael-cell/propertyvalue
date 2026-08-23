@@ -32,6 +32,7 @@ from app.services import (
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     stripe_billing, surface_water_risk, telegram, valuation,
+    solicitor_questions,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import any_postcode_in_outcode, lookup_postcode, nearby_postcodes, outcode_centroid
@@ -1250,6 +1251,12 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             context["my_area_review"] = reviews.user_review(context["current_user"]["id"], "property", canonical)
     else:
         context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
+
+    # Questions to ask before you buy - rules over this report's own
+    # findings (see services/solicitor_questions.py). Premium content;
+    # the template shows only the trigger list when locked.
+    context["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(context))
+    context["buyer_questions_count"] = sum(len(qs) for _, qs in context["buyer_questions"])
 
     context["report_outcome"] = request.query_params.get("report", "")
     # Share control: only for a viewer who can see the full report on
@@ -2969,6 +2976,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 
     report = await _full_property_gather(location, house_number, premium_unlocked=True, wait_for_amenities=True)
 
+    report["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(report))
     html = templates.get_template("pdf_report_full.html").render({
         **report,
         "house_number": house_number,

@@ -772,6 +772,39 @@
         </button>
     </div>
 
+    {% if buyer_questions %}
+    <section class="report-section buyer-questions" data-animate id="buyer-questions">
+        <span class="kicker">Before you offer</span>
+        <h2>Questions to ask, from this report's findings</h2>
+        <p class="section-sub">Built from what the checks above actually found here, not a generic checklist. Grouped by who to ask.</p>
+        {% if premium_unlocked %}
+        {% for audience, qs in buyer_questions %}
+        <div class="bq-group">
+            <h3 class="bq-audience">{{ audience }}</h3>
+            {% for item in qs %}
+            <div class="bq-item">
+                <span class="bq-trigger">{{ item.trigger }}{% if item.cost %} &middot; {{ item.cost }}{% endif %}</span>
+                <p class="bq-question">{{ item.question }}</p>
+                <p class="bq-why">{{ item.why }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        <p class="section-sub">Take this list to your viewing and your conveyancer. The PDF report includes it.</p>
+        {% else %}
+        <div class="bq-locked">
+            <p><strong>{{ buyer_questions_count }} questions</strong> were generated for this property, including:</p>
+            <ul class="bq-locked-list">
+                {% for audience, qs in buyer_questions %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
+                <li>{{ item.trigger }}</li>
+                {% endif %}{% endfor %}{% endfor %}
+            </ul>
+            <a class="pdf-download-btn" href="{{ lock_redirect }}">Unlock the full question list</a>
+        </div>
+        {% endif %}
+    </section>
+    {% endif %}
+
     {# The report used to just stop at the last card. Pageview data
        showed that was where almost every visit ended too - 496 report
        views, 36 went on to Comparables - so give the reader somewhere
