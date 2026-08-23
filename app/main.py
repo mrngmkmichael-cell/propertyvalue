@@ -154,6 +154,10 @@ _CRAWLER_UA_MARKERS = (
     "claudebot", "ccbot", "bytespider", "uptimerobot", "pingdom", "site24x7",
     "render/", "curl/", "wget/", "python-requests", "python-httpx", "go-http-client",
     "headlesschrome", "lighthouse", "crawler", "spider", "bot/", "bot;",
+    # The browser built into Claude Code, which the owner's assistant uses
+    # to verify changes. A real Chrome, so it was counted as a visitor
+    # until 23 Aug 2026; it identifies itself and is now excluded.
+    "claude/", "electron/",
 )
 
 
