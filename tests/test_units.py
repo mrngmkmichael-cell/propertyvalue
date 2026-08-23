@@ -138,3 +138,25 @@ def test_suite_never_uses_the_production_database():
     assert os.environ["DATABASE_URL"].startswith("sqlite:///")
     assert db.is_configured()
     assert "neon" not in str(db._get_engine().url)
+
+
+def test_cache_respects_a_byte_budget(monkeypatch):
+    """Entries vary from bytes to megabytes, so a count cap alone let the
+    process exceed Render's memory limit. Total size must be bounded."""
+    monkeypatch.setattr(_cache, "MAX_BYTES", 10_000)
+    monkeypatch.setattr(_cache, "MAX_ENTRIES", 1000)
+    _cache._store.clear()
+    _cache._bytes = 0
+    for i in range(10):
+        _cache.set(f"k{i}", "x" * 3000)   # ~3 KB each as JSON
+    assert _cache._bytes <= 10_000
+    assert len(_cache._store) == 3           # only the newest three fit
+    assert _cache.get("k9", 60) is not None and _cache.get("k0", 60) is None
+
+
+def test_cache_never_holds_an_oversized_entry(monkeypatch):
+    monkeypatch.setattr(_cache, "MAX_ENTRY_BYTES", 1000)
+    _cache._store.clear()
+    _cache._bytes = 0
+    _cache.set("huge", "x" * 5000)
+    assert _cache.get("huge", 60) is None and _cache._bytes == 0

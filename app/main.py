@@ -2928,10 +2928,23 @@ async def area_guide(request: Request, outcode: str):
         if amenities_data and amenities_data["categories"].get(cat)
     ]
 
+    landscape = ok(landscape_result)
+    if landscape:
+        # This page reads three aggregate fields from the landscape. The
+        # full per-school list that comes with it (250 rows, 1.4 MB for a
+        # central London district) was being cached along with them -
+        # making area guides the heaviest thing in both cache tiers by a
+        # factor of a hundred, and the reason the Render instance ran out
+        # of memory during a crawl. Keep only what the template uses.
+        landscape = {
+            k: v for k, v in landscape.items()
+            if k not in ("all_schools", "special_schools", "higher_education_names")
+        }
+
     page_data = {
         "hpi": ok(hpi_result),
         "crime": ok(crime_result),
-        "landscape": ok(landscape_result),
+        "landscape": landscape,
         "flood_zone": ok(flood_zone_result),
         "deprivation": ok(deprivation_result),
         "amenity_summary": amenity_summary,

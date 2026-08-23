@@ -31,6 +31,27 @@ last_outcome: str = ""
 # is the LRU order: a hit moves the key to the end.
 MAX_ENTRIES = 1500
 
+# An entry count alone wasn't enough: a second memory-limit restart
+# followed during an area-guide crawl, because entries range from a few
+# bytes to over a megabyte (a full property gather, a central-London
+# area guide before its payload was slimmed). So the store also keeps a
+# running total of approximate size and evicts oldest-first until it
+# fits. Sizes are measured as the JSON length of the value - cheap, and
+# a stable proxy; the live Python objects are a few times larger, which
+# the budget below already allows for on a 512 MB instance. Anything
+# over MAX_ENTRY_BYTES is served but never kept in memory: the second
+# tier (Postgres) is milliseconds away for the things that size.
+MAX_BYTES = 40 * 1024 * 1024
+MAX_ENTRY_BYTES = 4 * 1024 * 1024
+_bytes = 0
+
+
+def _approx_size(value) -> int:
+    try:
+        return len(json.dumps(value, default=str))
+    except (TypeError, ValueError):
+        return 1024
+
 
 def get(key, ttl_seconds: float, keep_expired: bool = False):
     """keep_expired leaves an expired entry in place (still returning
@@ -41,7 +62,7 @@ def get(key, ttl_seconds: float, keep_expired: bool = False):
         return None
     if time.time() - entry[0] >= ttl_seconds:
         if not keep_expired:
-            _store.pop(key, None)
+            _evict(key)
         return None
     _store.move_to_end(key)
     return entry[1]
@@ -54,11 +75,23 @@ def get_stale(key):
     return entry[1] if entry is not None else None
 
 
+def _evict(key) -> None:
+    global _bytes
+    entry = _store.pop(key, None)
+    if entry is not None:
+        _bytes -= entry[2]
+
+
 def _put(key, stored_at: float, value) -> None:
-    _store.pop(key, None)
-    _store[key] = (stored_at, value)
-    while len(_store) > MAX_ENTRIES:
-        _store.popitem(last=False)
+    global _bytes
+    _evict(key)
+    size = _approx_size(value)
+    if size > MAX_ENTRY_BYTES:
+        return
+    _store[key] = (stored_at, value, size)
+    _bytes += size
+    while _store and (len(_store) > MAX_ENTRIES or _bytes > MAX_BYTES):
+        _evict(next(iter(_store)))
 
 
 def set(key, value) -> None:
