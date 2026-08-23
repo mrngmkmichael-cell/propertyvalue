@@ -47,6 +47,29 @@
     as every property report on this site, not opinion or marketing copy.
 </p>
 
+{% if is_scotland %}
+<dialog class="report-modal" id="modal-scotland-notice">
+    <div class="report-modal-inner">
+        <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+        <section class="report-section">
+            <h2>Two figures on this page aren't reliable for Scotland</h2>
+            <p class="section-sub">
+                House prices below are genuine (the UK House Price Index covers all four nations),
+                but two other sources are England-only infrastructure with no Scottish equivalent
+                wired up yet:
+            </p>
+            <ul class="notice-list">
+                <li><strong>Flood risk</strong> — from the Environment Agency (England only). The "Zone 1 (low probability)" reading is what we get when no data covers a point at all, not a verified assessment.</li>
+                <li><strong>Crime</strong> — from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count will read far lower than actual local crime levels.</li>
+                <li><strong>Schools</strong> — ratings come from Ofsted, which doesn't operate in Scotland, so "no schools found" reflects that gap, not an actual absence of schools nearby.</li>
+            </ul>
+            <p class="notice">
+                Please don't rely on the flood or crime figures on this page for a Scottish area.
+            </p>
+        </section>
+    </div>
+</dialog>
+{% endif %}
 {% if not has_data %}
 <p class="notice notice-error">
     We couldn't pull any data for {{ outcode }} right now, the underlying services may be
@@ -156,5 +179,16 @@
 </section>
 
 {% endif %}
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if is_scotland %}
+<script>
+    (function () {
+        const dialog = document.getElementById('modal-scotland-notice');
+        if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+    })();
+</script>
 {% endif %}
 {% endblock %}
