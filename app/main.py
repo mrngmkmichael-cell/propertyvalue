@@ -146,6 +146,16 @@ _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
 # models.py promises. Matched case-insensitively as substrings; the
 # list is the well-known self-identifying crawlers, not an attempt at
 # fingerprinting anything that isn't a browser.
+# Set on the owner's browsers by the button on /admin. Pageviews from any
+# browser carrying it are skipped, logged in or not - the logged-in
+# check alone missed every logged-out visit the owner made.
+PAGEVIEW_EXCLUDE_COOKIE = "pv_exclude"
+
+# Counts before this are known to include the owner's logged-out visits
+# and the assistant's verification browser. The dashboard reports from
+# here as the honest baseline and labels everything earlier.
+PAGEVIEW_CLEAN_FROM = datetime.datetime(2026, 8, 23, tzinfo=datetime.timezone.utc)
+
 _CRAWLER_UA_MARKERS = (
     "googlebot", "bingbot", "slurp", "duckduckbot", "baiduspider", "yandexbot",
     "applebot", "facebookexternalhit", "twitterbot", "linkedinbot", "whatsapp",
@@ -191,6 +201,7 @@ async def capture_pageview(request: Request, call_next):
         and path not in _PAGEVIEW_EXCLUDE_PATHS
         and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)
         and not _is_crawler(request.headers.get("user-agent"))
+        and request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) != "1"
         and db.is_configured()
     ):
         try:
@@ -3103,6 +3114,13 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
     m["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
     m["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView)) or 0
+    m["pageviews_clean"] = session.scalar(
+        select(func.count()).select_from(PageView).where(PageView.created_at >= PAGEVIEW_CLEAN_FROM)
+    ) or 0
+    m["signups_clean"] = session.scalar(
+        select(func.count()).select_from(User).where(User.created_at >= PAGEVIEW_CLEAN_FROM)
+    ) or 0
+    m["clean_from"] = PAGEVIEW_CLEAN_FROM
 
     m["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
     m["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
@@ -3605,6 +3623,20 @@ def accuracy_log(request: Request):
     context["counts"] = counts
     context["statuses"] = FIGURE_STATUSES
     return templates.TemplateResponse(request, "accuracy.html", context)
+
+
+@app.post("/admin/exclude-me")
+def admin_exclude_me(request: Request):
+    """Marks this browser as the owner's: a year-long cookie the pageview
+    middleware honours whether or not they are logged in. Per browser,
+    so it wants pressing once on each device."""
+    context = base_context(request)
+    if not _is_admin(context["current_user"]):
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    response = RedirectResponse("/admin", status_code=303)
+    response.set_cookie(PAGEVIEW_EXCLUDE_COOKIE, "1", max_age=365 * 24 * 3600,
+                        httponly=True, samesite="lax", secure=IS_PRODUCTION)
+    return response
 
 
 @app.post("/admin/figure-reports/{report_id}")

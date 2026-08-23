@@ -7,7 +7,30 @@
 <span class="kicker">Admin</span>
 <h1>Daily overview</h1>
 <p class="dek">Traffic, signups and Premium conversion, from this app's own data. No third-party analytics.</p>
-<p class="section-sub">Pageviews count people only: search crawlers, uptime checks, scripts, PageSpeed runs, your own logged-in visits and the assistant's verification browser are all excluded. Counts before 23 Aug 2026 include that browser, so treat them as inflated.</p>
+<p class="section-sub">Pageviews count people only: crawlers, uptime checks, scripts, PageSpeed runs and the assistant's browser are excluded by user agent, and any browser you've marked as yours is excluded by cookie.</p>
+{% if request.cookies.get("pv_exclude") == "1" %}
+<p class="notice" style="background: var(--good-bg); color: var(--good);">This browser is marked as yours. Its visits aren't counted, logged in or out.</p>
+{% else %}
+<form action="/admin/exclude-me" method="post" class="stacked-form" style="max-width: 28rem;">
+    <p class="section-sub" style="margin: 0 0 0.5rem;">This browser is <strong>not</strong> marked as yours yet, so logged-out visits from it are being counted.</p>
+    <button type="submit">Don't count this browser</button>
+</form>
+{% endif %}
+
+<section class="landing-section">
+    <h2 class="landing-heading">True view, since {{ clean_from.strftime("%d %b %Y") }}</h2>
+    <p class="landing-subheading">Everything before this date includes your own logged-out visits and the assistant's browser, and can't be separated after the fact because no user agent is stored. This is the honest baseline.</p>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Pageviews</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_clean }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Signups</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_clean }}</span>
+        </div>
+    </div>
+</section>
 
 <section class="landing-section">
     <h2 class="landing-heading">Pageviews</h2>
@@ -25,8 +48,8 @@
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_month }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">All time</span>
-            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_total }}</span>
+            <span class="feature-card-title">All time (inflated before {{ clean_from.strftime("%d %b") }})</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink-faint);">{{ pageviews_total }}</span>
         </div>
     </div>
 
