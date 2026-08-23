@@ -139,6 +139,30 @@ async def capture_referral(request: Request, call_next):
 _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
 _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
 
+# Search-engine and monitoring crawlers aren't people viewing the site,
+# and with 378 URLs in the sitemap Googlebot alone would otherwise show
+# up as hundreds of "visitors" a day on /admin. The user-agent is only
+# tested here, never stored - the PageView row stays as minimal as
+# models.py promises. Matched case-insensitively as substrings; the
+# list is the well-known self-identifying crawlers, not an attempt at
+# fingerprinting anything that isn't a browser.
+_CRAWLER_UA_MARKERS = (
+    "googlebot", "bingbot", "slurp", "duckduckbot", "baiduspider", "yandexbot",
+    "applebot", "facebookexternalhit", "twitterbot", "linkedinbot", "whatsapp",
+    "telegrambot", "discordbot", "slackbot", "pinterestbot", "petalbot",
+    "ahrefsbot", "semrushbot", "mj12bot", "dotbot", "seznambot", "gptbot",
+    "claudebot", "ccbot", "bytespider", "uptimerobot", "pingdom", "site24x7",
+    "render/", "curl/", "wget/", "python-requests", "python-httpx", "go-http-client",
+    "headlesschrome", "lighthouse", "crawler", "spider", "bot/", "bot;",
+)
+
+
+def _is_crawler(user_agent: str | None) -> bool:
+    if not user_agent:
+        return True  # real browsers always send one
+    ua = user_agent.lower()
+    return any(marker in ua for marker in _CRAWLER_UA_MARKERS)
+
 
 @app.middleware("http")
 async def capture_pageview(request: Request, call_next):
@@ -162,6 +186,7 @@ async def capture_pageview(request: Request, call_next):
         and response.status_code == 200
         and path not in _PAGEVIEW_EXCLUDE_PATHS
         and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)
+        and not _is_crawler(request.headers.get("user-agent"))
         and db.is_configured()
     ):
         try:
