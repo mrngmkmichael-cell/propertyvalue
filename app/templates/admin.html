@@ -165,4 +165,39 @@
         </tbody>
     </table>
 </section>
+
+<section class="landing-section" id="figure-reports">
+    <h2 class="landing-heading">Figure reports</h2>
+    <p class="landing-subheading">What readers said looked wrong. Resolve each one; the outcome is published on <a href="/accuracy">/accuracy</a>.</p>
+    {% if figure_reports %}
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>When</th><th>Property</th><th>Card</th><th>Message</th><th>Resolve</th></tr></thead>
+        <tbody>
+        {% for r in figure_reports %}
+        <tr class="{{ 'figure-report-open' if r.status == 'open' else '' }}">
+            <td class="num">{{ r.created_at.strftime("%d %b %H:%M") }}</td>
+            <td class="num"><a href="/property?postcode={{ r.postcode | urlencode }}&house_number={{ (r.house_number or '') | urlencode }}">{{ r.postcode }} {{ r.house_number }}</a>{% if r.email %}<br><small>{{ r.email }}</small>{% endif %}</td>
+            <td>{{ r.card }}</td>
+            <td>{{ r.message }}</td>
+            <td>
+                <form action="/admin/figure-reports/{{ r.id }}" method="post" class="figure-resolve">
+                    <select name="status">
+                        {% for key, label in figure_statuses.items() %}
+                        <option value="{{ key }}" {{ 'selected' if r.status == key }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <textarea name="resolution" rows="2" placeholder="What you found (published)">{{ r.resolution or '' }}</textarea>
+                    <button type="submit">Save</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="notice">No reports yet.</p>
+    {% endif %}
+</section>
 {% endblock %}

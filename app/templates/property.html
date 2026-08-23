@@ -11,6 +11,42 @@
 
 {% block content %}
 <a class="back-link" href="/">&larr; New search</a>
+{% if report_outcome == "thanks" %}
+<p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Thanks, we've got it.</strong> We check every report against its source and publish what we find on the <a href="/accuracy">accuracy log</a>.</p>
+{% elif report_outcome == "empty" %}
+<p class="notice notice-error">The report needs a line saying what looked wrong.</p>
+{% elif report_outcome == "unavailable" %}
+<p class="notice notice-error">Reporting isn't available right now. Email <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a> with the postcode and the card.</p>
+{% endif %}
+
+{# One dialog, reused by the "Is this wrong?" link that base.html injects
+   into every card modal. The link fills in which card it came from. #}
+{% if location %}
+<dialog class="report-modal figure-report-dialog" id="figure-report-dialog">
+    <div class="report-modal-inner">
+        <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+        <section class="report-section">
+            <h2>Tell us what looks wrong</h2>
+            <p class="section-sub">We check every report against its source and publish the outcome on the <a href="/accuracy">accuracy log</a>, whether we were right or wrong.</p>
+            <form class="stacked-form figure-report-form" action="/report-figure" method="post">
+                <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                <input type="hidden" name="house_number" value="{{ house_number or '' }}">
+                <input type="hidden" name="card" id="figure-report-card" value="">
+                <p class="figure-report-context">Card: <strong id="figure-report-card-label"></strong> &middot; {{ location.postcode }}{% if house_number %} {{ house_number }}{% endif %}</p>
+                <div class="search-form-field">
+                    <label for="figure-report-message">What looks wrong, and what you'd expect instead</label>
+                    <textarea id="figure-report-message" name="message" rows="4" required maxlength="2000" placeholder="e.g. The last sale shows as 2019 but the house sold in 2023 for around £410k"></textarea>
+                </div>
+                <div class="search-form-field">
+                    <label for="figure-report-email">Email, if you'd like to hear what we found (optional)</label>
+                    <input type="email" id="figure-report-email" name="email" value="{{ current_user.email if current_user else '' }}" autocomplete="email">
+                </div>
+                <button type="submit">Send report</button>
+            </form>
+        </section>
+    </div>
+</dialog>
+{% endif %}
 
 {% if location %}{{ tabnav.tabs(location, house_number, active_tab) }}{% endif %}
 

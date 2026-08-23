@@ -85,6 +85,36 @@ class PageCache(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class FigureReport(Base):
+    """A reader saying "this figure looks wrong", from the link on every
+    card of a property report.
+
+    This exists because the site's whole pitch is accuracy, and until
+    now a doubt had nowhere to go except a Reddit comment. Each report
+    captures enough to reproduce it (postcode, house number, which card)
+    and is worked through in the admin page; the outcome is published on
+    /accuracy, with the postcode reduced to its district so a specific
+    home is never identifiable from the public log.
+
+    status: open -> one of confirmed (a real bug, fixed or pending),
+    labelled (the figure was right but the page explained it badly and
+    now says more), or correct (the figure was right as shown)."""
+
+    __tablename__ = "figure_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    postcode: Mapped[str] = mapped_column(String(16), index=True)
+    house_number: Mapped[str] = mapped_column(String(32), default="")
+    card: Mapped[str] = mapped_column(String(120))
+    message: Mapped[str] = mapped_column(String(2000))
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    resolution: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class PremiumUnlock(Base):
     """One row per property a user has spent a free unlock on.
 

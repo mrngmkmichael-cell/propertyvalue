@@ -201,6 +201,7 @@
                 &middot; <a href="/market-report">Market Report</a>
                 &middot; <a href="/buying-guide">Buying Guide</a>
                 &middot; <a href="/areas">Area Guides</a>
+                &middot; <a href="/accuracy">Accuracy log</a>
                 &middot; <a href="/embed">For Agents</a>
             </p>
         </div>
@@ -324,6 +325,35 @@
                     if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
                 });
             });
+            /* "Is this wrong?" on every card modal of a property report.
+               Injected here rather than written into 37 templates, and
+               it carries the card's own heading so the report says which
+               figure it was about. */
+            const reportDialog = document.getElementById('figure-report-dialog');
+            if (reportDialog) {
+                document.querySelectorAll('dialog.report-modal:not(.figure-report-dialog)').forEach(function (dialog) {
+                    const section = dialog.querySelector('.report-modal-inner > section') || dialog.querySelector('.report-modal-inner');
+                    if (!section) return;
+                    const heading = dialog.querySelector('h2');
+                    const card = heading ? heading.textContent.trim() : dialog.id;
+                    const p = document.createElement('p');
+                    p.className = 'figure-report-link';
+                    const a = document.createElement('button');
+                    a.type = 'button';
+                    a.textContent = 'Is something on this card wrong? Tell us';
+                    a.addEventListener('click', function () {
+                        document.getElementById('figure-report-card').value = card;
+                        document.getElementById('figure-report-card-label').textContent = card;
+                        dialog.close();
+                        reportDialog.showModal();
+                        const msg = document.getElementById('figure-report-message');
+                        if (msg) msg.focus();
+                    });
+                    p.appendChild(a);
+                    section.appendChild(p);
+                });
+            }
+
             document.querySelectorAll('dialog.report-modal').forEach(function (dialog) {
                 dialog.addEventListener('click', function (e) {
                     if (e.target === dialog) dialog.close();

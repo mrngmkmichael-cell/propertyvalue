@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Accuracy log | UKPropertyInsight{% endblock %}
+{% block meta_description %}Every figure a reader has questioned on UKPropertyInsight, and what we found when we checked it against the source. Published in full, including the times we were wrong.{% endblock %}
+
+{% block content %}
+<span class="kicker">Accuracy</span>
+<h1>Every figure someone questioned, and what we found</h1>
+<p class="dek">Any card on any report has an "Is this wrong?" link. This is where those go. We check each one against its source and publish the outcome, including the times the site was wrong.</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ counts.total }}</span><span class="score-tile-label">reported</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.confirmed }}</span><span class="score-tile-label">were wrong, now fixed</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.labelled }}</span><span class="score-tile-label">right, but explained better now</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.correct }}</span><span class="score-tile-label">checked, correct</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.open }}</span><span class="score-tile-label">still checking</span></div>
+</div>
+
+{% if reports %}
+<div class="tablewrap">
+<table class="tx-table accuracy-table">
+    <thead><tr><th>When</th><th>District</th><th>Card</th><th>Outcome</th><th>What we found</th></tr></thead>
+    <tbody>
+    {% for r in reports %}
+    <tr>
+        <td class="num">{{ r.created.strftime("%d %b %Y") }}</td>
+        <td class="num">{{ r.district }}</td>
+        <td>{{ r.card }}</td>
+        <td><span class="status-pill status-{{ r.status }}">{{ r.status_label }}</span></td>
+        <td>{{ r.resolution or ("Being checked." if r.status == "open" else "") }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<p class="notice">Nothing reported yet. When someone questions a figure, it appears here with what we found.</p>
+{% endif %}
+
+<p class="section-sub" style="margin-top: 2rem;">Postcodes are shown as districts only, so no individual home is identifiable. Read how each figure is sourced on the <a href="/methodology">methodology page</a>.</p>
+{% endblock %}

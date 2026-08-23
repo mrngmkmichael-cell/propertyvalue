@@ -25,7 +25,7 @@ from sqlalchemy import func, select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
-from app.models import PageView, PremiumUnlock, User
+from app.models import FigureReport, PageView, PremiumUnlock, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -1198,6 +1198,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     else:
         context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
 
+    context["report_outcome"] = request.query_params.get("report", "")
     response = templates.TemplateResponse(request, "property.html", context)
     timing = _server_timing_header()
     if timing:
@@ -3241,6 +3242,13 @@ def admin_dashboard(request: Request):
     with db.get_session() as session:
         context.update(_admin_metrics(session, datetime.datetime.now(datetime.timezone.utc)))
 
+    with db.get_session() as session:
+        context["figure_reports"] = session.scalars(
+            select(FigureReport).order_by(
+                (FigureReport.status != "open"), FigureReport.created_at.desc()
+            ).limit(50)
+        ).all()
+    context["figure_statuses"] = FIGURE_STATUSES
     return templates.TemplateResponse(request, "admin.html", context)
 
 
@@ -3518,6 +3526,98 @@ def login_submit(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+# ---- "Is this wrong?" figure reports ----
+
+FIGURE_STATUSES = {
+    "open": "Open",
+    "confirmed": "Confirmed and fixed",
+    "labelled": "Figure was right, page now explains it",
+    "correct": "Checked, figure was correct",
+}
+
+
+@app.post("/report-figure")
+async def report_figure(
+    request: Request,
+    postcode: str = Form(...), house_number: str = Form(""), card: str = Form(...),
+    message: str = Form(...), email: str = Form(""),
+):
+    """One click from any card on a property report. Stores the report,
+    pings the owner, and sends the reader back to the same report with a
+    thank-you rather than a dead end."""
+    postcode = postcode.strip().upper()[:16]
+    house_number = house_number.strip()[:32]
+    card = card.strip()[:120] or "Unspecified"
+    message = message.strip()[:2000]
+    email = email.strip().lower()[:255] or None
+    back = f"/property?{urlencode({'postcode': postcode, 'house_number': house_number})}"
+
+    if not message:
+        return RedirectResponse(back + "&report=empty", status_code=303)
+    if not db.is_configured():
+        return RedirectResponse(back + "&report=unavailable", status_code=303)
+
+    current = auth.current_user(request)
+    with db.get_session() as session:
+        session.add(FigureReport(
+            postcode=postcode, house_number=house_number, card=card, message=message,
+            email=email, user_id=current["id"] if current else None,
+        ))
+        session.commit()
+
+    if telegram.is_configured():
+        await telegram.send_message(
+            f"🔍 Figure reported: <b>{card}</b> at {postcode} {house_number}\n"
+            f"{message[:300]}\n{_public_base_url(request)}/admin#figure-reports"
+        )
+    return RedirectResponse(back + "&report=thanks", status_code=303)
+
+
+@app.get("/accuracy")
+def accuracy_log(request: Request):
+    """Every figure anyone has reported, and what we found. Public on
+    purpose: a site whose pitch is accuracy should show its working,
+    including the times it was wrong. Postcodes are reduced to their
+    district so no specific home can be identified."""
+    context = base_context(request)
+    reports, counts = [], {"total": 0, "open": 0, "confirmed": 0, "labelled": 0, "correct": 0}
+    if db.is_configured():
+        with db.get_session() as session:
+            rows = session.scalars(
+                select(FigureReport).order_by(FigureReport.created_at.desc()).limit(200)
+            ).all()
+        for r in rows:
+            counts["total"] += 1
+            counts[r.status] = counts.get(r.status, 0) + 1
+            reports.append({
+                "district": r.postcode.split(" ")[0] if " " in r.postcode else r.postcode[:-3] or r.postcode,
+                "card": r.card, "created": r.created_at, "status": r.status,
+                "status_label": FIGURE_STATUSES.get(r.status, r.status),
+                "resolution": r.resolution, "resolved": r.resolved_at,
+            })
+    context["reports"] = reports
+    context["counts"] = counts
+    context["statuses"] = FIGURE_STATUSES
+    return templates.TemplateResponse(request, "accuracy.html", context)
+
+
+@app.post("/admin/figure-reports/{report_id}")
+def admin_resolve_figure(request: Request, report_id: int, status: str = Form(...), resolution: str = Form("")):
+    context = base_context(request)
+    if not _is_admin(context["current_user"]) or not db.is_configured():
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    if status not in FIGURE_STATUSES:
+        return RedirectResponse("/admin#figure-reports", status_code=303)
+    with db.get_session() as session:
+        row = session.get(FigureReport, report_id)
+        if row is not None:
+            row.status = status
+            row.resolution = resolution.strip()[:2000] or None
+            row.resolved_at = datetime.datetime.now(datetime.timezone.utc) if status != "open" else None
+            session.commit()
+    return RedirectResponse("/admin#figure-reports", status_code=303)
 
 
 # ---- Password reset ----
