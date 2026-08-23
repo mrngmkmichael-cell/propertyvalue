@@ -1459,6 +1459,13 @@ async def _full_property_gather(location: dict, house_number: str, premium_unloc
             comparables_result, subject_floor_area, growth_area["annual_change_pct"] if growth_area else None
         )
         context["new_build_stat"] = _new_build_stat(comparables_result)
+        # For the "Keep exploring" tile at the foot of the report. The
+        # Comparables tab is free and lists every one of these sales, so
+        # a count and the most recent one give nothing away that the
+        # next click wouldn't.
+        context["nearby_sales_count"] = len(comparables_result)
+        dated = [t for t in comparables_result if t.get("date") and t.get("amount")]
+        context["nearby_latest_sale"] = max(dated, key=lambda t: t["date"]) if dated else None
 
     if isinstance(age_profile_result, Exception):
         context["age_profile_error"] = True
@@ -2838,6 +2845,13 @@ async def area_guide(request: Request, outcode: str):
     context["outcode"] = outcode
     context["admin_district"] = location["admin_district"]
     context["region"] = location["region"]
+    # House prices (UK HPI) are a genuine 4-nations dataset and work
+    # fine here - it's crime (data.police.uk: British Transport Police
+    # only in Scotland) and flood zone (Environment Agency: England
+    # only, silently defaults to "Zone 1") that read as real findings
+    # while actually being data-coverage gaps. See the same note on
+    # property_search.
+    context["is_scotland"] = location.get("country") == "Scotland"
 
     cache_key = ("area_guide", outcode)
     # Persistent tier: survives deploys, which is what keeps the 2,943

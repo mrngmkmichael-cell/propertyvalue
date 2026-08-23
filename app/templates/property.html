@@ -728,24 +728,43 @@
     {% set kx_outcode = location.outcode %}
     <section class="keep-exploring" data-animate>
         <div class="keep-exploring-head">
+            <span class="kicker">Next</span>
             <h2>Keep exploring</h2>
-            <p class="section-sub">Three places to go from here.</p>
+            <p class="section-sub">Three places to go from here, each one built from the same data as this report.</p>
         </div>
         <div class="keep-exploring-grid">
             <a class="keep-exploring-tile" href="/area/{{ kx_outcode }}">
                 <span class="keep-exploring-icon">{{ icons.icon('statistics') }}</span>
                 <span class="keep-exploring-title">{{ kx_outcode }} area guide</span>
-                <span class="keep-exploring-desc">How the wider {{ kx_outcode }} district compares on prices, schools, crime and flood risk.</span>
+                {% if prosperity_area %}
+                <span class="keep-exploring-stat">
+                    <strong>{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}%</strong> prices this year in {{ prosperity_area.name }}
+                </span>
+                {% endif %}
+                <span class="keep-exploring-desc">How the whole district compares on prices, schools, crime and flood risk.</span>
+                <span class="keep-exploring-arrow" aria-hidden="true">&rarr;</span>
             </a>
             <a class="keep-exploring-tile" href="/property/comparables?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
                 <span class="keep-exploring-icon">{{ icons.icon('market') }}</span>
                 <span class="keep-exploring-title">What sold nearby</span>
-                <span class="keep-exploring-desc">Recent sales within a short walk, so you can see what this price is being measured against.</span>
+                {% if nearby_sales_count %}
+                <span class="keep-exploring-stat">
+                    <strong>{{ nearby_sales_count }}</strong> sale{{ "s" if nearby_sales_count != 1 }} within a short walk{% if nearby_latest_sale %}, latest <strong>{{ nearby_latest_sale.amount | gbp }}</strong>{% endif %}
+                </span>
+                {% endif %}
+                <span class="keep-exploring-desc">Every recent sale on the surrounding streets, on a map, with the distance from this address and the local median.</span>
+                <span class="keep-exploring-arrow" aria-hidden="true">&rarr;</span>
             </a>
             <a class="keep-exploring-tile" href="/schools/guide?q={{ kx_outcode }}">
                 <span class="keep-exploring-icon">{{ icons.icon('schools') }}</span>
                 <span class="keep-exploring-title">Schools around {{ kx_outcode }}</span>
-                <span class="keep-exploring-desc">Every Ofsted-rated school nearby, with catchment distances where the council publishes them.</span>
+                {% if school_landscape and school_landscape.total_schools %}
+                <span class="keep-exploring-stat">
+                    <strong>{{ school_landscape.total_schools }}</strong> school{{ "s" if school_landscape.total_schools != 1 }} nearby{% if school_landscape.good_or_better_pct is not none %}, <strong>{{ school_landscape.good_or_better_pct }}%</strong> Good or Outstanding{% endif %}
+                </span>
+                {% endif %}
+                <span class="keep-exploring-desc">Every Ofsted-rated school in the area by rating and type, against the national picture, with a second area to compare.</span>
+                <span class="keep-exploring-arrow" aria-hidden="true">&rarr;</span>
             </a>
         </div>
         <form action="/property" method="get" class="search-form keep-exploring-search">
