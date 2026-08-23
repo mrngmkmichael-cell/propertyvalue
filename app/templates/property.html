@@ -250,7 +250,7 @@
     {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
     {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
     {% set attention_items = [] %}
-    {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-hpi', 'Area house prices falling')) %}{% endif %}
+    {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
     {% if ext_status == 'attn' %}{% set _ = attention_items.append(('modal-extension', 'Possible unrecorded extension/change')) %}{% endif %}
     {% if flood_status == 'attn' %}{% set _ = attention_items.append(('modal-flood', 'Flood risk')) %}{% endif %}
     {% if surface_water_status == 'attn' %}{% set _ = attention_items.append(('modal-surface-water', 'High surface water flood risk')) %}{% endif %}
