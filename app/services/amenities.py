@@ -213,6 +213,16 @@ async def _query_overpass(query: str) -> list[dict]:
                 task.cancel()
 
 
+def cached_nearby(lat: float, lon: float) -> dict | None:
+    """The full amenities result if it's already in memory, else None -
+    never touches the network. The property report uses this to decide
+    whether to render the amenities cards inline (cache hit) or hand
+    them to a follow-up fetch after the page has loaded (cache miss):
+    Overpass measured 7.5-10 s cold from Render, the whole rest of the
+    report under 2 s, so waiting on it held every first view hostage."""
+    return _cache.get(_cache.coord_key("amenities", lat, lon), CACHE_TTL_S)
+
+
 async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
     # "lite" is its own cache key, not just a fetch-time filter of the
     # full result - a lite response is missing entire categories, so

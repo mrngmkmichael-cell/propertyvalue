@@ -97,7 +97,7 @@ def fake_gather(**overrides):
         "deprivation": {"imd_decile": 3, "la_name": "Manchester"},
         # Always set by the real gather, independent of any service result.
         "catchment_distance_schools": [], "catchment_distance_count": 0, "catchment_distance_any_real": False,
-        "google_ratings_configured": False, "routing_configured": False,
+        "google_ratings_configured": False, "routing_configured": False, "amenities_pending": False,
     }
     # The template expects every service to have EITHER a result or an
     # `<name>_error` flag (the real gather guarantees this). Anything the

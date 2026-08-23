@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_amenities.html" as amen %}
 {% import "_tabs.html" as tabnav %}
 
 {% block title %}{{ query }} | UKPropertyInsight{% endblock %}
@@ -589,29 +590,9 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not amenities) else 'ok' }}" data-modal-target="modal-amenities" data-animate>
-            <span class="dashboard-card-icon icon-amenities">{{ icons.icon('amenities') }}</span>
-            <span class="dashboard-card-title">Nearby Essentials</span>
-            <span class="dashboard-card-status">
-                {% if amenities_error %}Data unavailable
-                {% elif amenities %}{{ (amenities.restaurant|length) + (amenities.supermarket|length) + (amenities.pharmacy|length) + (amenities.pub|length) + (amenities.hospital|length) }} nearby
-                {% else %}No data available{% endif %}
-            </span>
-        </button>
+        {{ amen.essentials_card(amenities, amenities_error, amenities_pending) }}
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (amenities_error or not nearest_transport) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-getting-around" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
-            <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
-            <span class="dashboard-card-title">Getting Around</span>
-            <span class="dashboard-card-status">
-                {% if amenities_error %}Data unavailable
-                {% elif stations.rail and stations.rail.city_journeys %}{{ stations.rail.city_journeys[0].minutes }} min train to {{ stations.rail.city_journeys[0].city }}
-                {% elif nearest_transport %}{{ nearest_transport.name }} ·
-                    {%- if nearest_transport.walking_distance_m %} {{ nearest_transport.walking_distance_m | distance }} walk
-                    {%- else %} {{ nearest_transport.distance_m | distance }}{% endif %}
-                {% else %}Nothing nearby{% endif %}
-            </span>
-        </button>
+        {{ amen.transport_card(stations, nearest_transport, amenities_error, amenities_pending, premium_unlocked, lock_label, lock_redirect) }}
 
         <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
             {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -1603,30 +1584,7 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Local amenities</h2>
-        {% if amenities_error %}
-            <p class="notice notice-error">
-                The amenities data service didn't respond. Try again in a moment.
-            </p>
-        {% elif amenities %}
-            <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
-            {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
-            <details class="amenity-group">
-                <summary>{{ amenities[key]|length }} {{ label }}</summary>
-                {% if amenities[key] %}
-                    <ul class="amenity-list">
-                        {% for a in amenities[key][:10] %}
-                        <li>
-                            {% if a.lat and a.lon %}<a href="https://www.google.com/maps/search/?api=1&query={{ (a.name ~ ' near ' ~ a.lat ~ ',' ~ a.lon) | urlencode }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
-                            <span class="amenity-distance">{{ a.distance_m | distance }}</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="notice">None found nearby.</p>
-                {% endif %}
-            </details>
-            {% endfor %}
-        {% endif %}
+        {{ amen.essentials_body(amenities, amenities_error, amenities_pending) }}
         {% if cqc_ratings and (cqc_ratings.gp or cqc_ratings.dentist or cqc_ratings.care_home) %}
         <h3 class="subsection-heading">CQC ratings</h3>
         <p class="section-sub">
@@ -2020,68 +1978,7 @@
             bus stop, prioritised in that order since trains, the Tube and trams usually matter more
             for a commute than the nearest bus stop.
         </p>
-        {% if amenities_error %}
-            <p class="notice notice-error">
-                The amenities data service didn't respond. Try again in a moment.
-            </p>
-        {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.tram or stations_list.bus) %}
-            {% if stations.rail and stations.rail.city_journeys is defined %}
-                {% if stations.rail.city_journeys %}
-                <ul class="transport-list city-journeys">
-                    {% for j in stations.rail.city_journeys %}
-                    <li>
-                        <strong>{{ j.minutes }} min</strong> to {{ j.city }} from {{ stations.rail.name }}
-                        &middot; departs {{ j.departs }}, arrives {{ j.arrives }}
-                        {%- if j.operator %} ({{ j.operator }}){% endif %}.
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% else %}
-                <p class="notice">
-                    No direct train to a major UK city found in Rail Data's live departures from
-                    {{ stations.rail.name }}, but may still be reachable changing trains.
-                </p>
-                {% endif %}
-                <p class="section-sub" style="margin-top: -0.5rem;">
-                    Live scheduled trains, checked just now, a slower result late at night or early
-                    morning reflects reduced off-peak service, not the typical daytime journey.
-                </p>
-            {% endif %}
-            {% for mode, label in [("rail", "Rail"), ("tube", "Tube"), ("tram", "Tram")] %}
-                {% if stations_list[mode] %}
-                <h3 class="subsection-heading">{{ label }} stations</h3>
-                <ul class="transport-list">
-                    {% for s in stations_list[mode] %}
-                    <li>
-                        <span class="transport-mode">{{ label }}</span>
-                        <strong>{{ s.name }}</strong>{% if s.network %} ({{ s.network }}){% endif %}
-                        &middot;
-                        {%- if s.walking_distance_m %} {{ s.walking_distance_m | distance }} ({{ s.walking_duration_min }} min walk from property)
-                        {%- else %} {{ s.distance_m | distance }} (direct distance, not the walking route){% endif %}
-                        {%- if s.lines %}
-                        <span class="line-badge-row">
-                            {% for line in s.lines %}
-                            <span class="line-badge" style="background:{{ line.color }};color:{{ line.text_color }};">{{ line.name }}</span>
-                            {% endfor %}
-                        </span>
-                        {%- endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            {% endfor %}
-            {% if stations_list.bus %}
-            <h3 class="subsection-heading">Nearest bus stop</h3>
-            <ul class="transport-list">
-                <li>
-                    <span class="transport-mode">Bus</span>
-                    <strong>{{ stations_list.bus[0].name }}</strong> &middot; {{ stations_list.bus[0].distance_m | distance }}
-                </li>
-            </ul>
-            {% endif %}
-        {% else %}
-            <p class="notice">No public transport found nearby.</p>
-        {% endif %}
+        {{ amen.transport_body(stations, stations_list, amenities_error, amenities_pending) }}
             </section>
         </div>
     </dialog>
@@ -2966,6 +2863,53 @@ Listed building data from Historic England's
 {% endblock %}
 
 {% block extra_scripts %}
+{% if amenities_pending %}
+<script>
+    (function () {
+        // The amenities lookup is the report's one slow upstream (7-10 s
+        // cold). The page rendered without it; fetch it now and swap the
+        // two cards and two modal bodies in place. The server renders the
+        // fragments from the same template the page used, so this only
+        // has to move HTML around.
+        const url = '/api/property/amenities?postcode={{ location.postcode | urlencode }}&house_number={{ house_number | urlencode }}';
+
+        function bindCard(card) {
+            if (!card) return;
+            card.classList.add('in-view');
+            card.addEventListener('click', function () {
+                if (card.dataset.lockRedirect) {
+                    window.location.href = card.dataset.lockRedirect;
+                    return;
+                }
+                const dialog = document.getElementById(card.dataset.modalTarget);
+                if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+            });
+        }
+
+        function swap(id, html) {
+            const el = document.getElementById(id);
+            if (!el || !html) return null;
+            el.outerHTML = html;
+            return document.getElementById(id);
+        }
+
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                bindCard(swap('card-amenities', data.essentials_card));
+                bindCard(swap('card-transport', data.transport_card));
+                swap('amenities-body', data.essentials_body);
+                swap('transport-body', data.transport_body);
+            })
+            .catch(function () {
+                document.querySelectorAll('#card-amenities .dashboard-card-status, #card-transport .dashboard-card-status')
+                    .forEach(function (s) { s.textContent = 'Data unavailable'; });
+                document.querySelectorAll('.dashboard-card-pending')
+                    .forEach(function (c) { c.classList.remove('dashboard-card-pending'); });
+            });
+    })();
+</script>
+{% endif %}
 {% if is_scotland %}
 <script>
     (function () {

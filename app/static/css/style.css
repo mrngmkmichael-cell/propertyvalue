@@ -1959,6 +1959,25 @@ a {
     line-height: 1.2;
 }
 
+/* A card whose data is still being fetched after the page loaded
+   (amenities). A slow pulse on the status line says "working", not
+   "missing"; it's removed when the real card swaps in. */
+.dashboard-card-pending .dashboard-card-status {
+    color: var(--ink-faint);
+    animation: card-pending-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes card-pending-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dashboard-card-pending .dashboard-card-status {
+        animation: none;
+    }
+}
+
 /* The Premium page's preview cards reuse the locked look but their
    "status" line is the feature description, which is the whole point
    of that page - keep it visible there. */

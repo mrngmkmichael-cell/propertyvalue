@@ -88,3 +88,44 @@ def test_scotland_gets_the_data_gap_notice(client, fake_report):
 def test_england_does_not_get_the_scotland_notice(client, fake_report):
     body = _report(client, fake_report)
     assert "modal-scotland-notice" not in body
+
+
+def test_amenities_render_pending_then_arrive_by_follow_up_fetch(client, fake_report, monkeypatch):
+    """Cold report: amenities cards render in a pending state and the page
+    carries the follow-up fetch. The endpoint then returns the four
+    fragments rendered from the same template."""
+    from app import main as app_main
+    from app.services import amenities as amenities_service
+
+    body = _report(client, fake_report, gather=fake_gather(amenities_pending=True, amenities_error=False))
+    assert 'id="card-amenities"' in body and "dashboard-card-pending" in body
+    assert "Finding what" in body
+    assert "/api/property/amenities?postcode=M14%205TG" in body
+
+    async def _fake_fetch(lat, lon, lite=False):
+        return {
+            "categories": {k: [] for k in ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging", "gp", "dentist", "green_space", "wind_turbine", "solar_farm")}
+            | {"supermarket": [{"name": "Test Stores", "distance_m": 120, "lat": 53.45, "lon": -2.22}]},
+            "stations": {"rail": {"name": "Test Station", "distance_m": 400, "city_journeys": [{"minutes": 9, "city": "Manchester", "departs": "08:00", "arrives": "08:09", "operator": None}]}},
+            "stations_list": {"rail": [{"name": "Test Station", "distance_m": 400}], "tube": [], "tram": [], "bus": []},
+        }
+
+    monkeypatch.setattr(amenities_service, "nearby_amenities_and_station", _fake_fetch)
+    r = client.get("/api/property/amenities?postcode=M14%205TG")
+    assert r.status_code == 200
+    data = r.json()
+    assert set(data) == {"essentials_card", "transport_card", "essentials_body", "transport_body"}
+    assert "1 nearby" in data["essentials_card"] and "dashboard-card-pending" not in data["essentials_card"]
+    assert "9 min train to Manchester" in data["transport_card"]
+    assert "Test Stores" in data["essentials_body"]
+    assert 'id="transport-body"' in data["transport_body"] and "Test Station" in data["transport_body"]
+
+
+def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
+    from app import main as app_main
+    assert client.get("/api/property/amenities").status_code == 400
+
+    async def _none(_pc):
+        return None
+    monkeypatch.setattr(app_main, "lookup_postcode", _none)
+    assert client.get("/api/property/amenities?postcode=ZZ99%209ZZ").status_code == 404

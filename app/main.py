@@ -1234,18 +1234,95 @@ def _server_timing_header() -> str:
     return ", ".join(f"{k};dur={v * 1000:.0f}" for k, v in top)
 
 
-async def _full_property_gather(location: dict, house_number: str, premium_unlocked: bool) -> dict:
+def _apply_amenities(context: dict, result: dict) -> None:
+    """The context keys the amenities cards and modals read, from one
+    nearby_amenities_and_station result. Shared by the main gather and
+    the follow-up /api/property/amenities fetch."""
+    context["amenities"] = result["categories"]
+    context["stations"] = result["stations"]
+    context["stations_list"] = result["stations_list"]
+    context["nearest_transport"] = min(
+        result["stations"].values(), key=lambda s: s["distance_m"], default=None
+    )
+
+
+@app.get("/api/property/amenities")
+async def property_amenities(request: Request, postcode: str = "", house_number: str = ""):
+    """The slow half of the property report, fetched by the page after it
+    has rendered (see _full_property_gather). Returns the four amenities
+    fragments as rendered HTML so the page swaps them in without a
+    second copy of the template logic in JavaScript."""
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400)
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_error"}, status_code=503)
+    if location is None:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    context: dict = {"amenities_pending": False, "amenities_error": False}
+    try:
+        result = await amenities.nearby_amenities_and_station(location["latitude"], location["longitude"])
+        _apply_amenities(context, result)
+    except Exception:  # noqa: BLE001 - the cards show "unavailable", never a broken page
+        logging.warning("amenities fetch failed for %s", location["postcode"], exc_info=True)
+        context["amenities_error"] = True
+
+    # Same per-property lock decision as property_search, minus spending
+    # an unlock: this request only follows a page that already did.
+    current = auth.current_user(request)
+    premium_unlocked = bool(current and current.get("subscribed"))
+    if current and not premium_unlocked and db.is_configured():
+        with db.get_session() as session:
+            premium_unlocked = auth.has_unlocked(session, current["id"], location["postcode"], house_number.strip())
+    lock_label = "Sign up: 3 free full reports" if not current else "Upgrade to Premium to unlock"
+    lock_redirect = "/signup?next=" + quote("/premium") if not current else "/premium"
+
+    amen = templates.get_template("_amenities.html").module
+    ctx = {"amenities": None, "stations": {}, "stations_list": {}, "nearest_transport": None, **context}
+    return JSONResponse({
+        "essentials_card": str(amen.essentials_card(ctx["amenities"], ctx["amenities_error"], False)),
+        "transport_card": str(amen.transport_card(
+            ctx["stations"], ctx["nearest_transport"], ctx["amenities_error"], False,
+            premium_unlocked, lock_label, lock_redirect,
+        )),
+        "essentials_body": str(amen.essentials_body(ctx["amenities"], ctx["amenities_error"], False)),
+        "transport_body": str(amen.transport_body(ctx["stations"], ctx["stations_list"], ctx["amenities_error"], False)),
+    })
+
+
+async def _full_property_gather(
+    location: dict, house_number: str, premium_unlocked: bool, wait_for_amenities: bool = False
+) -> dict:
     """The full ~28-service data gather behind /property and its full
     PDF export (/property/pdf) - every dashboard card's worth of data
     for one address. Deliberately excludes anything user-specific
     (watchlist status, shortlist, area reviews) - those stay in
     property_search itself, since a PDF export has no session-relative
-    "your watchlist" concept, only the address's own data."""
+    "your watchlist" concept, only the address's own data.
+
+    Amenities (Overpass) measured 7.5-10 s cold from Render against under
+    2 s for everything else, so by default this only takes them from the
+    cache: on a miss the page renders with the two amenities cards in a
+    "finding what's nearby" state and fetches them afterwards through
+    /api/property/amenities. wait_for_amenities=True restores the old
+    blocking behaviour for callers that need the full result in one go
+    (the PDF export)."""
     context: dict = {"location": location}
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
     context["epc_configured"] = epc.is_configured()
+    context["amenities_pending"] = False
+
+    async def _amenities():
+        cached = amenities.cached_nearby(lat, lon)
+        if cached is not None or wait_for_amenities:
+            return cached if cached is not None else await amenities.nearby_amenities_and_station(lat, lon)
+        context["amenities_pending"] = True
+        return None
 
     # Independent external API calls AND our own DB lookups, fetched
     # concurrently rather than one at a time. The DB lookups
@@ -1274,7 +1351,7 @@ async def _full_property_gather(location: dict, house_number: str, premium_unloc
             _timed("flood-warnings-near", flood.warnings_near(lat, lon)),
             _timed("crime-summary-near", crime.summary_near(lat, lon)),
             _timed("crime-summary-for-outcode", crime.summary_for_outcode(location["outcode"])),
-            _timed("amenities-nearby-amenities-and-station", amenities.nearby_amenities_and_station(lat, lon)),
+            _timed("amenities-nearby-amenities-and-station", _amenities()),
             _timed("hpi-area-comparison", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
             _timed("noise-noise-near", noise.noise_near(lat, lon)),
             _timed("schools-db-nearby-schools, lat, lon)", asyncio.to_thread(schools_db.nearby_schools, lat, lon)),
@@ -1369,13 +1446,17 @@ async def _full_property_gather(location: dict, house_number: str, premium_unloc
 
     if isinstance(amenities_result, Exception):
         context["amenities_error"] = True
+    elif amenities_result is None:
+        # Not fetched in this gather - either a cold run, or a replay of
+        # one from the gather cache. The follow-up fetch may have filled
+        # the amenities cache since, in which case use it now.
+        cached_now = amenities.cached_nearby(lat, lon)
+        if cached_now is not None:
+            _apply_amenities(context, cached_now)
+        else:
+            context["amenities_pending"] = True
     else:
-        context["amenities"] = amenities_result["categories"]
-        context["stations"] = amenities_result["stations"]
-        context["stations_list"] = amenities_result["stations_list"]
-        context["nearest_transport"] = min(
-            amenities_result["stations"].values(), key=lambda s: s["distance_m"], default=None
-        )
+        _apply_amenities(context, amenities_result)
 
     if not isinstance(hpi_result, Exception):
         context["hpi"] = hpi_result
@@ -2818,7 +2899,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     if location is None:
         return RedirectResponse("/", status_code=303)
 
-    report = await _full_property_gather(location, house_number, premium_unlocked=True)
+    report = await _full_property_gather(location, house_number, premium_unlocked=True, wait_for_amenities=True)
 
     html = templates.get_template("pdf_report_full.html").render({
         **report,
