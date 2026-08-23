@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}School Guide | UKPropertyInsight{% endblock %}
+{% block title %}{% if areas and areas | length == 1 %}Schools near {{ areas[0].label }}: Ofsted Ratings & How the Area Compares{% elif areas %}Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}{% else %}Schools Near Any UK Postcode: Ofsted Ratings & Catchment Areas{% endif %} | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}How UK school catchment areas, Ofsted ratings and admission distances actually work, and how to check the schools near any postcode before you buy.{% endblock %}
+{% block meta_description %}{% if areas and areas | length == 1 %}Every Ofsted-rated school near {{ areas[0].label }} by rating and type, and how the area compares with the national picture. Free, from official Ofsted and DfE data.{% else %}Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.{% endif %}{% endblock %}
 {% block content %}
 <span class="kicker">School guide</span>
 {% if areas and areas | length == 1 %}
