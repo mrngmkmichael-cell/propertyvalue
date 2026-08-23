@@ -2830,7 +2830,6 @@ _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400  # public, crawler-facing - a day's staleness is a fair trade for not re-running this gather on every crawl hit
 
 
-@app.get("/area/{outcode}")
 # The aggregate fields area_guide.html reads from the schools landscape.
 # Everything else in that dict is per-school rows (all_schools, and the
 # `schools` lists nested inside by_rating/by_phase) - hundreds of rows
@@ -2842,6 +2841,7 @@ AREA_GUIDE_LANDSCAPE_FIELDS = (
 )
 
 
+@app.get("/area/{outcode}")
 async def area_guide(request: Request, outcode: str):
     """A standing SEO landing page per UK postcode district (e.g.
     /area/SW1A), separate from /property?postcode=X: that page is
