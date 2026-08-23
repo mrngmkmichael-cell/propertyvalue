@@ -546,7 +546,9 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     }
 
     if not isinstance(tx_result, Exception):
-        summary["avg_price"] = _average_amount(_filter_by_address(tx_result, house_number))
+        filtered_tx = _filter_by_address(tx_result, house_number)
+        summary["avg_price"] = _average_amount(filtered_tx)
+        summary["tx_count"] = len(filtered_tx)
 
     if not isinstance(epc_flow_result, Exception) and epc_configured:
         _, property_detail, _ = epc_flow_result
@@ -556,6 +558,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
             summary["year_built"] = property_detail.get("year_built")
             summary["energy_band"] = property_detail.get("current_band")
             summary["heating_cost"] = property_detail.get("heating_cost_current")
+            summary["epc_date"] = property_detail.get("inspection_date")
 
     if not isinstance(flood_zone_result, Exception) and flood_zone_result:
         summary["flood_zone"] = flood_zone_result["label"]
@@ -596,6 +599,15 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
         diff = new_crime - old_crime
         if abs(diff) >= 5:
             changes.append(f"Recorded crime nearby {'up' if diff > 0 else 'down'} by {abs(diff)} since last checked")
+
+    old_tx, new_tx = old.get("tx_count"), new.get("tx_count")
+    if old_tx is not None and new_tx is not None and new_tx > old_tx:
+        added = new_tx - old_tx
+        changes.append(f"{added} new sold price{'s' if added != 1 else ''} recorded here since you last looked")
+
+    old_epc, new_epc = old.get("epc_date"), new.get("epc_date")
+    if old_epc and new_epc and new_epc > old_epc:
+        changes.append("A new energy certificate was lodged, often a sign the property is being prepared for sale")
 
     old_growth, new_growth = old.get("price_growth_pct"), new.get("price_growth_pct")
     if old_growth is not None and new_growth is not None:
@@ -4043,19 +4055,28 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
 
 
 def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:
-    items_html = "".join(
-        f'<li style="margin-bottom:14px;"><strong>{e["label"]}</strong>'
-        f'<ul>{"".join(f"<li>{c}</li>" for c in e["changes"])}</ul></li>'
-        for e in entries
-    )
+    base = watchlist_url.rsplit("/watchlist", 1)[0]
+    blocks = []
+    for e in entries:
+        report_url = f"{base}/property?{urlencode({'postcode': e.get('postcode', ''), 'house_number': e.get('house_number', '')})}"
+        change_rows = "".join(
+            f'<li style="margin:4px 0;color:#3d3833;">{c}</li>' for c in e["changes"]
+        )
+        blocks.append(
+            f'<div style="border:1px solid #e6e1d8;border-radius:8px;padding:14px 16px;margin-bottom:12px;">'
+            f'<a href="{report_url}" style="font-size:16px;font-weight:600;color:#1f2a5a;text-decoration:none;">{e["label"]}</a>'
+            f'<ul style="margin:8px 0 0;padding-left:18px;">{change_rows}</ul>'
+            f'</div>'
+        )
     return (
-        '<div style="font-family:sans-serif;max-width:520px;margin:0 auto;">'
-        "<h2>Your watchlist has updates</h2>"
-        f'<ul style="list-style:none;padding:0;">{items_html}</ul>'
-        f'<p><a href="{watchlist_url}">View your full watchlist →</a></p>'
-        '<p style="color:#667085;font-size:12px;">'
-        "You're getting this because these properties/areas are on your UKPropertyInsight watchlist. "
-        f'Remove any of them any time from <a href="{watchlist_url}">your watchlist page</a>.'
+        '<div style="font-family:Georgia,serif;max-width:540px;margin:0 auto;padding:8px;">'
+        '<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8378;margin:0 0 4px;">UKPropertyInsight</p>'
+        '<h2 style="margin:0 0 14px;color:#191613;">Something changed on a property you follow</h2>'
+        + "".join(blocks) +
+        f'<p style="margin:16px 0;"><a href="{watchlist_url}" style="color:#1f2a5a;">Open My properties</a></p>'
+        '<p style="color:#8a8378;font-size:12px;line-height:1.5;">'
+        "You get this email only when something changes on a property saved in My properties, never on a schedule. "
+        f'Remove a property from <a href="{watchlist_url}" style="color:#8a8378;">My properties</a> and its alerts stop.'
         "</p></div>"
     )
 
@@ -4093,13 +4114,19 @@ async def run_watchlist_alerts(request: Request):
         watchlist.update_snapshot(item["user_id"], item["id"], json.dumps(fresh, default=str))
         if changes:
             label = item["postcode"] + (f", {item['house_number']}" if item["house_number"] else "")
-            changes_by_email.setdefault(item["email"], []).append({"label": label, "changes": changes})
+            changes_by_email.setdefault(item["email"], []).append({
+                "label": label, "changes": changes,
+                "postcode": item["postcode"], "house_number": item["house_number"],
+            })
 
     watchlist_url = f"{_public_base_url(request)}/watchlist"
     notified = 0
     for to_email, entries in changes_by_email.items():
+        n_props = len(entries)
+        subject = (f"{entries[0]['label']}: {entries[0]['changes'][0]}" if n_props == 1 and len(entries[0]["changes"]) == 1
+                   else f"Changes on {n_props} propert{'y' if n_props == 1 else 'ies'} you follow")
         sent = await email_service.send_email(
-            to_email, "Changes to your UKPropertyInsight watchlist", _watchlist_alert_email_html(entries, watchlist_url)
+            to_email, subject, _watchlist_alert_email_html(entries, watchlist_url)
         )
         if sent:
             notified += 1
