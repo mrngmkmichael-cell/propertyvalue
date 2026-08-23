@@ -2831,6 +2831,17 @@ AREA_GUIDE_CACHE_TTL_S = 86400  # public, crawler-facing - a day's staleness is 
 
 
 @app.get("/area/{outcode}")
+# The aggregate fields area_guide.html reads from the schools landscape.
+# Everything else in that dict is per-school rows (all_schools, and the
+# `schools` lists nested inside by_rating/by_phase) - hundreds of rows
+# and over a megabyte for a central London district, cached for a page
+# that never reads them.
+AREA_GUIDE_LANDSCAPE_FIELDS = (
+    "radius_km", "total_schools", "good_or_better_pct", "special_count",
+    "further_education", "higher_education_count",
+)
+
+
 async def area_guide(request: Request, outcode: str):
     """A standing SEO landing page per UK postcode district (e.g.
     /area/SW1A), separate from /property?postcode=X: that page is
@@ -2936,10 +2947,7 @@ async def area_guide(request: Request, outcode: str):
         # making area guides the heaviest thing in both cache tiers by a
         # factor of a hundred, and the reason the Render instance ran out
         # of memory during a crawl. Keep only what the template uses.
-        landscape = {
-            k: v for k, v in landscape.items()
-            if k not in ("all_schools", "special_schools", "higher_education_names")
-        }
+        landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
 
     page_data = {
         "hpi": ok(hpi_result),
