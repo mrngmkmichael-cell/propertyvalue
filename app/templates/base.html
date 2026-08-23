@@ -252,6 +252,27 @@
         })();
 
         (function () {
+            /* Share link copy button on a property report. */
+            const copyBtn = document.getElementById('share-copy-btn');
+            const copyInput = document.getElementById('share-link-input');
+            if (copyBtn && copyInput) {
+                copyBtn.addEventListener('click', function () {
+                    const done = function () {
+                        copyBtn.textContent = 'Copied';
+                        setTimeout(function () { copyBtn.textContent = 'Copy'; }, 1800);
+                    };
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(copyInput.value).then(done, function () {
+                            copyInput.select(); document.execCommand('copy'); done();
+                        });
+                    } else {
+                        copyInput.select(); document.execCommand('copy'); done();
+                    }
+                });
+            }
+        })();
+
+        (function () {
             const toggle = document.getElementById('nav-toggle');
             const menu = document.getElementById('site-nav-menu');
             if (!toggle || !menu) return;

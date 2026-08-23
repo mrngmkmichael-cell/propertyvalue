@@ -85,6 +85,30 @@ class PageCache(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class ShareLink(Base):
+    """A public, read-only link to one property's full report.
+
+    A buyer never decides alone - the house goes to a partner, parents,
+    the friend who "knows property". Until now they couldn't send this
+    report, because the unlocked view belonged to their account. A share
+    link shows the full report to anyone who has it, without spending
+    their free reports, with a line saying where it came from and a way
+    to get their own. That is the product carrying itself to the next
+    buyer at the exact moment they are deciding.
+
+    The token is random and unguessable; the link is noindexed. Views
+    are counted for the funnel, nothing else about the viewer is kept."""
+
+    __tablename__ = "share_links"
+
+    token: Mapped[str] = mapped_column(String(32), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    postcode: Mapped[str] = mapped_column(String(16))
+    house_number: Mapped[str] = mapped_column(String(32), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    views: Mapped[int] = mapped_column(Integer, default=0)
+
+
 class FigureReport(Base):
     """A reader saying "this figure looks wrong", from the link on every
     card of a property report.

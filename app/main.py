@@ -25,7 +25,7 @@ from sqlalchemy import func, select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
-from app.models import FigureReport, PageView, PremiumUnlock, User
+from app.models import FigureReport, PageView, PremiumUnlock, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -1126,11 +1126,18 @@ async def buying_guide(request: Request):
 
 @app.get("/property")
 async def property_search(request: Request, postcode: str = "", house_number: str = ""):
+    return await _render_property(request, postcode, house_number)
+
+
+async def _render_property(request: Request, postcode: str, house_number: str, _share=None):
     postcode = postcode.strip()
     house_number = house_number.strip()
     context = base_context(request)
     context["query"] = postcode
     context["house_number"] = house_number
+    # Set when rendering a share link: the full report, read-only, no
+    # unlock spent, with a banner saying where it came from.
+    context["shared"] = _share
 
     if not postcode:
         return templates.TemplateResponse(request, "property.html", context)
@@ -1178,7 +1185,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # rather than in base_context because it needs the postcode, and it
     # must run before the gather so the gather knows what to fetch.
     current = context["current_user"]
-    premium_unlocked = bool(current and current.get("subscribed"))
+    premium_unlocked = bool(current and current.get("subscribed")) or _share is not None
     context["spent_unlock_now"] = False
     if current and not premium_unlocked:
         with db.get_session() as unlock_session:
@@ -1214,6 +1221,20 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
 
     context["report_outcome"] = request.query_params.get("report", "")
+    # Share control: only for a viewer who can see the full report on
+    # their own account (a share page never offers to re-share).
+    context["share_link"] = None
+    if _share is None and premium_unlocked and context["current_user"]:
+        with db.get_session() as share_session:
+            existing = share_session.scalar(
+                select(ShareLink).where(
+                    ShareLink.user_id == context["current_user"]["id"],
+                    ShareLink.postcode == canonical,
+                    ShareLink.house_number == house_number,
+                )
+            )
+            if existing is not None:
+                context["share_link"] = f"{_public_base_url(request)}/s/{existing.token}"
     response = templates.TemplateResponse(request, "property.html", context)
     timing = _server_timing_header()
     if timing:
@@ -3548,6 +3569,55 @@ def login_submit(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+# ---- Shareable reports ----
+
+@app.post("/share")
+def create_share(request: Request, postcode: str = Form(...), house_number: str = Form("")):
+    """Mint (or reuse) a public link for a report the caller can see in
+    full. The access check is the same one the report page makes, so a
+    free account can only share a property it has actually unlocked."""
+    current = auth.current_user(request)
+    postcode, house_number = auth.property_key(postcode, house_number)
+    back = f"/property?{urlencode({'postcode': postcode, 'house_number': house_number})}"
+    if not current or not db.is_configured():
+        return RedirectResponse(f"/login?next={quote(back)}", status_code=303)
+
+    with db.get_session() as session:
+        allowed = current.get("subscribed") or auth.has_unlocked(session, current["id"], postcode, house_number)
+        if not allowed:
+            return RedirectResponse(back, status_code=303)
+        link = session.scalar(select(ShareLink).where(
+            ShareLink.user_id == current["id"], ShareLink.postcode == postcode,
+            ShareLink.house_number == house_number,
+        ))
+        if link is None:
+            link = ShareLink(token=secrets.token_urlsafe(18), user_id=current["id"],
+                             postcode=postcode, house_number=house_number)
+            session.add(link)
+            session.commit()
+    return RedirectResponse(back + "&shared=1#share", status_code=303)
+
+
+@app.get("/s/{token}")
+async def view_share(request: Request, token: str):
+    """The shared report. Full view for anyone holding the link, no
+    account and no unlock needed. Noindexed, and never offers to share
+    again - that belongs to the person who owns the report."""
+    if not db.is_configured():
+        return RedirectResponse("/", status_code=303)
+    with db.get_session() as session:
+        link = session.get(ShareLink, token)
+        if link is None:
+            context = base_context(request)
+            return templates.TemplateResponse(request, "404.html", context, status_code=404)
+        link.views = (link.views or 0) + 1
+        session.commit()
+        postcode, house_number = link.postcode, link.house_number
+        share = ShareLink(token=link.token, user_id=link.user_id, postcode=postcode,
+                          house_number=house_number, views=link.views)
+    return await _render_property(request, postcode, house_number, _share=share)
 
 
 # ---- "Is this wrong?" figure reports ----

@@ -10,7 +10,17 @@
 {% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
 
 {% block content %}
+{% if shared %}
+<div class="share-banner">
+    <div class="share-banner-text">
+        <strong>Someone shared this report with you.</strong>
+        Every check is unlocked here. Every figure comes from an official source, and you can run the same report on any UK postcode.
+    </div>
+    <a class="share-banner-cta" href="/signup">Check a property free</a>
+</div>
+{% else %}
 <a class="back-link" href="/">&larr; New search</a>
+{% endif %}
 {% if report_outcome == "thanks" %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Thanks, we've got it.</strong> We check every report against its source and publish what we find on the <a href="/accuracy">accuracy log</a>.</p>
 {% elif report_outcome == "empty" %}
@@ -111,12 +121,36 @@
                 <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
             </div>
             <div class="report-head-actions">
-                {% if premium_unlocked %}
+                {% if premium_unlocked and not shared and current_user %}
+                <div class="share-control" id="share">
+                    {% if share_link %}
+                    <div class="share-link-row">
+                        <input type="text" class="share-link-input" id="share-link-input" value="{{ share_link }}" readonly aria-label="Share link">
+                        <button type="button" class="share-copy-btn" id="share-copy-btn">Copy</button>
+                    </div>
+                    <div class="share-send-row">
+                        <a class="share-send" href="https://wa.me/?text={{ ('Have a look at this property report: ' ~ share_link) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+                        <a class="share-send" href="mailto:?subject={{ ('Property report: ' ~ location.postcode) | urlencode }}&body={{ ('Have a look at this property report, every check unlocked: ' ~ share_link) | urlencode }}">Email</a>
+                        <span class="share-note">Anyone with the link sees the full report. It never uses up their free reports.</span>
+                    </div>
+                    {% else %}
+                    <form action="/share" method="post" class="share-form">
+                        <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                        <input type="hidden" name="house_number" value="{{ house_number or '' }}">
+                        <button type="submit" class="pdf-download-btn">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                            Share this report
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% if premium_unlocked and not shared %}
                 <a class="pdf-download-btn" download href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
                     Download full PDF report
                 </a>
-                {% else %}
+                {% elif not shared %}
                 <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
                     PDF report . Premium
@@ -3383,3 +3417,4 @@ Listed building data from Historic England's
 </script>
 {% endif %}
 {% endblock %}
+
