@@ -139,6 +139,11 @@ async def capture_referral(request: Request, call_next):
 _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
 _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
 
+# Synthetic pageview path written when a logged-in account with no free
+# reports left opens a property it has not unlocked. Not a real URL;
+# it exists so the admin funnel can count "hit the wall".
+PAYWALL_PATH = "/paywall"
+
 # Search-engine and monitoring crawlers aren't people viewing the site,
 # and with 378 URLs in the sitemap Googlebot alone would otherwise show
 # up as hundreds of "visitors" a day on /admin. The user-agent is only
@@ -178,6 +183,12 @@ def _is_crawler(user_agent: str | None) -> bool:
     return any(marker in ua for marker in _CRAWLER_UA_MARKERS)
 
 
+def _is_excluded_viewer(request: Request) -> bool:
+    """Crawlers, scripts and any browser the owner has marked as theirs.
+    Shared by the pageview middleware and the paywall event."""
+    return _is_crawler(request.headers.get("user-agent")) or request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) == "1"
+
+
 @app.middleware("http")
 async def capture_pageview(request: Request, call_next):
     """A first-party, cookie-less pageview count for the /admin
@@ -200,8 +211,7 @@ async def capture_pageview(request: Request, call_next):
         and response.status_code == 200
         and path not in _PAGEVIEW_EXCLUDE_PATHS
         and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)
-        and not _is_crawler(request.headers.get("user-agent"))
-        and request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) != "1"
+        and not _is_excluded_viewer(request)
         and db.is_configured()
     ):
         try:
@@ -1195,6 +1205,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             state = auth.premium_state(
                 unlock_session.get(User, current["id"]), unlock_session
             )
+            if not premium_unlocked and not _is_excluded_viewer(request):
+                # The paywall moment: an account with no free reports
+                # left opened a property it has not unlocked. Stored as
+                # a pageview with a synthetic path so the funnel can
+                # count it without a new table or any extra identifier.
+                unlock_session.add(PageView(path=PAYWALL_PATH, user_id=current["id"]))
+                unlock_session.commit()
         context["current_user"] = {**current, **state}
 
     # The templates must gate on THIS, not on current_user.is_premium:
@@ -3143,6 +3160,49 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     ) or 0
     m["clean_from"] = PAGEVIEW_CLEAN_FROM
 
+    # The funnel: each stage counted twice, all time and since the
+    # clean date, because the early numbers include the owner's own
+    # visits. Stages are people where a person can be identified
+    # (accounts), otherwise events.
+    def _funnel(since):
+        pv = select(func.count()).select_from(PageView)
+        users = select(func.count()).select_from(User)
+        if since is not None:
+            pv = pv.where(PageView.created_at >= since)
+            users = users.where(User.created_at >= since)
+        visits = session.scalar(pv.where(PageView.path != PAYWALL_PATH)) or 0
+        searches = session.scalar(pv.where(PageView.path == "/property")) or 0
+        signups = session.scalar(users) or 0
+        used_q = select(func.count(func.distinct(PremiumUnlock.user_id)))
+        if since is not None:
+            used_q = used_q.where(PremiumUnlock.created_at >= since)
+        used_any = session.scalar(used_q) or 0
+        wall_q = select(func.count(func.distinct(PageView.user_id))).where(PageView.path == PAYWALL_PATH)
+        if since is not None:
+            wall_q = wall_q.where(PageView.created_at >= since)
+        hit_wall = session.scalar(wall_q) or 0
+        subscribed = session.scalar(users.where(User.is_premium.is_(True))) or 0
+        stages = [
+            ("Visits", visits, "pageviews"),
+            ("Searched a property", searches, "report views"),
+            ("Signed up", signups, "accounts"),
+            ("Used a free report", used_any, "accounts"),
+            ("Hit the paywall", hit_wall, "accounts with no free reports left that opened a new property"),
+            ("Subscribed", subscribed, "accounts"),
+        ]
+        out, prev = [], None
+        for label, n, unit in stages:
+            rate = None if prev in (None, 0) else round(100 * n / prev, 1)
+            out.append({"label": label, "count": n, "unit": unit, "rate": rate})
+            prev = n
+        return out
+    m["funnel_all"] = _funnel(None)
+    m["funnel_clean"] = _funnel(PAGEVIEW_CLEAN_FROM)
+
+    m["share_links"] = session.scalar(select(func.count()).select_from(ShareLink)) or 0
+    m["share_views"] = session.scalar(select(func.coalesce(func.sum(ShareLink.views), 0))) or 0
+    m["share_sharers"] = session.scalar(select(func.count(func.distinct(ShareLink.user_id)))) or 0
+
     m["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
     m["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
     m["signups_month"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= month_start)) or 0
@@ -3330,6 +3390,9 @@ async def send_daily_summary(request: Request):
         f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month — {m['active_subscriber_count']} active{trialing_note}",
         f"\U0001F4CA 14-day trend: avg {m['pageviews_avg_14d']}/day, typical swing ±{m['pageviews_stdev_14d']}",
         f"\U0001F51D Top page: {top_page}",
+        "🚶 Funnel since clean date: " + " → ".join(str(st["count"]) for st in m["funnel_clean"])
+        + " (visits, searches, signups, used free, paywall, paid); "
+        + f"{m['share_links']} share links, {m['share_views']} share views",
     ]
     sent = await telegram.send_message("\n".join(lines))
     return JSONResponse({"sent": sent})

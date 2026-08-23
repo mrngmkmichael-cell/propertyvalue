@@ -32,6 +32,42 @@
     </div>
 </section>
 
+<section class="landing-section landing-section-tinted" id="funnel">
+    <h2 class="landing-heading">Funnel</h2>
+    <p class="landing-subheading">Where people drop off between arriving and paying. Each bar is scaled to the stage above it; the percentage is the share of the previous stage that got this far.</p>
+    <div class="funnel-grid">
+        {% for title, stages in [("Since " ~ clean_from.strftime("%d %b"), funnel_clean), ("All time", funnel_all)] %}
+        <div class="funnel-col">
+            <h3 class="funnel-title">{{ title }}</h3>
+            {% set top = stages[0].count or 1 %}
+            {% for st in stages %}
+            <div class="funnel-row" title="{{ st.unit }}">
+                <div class="funnel-label">{{ st.label }}</div>
+                <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: {{ [100 * st.count / top, 1.5] | max if st.count else 0 }}%;"></div>
+                </div>
+                <div class="funnel-num">{{ st.count }}</div>
+                <div class="funnel-rate">{% if st.rate is not none %}{{ st.rate }}%{% endif %}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    <div class="feature-grid" style="margin-top: 1.25rem;">
+        <div class="feature-card">
+            <span class="feature-card-title">Share links created</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ share_links }}</span>
+            <span class="feature-card-blurb">by {{ share_sharers }} account{{ '' if share_sharers == 1 else 's' }}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Share link views</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ share_views }}</span>
+            <span class="feature-card-blurb">people who opened a report someone sent them</span>
+        </div>
+    </div>
+    <p class="section-sub" style="margin-top: 1rem;">"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.</p>
+</section>
+
 <section class="landing-section">
     <h2 class="landing-heading">Pageviews</h2>
     <div class="feature-grid">
