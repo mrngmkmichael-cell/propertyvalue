@@ -34,7 +34,7 @@ from app.services import (
     stripe_billing, surface_water_risk, telegram, valuation,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
-from app.services.postcodes import lookup_postcode, nearby_postcodes, outcode_centroid
+from app.services.postcodes import any_postcode_in_outcode, lookup_postcode, nearby_postcodes, outcode_centroid
 
 load_dotenv()
 
@@ -1806,10 +1806,22 @@ async def _resolve_extension_location(postcode: str) -> tuple[dict | None, bool]
     centroid = await outcode_centroid(postcode)
     if not centroid:
         return None, True
-    nearby = await nearby_postcodes(centroid["latitude"], centroid["longitude"], radius_m=800, limit=1)
-    if not nearby:
+    # 800 m suits towns; a rural district's centroid is often open
+    # country with nothing that close, so widen to postcodes.io's 2 km
+    # ceiling before giving up on proximity. 97 of the 2,943 area
+    # guides in the sitemap were 404ing on exactly this - Highland,
+    # island and Welsh-hill districts.
+    for radius_m in (800, 2000):
+        nearby = await nearby_postcodes(centroid["latitude"], centroid["longitude"], radius_m=radius_m, limit=1)
+        if nearby:
+            return await lookup_postcode(nearby[0]["postcode"]), True
+    # Nothing within 2 km of the centre at all (HS2, Isle of Lewis):
+    # take any real postcode in the district. Less central, still the
+    # right district, and the area-level data is what this page shows.
+    fallback = await any_postcode_in_outcode(postcode)
+    if not fallback:
         return None, True
-    return await lookup_postcode(nearby[0]["postcode"]), True
+    return await lookup_postcode(fallback), True
 
 
 async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:

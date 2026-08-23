@@ -44,6 +44,24 @@ async def nearby_postcodes(lat: float, lon: float, radius_m: int = 1000, limit: 
     ]
 
 
+async def any_postcode_in_outcode(outcode: str) -> str | None:
+    """The first real postcode in a district, by prefix. The last resort
+    for geocoding a district whose centroid is open country - Highland
+    and island districts like HS2 or IV27 have no postcode within 2 km
+    of their centre, which is postcodes.io's radius ceiling."""
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(
+            f"{API_BASE}/postcodes/{quote(outcode.strip())}/autocomplete", params={"limit": 1}
+        )
+    if response.status_code == 404:
+        return None
+    response.raise_for_status()
+    result = response.json().get("result") or []
+    # The prefix match is textual: "HS2" would also match "HS20 ..." if
+    # such a district existed, so insist on the space.
+    return next((p for p in result if p.upper().startswith(outcode.strip().upper() + " ")), None)
+
+
 async def outcode_centroid(outcode: str) -> dict | None:
     """Centroid of a postcode district (e.g. 'BR6') - used as a second
     reference point for wider-area comparisons, since postcodes.io has
