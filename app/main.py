@@ -554,6 +554,8 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
             summary["dwelling_type"] = property_detail.get("dwelling_type")
             summary["floor_area"] = property_detail.get("total_floor_area")
             summary["year_built"] = property_detail.get("year_built")
+            summary["energy_band"] = property_detail.get("current_band")
+            summary["heating_cost"] = property_detail.get("heating_cost_current")
 
     if not isinstance(flood_zone_result, Exception) and flood_zone_result:
         summary["flood_zone"] = flood_zone_result["label"]
@@ -605,7 +607,7 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
         was_down, now_down = old_growth <= -deadband, new_growth <= -deadband
         if (was_up and now_down) or (was_down and now_up):
             direction = "growth turned negative" if new_growth < 0 else "prices are growing again"
-            changes.append(f"Area house-price trend flipped — {direction} ({new_growth:+.1f}% YoY)")
+            changes.append(f"Area house-price trend flipped: {direction} ({new_growth:+.1f}% YoY)")
 
     return changes
 
@@ -3986,6 +3988,21 @@ async def watchlist_view(request: Request):
         return RedirectResponse("/login?next=/watchlist", status_code=303)
 
     items = watchlist.list_items(context["current_user"]["id"])
+    # Reports this account has opened in full but never saved - shown
+    # as one-click adds, so the page fills itself from real activity
+    # instead of starting empty.
+    saved_keys = {(i["postcode"], i["house_number"]) for i in items}
+    with db.get_session() as session:
+        unlock_rows = session.scalars(
+            select(PremiumUnlock)
+            .where(PremiumUnlock.user_id == context["current_user"]["id"])
+            .order_by(PremiumUnlock.created_at.desc())
+        ).all()
+        context["opened_reports"] = [
+            {"postcode": u.postcode, "house_number": u.house_number, "opened_at": u.created_at}
+            for u in unlock_rows
+            if (u.postcode, u.house_number) not in saved_keys
+        ]
     if items:
         fresh_summaries = await asyncio.gather(
             *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
@@ -4103,6 +4120,10 @@ def watchlist_save(
     if not user:
         return RedirectResponse(f"/login?next=/property?{qs}", status_code=303)
     watchlist.save_item(user["id"], postcode, house_number, note.strip())
+    if request.headers.get("referer", "").split("?")[0].endswith("/watchlist"):
+        # Saved or note-edited from the My properties page itself - go
+        # back there, not to the report.
+        return RedirectResponse("/watchlist", status_code=303)
     return RedirectResponse(f"/property?{qs}", status_code=303)
 
 

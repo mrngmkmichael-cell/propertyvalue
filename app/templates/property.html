@@ -197,7 +197,7 @@
                     <input type="hidden" name="postcode" value="{{ location.postcode }}">
                     <input type="hidden" name="house_number" value="{{ house_number }}">
                     <div class="search-form-field">
-                        <label for="note">{{ "Update note" if watchlist_item else "Save to watchlist" }}</label>
+                        <label for="note">{{ "Update note" if watchlist_item else "Save to My properties" }}</label>
                         <input type="text" id="note" name="note" placeholder="Optional note to yourself"
                                value="{{ watchlist_item.note if watchlist_item else '' }}">
                     </div>
@@ -211,7 +211,7 @@
             {% else %}
                 <p class="section-sub">
                     <a href="/login?next=/property?postcode={{ location.postcode }}{% if house_number %}&house_number={{ house_number }}{% endif %}">Log in</a>
-                    to save this property to your watchlist.
+                    to keep this property in My properties, with notes and change alerts.
                 </p>
             {% endif %}
         {% endif %}

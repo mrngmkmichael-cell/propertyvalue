@@ -1,70 +1,113 @@
 {% extends "base.html" %}
 
-{% block title %}Your watchlist | UKPropertyInsight{% endblock %}
+{% block title %}My properties | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<span class="kicker">Saved properties</span>
-<h1>Your watchlist</h1>
+<span class="kicker">Your research</span>
+<h1>My properties</h1>
+<p class="dek">Every property you're weighing up, in one place. Notes, changes since you last looked, and side-by-side comparison.</p>
 
 {% if alerts_configured and items %}
-<p class="section-sub">We'll also email you if anything on this list changes. No need to keep checking back.</p>
+<p class="section-sub">We email you if anything on this list changes. No need to keep checking back.</p>
 {% endif %}
 
 {% if changed_item_count %}
 <div class="watchlist-alert-banner" data-animate>
     <span class="watchlist-alert-count">{{ changed_item_count }}</span>
     <span>
-        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked. See the highlighted rows below.
+        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked. Look for the highlighted cards below.
     </span>
 </div>
 {% endif %}
 
 {% if items %}
-    <form action="/watchlist/compare" method="get">
-    <table class="tx-table">
-        <thead>
-            <tr>
-                <th class="num"></th>
-                <th>Address</th>
-                <th>Note</th>
-                <th>Saved</th>
-                <th class="num"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr class="{{ 'watchlist-row-changed' if item.changes else '' }}">
-                <td class="num"><input type="checkbox" name="item_ids" value="{{ item.id }}"></td>
-                <td>
-                    <a href="/property?postcode={{ item.postcode }}{% if item.house_number %}&house_number={{ item.house_number }}{% endif %}">
-                        {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
-                    </a>
-                    {% if item.changes %}
-                    <div class="watchlist-changes">
-                        {% for change in item.changes %}
-                        <span class="watchlist-change-chip">{{ change }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </td>
-                <td>{{ item.note or " — " }}</td>
-                <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
-                <td class="num">
-                    <span class="nav-form">
-                        <button type="submit" formaction="/watchlist/remove" formmethod="post" name="item_id" value="{{ item.id }}">Remove</button>
-                    </span>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    <p class="section-sub" style="margin-top: 1rem;">
+<form action="/watchlist/compare" method="get" id="compare-form">
+    <div class="myprops-grid">
+        {% for item in items %}
+        <div class="myprops-card{{ ' myprops-card-changed' if item.changes else '' }}">
+            <div class="myprops-card-head">
+                <label class="myprops-compare-pick">
+                    <input type="checkbox" name="item_ids" value="{{ item.id }}">
+                    <span>Compare</span>
+                </label>
+                <span class="myprops-saved-date">saved {{ item.created_at.strftime("%d %b") }}</span>
+            </div>
+            <a class="myprops-address" href="/property?postcode={{ item.postcode | urlencode }}{% if item.house_number %}&house_number={{ item.house_number | urlencode }}{% endif %}">
+                {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
+            </a>
+            {% if item.changes %}
+            <div class="watchlist-changes">
+                {% for change in item.changes %}
+                <span class="watchlist-change-chip">{{ change }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="myprops-note-block" data-note-block>
+                {% if item.note %}
+                <p class="myprops-note">{{ item.note }}</p>
+                <button type="button" class="myprops-note-edit" data-note-edit>Edit note</button>
+                {% else %}
+                <button type="button" class="myprops-note-edit" data-note-edit>Add a note</button>
+                {% endif %}
+                <div class="myprops-note-form" hidden>
+                    <textarea form="note-form-{{ item.id }}" name="note" rows="3" maxlength="500" placeholder="e.g. viewing Sat 2pm, garden faces north, ask about the boiler">{{ item.note }}</textarea>
+                    <button type="submit" form="note-form-{{ item.id }}">Save note</button>
+                </div>
+            </div>
+            <div class="myprops-card-foot">
+                <button type="submit" class="myprops-remove" formaction="/watchlist/remove" formmethod="post" name="item_id" value="{{ item.id }}">Remove</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="myprops-compare-bar">
         <button type="submit">Compare selected</button>
-        Pick 2 or 3 properties to compare side by side.
-    </p>
-    </form>
+        <span class="section-sub">Tick 2 or 3 properties to see them side by side.</span>
+    </div>
+</form>
+{# Note forms live outside the compare form - nested forms are invalid
+   HTML, so each textarea points at its own form by id instead. #}
+{% for item in items %}
+<form action="/watchlist/save" method="post" id="note-form-{{ item.id }}">
+    <input type="hidden" name="postcode" value="{{ item.postcode }}">
+    <input type="hidden" name="house_number" value="{{ item.house_number }}">
+</form>
+{% endfor %}
 {% else %}
-    <p class="notice">Nothing saved yet. Search for a postcode and use "Save to watchlist" on its report.</p>
+<p class="notice">Nothing saved yet. {% if not opened_reports %}Search for a postcode and use "Save" on its report.{% endif %}</p>
 {% endif %}
+
+{% if opened_reports %}
+<section class="landing-section" style="margin-top: 2.5rem;">
+    <h2 class="landing-heading">Reports you've opened</h2>
+    <p class="landing-subheading">Full reports you've already used. Save one to keep notes on it and get an email when something changes.</p>
+    <div class="myprops-opened-list">
+        {% for r in opened_reports %}
+        <div class="myprops-opened-row">
+            <a href="/property?postcode={{ r.postcode | urlencode }}{% if r.house_number %}&house_number={{ r.house_number | urlencode }}{% endif %}">
+                {{ r.house_number ~ ", " ~ r.postcode if r.house_number else r.postcode }}
+            </a>
+            <span class="myprops-saved-date">opened {{ r.opened_at.strftime("%d %b") }}</span>
+            <form action="/watchlist/save" method="post">
+                <input type="hidden" name="postcode" value="{{ r.postcode }}">
+                <input type="hidden" name="house_number" value="{{ r.house_number }}">
+                <button type="submit">Save</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<script>
+document.querySelectorAll('[data-note-block]').forEach(function (block) {
+    var edit = block.querySelector('[data-note-edit]');
+    var form = block.querySelector('.myprops-note-form');
+    edit.addEventListener('click', function () {
+        form.hidden = !form.hidden;
+        if (!form.hidden) form.querySelector('textarea').focus();
+    });
+});
+</script>
 {% endblock %}

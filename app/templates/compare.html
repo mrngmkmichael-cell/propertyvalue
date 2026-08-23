@@ -4,7 +4,7 @@
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<a class="back-link" href="/watchlist">&larr; Back to watchlist</a>
+<a class="back-link" href="/watchlist">&larr; Back to My properties</a>
 
 <span class="kicker">Side by side</span>
 <h1>Compare properties</h1>
@@ -60,6 +60,18 @@
                 <td><strong>Built</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.year_built or " — " }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Energy rating</strong></td>
+                {% for col in columns %}
+                <td>{{ col.summary.energy_band or " — " }}</td>
+                {% endfor %}
+            </tr>
+            <tr>
+                <td><strong>Heating cost (EPC est.)</strong></td>
+                {% for col in columns %}
+                <td>{{ ("£" ~ col.summary.heating_cost ~ "/yr") if col.summary.heating_cost else " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>

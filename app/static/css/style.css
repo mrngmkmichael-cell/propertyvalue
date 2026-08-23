@@ -4855,3 +4855,46 @@ main:focus { outline: none; }
 .funnel-num { font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; text-align: right; }
 .funnel-rate { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); font-variant-numeric: tabular-nums; text-align: right; }
 @media (max-width: 40rem) { .funnel-row { grid-template-columns: 7rem 1fr 3rem 3rem; gap: 0.4rem; } }
+
+/* ---- My properties ---- */
+.myprops-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.myprops-card {
+    display: flex; flex-direction: column; gap: 0.6rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 1rem 1.1rem;
+}
+.myprops-card-changed { border-color: var(--warn); box-shadow: 0 0 0 3px var(--warn-bg); }
+.myprops-card-head { display: flex; justify-content: space-between; align-items: center; }
+.myprops-compare-pick { display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--text-xs); color: var(--ink-faint); cursor: pointer; }
+.myprops-saved-date { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); }
+.myprops-address { font-size: var(--text-lg); font-weight: var(--weight-semi); color: var(--ink); text-decoration: none; }
+.myprops-address:hover { color: var(--accent); }
+.myprops-note { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); white-space: pre-wrap; }
+.myprops-note-edit {
+    align-self: flex-start; background: none; border: none; padding: 0; box-shadow: none;
+    font: inherit; font-size: var(--text-xs); color: var(--ink-faint);
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.myprops-note-edit:hover { color: var(--accent); }
+.myprops-note-block { display: flex; flex-direction: column; gap: 0.35rem; }
+.myprops-note-form { display: flex; flex-direction: column; gap: 0.4rem; }
+.myprops-note-form[hidden] { display: none; }
+.myprops-note-form textarea {
+    width: 100%; box-sizing: border-box; padding: 0.55rem 0.7rem; font: inherit;
+    font-size: var(--text-sm); color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); resize: vertical;
+}
+.myprops-note-form button { align-self: flex-start; padding: 0.35rem 0.9rem; font-size: var(--text-sm); }
+.myprops-card-foot { margin-top: auto; display: flex; justify-content: flex-end; }
+.myprops-remove { background: none; border: none; box-shadow: none; padding: 0; font: inherit; font-size: var(--text-xs); color: var(--ink-faint); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.myprops-remove:hover { color: var(--bad); }
+.myprops-compare-bar { display: flex; align-items: center; gap: 1rem; margin-top: 1.25rem; }
+.myprops-opened-list { display: flex; flex-direction: column; }
+.myprops-opened-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--border);
+}
+.myprops-opened-row a { font-weight: var(--weight-medium); color: var(--ink); text-decoration: none; }
+.myprops-opened-row a:hover { color: var(--accent); }
+.myprops-opened-row form { margin-left: auto; }
+.myprops-opened-row button { padding: 0.3rem 0.9rem; font-size: var(--text-sm); }
