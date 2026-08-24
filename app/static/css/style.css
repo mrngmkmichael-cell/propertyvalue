@@ -4818,7 +4818,9 @@ main:focus { outline: none; }
 }
 .share-banner-cta:hover { background: var(--accent-hover); }
 
-.share-control { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+.share-control { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; min-width: 0; }
+#share-details { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+#share-details[hidden] { display: none; }
 .share-form { margin: 0; }
 .share-link-row { display: flex; gap: 0.4rem; }
 .share-link-input {

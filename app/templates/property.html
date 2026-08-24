@@ -124,6 +124,11 @@
                 {% if premium_unlocked and not shared and current_user %}
                 <div class="share-control" id="share">
                     {% if share_link %}
+                    <button type="button" class="pdf-download-btn" id="share-toggle" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                        Share this report
+                    </button>
+                    <div id="share-details" hidden>
                     <div class="share-link-row">
                         <input type="text" class="share-link-input" id="share-link-input" value="{{ share_link }}" readonly aria-label="Share link">
                         <button type="button" class="share-copy-btn" id="share-copy-btn">Copy</button>
@@ -132,6 +137,7 @@
                         <a class="share-send" href="https://wa.me/?text={{ ('Have a look at this property report: ' ~ share_link) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
                         <a class="share-send" href="mailto:?subject={{ ('Property report: ' ~ location.postcode) | urlencode }}&body={{ ('Have a look at this property report, every check unlocked: ' ~ share_link) | urlencode }}">Email</a>
                         <span class="share-note">Anyone with the link sees the full report. It never uses up their free reports.</span>
+                    </div>
                     </div>
                     {% else %}
                     <form action="/share" method="post" class="share-form">

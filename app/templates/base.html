@@ -252,6 +252,20 @@
         })();
 
         (function () {
+            /* Share panel: stays a button; the link row opens on click,
+               and opens itself right after the link was first created
+               (the ?shared=1 redirect). */
+            const shareToggle = document.getElementById('share-toggle');
+            const shareDetails = document.getElementById('share-details');
+            if (shareToggle && shareDetails) {
+                const open = function (yes) {
+                    shareDetails.hidden = !yes;
+                    shareToggle.setAttribute('aria-expanded', yes ? 'true' : 'false');
+                };
+                shareToggle.addEventListener('click', function () { open(shareDetails.hidden); });
+                if (new URLSearchParams(window.location.search).get('shared') === '1') open(true);
+            }
+
             /* Share link copy button on a property report. */
             const copyBtn = document.getElementById('share-copy-btn');
             const copyInput = document.getElementById('share-link-input');
