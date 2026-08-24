@@ -42,11 +42,11 @@
        keeps bounded around arbitrary nested content. */
     table.card { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 14pt; margin-bottom: 0; page-break-inside: avoid; }
     table.card td.card-cell { border: 1px solid #eaecf0; border-radius: 12pt; padding: 14pt 16pt 16pt; }
-    .card-header-table { width: 100%; margin-bottom: 10pt; }
-    .card-header-table td { border: none; padding: 0; vertical-align: middle; }
-    .card-icon-cell { width: 30pt; }
-    .card-icon { width: 24pt; height: 24pt; line-height: 24pt; text-align: center; border-radius: 7pt; font-weight: 800; font-size: 11pt; }
-    .card-title { font-size: 13pt; font-weight: 800; color: #171d2b; padding-left: 4pt; }
+    .card-header-table { width: 100%; margin-bottom: 10pt; border-collapse: collapse; }
+    .card-header-table td { border: none; vertical-align: middle; border-bottom: 1.5px solid #1f2a5a; padding: 0 0 6pt; }
+    .card-num-cell { width: 22pt; font-size: 11pt; font-weight: 800; color: #8a94b8; }
+    .card-title-cell { padding-left: 2pt !important; }
+    .card-title { font-size: 13pt; font-weight: 800; color: #1f2a5a; }
 
     /* Badges: colored pill on tinted background, used for risk/status words */
     .badge { display: inline-block; padding: 2pt 8pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 700; white-space: nowrap; }
@@ -84,6 +84,12 @@
     td.chip-good { color: #04785a; }
     td.chip-warn { color: #92610a; }
 
+    .glance { width: 100%; margin-top: 12pt; border-collapse: collapse; }
+    .glance-cell { border: none; border-left: 0.75px solid #eaecf0; padding: 6pt 12pt; vertical-align: top; }
+    .glance-cell-first { border-left: none; padding-left: 0; }
+    .glance-value { font-size: 14pt; font-weight: 800; color: #171d2b; }
+    .glance-label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.6pt; color: #98a2b3; }
+
     .footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #eaecf0; font-size: 7.5pt; color: #98a2b3; }
 </style>
 </head>
@@ -95,11 +101,13 @@
 
 {% macro ofsted_badge(label) %}{% if label %}{% set colors = {'Outstanding': '#059669', 'Good': '#10b981', 'Requires improvement': '#ca8a04', 'Inadequate': '#dc2626'} %}<span class="pill" style="background:{{ colors.get(label, '#98a2b3') }};">{{ label }}</span>{% else %}<span style="color:#98a2b3;">&mdash;</span>{% endif %}{% endmacro %}
 
+{% set sec = namespace(n=0) %}
 {% macro card(letter, bg, color, title) %}
+{% set sec.n = sec.n + 1 %}
 <table class="card"><tr><td class="card-cell">
     <table class="card-header-table"><tr>
-        <td class="card-icon-cell"><div class="card-icon" style="background:{{ bg }}; color:{{ color }};">{{ letter }}</div></td>
-        <td><span class="card-title">{{ title }}</span></td>
+        <td class="card-num-cell">{{ "%02d" | format(sec.n) }}</td>
+        <td class="card-title-cell"><span class="card-title">{{ title }}</span></td>
     </tr></table>
     {{ caller() }}
 </td></tr></table>
@@ -133,6 +141,23 @@
     {% for c in overview.concerns %}<tr><td class="chip-warn">! {{ c }}</td></tr>{% endfor %}
 </table>
 {% endif %}
+{% endif %}
+
+{% set glance = [] %}
+{% if avg_price %}{% set _ = glance.append(("Average sold price", avg_price | gbp)) %}{% endif %}
+{% if valuation %}{% set _ = glance.append(("Estimated value", valuation.estimate | gbp)) %}{% endif %}
+{% set _ = glance.append(("Flood zone", flood_zone.label.split(" (")[0] if flood_zone else "Zone 1")) %}
+{% if property_detail and property_detail.current_band %}{% set _ = glance.append(("Energy rating", property_detail.current_band)) %}{% endif %}
+{% if crime and crime.total is not none %}{% set _ = glance.append(("Crime, ~1 mile / month", crime.total ~ "")) %}{% endif %}
+{% if glance %}
+<table class="glance"><tr>
+    {% for label, value in glance[:4] %}
+    <td class="glance-cell{{ ' glance-cell-first' if loop.first else '' }}">
+        <span class="glance-value">{{ value }}</span><br/>
+        <span class="glance-label">{{ label }}</span>
+    </td>
+    {% endfor %}
+</tr></table>
 {% endif %}
 
 {% call card("£", "#eff6ff", "#3b5bfd", "Sold prices") %}
