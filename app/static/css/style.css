@@ -179,6 +179,7 @@
     box-sizing: border-box;
 }
 
+html, body { overflow-x: clip; }
 html {
     scroll-behavior: smooth;
 }
@@ -3807,8 +3808,9 @@ table,
 /* Hero stats: count-up figures under the search form. */
 .hero-stats {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.75rem;
+    gap: 0.35rem 0.75rem;
     margin: 1.25rem 0 0;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
