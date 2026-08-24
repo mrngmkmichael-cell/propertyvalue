@@ -18,6 +18,8 @@
     <p class="notice notice-error">{{ error }}</p>
 {% endif %}
 
+<div class="signup-split">
+<div class="signup-form-col">
 {% include "_oauth_buttons.html" %}
 
 <form class="stacked-form" action="/signup" method="post">
@@ -34,4 +36,18 @@
 </form>
 
 <p class="section-sub">Already have an account? <a href="/login">Log in</a></p>
+</div>
+
+<aside class="signup-benefits">
+    <h2 class="signup-benefits-heading">What you get today</h2>
+    <ul class="signup-benefits-list">
+        <li><strong>3 full Premium reports</strong>, every one of the 23 checks unlocked, on any properties you choose</li>
+        <li><strong>Questions for your solicitor and surveyor</strong>, generated from each property's own findings</li>
+        <li><strong>The full PDF report</strong> to keep, print or send</li>
+        <li><strong>My properties</strong>: notes, side-by-side comparison, and an email when anything changes on a saved property</li>
+        <li><strong>Share any unlocked report</strong> with a partner or friend, free for them to read</li>
+    </ul>
+    <p class="signup-benefits-note">No card. No tracking. The three reports never expire, and properties you open stay unlocked for good.</p>
+</aside>
+</div>
 {% endblock %}
