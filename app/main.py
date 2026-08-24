@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import datetime
 import hmac
 import json
@@ -32,7 +33,7 @@ from app.services import (
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     stripe_billing, surface_water_risk, telegram, valuation,
-    solicitor_questions,
+    solicitor_questions, indexnow,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services.postcodes import any_postcode_in_outcode, lookup_postcode, nearby_postcodes, outcode_centroid
@@ -139,6 +140,8 @@ async def capture_referral(request: Request, call_next):
 # the site" is asking about.
 _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
 _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
+if indexnow.key():
+    _PAGEVIEW_EXCLUDE_PATHS.add(f"/{indexnow.key()}.txt")
 
 # Synthetic pageview path written when a logged-in account with no free
 # reports left opens a property it has not unlocked. Not a real URL;
@@ -760,9 +763,37 @@ templates.env.filters["gbp"] = _format_gbp
 templates.env.filters["distance"] = _format_distance
 
 
+if indexnow.key():
+    @app.get(f"/{indexnow.key()}.txt", include_in_schema=False)
+    def indexnow_key_file():
+        """IndexNow key verification file (see services/indexnow.py)."""
+        return Response(content=indexnow.key(), media_type="text/plain")
+
+
+async def _indexnow_ping_if_changed():
+    """Submit the whole sitemap to IndexNow once per content change.
+
+    Runs on startup, i.e. once per deploy. The URL list is hashed and
+    compared against the persistent cache, so a deploy that doesn't
+    change the sitemap (most of them) submits nothing, and the Bing
+    family hears about new pages within the deploy that adds them."""
+    base = os.environ.get("SITE_URL", "https://ukpropertyinsight.co.uk").rstrip("/")
+    urls = [u for u, _ in _sitemap_entries(base)]
+    digest = hashlib.sha256("\n".join(sorted(urls)).encode()).hexdigest()
+    already = _cache.get_persistent("indexnow_submitted_hash", 10 ** 9)
+    if already == digest:
+        return
+    host = base.split("//", 1)[-1]
+    if await indexnow.submit(host, urls):
+        _cache.set_persistent("indexnow_submitted_hash", digest)
+        logging.getLogger(__name__).info("IndexNow: submitted %d URLs", len(urls))
+
+
 @app.on_event("startup")
-def on_startup():
+async def on_startup():
     db.init_db()
+    if IS_PRODUCTION:
+        asyncio.create_task(_indexnow_ping_if_changed())
 
 
 def base_context(request: Request) -> dict:
@@ -930,17 +961,24 @@ AREA_GUIDE_SEED_OUTCODES = [
 
 
 @app.get("/sitemap.xml")
+def _sitemap_entries(base: str) -> list[tuple[str, str]]:
+    """(url, priority) for every page the sitemap advertises. Shared by
+    the sitemap route and the IndexNow pinger so they can never drift."""
+    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
+                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
+    outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
+    entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
+    entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
+    return entries
+
+
 def sitemap(request: Request):
     base = _public_base_url(request)
     # lastmod is the deploy's own timestamp: a guide's data changes on
     # the cadence of the imports behind it, and every deploy re-reads
     # those, so this is honest without tracking per-page dates.
     lastmod = datetime.date.today().isoformat()
-    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
-                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
-    outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
-    entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
-    entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
+    entries = _sitemap_entries(base)
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
