@@ -3405,6 +3405,61 @@ Listed building data from Historic England's
                 new google.maps.InfoWindow({ content: label }).setPosition({ lat: s.latitude, lng: s.longitude });
             });
         });
+
+        /* School and station pins, mirroring the Leaflet branch: Ofsted
+           colours for schools, navy for stations, view fitted to take
+           the pins in. */
+        const ratingColors = {
+            'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
+            'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+        };
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(center);
+        let havePins = false;
+        const info = new google.maps.InfoWindow();
+
+        function pin(lat, lng, color, radiusPx, html) {
+            const m = new google.maps.Marker({
+                position: { lat: lat, lng: lng }, map: map,
+                icon: {
+                    path: google.maps.SymbolPath.CIRCLE, scale: radiusPx,
+                    fillColor: color, fillOpacity: 0.95,
+                    strokeColor: '#ffffff', strokeWeight: 1.5,
+                },
+            });
+            m.addListener('click', function () { info.setContent(html); info.open(map, m); });
+            bounds.extend({ lat: lat, lng: lng });
+            havePins = true;
+        }
+
+        ({{ (map_schools or []) | tojson }}).forEach(function (sch) {
+            const color = ratingColors[sch.rating] || '#8a8378';
+            const miles = (sch.distance_m / 1609.34).toFixed(1);
+            pin(sch.latitude, sch.longitude, color, 7,
+                '<strong>' + sch.name + '</strong><br>' + sch.group
+                + (sch.rating ? ', ' + sch.rating : ', not yet inspected')
+                + '<br>' + miles + ' miles away');
+        });
+
+        window.__addStationsToMap = function (stationsByMode) {
+            if (!stationsByMode) return;
+            Object.keys(stationsByMode).forEach(function (mode) {
+                (stationsByMode[mode] || []).forEach(function (st) {
+                    if (st.lat == null || st.lon == null) return;
+                    const miles = st.distance_m != null ? '<br>' + (st.distance_m / 1609.34).toFixed(1) + ' miles away' : '';
+                    pin(st.lat, st.lon, '#2b4c8c', 6,
+                        '<strong>' + st.name + '</strong><br>' + mode + ' station' + miles);
+                });
+            });
+        };
+        window.__addStationsToMap({{ (stations_list or {}) | tojson }});
+
+        if (havePins) {
+            map.fitBounds(bounds, 30);
+            google.maps.event.addListenerOnce(map, 'bounds_changed', function () {
+                if (map.getZoom() > 15) map.setZoom(15);
+            });
+        }
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initPropertyMap&loading=async" async defer></script>
