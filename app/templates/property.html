@@ -366,6 +366,24 @@
     {% set lock_label = "Sign up: 3 free full reports" if not current_user else "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
 
+    {% if not premium_unlocked %}
+    <div class="paywall-banner" data-animate>
+        {% if not current_user %}
+        <div class="paywall-banner-copy">
+            <strong>The locked cards below are free to open.</strong>
+            Sign up and your first 3 properties get every check in full, this one included. No card needed.
+        </div>
+        <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
+        {% else %}
+        <div class="paywall-banner-copy">
+            <strong>You've used your 3 free reports.</strong>
+            The ones you opened stay unlocked for good. Unlocking new ones is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
+        </div>
+        <a class="paywall-banner-cta" href="/premium">See plans</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>

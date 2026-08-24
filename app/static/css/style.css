@@ -5151,3 +5151,17 @@ main:focus { outline: none; }
     font-size: var(--text-xs); color: var(--ink-faint); line-height: 1.5;
 }
 @media (max-width: 52rem) { .signup-split { grid-template-columns: 1fr; gap: 1.5rem; } }
+
+/* ---- Paywall banner on the report ---- */
+.paywall-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 0.75rem 1.5rem; margin: 1.25rem 0 0.5rem; padding: 1rem 1.25rem;
+    background: var(--accent-soft); border: 1px solid var(--border); border-radius: var(--radius-md);
+}
+.paywall-banner-copy { max-width: 46rem; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; }
+.paywall-banner-copy strong { color: var(--ink); display: block; font-size: var(--text-base); margin-bottom: 0.15rem; }
+.paywall-banner-cta {
+    flex: none; padding: 0.6rem 1.2rem; background: var(--accent); color: var(--accent-ink);
+    border-radius: var(--radius-sm); font-weight: var(--weight-semi); font-size: var(--text-sm); text-decoration: none;
+}
+.paywall-banner-cta:hover { background: var(--accent-hover); }
