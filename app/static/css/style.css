@@ -5201,3 +5201,10 @@ main:focus { outline: none; }
 .leaflet-control-layers { border-radius: var(--radius-sm) !important; border: 1px solid var(--border) !important; box-shadow: 0 8px 24px -12px rgba(31,42,90,0.3) !important; }
 .leaflet-control-layers-overlays label { font-size: 12px; color: var(--ink-soft); }
 .map-key-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }
+
+/* iOS Safari zooms the page when a focused form control's font-size is
+   under 16px, which reads as the layout breaking. On small screens no
+   control may go below 16px, whatever its desktop styling says. */
+@media (max-width: 700px) {
+    input:not([type="hidden"]), select, textarea { font-size: max(16px, 1em) !important; }
+}
