@@ -87,3 +87,42 @@ def test_homepage_promo_banner_copy_matches_the_real_offer(client):
     from app import auth
     body = client.get("/").text
     assert f"get {auth.FREE_PREMIUM_UNLOCKS} full Premium property reports" in body
+
+
+def test_oauth_buttons_render_only_for_configured_providers(client, monkeypatch):
+    body = client.get("/login").text
+    assert "Continue with Facebook" not in body and "Continue with LinkedIn" not in body
+
+    monkeypatch.setenv("FACEBOOK_OAUTH_CLIENT_ID", "fb-id")
+    monkeypatch.setenv("FACEBOOK_OAUTH_CLIENT_SECRET", "fb-secret")
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_ID", "li-id")
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_SECRET", "li-secret")
+    body = client.get("/login").text
+    assert 'href="/auth/facebook?next=' in body and "Continue with Facebook" in body
+    assert 'href="/auth/linkedin?next=' in body and "Continue with LinkedIn" in body
+
+
+def test_oauth_login_redirects_to_the_provider(client, monkeypatch):
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_ID", "li-id")
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_SECRET", "li-secret")
+    r = client.get("/auth/linkedin?next=/premium", follow_redirects=False)
+    assert r.status_code == 303
+    loc = r.headers["location"]
+    assert loc.startswith("https://www.linkedin.com/oauth/v2/authorization?")
+    assert "client_id=li-id" in loc and "state=" in loc
+    assert "redirect_uri=" in loc and "%2Fauth%2Flinkedin%2Fcallback" in loc
+
+
+def test_unconfigured_or_unknown_oauth_provider_bounces_to_login(client):
+    for path in ("/auth/facebook", "/auth/apple", "/auth/github/callback?code=x&state=y"):
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code == 303, path
+        assert "error=oauth_unavailable" in r.headers["location"], path
+
+
+def test_oauth_callback_rejects_a_forged_state(client, monkeypatch):
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_ID", "li-id")
+    monkeypatch.setenv("LINKEDIN_OAUTH_CLIENT_SECRET", "li-secret")
+    r = client.get("/auth/linkedin/callback?code=abc&state=not-what-we-issued", follow_redirects=False)
+    assert r.status_code == 303
+    assert "error=oauth_state" in r.headers["location"]

@@ -11,9 +11,7 @@
     <p class="notice notice-error">{{ error }}</p>
 {% endif %}
 
-{% if google_oauth_configured %}
-{% include "_google_button.html" %}
-{% endif %}
+{% include "_oauth_buttons.html" %}
 
 <form class="stacked-form" action="/login" method="post">
     <input type="hidden" name="next" value="{{ next or '/' }}">

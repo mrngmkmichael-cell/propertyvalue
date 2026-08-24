@@ -31,7 +31,7 @@ from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
-    overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
+    oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow,
 )
@@ -804,6 +804,10 @@ def base_context(request: Request) -> dict:
         # survives a re-render after a form error, which is exactly when
         # someone is most likely to reach for it.
         "google_oauth_configured": google_oauth.is_configured(),
+        "oauth_providers_configured": [
+            p for p in ("google", "facebook", "linkedin")
+            if (google_oauth.is_configured() if p == "google" else oauth_providers.is_configured(p))
+        ],
         "google_maps_api_key": os.environ.get("GOOGLE_MAPS_API_KEY", ""),
         # Default canonical is the current path with no query string - so a
         # link carrying ?ref=... or ?utm_source=... for tracking doesn't get
@@ -3527,8 +3531,8 @@ def _public_base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/").replace("http://", "https://", 1)
 
 
-def _oauth_redirect_uri(request: Request) -> str:
-    """Where Google sends the browser back to after sign-in.
+def _oauth_redirect_uri(request: Request, provider: str = "google") -> str:
+    """Where the provider sends the browser back to after sign-in.
 
     Deliberately not _public_base_url(): that forces https, which is
     correct in production but produces https://127.0.0.1:8000 locally,
@@ -3542,7 +3546,7 @@ def _oauth_redirect_uri(request: Request) -> str:
         base = _public_base_url(request)
     else:
         base = str(request.base_url).rstrip("/")
-    return f"{base}/auth/google/callback"
+    return f"{base}/auth/{provider}/callback"
 
 
 @app.get("/premium")
@@ -3676,6 +3680,9 @@ _AUTH_ERRORS = {
     "google_unavailable": "Google sign-in isn't set up right now — use your email and password.",
     "google_state": "That Google sign-in link had expired. Please try again.",
     "google_failed": "Couldn't finish signing in with Google. Please try again.",
+    "oauth_unavailable": "That sign-in method isn't set up right now — use your email and password.",
+    "oauth_state": "That sign-in link had expired. Please try again.",
+    "oauth_failed": "Couldn't finish signing in. Please try again.",
     "accounts_unavailable": "Accounts are temporarily unavailable. Please try again shortly.",
 }
 
@@ -4031,10 +4038,19 @@ def reset_password_submit(
     return RedirectResponse("/?reset=done", status_code=303)
 
 
-@app.get("/auth/google")
-def google_login(request: Request, next: str = "/"):
-    if not google_oauth.is_configured():
-        return RedirectResponse("/login?error=google_unavailable", status_code=303)
+def _oauth_provider_configured(provider: str) -> bool:
+    if provider == "google":
+        return google_oauth.is_configured()
+    return oauth_providers.is_configured(provider)
+
+
+OAUTH_PROVIDER_NAMES = ("google", "facebook", "linkedin")
+
+
+@app.get("/auth/{provider}")
+def oauth_login(request: Request, provider: str, next: str = "/"):
+    if provider not in OAUTH_PROVIDER_NAMES or not _oauth_provider_configured(provider):
+        return RedirectResponse("/login?error=oauth_unavailable", status_code=303)
     if not db.is_configured():
         return RedirectResponse("/login?error=accounts_unavailable", status_code=303)
 
@@ -4042,33 +4058,41 @@ def google_login(request: Request, next: str = "/"):
     # code they obtained themselves: it has to come back matching the one
     # we just put in this browser's signed session cookie.
     state = secrets.token_urlsafe(32)
-    request.session["google_oauth_state"] = state
-    request.session["google_oauth_next"] = _safe_next(next)
-    return RedirectResponse(
-        google_oauth.authorization_url(_oauth_redirect_uri(request), state),
-        status_code=303,
-    )
+    request.session[f"{provider}_oauth_state"] = state
+    request.session[f"{provider}_oauth_next"] = _safe_next(next)
+    redirect_uri = _oauth_redirect_uri(request, provider)
+    if provider == "google":
+        url = google_oauth.authorization_url(redirect_uri, state)
+    else:
+        url = oauth_providers.authorization_url(provider, redirect_uri, state)
+    return RedirectResponse(url, status_code=303)
 
 
-@app.get("/auth/google/callback")
-async def google_callback(
-    request: Request, code: str = "", state: str = "", error: str = ""
+@app.get("/auth/{provider}/callback")
+async def oauth_callback(
+    request: Request, provider: str, code: str = "", state: str = "", error: str = ""
 ):
-    expected_state = request.session.pop("google_oauth_state", None)
-    next_url = _safe_next(request.session.pop("google_oauth_next", "/"))
+    if provider not in OAUTH_PROVIDER_NAMES:
+        return RedirectResponse("/login?error=oauth_unavailable", status_code=303)
+    expected_state = request.session.pop(f"{provider}_oauth_state", None)
+    next_url = _safe_next(request.session.pop(f"{provider}_oauth_next", "/"))
 
     # error=access_denied is the normal "user clicked Cancel" path, not a
     # fault - put them back on the login page without an alarming message.
     if error or not code:
         return RedirectResponse("/login", status_code=303)
     if not expected_state or not hmac.compare_digest(state, expected_state):
-        return RedirectResponse("/login?error=google_state", status_code=303)
+        return RedirectResponse("/login?error=oauth_state", status_code=303)
     if not db.is_configured():
         return RedirectResponse("/login?error=accounts_unavailable", status_code=303)
 
-    email = await google_oauth.fetch_verified_email(code, _oauth_redirect_uri(request))
+    redirect_uri = _oauth_redirect_uri(request, provider)
+    if provider == "google":
+        email = await google_oauth.fetch_verified_email(code, redirect_uri)
+    else:
+        email = await oauth_providers.fetch_verified_email(provider, code, redirect_uri)
     if not email:
-        return RedirectResponse("/login?error=google_failed", status_code=303)
+        return RedirectResponse("/login?error=oauth_failed", status_code=303)
 
     with db.get_session() as session:
         user = auth.find_user_by_email(session, email)
@@ -4082,7 +4106,7 @@ async def google_callback(
             session.commit()
             session.refresh(user)
         # An existing password account with this address gets signed in
-        # rather than rejected as a duplicate. Google has verified the
+        # rather than rejected as a duplicate. The provider has verified the
         # person controls the mailbox, which is the same thing the
         # password proves, so this is a second key to their own door -
         # their password keeps working too.
