@@ -73,58 +73,32 @@
         </div>
 
         <div class="hero-art" aria-hidden="true">
-            <svg viewBox="0 0 440 400" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="220" cy="205" r="130" fill="#ffffff" fill-opacity="0.6"/>
-
-                <g transform="translate(220 205)">
-                    <circle class="hero-pin-ping" cx="0" cy="120" r="14" fill="none" stroke="var(--accent)" stroke-width="3"/>
-                    <g class="hero-pin-pop">
-                    <path d="M0 -95 C48 -95 86 -57 86 -9 C86 45 40 88 0 120 C-40 88 -86 45 -86 -9 C-86 -57 -48 -95 0 -95 Z" fill="var(--accent)"/>
-                    <g transform="translate(0 -12)">
-                        <path d="M-38 4 L0 -30 L38 4 V42 H-38 Z" fill="#ffffff"/>
-                        <path d="M-44 6 L0 -36 L44 6 L38 6 L0 -28 L-38 6 Z" fill="#ffffff"/>
-                        <rect x="-10" y="16" width="20" height="26" fill="var(--accent)"/>
-                        <rect x="-28" y="10" width="14" height="12" fill="var(--accent-soft)"/>
-                        <rect x="14" y="10" width="14" height="12" fill="var(--accent-soft)"/>
-                    </g>
-                    </g>
-                </g>
-
-                <g transform="translate(60 90)">
-                    <g class="hero-chip hero-chip-1">
-                    <rect width="112" height="56" rx="10" fill="#ffffff" stroke="var(--border)" stroke-width="1.5"/>
-                    <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10" font-weight="500" fill="var(--ink-faint)" letter-spacing="0.08em">SOLD PRICE</text>
-                    <text x="16" y="44" font-family="Instrument Sans, sans-serif" font-size="16" font-weight="600" fill="var(--ink)">£685,000</text>
-                    </g>
-                </g>
-
-                <g transform="translate(268 68)">
-                    <g class="hero-chip hero-chip-2">
-                    <rect width="108" height="56" rx="10" fill="#ffffff" stroke="var(--border)" stroke-width="1.5"/>
-                    <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10" font-weight="500" fill="var(--ink-faint)" letter-spacing="0.08em">ENERGY</text>
-                    <circle cx="28" cy="40" r="11" fill="var(--good-bg)" stroke="var(--good)" stroke-width="1.5"/>
-                    <text x="28" y="44" font-family="Instrument Sans, sans-serif" font-size="12" font-weight="600" fill="var(--good)" text-anchor="middle">C</text>
-                    <text x="48" y="44" font-family="Instrument Sans, sans-serif" font-size="12" font-weight="600" fill="var(--ink-soft)">92 m²</text>
-                    </g>
-                </g>
-
-                <g transform="translate(52 250)">
-                    <g class="hero-chip hero-chip-3">
-                    <rect width="104" height="56" rx="10" fill="#ffffff" stroke="var(--border)" stroke-width="1.5"/>
-                    <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10" font-weight="500" fill="var(--ink-faint)" letter-spacing="0.08em">FLOOD RISK</text>
-                    <circle cx="24" cy="40" r="5" fill="var(--good)"/>
-                    <text x="36" y="44" font-family="Instrument Sans, sans-serif" font-size="12" font-weight="600" fill="var(--good)">Zone 1</text>
-                    </g>
-                </g>
-
-                <g transform="translate(272 262)">
-                    <g class="hero-chip hero-chip-4">
-                    <rect width="112" height="56" rx="10" fill="#ffffff" stroke="var(--border)" stroke-width="1.5"/>
-                    <text x="16" y="24" font-family="JetBrains Mono, monospace" font-size="10" font-weight="500" fill="var(--ink-faint)" letter-spacing="0.08em">SCHOOLS</text>
-                    <text x="16" y="44" font-family="Instrument Sans, sans-serif" font-size="12" font-weight="600" fill="var(--ink)">4 rated "Good"</text>
-                    </g>
-                </g>
-            </svg>
+            <div class="hero-demo-glow"></div>
+            <div class="hero-demo" id="hero-demo">
+                <div class="hero-demo-chrome">
+                    <span class="hero-demo-dot" style="background:#f87171"></span>
+                    <span class="hero-demo-dot" style="background:#fbbf24"></span>
+                    <span class="hero-demo-dot" style="background:#34d399"></span>
+                    <span class="hero-demo-url">ukpropertyinsight.co.uk/<wbr>property?postcode=<span id="hero-demo-pc"></span><span class="hero-demo-caret"></span></span>
+                </div>
+                <div class="hero-demo-body">
+                    <div class="hero-demo-score">
+                        <svg viewBox="0 0 96 96" class="hero-demo-dial">
+                            <circle cx="48" cy="48" r="40" class="hero-demo-dial-track"/>
+                            <circle cx="48" cy="48" r="40" class="hero-demo-dial-arc" id="hero-demo-arc"
+                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"
+                                    transform="rotate(-90 48 48)"/>
+                            <text x="48" y="46" class="hero-demo-dial-num" id="hero-demo-num" text-anchor="middle">0</text>
+                            <text x="48" y="62" class="hero-demo-dial-cap" text-anchor="middle">/100</text>
+                        </svg>
+                        <div class="hero-demo-score-meta">
+                            <span class="hero-demo-grade" id="hero-demo-grade"></span>
+                            <span class="hero-demo-place" id="hero-demo-place"></span>
+                        </div>
+                    </div>
+                    <ul class="hero-demo-rows" id="hero-demo-rows"></ul>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -378,6 +352,109 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script>
+(function () {
+    /* The hero demo: a report assembling itself, on loop. Every figure
+       is from a real report on this site - if a report changes, update
+       these to match rather than inventing numbers. */
+    var demos = [
+        { pc: "SW1A 1AA", place: "Westminster, London", score: 61, grade: "Fair", rows: [
+            ["Sold price", "£685,000", ""],
+            ["Flood risk", "Zone 1 · low", "good"],
+            ["Energy", "EPC C · 92 m²", "good"],
+            ["Crime", "▼ 8% vs area", "good"],
+            ["Schools", "4 rated Good", "good"]]},
+        { pc: "BR6 9AX", place: "Bromley, London", score: 61, grade: "Fair", rows: [
+            ["Property", "Semi-detached · 159 m²", ""],
+            ["Energy", "EPC C", "good"],
+            ["Schools", "100% Good or better", "good"],
+            ["Noise", "High road noise", "warn"],
+            ["Prices", "Area trend falling", "warn"]]},
+        { pc: "E14 9PR", place: "Tower Hamlets, London", score: 42, grade: "Below average", rows: [
+            ["Last sale", "£1,358,000", ""],
+            ["Flood risk", "Zone 3 · high", "bad"],
+            ["Landfill", "Historic site nearby", "warn"],
+            ["Prices", "▼ 13.1% yearly", "warn"],
+            ["Schools", "96% Good or better", "good"]]}
+    ];
+    var pcEl = document.getElementById("hero-demo-pc");
+    if (!pcEl) return;
+    var arc = document.getElementById("hero-demo-arc"),
+        num = document.getElementById("hero-demo-num"),
+        grade = document.getElementById("hero-demo-grade"),
+        place = document.getElementById("hero-demo-place"),
+        rows = document.getElementById("hero-demo-rows"),
+        card = document.getElementById("hero-demo");
+
+    function tone(score) { return score >= 70 ? "good" : (score >= 50 ? "warn" : "bad"); }
+
+    function renderRows(d, animate) {
+        rows.innerHTML = "";
+        d.rows.forEach(function (r, i) {
+            var li = document.createElement("li");
+            li.className = "hero-demo-row" + (animate ? " pending" : "") + (r[2] ? " tone-" + r[2] : "");
+            li.innerHTML = '<span class="hero-demo-row-dot"></span><span class="hero-demo-row-label">' + r[0] +
+                           '</span><span class="hero-demo-row-value">' + r[1] + "</span>";
+            rows.appendChild(li);
+            if (animate) setTimeout(function () { li.classList.remove("pending"); }, 250 + i * 160);
+        });
+    }
+
+    function setDial(score, animate) {
+        card.dataset.tone = tone(score);
+        if (!animate) { arc.style.strokeDashoffset = 100 - score; num.textContent = score; return; }
+        var t0 = null;
+        function step(ts) {
+            if (!t0) t0 = ts;
+            var k = Math.min((ts - t0) / 900, 1);
+            var eased = 1 - Math.pow(1 - k, 3);
+            var v = Math.round(score * eased);
+            arc.style.strokeDashoffset = 100 - score * eased;
+            num.textContent = v;
+            if (k < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    function show(d, animate, done) {
+        place.textContent = d.place;
+        grade.textContent = d.grade;
+        renderRows(d, animate);
+        setDial(d.score, animate);
+        if (!animate) { pcEl.textContent = d.pc; return; }
+        pcEl.textContent = "";
+        var i = 0;
+        (function typeChar() {
+            if (i < d.pc.length) { pcEl.textContent += d.pc[i++]; setTimeout(typeChar, 75); }
+            else if (done) setTimeout(done, 4200);
+        })();
+    }
+
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) { show(demos[0], false); return; }
+
+    var idx = 0;
+    (function loop() {
+        card.classList.remove("switching");
+        show(demos[idx], true, function () {
+            card.classList.add("switching");
+            setTimeout(function () { idx = (idx + 1) % demos.length; loop(); }, 350);
+        });
+    })();
+
+    /* Cursor tilt, pointer devices only. */
+    if (window.matchMedia("(hover: hover)").matches) {
+        var art = card.parentElement;
+        art.addEventListener("mousemove", function (e) {
+            var r = card.getBoundingClientRect();
+            var dx = (e.clientX - r.left - r.width / 2) / r.width;
+            var dy = (e.clientY - r.top - r.height / 2) / r.height;
+            card.style.transform = "perspective(900px) rotateX(" + (-dy * 5) + "deg) rotateY(" + (dx * 6) + "deg)";
+        });
+        art.addEventListener("mouseleave", function () { card.style.transform = ""; });
+    }
+})();
+</script>
 <script>
     (function () {
         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
