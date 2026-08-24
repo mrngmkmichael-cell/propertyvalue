@@ -5194,3 +5194,8 @@ main:focus { outline: none; }
 .building-item.done + .building-item:not(.done) .building-tick { border-color: var(--accent); }
 @keyframes building-pulse { 50% { opacity: 0.45; } }
 @media (prefers-reduced-motion: reduce) { .building-tick { animation: none !important; } }
+
+/* ---- Map layer control ---- */
+.leaflet-control-layers { border-radius: var(--radius-sm) !important; border: 1px solid var(--border) !important; box-shadow: 0 8px 24px -12px rgba(31,42,90,0.3) !important; }
+.leaflet-control-layers-overlays label { font-size: 12px; color: var(--ink-soft); }
+.map-key-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: baseline; }

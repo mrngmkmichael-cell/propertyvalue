@@ -92,6 +92,8 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
             candidates.append({
                 "urn": row.urn,
                 "group": group,
+                "latitude": row.latitude,
+                "longitude": row.longitude,
                 "name": row.name,
                 "phase": row.phase,
                 "type": row.type_name,

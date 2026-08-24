@@ -3027,6 +3027,7 @@ Listed building data from Historic England's
                 bindCard(swap('card-transport', data.transport_card));
                 swap('amenities-body', data.essentials_body);
                 swap('transport-body', data.transport_body);
+                if (window.__addStationsToMap) window.__addStationsToMap(data.stations_list);
             })
             .catch(function () {
                 document.querySelectorAll('#card-amenities .dashboard-card-status, #card-transport .dashboard-card-status')
@@ -3422,12 +3423,13 @@ Listed building data from Historic England's
         .addTo(map)
         .bindPopup({{ location.postcode | tojson }});
 
+    const catchmentLayer = L.layerGroup();
     ({{ (catchment or []) | tojson }}).forEach(function (c) {
         if (!c.rings) return;
         L.geoJSON(
             { type: 'Feature', properties: { name: c.school_name }, geometry: { type: 'Polygon', coordinates: c.rings } },
             { style: { color: '#3b5bfd', weight: 2, fillOpacity: 0.12 } }
-        ).bindPopup(c.school_name + ' catchment').addTo(map);
+        ).bindPopup(c.school_name + ' catchment').addTo(catchmentLayer);
     });
 
     ({{ catchment_distance_schools | tojson }}).forEach(function (s) {
@@ -3439,8 +3441,63 @@ Listed building data from Historic England's
             radius: s.radius_miles * 1609.34,
             color: color, weight: 2, opacity: s.is_real ? 0.8 : 0.6, fillOpacity: 0.06,
             dashArray: s.is_real ? null : '6 4',
-        }).bindPopup(label).addTo(map);
+        }).bindPopup(label).addTo(catchmentLayer);
     });
+
+    const mapPinLatLngs = [];
+    const ratingColors = {
+        'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
+        'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+    };
+    const schoolLayer = L.layerGroup();
+    ({{ (map_schools or []) | tojson }}).forEach(function (sch) {
+        const color = ratingColors[sch.rating] || '#8a8378';
+        const miles = (sch.distance_m / 1609.34).toFixed(1);
+        mapPinLatLngs.push([sch.latitude, sch.longitude]);
+        L.circleMarker([sch.latitude, sch.longitude], {
+            radius: 7, color: '#ffffff', weight: 1.5, fillColor: color, fillOpacity: 0.95,
+        }).bindPopup('<strong>' + sch.name + '</strong><br>' + sch.group
+            + (sch.rating ? ', ' + sch.rating : ', not yet inspected')
+            + '<br>' + miles + ' miles away').addTo(schoolLayer);
+    });
+
+    const stationLayer = L.layerGroup();
+    function addStationsToMap(stationsByMode) {
+        if (!stationsByMode) return;
+        Object.keys(stationsByMode).forEach(function (mode) {
+            (stationsByMode[mode] || []).forEach(function (st) {
+                if (st.lat == null || st.lon == null) return;
+                const miles = st.distance_m != null ? (st.distance_m / 1609.34).toFixed(1) + ' miles away' : '';
+                mapPinLatLngs.push([st.lat, st.lon]);
+                L.circleMarker([st.lat, st.lon], {
+                    radius: 6, color: '#ffffff', weight: 1.5, fillColor: '#2b4c8c', fillOpacity: 0.95,
+                }).bindPopup('<strong>' + st.name + '</strong><br>' + mode + ' station'
+                    + (miles ? '<br>' + miles : '')).addTo(stationLayer);
+            });
+        });
+    }
+    window.__addStationsToMap = addStationsToMap;
+    addStationsToMap({{ (stations_list or {}) | tojson }});
+
+    schoolLayer.addTo(map);
+    stationLayer.addTo(map);
+    if (catchmentLayer.getLayers().length) catchmentLayer.addTo(map);
+
+    const overlays = {
+        '<span class="map-key-dot" style="background:#3f7d5c"></span>Schools (Ofsted colour)': schoolLayer,
+        '<span class="map-key-dot" style="background:#2b4c8c"></span>Stations': stationLayer,
+    };
+    if (catchmentLayer.getLayers().length) {
+        overlays['<span class="map-key-dot" style="background:#3b5bfd"></span>Catchments'] = catchmentLayer;
+    }
+    L.control.layers(null, overlays, { collapsed: false, position: 'bottomright' }).addTo(map);
+
+    /* Widen the view just enough to take in the school and station
+       pins, so toggling a layer never shows an apparently empty map. */
+    if (mapPinLatLngs.length) {
+        const b = L.latLngBounds(mapPinLatLngs).extend([{{ location.latitude | tojson }}, {{ location.longitude | tojson }}]);
+        map.fitBounds(b.pad(0.08), { maxZoom: 15 });
+    }
 </script>
 {% endif %}
 

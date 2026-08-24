@@ -1422,6 +1422,17 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     context["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(context))
     context["buyer_questions_count"] = sum(len(qs) for _, qs in context["buyer_questions"])
 
+    # JSON-safe school points for the map layers: only the fields the
+    # pins need, so no date objects reach | tojson.
+    context["map_schools"] = [
+        {"name": sch["name"], "group": group_name,
+         "latitude": sch.get("latitude"), "longitude": sch.get("longitude"),
+         "rating": sch.get("ofsted_rating_label"), "distance_m": sch.get("distance_m")}
+        for group_name, group_schools in (context.get("schools") or {}).items()
+        for sch in group_schools
+        if sch.get("latitude") is not None
+    ]
+
     context["report_outcome"] = request.query_params.get("report", "")
     # Share control: only for a viewer who can see the full report on
     # their own account (a share page never offers to re-share).
@@ -1529,6 +1540,9 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
         )),
         "essentials_body": str(amen.essentials_body(ctx["amenities"], ctx["amenities_error"], False)),
         "transport_body": str(amen.transport_body(ctx["stations"], ctx["stations_list"], ctx["amenities_error"], False)),
+        "stations_list": ctx["stations_list"],
+        "stations_list": ctx["stations_list"],
+        "stations_list": ctx["stations_list"],
     })
 
 
