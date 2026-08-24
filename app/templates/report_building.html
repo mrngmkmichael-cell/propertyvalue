@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Building your report | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block content %}
+<div class="building-wrap">
+    <span class="kicker">One moment</span>
+    <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
+    <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
+
+    <ul class="building-list" id="building-list">
+        {% for src in ["HM Land Registry", "EPC Register", "Environment Agency flood data", "Police.uk crime data",
+                       "Department for Education & Ofsted", "ONS demographics", "Noise & air quality models",
+                       "British Geological Survey", "Coal Authority", "Historic landfill records",
+                       "Sewage discharge records", "Ofcom broadband & mobile", "Planning designations"] %}
+        <li class="building-item"><span class="building-tick"></span>{{ src }}</li>
+        {% endfor %}
+    </ul>
+    <p class="section-sub">Every figure will name its source. Nothing is scraped, nothing is guessed.</p>
+    <noscript><meta http-equiv="refresh" content="10"><p class="notice">This page refreshes automatically.</p></noscript>
+</div>
+
+<script>
+(function () {
+    var items = document.querySelectorAll('.building-item');
+    var i = 0;
+    var ticker = setInterval(function () {
+        if (i < items.length) items[i++].classList.add('done');
+        else i = 0;  /* loop gently if the gather is slow */
+    }, 650);
+    var qs = window.location.search;
+    function poll() {
+        fetch('/api/report-ready' + qs)
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.ready) { clearInterval(ticker); window.location.reload(); }
+                else setTimeout(poll, 1200);
+            })
+            .catch(function () { setTimeout(poll, 2500); });
+    }
+    setTimeout(poll, 1500);
+})();
+</script>
+{% endblock %}

@@ -176,7 +176,7 @@ _CRAWLER_UA_MARKERS = (
     # The browser built into Claude Code, which the owner's assistant uses
     # to verify changes. A real Chrome, so it was counted as a visitor
     # until 23 Aug 2026; it identifies itself and is now excluded.
-    "claude/", "electron/",
+    "claude/", "electron/", "testclient",
 )
 
 
@@ -1289,6 +1289,29 @@ async def property_search(request: Request, postcode: str = "", house_number: st
         cached_body = _cache.get(key, ANON_PAGE_CACHE_TTL_S)
         if cached_body is not None:
             return HTMLResponse(cached_body)
+
+    # A cold postcode means 10+ seconds of blank page while 38 sources
+    # are queried. Real browsers instead get an instant "building your
+    # report" page that polls /api/report-ready and reloads when the
+    # gather (kicked off here in the background) has landed in the
+    # cache. Crawlers and test clients keep the blocking render so SEO
+    # and the test suites see the finished page. Status 202 keeps the
+    # interim page out of the pageview count and the page cache.
+    if postcode.strip() and not _is_crawler(request.headers.get("user-agent")):
+        try:
+            building_location = await lookup_postcode(postcode.strip())
+        except httpx.HTTPError:
+            building_location = None
+        if building_location is not None:
+            b_canonical = building_location["postcode"]
+            b_hn = house_number.strip()
+            if _cache.get(("property_search_gather", b_canonical, b_hn), PROPERTY_SEARCH_CACHE_TTL_S) is None:
+                asyncio.create_task(_full_property_gather(building_location, b_hn, premium_unlocked=False))
+                ctx = base_context(request)
+                ctx["building_postcode"] = b_canonical
+                ctx["building_house_number"] = b_hn
+                return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
+
     response = await _render_property(request, postcode, house_number)
     if cacheable and getattr(response, "status_code", None) == 200 and getattr(response, "body", None):
         _cache.set(("anon_property_page", *auth.property_key(postcode, house_number)), response.body.decode("utf-8"))
@@ -3822,6 +3845,24 @@ def login_submit(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/api/report-ready")
+async def report_ready(postcode: str = "", house_number: str = ""):
+    """Polled by the report_building page. True once the gather for
+    this address is cached. Also (re)starts the gather, so a server
+    restart mid-build cannot strand a polling browser."""
+    try:
+        location = await lookup_postcode(postcode.strip())
+    except httpx.HTTPError:
+        return JSONResponse({"ready": False})
+    if location is None:
+        return JSONResponse({"ready": True})  # let the reload show not-found
+    hn = house_number.strip()
+    if _cache.get(("property_search_gather", location["postcode"], hn), PROPERTY_SEARCH_CACHE_TTL_S) is not None:
+        return JSONResponse({"ready": True})
+    asyncio.create_task(_full_property_gather(location, hn, premium_unlocked=False))
+    return JSONResponse({"ready": False})
 
 
 # ---- Shareable reports ----
