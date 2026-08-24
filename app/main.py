@@ -803,9 +803,32 @@ async def server_error_handler(request: Request, exc: Exception):
     )
 
 
+def _landing_accuracy_counts() -> dict | None:
+    """Total/fixed counts for the landing page's accuracy strip.
+    Cached, so the homepage never pays a query per view."""
+    if not db.is_configured():
+        return None
+    cached = _cache.get("landing_accuracy_counts", 600)
+    if cached is not None:
+        return cached
+    try:
+        with db.get_session() as session:
+            total = session.scalar(select(func.count()).select_from(FigureReport)) or 0
+            fixed = session.scalar(
+                select(func.count()).select_from(FigureReport).where(FigureReport.status == "confirmed")
+            ) or 0
+        counts = {"total": total, "fixed": fixed}
+    except Exception:
+        counts = None
+    _cache.set("landing_accuracy_counts", counts)
+    return counts
+
+
 @app.get("/")
 def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", base_context(request))
+    context = base_context(request)
+    context["accuracy_counts"] = _landing_accuracy_counts()
+    return templates.TemplateResponse(request, "index.html", context)
 
 
 # A starting seed of major UK city/town postcode districts, not an

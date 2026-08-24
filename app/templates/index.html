@@ -203,6 +203,26 @@
     </a>
 </section>
 
+<section class="landing-section" id="what-people-say">
+    <span class="section-pill" data-animate>From the comments</span>
+    <h2 class="landing-heading" data-animate>What people say, unedited</h2>
+    <p class="landing-subheading" data-animate>Real comments from public Reddit threads about this site. Spelling and all.</p>
+    <div class="quote-grid">
+        <figure class="quote-card" data-animate>
+            <blockquote>&ldquo;Its really good, very easy to navigate&hellip; Rightmove exist to sell houses where as your service is just a presentation of facts.&rdquo;</blockquote>
+            <figcaption>&mdash; commenter on Reddit</figcaption>
+        </figure>
+        <figure class="quote-card" data-animate>
+            <blockquote>&ldquo;I used to build exactly this professionally&hellip; You're on the right path.&rdquo;</blockquote>
+            <figcaption>&mdash; former property-data professional, on Reddit</figcaption>
+        </figure>
+        <figure class="quote-card" data-animate>
+            <blockquote>&ldquo;It's a great concept.&rdquo;</blockquote>
+            <figcaption>&mdash; commenter on Reddit</figcaption>
+        </figure>
+    </div>
+</section>
+
 <section class="landing-section" id="whats-included">
     <span class="section-pill" data-animate>What's included</span>
     <h2 class="landing-heading" data-animate>Everything we check, in one report</h2>
@@ -291,6 +311,41 @@
     </div>
 </section>
 
+<section class="landing-section" id="compare-alternatives">
+    <span class="section-pill" data-animate>The alternative</span>
+    <h2 class="landing-heading" data-animate>What buyers do instead</h2>
+    <div class="alt-table-wrap" data-animate>
+        <table class="alt-table">
+            <thead><tr>
+                <th></th><th>Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
+            </tr></thead>
+            <tbody>
+                <tr><td>Everything on one page</td><td class="alt-no">Listings, not checks</td><td class="alt-no">12+ separate sites</td><td class="alt-us alt-yes">One report</td></tr>
+                <tr><td>Works for any address, listed or not</td><td class="alt-no">Only what&rsquo;s for sale</td><td class="alt-yes">Yes</td><td class="alt-us alt-yes">Yes</td></tr>
+                <tr><td>Every figure names its source</td><td class="alt-no">No</td><td class="alt-yes">It is the source</td><td class="alt-us alt-yes">Yes, on every card</td></tr>
+                <tr><td>Who pays for it</td><td class="alt-no">Agents&rsquo; listings</td><td>Public</td><td class="alt-us">You do, so it answers to you</td></tr>
+                <tr><td>Time per property</td><td>&mdash;</td><td class="alt-no">Hours</td><td class="alt-us alt-yes">Seconds</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="accuracy-strip" data-animate>
+    <div class="accuracy-strip-inner">
+        <div class="accuracy-strip-copy">
+            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
+            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
+        </div>
+        {% if accuracy_counts %}
+        <div class="accuracy-strip-stats">
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> were wrong, now fixed</span>
+        </div>
+        {% endif %}
+        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
+    </div>
+</section>
+
 <section class="landing-section">
     <span class="section-pill" data-animate>Questions</span>
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
@@ -349,6 +404,23 @@
         Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
     </p>
 </section>
+
+<section class="closing-cta" data-animate>
+    <h2 class="closing-cta-heading">Check your first property free</h2>
+    <p class="closing-cta-sub">Three full Premium reports when you sign up. No card required.</p>
+    <form class="search-form closing-cta-form" action="/property" method="get">
+        <div class="search-form-field">
+            <label for="cta-postcode">UK postcode</label>
+            <input type="text" id="cta-postcode" name="postcode" placeholder="e.g. M1 1AE" autocomplete="off" required>
+        </div>
+        <div class="search-form-field">
+            <label for="cta-house-number">House/flat number (optional)</label>
+            <input type="text" id="cta-house-number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+        </div>
+        <button type="submit">Search</button>
+    </form>
+</section>
+
 {% endblock %}
 
 {% block extra_scripts %}
