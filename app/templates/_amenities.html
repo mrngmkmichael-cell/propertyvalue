@@ -79,10 +79,13 @@
         {% if stations.rail.city_journeys %}
         <ul class="transport-list city-journeys">
             {% for j in stations.rail.city_journeys %}
-            <li>
-                <strong>{{ j.minutes }} min</strong> to {{ j.city }} from {{ stations.rail.name }}
-                &middot; departs {{ j.departs }}, arrives {{ j.arrives }}
-                {%- if j.operator %} ({{ j.operator }}){% endif %}.
+            <li class="city-journey">
+                <span class="city-journey-glyph" aria-hidden="true">{{ icons.icon('transport') }}</span>
+                <span class="city-journey-main">
+                    <span class="city-journey-headline"><strong>{{ j.minutes }} min</strong> to {{ j.city }}</span>
+                    <span class="city-journey-detail">from {{ stations.rail.name }} &middot; {{ j.departs }} &rarr; {{ j.arrives }}</span>
+                </span>
+                {%- if j.operator %}<span class="operator-badge">{{ j.operator }}</span>{% endif %}
             </li>
             {% endfor %}
         </ul>
