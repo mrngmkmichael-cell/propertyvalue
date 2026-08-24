@@ -49,7 +49,7 @@
                 {% endfor %}
                 {# Soft fill under the step, then the 2px step line itself. #}
                 <path d="{{ c.path }} V{{ c.plot.b }} H{{ c.plot.l }} Z" class="rate-chart-area"/>
-                <path d="{{ c.path }}" class="rate-chart-line"/>
+                <path d="{{ c.path }}" class="rate-chart-line" pathLength="1"/>
                 {# Current value, direct-labelled: the one number that matters. #}
                 <circle cx="{{ c.current.x }}" cy="{{ c.current.y }}" r="4.5" class="rate-chart-now"/>
                 <text x="{{ c.current.x - 8 }}" y="{{ c.current.y - 10 }}" class="rate-chart-nowlabel">{{ '%.2f'|format(c.current.rate) }}%</text>

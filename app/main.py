@@ -1075,6 +1075,33 @@ async def market_report(request: Request):
     return templates.TemplateResponse(request, "market_report.html", context)
 
 
+def _rounded_polyline(verts: list[tuple[float, float]], radius: float) -> str:
+    """SVG path for an axis-aligned polyline with rounded corners.
+
+    Each interior vertex becomes a quadratic curve that enters and
+    leaves `radius` away from the corner (clamped to half the shorter
+    adjacent segment, so short segments never overshoot)."""
+    import math
+    if len(verts) < 2:
+        return ""
+    d = [f"M{verts[0][0]:.1f},{verts[0][1]:.1f}"]
+    for i in range(1, len(verts) - 1):
+        (px, py), (cx, cy), (nx, ny) = verts[i - 1], verts[i], verts[i + 1]
+        in_len = math.hypot(cx - px, cy - py)
+        out_len = math.hypot(nx - cx, ny - cy)
+        r = min(radius, in_len / 2, out_len / 2)
+        if r <= 0.1 or in_len == 0 or out_len == 0:
+            d.append(f"L{cx:.1f},{cy:.1f}")
+            continue
+        ex = cx - (cx - px) / in_len * r
+        ey = cy - (cy - py) / in_len * r
+        sx = cx + (nx - cx) / out_len * r
+        sy = cy + (ny - cy) / out_len * r
+        d.append(f"L{ex:.1f},{ey:.1f} Q{cx:.1f},{cy:.1f} {sx:.1f},{sy:.1f}")
+    d.append(f"L{verts[-1][0]:.1f},{verts[-1][1]:.1f}")
+    return " ".join(d)
+
+
 def _boe_chart(history: list[dict]) -> dict | None:
     """Geometry for the base-rate step chart on the buying guide.
 
@@ -1104,18 +1131,23 @@ def _boe_chart(history: list[dict]) -> dict | None:
     def X(x): return L + (x - x0) / (x1 - x0) * (W - L - R)
     def Y(y): return T + (1 - y / ymax) * (H - T - B)
 
-    # Step path: hold each rate flat until the next change.
-    pts = []
+    # Step path: hold each rate flat until the next change. Corners are
+    # rounded with small quadratic curves so the steps read as a drawn
+    # line rather than pixel stairs - the radius is clamped to half of
+    # each segment, so the rapid-hike section of 2022 (many short
+    # steps) rounds gently instead of collapsing into a curve that
+    # would misrepresent when the rate actually moved.
+    verts: list[tuple[float, float]] = []
     for i, h in enumerate(history):
         x_from = X(xs[i])
         x_to = X(xs[i + 1]) if i + 1 < len(history) else X(x1)
         y = Y(h["rate"])
-        if i == 0:
-            pts.append(f"M{x_from:.1f},{y:.1f}")
+        if not verts:
+            verts.append((x_from, y))
         else:
-            pts.append(f"V{y:.1f}")
-        pts.append(f"H{x_to:.1f}")
-    path = " ".join(pts)
+            verts.append((x_from, y))       # bottom/top of the vertical jump
+        verts.append((x_to, y))             # end of the flat hold
+    path = _rounded_polyline(verts, radius=5.0)
 
     # Hit zones for hover, one per holding period.
     steps = []

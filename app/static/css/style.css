@@ -4460,7 +4460,21 @@ html { scroll-behavior: smooth; }
 .rate-chart-xlabel { text-anchor: middle; }
 .rate-chart-nowlabel { fill: var(--ink); font-weight: 500; text-anchor: end; }
 .rate-chart-area { fill: var(--accent); fill-opacity: 0.07; }
-.rate-chart-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.rate-chart-line {
+    fill: none; stroke: var(--accent); stroke-width: 2.25;
+    stroke-linejoin: round; stroke-linecap: round;
+}
+/* Draw the rate line in when the chart scrolls into view. pathLength=1
+   on the path makes the dash maths unit-length regardless of geometry. */
+.rate-chart-line { stroke-dasharray: 1; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+    [data-animate].in-view .rate-chart-line { animation: rate-draw 1.4s cubic-bezier(0.4, 0, 0.2, 1) both; }
+    [data-animate].in-view .rate-chart-area { animation: rate-fade 0.9s ease 0.7s both; }
+    [data-animate].in-view .rate-chart-now,
+    [data-animate].in-view .rate-chart-nowlabel { animation: rate-fade 0.5s ease 1.2s both; }
+}
+@keyframes rate-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes rate-fade { from { opacity: 0; } to { opacity: 1; } }
 .rate-chart-now { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
 .rate-chart-hit { fill: transparent; cursor: crosshair; }
 .rate-chart-cursor-line { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 3 3; }
