@@ -18,12 +18,12 @@
 <p class="section-sub"><a href="/">&larr; Back to search</a></p>
 
 {% else %}
-<h1>Every check, in full</h1>
-<p class="section-sub">
-    Free access already shows a headline verdict on every check. Premium replaces "upgrade to
-    see more" with the real numbers: valuation estimates, cost and affordability calculators,
-    rental analysis, exact flood/subsidence/radon/mining/air quality figures, full school
-    catchment areas with detailed Ofsted judgements, and complete local area demographics.
+<h1>One wrong house costs more than a lifetime of reports</h1>
+<p class="section-sub" style="max-width: 46rem;">
+    Professional property searches are priced per property: a flood report is around &pound;25,
+    an environmental search &pound;50&ndash;&pound;110, a coal mining search &pound;40. Premium is
+    &pound;9.99 a month for <strong>every check, in full, on unlimited properties</strong>, so you can
+    afford to check the ones you walk away from too.
 </p>
 
 {% if checkout_cancelled %}
@@ -87,6 +87,26 @@
     </div>
     {% endfor %}
 </div>
+<p class="pricing-reassure">Stripe checkout &middot; Cancel any time in two clicks &middot; The free plan needs no card at all</p>
+
+<div class="alt-table-wrap" style="margin-top: 2.5rem;">
+    <table class="alt-table">
+        <thead><tr><th></th><th>Free account</th><th class="alt-us">Premium</th></tr></thead>
+        <tbody>
+            <tr><td>Postcode search &amp; headline verdicts</td><td class="alt-yes">Always free</td><td class="alt-us alt-yes">Always free</td></tr>
+            <tr><td>Full reports, every check unlocked</td><td>Your first 3 properties</td><td class="alt-us alt-yes">Unlimited</td></tr>
+            <tr><td>Questions to ask your solicitor &amp; surveyor</td><td>What triggered them</td><td class="alt-us alt-yes">The full list, with costs</td></tr>
+            <tr><td>PDF report to keep or send</td><td class="alt-no">&mdash;</td><td class="alt-us alt-yes">Every property</td></tr>
+            <tr><td>Share a full report with anyone</td><td>On unlocked properties</td><td class="alt-us alt-yes">Every property</td></tr>
+            <tr><td>My properties: notes, compare, change alerts</td><td class="alt-yes">Included</td><td class="alt-us alt-yes">Included</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<figure class="quote-card" style="max-width: 34rem; margin: 2.5rem 0 0;">
+    <blockquote>&ldquo;Its really good, very easy to navigate&hellip; Rightmove exist to sell houses where as your service is just a presentation of facts.&rdquo;</blockquote>
+    <figcaption>&mdash; commenter on Reddit, unedited</figcaption>
+</figure>
 {% endif %}
 
 {% set premium_preview = [
@@ -121,6 +141,13 @@
         "cards": [
             {"icon": "schools", "title": "School Catchment Areas", "text": "Real admission-distance data, not just proximity"},
             {"icon": "transport", "title": "Getting Around", "text": "Nearest stations, live train times to major cities"},
+        ],
+    },
+    {
+        "heading": "Decision Tools",
+        "cards": [
+            {"icon": "details", "title": "Buyer Questions", "text": "What to ask the seller, solicitor and surveyor, built from this property's own findings"},
+            {"icon": "land_registry", "title": "Full PDF Report", "text": "The whole report as a document to keep, print or send"},
         ],
     },
     {

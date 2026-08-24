@@ -5122,3 +5122,9 @@ main:focus { outline: none; }
 .closing-cta-heading { font-size: var(--text-3xl); margin: 0 0 0.4rem; letter-spacing: -0.02em; }
 .closing-cta-sub { color: var(--ink-soft); margin: 0 0 1.5rem; }
 .closing-cta-form { margin: 0 auto; max-width: 40rem; text-align: left; }
+
+/* ---- Pricing page ---- */
+.pricing-reassure {
+    font-family: var(--font-mono); font-size: var(--text-xs);
+    letter-spacing: 0.03em; color: var(--ink-faint); margin: 1rem 0 0;
+}
