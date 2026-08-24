@@ -5208,3 +5208,19 @@ main:focus { outline: none; }
 @media (max-width: 700px) {
     input:not([type="hidden"]), select, textarea { font-size: max(16px, 1em) !important; }
 }
+
+/* ---- Postcode autocomplete ---- */
+.pc-suggest {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 60;
+    margin: 0.25rem 0 0; padding: 0.3rem; list-style: none;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: 0 12px 32px -12px rgba(31, 42, 90, 0.3);
+    max-height: 16rem; overflow-y: auto;
+}
+.pc-suggest li {
+    padding: 0.45rem 0.7rem; border-radius: 6px;
+    font-family: var(--font-mono); font-size: var(--text-sm); color: var(--ink);
+    cursor: pointer;
+}
+.pc-suggest li:hover, .pc-suggest li.active { background: var(--accent-soft); color: var(--accent); }

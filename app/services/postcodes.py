@@ -74,3 +74,22 @@ async def outcode_centroid(outcode: str) -> dict | None:
     response.raise_for_status()
     result = response.json()["result"]
     return {"latitude": result["latitude"], "longitude": result["longitude"]}
+
+
+async def autocomplete(partial: str, limit: int = 8) -> list[str]:
+    """Postcode suggestions for a partial entry, from postcodes.io's
+    autocomplete endpoint. Returns [] on any failure - the search box
+    works fine without suggestions."""
+    partial = partial.strip().upper()
+    if len(partial) < 2 or len(partial) > 8:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(
+                f"{API_BASE}/postcodes/{quote(partial)}/autocomplete",
+                params={"limit": limit},
+            )
+            response.raise_for_status()
+            return response.json().get("result") or []
+    except (httpx.HTTPError, ValueError):
+        return []

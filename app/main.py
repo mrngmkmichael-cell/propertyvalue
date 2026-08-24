@@ -36,6 +36,7 @@ from app.services import (
     solicitor_questions, indexnow,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
+from app.services import postcodes
 from app.services.postcodes import any_postcode_in_outcode, lookup_postcode, nearby_postcodes, outcode_centroid
 
 load_dotenv()
@@ -3859,6 +3860,22 @@ def login_submit(
 def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/api/postcode-suggest")
+async def postcode_suggest(q: str = ""):
+    """Autocomplete for the postcode search boxes. Cached per prefix
+    for a day, so the many keystrokes of launch-day traffic collapse
+    into few upstream postcodes.io calls."""
+    q = q.strip().upper()
+    if len(q) < 2:
+        return JSONResponse({"suggestions": []})
+    cache_key = ("pc_suggest", q)
+    cached = _cache.get(cache_key, 86400)
+    if cached is None:
+        cached = await postcodes.autocomplete(q)
+        _cache.set(cache_key, cached)
+    return JSONResponse({"suggestions": cached})
 
 
 @app.get("/api/report-ready")

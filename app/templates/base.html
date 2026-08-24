@@ -252,6 +252,63 @@
         })();
 
         (function () {
+            /* Postcode autocomplete on every postcode search box.
+               Suggestions come from /api/postcode-suggest (cached
+               server-side); the box works unchanged if the fetch
+               fails, so this can only add, never break. */
+            document.querySelectorAll('input[name="postcode"]').forEach(function (input) {
+                if (input.closest('form') === null) return;
+                const field = input.parentElement;
+                field.style.position = 'relative';
+                const list = document.createElement('ul');
+                list.className = 'pc-suggest';
+                list.hidden = true;
+                field.appendChild(list);
+                let items = [], active = -1, controller = null, timer = null;
+
+                function close() { list.hidden = true; active = -1; }
+                function render() {
+                    list.innerHTML = '';
+                    items.forEach(function (pc, i) {
+                        const li = document.createElement('li');
+                        li.textContent = pc;
+                        li.className = i === active ? 'active' : '';
+                        li.addEventListener('mousedown', function (e) {
+                            e.preventDefault();
+                            input.value = pc;
+                            close();
+                            input.focus();
+                        });
+                        list.appendChild(li);
+                    });
+                    list.hidden = items.length === 0;
+                }
+                input.setAttribute('autocomplete', 'off');
+                input.addEventListener('input', function () {
+                    clearTimeout(timer);
+                    const q = input.value.trim();
+                    if (q.length < 2) { close(); return; }
+                    timer = setTimeout(function () {
+                        if (controller) controller.abort();
+                        controller = new AbortController();
+                        fetch('/api/postcode-suggest?q=' + encodeURIComponent(q), { signal: controller.signal })
+                            .then(function (r) { return r.json(); })
+                            .then(function (d) { items = d.suggestions || []; active = -1; render(); })
+                            .catch(function () {});
+                    }, 180);
+                });
+                input.addEventListener('keydown', function (e) {
+                    if (list.hidden) return;
+                    if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % items.length; render(); }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % items.length; render(); }
+                    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); input.value = items[active]; close(); }
+                    else if (e.key === 'Escape') { close(); }
+                });
+                input.addEventListener('blur', function () { setTimeout(close, 150); });
+            });
+        })();
+
+        (function () {
             /* Share panel: stays a button; the link row opens on click,
                and opens itself right after the link was first created
                (the ?shared=1 redirect). */
