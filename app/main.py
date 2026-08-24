@@ -14,7 +14,7 @@ from urllib.parse import quote, urlencode
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.exception_handlers import http_exception_handler as default_http_exception_handler
@@ -789,11 +789,30 @@ async def _indexnow_ping_if_changed():
         logging.getLogger(__name__).info("IndexNow: submitted %d URLs", len(urls))
 
 
+# The postcodes a launch-day visitor predictably types first: the four
+# the hero demo cycles through, plus the report-preview example. Warmed
+# at startup so the first wave hits a hot cache instead of racing 38
+# upstream APIs. One postcode at a time, ordinary cache path, so a
+# deploy costs upstreams no more than five ordinary page views.
+_PREWARM_POSTCODES = ["SW1A 1AA", "M1 1AE", "LS1 4DY", "B1 1BD"]
+
+
+async def _prewarm_reports():
+    for pc in _PREWARM_POSTCODES:
+        try:
+            location = await lookup_postcode(pc)
+            if location:
+                await _full_property_gather(location, "", premium_unlocked=False)
+        except Exception:
+            continue
+
+
 @app.on_event("startup")
 async def on_startup():
     db.init_db()
     if IS_PRODUCTION:
         asyncio.create_task(_indexnow_ping_if_changed())
+        asyncio.create_task(_prewarm_reports())
 
 
 def base_context(request: Request) -> dict:
@@ -1246,9 +1265,34 @@ async def buying_guide(request: Request):
     return templates.TemplateResponse(request, "buying_guide.html", context)
 
 
+ANON_PAGE_CACHE_TTL_S = 600
+
+
+def _anon_cacheable(request: Request) -> bool:
+    """A report view whose HTML is identical for every viewer: no
+    account (nothing personal on the page), no share token, and no
+    extra query params (report=thanks etc. change the notices)."""
+    if set(request.query_params.keys()) - {"postcode", "house_number"}:
+        return False
+    return auth.current_user(request) is None
+
+
 @app.get("/property")
 async def property_search(request: Request, postcode: str = "", house_number: str = ""):
-    return await _render_property(request, postcode, house_number)
+    # Launch-day fast path: anonymous views of the same address reuse
+    # the finished HTML instead of re-rendering the 2,000-line template
+    # (about 0.6s of CPU per view on one worker). Logged-in views are
+    # personalised and always render fresh.
+    cacheable = _anon_cacheable(request)
+    if cacheable:
+        key = ("anon_property_page", *auth.property_key(postcode, house_number))
+        cached_body = _cache.get(key, ANON_PAGE_CACHE_TTL_S)
+        if cached_body is not None:
+            return HTMLResponse(cached_body)
+    response = await _render_property(request, postcode, house_number)
+    if cacheable and getattr(response, "status_code", None) == 200 and getattr(response, "body", None):
+        _cache.set(("anon_property_page", *auth.property_key(postcode, house_number)), response.body.decode("utf-8"))
+    return response
 
 
 async def _render_property(request: Request, postcode: str, house_number: str, _share=None):
@@ -1465,6 +1509,28 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
     })
 
 
+_inflight_locks: dict = {}
+
+
+async def _deduped(cache_key, ttl_s: float, factory):
+    """Cache read with stampede protection: when many requests miss the
+    same key at once (a launch-day burst on one postcode), only the
+    first runs the expensive factory; the rest wait on a per-key lock
+    and then read the freshly cached value. Locks are dropped after
+    use so the dict cannot grow with the key space."""
+    value = _cache.get(cache_key, ttl_s)
+    if value is not None:
+        return value
+    lock = _inflight_locks.setdefault(cache_key, asyncio.Lock())
+    async with lock:
+        value = _cache.get(cache_key, ttl_s)
+        if value is None:
+            value = await factory()
+            _cache.set(cache_key, value)
+    _inflight_locks.pop(cache_key, None)
+    return value
+
+
 async def _full_property_gather(
     location: dict, house_number: str, premium_unlocked: bool, wait_for_amenities: bool = False
 ) -> dict:
@@ -1514,10 +1580,10 @@ async def _full_property_gather(
     # reasonable trade for that - none of this data moves fast enough
     # for a user to notice.
     gather_cache_key = ("property_search_gather", canonical, house_number)
-    gather_results = _cache.get(gather_cache_key, PROPERTY_SEARCH_CACHE_TTL_S)
-    if gather_results is None:
+
+    async def _run_gather():
         _last_gather_timings.clear()
-        gather_results = await asyncio.gather(
+        gather_results_inner = await asyncio.gather(
             _timed("sold-prices-for-postcode", sold_prices_for_postcode(canonical)),
             _timed("-epc-flow", _epc_flow(canonical, house_number, context["epc_configured"])),
             _timed("flood-warnings-near", flood.warnings_near(lat, lon)),
@@ -1558,7 +1624,9 @@ async def _full_property_gather(
             _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
             return_exceptions=True,
         )
-        _cache.set(gather_cache_key, gather_results)
+        return gather_results_inner
+
+    gather_results = await _deduped(gather_cache_key, PROPERTY_SEARCH_CACHE_TTL_S, _run_gather)
 
     (
         tx_result, epc_flow_result, flood_result, crime_result, district_crime_result,
