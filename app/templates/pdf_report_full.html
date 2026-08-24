@@ -3,15 +3,25 @@
 <head>
 <meta charset="UTF-8">
 <style>
-    @page { size: A4; margin: 2cm; }
+    @page {
+        size: A4; margin: 1.7cm 1.7cm 2.3cm;
+        @frame footer_frame { -pdf-frame-content: pdf-running-footer; left: 1.7cm; width: 17.6cm; top: 28cm; height: 0.9cm; }
+    }
+    #pdf-running-footer { font-size: 7.5pt; color: #98a2b3; border-top: 0.75px solid #eaecf0; padding-top: 4pt; }
     body { font-family: Helvetica, Arial, sans-serif; font-size: 9.5pt; color: #171d2b; }
-    h1 { font-size: 22pt; margin: 0 0 4pt; color: #171d2b; }
+    .masthead { width: 100%; margin: 0 0 18pt; border-collapse: collapse; }
+    .masthead td { background-color: #1f2a5a; padding: 10pt 14pt; border: none; }
+    .masthead .brand { color: #ffffff; font-size: 13pt; font-weight: 800; }
+    .masthead .brand-sub { color: #aab4d8; font-size: 7pt; letter-spacing: 1.2pt; text-transform: uppercase; }
+    .masthead .doc-type { color: #aab4d8; font-size: 8.5pt; text-align: right; text-transform: uppercase; letter-spacing: 0.8pt; }
+    h1 { font-size: 24pt; margin: 0 0 4pt; color: #171d2b; letter-spacing: -0.5pt; }
+    .meta-row { font-size: 9pt; color: #667085; margin: 0 0 2pt; }
     .subtitle { font-size: 10pt; color: #667085; margin: 0 0 4pt; }
     .subtitle2 { font-size: 9pt; color: #98a2b3; margin: 0 0 16pt; }
     h3 { font-size: 10.5pt; margin: 0 0 4pt; color: #344054; page-break-after: avoid; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; page-break-inside: avoid; }
-    td, th { padding: 5pt 6pt; font-size: 9.5pt; vertical-align: middle; text-align: left; }
-    th { color: #98a2b3; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #eaecf0; padding-bottom: 6pt; }
+    td, th { padding: 4pt 6pt; font-size: 9.5pt; vertical-align: middle; text-align: left; }
+    th { color: #98a2b3; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4pt; border-bottom: 1px solid #eaecf0; padding-bottom: 6pt; }
     td.label { width: 44%; color: #667085; }
     td.value { font-weight: 700; color: #171d2b; }
     td.num { text-align: right; }
@@ -40,10 +50,10 @@
 
     /* Badges: colored pill on tinted background, used for risk/status words */
     .badge { display: inline-block; padding: 2pt 8pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 700; white-space: nowrap; }
-    .badge-good { background: #ecfdf5; color: #059669; }
-    .badge-warn { background: #fffbeb; color: #d97706; }
-    .badge-bad { background: #fef2f2; color: #dc2626; }
-    .badge-neutral { background: #f2f4f7; color: #667085; }
+    .badge-good { background-color: #d6f5e8; color: #04785a; }
+    .badge-warn { background-color: #fdf0d2; color: #92610a; }
+    .badge-bad { background-color: #fbdcdc; color: #b91c1c; }
+    .badge-neutral { background-color: #eceef2; color: #566072; }
 
     /* Solid pills: white text on solid color, used for EPC/Ofsted letter grades */
     .pill { display: inline-block; min-width: 1.3em; padding: 2pt 8pt; border-radius: 10pt; color: #fff; font-weight: 700; font-size: 8.5pt; text-align: center; }
@@ -53,9 +63,12 @@
        error/warning banner rather than a branded summary card; the grade
        word itself still gets its own small colored pill so the signal
        isn't lost, it's just not shouting from the whole box. */
-    .score-box { background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10pt; padding: 14pt 16pt; margin-bottom: 8pt; }
-    .score-value { font-size: 30pt; font-weight: 800; color: #3b5bfd; }
-    .score-max { font-size: 12pt; color: #98a2b3; font-weight: 400; }
+    .score-box { width: 100%; border-collapse: separate; margin-bottom: 10pt; }
+    .score-box td { border: none; vertical-align: middle; }
+    .score-box td.score-cell { background-color: #1f2a5a; border-radius: 10pt; width: 92pt; text-align: center; padding: 12pt 8pt; }
+    .score-box td.verdict-cell { padding: 0 0 0 14pt; }
+    .score-value { font-size: 30pt; font-weight: 800; color: #ffffff; }
+    .score-max { font-size: 12pt; color: #aab4d8; font-weight: 400; }
     .score-grade-pill { display: inline-block; padding: 3pt 10pt; border-radius: 10pt; font-size: 10pt; font-weight: 700; }
     .score-verdict { font-size: 10pt; color: #344054; margin: 6pt 0 0; line-height: 1.4; }
     .grade-pill-excellent { color: #059669; background: #d1fae5; }
@@ -63,12 +76,13 @@
     .grade-pill-fair { color: #d97706; background: #fef3c7; }
     .grade-pill-below-average, .grade-pill-poor { color: #dc2626; background: #fee2e2; }
 
-    .chip-row-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.04em; color: #98a2b3; margin: 8pt 0 3pt; }
-    .chip-table { width: auto; margin-bottom: 4pt; }
-    .chip-table td { padding: 2pt 0; border: none; }
-    .chip { display: inline-block; padding: 3pt 9pt; border-radius: 10pt; font-size: 8.5pt; font-weight: 600; }
-    .chip-good { background: #ecfdf5; color: #059669; }
-    .chip-warn { background: #fffbeb; color: #b45309; }
+    .chip-row-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4pt; color: #98a2b3; margin: 8pt 0 3pt; }
+    .chip-table { width: 100%; margin-bottom: 8pt; border-collapse: separate; border-radius: 8pt; }
+    .chip-table td { border: none; padding: 5pt 12pt; font-size: 9pt; font-weight: 600; }
+    table.chips-good { background-color: #eefaf4; border: 0.75px solid #cceee0; }
+    table.chips-warn { background-color: #fdf7e8; border: 0.75px solid #f0e2b8; }
+    td.chip-good { color: #04785a; }
+    td.chip-warn { color: #92610a; }
 
     .footer { margin-top: 20pt; padding-top: 10pt; border-top: 1px solid #eaecf0; font-size: 7.5pt; color: #98a2b3; }
 </style>
@@ -91,28 +105,32 @@
 </td></tr></table>
 {% endmacro %}
 
+<table class="masthead"><tr>
+    <td><span class="brand">UKPropertyInsight</span><br/><span class="brand-sub">UK Property Intelligence</span></td>
+    <td class="doc-type">Premium report<br/>{{ generated_date }}</td>
+</tr></table>
+
 <h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
-<p class="subtitle">Full property due-diligence report, generated {{ generated_date }} by UKPropertyInsight</p>
-<p class="subtitle2">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} . Premium report</p>
+<p class="meta-row">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} &middot; Full due-diligence report &middot; every figure from a named official source</p>
+<p class="subtitle2">&nbsp;</p>
 
 {% if overview %}
-<div class="score-box">
-    <table style="width:auto; margin-bottom:6pt;"><tr>
-        <td style="border:none; padding:0;"><span class="score-value">{{ overview.score }}</span><span class="score-max">/100</span></td>
-        <td style="border:none; padding:0 0 0 8pt;"><span class="score-grade-pill grade-pill-{{ overview.grade | lower | replace(' ', '-') }}">{{ overview.grade }}</span></td>
-    </tr></table>
-    <p class="score-verdict">{{ overview.verdict }}</p>
-</div>
+<table class="score-box"><tr>
+    <td class="score-cell"><span class="score-value">{{ overview.score }}</span><span class="score-max">/100</span></td>
+    <td class="verdict-cell">
+        <p class="score-verdict">{{ overview.verdict }}</p>
+    </td>
+</tr></table>
 {% if overview.positives %}
 <p class="chip-row-label">Working in its favour</p>
-<table class="chip-table">
-    {% for p in overview.positives %}<tr><td><span class="chip chip-good">{{ p }}</span></td></tr>{% endfor %}
+<table class="chip-table chips-good">
+    {% for p in overview.positives %}<tr><td class="chip-good">+ {{ p }}</td></tr>{% endfor %}
 </table>
 {% endif %}
 {% if overview.concerns %}
 <p class="chip-row-label">Worth checking further</p>
-<table class="chip-table">
-    {% for c in overview.concerns %}<tr><td><span class="chip chip-warn">{{ c }}</span></td></tr>{% endfor %}
+<table class="chip-table chips-warn">
+    {% for c in overview.concerns %}<tr><td class="chip-warn">! {{ c }}</td></tr>{% endfor %}
 </table>
 {% endif %}
 {% endif %}
@@ -126,7 +144,7 @@
         {% endif %}
         {% if price_position is defined and price_position_area %}
         {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
-        <tr><td class="label">Versus {{ price_position_area.name }} average ({{ price_position_area.average_price | gbp }})</td>
+        <tr><td class="label">{{ price_position_reference | gbp }} here versus the {{ price_position_area.name }} average of {{ price_position_area.average_price | gbp }}</td>
             <td class="value">{{ "%.0f"|format(diff_pct | abs) }}% {{ "above" if diff_pct >= 0 else "below" }}</td></tr>
         {% endif %}
     </table>
@@ -383,5 +401,6 @@
     or solicitor's searches. Full live report: ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}
 </div>
 
+<div id="pdf-running-footer">UKPropertyInsight &middot; ukpropertyinsight.co.uk &middot; Data under the Open Government Licence v3.0 &middot; Page <pdf:pagenumber/> of <pdf:pagecount/></div>
 </body>
 </html>

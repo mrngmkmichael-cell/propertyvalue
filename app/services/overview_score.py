@@ -173,11 +173,11 @@ def _verdict_sentence(grade: str, concerns: list[str], positives: list[str]) -> 
     if not concerns and not positives:
         return "No major signals either way from the data available for this property."
     if not concerns:
-        return f"{grade} overall — " + "; ".join(positives) + "."
+        return f"{grade} overall: " + "; ".join(positives) + "."
     concern_text = f"{len(concerns)} thing{'s' if len(concerns) != 1 else ''} worth checking ({', '.join(concern_labels)})"
     if not positives:
-        return f"{grade} overall — {concern_text}."
-    return f"{grade} overall — {'; '.join(positives)}, balanced against {concern_text}."
+        return f"{grade} overall: {concern_text}."
+    return f"{grade} overall: {'; '.join(positives)}, balanced against {concern_text}."
 
 
 def compute(context: dict, premium_unlocked: bool = False) -> dict:
