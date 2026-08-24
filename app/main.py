@@ -960,7 +960,6 @@ AREA_GUIDE_SEED_OUTCODES = [
 ]
 
 
-@app.get("/sitemap.xml")
 def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """(url, priority) for every page the sitemap advertises. Shared by
     the sitemap route and the IndexNow pinger so they can never drift."""
@@ -972,6 +971,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     return entries
 
 
+@app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
     # lastmod is the deploy's own timestamp: a guide's data changes on
