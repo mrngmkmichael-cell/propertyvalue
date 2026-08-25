@@ -5285,15 +5285,20 @@ main:focus { outline: none; }
    light theme's green and red go muddy against near-black. */
 body.theme-dark {
     --bg: #050505;
-    --surface: #0e0e0e;
-    --surface-2: #161616;
+    /* The first pass had cards at #0e0e0e on a #050505 page, which is
+       nine points of luminance: on a phone in daylight the cards did not
+       separate from the page at all. A card is now four times the
+       luminance of the ground it sits on, which is what makes the grid
+       read as cards rather than as text on black. */
+    --surface: #121212;
+    --surface-2: #1b1b1b;
 
     --ink: #ffffff;
-    --ink-soft: #a9a49c;
-    --ink-faint: #857f75;
+    --ink-soft: #b3aea6;
+    --ink-faint: #8d8779;
 
-    --border: #232323;
-    --border-strong: #3a3a3a;
+    --border: #2e2e2e;
+    --border-strong: #454545;
 
     /* Gold replaces the navy. --accent-ink is near-black on purpose:
        white on gold measures 2.2:1 and is unreadable. Black on gold is
@@ -5405,8 +5410,18 @@ body.theme-dark .dashboard-card {
     border-color: var(--border);
 }
 
+/* A hairline of light along the top edge. On paper a card is separated
+   by a shadow underneath it; on black there is nothing for a shadow to
+   fall on, so the light has to come from above instead. */
+body.theme-dark .dashboard-card,
+body.theme-dark .report-section,
+body.theme-dark .report-head {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
 body.theme-dark .dashboard-card:hover {
     border-color: rgba(212, 169, 95, 0.55);
+    box-shadow: inset 0 1px 0 rgba(212, 169, 95, 0.25);
 }
 
 /* A locked card has to read as quieter than an open one. On paper a
@@ -5429,23 +5444,54 @@ body.theme-dark .report-tab.active {
 }
 
 /* --- Card icons -------------------------------------------------------
-   In the light theme each of the 32 categories has its own pastel chip.
-   Thirty-two pastels on black is a fruit salad, and it is exactly the
-   look this redesign is getting away from, so the dark theme drops the
-   per-category hue and keeps one restrained chip. Category is already
-   named in the heading above the card and in the card title, so no
-   information is lost with the colour. */
+   The light theme gives each of the 32 categories its own pastel chip,
+   and that colour coding is how you find a card in a grid this size.
+   The first pass dropped it for one grey chip, which made the grid
+   uniform and hard to scan.
+
+   So the hue stays and only the lighting changes: a pastel background
+   is wrong on black, but the same hue at 13% alpha behind a re-lit
+   glyph carries the identity without the glare. Every glyph below was
+   solved by keeping the light theme's hue and saturation and raising
+   lightness until it cleared 4.5:1 on the card - see the working in
+   scratchpad/solve_dark.py. Nine of them already passed and were left
+   exactly as they are in the light theme. */
 body.theme-dark .dashboard-card-icon {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--ink-soft);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-body.theme-dark .dashboard-card:hover .dashboard-card-icon {
-    background: rgba(212, 169, 95, 0.14);
-    color: var(--accent);
-    border-color: rgba(212, 169, 95, 0.3);
-}
+body.theme-dark .icon-market        { background: rgba(64, 119, 238, 0.13); color: #4077ee; }
+body.theme-dark .icon-energy        { background: rgba(217, 119, 6, 0.13); color: #d97706; }
+body.theme-dark .icon-flood         { background: rgba(8, 145, 178, 0.13); color: #0891b2; }
+body.theme-dark .icon-crime         { background: rgba(229, 56, 94, 0.13); color: #e5385e; }
+body.theme-dark .icon-schools       { background: rgba(147, 93, 240, 0.13); color: #935df0; }
+body.theme-dark .icon-prosperity    { background: rgba(5, 150, 105, 0.13); color: #059669; }
+body.theme-dark .icon-amenities     { background: rgba(234, 88, 12, 0.13); color: #ea580c; }
+body.theme-dark .icon-transport     { background: rgba(115, 108, 234, 0.13); color: #736cea; }
+body.theme-dark .icon-income        { background: rgba(13, 148, 136, 0.13); color: #0d9488; }
+body.theme-dark .icon-deprivation   { background: rgba(222, 59, 131, 0.13); color: #de3b83; }
+body.theme-dark .icon-occupation    { background: rgba(106, 126, 154, 0.13); color: #6a7e9a; }
+body.theme-dark .icon-qualification { background: rgba(164, 84, 237, 0.13); color: #a454ed; }
+body.theme-dark .icon-noise         { background: rgba(202, 138, 4, 0.13); color: #ca8a04; }
+body.theme-dark .icon-broadband     { background: rgba(2, 132, 199, 0.13); color: #0284c7; }
+body.theme-dark .icon-mobile        { background: rgba(206, 46, 221, 0.13); color: #ce2edd; }
+body.theme-dark .icon-radon         { background: rgba(101, 163, 13, 0.13); color: #65a30d; }
+body.theme-dark .icon-heritage      { background: rgba(131, 123, 117, 0.13); color: #837b75; }
+body.theme-dark .icon-valuation     { background: rgba(178, 109, 8, 0.13); color: #b26d08; }
+body.theme-dark .icon-rental        { background: rgba(16, 135, 167, 0.13); color: #1087a7; }
+body.theme-dark .icon-age           { background: rgba(118, 111, 217, 0.13); color: #766fd9; }
+body.theme-dark .icon-housing       { background: rgba(221, 74, 14, 0.13); color: #dd4a0e; }
+body.theme-dark .icon-ethnicity     { background: rgba(18, 140, 130, 0.13); color: #128c82; }
+body.theme-dark .icon-wellbeing     { background: rgba(229, 49, 123, 0.13); color: #e5317b; }
+body.theme-dark .icon-extension     { background: rgba(4, 131, 200, 0.13); color: #0483c8; }
+body.theme-dark .icon-planning      { background: rgba(118, 112, 213, 0.13); color: #7670d5; }
+body.theme-dark .icon-environmental { background: rgba(5, 142, 103, 0.13); color: #058e67; }
+body.theme-dark .icon-orientation   { background: rgba(178, 109, 8, 0.13); color: #b26d08; }
+body.theme-dark .icon-air-quality   { background: rgba(77, 118, 231, 0.13); color: #4d76e7; }
+body.theme-dark .icon-landfill      { background: rgba(226, 65, 65, 0.13); color: #e24141; }
+body.theme-dark .icon-statistics    { background: rgba(84, 118, 226, 0.13); color: #5476e2; }
+body.theme-dark .icon-geology       { background: rgba(221, 74, 26, 0.13); color: #dd4a1a; }
+body.theme-dark .icon-sewage        { background: rgba(129, 124, 116, 0.13); color: #817c74; }
 
 /* --- Things that need attention ---------------------------------------
    Amber-on-cream does not survive the swap: #92400e text and #fef3c7
@@ -5457,11 +5503,6 @@ body.theme-dark .dashboard-card.status-attn {
     background: linear-gradient(180deg, rgba(212, 169, 95, 0.07), transparent), var(--surface);
 }
 body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--accent); }
-body.theme-dark .dashboard-card.status-attn .dashboard-card-icon {
-    background: rgba(212, 169, 95, 0.14);
-    color: var(--accent);
-    border-color: rgba(212, 169, 95, 0.28);
-}
 
 body.theme-dark .check-this-tag,
 body.theme-dark .watchlist-change-chip,
