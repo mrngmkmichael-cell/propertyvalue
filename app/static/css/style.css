@@ -71,6 +71,7 @@
 
 :root {
     --font-sans: 'Instrument Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-display: var(--font-sans);
     /* Labels and figures. See .kicker / .section-pill / .stat-label. */
     --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -5244,3 +5245,301 @@ main:focus { outline: none; }
 .area-chip:hover strong { color: var(--accent); }
 .area-chip-all { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: var(--weight-semi); }
 .area-chip-all:hover { background: var(--accent-hover); color: var(--accent-ink); }
+
+/* ========================================================================
+   DARK REPORT THEME
+   ------------------------------------------------------------------------
+   Almost every rule in this file reads its colour from a token, so the
+   theme is mostly a token swap rather than a second stylesheet. What
+   follows the token block is the exception list: rules that hardcoded a
+   light hex back when there was only one theme.
+
+   Applied by the route as body.theme-dark. Currently opt-in on a
+   property report via ?theme=dark.
+   ==================================================================== */
+
+/* Bebas Neue, self-hosted like every other face here: no third-party
+   origin. One weight, because it only has one - a condensed caps face
+   that sets large without needing bold. */
+@font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/bebas-neue-latin-normal.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Bebas Neue';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('/static/fonts/bebas-neue-latin-ext-normal.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* --- Tokens ------------------------------------------------------------
+   Every text colour below was measured against all three surfaces and
+   clears 4.5:1; the worst case is --ink-faint on --surface-2 at 4.56:1.
+   The semantic three keep their meaning but are lifted, because the
+   light theme's green and red go muddy against near-black. */
+body.theme-dark {
+    --bg: #050505;
+    --surface: #0e0e0e;
+    --surface-2: #161616;
+
+    --ink: #ffffff;
+    --ink-soft: #a9a49c;
+    --ink-faint: #857f75;
+
+    --border: #232323;
+    --border-strong: #3a3a3a;
+
+    /* Gold replaces the navy. --accent-ink is near-black on purpose:
+       white on gold measures 2.2:1 and is unreadable. Black on gold is
+       9.36:1. */
+    --accent: #d4a95f;
+    --accent-hover: #e7c98b;
+    --accent-soft: rgba(212, 169, 95, 0.10);
+    --accent-ink: #050505;
+
+    --cta-orange: #d4a95f;
+
+    --good: #7fbf9a;
+    --warn: #d4a95f;
+    --bad: #e08b7f;
+    --good-bg: rgba(127, 191, 154, 0.10);
+    --warn-bg: rgba(212, 169, 95, 0.10);
+    --bad-bg: rgba(224, 139, 127, 0.10);
+
+    /* A drop shadow is invisible on near-black, so separation comes from
+       the hairline borders instead. */
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.7);
+
+    --font-display: 'Bebas Neue', 'Instrument Sans', sans-serif;
+
+    /* Tells the browser to draw its own furniture dark: scrollbars, the
+       modal's scroll track, select menus, date pickers. Without it a
+       white scrollbar sits down the side of every dialog. */
+    color-scheme: dark;
+
+    background: var(--bg);
+    color: var(--ink);
+}
+
+/* --- Display type ---------------------------------------------------- */
+body.theme-dark h1,
+body.theme-dark .overview-score-value {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0.015em;
+}
+
+body.theme-dark .report-head h1 {
+    font-size: clamp(2.6rem, 7vw, 4.2rem);
+    line-height: 0.92;
+    margin: 0.1rem 0 0;
+}
+
+body.theme-dark .kicker,
+body.theme-dark .dashboard-category-heading,
+body.theme-dark .subsection-heading {
+    color: var(--accent);
+    letter-spacing: 0.22em;
+}
+
+/* --- The head and the score ------------------------------------------
+   The score is the one hero mark on the page, so it gets the gold and
+   the display face. Grade stays legible on its own: the pill carries
+   the semantic colour and it also spells the word, so meaning never
+   rests on colour alone. */
+body.theme-dark .report-head {
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+body.theme-dark .overview-score-card,
+body.theme-dark .overview-grade-excellent,
+body.theme-dark .overview-grade-good,
+body.theme-dark .overview-grade-fair,
+body.theme-dark .overview-grade-below-average,
+body.theme-dark .overview-grade-poor {
+    background:
+        linear-gradient(135deg, rgba(212, 169, 95, 0.08), rgba(212, 169, 95, 0) 55%),
+        var(--surface-2);
+    border-color: rgba(212, 169, 95, 0.3);
+    gap: 1.4rem;
+    padding: 1.35rem 1.5rem;
+}
+
+body.theme-dark .overview-score-value,
+body.theme-dark .overview-grade-excellent .overview-score-value,
+body.theme-dark .overview-grade-good .overview-score-value,
+body.theme-dark .overview-grade-fair .overview-score-value,
+body.theme-dark .overview-grade-below-average .overview-score-value,
+body.theme-dark .overview-grade-poor .overview-score-value {
+    color: var(--accent);
+    font-size: clamp(3.4rem, 8vw, 5rem);
+}
+
+body.theme-dark .overview-score-max { color: var(--ink-faint); }
+
+body.theme-dark .overview-score-grade {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--ink-soft);
+    letter-spacing: 0.16em;
+}
+body.theme-dark .overview-grade-excellent .overview-score-grade { background: var(--good-bg); color: var(--good); }
+body.theme-dark .overview-grade-good .overview-score-grade { background: var(--good-bg); color: var(--good); }
+body.theme-dark .overview-grade-fair .overview-score-grade { background: var(--warn-bg); color: var(--warn); }
+body.theme-dark .overview-grade-below-average .overview-score-grade,
+body.theme-dark .overview-grade-poor .overview-score-grade { background: var(--bad-bg); color: var(--bad); }
+
+/* --- Panels ----------------------------------------------------------- */
+body.theme-dark .report-section,
+body.theme-dark .report-modal-inner,
+body.theme-dark .dashboard-card {
+    background: var(--surface);
+    border-color: var(--border);
+}
+
+body.theme-dark .dashboard-card:hover {
+    border-color: rgba(212, 169, 95, 0.55);
+}
+
+/* A locked card has to read as quieter than an open one. On paper a
+   wash of grey does that; on black, any wash is lighter than the card
+   beside it and the locked half of the grid ends up shouting. Recessing
+   to the page background is what reads as "not yet". */
+body.theme-dark .dashboard-card-locked {
+    background: var(--bg);
+    border-color: #2b2b2b;
+}
+
+body.theme-dark .dashboard-card-lock-overlay {
+    background: rgba(212, 169, 95, 0.12);
+}
+
+body.theme-dark .report-tabs { background: rgba(255, 255, 255, 0.04); }
+body.theme-dark .report-tab.active {
+    background: rgba(212, 169, 95, 0.14);
+    color: var(--accent);
+}
+
+/* --- Card icons -------------------------------------------------------
+   In the light theme each of the 32 categories has its own pastel chip.
+   Thirty-two pastels on black is a fruit salad, and it is exactly the
+   look this redesign is getting away from, so the dark theme drops the
+   per-category hue and keeps one restrained chip. Category is already
+   named in the heading above the card and in the card title, so no
+   information is lost with the colour. */
+body.theme-dark .dashboard-card-icon {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--ink-soft);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+body.theme-dark .dashboard-card:hover .dashboard-card-icon {
+    background: rgba(212, 169, 95, 0.14);
+    color: var(--accent);
+    border-color: rgba(212, 169, 95, 0.3);
+}
+
+/* --- Things that need attention ---------------------------------------
+   Amber-on-cream does not survive the swap: #92400e text and #fef3c7
+   chips were built for a paper background. Gold does the same job here
+   and it is already the accent, so attention reads as emphasis rather
+   than as a second colour system. */
+body.theme-dark .dashboard-card.status-attn {
+    border-color: rgba(212, 169, 95, 0.4);
+    background: linear-gradient(180deg, rgba(212, 169, 95, 0.07), transparent), var(--surface);
+}
+body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--accent); }
+body.theme-dark .dashboard-card.status-attn .dashboard-card-icon {
+    background: rgba(212, 169, 95, 0.14);
+    color: var(--accent);
+    border-color: rgba(212, 169, 95, 0.28);
+}
+
+body.theme-dark .check-this-tag,
+body.theme-dark .watchlist-change-chip,
+body.theme-dark .attention-banner-chip {
+    background: rgba(212, 169, 95, 0.12);
+    border-color: rgba(212, 169, 95, 0.35);
+    color: var(--accent);
+}
+
+body.theme-dark .attention-banner,
+body.theme-dark .watchlist-alert-banner {
+    background: var(--warn-bg);
+    border-color: rgba(212, 169, 95, 0.3);
+    color: var(--ink);
+}
+body.theme-dark .attention-banner-clear {
+    background: var(--good-bg);
+    border-color: rgba(127, 191, 154, 0.3);
+}
+body.theme-dark .attention-banner-count,
+body.theme-dark .watchlist-alert-count { color: #050505; }
+
+body.theme-dark .notice-error { border-color: rgba(224, 139, 127, 0.35); }
+
+/* --- Tables, charts, maps --------------------------------------------- */
+body.theme-dark .tx-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* Light theme paints the tooltip ink-on-white; on dark, --ink is white,
+   so this would be white on white. */
+body.theme-dark .price-chart-tooltip {
+    background: #f5f2ec;
+    color: #0e0e0e;
+}
+
+/* OpenStreetMap ships one light tile set and no dark one, so the tiles
+   get inverted and hue-rotated back - the standard trick, and the only
+   way to get a dark basemap out of a light raster. It is scoped to the
+   tile pane alone: pins, the layer control and the attribution sit in
+   sibling panes and must not be inverted with it. (Production runs the
+   Google branch instead, which takes a real dark style array - see
+   property.html.) Nothing here changes the data, only the brightness of
+   the panel next to near-black. */
+body.theme-dark .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) brightness(0.88) saturate(0.5) contrast(0.92);
+}
+
+body.theme-dark .globe-container {
+    filter: saturate(0.8) brightness(0.82);
+}
+
+body.theme-dark .map-container { border: 1px solid var(--border); }
+
+body.theme-dark .leaflet-control-layers,
+body.theme-dark .leaflet-bar a,
+body.theme-dark .leaflet-control-attribution {
+    background: rgba(14, 14, 14, 0.92);
+    color: var(--ink-soft);
+    border-color: var(--border-strong);
+}
+body.theme-dark .leaflet-bar a { color: var(--ink); }
+body.theme-dark .leaflet-control-attribution a { color: var(--ink-soft); }
+body.theme-dark .leaflet-popup-content-wrapper,
+body.theme-dark .leaflet-popup-tip {
+    background: var(--surface-2);
+    color: var(--ink);
+}
+
+/* --- Forms ------------------------------------------------------------- */
+body.theme-dark input[type="text"],
+body.theme-dark input[type="search"],
+body.theme-dark input[type="email"],
+body.theme-dark input[type="password"],
+body.theme-dark input[type="number"],
+body.theme-dark textarea,
+body.theme-dark select {
+    background: var(--surface-2);
+    color: var(--ink);
+    border-color: var(--border-strong);
+}
+body.theme-dark input::placeholder,
+body.theme-dark textarea::placeholder { color: var(--ink-faint); }

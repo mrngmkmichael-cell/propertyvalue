@@ -3406,6 +3406,30 @@ Listed building data from Historic England's
 
 {% if google_maps_api_key %}
 <script>
+    {# A real dark basemap rather than a CSS filter over the light one:
+       Google renders labels into the tiles, so inverting the element
+       would invert the place names too. Greys are the theme's own
+       surfaces; motorways take the gold so the road hierarchy still
+       reads at a glance. The Leaflet branch is handled in style.css. #}
+    const DARK_MAP_STYLE = [
+        { elementType: 'geometry', stylers: [{ color: '#171717' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#171717' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#8f887c' }] },
+        { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2e2e2e' }] },
+        { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#c9c2b6' }] },
+        { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#8f887c' }] },
+        { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#1c2620' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1f1f1f' }] },
+        { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9c958a' }] },
+        { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a3222' }] },
+        { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#d4a95f' }] },
+        { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#232323' }] },
+        { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#a9a49c' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1216' }] },
+        { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4d5a62' }] },
+    ];
+
     function initPropertyMap() {
         const center = { lat: {{ location.latitude | tojson }}, lng: {{ location.longitude | tojson }} };
         const map = new google.maps.Map(document.getElementById('map'), {
@@ -3415,6 +3439,7 @@ Listed building data from Historic England's
             streetViewControl: false,
             mapTypeControl: false,
             fullscreenControl: false,
+            {% if theme_dark %}styles: DARK_MAP_STYLE,{% endif %}
         });
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
 

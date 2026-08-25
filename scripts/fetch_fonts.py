@@ -55,6 +55,10 @@ FAMILIES = {
     # it only ever renders labels and figures, so the full 30.7 KiB
     # face is 62% dead weight.
     "jetbrains-mono": "JetBrains+Mono:wght@400..500",
+    # Display face for report headings and the score. One weight only -
+    # Bebas Neue is a single-weight condensed caps face, which is the
+    # whole point of it: it sets big without shouting in bold.
+    "bebas-neue": "Bebas+Neue",
 }
 
 # Everything the mono face is actually asked to render: uppercase

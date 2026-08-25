@@ -86,7 +86,7 @@
 
     {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body{% if theme_dark %} class="theme-dark"{% endif %}>
     {# First focusable thing on every page: lets a keyboard or screen-reader
        user jump past the nav. Visually hidden until it receives focus. #}
     <a class="skip-link" href="#main">Skip to content</a>
