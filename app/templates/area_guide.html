@@ -119,7 +119,7 @@
     {% if crime and crime.total is not none %}
     <p class="section-sub">
         {{ crime.total }} crime{{ "s" if crime.total != 1 else "" }} recorded within roughly a mile of
-        central {{ outcode }} in {{ crime.month }}{% if crime.by_category %}, most commonly
+        central {{ outcode }}{% if crime.month %} in {{ crime.month }}{% endif %}{% if crime.by_category %}, most commonly
         <strong>{{ crime.by_category[0].category }}</strong>{% endif %}.
     </p>
     {% else %}
