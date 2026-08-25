@@ -3213,6 +3213,84 @@ AREA_GUIDE_LANDSCAPE_FIELDS = (
 )
 
 
+def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> None:
+    """FAQs and neighbouring-district links for an area guide. Every
+    answer is the guide's own real data rephrased as a sentence, and a
+    question is only asked when the data behind its answer exists."""
+    import math
+
+    def _nearest():
+        cached = _cache.get(("nearby_outcodes", outcode), 7 * 86400)
+        if cached is not None:
+            return cached
+        scored = []
+        for o in ALL_OUTCODES:
+            if o["outcode"] == outcode:
+                continue
+            d = math.hypot((o["lat"] - lat) * 111.0, (o["lon"] - lon) * 68.0)
+            scored.append((d, o))
+        scored.sort(key=lambda x: x[0])
+        result = [{"outcode": o["outcode"], "district": o["district"]} for _, o in scored[:6]]
+        _cache.set(("nearby_outcodes", outcode), result)
+        return result
+
+    context["nearby_outcodes"] = _nearest()
+
+    faqs = []
+    la = (context.get("hpi") or {}).get("local_authority") if isinstance(context.get("hpi"), dict) else None
+    if la and la.get("average_price"):
+        period = (la.get("period") or "")[:7]
+        faqs.append((
+            f"What is the average house price in {outcode}?",
+            f"The average sold price in {la['name']} is \u00a3{la['average_price']:,.0f}"
+            + (f" as of {period}" if period else "")
+            + ", according to the UK House Price Index.",
+        ))
+        if la.get("annual_change_pct") is not None:
+            direction = "up" if la["annual_change_pct"] >= 0 else "down"
+            faqs.append((
+                f"Are house prices rising in {outcode}?",
+                f"Prices in {la['name']} are {direction} {abs(la['annual_change_pct']):.1f}% on a year ago "
+                "(UK House Price Index).",
+            ))
+    landscape = context.get("landscape")
+    if not context.get("is_scotland") and landscape and landscape.get("total_schools") and landscape.get("good_or_better_pct") is not None:
+        faqs.append((
+            f"Are the schools good in {outcode}?",
+            f"{landscape['total_schools']} schools sit within {landscape['radius_km']}km of central {outcode}, "
+            f"and {landscape['good_or_better_pct']}% are rated Outstanding or Good by Ofsted.",
+        ))
+    crime_data = context.get("crime")
+    # Police.uk barely covers Scotland, so a Scottish "0 crimes" is a
+    # coverage gap; never state it as an answer.
+    if not context.get("is_scotland") and crime_data and crime_data.get("total"):
+        month = f" in {crime_data['month']}" if crime_data.get("month") else ""
+        common = ""
+        if crime_data.get("by_category"):
+            common = f", most commonly {crime_data['by_category'][0]['category']}"
+        faqs.append((
+            f"How much crime is there in {outcode}?",
+            f"{crime_data['total']} crimes were recorded within roughly a mile of central {outcode}{month}{common} (Police.uk).",
+        ))
+    flood = context.get("flood_zone")
+    if flood and flood.get("label") and not context.get("is_scotland"):
+        faqs.append((
+            f"Is {outcode} at risk of flooding?",
+            f"Central {outcode} sits in {flood['label']} for river and sea flooding (Environment Agency). "
+            "Individual addresses vary, so check the full report for a specific property.",
+        ))
+    context["area_faqs"] = faqs
+    context["area_faqs_jsonld"] = json.dumps({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {"@type": "Question", "name": q,
+             "acceptedAnswer": {"@type": "Answer", "text": a}}
+            for q, a in faqs
+        ],
+    }) if faqs else ""
+
+
 @app.get("/area/{outcode}")
 async def area_guide(request: Request, outcode: str):
     """A standing SEO landing page per UK postcode district (e.g.
@@ -3267,6 +3345,7 @@ async def area_guide(request: Request, outcode: str):
     cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
+        _area_guide_extras(context, outcode, lat, lon)
         response = templates.TemplateResponse(request, "area_guide.html", context)
         response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
         return response
@@ -3332,6 +3411,7 @@ async def area_guide(request: Request, outcode: str):
     }
     await asyncio.to_thread(_cache.set_persistent, cache_key, page_data)
     context.update(page_data)
+    _area_guide_extras(context, outcode, lat, lon)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     timing = _server_timing_header()
     response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{_cache.last_outcome}"'

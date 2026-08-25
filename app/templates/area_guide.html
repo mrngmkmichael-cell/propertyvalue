@@ -30,6 +30,7 @@
 {% endblock %}
 
 {% block content %}
+{% if area_faqs_jsonld %}<script type="application/ld+json">{{ area_faqs_jsonld | safe }}</script>{% endif %}
 {% if not outcode %}
 <span class="kicker">Area guide</span>
 <h1>Area not found</h1>
@@ -159,6 +160,32 @@
         {% for a in amenity_summary %}{{ a.count }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
         within range of central {{ outcode }}.
     </p>
+</section>
+{% endif %}
+
+{% if area_faqs %}
+<section class="report-section" id="area-faq">
+    <h2>Common questions about {{ outcode }}</h2>
+    <div class="faq-list">
+        {% for q, a in area_faqs %}
+        <details class="faq-item">
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+{% if nearby_outcodes %}
+<section class="report-section" id="nearby-areas">
+    <h2>Neighbouring districts</h2>
+    <div class="area-chip-row">
+        {% for n in nearby_outcodes %}
+        <a class="area-chip" href="/area/{{ n.outcode }}"><strong>{{ n.outcode }}</strong> {{ n.district }}</a>
+        {% endfor %}
+        <a class="area-chip area-chip-all" href="/areas">All area guides &rsaquo;</a>
+    </div>
 </section>
 {% endif %}
 
