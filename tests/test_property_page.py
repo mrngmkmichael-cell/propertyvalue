@@ -129,3 +129,26 @@ def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
         return None
     monkeypatch.setattr(app_main, "lookup_postcode", _none)
     assert client.get("/api/property/amenities?postcode=ZZ99%209ZZ").status_code == 404
+
+
+def test_landing_page_check_count_matches_the_report(client, fake_report):
+    """The hero says "N checks". N has to be the number of cards a
+    visitor can actually count on a report.
+
+    It said 23 for months, which was the count of the FREE cards
+    presented as the total, and undersold the report by fifteen. The
+    report page is the source of truth here, so if a card is ever added
+    or removed this fails until the headline is updated with it."""
+    report = _report(client, fake_report)
+    cards = report.count('<span class="dashboard-card-title">')
+    # Two cards (Nearby Essentials, Getting Around) arrive from the
+    # follow-up amenities fetch and render as pending placeholders in the
+    # first response, so they are already in the count above.
+    assert cards > 30, f"only {cards} cards found - has the grid changed shape?"
+
+    home = client.get("/").text
+    headline = re.search(r'<span class="stat-count" data-target="(\d+)">0</span> checks', home)
+    assert headline, "hero check count not found on the landing page"
+    assert int(headline.group(1)) == cards, (
+        f"landing page claims {headline.group(1)} checks, report renders {cards}"
+    )
