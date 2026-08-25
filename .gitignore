@@ -5,3 +5,6 @@ __pycache__/
 *.db
 .DS_Store
 marketing/reddit/
+
+# Local design preview, not for deployment
+app/static/_variants.html
