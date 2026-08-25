@@ -33,6 +33,14 @@ PLANS = {
     "quarterly": ("STRIPE_PRICE_ID_QUARTERLY", "£24.99/3 months", 0),
 }
 
+# One-off purchase, not a subscription: one payment buys PASS_MONTHS of
+# Premium, then it simply ends - nothing to cancel. Checkout runs in
+# payment mode and the webhook grants time-boxed access.
+PASS_PLAN_KEY = "pass"
+PASS_PRICE_ENV = "STRIPE_PRICE_ID_PASS"
+PASS_LABEL = "£19 once"
+PASS_MONTHS = 6
+
 # Saving against paying monthly, shown on the pricing card. £24.99 for
 # three months is £8.33 a month against £9.99: 17%. Stated as a number
 # because "Best value" on its own asks the reader to do the division.
@@ -61,6 +69,10 @@ def plan_for_price_id(price_id: str | None) -> str | None:
     return None
 
 
+def pass_available() -> bool:
+    return bool(os.environ.get(PASS_PRICE_ENV))
+
+
 def plan_choices() -> list[dict]:
     """[{"key": ..., "label": ..., "trial_days": ..., "available": bool}, ...]
     - available is False if that plan's Price ID env var isn't set, so
@@ -79,15 +91,18 @@ async def create_checkout_session(
     """Returns the Stripe-hosted Checkout URL to redirect the user to,
     or None if not configured, the plan is invalid, or the request to
     Stripe failed."""
-    if not is_configured() or plan not in PLANS:
+    if not is_configured() or (plan not in PLANS and plan != PASS_PLAN_KEY):
         return None
-    price_env, _, trial_days = PLANS[plan]
+    if plan == PASS_PLAN_KEY:
+        price_env, trial_days = PASS_PRICE_ENV, 0
+    else:
+        price_env, _, trial_days = PLANS[plan]
     price_id = os.environ.get(price_env)
     if not price_id:
         return None
 
     data = {
-        "mode": "subscription",
+        "mode": "payment" if plan == PASS_PLAN_KEY else "subscription",
         "line_items[0][price]": price_id,
         "line_items[0][quantity]": 1,
         "success_url": success_url,

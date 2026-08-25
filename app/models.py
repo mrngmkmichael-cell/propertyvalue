@@ -31,6 +31,9 @@ class User(Base):
     # subscription webhook, not stored anywhere else. None for a
     # comped/manually-flipped premium user with no real subscription.
     plan: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # One-off buying pass: paid once, premium until this moment, no
+    # subscription behind it. NULL for everyone else.
+    pass_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Whatever ?ref= code was present when this person first landed
     # (see main.py's _REFERRAL_COOKIE handling) - a partner/agent code,
     # or None for organic signups. Free text, not a foreign key to a

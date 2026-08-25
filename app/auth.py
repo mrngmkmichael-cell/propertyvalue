@@ -4,6 +4,7 @@ Starlette's SessionMiddleware in main.py.
 """
 import datetime
 import hashlib
+from datetime import datetime, timezone
 import hmac
 import os
 from typing import Optional
@@ -99,6 +100,20 @@ def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> boo
     return True
 
 
+def has_active_premium(user) -> bool:
+    """is_premium, minus a buying pass that has run out. The pass is
+    downgraded lazily on read rather than by a background job - the
+    first page view after expiry simply sees it as lapsed."""
+    if not user.is_premium:
+        return False
+    if user.plan == "pass" and user.pass_expires_at is not None:
+        expires = user.pass_expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return expires > datetime.now(timezone.utc)
+    return True
+
+
 def premium_state(user, db=None) -> dict:
     """Effective Premium access for a user row.
 
@@ -111,7 +126,7 @@ def premium_state(user, db=None) -> dict:
     is_premium here means "subscribed", not "can see this property" -
     per-property access needs the postcode, so it is decided by
     claim_unlock at the point of viewing."""
-    subscribed = bool(user.is_premium)
+    subscribed = has_active_premium(user)
     used = unlocks_used(db, user.id) if db is not None else 0
     return {
         "is_premium": subscribed,

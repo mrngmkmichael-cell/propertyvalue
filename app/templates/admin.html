@@ -226,6 +226,28 @@
     </table>
 </section>
 
+<section class="landing-section" id="comp">
+    <h2 class="landing-heading">Comp an account</h2>
+    <p class="landing-subheading">Grant free Premium (plan shows as "comped") or take it back. Accounts with a real Stripe subscription are refused; the webhook owns those.</p>
+    {% if request.query_params.get("comp") == "done" %}<p class="notice" style="background: var(--good-bg); color: var(--good);">Done.</p>
+    {% elif request.query_params.get("comp") == "notfound" %}<p class="notice notice-error">No account with that email.</p>
+    {% elif request.query_params.get("comp") == "stripe" %}<p class="notice notice-error">That account has a Stripe subscription; manage it in Stripe instead.</p>{% endif %}
+    <form action="/admin/grant-premium" method="post" class="stacked-form" style="max-width: 30rem;">
+        <div class="search-form-field">
+            <label for="comp-email">Account email</label>
+            <input type="email" id="comp-email" name="email" required>
+        </div>
+        <div class="search-form-field">
+            <label for="comp-action">Action</label>
+            <select id="comp-action" name="action">
+                <option value="grant">Grant premium</option>
+                <option value="revoke">Revoke</option>
+            </select>
+        </div>
+        <button type="submit">Apply</button>
+    </form>
+</section>
+
 <section class="landing-section" id="figure-reports">
     <h2 class="landing-heading">Figure reports</h2>
     <p class="landing-subheading">What readers said looked wrong. Resolve each one; the outcome is published on <a href="/accuracy">/accuracy</a>.</p>

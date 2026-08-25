@@ -63,6 +63,21 @@
 </p>
 {% endif %}
 <div class="pricing-grid">
+    {% if pass_available %}
+    <div class="pricing-card">
+        <span class="pricing-card-badge">No subscription</span>
+        <h2 class="pricing-card-price">&pound;19 once</h2>
+        <p class="section-sub">{{ pass_months }} months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.</p>
+        {% if current_user %}
+        <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
+            <input type="hidden" name="plan" value="pass">
+            <button type="submit">Buy the pass</button>
+        </form>
+        {% else %}
+        <a href="/signup?next=/premium" class="pricing-card-cta">Sign up to buy the pass</a>
+        {% endif %}
+    </div>
+    {% endif %}
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
         {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}

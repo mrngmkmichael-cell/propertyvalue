@@ -3791,6 +3791,8 @@ def premium_info(request: Request, checkout: str = "", error: str = ""):
     context = base_context(request)
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
+    context["pass_available"] = stripe_billing.pass_available()
+    context["pass_months"] = stripe_billing.PASS_MONTHS
     context["checkout_cancelled"] = checkout == "cancelled"
     context["checkout_error"] = error == "checkout_failed"
     context["portal_error"] = error == "portal_failed"
@@ -3863,7 +3865,22 @@ async def stripe_webhook(request: Request):
 
     if event_type == "checkout.session.completed":
         user_id, customer_id = data.get("client_reference_id"), data.get("customer")
-        if user_id and customer_id:
+        if user_id and data.get("mode") == "payment" and data.get("payment_status") == "paid":
+            # The one-off buying pass: grant time-boxed Premium now -
+            # there is no subscription event coming to do it for us.
+            with db.get_session() as session:
+                db_user = session.get(User, int(user_id))
+                if db_user:
+                    db_user.is_premium = True
+                    db_user.plan = "pass"
+                    db_user.subscription_status = "pass"
+                    db_user.pass_expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+                        days=30 * stripe_billing.PASS_MONTHS
+                    )
+                    if customer_id:
+                        db_user.stripe_customer_id = customer_id
+                    session.commit()
+        elif user_id and customer_id:
             with db.get_session() as session:
                 db_user = session.get(User, int(user_id))
                 if db_user:
@@ -4025,6 +4042,33 @@ async def report_ready(postcode: str = "", house_number: str = ""):
         return JSONResponse({"ready": True})
     asyncio.create_task(_full_property_gather(location, hn, premium_unlocked=False))
     return JSONResponse({"ready": False})
+
+
+@app.post("/admin/grant-premium")
+def admin_grant_premium(request: Request, email: str = Form(...), action: str = Form("grant")):
+    """Comp an account (or take a comp back). Exists so a promise like
+    "DM me and I'll switch premium on" is honourable in two clicks.
+    Refuses to touch accounts with a real Stripe subscription - the
+    webhook owns those and would fight any manual change."""
+    context = base_context(request)
+    if not _is_admin(context["current_user"]):
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    with db.get_session() as session:
+        target = auth.find_user_by_email(session, email.strip().lower())
+        if target is None:
+            return RedirectResponse("/admin?comp=notfound", status_code=303)
+        if target.stripe_subscription_id:
+            return RedirectResponse("/admin?comp=stripe", status_code=303)
+        if action == "revoke":
+            target.is_premium = False
+            target.plan = None
+            target.subscription_status = None
+        else:
+            target.is_premium = True
+            target.plan = "comped"
+            target.subscription_status = "comped"
+        session.commit()
+    return RedirectResponse("/admin?comp=done", status_code=303)
 
 
 # ---- Shareable reports ----
