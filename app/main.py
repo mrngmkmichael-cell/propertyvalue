@@ -853,6 +853,19 @@ async def not_found_handler(request: Request, exc: StarletteHTTPException):
 
 @app.exception_handler(Exception)
 async def server_error_handler(request: Request, exc: Exception):
+    # Owner alert: a launch-day burst of 500s must not stay invisible
+    # (Render's logs are impractical to watch). Rate-limited to one
+    # Telegram message per exception type per 5 minutes so an error
+    # storm sends a handful of pings, not thousands. Fire-and-forget:
+    # alerting must never delay or break the error page itself.
+    if IS_PRODUCTION and telegram.is_configured():
+        err_key = ("err_alert", type(exc).__name__)
+        if _cache.get(err_key, 300) is None:
+            _cache.set(err_key, True)
+            asyncio.create_task(telegram.send_message(
+                "⚠️ 500 on " + request.url.path + "\n"
+                + type(exc).__name__ + ": " + str(exc)[:300]
+            ))
     return templates.TemplateResponse(
         request, "500.html", base_context(request), status_code=500
     )
