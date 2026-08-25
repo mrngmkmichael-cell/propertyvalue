@@ -1410,6 +1410,30 @@ a {
     box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+/* Base button. Only .search-form and .stacked-form buttons used to be
+   styled, so a plain <button type="submit"> in any other form fell
+   through to the browser's own control. That was a pale OS button on
+   the light theme, unremarkable enough that nobody noticed; under the
+   dark theme's color-scheme it renders mid-grey and reads as disabled.
+   Twenty-four buttons across fifteen templates had no class at all.
+
+   Element specificity, so every classed button still wins: the nav's
+   ghost buttons, the card buttons in the report grid, the modal
+   closers, the tabs. This only catches what nothing else claims. */
+button {
+    padding: 0.7rem 1.6rem;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: var(--accent-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+
+button:hover { background: var(--accent-hover); }
+
 .search-form button,
 .stacked-form button {
     padding: 0.7rem 1.6rem;
