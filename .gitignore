@@ -8,3 +8,4 @@ marketing/reddit/
 
 # Local design preview, not for deployment
 app/static/_variants.html
+app/static/_mock/
