@@ -1,1190 +1,1706 @@
 {
  "year": "2026-27",
- "source": "https://assets.publishing.service.gov.uk/media/6a02eeeccd2e0e8b5b20b449/Table_10_2026-27.ods",
- "authorities": {
-  "E07000223": {
-   "authority": "Adur",
-   "band_d": 2548.28
-  },
-  "E07000032": {
-   "authority": "Amber Valley",
-   "band_d": 2407.69
-  },
-  "E07000224": {
-   "authority": "Arun",
-   "band_d": 2487.24
-  },
-  "E07000170": {
-   "authority": "Ashfield",
-   "band_d": 2608.76
-  },
-  "E07000105": {
-   "authority": "Ashford",
-   "band_d": 2410.16
-  },
-  "E07000200": {
-   "authority": "Babergh",
-   "band_d": 2341.55
-  },
-  "E09000002": {
-   "authority": "Barking and Dagenham",
-   "band_d": 2198.51
-  },
-  "E09000003": {
-   "authority": "Barnet",
-   "band_d": 2132.6
-  },
-  "E08000038": {
-   "authority": "Barnsley",
-   "band_d": 2325.96
-  },
-  "E07000066": {
-   "authority": "Basildon",
-   "band_d": 2327.24
-  },
-  "E07000084": {
-   "authority": "Basingstoke and Deane",
-   "band_d": 2255.21
-  },
-  "E07000171": {
-   "authority": "Bassetlaw",
-   "band_d": 2644.95
-  },
-  "E06000022": {
-   "authority": "Bath and North East Somerset",
-   "band_d": 2383.42
-  },
-  "E06000055": {
-   "authority": "Bedford",
-   "band_d": 2471.74
-  },
-  "E09000004": {
-   "authority": "Bexley",
-   "band_d": 2366.36
-  },
-  "E08000025": {
-   "authority": "Birmingham",
-   "band_d": 2362.9
-  },
-  "E07000129": {
-   "authority": "Blaby",
-   "band_d": 2490.22
-  },
-  "E06000008": {
-   "authority": "Blackburn with Darwen",
-   "band_d": 2455.27
-  },
-  "E06000009": {
-   "authority": "Blackpool",
-   "band_d": 2513.22
-  },
-  "E07000033": {
-   "authority": "Bolsover",
-   "band_d": 2559.41
-  },
-  "E08000001": {
-   "authority": "Bolton",
-   "band_d": 2399.74
-  },
-  "E07000136": {
-   "authority": "Boston",
-   "band_d": 2308.73
-  },
-  "E06000058": {
-   "authority": "Bournemouth, Christchurch and Poole",
-   "band_d": 2435.58
-  },
-  "E06000036": {
-   "authority": "Bracknell Forest",
-   "band_d": 2264.8
-  },
-  "E08000032": {
-   "authority": "Bradford",
-   "band_d": 2360.73
-  },
-  "E07000067": {
-   "authority": "Braintree",
-   "band_d": 2280.34
-  },
-  "E07000143": {
-   "authority": "Breckland",
-   "band_d": 2443.67
-  },
-  "E09000005": {
-   "authority": "Brent",
-   "band_d": 2235.27
-  },
-  "E07000068": {
-   "authority": "Brentwood",
-   "band_d": 2258.14
-  },
-  "E06000043": {
-   "authority": "Brighton and Hove",
-   "band_d": 2580.54
-  },
-  "E06000023": {
-   "authority": "Bristol",
-   "band_d": 2713.68
-  },
-  "E07000144": {
-   "authority": "Broadland",
-   "band_d": 2437.78
-  },
-  "E09000006": {
-   "authority": "Bromley",
-   "band_d": 2140.04
-  },
-  "E07000234": {
-   "authority": "Bromsgrove",
-   "band_d": 2478.65
-  },
-  "E07000095": {
-   "authority": "Broxbourne",
-   "band_d": 2306.43
-  },
-  "E07000172": {
-   "authority": "Broxtowe",
-   "band_d": 2618.21
-  },
-  "E06000060": {
-   "authority": "Buckinghamshire",
-   "band_d": 2526.58
-  },
-  "E07000117": {
-   "authority": "Burnley",
-   "band_d": 2549.42
-  },
-  "E08000002": {
-   "authority": "Bury",
-   "band_d": 2555.15
-  },
-  "E08000033": {
-   "authority": "Calderdale",
-   "band_d": 2420.15
-  },
-  "E07000008": {
-   "authority": "Cambridge",
-   "band_d": 2467.02
-  },
-  "E09000007": {
-   "authority": "Camden",
-   "band_d": 2207.55
-  },
-  "E07000192": {
-   "authority": "Cannock Chase",
-   "band_d": 2375.83
-  },
-  "E07000106": {
-   "authority": "Canterbury",
-   "band_d": 2419.33
-  },
-  "E07000069": {
-   "authority": "Castle Point",
-   "band_d": 2318.63
-  },
-  "E06000056": {
-   "authority": "Central Bedfordshire",
-   "band_d": 2516.16
-  },
-  "E07000130": {
-   "authority": "Charnwood",
-   "band_d": 2405.64
-  },
-  "E07000070": {
-   "authority": "Chelmsford",
-   "band_d": 2300.18
-  },
-  "E07000078": {
-   "authority": "Cheltenham",
-   "band_d": 2369.52
-  },
-  "E07000177": {
-   "authority": "Cherwell",
-   "band_d": 2582.96
-  },
-  "E06000049": {
-   "authority": "Cheshire East",
-   "band_d": 2454.87
-  },
-  "E06000050": {
-   "authority": "Cheshire West and Chester",
-   "band_d": 2517.33
-  },
-  "E07000034": {
-   "authority": "Chesterfield",
-   "band_d": 2339.49
-  },
-  "E07000225": {
-   "authority": "Chichester",
-   "band_d": 2469.68
-  },
-  "E07000118": {
-   "authority": "Chorley",
-   "band_d": 2430.23
-  },
-  "E09000001": {
-   "authority": "City of London",
-   "band_d": 1329.56
-  },
-  "E07000071": {
-   "authority": "Colchester",
-   "band_d": 2282.85
-  },
-  "E06000052": {
-   "authority": "Cornwall",
-   "band_d": 2590.93
-  },
-  "E07000079": {
-   "authority": "Cotswold",
-   "band_d": 2391.65
-  },
-  "E08000026": {
-   "authority": "Coventry",
-   "band_d": 2516.72
-  },
-  "E07000226": {
-   "authority": "Crawley",
-   "band_d": 2418.46
-  },
-  "E09000008": {
-   "authority": "Croydon",
-   "band_d": 2599.91
-  },
-  "E06000063": {
-   "authority": "Cumberland",
-   "band_d": 2511.32
-  },
-  "E07000096": {
-   "authority": "Dacorum",
-   "band_d": 2408.51
-  },
-  "E06000005": {
-   "authority": "Darlington",
-   "band_d": 2493.83
-  },
-  "E07000107": {
-   "authority": "Dartford",
-   "band_d": 2375.15
-  },
-  "E06000015": {
-   "authority": "Derby",
-   "band_d": 2306.0
-  },
-  "E07000035": {
-   "authority": "Derbyshire Dales",
-   "band_d": 2444.7
-  },
-  "E08000017": {
-   "authority": "Doncaster",
-   "band_d": 2167.75
-  },
-  "E06000059": {
-   "authority": "Dorset",
-   "band_d": 2765.02
-  },
-  "E07000108": {
-   "authority": "Dover",
-   "band_d": 2461.74
-  },
-  "E08000027": {
-   "authority": "Dudley",
-   "band_d": 2144.84
-  },
-  "E06000047": {
-   "authority": "Durham",
-   "band_d": 2622.15
-  },
-  "E09000009": {
-   "authority": "Ealing",
-   "band_d": 2138.53
-  },
-  "E07000009": {
-   "authority": "East Cambridgeshire",
-   "band_d": 2485.18
-  },
-  "E07000040": {
-   "authority": "East Devon",
-   "band_d": 2595.46
-  },
-  "E07000085": {
-   "authority": "East Hampshire",
-   "band_d": 2343.92
-  },
-  "E07000242": {
-   "authority": "East Hertfordshire",
-   "band_d": 2454.78
-  },
-  "E07000137": {
-   "authority": "East Lindsey",
-   "band_d": 2275.88
-  },
-  "E06000011": {
-   "authority": "East Riding of Yorkshire",
-   "band_d": 2466.08
-  },
-  "E07000193": {
-   "authority": "East Staffordshire",
-   "band_d": 2351.34
-  },
-  "E07000244": {
-   "authority": "East Suffolk",
-   "band_d": 2334.8
-  },
-  "E07000061": {
-   "authority": "Eastbourne",
-   "band_d": 2654.28
-  },
-  "E07000086": {
-   "authority": "Eastleigh",
-   "band_d": 2342.21
-  },
-  "E07000207": {
-   "authority": "Elmbridge",
-   "band_d": 2557.75
-  },
-  "E09000010": {
-   "authority": "Enfield",
-   "band_d": 2267.67
-  },
-  "E07000072": {
-   "authority": "Epping Forest",
-   "band_d": 2277.21
-  },
-  "E07000208": {
-   "authority": "Epsom and Ewell",
-   "band_d": 2530.84
-  },
-  "E07000036": {
-   "authority": "Erewash",
-   "band_d": 2360.64
-  },
-  "E07000041": {
-   "authority": "Exeter",
-   "band_d": 2495.36
-  },
-  "E07000087": {
-   "authority": "Fareham",
-   "band_d": 2270.55
-  },
-  "E07000010": {
-   "authority": "Fenland",
-   "band_d": 2537.74
-  },
-  "E07000112": {
-   "authority": "Folkestone and Hythe",
-   "band_d": 2538.75
-  },
-  "E07000080": {
-   "authority": "Forest of Dean",
-   "band_d": 2443.42
-  },
-  "E07000119": {
-   "authority": "Fylde",
-   "band_d": 2483.94
-  },
-  "E08000037": {
-   "authority": "Gateshead",
-   "band_d": 2715.81
-  },
-  "E07000173": {
-   "authority": "Gedling",
-   "band_d": 2609.55
-  },
-  "E07000081": {
-   "authority": "Gloucester",
-   "band_d": 2355.84
-  },
-  "E07000088": {
-   "authority": "Gosport",
-   "band_d": 2344.29
-  },
-  "E07000109": {
-   "authority": "Gravesham",
-   "band_d": 2408.24
-  },
-  "E07000145": {
-   "authority": "Great Yarmouth",
-   "band_d": 2414.41
-  },
-  "E09000011": {
-   "authority": "Greenwich",
-   "band_d": 2107.86
-  },
-  "E07000209": {
-   "authority": "Guildford",
-   "band_d": 2547.3
-  },
-  "E09000012": {
-   "authority": "Hackney",
-   "band_d": 2060.3
-  },
-  "E06000006": {
-   "authority": "Halton",
-   "band_d": 2366.61
-  },
-  "E09000013": {
-   "authority": "Hammersmith and Fulham",
-   "band_d": 1519.51
-  },
-  "E07000131": {
-   "authority": "Harborough",
-   "band_d": 2389.87
-  },
-  "E09000014": {
-   "authority": "Haringey",
-   "band_d": 2313.78
-  },
-  "E07000073": {
-   "authority": "Harlow",
-   "band_d": 2298.69
-  },
-  "E09000015": {
-   "authority": "Harrow",
-   "band_d": 2511.07
-  },
-  "E07000089": {
-   "authority": "Hart",
-   "band_d": 2400.02
-  },
-  "E06000001": {
-   "authority": "Hartlepool",
-   "band_d": 2560.2
-  },
-  "E07000062": {
-   "authority": "Hastings",
-   "band_d": 2676.58
-  },
-  "E07000090": {
-   "authority": "Havant",
-   "band_d": 2320.28
-  },
-  "E09000016": {
-   "authority": "Havering",
-   "band_d": 2424.66
-  },
-  "E06000019": {
-   "authority": "Herefordshire",
-   "band_d": 2574.37
-  },
-  "E07000098": {
-   "authority": "Hertsmere",
-   "band_d": 2405.83
-  },
-  "E07000037": {
-   "authority": "High Peak",
-   "band_d": 2384.66
-  },
-  "E09000017": {
-   "authority": "Hillingdon",
-   "band_d": 2045.46
-  },
-  "E07000132": {
-   "authority": "Hinckley and Bosworth",
-   "band_d": 2382.62
-  },
-  "E07000227": {
-   "authority": "Horsham",
-   "band_d": 2441.01
-  },
-  "E09000018": {
-   "authority": "Hounslow",
-   "band_d": 2185.56
-  },
-  "E07000011": {
-   "authority": "Huntingdonshire",
-   "band_d": 2556.4
-  },
-  "E07000120": {
-   "authority": "Hyndburn",
-   "band_d": 2465.98
-  },
-  "E07000202": {
-   "authority": "Ipswich",
-   "band_d": 2468.25
-  },
-  "E06000046": {
-   "authority": "Isle of Wight",
-   "band_d": 2625.79
-  },
-  "E06000053": {
-   "authority": "Isles of Scilly",
-   "band_d": 2047.96
-  },
-  "E09000019": {
-   "authority": "Islington",
-   "band_d": 2108.15
-  },
-  "E09000020": {
-   "authority": "Kensington and Chelsea",
-   "band_d": 1666.65
-  },
-  "E07000146": {
-   "authority": "Kings Lynn and West Norfolk",
-   "band_d": 2430.13
-  },
-  "E06000010": {
-   "authority": "Kingston upon Hull",
-   "band_d": 2295.04
-  },
-  "E09000021": {
-   "authority": "Kingston upon Thames",
-   "band_d": 2609.2
-  },
-  "E08000034": {
-   "authority": "Kirklees",
-   "band_d": 2441.07
-  },
-  "E08000011": {
-   "authority": "Knowsley",
-   "band_d": 2488.25
-  },
-  "E09000022": {
-   "authority": "Lambeth",
-   "band_d": 2047.11
-  },
-  "E07000121": {
-   "authority": "Lancaster",
-   "band_d": 2503.19
-  },
-  "E08000035": {
-   "authority": "Leeds",
-   "band_d": 2283.73
-  },
-  "E06000016": {
-   "authority": "Leicester",
-   "band_d": 2528.75
-  },
-  "E07000063": {
-   "authority": "Lewes",
-   "band_d": 2756.17
-  },
-  "E09000023": {
-   "authority": "Lewisham",
-   "band_d": 2237.33
-  },
-  "E07000194": {
-   "authority": "Lichfield",
-   "band_d": 2351.9
-  },
-  "E07000138": {
-   "authority": "Lincoln",
-   "band_d": 2323.08
-  },
-  "E08000012": {
-   "authority": "Liverpool",
-   "band_d": 2673.59
-  },
-  "E06000032": {
-   "authority": "Luton",
-   "band_d": 2439.93
-  },
-  "E07000110": {
-   "authority": "Maidstone",
-   "band_d": 2502.59
-  },
-  "E07000074": {
-   "authority": "Maldon",
-   "band_d": 2328.37
-  },
-  "E07000235": {
-   "authority": "Malvern Hills",
-   "band_d": 2450.92
-  },
-  "E08000003": {
-   "authority": "Manchester",
-   "band_d": 2312.04
-  },
-  "E07000174": {
-   "authority": "Mansfield",
-   "band_d": 2600.38
-  },
-  "E06000035": {
-   "authority": "Medway",
-   "band_d": 2328.55
-  },
-  "E07000133": {
-   "authority": "Melton",
-   "band_d": 2429.67
-  },
-  "E09000024": {
-   "authority": "Merton",
-   "band_d": 2146.76
-  },
-  "E07000042": {
-   "authority": "Mid Devon",
-   "band_d": 2656.41
-  },
-  "E07000203": {
-   "authority": "Mid Suffolk",
-   "band_d": 2316.88
-  },
-  "E07000228": {
-   "authority": "Mid Sussex",
-   "band_d": 2474.26
-  },
-  "E06000002": {
-   "authority": "Middlesbrough",
-   "band_d": 2549.16
-  },
-  "E06000042": {
-   "authority": "Milton Keynes",
-   "band_d": 2372.21
-  },
-  "E07000210": {
-   "authority": "Mole Valley",
-   "band_d": 2519.86
-  },
-  "E07000091": {
-   "authority": "New Forest",
-   "band_d": 2419.76
-  },
-  "E07000175": {
-   "authority": "Newark and Sherwood",
-   "band_d": 2682.1
-  },
-  "E08000021": {
-   "authority": "Newcastle upon Tyne",
-   "band_d": 2542.19
-  },
-  "E07000195": {
-   "authority": "Newcastle-under-Lyme",
-   "band_d": 2334.25
-  },
-  "E09000025": {
-   "authority": "Newham",
-   "band_d": 1944.23
-  },
-  "E07000043": {
-   "authority": "North Devon",
-   "band_d": 2642.21
-  },
-  "E07000038": {
-   "authority": "North East Derbyshire",
-   "band_d": 2466.57
-  },
-  "E06000012": {
-   "authority": "North East Lincolnshire",
-   "band_d": 2483.85
-  },
-  "E07000099": {
-   "authority": "North Hertfordshire",
-   "band_d": 2448.52
-  },
-  "E07000139": {
-   "authority": "North Kesteven",
-   "band_d": 2337.81
-  },
-  "E06000013": {
-   "authority": "North Lincolnshire",
-   "band_d": 2348.46
-  },
-  "E07000147": {
-   "authority": "North Norfolk",
-   "band_d": 2459.93
-  },
-  "E06000061": {
-   "authority": "North Northamptonshire",
-   "band_d": 2423.96
-  },
-  "E06000024": {
-   "authority": "North Somerset",
-   "band_d": 2491.22
-  },
-  "E08000022": {
-   "authority": "North Tyneside",
-   "band_d": 2461.77
-  },
-  "E07000218": {
-   "authority": "North Warwickshire",
-   "band_d": 2532.1
-  },
-  "E07000134": {
-   "authority": "North West Leicestershire",
-   "band_d": 2418.2
-  },
-  "E06000065": {
-   "authority": "North Yorkshire",
-   "band_d": 2544.34
-  },
-  "E06000057": {
-   "authority": "Northumberland",
-   "band_d": 2596.94
-  },
-  "E07000148": {
-   "authority": "Norwich",
-   "band_d": 2503.44
-  },
-  "E06000018": {
-   "authority": "Nottingham",
-   "band_d": 2755.39
-  },
-  "E07000219": {
-   "authority": "Nuneaton and Bedworth",
-   "band_d": 2502.16
-  },
-  "E07000135": {
-   "authority": "Oadby and Wigston",
-   "band_d": 2406.85
-  },
-  "E08000004": {
-   "authority": "Oldham",
-   "band_d": 2602.23
-  },
-  "E07000178": {
-   "authority": "Oxford",
-   "band_d": 2678.4
-  },
-  "E07000122": {
-   "authority": "Pendle",
-   "band_d": 2640.18
-  },
-  "E06000031": {
-   "authority": "Peterborough",
-   "band_d": 2293.47
-  },
-  "E06000026": {
-   "authority": "Plymouth",
-   "band_d": 2441.85
-  },
-  "E06000044": {
-   "authority": "Portsmouth",
-   "band_d": 2291.71
-  },
-  "E07000123": {
-   "authority": "Preston",
-   "band_d": 2575.74
-  },
-  "E06000038": {
-   "authority": "Reading",
-   "band_d": 2612.77
-  },
-  "E09000026": {
-   "authority": "Redbridge",
-   "band_d": 2294.58
-  },
-  "E06000003": {
-   "authority": "Redcar and Cleveland",
-   "band_d": 2544.48
-  },
-  "E07000236": {
-   "authority": "Redditch",
-   "band_d": 2462.95
-  },
-  "E07000211": {
-   "authority": "Reigate and Banstead",
-   "band_d": 2566.61
-  },
-  "E07000124": {
-   "authority": "Ribble Valley",
-   "band_d": 2386.5
-  },
-  "E09000027": {
-   "authority": "Richmond upon Thames",
-   "band_d": 2486.1
-  },
-  "E08000005": {
-   "authority": "Rochdale",
-   "band_d": 2600.83
-  },
-  "E07000075": {
-   "authority": "Rochford",
-   "band_d": 2363.48
-  },
-  "E07000125": {
-   "authority": "Rossendale",
-   "band_d": 2519.97
-  },
-  "E07000064": {
-   "authority": "Rother",
-   "band_d": 2700.95
-  },
-  "E08000018": {
-   "authority": "Rotherham",
-   "band_d": 2381.53
-  },
-  "E07000220": {
-   "authority": "Rugby",
-   "band_d": 2483.05
-  },
-  "E07000212": {
-   "authority": "Runnymede",
-   "band_d": 2492.99
-  },
-  "E07000176": {
-   "authority": "Rushcliffe",
-   "band_d": 2643.27
-  },
-  "E07000092": {
-   "authority": "Rushmoor",
-   "band_d": 2320.28
-  },
-  "E06000017": {
-   "authority": "Rutland",
-   "band_d": 2737.58
-  },
-  "E08000006": {
-   "authority": "Salford",
-   "band_d": 2594.45
-  },
-  "E08000028": {
-   "authority": "Sandwell",
-   "band_d": 2244.46
-  },
-  "E08000014": {
-   "authority": "Sefton",
-   "band_d": 2583.22
-  },
-  "E07000111": {
-   "authority": "Sevenoaks",
-   "band_d": 2522.36
-  },
-  "E08000039": {
-   "authority": "Sheffield",
-   "band_d": 2510.16
-  },
-  "E06000051": {
-   "authority": "Shropshire",
-   "band_d": 2528.18
-  },
-  "E06000039": {
-   "authority": "Slough",
-   "band_d": 2414.44
-  },
-  "E08000029": {
-   "authority": "Solihull",
-   "band_d": 2197.26
-  },
-  "E06000066": {
-   "authority": "Somerset",
-   "band_d": 2560.59
-  },
-  "E07000012": {
-   "authority": "South Cambridgeshire",
-   "band_d": 2536.25
-  },
-  "E07000039": {
-   "authority": "South Derbyshire",
-   "band_d": 2339.61
-  },
-  "E06000025": {
-   "authority": "South Gloucestershire",
-   "band_d": 2550.59
-  },
-  "E07000044": {
-   "authority": "South Hams",
-   "band_d": 2615.22
-  },
-  "E07000140": {
-   "authority": "South Holland",
-   "band_d": 2278.2
-  },
-  "E07000141": {
-   "authority": "South Kesteven",
-   "band_d": 2260.0
-  },
-  "E07000149": {
-   "authority": "South Norfolk",
-   "band_d": 2482.87
-  },
-  "E07000179": {
-   "authority": "South Oxfordshire",
-   "band_d": 2597.57
-  },
-  "E07000126": {
-   "authority": "South Ribble",
-   "band_d": 2442.66
-  },
-  "E07000196": {
-   "authority": "South Staffordshire",
-   "band_d": 2313.67
-  },
-  "E08000023": {
-   "authority": "South Tyneside",
-   "band_d": 2434.43
-  },
-  "E06000045": {
-   "authority": "Southampton",
-   "band_d": 2381.48
-  },
-  "E06000033": {
-   "authority": "Southend-on-Sea",
-   "band_d": 2265.17
-  },
-  "E09000028": {
-   "authority": "Southwark",
-   "band_d": 1967.26
-  },
-  "E07000213": {
-   "authority": "Spelthorne",
-   "band_d": 2526.44
-  },
-  "E07000240": {
-   "authority": "St Albans",
-   "band_d": 2419.22
-  },
-  "E08000013": {
-   "authority": "St Helens",
-   "band_d": 2403.38
-  },
-  "E07000197": {
-   "authority": "Stafford",
-   "band_d": 2302.68
-  },
-  "E07000198": {
-   "authority": "Staffordshire Moorlands",
-   "band_d": 2338.21
-  },
-  "E07000243": {
-   "authority": "Stevenage",
-   "band_d": 2391.97
-  },
-  "E08000007": {
-   "authority": "Stockport",
-   "band_d": 2618.9
-  },
-  "E06000004": {
-   "authority": "Stockton-on-Tees",
-   "band_d": 2589.83
-  },
-  "E06000021": {
-   "authority": "Stoke-on-Trent",
-   "band_d": 2183.12
-  },
-  "E07000221": {
-   "authority": "Stratford-on-Avon",
-   "band_d": 2484.17
-  },
-  "E07000082": {
-   "authority": "Stroud",
-   "band_d": 2491.36
-  },
-  "E08000024": {
-   "authority": "Sunderland",
-   "band_d": 2197.14
-  },
-  "E07000214": {
-   "authority": "Surrey Heath",
-   "band_d": 2585.16
-  },
-  "E09000029": {
-   "authority": "Sutton",
-   "band_d": 2378.64
-  },
-  "E07000113": {
-   "authority": "Swale",
-   "band_d": 2405.65
-  },
-  "E06000030": {
-   "authority": "Swindon",
-   "band_d": 2438.1
-  },
-  "E08000008": {
-   "authority": "Tameside",
-   "band_d": 2447.21
-  },
-  "E07000199": {
-   "authority": "Tamworth",
-   "band_d": 2300.76
-  },
-  "E07000215": {
-   "authority": "Tandridge",
-   "band_d": 2594.85
-  },
-  "E07000045": {
-   "authority": "Teignbridge",
-   "band_d": 2643.12
-  },
-  "E06000020": {
-   "authority": "Telford and Wrekin",
-   "band_d": 2256.26
-  },
-  "E07000076": {
-   "authority": "Tendring",
-   "band_d": 2269.63
-  },
-  "E07000093": {
-   "authority": "Test Valley",
-   "band_d": 2305.52
-  },
-  "E07000083": {
-   "authority": "Tewkesbury",
-   "band_d": 2340.53
-  },
-  "E07000114": {
-   "authority": "Thanet",
-   "band_d": 2490.9
-  },
-  "E07000102": {
-   "authority": "Three Rivers",
-   "band_d": 2422.31
-  },
-  "E06000034": {
-   "authority": "Thurrock",
-   "band_d": 2254.68
-  },
-  "E07000115": {
-   "authority": "Tonbridge and Malling",
-   "band_d": 2471.83
-  },
-  "E06000027": {
-   "authority": "Torbay",
-   "band_d": 2470.25
-  },
-  "E07000046": {
-   "authority": "Torridge",
-   "band_d": 2601.42
-  },
-  "E09000030": {
-   "authority": "Tower Hamlets",
-   "band_d": 1837.78
-  },
-  "E08000009": {
-   "authority": "Trafford",
-   "band_d": 2291.7
-  },
-  "E07000116": {
-   "authority": "Tunbridge Wells",
-   "band_d": 2446.15
-  },
-  "E07000077": {
-   "authority": "Uttlesford",
-   "band_d": 2333.82
-  },
-  "E07000180": {
-   "authority": "Vale of White Horse",
-   "band_d": 2577.44
-  },
-  "E08000036": {
-   "authority": "Wakefield",
-   "band_d": 2296.89
-  },
-  "E08000030": {
-   "authority": "Walsall",
-   "band_d": 2627.48
-  },
-  "E09000031": {
-   "authority": "Waltham Forest",
-   "band_d": 2386.96
-  },
-  "E09000032": {
-   "authority": "Wandsworth",
-   "band_d": 1028.21
-  },
-  "E06000007": {
-   "authority": "Warrington",
-   "band_d": 2447.61
-  },
-  "E07000222": {
-   "authority": "Warwick",
-   "band_d": 2461.55
-  },
-  "E07000103": {
-   "authority": "Watford",
-   "band_d": 2446.7
-  },
-  "E07000216": {
-   "authority": "Waverley",
-   "band_d": 2604.87
-  },
-  "E07000065": {
-   "authority": "Wealden",
-   "band_d": 2728.43
-  },
-  "E07000241": {
-   "authority": "Welwyn Hatfield",
-   "band_d": 2452.26
-  },
-  "E06000037": {
-   "authority": "West Berkshire",
-   "band_d": 2505.37
-  },
-  "E07000047": {
-   "authority": "West Devon",
-   "band_d": 2705.33
-  },
-  "E07000127": {
-   "authority": "West Lancashire",
-   "band_d": 2456.23
-  },
-  "E07000142": {
-   "authority": "West Lindsey",
-   "band_d": 2354.25
-  },
-  "E06000062": {
-   "authority": "West Northamptonshire",
-   "band_d": 2486.66
-  },
-  "E07000181": {
-   "authority": "West Oxfordshire",
-   "band_d": 2566.95
-  },
-  "E07000245": {
-   "authority": "West Suffolk",
-   "band_d": 2351.47
-  },
-  "E09000033": {
-   "authority": "Westminster",
-   "band_d": 1049.55
-  },
-  "E06000064": {
-   "authority": "Westmorland and Furness",
-   "band_d": 2507.99
-  },
-  "E08000010": {
-   "authority": "Wigan",
-   "band_d": 2152.68
-  },
-  "E06000054": {
-   "authority": "Wiltshire",
-   "band_d": 2571.78
-  },
-  "E07000094": {
-   "authority": "Winchester",
-   "band_d": 2359.76
-  },
-  "E06000040": {
-   "authority": "Windsor and Maidenhead",
-   "band_d": 1952.62
-  },
-  "E08000015": {
-   "authority": "Wirral",
-   "band_d": 2500.59
-  },
-  "E07000217": {
-   "authority": "Woking",
-   "band_d": 2598.04
-  },
-  "E06000041": {
-   "authority": "Wokingham",
-   "band_d": 2497.7
-  },
-  "E08000031": {
-   "authority": "Wolverhampton",
-   "band_d": 2538.99
-  },
-  "E07000237": {
-   "authority": "Worcester",
-   "band_d": 2405.81
-  },
-  "E07000229": {
-   "authority": "Worthing",
-   "band_d": 2456.13
-  },
-  "E07000238": {
-   "authority": "Wychavon",
-   "band_d": 2373.19
-  },
-  "E07000128": {
-   "authority": "Wyre",
-   "band_d": 2460.53
-  },
-  "E07000239": {
-   "authority": "Wyre Forest",
-   "band_d": 2512.47
-  },
-  "E06000014": {
-   "authority": "York",
-   "band_d": 2287.15
+ "england": {
+  "source": "https://assets.publishing.service.gov.uk/media/6a02eeeccd2e0e8b5b20b449/Table_10_2026-27.ods",
+  "authorities": {
+   "E07000223": {
+    "authority": "Adur",
+    "band_d": 2548.28
+   },
+   "E07000032": {
+    "authority": "Amber Valley",
+    "band_d": 2407.69
+   },
+   "E07000224": {
+    "authority": "Arun",
+    "band_d": 2487.24
+   },
+   "E07000170": {
+    "authority": "Ashfield",
+    "band_d": 2608.76
+   },
+   "E07000105": {
+    "authority": "Ashford",
+    "band_d": 2410.16
+   },
+   "E07000200": {
+    "authority": "Babergh",
+    "band_d": 2341.55
+   },
+   "E09000002": {
+    "authority": "Barking and Dagenham",
+    "band_d": 2198.51
+   },
+   "E09000003": {
+    "authority": "Barnet",
+    "band_d": 2132.6
+   },
+   "E08000038": {
+    "authority": "Barnsley",
+    "band_d": 2325.96
+   },
+   "E07000066": {
+    "authority": "Basildon",
+    "band_d": 2327.24
+   },
+   "E07000084": {
+    "authority": "Basingstoke and Deane",
+    "band_d": 2255.21
+   },
+   "E07000171": {
+    "authority": "Bassetlaw",
+    "band_d": 2644.95
+   },
+   "E06000022": {
+    "authority": "Bath and North East Somerset",
+    "band_d": 2383.42
+   },
+   "E06000055": {
+    "authority": "Bedford",
+    "band_d": 2471.74
+   },
+   "E09000004": {
+    "authority": "Bexley",
+    "band_d": 2366.36
+   },
+   "E08000025": {
+    "authority": "Birmingham",
+    "band_d": 2362.9
+   },
+   "E07000129": {
+    "authority": "Blaby",
+    "band_d": 2490.22
+   },
+   "E06000008": {
+    "authority": "Blackburn with Darwen",
+    "band_d": 2455.27
+   },
+   "E06000009": {
+    "authority": "Blackpool",
+    "band_d": 2513.22
+   },
+   "E07000033": {
+    "authority": "Bolsover",
+    "band_d": 2559.41
+   },
+   "E08000001": {
+    "authority": "Bolton",
+    "band_d": 2399.74
+   },
+   "E07000136": {
+    "authority": "Boston",
+    "band_d": 2308.73
+   },
+   "E06000058": {
+    "authority": "Bournemouth, Christchurch and Poole",
+    "band_d": 2435.58
+   },
+   "E06000036": {
+    "authority": "Bracknell Forest",
+    "band_d": 2264.8
+   },
+   "E08000032": {
+    "authority": "Bradford",
+    "band_d": 2360.73
+   },
+   "E07000067": {
+    "authority": "Braintree",
+    "band_d": 2280.34
+   },
+   "E07000143": {
+    "authority": "Breckland",
+    "band_d": 2443.67
+   },
+   "E09000005": {
+    "authority": "Brent",
+    "band_d": 2235.27
+   },
+   "E07000068": {
+    "authority": "Brentwood",
+    "band_d": 2258.14
+   },
+   "E06000043": {
+    "authority": "Brighton and Hove",
+    "band_d": 2580.54
+   },
+   "E06000023": {
+    "authority": "Bristol",
+    "band_d": 2713.68
+   },
+   "E07000144": {
+    "authority": "Broadland",
+    "band_d": 2437.78
+   },
+   "E09000006": {
+    "authority": "Bromley",
+    "band_d": 2140.04
+   },
+   "E07000234": {
+    "authority": "Bromsgrove",
+    "band_d": 2478.65
+   },
+   "E07000095": {
+    "authority": "Broxbourne",
+    "band_d": 2306.43
+   },
+   "E07000172": {
+    "authority": "Broxtowe",
+    "band_d": 2618.21
+   },
+   "E06000060": {
+    "authority": "Buckinghamshire",
+    "band_d": 2526.58
+   },
+   "E07000117": {
+    "authority": "Burnley",
+    "band_d": 2549.42
+   },
+   "E08000002": {
+    "authority": "Bury",
+    "band_d": 2555.15
+   },
+   "E08000033": {
+    "authority": "Calderdale",
+    "band_d": 2420.15
+   },
+   "E07000008": {
+    "authority": "Cambridge",
+    "band_d": 2467.02
+   },
+   "E09000007": {
+    "authority": "Camden",
+    "band_d": 2207.55
+   },
+   "E07000192": {
+    "authority": "Cannock Chase",
+    "band_d": 2375.83
+   },
+   "E07000106": {
+    "authority": "Canterbury",
+    "band_d": 2419.33
+   },
+   "E07000069": {
+    "authority": "Castle Point",
+    "band_d": 2318.63
+   },
+   "E06000056": {
+    "authority": "Central Bedfordshire",
+    "band_d": 2516.16
+   },
+   "E07000130": {
+    "authority": "Charnwood",
+    "band_d": 2405.64
+   },
+   "E07000070": {
+    "authority": "Chelmsford",
+    "band_d": 2300.18
+   },
+   "E07000078": {
+    "authority": "Cheltenham",
+    "band_d": 2369.52
+   },
+   "E07000177": {
+    "authority": "Cherwell",
+    "band_d": 2582.96
+   },
+   "E06000049": {
+    "authority": "Cheshire East",
+    "band_d": 2454.87
+   },
+   "E06000050": {
+    "authority": "Cheshire West and Chester",
+    "band_d": 2517.33
+   },
+   "E07000034": {
+    "authority": "Chesterfield",
+    "band_d": 2339.49
+   },
+   "E07000225": {
+    "authority": "Chichester",
+    "band_d": 2469.68
+   },
+   "E07000118": {
+    "authority": "Chorley",
+    "band_d": 2430.23
+   },
+   "E09000001": {
+    "authority": "City of London",
+    "band_d": 1329.56
+   },
+   "E07000071": {
+    "authority": "Colchester",
+    "band_d": 2282.85
+   },
+   "E06000052": {
+    "authority": "Cornwall",
+    "band_d": 2590.93
+   },
+   "E07000079": {
+    "authority": "Cotswold",
+    "band_d": 2391.65
+   },
+   "E08000026": {
+    "authority": "Coventry",
+    "band_d": 2516.72
+   },
+   "E07000226": {
+    "authority": "Crawley",
+    "band_d": 2418.46
+   },
+   "E09000008": {
+    "authority": "Croydon",
+    "band_d": 2599.91
+   },
+   "E06000063": {
+    "authority": "Cumberland",
+    "band_d": 2511.32
+   },
+   "E07000096": {
+    "authority": "Dacorum",
+    "band_d": 2408.51
+   },
+   "E06000005": {
+    "authority": "Darlington",
+    "band_d": 2493.83
+   },
+   "E07000107": {
+    "authority": "Dartford",
+    "band_d": 2375.15
+   },
+   "E06000015": {
+    "authority": "Derby",
+    "band_d": 2306.0
+   },
+   "E07000035": {
+    "authority": "Derbyshire Dales",
+    "band_d": 2444.7
+   },
+   "E08000017": {
+    "authority": "Doncaster",
+    "band_d": 2167.75
+   },
+   "E06000059": {
+    "authority": "Dorset",
+    "band_d": 2765.02
+   },
+   "E07000108": {
+    "authority": "Dover",
+    "band_d": 2461.74
+   },
+   "E08000027": {
+    "authority": "Dudley",
+    "band_d": 2144.84
+   },
+   "E06000047": {
+    "authority": "Durham",
+    "band_d": 2622.15
+   },
+   "E09000009": {
+    "authority": "Ealing",
+    "band_d": 2138.53
+   },
+   "E07000009": {
+    "authority": "East Cambridgeshire",
+    "band_d": 2485.18
+   },
+   "E07000040": {
+    "authority": "East Devon",
+    "band_d": 2595.46
+   },
+   "E07000085": {
+    "authority": "East Hampshire",
+    "band_d": 2343.92
+   },
+   "E07000242": {
+    "authority": "East Hertfordshire",
+    "band_d": 2454.78
+   },
+   "E07000137": {
+    "authority": "East Lindsey",
+    "band_d": 2275.88
+   },
+   "E06000011": {
+    "authority": "East Riding of Yorkshire",
+    "band_d": 2466.08
+   },
+   "E07000193": {
+    "authority": "East Staffordshire",
+    "band_d": 2351.34
+   },
+   "E07000244": {
+    "authority": "East Suffolk",
+    "band_d": 2334.8
+   },
+   "E07000061": {
+    "authority": "Eastbourne",
+    "band_d": 2654.28
+   },
+   "E07000086": {
+    "authority": "Eastleigh",
+    "band_d": 2342.21
+   },
+   "E07000207": {
+    "authority": "Elmbridge",
+    "band_d": 2557.75
+   },
+   "E09000010": {
+    "authority": "Enfield",
+    "band_d": 2267.67
+   },
+   "E07000072": {
+    "authority": "Epping Forest",
+    "band_d": 2277.21
+   },
+   "E07000208": {
+    "authority": "Epsom and Ewell",
+    "band_d": 2530.84
+   },
+   "E07000036": {
+    "authority": "Erewash",
+    "band_d": 2360.64
+   },
+   "E07000041": {
+    "authority": "Exeter",
+    "band_d": 2495.36
+   },
+   "E07000087": {
+    "authority": "Fareham",
+    "band_d": 2270.55
+   },
+   "E07000010": {
+    "authority": "Fenland",
+    "band_d": 2537.74
+   },
+   "E07000112": {
+    "authority": "Folkestone and Hythe",
+    "band_d": 2538.75
+   },
+   "E07000080": {
+    "authority": "Forest of Dean",
+    "band_d": 2443.42
+   },
+   "E07000119": {
+    "authority": "Fylde",
+    "band_d": 2483.94
+   },
+   "E08000037": {
+    "authority": "Gateshead",
+    "band_d": 2715.81
+   },
+   "E07000173": {
+    "authority": "Gedling",
+    "band_d": 2609.55
+   },
+   "E07000081": {
+    "authority": "Gloucester",
+    "band_d": 2355.84
+   },
+   "E07000088": {
+    "authority": "Gosport",
+    "band_d": 2344.29
+   },
+   "E07000109": {
+    "authority": "Gravesham",
+    "band_d": 2408.24
+   },
+   "E07000145": {
+    "authority": "Great Yarmouth",
+    "band_d": 2414.41
+   },
+   "E09000011": {
+    "authority": "Greenwich",
+    "band_d": 2107.86
+   },
+   "E07000209": {
+    "authority": "Guildford",
+    "band_d": 2547.3
+   },
+   "E09000012": {
+    "authority": "Hackney",
+    "band_d": 2060.3
+   },
+   "E06000006": {
+    "authority": "Halton",
+    "band_d": 2366.61
+   },
+   "E09000013": {
+    "authority": "Hammersmith and Fulham",
+    "band_d": 1519.51
+   },
+   "E07000131": {
+    "authority": "Harborough",
+    "band_d": 2389.87
+   },
+   "E09000014": {
+    "authority": "Haringey",
+    "band_d": 2313.78
+   },
+   "E07000073": {
+    "authority": "Harlow",
+    "band_d": 2298.69
+   },
+   "E09000015": {
+    "authority": "Harrow",
+    "band_d": 2511.07
+   },
+   "E07000089": {
+    "authority": "Hart",
+    "band_d": 2400.02
+   },
+   "E06000001": {
+    "authority": "Hartlepool",
+    "band_d": 2560.2
+   },
+   "E07000062": {
+    "authority": "Hastings",
+    "band_d": 2676.58
+   },
+   "E07000090": {
+    "authority": "Havant",
+    "band_d": 2320.28
+   },
+   "E09000016": {
+    "authority": "Havering",
+    "band_d": 2424.66
+   },
+   "E06000019": {
+    "authority": "Herefordshire",
+    "band_d": 2574.37
+   },
+   "E07000098": {
+    "authority": "Hertsmere",
+    "band_d": 2405.83
+   },
+   "E07000037": {
+    "authority": "High Peak",
+    "band_d": 2384.66
+   },
+   "E09000017": {
+    "authority": "Hillingdon",
+    "band_d": 2045.46
+   },
+   "E07000132": {
+    "authority": "Hinckley and Bosworth",
+    "band_d": 2382.62
+   },
+   "E07000227": {
+    "authority": "Horsham",
+    "band_d": 2441.01
+   },
+   "E09000018": {
+    "authority": "Hounslow",
+    "band_d": 2185.56
+   },
+   "E07000011": {
+    "authority": "Huntingdonshire",
+    "band_d": 2556.4
+   },
+   "E07000120": {
+    "authority": "Hyndburn",
+    "band_d": 2465.98
+   },
+   "E07000202": {
+    "authority": "Ipswich",
+    "band_d": 2468.25
+   },
+   "E06000046": {
+    "authority": "Isle of Wight",
+    "band_d": 2625.79
+   },
+   "E06000053": {
+    "authority": "Isles of Scilly",
+    "band_d": 2047.96
+   },
+   "E09000019": {
+    "authority": "Islington",
+    "band_d": 2108.15
+   },
+   "E09000020": {
+    "authority": "Kensington and Chelsea",
+    "band_d": 1666.65
+   },
+   "E07000146": {
+    "authority": "Kings Lynn and West Norfolk",
+    "band_d": 2430.13
+   },
+   "E06000010": {
+    "authority": "Kingston upon Hull",
+    "band_d": 2295.04
+   },
+   "E09000021": {
+    "authority": "Kingston upon Thames",
+    "band_d": 2609.2
+   },
+   "E08000034": {
+    "authority": "Kirklees",
+    "band_d": 2441.07
+   },
+   "E08000011": {
+    "authority": "Knowsley",
+    "band_d": 2488.25
+   },
+   "E09000022": {
+    "authority": "Lambeth",
+    "band_d": 2047.11
+   },
+   "E07000121": {
+    "authority": "Lancaster",
+    "band_d": 2503.19
+   },
+   "E08000035": {
+    "authority": "Leeds",
+    "band_d": 2283.73
+   },
+   "E06000016": {
+    "authority": "Leicester",
+    "band_d": 2528.75
+   },
+   "E07000063": {
+    "authority": "Lewes",
+    "band_d": 2756.17
+   },
+   "E09000023": {
+    "authority": "Lewisham",
+    "band_d": 2237.33
+   },
+   "E07000194": {
+    "authority": "Lichfield",
+    "band_d": 2351.9
+   },
+   "E07000138": {
+    "authority": "Lincoln",
+    "band_d": 2323.08
+   },
+   "E08000012": {
+    "authority": "Liverpool",
+    "band_d": 2673.59
+   },
+   "E06000032": {
+    "authority": "Luton",
+    "band_d": 2439.93
+   },
+   "E07000110": {
+    "authority": "Maidstone",
+    "band_d": 2502.59
+   },
+   "E07000074": {
+    "authority": "Maldon",
+    "band_d": 2328.37
+   },
+   "E07000235": {
+    "authority": "Malvern Hills",
+    "band_d": 2450.92
+   },
+   "E08000003": {
+    "authority": "Manchester",
+    "band_d": 2312.04
+   },
+   "E07000174": {
+    "authority": "Mansfield",
+    "band_d": 2600.38
+   },
+   "E06000035": {
+    "authority": "Medway",
+    "band_d": 2328.55
+   },
+   "E07000133": {
+    "authority": "Melton",
+    "band_d": 2429.67
+   },
+   "E09000024": {
+    "authority": "Merton",
+    "band_d": 2146.76
+   },
+   "E07000042": {
+    "authority": "Mid Devon",
+    "band_d": 2656.41
+   },
+   "E07000203": {
+    "authority": "Mid Suffolk",
+    "band_d": 2316.88
+   },
+   "E07000228": {
+    "authority": "Mid Sussex",
+    "band_d": 2474.26
+   },
+   "E06000002": {
+    "authority": "Middlesbrough",
+    "band_d": 2549.16
+   },
+   "E06000042": {
+    "authority": "Milton Keynes",
+    "band_d": 2372.21
+   },
+   "E07000210": {
+    "authority": "Mole Valley",
+    "band_d": 2519.86
+   },
+   "E07000091": {
+    "authority": "New Forest",
+    "band_d": 2419.76
+   },
+   "E07000175": {
+    "authority": "Newark and Sherwood",
+    "band_d": 2682.1
+   },
+   "E08000021": {
+    "authority": "Newcastle upon Tyne",
+    "band_d": 2542.19
+   },
+   "E07000195": {
+    "authority": "Newcastle-under-Lyme",
+    "band_d": 2334.25
+   },
+   "E09000025": {
+    "authority": "Newham",
+    "band_d": 1944.23
+   },
+   "E07000043": {
+    "authority": "North Devon",
+    "band_d": 2642.21
+   },
+   "E07000038": {
+    "authority": "North East Derbyshire",
+    "band_d": 2466.57
+   },
+   "E06000012": {
+    "authority": "North East Lincolnshire",
+    "band_d": 2483.85
+   },
+   "E07000099": {
+    "authority": "North Hertfordshire",
+    "band_d": 2448.52
+   },
+   "E07000139": {
+    "authority": "North Kesteven",
+    "band_d": 2337.81
+   },
+   "E06000013": {
+    "authority": "North Lincolnshire",
+    "band_d": 2348.46
+   },
+   "E07000147": {
+    "authority": "North Norfolk",
+    "band_d": 2459.93
+   },
+   "E06000061": {
+    "authority": "North Northamptonshire",
+    "band_d": 2423.96
+   },
+   "E06000024": {
+    "authority": "North Somerset",
+    "band_d": 2491.22
+   },
+   "E08000022": {
+    "authority": "North Tyneside",
+    "band_d": 2461.77
+   },
+   "E07000218": {
+    "authority": "North Warwickshire",
+    "band_d": 2532.1
+   },
+   "E07000134": {
+    "authority": "North West Leicestershire",
+    "band_d": 2418.2
+   },
+   "E06000065": {
+    "authority": "North Yorkshire",
+    "band_d": 2544.34
+   },
+   "E06000057": {
+    "authority": "Northumberland",
+    "band_d": 2596.94
+   },
+   "E07000148": {
+    "authority": "Norwich",
+    "band_d": 2503.44
+   },
+   "E06000018": {
+    "authority": "Nottingham",
+    "band_d": 2755.39
+   },
+   "E07000219": {
+    "authority": "Nuneaton and Bedworth",
+    "band_d": 2502.16
+   },
+   "E07000135": {
+    "authority": "Oadby and Wigston",
+    "band_d": 2406.85
+   },
+   "E08000004": {
+    "authority": "Oldham",
+    "band_d": 2602.23
+   },
+   "E07000178": {
+    "authority": "Oxford",
+    "band_d": 2678.4
+   },
+   "E07000122": {
+    "authority": "Pendle",
+    "band_d": 2640.18
+   },
+   "E06000031": {
+    "authority": "Peterborough",
+    "band_d": 2293.47
+   },
+   "E06000026": {
+    "authority": "Plymouth",
+    "band_d": 2441.85
+   },
+   "E06000044": {
+    "authority": "Portsmouth",
+    "band_d": 2291.71
+   },
+   "E07000123": {
+    "authority": "Preston",
+    "band_d": 2575.74
+   },
+   "E06000038": {
+    "authority": "Reading",
+    "band_d": 2612.77
+   },
+   "E09000026": {
+    "authority": "Redbridge",
+    "band_d": 2294.58
+   },
+   "E06000003": {
+    "authority": "Redcar and Cleveland",
+    "band_d": 2544.48
+   },
+   "E07000236": {
+    "authority": "Redditch",
+    "band_d": 2462.95
+   },
+   "E07000211": {
+    "authority": "Reigate and Banstead",
+    "band_d": 2566.61
+   },
+   "E07000124": {
+    "authority": "Ribble Valley",
+    "band_d": 2386.5
+   },
+   "E09000027": {
+    "authority": "Richmond upon Thames",
+    "band_d": 2486.1
+   },
+   "E08000005": {
+    "authority": "Rochdale",
+    "band_d": 2600.83
+   },
+   "E07000075": {
+    "authority": "Rochford",
+    "band_d": 2363.48
+   },
+   "E07000125": {
+    "authority": "Rossendale",
+    "band_d": 2519.97
+   },
+   "E07000064": {
+    "authority": "Rother",
+    "band_d": 2700.95
+   },
+   "E08000018": {
+    "authority": "Rotherham",
+    "band_d": 2381.53
+   },
+   "E07000220": {
+    "authority": "Rugby",
+    "band_d": 2483.05
+   },
+   "E07000212": {
+    "authority": "Runnymede",
+    "band_d": 2492.99
+   },
+   "E07000176": {
+    "authority": "Rushcliffe",
+    "band_d": 2643.27
+   },
+   "E07000092": {
+    "authority": "Rushmoor",
+    "band_d": 2320.28
+   },
+   "E06000017": {
+    "authority": "Rutland",
+    "band_d": 2737.58
+   },
+   "E08000006": {
+    "authority": "Salford",
+    "band_d": 2594.45
+   },
+   "E08000028": {
+    "authority": "Sandwell",
+    "band_d": 2244.46
+   },
+   "E08000014": {
+    "authority": "Sefton",
+    "band_d": 2583.22
+   },
+   "E07000111": {
+    "authority": "Sevenoaks",
+    "band_d": 2522.36
+   },
+   "E08000039": {
+    "authority": "Sheffield",
+    "band_d": 2510.16
+   },
+   "E06000051": {
+    "authority": "Shropshire",
+    "band_d": 2528.18
+   },
+   "E06000039": {
+    "authority": "Slough",
+    "band_d": 2414.44
+   },
+   "E08000029": {
+    "authority": "Solihull",
+    "band_d": 2197.26
+   },
+   "E06000066": {
+    "authority": "Somerset",
+    "band_d": 2560.59
+   },
+   "E07000012": {
+    "authority": "South Cambridgeshire",
+    "band_d": 2536.25
+   },
+   "E07000039": {
+    "authority": "South Derbyshire",
+    "band_d": 2339.61
+   },
+   "E06000025": {
+    "authority": "South Gloucestershire",
+    "band_d": 2550.59
+   },
+   "E07000044": {
+    "authority": "South Hams",
+    "band_d": 2615.22
+   },
+   "E07000140": {
+    "authority": "South Holland",
+    "band_d": 2278.2
+   },
+   "E07000141": {
+    "authority": "South Kesteven",
+    "band_d": 2260.0
+   },
+   "E07000149": {
+    "authority": "South Norfolk",
+    "band_d": 2482.87
+   },
+   "E07000179": {
+    "authority": "South Oxfordshire",
+    "band_d": 2597.57
+   },
+   "E07000126": {
+    "authority": "South Ribble",
+    "band_d": 2442.66
+   },
+   "E07000196": {
+    "authority": "South Staffordshire",
+    "band_d": 2313.67
+   },
+   "E08000023": {
+    "authority": "South Tyneside",
+    "band_d": 2434.43
+   },
+   "E06000045": {
+    "authority": "Southampton",
+    "band_d": 2381.48
+   },
+   "E06000033": {
+    "authority": "Southend-on-Sea",
+    "band_d": 2265.17
+   },
+   "E09000028": {
+    "authority": "Southwark",
+    "band_d": 1967.26
+   },
+   "E07000213": {
+    "authority": "Spelthorne",
+    "band_d": 2526.44
+   },
+   "E07000240": {
+    "authority": "St Albans",
+    "band_d": 2419.22
+   },
+   "E08000013": {
+    "authority": "St Helens",
+    "band_d": 2403.38
+   },
+   "E07000197": {
+    "authority": "Stafford",
+    "band_d": 2302.68
+   },
+   "E07000198": {
+    "authority": "Staffordshire Moorlands",
+    "band_d": 2338.21
+   },
+   "E07000243": {
+    "authority": "Stevenage",
+    "band_d": 2391.97
+   },
+   "E08000007": {
+    "authority": "Stockport",
+    "band_d": 2618.9
+   },
+   "E06000004": {
+    "authority": "Stockton-on-Tees",
+    "band_d": 2589.83
+   },
+   "E06000021": {
+    "authority": "Stoke-on-Trent",
+    "band_d": 2183.12
+   },
+   "E07000221": {
+    "authority": "Stratford-on-Avon",
+    "band_d": 2484.17
+   },
+   "E07000082": {
+    "authority": "Stroud",
+    "band_d": 2491.36
+   },
+   "E08000024": {
+    "authority": "Sunderland",
+    "band_d": 2197.14
+   },
+   "E07000214": {
+    "authority": "Surrey Heath",
+    "band_d": 2585.16
+   },
+   "E09000029": {
+    "authority": "Sutton",
+    "band_d": 2378.64
+   },
+   "E07000113": {
+    "authority": "Swale",
+    "band_d": 2405.65
+   },
+   "E06000030": {
+    "authority": "Swindon",
+    "band_d": 2438.1
+   },
+   "E08000008": {
+    "authority": "Tameside",
+    "band_d": 2447.21
+   },
+   "E07000199": {
+    "authority": "Tamworth",
+    "band_d": 2300.76
+   },
+   "E07000215": {
+    "authority": "Tandridge",
+    "band_d": 2594.85
+   },
+   "E07000045": {
+    "authority": "Teignbridge",
+    "band_d": 2643.12
+   },
+   "E06000020": {
+    "authority": "Telford and Wrekin",
+    "band_d": 2256.26
+   },
+   "E07000076": {
+    "authority": "Tendring",
+    "band_d": 2269.63
+   },
+   "E07000093": {
+    "authority": "Test Valley",
+    "band_d": 2305.52
+   },
+   "E07000083": {
+    "authority": "Tewkesbury",
+    "band_d": 2340.53
+   },
+   "E07000114": {
+    "authority": "Thanet",
+    "band_d": 2490.9
+   },
+   "E07000102": {
+    "authority": "Three Rivers",
+    "band_d": 2422.31
+   },
+   "E06000034": {
+    "authority": "Thurrock",
+    "band_d": 2254.68
+   },
+   "E07000115": {
+    "authority": "Tonbridge and Malling",
+    "band_d": 2471.83
+   },
+   "E06000027": {
+    "authority": "Torbay",
+    "band_d": 2470.25
+   },
+   "E07000046": {
+    "authority": "Torridge",
+    "band_d": 2601.42
+   },
+   "E09000030": {
+    "authority": "Tower Hamlets",
+    "band_d": 1837.78
+   },
+   "E08000009": {
+    "authority": "Trafford",
+    "band_d": 2291.7
+   },
+   "E07000116": {
+    "authority": "Tunbridge Wells",
+    "band_d": 2446.15
+   },
+   "E07000077": {
+    "authority": "Uttlesford",
+    "band_d": 2333.82
+   },
+   "E07000180": {
+    "authority": "Vale of White Horse",
+    "band_d": 2577.44
+   },
+   "E08000036": {
+    "authority": "Wakefield",
+    "band_d": 2296.89
+   },
+   "E08000030": {
+    "authority": "Walsall",
+    "band_d": 2627.48
+   },
+   "E09000031": {
+    "authority": "Waltham Forest",
+    "band_d": 2386.96
+   },
+   "E09000032": {
+    "authority": "Wandsworth",
+    "band_d": 1028.21
+   },
+   "E06000007": {
+    "authority": "Warrington",
+    "band_d": 2447.61
+   },
+   "E07000222": {
+    "authority": "Warwick",
+    "band_d": 2461.55
+   },
+   "E07000103": {
+    "authority": "Watford",
+    "band_d": 2446.7
+   },
+   "E07000216": {
+    "authority": "Waverley",
+    "band_d": 2604.87
+   },
+   "E07000065": {
+    "authority": "Wealden",
+    "band_d": 2728.43
+   },
+   "E07000241": {
+    "authority": "Welwyn Hatfield",
+    "band_d": 2452.26
+   },
+   "E06000037": {
+    "authority": "West Berkshire",
+    "band_d": 2505.37
+   },
+   "E07000047": {
+    "authority": "West Devon",
+    "band_d": 2705.33
+   },
+   "E07000127": {
+    "authority": "West Lancashire",
+    "band_d": 2456.23
+   },
+   "E07000142": {
+    "authority": "West Lindsey",
+    "band_d": 2354.25
+   },
+   "E06000062": {
+    "authority": "West Northamptonshire",
+    "band_d": 2486.66
+   },
+   "E07000181": {
+    "authority": "West Oxfordshire",
+    "band_d": 2566.95
+   },
+   "E07000245": {
+    "authority": "West Suffolk",
+    "band_d": 2351.47
+   },
+   "E09000033": {
+    "authority": "Westminster",
+    "band_d": 1049.55
+   },
+   "E06000064": {
+    "authority": "Westmorland and Furness",
+    "band_d": 2507.99
+   },
+   "E08000010": {
+    "authority": "Wigan",
+    "band_d": 2152.68
+   },
+   "E06000054": {
+    "authority": "Wiltshire",
+    "band_d": 2571.78
+   },
+   "E07000094": {
+    "authority": "Winchester",
+    "band_d": 2359.76
+   },
+   "E06000040": {
+    "authority": "Windsor and Maidenhead",
+    "band_d": 1952.62
+   },
+   "E08000015": {
+    "authority": "Wirral",
+    "band_d": 2500.59
+   },
+   "E07000217": {
+    "authority": "Woking",
+    "band_d": 2598.04
+   },
+   "E06000041": {
+    "authority": "Wokingham",
+    "band_d": 2497.7
+   },
+   "E08000031": {
+    "authority": "Wolverhampton",
+    "band_d": 2538.99
+   },
+   "E07000237": {
+    "authority": "Worcester",
+    "band_d": 2405.81
+   },
+   "E07000229": {
+    "authority": "Worthing",
+    "band_d": 2456.13
+   },
+   "E07000238": {
+    "authority": "Wychavon",
+    "band_d": 2373.19
+   },
+   "E07000128": {
+    "authority": "Wyre",
+    "band_d": 2460.53
+   },
+   "E07000239": {
+    "authority": "Wyre Forest",
+    "band_d": 2512.47
+   },
+   "E06000014": {
+    "authority": "York",
+    "band_d": 2287.15
+   }
+  }
+ },
+ "scotland": {
+  "source": "https://www.gov.scot/binaries/content/documents/govscot/publications/statistics/2019/04/council-tax-datasets/documents/average-council-tax-per-dwelling/council-tax-by-band-2026-27/council-tax-by-band-2026-27/govscot%3Adocument/CTAS%2B2026%2B-%2BCouncil%2BTax%2BAssumptions%2B-%2BCouncil%2BTax%2Bby%2BBand%2B-%2B2026-27.xlsx",
+  "authorities": {
+   "aberdeen city": {
+    "authority": "Aberdeen City",
+    "bands": {
+     "A": 1165.03,
+     "B": 1359.2,
+     "C": 1553.37,
+     "D": 1747.54,
+     "E": 2296.07,
+     "F": 2839.75,
+     "G": 3422.27,
+     "H": 4281.47
+    }
+   },
+   "aberdeenshire": {
+    "authority": "Aberdeenshire",
+    "bands": {
+     "A": 1124.03,
+     "B": 1311.36,
+     "C": 1498.7,
+     "D": 1686.04,
+     "E": 2215.27,
+     "F": 2739.82,
+     "G": 3301.83,
+     "H": 4130.8
+    }
+   },
+   "angus": {
+    "authority": "Angus",
+    "bands": {
+     "A": 1065.77,
+     "B": 1243.39,
+     "C": 1421.02,
+     "D": 1598.65,
+     "E": 2100.45,
+     "F": 2597.81,
+     "G": 3130.69,
+     "H": 3916.69
+    }
+   },
+   "argyll and bute": {
+    "authority": "Argyll & Bute",
+    "bands": {
+     "A": 1188.89,
+     "B": 1387.03,
+     "C": 1585.18,
+     "D": 1783.33,
+     "E": 2343.1,
+     "F": 2897.91,
+     "G": 3492.35,
+     "H": 4369.16
+    }
+   },
+   "city of edinburgh": {
+    "authority": "City of Edinburgh",
+    "bands": {
+     "A": 1084.03,
+     "B": 1264.71,
+     "C": 1445.38,
+     "D": 1626.05,
+     "E": 2136.45,
+     "F": 2642.33,
+     "G": 3184.35,
+     "H": 3983.82
+    }
+   },
+   "clackmannanshire": {
+    "authority": "Clackmannanshire",
+    "bands": {
+     "A": 1122.45,
+     "B": 1309.52,
+     "C": 1496.6,
+     "D": 1683.67,
+     "E": 2212.16,
+     "F": 2735.96,
+     "G": 3297.19,
+     "H": 4124.99
+    }
+   },
+   "dumfries and galloway": {
+    "authority": "Dumfries & Galloway",
+    "bands": {
+     "A": 1052.43,
+     "B": 1227.84,
+     "C": 1403.24,
+     "D": 1578.65,
+     "E": 2074.17,
+     "F": 2565.31,
+     "G": 3091.52,
+     "H": 3867.69
+    }
+   },
+   "dundee city": {
+    "authority": "Dundee City",
+    "bands": {
+     "A": 1153.13,
+     "B": 1345.31,
+     "C": 1537.5,
+     "D": 1729.69,
+     "E": 2272.62,
+     "F": 2810.75,
+     "G": 3387.31,
+     "H": 4237.74
+    }
+   },
+   "east ayrshire": {
+    "authority": "East Ayrshire",
+    "bands": {
+     "A": 1144.85,
+     "B": 1335.66,
+     "C": 1526.47,
+     "D": 1717.28,
+     "E": 2256.32,
+     "F": 2790.58,
+     "G": 3363.01,
+     "H": 4207.34
+    }
+   },
+   "east dunbartonshire": {
+    "authority": "East Dunbartonshire",
+    "bands": {
+     "A": 1167.78,
+     "B": 1362.41,
+     "C": 1557.04,
+     "D": 1751.67,
+     "E": 2301.5,
+     "F": 2846.46,
+     "G": 3430.35,
+     "H": 4291.59
+    }
+   },
+   "east lothian": {
+    "authority": "East Lothian",
+    "bands": {
+     "A": 1131.75,
+     "B": 1320.37,
+     "C": 1509.0,
+     "D": 1697.62,
+     "E": 2230.48,
+     "F": 2758.63,
+     "G": 3324.51,
+     "H": 4159.17
+    }
+   },
+   "east renfrewshire": {
+    "authority": "East Renfrewshire",
+    "bands": {
+     "A": 1080.1,
+     "B": 1260.12,
+     "C": 1440.13,
+     "D": 1620.15,
+     "E": 2128.7,
+     "F": 2632.74,
+     "G": 3172.79,
+     "H": 3969.37
+    }
+   },
+   "falkirk": {
+    "authority": "Falkirk",
+    "bands": {
+     "A": 1143.39,
+     "B": 1333.96,
+     "C": 1524.52,
+     "D": 1715.09,
+     "E": 2253.44,
+     "F": 2787.02,
+     "G": 3358.72,
+     "H": 4201.97
+    }
+   },
+   "fife": {
+    "authority": "Fife",
+    "bands": {
+     "A": 1049.13,
+     "B": 1223.99,
+     "C": 1398.84,
+     "D": 1573.7,
+     "E": 2067.67,
+     "F": 2557.26,
+     "G": 3081.83,
+     "H": 3855.57
+    }
+   },
+   "glasgow city": {
+    "authority": "Glasgow City",
+    "bands": {
+     "A": 1137.33,
+     "B": 1326.89,
+     "C": 1516.44,
+     "D": 1706.0,
+     "E": 2241.49,
+     "F": 2772.25,
+     "G": 3340.92,
+     "H": 4179.7
+    }
+   },
+   "highland": {
+    "authority": "Highland",
+    "bands": {
+     "A": 1089.33,
+     "B": 1270.88,
+     "C": 1452.44,
+     "D": 1633.99,
+     "E": 2146.88,
+     "F": 2655.23,
+     "G": 3199.9,
+     "H": 4003.28
+    }
+   },
+   "inverclyde": {
+    "authority": "Inverclyde",
+    "bands": {
+     "A": 1115.9,
+     "B": 1301.88,
+     "C": 1487.87,
+     "D": 1673.85,
+     "E": 2199.25,
+     "F": 2720.01,
+     "G": 3277.96,
+     "H": 4100.93
+    }
+   },
+   "midlothian": {
+    "authority": "Midlothian",
+    "bands": {
+     "A": 1210.77,
+     "B": 1412.57,
+     "C": 1614.36,
+     "D": 1816.16,
+     "E": 2386.23,
+     "F": 2951.26,
+     "G": 3556.65,
+     "H": 4449.59
+    }
+   },
+   "moray": {
+    "authority": "Moray",
+    "bands": {
+     "A": 1154.09,
+     "B": 1346.44,
+     "C": 1538.79,
+     "D": 1731.14,
+     "E": 2274.53,
+     "F": 2813.1,
+     "G": 3390.15,
+     "H": 4241.29
+    }
+   },
+   "na h-eileanan siar": {
+    "authority": "Na h-Eileanan Siar",
+    "bands": {
+     "A": 1003.67,
+     "B": 1170.94,
+     "C": 1338.22,
+     "D": 1505.5,
+     "E": 1978.06,
+     "F": 2446.44,
+     "G": 2948.27,
+     "H": 3688.48
+    }
+   },
+   "north ayrshire": {
+    "authority": "North Ayrshire",
+    "bands": {
+     "A": 1123.89,
+     "B": 1311.21,
+     "C": 1498.52,
+     "D": 1685.84,
+     "E": 2215.01,
+     "F": 2739.49,
+     "G": 3301.44,
+     "H": 4130.31
+    }
+   },
+   "north lanarkshire": {
+    "authority": "North Lanarkshire",
+    "bands": {
+     "A": 1036.37,
+     "B": 1209.1,
+     "C": 1381.83,
+     "D": 1554.56,
+     "E": 2042.52,
+     "F": 2526.16,
+     "G": 3044.35,
+     "H": 3808.67
+    }
+   },
+   "orkney islands": {
+    "authority": "Orkney Islands",
+    "bands": {
+     "A": 1112.71,
+     "B": 1298.17,
+     "C": 1483.62,
+     "D": 1669.07,
+     "E": 2192.97,
+     "F": 2712.24,
+     "G": 3268.6,
+     "H": 4089.22
+    }
+   },
+   "perth and kinross": {
+    "authority": "Perth & Kinross",
+    "bands": {
+     "A": 1115.89,
+     "B": 1301.88,
+     "C": 1487.86,
+     "D": 1673.84,
+     "E": 2199.24,
+     "F": 2719.99,
+     "G": 3277.94,
+     "H": 4100.91
+    }
+   },
+   "renfrewshire": {
+    "authority": "Renfrewshire",
+    "bands": {
+     "A": 1127.04,
+     "B": 1314.88,
+     "C": 1502.72,
+     "D": 1690.56,
+     "E": 2221.21,
+     "F": 2747.16,
+     "G": 3310.68,
+     "H": 4141.87
+    }
+   },
+   "scottish borders": {
+    "authority": "Scottish Borders",
+    "bands": {
+     "A": 1079.01,
+     "B": 1258.85,
+     "C": 1438.68,
+     "D": 1618.52,
+     "E": 2126.56,
+     "F": 2630.09,
+     "G": 3169.6,
+     "H": 3965.37
+    }
+   },
+   "shetland islands": {
+    "authority": "Shetland  Islands",
+    "bands": {
+     "A": 991.93,
+     "B": 1157.26,
+     "C": 1322.58,
+     "D": 1487.9,
+     "E": 1954.94,
+     "F": 2417.84,
+     "G": 2913.8,
+     "H": 3645.36
+    }
+   },
+   "south ayrshire": {
+    "authority": "South Ayrshire",
+    "bands": {
+     "A": 1129.97,
+     "B": 1318.3,
+     "C": 1506.63,
+     "D": 1694.96,
+     "E": 2226.99,
+     "F": 2754.31,
+     "G": 3319.3,
+     "H": 4152.65
+    }
+   },
+   "south lanarkshire": {
+    "authority": "South Lanarkshire",
+    "bands": {
+     "A": 978.98,
+     "B": 1142.15,
+     "C": 1305.31,
+     "D": 1468.47,
+     "E": 1929.41,
+     "F": 2386.27,
+     "G": 2875.76,
+     "H": 3597.76
+    }
+   },
+   "stirling": {
+    "authority": "Stirling",
+    "bands": {
+     "A": 1168.58,
+     "B": 1363.34,
+     "C": 1558.11,
+     "D": 1752.87,
+     "E": 2303.08,
+     "F": 2848.41,
+     "G": 3432.7,
+     "H": 4294.53
+    }
+   },
+   "west dunbartonshire": {
+    "authority": "West Dunbartonshire",
+    "bands": {
+     "A": 1121.02,
+     "B": 1307.86,
+     "C": 1494.69,
+     "D": 1681.53,
+     "E": 2209.34,
+     "F": 2732.49,
+     "G": 3293.0,
+     "H": 4119.75
+    }
+   },
+   "west lothian": {
+    "authority": "West Lothian",
+    "bands": {
+     "A": 1085.06,
+     "B": 1265.9,
+     "C": 1446.75,
+     "D": 1627.59,
+     "E": 2138.47,
+     "F": 2644.83,
+     "G": 3187.36,
+     "H": 3987.6
+    }
+   }
+  }
+ },
+ "wales": {
+  "source": "https://www.gov.wales/sites/default/files/statistics-and-research/2026-03/council-tax-levels-april-2026-march-2027-153478.xlsx",
+  "authorities": {
+   "isle of anglesey": {
+    "authority": "Isle of Anglesey",
+    "band_d": 2260.73
+   },
+   "gwynedd": {
+    "authority": "Gwynedd",
+    "band_d": 2468.77
+   },
+   "conwy": {
+    "authority": "Conwy",
+    "band_d": 2472.82
+   },
+   "denbighshire": {
+    "authority": "Denbighshire",
+    "band_d": 2339.03
+   },
+   "flintshire": {
+    "authority": "Flintshire",
+    "band_d": 2376.17
+   },
+   "wrexham": {
+    "authority": "Wrexham",
+    "band_d": 2308.88
+   },
+   "powys": {
+    "authority": "Powys",
+    "band_d": 2351.72
+   },
+   "ceredigion": {
+    "authority": "Ceredigion",
+    "band_d": 2419.45
+   },
+   "pembrokeshire": {
+    "authority": "Pembrokeshire",
+    "band_d": 2166.15
+   },
+   "carmarthenshire": {
+    "authority": "Carmarthenshire",
+    "band_d": 2351.2
+   },
+   "swansea": {
+    "authority": "Swansea",
+    "band_d": 2238.29
+   },
+   "neath port talbot": {
+    "authority": "Neath Port Talbot",
+    "band_d": 2541.39
+   },
+   "bridgend": {
+    "authority": "Bridgend",
+    "band_d": 2477.99
+   },
+   "vale of glamorgan": {
+    "authority": "Vale of Glamorgan",
+    "band_d": 2231.54
+   },
+   "cardiff": {
+    "authority": "Cardiff",
+    "band_d": 2013.18
+   },
+   "rhondda cynon taf": {
+    "authority": "Rhondda Cynon Taf",
+    "band_d": 2289.43
+   },
+   "merthyr tydfil": {
+    "authority": "Merthyr Tydfil",
+    "band_d": 2593.6
+   },
+   "caerphilly": {
+    "authority": "Caerphilly",
+    "band_d": 2082.88
+   },
+   "blaenau gwent": {
+    "authority": "Blaenau Gwent",
+    "band_d": 2531.26
+   },
+   "torfaen": {
+    "authority": "Torfaen",
+    "band_d": 2155.68
+   },
+   "monmouthshire": {
+    "authority": "Monmouthshire",
+    "band_d": 2416.5
+   },
+   "newport": {
+    "authority": "Newport",
+    "band_d": 2088.48
+   }
   }
  }
 }

@@ -894,7 +894,7 @@ DATA_SOURCE_GROUPS = [
         {"name": "Defra strategic noise mapping", "powers": "Road, rail and air noise levels", "freshness": "Imported; Defra round-based", "url": "https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs"},
         {"name": "Defra/AURN air quality", "powers": "Pollutants against WHO guidelines", "freshness": "Imported; annual modelled background maps", "url": "https://uk-air.defra.gov.uk"},
         {"name": "EA historic landfill & sewage returns", "powers": "Former landfill sites, storm overflow spill counts", "freshness": "Imported; EA annual returns", "url": "https://environment.data.gov.uk"},
-        {"name": "MHCLG council tax levels", "powers": "Band A to H charges per English authority", "freshness": "Imported; 2026-27 release, annual", "url": "https://www.gov.uk/government/collections/council-tax-statistics"},
+        {"name": "MHCLG, Scottish & Welsh Government council tax levels", "powers": "Band charges for all 350 GB billing authorities", "freshness": "Imported; 2026-27 releases, annual", "url": "https://www.gov.uk/government/collections/council-tax-statistics"},
         {"name": "Bank of England", "powers": "Base rate and its history on the buying guide", "freshness": "Live; updates on MPC decisions", "url": "https://www.bankofengland.co.uk"},
     ]),
 ]
@@ -1640,7 +1640,7 @@ async def _full_property_gather(
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
     # Local JSON lookup, England only; None elsewhere and the card says so.
-    context["council_tax"] = council_tax.for_district(codes.get("admin_district"))
+    context["council_tax"] = council_tax.for_district(codes.get("admin_district"), location.get("admin_district"))
     context["epc_configured"] = epc.is_configured()
     context["amenities_pending"] = False
 
