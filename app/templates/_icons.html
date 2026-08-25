@@ -59,6 +59,10 @@
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19l4-9 3 5 2-4 3 6 3-8 3 10z"/><path d="M3 19h18"/></svg>
 {% elif name == 'lock' %}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+{# The same padlock with the shackle swung open, so the free/premium
+   pair reads as one idea rather than two unrelated marks. #}
+{% elif name == 'unlock' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/></svg>
 {% elif name == 'land_registry' %}
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M8 8h8M8 12h8M8 16h5"/><circle cx="17" cy="17" r="3"/><path d="M17 15.5v3M15.5 17h3"/></svg>
 {% elif name == 'statistics' %}

@@ -5604,38 +5604,283 @@ body.theme-dark .leaflet-popup-tip {
 .num-up { color: var(--good); }
 .num-down { color: var(--bad); }
 
-/* --- The landing page --------------------------------------------------
-   Three pieces here were built to sit on paper and do not survive the
-   swap on their own.
+/* ========================================================================
+   THE LANDING PAGE  (lx-*)
+   ------------------------------------------------------------------------
+   Rebuilt to the dark/gold direction: a full-height hero, then area
+   chips, the sources argument, the free/premium split, the quotes, and
+   a closing search. Prefixed lx- so none of it can leak into the report
+   or the guides, which keep the shared component styles.
+
+   These rules are written dark-first because the page is dark by
+   default; the light theme is handled at the foot of the block.
    ==================================================================== */
 
-/* The hero sits on a baked map image behind a wash the colour of the
-   page. Both halves have to flip: the image is brightened for paper and
-   would glow against near-black, and the wash was #faf9f6. */
-body.theme-dark #hero-map {
-    filter: grayscale(0.72) contrast(0.9) brightness(0.4) saturate(1.1) blur(1.5px);
+.lx-wrap { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
+.lx-centre { text-align: center; }
+
+.lx-eyebrow {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1.1rem;
 }
 
-body.theme-dark .hero-map-fade {
-    background: linear-gradient(100deg,
-        rgba(5, 5, 5, 0.97) 0%,
-        rgba(5, 5, 5, 0.9) 34%,
-        rgba(212, 169, 95, 0.1) 62%,
-        rgba(5, 5, 5, 0.4) 100%);
+.lx-h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.2rem, 4.6vw, 4.4rem);
+    line-height: 0.92;
+    letter-spacing: 0.015em;
+    text-transform: uppercase;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+.lx-h2-stack { line-height: 0.86; }
+
+.lx-lede {
+    color: var(--ink-soft);
+    font-size: var(--text-base);
+    line-height: 1.7;
+    margin: 1.5rem 0 0;
+    max-width: 40rem;
+}
+.lx-lede-centre { margin-left: auto; margin-right: auto; }
+
+.lx-section { padding: clamp(4rem, 9vw, 8.5rem) 0; }
+
+/* ---- Hero ---------------------------------------------------------- */
+.lx-hero {
+    position: relative;
+    min-height: min(100vh, 900px);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
 }
 
-@media (max-width: 860px) {
-    body.theme-dark .hero-map-fade {
-        background: linear-gradient(180deg,
-            rgba(5, 5, 5, 0.9) 0%,
-            rgba(5, 5, 5, 0.97) 45%,
-            rgba(5, 5, 5, 1) 100%);
-    }
+.lx-hero-bg { position: absolute; inset: 0; z-index: 0; }
+.lx-hero-video { width: 100%; height: 100%; object-fit: cover; }
+
+/* Until a licensed clip of a British property exists, the backdrop is
+   the map still the old hero already used. Pushed well down and
+   desaturated so it reads as texture rather than content. */
+/* Framed left-of-centre on purpose. The baked image is a wide view, and
+   centring it puts Denmark and northern Germany in the open right-hand
+   half of the hero, which is a strange thing for a UK property site to
+   lead with. This keeps Britain in frame and pushes the continent past
+   the edge. */
+.lx-hero-still {
+    width: 100%;
+    height: 100%;
+    background: #0a0a0a url('/static/img/hero-map.webp') 28% center / cover no-repeat;
+    filter: grayscale(0.85) brightness(0.3) contrast(1.15);
 }
 
-/* The offer band was a solid mint slab. Kept green it is the loudest
-   thing on a black page and it fights the gold, so it becomes a quiet
-   band with the gold doing the selling. */
+.lx-hero-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        linear-gradient(100deg, rgba(5, 5, 5, 0.97) 0%, rgba(5, 5, 5, 0.86) 46%, rgba(5, 5, 5, 0.6) 100%),
+        linear-gradient(0deg, var(--bg) 2%, rgba(5, 5, 5, 0) 45%);
+    pointer-events: none;
+}
+
+.lx-hero-credit {
+    position: absolute;
+    right: 1rem;
+    bottom: 0.6rem;
+    z-index: 3;
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+}
+.lx-hero-credit a { color: inherit; text-decoration: underline; }
+
+.lx-hero-inner {
+    position: relative;
+    z-index: 2;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 7rem 1.5rem 4rem;
+    width: 100%;
+}
+
+.lx-hero-h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.6rem, 6.4vw, 6.2rem);
+    line-height: 0.88;
+    letter-spacing: 0.015em;
+    text-transform: uppercase;
+    margin: 0;
+}
+.lx-hero-h1 .lx-w { display: block; }
+
+.lx-hero-dek {
+    color: var(--ink-soft);
+    font-size: var(--text-lg);
+    line-height: 1.65;
+    max-width: 34rem;
+    margin: 1.6rem 0 0;
+}
+
+.lx-hero-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-top: 2rem;
+    max-width: 46rem;
+}
+.lx-field { flex: 1 1 14rem; }
+.lx-field-narrow { flex: 0 1 11rem; }
+
+/* Glass over the hero art, rather than the page surface, so the
+   backdrop still reads behind the form. */
+.lx-hero-form input {
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-color: rgba(255, 255, 255, 0.14);
+}
+
+.lx-hero-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    align-items: baseline;
+    margin: 1.8rem 0 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-hero-stats .stat-count { color: var(--accent); font-size: var(--text-sm); }
+.lx-sep { color: var(--ink-faint); }
+
+/* ---- The live report strip ----------------------------------------- */
+.lx-strip {
+    max-width: 46rem;
+    margin: 0 0 2.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    overflow: hidden;
+}
+
+.lx-strip-chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.3);
+}
+.lx-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); }
+.lx-dot-gold { background: rgba(212, 169, 95, 0.65); }
+.lx-strip-url {
+    margin-left: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lx-strip-body { display: flex; flex-wrap: wrap; }
+
+.lx-strip-score {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1.1rem 1.3rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* The dial is one conic gradient driven by a custom property, so the
+   count-up animates without touching the DOM. */
+.lx-dial {
+    --arc: 0%;
+    width: 68px;
+    height: 68px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: conic-gradient(var(--accent) var(--arc), rgba(255, 255, 255, 0.09) 0);
+}
+.lx-dial-in {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #0b0b0b;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-display);
+    font-size: 25px;
+    color: var(--ink);
+}
+
+.lx-strip-postcode {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 19px;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+}
+.lx-strip-grade {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid rgba(212, 169, 95, 0.45);
+    color: var(--accent);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+.lx-strip-place { margin: 0.35rem 0 0; font-size: var(--text-xs); color: var(--ink-soft); }
+
+.lx-strip-rows { flex: 1 1 18rem; display: flex; flex-wrap: wrap; }
+.lx-strip-cell {
+    flex: 1 1 7rem;
+    padding: 0.9rem;
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+.lx-strip-k {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.35rem;
+    font-size: 9.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-strip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.lx-strip-v { margin: 0; font-size: var(--text-sm); color: var(--ink); line-height: 1.3; }
+.lx-strip-v-warn { color: var(--warn); }
+.lx-strip-v-bad { color: var(--bad); }
+
+/* Shared tone marks: the dots in the strip and the chips on the cards. */
+.lx-tone-good { background: var(--good); color: var(--good); }
+.lx-tone-warn { background: var(--warn); color: var(--warn); }
+.lx-tone-bad { background: var(--bad); color: var(--bad); }
+.lx-tone-plain { background: var(--ink-faint); color: var(--ink-soft); }
+
+/* ---- The offer band -------------------------------------------------
+   Sits between the hero and the areas. Its base rule paints it solid
+   --good, which on black is the loudest thing on the page and fights
+   the gold, so the dark theme makes it a quiet band and lets the button
+   do the selling. (This was lost once already, when the old landing
+   block was replaced wholesale and took the override with it.) */
 body.theme-dark .promo-banner {
     background: linear-gradient(180deg, rgba(212, 169, 95, 0.13), rgba(212, 169, 95, 0.05));
     border-top: 1px solid rgba(212, 169, 95, 0.25);
@@ -5647,26 +5892,314 @@ body.theme-dark .promo-banner::before {
     background-size: 220% 100%;
 }
 body.theme-dark .promo-banner-text { color: var(--ink); }
-body.theme-dark .promo-banner-btn {
-    background: var(--accent);
-    color: var(--accent-ink);
-}
+body.theme-dark .promo-banner-btn { background: var(--accent); color: var(--accent-ink); }
 body.theme-dark .promo-banner-btn:hover { background: var(--accent-hover); }
 
-/* An inverted slab: dark panel, light type, so it stands out from a
-   pale page. Inverting it again on a dark page turns it white, and its
-   copy is hardcoded white, so the whole block went white on white.
-   What stands out against black is gold, not light. */
-body.theme-dark .accuracy-strip {
-    background: linear-gradient(135deg, rgba(212, 169, 95, 0.11), rgba(212, 169, 95, 0.03)), var(--surface);
-    border: 1px solid rgba(212, 169, 95, 0.28);
+/* ---- Areas --------------------------------------------------------- */
+.lx-chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.7rem;
+    margin-top: 2.8rem;
 }
-body.theme-dark .accuracy-strip-heading { color: var(--accent); }
-body.theme-dark .accuracy-strip-copy p,
-body.theme-dark .accuracy-strip-stat { color: var(--ink-soft); }
-body.theme-dark .accuracy-strip-stat strong { color: var(--ink); }
-body.theme-dark .accuracy-strip-link { color: var(--accent); }
-body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
+.lx-chip {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    padding: 0.7rem 1.15rem;
+    border: 1px solid var(--border-strong);
+    color: var(--ink);
+    text-decoration: none;
+    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.lx-chip:hover {
+    border-color: var(--accent);
+    background: rgba(212, 169, 95, 0.1);
+    transform: translateY(-2px);
+}
+.lx-chip-code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--accent); letter-spacing: 0.08em; }
+.lx-chip-place { font-size: var(--text-sm); color: var(--ink-soft); }
+.lx-chip:hover .lx-chip-place { color: var(--ink); }
+.lx-chip-all {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-size: var(--text-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: var(--weight-semi);
+}
+.lx-chip-all:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-ink); }
+
+/* ---- About --------------------------------------------------------- */
+.lx-about { background: var(--surface); }
+.lx-about-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+}
+.lx-about-art {
+    position: relative;
+    height: clamp(320px, 42vw, 540px);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+.lx-about-map {
+    position: absolute;
+    inset: 0;
+    background: url('/static/img/hero-map.webp') center / cover no-repeat;
+    filter: grayscale(1) brightness(0.42) contrast(1.2);
+    transform: scale(1.12);
+}
+.lx-about-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 46% 44%, rgba(212, 169, 95, 0.22), transparent 58%);
+}
+.lx-about-caption {
+    position: absolute;
+    inset: auto 0 0 0;
+    padding: 1.75rem;
+    background: linear-gradient(to top, var(--bg), transparent);
+}
+.lx-about-caption .lx-eyebrow { margin-bottom: 0.4rem; }
+.lx-about-caption-figure {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink);
+}
+
+.lx-about-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+    margin-top: 3rem;
+    padding-top: 2.4rem;
+    border-top: 1px solid var(--border);
+}
+.lx-about-stat-n {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 4vw, 3.2rem);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--accent);
+}
+.lx-about-stat-l {
+    margin: 0.5rem 0 0;
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+/* ---- Checks -------------------------------------------------------- */
+.lx-checks-grid {
+    display: grid;
+    grid-template-columns: 210px 1fr auto 1fr;
+    gap: 1.75rem;
+    align-items: start;
+}
+.lx-checks-rail { position: sticky; top: 6rem; }
+
+.lx-tier-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.1rem; }
+.lx-tier-head svg { width: 16px; height: 16px; }
+.lx-tier-free, .lx-tier-head svg { color: var(--good); }
+.lx-tier-label {
+    font-size: var(--text-xs);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+.lx-tier-premium { color: var(--accent); }
+/* The premium column's padlock takes the gold, not the green. */
+.lx-tier-head:has(.lx-tier-premium) svg { color: var(--accent); }
+.lx-tier-note { margin: 0 0 1.2rem; font-size: var(--text-xs); color: var(--ink-faint); }
+
+.lx-check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+
+.lx-check {
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+.lx-check-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    margin-bottom: 1rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.06);
+}
+.lx-check-icon svg { width: 17px; height: 17px; }
+/* The tone classes carry both a fill and a text colour; on a chip only
+   the text colour should win, with the fill dropped to a tint. */
+.lx-check-icon.lx-tone-good { background: rgba(127, 191, 154, 0.14); }
+.lx-check-icon.lx-tone-warn { background: rgba(212, 169, 95, 0.14); }
+.lx-check-icon.lx-tone-plain { background: rgba(255, 255, 255, 0.06); }
+
+.lx-check-title {
+    margin: 0 0 0.4rem;
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-check-value { margin: 0; font-size: var(--text-base); line-height: 1.35; color: var(--ink); }
+.lx-check-value-warn { color: var(--accent); }
+.lx-check-source {
+    margin: 0.85rem 0 0;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--border);
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+}
+
+.lx-divider { display: flex; flex-direction: column; align-items: center; align-self: stretch; padding: 0 0.5rem; }
+.lx-divider-line { width: 1px; flex: 1; background: linear-gradient(var(--bg), var(--accent)); }
+.lx-divider-line:last-child { background: linear-gradient(var(--accent), var(--bg)); }
+.lx-divider-lock {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin: 1rem 0;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(212, 169, 95, 0.5);
+    background: rgba(212, 169, 95, 0.09);
+    color: var(--accent);
+}
+.lx-divider-lock svg { width: 16px; height: 16px; }
+
+/* ---- Voices -------------------------------------------------------- */
+.lx-voices { background: var(--surface); position: relative; overflow: hidden; }
+/* Bebas does have this glyph, but its double-quote is two chunky
+   rectangles, and cropping the top off left it reading as two blocks
+   rather than a quotation mark. Smaller, fully in frame, and sat behind
+   the eyebrow where it belongs. */
+.lx-quote-mark {
+    position: absolute;
+    top: -1.5rem;
+    left: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 15rem;
+    line-height: 1;
+    color: rgba(212, 169, 95, 0.08);
+    user-select: none;
+    pointer-events: none;
+}
+.lx-voice-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 3rem; position: relative; }
+.lx-voice {
+    margin: 0;
+    padding: 2.25rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.lx-voice blockquote { margin: 0; font-size: var(--text-lg); line-height: 1.6; color: var(--ink); }
+.lx-voice figcaption {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin-top: 1.75rem;
+    padding-top: 1.35rem;
+    border-top: 1px solid var(--border);
+}
+.lx-voice-avatar {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(212, 169, 95, 0.4);
+    background: rgba(212, 169, 95, 0.16);
+    color: var(--accent);
+    font-family: var(--font-display);
+    font-size: 18px;
+}
+.lx-voice-who { display: block; font-size: var(--text-sm); color: var(--ink); }
+.lx-voice-where { display: block; font-size: var(--text-xs); color: var(--ink-soft); }
+
+/* ---- Closing search ------------------------------------------------ */
+.lx-contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+.lx-contact-facts { list-style: none; margin: 2.4rem 0 0; padding: 0; display: grid; gap: 1rem; }
+.lx-contact-facts li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.lx-contact-facts svg { width: 16px; height: 16px; color: var(--accent); flex-shrink: 0; }
+.lx-contact-facts a { color: var(--ink-soft); }
+
+.lx-contact-card {
+    padding: 2.5rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+.lx-contact-card button { width: 100%; letter-spacing: 0.16em; text-transform: uppercase; }
+.lx-contact-note { margin: 1.2rem 0 0; text-align: center; font-size: var(--text-xs); color: var(--ink-faint); }
+
+/* ---- Narrower screens ---------------------------------------------- */
+@media (max-width: 1100px) {
+    .lx-checks-grid { grid-template-columns: 1fr; }
+    .lx-checks-rail { position: static; }
+    .lx-divider { display: none; }
+}
+
+@media (max-width: 860px) {
+    .lx-about-grid, .lx-contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .lx-voice-grid { grid-template-columns: 1fr; }
+    .lx-hero { min-height: auto; }
+    .lx-hero-inner { padding-top: 5rem; }
+    .lx-strip-score { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); width: 100%; }
+    .lx-quote-mark { font-size: 14rem; top: -2.5rem; }
+}
+
+@media (max-width: 560px) {
+    .lx-check-grid { grid-template-columns: 1fr; }
+    .lx-field, .lx-field-narrow { flex: 1 1 100%; }
+    .lx-hero-form button { width: 100%; }
+}
+
+/* ---- The light theme ------------------------------------------------
+   The page is dark by default, so these are the corrections for anyone
+   who has asked for ?theme=light: the hero art and the glass panels are
+   the only pieces that assume a dark ground. */
+body:not(.theme-dark) .lx-hero-still {
+    filter: grayscale(0.6) brightness(1.05) contrast(0.9);
+}
+body:not(.theme-dark) .lx-hero-scrim {
+    background:
+        linear-gradient(100deg, rgba(250, 249, 246, 0.97) 0%, rgba(250, 249, 246, 0.86) 46%, rgba(250, 249, 246, 0.4) 100%),
+        linear-gradient(0deg, var(--bg) 2%, rgba(250, 249, 246, 0) 45%);
+}
+body:not(.theme-dark) .lx-strip,
+body:not(.theme-dark) .lx-hero-form input {
+    background: rgba(255, 255, 255, 0.86);
+    border-color: var(--border-strong);
+}
+body:not(.theme-dark) .lx-strip-chrome,
+body:not(.theme-dark) .lx-strip-cell,
+body:not(.theme-dark) .lx-strip-score { border-color: var(--border); }
+body:not(.theme-dark) .lx-strip-chrome { background: var(--surface-2); }
+body:not(.theme-dark) .lx-dial-in { background: var(--surface); }
+body:not(.theme-dark) .lx-dial { background: conic-gradient(var(--accent) var(--arc), var(--surface-2) 0); }
+body:not(.theme-dark) .lx-hero-h1,
+body:not(.theme-dark) .lx-h2,
+body:not(.theme-dark) .lx-about-caption-figure { text-transform: none; letter-spacing: -0.01em; }
 
 /* --- Forms ------------------------------------------------------------- */
 body.theme-dark input[type="text"],

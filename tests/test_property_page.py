@@ -159,9 +159,19 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
     checks = len(titles) - len(NOT_AN_OFFICIAL_SOURCE_CHECK)
 
     home = client.get("/").text
-    headline = re.search(r'<span class="stat-count" data-target="(\d+)">0</span> checks', home)
+    headline = re.search(
+        r'<span class="stat-count" data-target="(\d+)">([\d.]+)</span> checks', home
+    )
     assert headline, "hero check count not found on the landing page"
-    assert int(headline.group(1)) == checks, (
-        f"landing page claims {headline.group(1)} checks, report has {checks} "
+    target, shown = int(headline.group(1)), headline.group(2)
+
+    # The visible text carries the real figure rather than a 0 that only
+    # becomes right once the count-up animation runs, so a crawler or a
+    # reader without JavaScript sees the truth. Both have to agree.
+    assert shown == str(target), (
+        f"hero renders {shown!r} but counts up to {target}: no-JS readers see the wrong number"
+    )
+    assert target == checks, (
+        f"landing page claims {target} checks, report has {checks} "
         f"({len(titles)} cards less {sorted(NOT_AN_OFFICIAL_SOURCE_CHECK)})"
     )

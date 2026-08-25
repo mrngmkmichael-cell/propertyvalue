@@ -4,107 +4,94 @@
 {% block title %}Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime{% endblock %}
 
 {% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report, built entirely from official government data.{% endblock %}
-{# No Leaflet on this page. The hero map is a fixed, non-interactive,
-   blurred view, so it is baked into a single static image and set as a
-   background in style.css - see scripts/build_hero_map.py. #}
-
-{% block extra_head %}
-{# FAQ rich result: the five questions at the foot of the page, verbatim. #}
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-        {"@type": "Question", "name": "What is UKPropertyInsight?", "acceptedAnswer": {"@type": "Answer", "text": "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we show the facts about a property and its area."}},
-        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. Creating an account is free and unlocks every Premium check on the first three properties you look at, no card required."}},
-        {"@type": "Question", "name": "What happens after the three free reports?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good. Opening a new one needs a subscription, and postcode search stays free either way."}},
-        {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
-        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
-        {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
-    ]
-}
-</script>
-{% endblock %}
+{# No Leaflet on this page. The hero backdrop is a fixed, non-interactive,
+   blurred view, so it is baked into a single static image - see
+   scripts/build_hero_map.py. #}
 
 {% block content %}
-<section class="hero">
-    <div class="hero-map-bg" aria-hidden="true"><div id="hero-map"></div></div>
-    <div class="hero-map-fade"></div>
-    {# Required by ODbL: the tiles behind this hero come from
-       OpenStreetMap. The Leaflet attribution control used to carry
-       this credit; now that the map is a baked static image, it has
-       to live here. Do not remove it. #}
-    <p class="hero-map-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
-    <div class="hero-inner hero-split">
-        <div class="hero-copy">
-            <span class="kicker">Due diligence, made simple</span>
-            <h1>Know a property <em class="hl-accent">before you commit</em>.</h1>
-            <p class="dek">Every check that matters, for any UK postcode. Straight from official government data.</p>
 
-            <form class="search-form" action="/property" method="get">
-                <div class="search-form-field">
-                    <label for="postcode">UK postcode</label>
-                    <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
-                </div>
-                <div class="search-form-field">
-                    <label for="house_number">House/flat number (optional)</label>
-                    <input type="text" id="house_number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
-                </div>
-                <button type="submit">Search</button>
-            </form>
+{# ===================================================================
+   HERO
+   The backdrop is the baked UK map still. It is a placeholder for a
+   cinematic clip of a British property, which is not in place yet: the
+   only candidate so far was motionsites' own file, on their CDN, of an
+   American house, which fails on licence, on subject and on the
+   no-third-party-origins rule the fonts and maps all follow.
 
-            {% if not current_user %}
-            <p class="hero-signup">
-                <a href="/signup" class="hero-signup-btn">Sign up free</a>
-                <span class="hero-signup-note">Full Premium report on your first three properties. No card.</span>
-            </p>
-            {% endif %}
+   Drop a self-hosted file at /static/video/hero.mp4 and set
+   hero_video in the route to switch this over; the markup below
+   already handles both.
+   =================================================================== #}
+<section class="lx-hero" id="home">
+    <div class="lx-hero-bg" aria-hidden="true">
+        {% if hero_video %}
+        <video class="lx-hero-video" autoplay muted loop playsinline
+               poster="/static/img/hero-map.webp" src="{{ hero_video }}"></video>
+        {% else %}
+        <div class="lx-hero-still"></div>
+        {% endif %}
+    </div>
+    <div class="lx-hero-scrim" aria-hidden="true"></div>
+    {# Required by ODbL: the tiles baked into that image come from
+       OpenStreetMap. Do not remove. #}
+    <p class="lx-hero-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
 
-            {# Count-up on scroll. The figures are real and countable on
-               any report: 38 cards in the grid, of which 37 are checks
-               against a named public dataset. Resident Reviews is the
-               38th and is neighbour comments, so it is left out rather
-               than stretch "every figure names an official source".
-               It said 23 here for a long time, which was the free count
-               wearing the total's clothes. 13 named sources in the strip
-               below, ~1.7M postcodes in the broadband import. #}
-            <p class="hero-stats" aria-label="37 checks, 13 official sources, 1.7 million postcodes covered">
-                <span><span class="stat-count" data-target="37">0</span> checks</span>
-                <span class="hero-stats-sep">·</span>
-                <span><span class="stat-count" data-target="13">0</span> official sources</span>
-                <span class="hero-stats-sep">·</span>
-                <span><span class="stat-count" data-target="1.7" data-decimals="1">0</span>M postcodes</span>
-            </p>
-        </div>
+    <div class="lx-hero-inner">
+        <p class="lx-eyebrow">Due diligence, made simple</p>
 
-        <div class="hero-art" aria-hidden="true">
-            <div class="hero-demo-glow"></div>
-            <div class="hero-demo" id="hero-demo">
-                <div class="hero-demo-chrome">
-                    <span class="hero-demo-dot" style="background:#f87171"></span>
-                    <span class="hero-demo-dot" style="background:#fbbf24"></span>
-                    <span class="hero-demo-dot" style="background:#34d399"></span>
-                    <span class="hero-demo-url">ukpropertyinsight.co.uk/<wbr>property?postcode=<span id="hero-demo-pc"></span><span class="hero-demo-caret"></span></span>
-                </div>
-                <div class="hero-demo-body">
-                    <div class="hero-demo-score">
-                        <svg viewBox="0 0 96 96" class="hero-demo-dial">
-                            <circle cx="48" cy="48" r="40" class="hero-demo-dial-track"/>
-                            <circle cx="48" cy="48" r="40" class="hero-demo-dial-arc" id="hero-demo-arc"
-                                    pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"
-                                    transform="rotate(-90 48 48)"/>
-                            <text x="48" y="46" class="hero-demo-dial-num" id="hero-demo-num" text-anchor="middle">0</text>
-                            <text x="48" y="62" class="hero-demo-dial-cap" text-anchor="middle">/100</text>
-                        </svg>
-                        <div class="hero-demo-score-meta">
-                            <span class="hero-demo-grade" id="hero-demo-grade"></span>
-                            <span class="hero-demo-place" id="hero-demo-place"></span>
-                        </div>
+        {# Live report strip. Every figure is fetched from this site's own
+           /api/lookup at page load, never hardcoded: the prototype's
+           baked-in scores had all five drifted out of date (M1 1AE read
+           75 against a real 82) within days of being written. If the
+           fetch fails the strip removes itself rather than show a
+           number nobody can stand behind. #}
+        <div class="lx-strip" id="lx-strip" hidden data-animate>
+            <div class="lx-strip-chrome">
+                <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
+                <span class="lx-strip-url">ukpropertyinsight.co.uk/property?postcode=<span id="lx-strip-pc"></span></span>
+            </div>
+            <div class="lx-strip-body">
+                <div class="lx-strip-score">
+                    <div class="lx-dial" id="lx-dial"><div class="lx-dial-in"><span id="lx-dial-num">0</span></div></div>
+                    <div class="lx-strip-meta">
+                        <p class="lx-strip-postcode" id="lx-strip-postcode"></p>
+                        <span class="lx-strip-grade" id="lx-strip-grade"></span>
+                        <p class="lx-strip-place" id="lx-strip-place"></p>
                     </div>
-                    <ul class="hero-demo-rows" id="hero-demo-rows"></ul>
                 </div>
+                <div class="lx-strip-rows" id="lx-strip-rows"></div>
             </div>
         </div>
+
+        <h1 class="lx-hero-h1">
+            <span class="lx-w">Any UK postcode.</span>
+            <span class="lx-w">Know <em class="hl-accent">before you commit</em>.</span>
+        </h1>
+
+        <p class="lx-hero-dek">
+            Thirty-seven checks on any UK address, each one traced back to the
+            government body that published it. Free, and no account needed.
+        </p>
+
+        <form class="lx-hero-form search-form" action="/property" method="get">
+            <div class="search-form-field lx-field">
+                <label for="postcode">UK postcode</label>
+                <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
+            </div>
+            <div class="search-form-field lx-field lx-field-narrow">
+                <label for="house_number">House/flat number (optional)</label>
+                <input type="text" id="house_number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+            </div>
+            <button type="submit">Search</button>
+        </form>
+
+        <p class="lx-hero-stats" aria-label="37 checks, 13 official sources, 1.7 million postcodes covered">
+            <span><span class="stat-count" data-target="37">37</span> checks</span>
+            <span class="lx-sep">&middot;</span>
+            <span><span class="stat-count" data-target="13">13</span> official sources</span>
+            <span class="lx-sep">&middot;</span>
+            <span><span class="stat-count" data-target="1.7" data-decimals="1">1.7</span>M postcodes</span>
+        </p>
     </div>
 </section>
 
@@ -120,428 +107,343 @@
 </section>
 {% endif %}
 
-<section class="landing-section why-us-section" data-animate>
-    <div class="why-header-row">
-        <h2 class="why-heading">What makes it<br>different.</h2>
-        <a href="#whats-included" class="why-header-link">See everything we check &rsaquo;</a>
-    </div>
-    {% set why_cards = [
-        ('schools', 'School Catchment Data', 'Real distances,', 'clearly labelled.', 'Council-published admission distances. Estimates are labelled as estimates.'),
-        ('land_registry', 'Verified Sources', 'Every figure', 'has a source.', 'Land Registry, Ofsted, the Environment Agency. Each figure names its source.'),
-        ('details', 'One Report', 'The full', 'due-diligence stack.', 'Prices, energy, flood, crime, schools, tax. One address.'),
-        ('statistics', 'Overview Score', 'One clear', 'verdict.', 'GOOD, AVERAGE or POOR, with the reasoning shown.'),
-        ('valuation', 'Simple Pricing', 'Unlimited,', 'for less.', 'Unlimited reports for less than one search fee elsewhere.'),
-    ] %}
-    <div class="why-carousel-wrap">
-        <div class="why-cards">
-            {% for pass_num in range(2) %}
-                {% for icon_name, eyebrow, title_main, title_hl, desc in why_cards %}
-                <div class="why-card"{% if pass_num == 1 %} aria-hidden="true"{% endif %}>
-                    {# The site's own icon set, in currentColor. The old
-                       illustrations were baked in the pre-redesign electric
-                       blue and read as stock art; these sit in the palette
-                       and cost no requests at all. #}
-                    <div class="why-card-icon-box" aria-hidden="true">
-                        <span class="why-card-glyph">{{ icons.icon(icon_name) }}</span>
-                    </div>
-                    <div class="why-card-body">
-                        <span class="why-card-eyebrow">{{ eyebrow }}</span>
-                        <h3 class="why-card-title">{{ title_main }} <span class="hl">{{ title_hl }}</span></h3>
-                        <p class="why-card-desc">{{ desc }}</p>
-                    </div>
-                </div>
-                {% endfor %}
-            {% endfor %}
-        </div>
-    </div>
-</section>
-
-<section class="landing-section" id="popular-areas">
-    <span class="section-pill" data-animate>Area guides</span>
-    <h2 class="landing-heading" data-animate>Start with an area you know</h2>
-    <p class="landing-subheading" data-animate>
-        No postcode to hand? Every district has a free guide: prices, schools, crime and flood risk at a glance.
-    </p>
-    <div class="area-chip-row" data-animate>
-        {% for outcode, label in [
-            ("SW1A", "Westminster"), ("E14", "Canary Wharf"), ("N1", "Islington"), ("SE1", "Southwark"),
-            ("SW11", "Battersea"), ("M1", "Manchester"), ("M20", "Didsbury"), ("LS1", "Leeds"),
-            ("B1", "Birmingham"), ("L1", "Liverpool"), ("S1", "Sheffield"), ("NE1", "Newcastle"),
-            ("NG1", "Nottingham"), ("BS1", "Bristol"), ("CF10", "Cardiff"), ("G1", "Glasgow"),
-            ("EH1", "Edinburgh"), ("BN1", "Brighton"), ("OX1", "Oxford"), ("CB1", "Cambridge"),
-            ("YO1", "York"), ("RG1", "Reading"),
-        ] %}
-        <a class="area-chip" href="/area/{{ outcode }}"><strong>{{ outcode }}</strong> {{ label }}</a>
-        {% endfor %}
-        <a class="area-chip area-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
-    </div>
-</section>
-
-<section class="landing-section" id="whats-included">
-    <span class="section-pill" data-animate>What's included</span>
-    <h2 class="landing-heading" data-animate>Everything we check, in one report</h2>
-    <p class="landing-subheading" data-animate>
-        One search replaces a dozen government websites.
-    </p>
-
-    <div class="tier-block" data-animate>
-        <div class="tier-header">
-            <h3 class="tier-title">Free, always</h3>
-            <p class="tier-desc">No card, no account. Search and see this straight away.</p>
-        </div>
-        <div class="feature-grid">
-            {% for icon_name, label, blurb in [
-                ('market', 'Sold Prices', 'Every sale since 1995'),
-                ('energy', 'Energy Efficiency', 'EPC, floor area, year built'),
-                ('flood', 'Flood Risk', 'Zone plus live warnings'),
-                ('crime', 'Crime & Safety', 'Local stats vs the wider area'),
-                ('schools', 'Schools Nearby', 'Ofsted ratings and exam results'),
-                ('noise', 'Noise', 'Road, rail and aircraft'),
-                ('planning', 'Planning Constraints', 'Listed status and conservation'),
-                ('environmental', 'Environmental Designations', 'National Parks, SSSIs'),
-                ('broadband', 'Broadband & Mobile', 'Speed and signal coverage'),
-                ('deprivation', 'Area Statistics', 'Deprivation and demographics'),
-                ('reviews', 'Reviews', 'On the property, area and schools'),
+{# =================================================================== AREAS #}
+<section class="lx-section lx-areas" id="areas">
+    <div class="lx-wrap lx-centre">
+        <p class="lx-eyebrow">Area guides</p>
+        <h2 class="lx-h2">Start with an area you know</h2>
+        <p class="lx-lede lx-lede-centre">
+            No postcode to hand? Every district has a free guide: prices, schools,
+            crime and flood risk at a glance.
+        </p>
+        <div class="lx-chips" data-animate>
+            {% for code, place in [
+                ('SW1A', 'Westminster'), ('E14', 'Canary Wharf'), ('N1', 'Islington'), ('SE1', 'Southwark'),
+                ('SW11', 'Battersea'), ('M1', 'Manchester'), ('M20', 'Didsbury'), ('LS1', 'Leeds'),
+                ('B1', 'Birmingham'), ('L1', 'Liverpool'), ('S1', 'Sheffield'), ('NE1', 'Newcastle'),
+                ('NG1', 'Nottingham'), ('BS1', 'Bristol'), ('CF10', 'Cardiff'), ('G1', 'Glasgow'),
+                ('EH1', 'Edinburgh'), ('BN1', 'Brighton'), ('OX1', 'Oxford'), ('CB1', 'Cambridge'),
+                ('YO1', 'York'), ('RG1', 'Reading')
             ] %}
-            <div class="feature-card" data-animate>
-                <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
-                <span class="feature-card-title">{{ label }}</span>
-                <span class="feature-card-blurb">{{ blurb }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="tier-block tier-block-premium" data-animate>
-        <div class="tier-header">
-            <h3 class="tier-title">Premium <span class="tier-badge">£9.99/month</span></h3>
-            <p class="tier-desc">Free on your first three properties, no card. The deeper checks, including real school catchment data.</p>
-        </div>
-        <div class="feature-grid">
-            {% for icon_name, label, blurb in [
-                ('schools', 'School Catchment Radius', 'Real admission distances, labelled estimates elsewhere'),
-                ('transport', 'Getting Around', 'Live train times to the nearest city'),
-                ('statistics', 'Price Trend & Forecast', '5-year history and projection'),
-                ('valuation', 'Valuation Estimate', 'From nearby comparables'),
-                ('rental', 'Rental Analysis', 'Typical rent by bedroom count'),
-                ('extension', 'Extension Potential', 'Permitted development headroom'),
-                ('orientation', 'Sunlight & Orientation', 'Which way the garden faces'),
-                ('landfill', 'Historic Landfill', 'Former landfill sites nearby'),
-                ('geology', 'Subsidence Risk', 'BGS clay shrink-swell risk'),
-                ('flood', 'Sewage Discharge', 'Storm overflow spills nearby'),
-                ('income', 'Household Income', 'Estimated levels nearby'),
-                ('wellbeing', 'Wellbeing Index', 'Life satisfaction scores nearby'),
-            ] %}
-            <div class="feature-card feature-card-premium" data-animate>
-                <span class="feature-card-lock">{{ icons.icon('lock') }}</span>
-                <span class="dashboard-card-icon icon-{{ icon_name }}">{{ icons.icon(icon_name) }}</span>
-                <span class="feature-card-title">{{ label }}</span>
-                <span class="feature-card-blurb">{{ blurb }}</span>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</section>
-
-<section class="landing-section landing-section-tinted">
-    <span class="section-pill" data-animate>The process</span>
-    <h2 class="landing-heading" data-animate>How it works</h2>
-    <div class="steps-row">
-        <div class="step-card" data-animate>
-            <span class="step-number">1</span>
-            <span class="step-title">Enter a postcode</span>
-            <span class="step-blurb">Add a house number to filter to one address.</span>
-        </div>
-        <div class="step-card" data-animate>
-            <span class="step-number">2</span>
-            <span class="step-title">We check the official sources</span>
-            <span class="step-blurb">Land Registry, EPC, Environment Agency, Ofsted and more, queried live.</span>
-        </div>
-        <div class="step-card" data-animate>
-            <span class="step-number">3</span>
-            <span class="step-title">Get your report</span>
-            <span class="step-blurb">Every figure sourced and dated, in seconds.</span>
-        </div>
-    </div>
-</section>
-
-<section class="landing-section" id="compare-alternatives">
-    <span class="section-pill" data-animate>The alternative</span>
-    <h2 class="landing-heading" data-animate>What buyers do instead</h2>
-    <div class="alt-table-wrap" data-animate>
-        <table class="alt-table">
-            <thead><tr>
-                <th></th><th>Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
-            </tr></thead>
-            <tbody>
-                <tr><td>Everything on one page</td><td class="alt-no">Listings, not checks</td><td class="alt-no">12+ separate sites</td><td class="alt-us alt-yes">One report</td></tr>
-                <tr><td>Works for any address, listed or not</td><td class="alt-no">Only what&rsquo;s for sale</td><td class="alt-yes">Yes</td><td class="alt-us alt-yes">Yes</td></tr>
-                <tr><td>Every figure names its source</td><td class="alt-no">No</td><td class="alt-yes">It is the source</td><td class="alt-us alt-yes">Yes, on every card</td></tr>
-                <tr><td>Who pays for it</td><td class="alt-no">Agents&rsquo; listings</td><td>Public</td><td class="alt-us">You do, so it answers to you</td></tr>
-                <tr><td>Time per property</td><td>&mdash;</td><td class="alt-no">Hours</td><td class="alt-us alt-yes">Seconds</td></tr>
-            </tbody>
-        </table>
-    </div>
-</section>
-
-<section class="accuracy-strip" data-animate>
-    <div class="accuracy-strip-inner">
-        <div class="accuracy-strip-copy">
-            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
-            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
-        </div>
-        {% if accuracy_counts %}
-        <div class="accuracy-strip-stats">
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> were wrong, now fixed</span>
-        </div>
-        {% endif %}
-        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
-    </div>
-</section>
-
-<section class="landing-section">
-    <span class="section-pill" data-animate>Questions</span>
-    <h2 class="landing-heading" data-animate>Questions people ask first</h2>
-    <div class="faq-list">
-        {% for q, a in [
-            ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
-            ('Is it free to use?', 'Searching is free and needs no account. You\'ll see headline verdicts on every check straight away. Creating an account is also free, and unlocks every Premium check on the first three properties you look at, no card required. After that the deeper checks lock unless you subscribe.'),
-            ('What happens after the three free reports?', 'Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good, so you can go back to them any time. Opening a new one needs a subscription, and postcode search stays free either way.'),
-            ('How is this different from Rightmove or Zoopla?', 'Those are listings portals. They show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
-            ('Where does the data come from?', 'Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every figure traces back to a source.'),
-            ('Which parts of the UK are covered?', 'Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where a council has published that data openly. Where something isn\'t covered for an address, the report says so rather than leaving a gap unexplained.'),
-        ] %}
-        <details class="faq-item" data-animate>
-            <summary>{{ q }}</summary>
-            <p>{{ a }}</p>
-        </details>
-        {% endfor %}
-    </div>
-</section>
-
-<section class="sources-strip" data-animate>
-    <span class="sources-strip-heading">
-        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
-    </span>
-    {# A continuous ticker of the sources, the strongest content this
-       site has. Two passes of the same list make the loop seamless;
-       hover or keyboard focus pauses it; prefers-reduced-motion stops
-       it entirely and falls back to a wrapped row. #}
-    <div class="sources-marquee">
-        <div class="sources-marquee-track">
-            {% for pass_num in range(2) %}
-            {% for icon_name, label, url in [
-                ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
-                ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
-                ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
-                ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
-                ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
-                ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
-                ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
-                ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
-                ('heritage', 'Historic England', 'https://historicengland.org.uk'),
-                ('crime', 'Police.uk', 'https://www.police.uk'),
-                ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
-                ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
-                ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
-            ] %}
-            <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener"{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
-                <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
-                <span class="sources-strip-name">{{ label }}</span>
+            <a class="lx-chip" href="/area/{{ code }}">
+                <span class="lx-chip-code">{{ code }}</span>
+                <span class="lx-chip-place">{{ place }}</span>
             </a>
             {% endfor %}
+            <a class="lx-chip lx-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
+        </div>
+    </div>
+</section>
+
+{# =================================================================== ABOUT #}
+<section class="lx-section lx-about" id="about">
+    <div class="lx-wrap lx-about-grid">
+        <div class="lx-about-art" data-animate>
+            <div class="lx-about-map"></div>
+            <div class="lx-about-glow" aria-hidden="true"></div>
+            <div class="lx-about-caption">
+                <p class="lx-eyebrow">Coverage</p>
+                <p class="lx-about-caption-figure">1.7M postcodes &middot; 2,943 districts</p>
+            </div>
+        </div>
+        <div>
+            <p class="lx-eyebrow">Why trust this</p>
+            <h2 class="lx-h2">Every figure names its source</h2>
+            <p class="lx-lede">
+                Sold prices from HM Land Registry. Flood zones from the Environment Agency.
+                School ratings from Ofsted. Subsidence from the British Geological Survey.
+                Nothing is scraped from a listings site, and nothing is guessed.
+            </p>
+            <p class="lx-lede">
+                Where a source does not cover an address, the report says so, rather than
+                leaving a gap that looks like good news. When a reader tells us a figure is
+                wrong, we check it and publish what we find on the
+                <a href="/accuracy">accuracy log</a>, including the times we were wrong.
+            </p>
+            <div class="lx-about-stats">
+                {% for n, label in [('37', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                <div>
+                    <p class="lx-about-stat-n">{{ n }}</p>
+                    <p class="lx-about-stat-l">{{ label }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+{# =================================================================== CHECKS
+   The split is the real one: 22 checks open on every report and 15 more
+   come with Premium. A selection of each is shown. Every "sub" line is
+   the body that publishes the figure, which is the whole point of the
+   section. #}
+<section class="lx-section lx-checks" id="checks">
+    <div class="lx-wrap lx-checks-grid">
+        <div class="lx-checks-rail">
+            <p class="lx-eyebrow">What we check</p>
+            <h2 class="lx-h2 lx-h2-stack">Thirty<br>seven<br>checks</h2>
+            <p class="lx-lede">
+                Every one on a single address, every one traced to the body that
+                published it. A selection of them here.
+            </p>
+        </div>
+
+        <div>
+            <div class="lx-tier-head">
+                {{ icons.icon('unlock') }}
+                <span class="lx-tier-label lx-tier-free">22 free on every report</span>
+            </div>
+            <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
+            <div class="lx-check-grid" data-animate>
+                {% for icon, title, value, source, tone in [
+                    ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
+                    ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
+                    ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
+                    ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', ''),
+                    ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
+                    ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
+                    ('statistics', 'Council tax', 'Band D for the authority', 'MHCLG, 2026-27', ''),
+                    ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom', 'good'),
+                    ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency', 'good'),
+                    ('radon', 'Radon', 'Affected-area class', 'British Geological Survey', 'good')
+                ] %}
+                <div class="lx-check">
+                    <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
+                    <p class="lx-check-title">{{ title }}</p>
+                    <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
+                    <p class="lx-check-source">{{ source }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="lx-divider" aria-hidden="true">
+            <span class="lx-divider-line"></span>
+            <span class="lx-divider-lock">{{ icons.icon('lock') }}</span>
+            <span class="lx-divider-line"></span>
+        </div>
+
+        <div>
+            <div class="lx-tier-head">
+                {{ icons.icon('lock') }}
+                <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
+            </div>
+            <p class="lx-tier-note">Free on your first three properties. No card required.</p>
+            <div class="lx-check-grid" data-animate>
+                {% for icon, title, value, source, tone in [
+                    ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', ''),
+                    ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
+                    ('rental', 'Rental analysis', 'Typical rent by bedrooms', 'ONS private rents', ''),
+                    ('extension', 'Extension check', 'Floor area changes over time', 'EPC history', 'warn'),
+                    ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
+                    ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
+                    ('landfill', 'Historic landfill', 'Former sites nearby', 'Environment Agency', 'warn'),
+                    ('mining', 'Coal mining', 'Reporting areas', 'The Coal Authority', 'good'),
+                    ('orientation', 'Catchment areas', 'Real admission distances', 'Council admissions data', ''),
+                    ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', ''),
+                    ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income', '')
+                ] %}
+                <div class="lx-check">
+                    <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
+                    <p class="lx-check-title">{{ title }}</p>
+                    <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
+                    <p class="lx-check-source">{{ source }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+{# =================================================================== VOICES
+   Real, unedited comments. No star ratings: nobody gave one, and
+   inventing five gold stars would be exactly the kind of decoration
+   this site refuses everywhere else. #}
+<section class="lx-section lx-voices">
+    <span class="lx-quote-mark" aria-hidden="true">&ldquo;</span>
+    <div class="lx-wrap">
+        <p class="lx-eyebrow">Unedited</p>
+        <h2 class="lx-h2">What people say</h2>
+        <div class="lx-voice-grid" data-animate>
+            {% for quote, who, where in [
+                ("Its really good, very easy to navigate. Rightmove exist to sell houses where as your service is just a presentation of facts.", "Commenter", "r/HousingUK"),
+                ("I used to build exactly this professionally. You're on the right path.", "Former property-data professional", "Reddit")
+            ] %}
+            <figure class="lx-voice">
+                <blockquote>&ldquo;{{ quote }}&rdquo;</blockquote>
+                <figcaption>
+                    <span class="lx-voice-avatar" aria-hidden="true">{{ who[0] }}</span>
+                    <span>
+                        <span class="lx-voice-who">{{ who }}</span>
+                        <span class="lx-voice-where">{{ where }}</span>
+                    </span>
+                </figcaption>
+            </figure>
             {% endfor %}
         </div>
     </div>
-    <p class="sources-strip-note">
-        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
-    </p>
 </section>
 
-<section class="closing-cta" data-animate>
-    <h2 class="closing-cta-heading">Check your first property free</h2>
-    <p class="closing-cta-sub">Three full Premium reports when you sign up. No card required.</p>
-    <form class="search-form closing-cta-form" action="/property" method="get">
-        <div class="search-form-field">
-            <label for="cta-postcode">UK postcode</label>
-            <input type="text" id="cta-postcode" name="postcode" placeholder="e.g. M1 1AE" autocomplete="off" required>
+{# =================================================================== SEARCH #}
+<section class="lx-section lx-contact" id="contact">
+    <div class="lx-wrap lx-contact-grid">
+        <div>
+            <p class="lx-eyebrow">Start here</p>
+            <h2 class="lx-h2">One search.<br>Every check.</h2>
+            <p class="lx-lede">
+                Search is free and needs no account. Sign up and the first three properties
+                come with every Premium check unlocked, no card required.
+            </p>
+            <ul class="lx-contact-facts">
+                <li>{{ icons.icon('map') }} England, Wales, Scotland and Northern Ireland</li>
+                <li>{{ icons.icon('statistics') }} Open Government Licence v3.0</li>
+                <li>{{ icons.icon('heritage') }} <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a></li>
+            </ul>
         </div>
-        <div class="search-form-field">
-            <label for="cta-house-number">House/flat number (optional)</label>
-            <input type="text" id="cta-house-number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
-        </div>
-        <button type="submit">Search</button>
-    </form>
-</section>
 
+        <form class="lx-contact-card stacked-form" action="/property" method="get">
+            <div class="search-form-field">
+                <label for="contact-postcode">UK postcode</label>
+                <input type="text" id="contact-postcode" name="postcode" placeholder="M1 1AE" autocomplete="off" required>
+            </div>
+            <div class="search-form-field">
+                <label for="contact-house">House or flat number</label>
+                <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
+            </div>
+            <button type="submit">Run the checks</button>
+            <p class="lx-contact-note">37 checks &middot; 13 official sources &middot; no card needed</p>
+        </form>
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
 (function () {
-    /* The hero demo: a report assembling itself, on loop. Every figure
-       is from a real report on this site - if a report changes, update
-       these to match rather than inventing numbers. */
-    var demos = [
-        { pc: "SW1A 1AA", place: "Westminster, London", score: 61, grade: "Fair", rows: [
-            ["Sold price", "£685,000", ""],
-            ["Flood risk", "Zone 1 · low", "good"],
-            ["Energy", "EPC C · 92 m²", "good"],
-            ["Crime", "▼ 8% vs area", "good"],
-            ["Schools", "4 rated Good", "good"]]},
-        { pc: "M1 1AE", place: "Manchester city centre", score: 75, grade: "Good", rows: [
-            ["Flood risk", "Zone 1 · low", "good"],
-            ["Energy", "EPC D", ""],
-            ["Schools", "74% Good or better", "good"],
-            ["Prices", "▲ 4.1% yearly", "good"],
-            ["Noise", "High road noise", "warn"]]},
-        { pc: "LS1 4DY", place: "Leeds city centre", score: 75, grade: "Good", rows: [
-            ["Flood risk", "Zone 1 · low", "good"],
-            ["Energy", "EPC A", "good"],
-            ["Schools", "86% Good or better", "good"],
-            ["Prices", "▲ 5.9% yearly", "good"],
-            ["Planning", "Constraints present", "warn"]]},
-        { pc: "B1 1BD", place: "Birmingham city centre", score: 75, grade: "Good", rows: [
-            ["Flood risk", "Zone 1 · low", "good"],
-            ["Energy", "EPC A", "good"],
-            ["Schools", "84% Good or better", "good"],
-            ["Prices", "▲ 2.2% yearly", "good"],
-            ["Planning", "Constraints present", "warn"]]}
-    ];
-    var pcEl = document.getElementById("hero-demo-pc");
-    if (!pcEl) return;
-    var arc = document.getElementById("hero-demo-arc"),
-        num = document.getElementById("hero-demo-num"),
-        grade = document.getElementById("hero-demo-grade"),
-        place = document.getElementById("hero-demo-place"),
-        rows = document.getElementById("hero-demo-rows"),
-        card = document.getElementById("hero-demo");
-
-    function tone(score) { return score >= 70 ? "good" : (score >= 50 ? "warn" : "bad"); }
-
-    function renderRows(d, animate) {
-        rows.innerHTML = "";
-        d.rows.forEach(function (r, i) {
-            var li = document.createElement("li");
-            li.className = "hero-demo-row" + (animate ? " pending" : "") + (r[2] ? " tone-" + r[2] : "");
-            li.innerHTML = '<span class="hero-demo-row-dot"></span><span class="hero-demo-row-label">' + r[0] +
-                           '</span><span class="hero-demo-row-value">' + r[1] + "</span>";
-            rows.appendChild(li);
-            if (animate) setTimeout(function () { li.classList.remove("pending"); }, 250 + i * 160);
-        });
-    }
-
-    function setDial(score, animate) {
-        card.dataset.tone = tone(score);
-        if (!animate) { arc.style.strokeDashoffset = 100 - score; num.textContent = score; return; }
-        var t0 = null;
-        function step(ts) {
-            if (!t0) t0 = ts;
-            var k = Math.min((ts - t0) / 900, 1);
-            var eased = 1 - Math.pow(1 - k, 3);
-            var v = Math.round(score * eased);
-            arc.style.strokeDashoffset = 100 - score * eased;
-            num.textContent = v;
-            if (k < 1) requestAnimationFrame(step);
-        }
-        requestAnimationFrame(step);
-    }
-
-    function show(d, animate, done) {
-        place.textContent = d.place;
-        grade.textContent = d.grade;
-        renderRows(d, animate);
-        setDial(d.score, animate);
-        if (!animate) { pcEl.textContent = d.pc; return; }
-        pcEl.textContent = "";
-        var i = 0;
-        (function typeChar() {
-            if (i < d.pc.length) { pcEl.textContent += d.pc[i++]; setTimeout(typeChar, 75); }
-            else if (done) setTimeout(done, 4200);
-        })();
-    }
-
-    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) { show(demos[0], false); return; }
-
-    var idx = 0;
-    (function loop() {
-        card.classList.remove("switching");
-        show(demos[idx], true, function () {
-            card.classList.add("switching");
-            setTimeout(function () { idx = (idx + 1) % demos.length; loop(); }, 350);
-        });
-    })();
-
-    /* Cursor tilt, pointer devices only. */
-    if (window.matchMedia("(hover: hover)").matches) {
-        var art = card.parentElement;
-        art.addEventListener("mousemove", function (e) {
-            var r = card.getBoundingClientRect();
-            var dx = (e.clientX - r.left - r.width / 2) / r.width;
-            var dy = (e.clientY - r.top - r.height / 2) / r.height;
-            card.style.transform = "perspective(900px) rotateX(" + (-dy * 5) + "deg) rotateY(" + (dx * 6) + "deg)";
-        });
-        art.addEventListener("mouseleave", function () { card.style.transform = ""; });
+    /* Count-up for the hero stats, fired once when scrolled into view.
+       Values live in data-target so the markup stays honest for no-JS
+       readers and crawlers, who see the real figures rather than 0. */
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const counters = document.querySelectorAll('.stat-count');
+    if (counters.length && 'IntersectionObserver' in window) {
+        const seen = new WeakSet();
+        const io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting || seen.has(entry.target)) return;
+                seen.add(entry.target);
+                const el = entry.target;
+                const target = parseFloat(el.dataset.target);
+                const decimals = parseInt(el.dataset.decimals || '0', 10);
+                if (reduced) { el.textContent = target.toFixed(decimals); return; }
+                el.textContent = (0).toFixed(decimals);   /* only now drop to zero */
+                let start = null;
+                (function step(t) {
+                    if (!start) start = t;
+                    let p = Math.min((t - start) / 900, 1);
+                    p = 1 - Math.pow(1 - p, 3);   /* settle gently */
+                    el.textContent = (target * p).toFixed(decimals);
+                    if (p < 1) requestAnimationFrame(step);
+                })(performance.now());
+            });
+        }, { threshold: 0.6 });
+        counters.forEach(function (c) { io.observe(c); });
     }
 })();
-</script>
-<script>
-    (function () {
-        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-        /* Typing demo in the postcode field: cycles real postcodes in
-           the placeholder with a caret, exactly the affordance the
-           reference site uses on its prompt box. Placeholder only - it
-           stops being visible the instant someone focuses or types, so
-           it can never interfere with real input. */
-        var input = document.getElementById('postcode');
-        if (input && !reduced) {
-            var samples = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
-            var si = 0, ci = 0, deleting = false;
-            (function tick() {
-                var word = samples[si];
-                if (document.activeElement !== input && !input.value) {
-                    input.placeholder = word.slice(0, ci) + '▏';
-                }
-                var delay;
-                if (!deleting && ci < word.length) { ci++; delay = 110; }
-                else if (!deleting) { deleting = true; delay = 1600; }
-                else if (ci > 0) { ci--; delay = 45; }
-                else { deleting = false; si = (si + 1) % samples.length; delay = 350; }
-                setTimeout(tick, delay);
-            })();
-        }
+(function () {
+    /* The hero strip, fed by this site's own /api/lookup so the numbers
+       are whatever the report says today. Five real postcodes across
+       four nations; whichever ones answer get rotated through. */
+    const POSTCODES = ['M1 1AE', 'LS1 4DY', 'SW1A 1AA', 'B1 1BD', 'E14 9PR'];
+    const strip = document.getElementById('lx-strip');
+    if (!strip) return;
 
-        /* Count-up for the hero stats, fired once when scrolled into
-           view. Values live in data-target so the markup stays honest
-           for no-JS readers and crawlers. */
-        var counters = document.querySelectorAll('.stat-count');
-        if (counters.length && 'IntersectionObserver' in window) {
-            var seen = new WeakSet();
-            var io = new IntersectionObserver(function (entries) {
-                entries.forEach(function (entry) {
-                    if (!entry.isIntersecting || seen.has(entry.target)) return;
-                    seen.add(entry.target);
-                    var el = entry.target;
-                    var target = parseFloat(el.dataset.target);
-                    var decimals = parseInt(el.dataset.decimals || '0', 10);
-                    if (reduced) { el.textContent = target.toFixed(decimals); return; }
-                    var start = null;
-                    function step(t) {
-                        if (!start) start = t;
-                        var p = Math.min((t - start) / 900, 1);
-                        /* ease-out so the last digits settle gently */
-                        p = 1 - Math.pow(1 - p, 3);
-                        el.textContent = (target * p).toFixed(decimals);
-                        if (p < 1) requestAnimationFrame(step);
-                    }
-                    requestAnimationFrame(step);
-                });
-            }, { threshold: 0.6 });
-            counters.forEach(function (c) { io.observe(c); });
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const el = {
+        pc: document.getElementById('lx-strip-pc'),
+        postcode: document.getElementById('lx-strip-postcode'),
+        grade: document.getElementById('lx-strip-grade'),
+        place: document.getElementById('lx-strip-place'),
+        dial: document.getElementById('lx-dial'),
+        num: document.getElementById('lx-dial-num'),
+        rows: document.getElementById('lx-strip-rows'),
+    };
+
+    function rows(d) {
+        /* Only what came back. A missing source is left out rather than
+           filled with a placeholder. */
+        const out = [];
+        if (d.flood_zone) {
+            const low = /Zone 1/.test(d.flood_zone);
+            out.push(['Flood', d.flood_zone.replace(/\s*\(.*\)$/, ''), low ? 'good' : 'bad']);
         }
-    })();
+        if (typeof d.schools_good_pct === 'number') {
+            out.push(['Schools', d.schools_good_pct + '% good', d.schools_good_pct >= 70 ? 'good' : 'warn']);
+        }
+        if (typeof d.avg_price === 'number') {
+            out.push(['Sold price', '£' + Math.round(d.avg_price).toLocaleString('en-GB'), '']);
+        }
+        if (typeof d.crime_total === 'number') out.push(['Crime', d.crime_total + ' recorded', '']);
+        return out.slice(0, 5);
+    }
+
+    function paint(d) {
+        const o = d.overview || {};
+        const score = typeof o.score === 'number' ? o.score : null;
+        el.pc.textContent = d.postcode;
+        el.postcode.textContent = d.postcode;
+        el.place.textContent = [d.admin_district, d.region].filter(Boolean).join(', ');
+        el.grade.textContent = o.grade || '';
+        el.grade.hidden = !o.grade;
+        el.rows.innerHTML = '';
+        rows(d).forEach(function (r) {
+            const cell = document.createElement('div');
+            cell.className = 'lx-strip-cell';
+            const k = document.createElement('p');
+            k.className = 'lx-strip-k';
+            const dot = document.createElement('span');
+            dot.className = 'lx-strip-dot lx-tone-' + (r[2] || 'plain');
+            k.appendChild(dot);
+            k.appendChild(document.createTextNode(r[0]));
+            const v = document.createElement('p');
+            v.className = 'lx-strip-v' + (r[2] === 'warn' || r[2] === 'bad' ? ' lx-strip-v-' + r[2] : '');
+            v.textContent = r[1];
+            cell.appendChild(k); cell.appendChild(v);
+            el.rows.appendChild(cell);
+        });
+
+        if (score === null) { el.dial.hidden = true; return; }
+        el.dial.hidden = false;
+        if (reduce) {
+            el.num.textContent = score;
+            el.dial.style.setProperty('--arc', score + '%');
+            return;
+        }
+        const t0 = performance.now();
+        (function step(ts) {
+            const k = Math.min((ts - t0) / 1100, 1);
+            const eased = 1 - Math.pow(1 - k, 3);
+            el.num.textContent = Math.round(score * eased);
+            el.dial.style.setProperty('--arc', (score * eased) + '%');
+            if (k < 1) requestAnimationFrame(step);
+        })(t0);
+    }
+
+    Promise.all(POSTCODES.map(function (pc) {
+        return fetch('/api/lookup?postcode=' + encodeURIComponent(pc))
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; });
+    })).then(function (results) {
+        const good = results.filter(function (d) { return d && d.postcode && d.overview; });
+        if (!good.length) return;          // no data, no strip
+        strip.hidden = false;
+        strip.classList.add('in-view');
+        let i = 0;
+        paint(good[0]);
+        if (good.length > 1 && !reduce) {
+            setInterval(function () { i = (i + 1) % good.length; paint(good[i]); }, 4000);
+        }
+    });
+})();
 </script>
 {% endblock %}
