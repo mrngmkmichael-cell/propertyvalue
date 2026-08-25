@@ -5224,3 +5224,23 @@ main:focus { outline: none; }
     cursor: pointer;
 }
 .pc-suggest li:hover, .pc-suggest li.active { background: var(--accent-soft); color: var(--accent); }
+
+/* ---- Popular areas strip ---- */
+.area-chip-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.area-chip {
+    display: inline-flex; align-items: baseline; gap: 0.4rem;
+    padding: 0.55rem 1rem;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm); color: var(--ink-soft); text-decoration: none;
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.area-chip strong { color: var(--ink); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.03em; }
+.area-chip:hover {
+    border-color: var(--accent); color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px -10px rgba(31, 42, 90, 0.4);
+}
+.area-chip:hover strong { color: var(--accent); }
+.area-chip-all { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: var(--weight-semi); }
+.area-chip-all:hover { background: var(--accent-hover); color: var(--accent-ink); }

@@ -151,56 +151,25 @@
     </div>
 </section>
 
-<section class="landing-section">
-    <span class="section-pill" data-animate>See it in action</span>
-    <h2 class="landing-heading" data-animate>See exactly what you get</h2>
+<section class="landing-section" id="popular-areas">
+    <span class="section-pill" data-animate>Area guides</span>
+    <h2 class="landing-heading" data-animate>Start with an area you know</h2>
     <p class="landing-subheading" data-animate>
-        This is a real report. Tap it to open the live version.
+        No postcode to hand? Every district has a free guide: prices, schools, crime and flood risk at a glance.
     </p>
-    <a class="report-preview report-preview-link" data-animate href="/property?postcode=SW1A+1AA" aria-label="Open the live report for SW1A 1AA">
-        <div class="report-preview-chrome">
-            <span class="report-preview-dot" style="background: #f87171;"></span>
-            <span class="report-preview-dot" style="background: #fbbf24;"></span>
-            <span class="report-preview-dot" style="background: #34d399;"></span>
-            <span class="report-preview-url">ukpropertyinsight.co.uk/property?postcode=SW1A+1AA</span>
-        </div>
-        <div class="report-preview-grid">
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Sold Price</span>
-                <span class="report-preview-tile-value">£685,000</span>
-                <span class="report-preview-tile-sub">Jun 2025 · Terraced house</span>
-            </div>
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Energy Rating</span>
-                <span class="report-preview-tile-value">
-                    <span class="epc-badge epc-c">C</span>
-                    92 m²
-                </span>
-                <span class="report-preview-tile-sub">Built 1930–1949</span>
-            </div>
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Flood Risk</span>
-                <span class="report-preview-tile-value" style="color: var(--good);">Zone 1</span>
-                <span class="report-preview-tile-sub">Low probability, no active alerts</span>
-            </div>
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Crime</span>
-                <span class="report-preview-tile-value">312 <span class="report-preview-tile-trend down">▼ 8%</span></span>
-                <span class="report-preview-tile-sub">vs. wider area, last 12 months</span>
-            </div>
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Schools Nearby</span>
-                <span class="report-preview-tile-value">4 "Good"</span>
-                <span class="report-preview-tile-sub">Within 1 mile, Ofsted-rated</span>
-            </div>
-            <div class="report-preview-tile">
-                <span class="report-preview-tile-label">Noise</span>
-                <span class="report-preview-tile-value" style="color: var(--warn);">Moderate</span>
-                <span class="report-preview-tile-sub">58 dB(A) road noise at its loudest</span>
-            </div>
-        </div>
-        <span class="report-preview-open">Open the live report &rsaquo;</span>
-    </a>
+    <div class="area-chip-row" data-animate>
+        {% for outcode, label in [
+            ("SW1A", "Westminster"), ("E14", "Canary Wharf"), ("N1", "Islington"), ("SE1", "Southwark"),
+            ("SW11", "Battersea"), ("M1", "Manchester"), ("M20", "Didsbury"), ("LS1", "Leeds"),
+            ("B1", "Birmingham"), ("L1", "Liverpool"), ("S1", "Sheffield"), ("NE1", "Newcastle"),
+            ("NG1", "Nottingham"), ("BS1", "Bristol"), ("CF10", "Cardiff"), ("G1", "Glasgow"),
+            ("EH1", "Edinburgh"), ("BN1", "Brighton"), ("OX1", "Oxford"), ("CB1", "Cambridge"),
+            ("YO1", "York"), ("RG1", "Reading"),
+        ] %}
+        <a class="area-chip" href="/area/{{ outcode }}"><strong>{{ outcode }}</strong> {{ label }}</a>
+        {% endfor %}
+        <a class="area-chip area-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
+    </div>
 </section>
 
 <section class="landing-section" id="whats-included">
