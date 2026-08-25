@@ -1333,13 +1333,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # the finished HTML instead of re-rendering the 2,000-line template
     # (about 0.6s of CPU per view on one worker). Logged-in views are
     # personalised and always render fresh.
-    # Dark report theme, opt-in while it is being reviewed on real data.
-    # Part of the cache key, or a dark view would be served back to the
-    # next anonymous visitor who asked for the normal page.
-    theme_dark = request.query_params.get("theme") == "dark"
-
-    key = ("anon_property_page", *auth.property_key(postcode, house_number),
-           "dark" if theme_dark else "light")
+    key = ("anon_property_page", *auth.property_key(postcode, house_number))
 
     cacheable = _anon_cacheable(request)
     if cacheable:
@@ -1367,7 +1361,6 @@ async def property_search(request: Request, postcode: str = "", house_number: st
                 ctx = base_context(request)
                 ctx["building_postcode"] = b_canonical
                 ctx["building_house_number"] = b_hn
-                ctx["theme_dark"] = theme_dark
                 return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
 
     response = await _render_property(request, postcode, house_number)
@@ -1490,10 +1483,6 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         for sch in group_schools
         if sch.get("latitude") is not None
     ]
-
-    # Dark report theme, opt-in while it is being reviewed on real data.
-    # Flip the default here once the rest of the site follows.
-    context["theme_dark"] = request.query_params.get("theme") == "dark"
 
     context["report_outcome"] = request.query_params.get("report", "")
     # Share control: only for a viewer who can see the full report on

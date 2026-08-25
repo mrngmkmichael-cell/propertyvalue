@@ -8,4 +8,9 @@ marketing/reddit/
 
 # Local design preview, not for deployment
 app/static/_variants.html
+app/static/_bento.html
+app/static/_quiet.html
 app/static/_mock/
+# Video experiments, not wired into any page yet
+app/static/video/
+Old backup/

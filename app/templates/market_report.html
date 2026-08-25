@@ -30,7 +30,10 @@
         <tr>
             <td>{{ a.name }}</td>
             <td class="num">{{ a.average_price | gbp }}</td>
-            <td class="num" style="color: {{ '#1a8a5f' if a.annual_change_pct >= 0 else '#c23b3b' }};">
+            {# Was an inline hex pair. An inline style cannot be themed,
+               and the red measured 3.87:1 once the page went dark. The
+               tokens carry a value tuned for each theme. #}
+            <td class="num {{ 'num-up' if a.annual_change_pct >= 0 else 'num-down' }}">
                 {{ "%+.1f"|format(a.annual_change_pct) }}%
             </td>
             <td>{{ a.period[:7] }}</td>

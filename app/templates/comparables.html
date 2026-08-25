@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_map_style.html" as mapstyle %}
 {% import "_tabs.html" as tabnav %}
 
 {% block title %}{{ query }} . Comparables | UKPropertyInsight{% endblock %}
@@ -136,6 +137,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
     }
 </script>
 {% if google_maps_api_key %}
+{{ mapstyle.dark_map_style() }}
 <script>
     function initComparablesMap() {
         const center = { lat: {{ location.latitude | tojson }}, lng: {{ location.longitude | tojson }} };
@@ -146,6 +148,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
             streetViewControl: false,
             mapTypeControl: false,
             fullscreenControl: false,
+            styles: window.mapStyles(),
         });
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
 

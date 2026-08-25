@@ -86,7 +86,29 @@
 
     {% block extra_head %}{% endblock %}
 </head>
-<body{% if theme_dark %} class="theme-dark"{% endif %}>
+<body>
+    {# Dark theme, opt in with ?theme=dark and out with ?theme=light.
+       Kept client-side and in sessionStorage on purpose: it survives
+       navigation across the whole site without every internal link
+       having to carry the parameter, and the HTML stays identical for
+       both themes, so the anonymous report-page cache does not have to
+       hold two copies or risk serving one visitor the other's theme.
+
+       This has to run here, as the first thing inside <body>, not in a
+       deferred script: nothing below has been parsed yet, so the class
+       is on the element before the first paint and there is no flash of
+       the light theme. #}
+    <script>
+        (function () {
+            try {
+                var q = new URLSearchParams(location.search).get('theme');
+                if (q === 'dark' || q === 'light') sessionStorage.setItem('uki-theme', q);
+                if (sessionStorage.getItem('uki-theme') === 'dark') {
+                    document.body.classList.add('theme-dark');
+                }
+            } catch (e) { /* private mode: light theme, no harm done */ }
+        })();
+    </script>
     {# First focusable thing on every page: lets a keyboard or screen-reader
        user jump past the nav. Visually hidden until it receives focus. #}
     <a class="skip-link" href="#main">Skip to content</a>

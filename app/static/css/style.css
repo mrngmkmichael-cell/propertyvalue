@@ -5553,7 +5553,12 @@ body.theme-dark .globe-container {
     filter: saturate(0.8) brightness(0.82);
 }
 
-body.theme-dark .map-container { border: 1px solid var(--border); }
+/* Leaflet paints its own #ddd behind the tiles and it shows through in
+   the gaps while they load, and at the edges when panning. */
+body.theme-dark .map-container {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+}
 
 body.theme-dark .leaflet-control-layers,
 body.theme-dark .leaflet-bar a,
@@ -5569,6 +5574,75 @@ body.theme-dark .leaflet-popup-tip {
     background: var(--surface-2);
     color: var(--ink);
 }
+
+/* A figure that moved up or down. Token-driven so each theme picks a
+   value that clears 4.5:1 on its own background. */
+.num-up { color: var(--good); }
+.num-down { color: var(--bad); }
+
+/* --- The landing page --------------------------------------------------
+   Three pieces here were built to sit on paper and do not survive the
+   swap on their own.
+   ==================================================================== */
+
+/* The hero sits on a baked map image behind a wash the colour of the
+   page. Both halves have to flip: the image is brightened for paper and
+   would glow against near-black, and the wash was #faf9f6. */
+body.theme-dark #hero-map {
+    filter: grayscale(0.72) contrast(0.9) brightness(0.4) saturate(1.1) blur(1.5px);
+}
+
+body.theme-dark .hero-map-fade {
+    background: linear-gradient(100deg,
+        rgba(5, 5, 5, 0.97) 0%,
+        rgba(5, 5, 5, 0.9) 34%,
+        rgba(212, 169, 95, 0.1) 62%,
+        rgba(5, 5, 5, 0.4) 100%);
+}
+
+@media (max-width: 860px) {
+    body.theme-dark .hero-map-fade {
+        background: linear-gradient(180deg,
+            rgba(5, 5, 5, 0.9) 0%,
+            rgba(5, 5, 5, 0.97) 45%,
+            rgba(5, 5, 5, 1) 100%);
+    }
+}
+
+/* The offer band was a solid mint slab. Kept green it is the loudest
+   thing on a black page and it fights the gold, so it becomes a quiet
+   band with the gold doing the selling. */
+body.theme-dark .promo-banner {
+    background: linear-gradient(180deg, rgba(212, 169, 95, 0.13), rgba(212, 169, 95, 0.05));
+    border-top: 1px solid rgba(212, 169, 95, 0.25);
+    border-bottom: 1px solid rgba(212, 169, 95, 0.25);
+}
+body.theme-dark .promo-banner::before {
+    background: linear-gradient(100deg, transparent 30%,
+        rgba(212, 169, 95, 0.14) 45%, rgba(212, 169, 95, 0.14) 50%, transparent 65%);
+    background-size: 220% 100%;
+}
+body.theme-dark .promo-banner-text { color: var(--ink); }
+body.theme-dark .promo-banner-btn {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+body.theme-dark .promo-banner-btn:hover { background: var(--accent-hover); }
+
+/* An inverted slab: dark panel, light type, so it stands out from a
+   pale page. Inverting it again on a dark page turns it white, and its
+   copy is hardcoded white, so the whole block went white on white.
+   What stands out against black is gold, not light. */
+body.theme-dark .accuracy-strip {
+    background: linear-gradient(135deg, rgba(212, 169, 95, 0.11), rgba(212, 169, 95, 0.03)), var(--surface);
+    border: 1px solid rgba(212, 169, 95, 0.28);
+}
+body.theme-dark .accuracy-strip-heading { color: var(--accent); }
+body.theme-dark .accuracy-strip-copy p,
+body.theme-dark .accuracy-strip-stat { color: var(--ink-soft); }
+body.theme-dark .accuracy-strip-stat strong { color: var(--ink); }
+body.theme-dark .accuracy-strip-link { color: var(--accent); }
+body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
 
 /* --- Forms ------------------------------------------------------------- */
 body.theme-dark input[type="text"],

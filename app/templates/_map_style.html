@@ -1,0 +1,39 @@
+{# Google Maps dark basemap, shared by the report page and comparables.
+
+   A CSS filter is not an option on the Google branch: it renders place
+   names into the tiles, so inverting the element inverts the labels with
+   it. This is a real style array instead. The greys are the dark theme's
+   own surfaces so the panel sits in the page rather than on it, and
+   motorways take the gold, which keeps the road hierarchy readable at a
+   glance without introducing a second accent colour.
+
+   The Leaflet branch (dev, and anyone without GOOGLE_MAPS_API_KEY) is
+   handled in style.css by inverting the tile pane alone. #}
+{% macro dark_map_style() %}
+<script>
+    window.DARK_MAP_STYLE = [
+        { elementType: 'geometry', stylers: [{ color: '#171717' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#171717' }] },
+        { elementType: 'labels.text.fill', stylers: [{ color: '#8f887c' }] },
+        { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2e2e2e' }] },
+        { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#c9c2b6' }] },
+        { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#8f887c' }] },
+        { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#1c2620' }] },
+        { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a2a' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1f1f1f' }] },
+        { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9c958a' }] },
+        { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a3222' }] },
+        { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#d4a95f' }] },
+        { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#232323' }] },
+        { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#a9a49c' }] },
+        { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1216' }] },
+        { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4d5a62' }] },
+    ];
+    {# The theme is applied client-side, so this reads the class rather
+       than a server flag. Returns null in the light theme, which is what
+       Google expects for "use the default basemap". #}
+    window.mapStyles = function () {
+        return document.body.classList.contains('theme-dark') ? window.DARK_MAP_STYLE : null;
+    };
+</script>
+{% endmacro %}

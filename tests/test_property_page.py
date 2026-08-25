@@ -131,24 +131,37 @@ def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
     assert client.get("/api/property/amenities?postcode=ZZ99%209ZZ").status_code == 404
 
 
+# Cards on the report that are not checks against an official dataset.
+# The site's promise is that every figure traces back to a named public
+# body, so these are excluded from the count the landing page quotes.
+# Undercounting is never a credibility risk; counting an arguable card
+# is.
+NOT_AN_OFFICIAL_SOURCE_CHECK = {"Resident Reviews"}
+
+
 def test_landing_page_check_count_matches_the_report(client, fake_report):
-    """The hero says "N checks". N has to be the number of cards a
-    visitor can actually count on a report.
+    """The hero says "N checks". N has to be a number a visitor can
+    verify by counting cards on a real report.
 
     It said 23 for months, which was the count of the FREE cards
-    presented as the total, and undersold the report by fifteen. The
-    report page is the source of truth here, so if a card is ever added
-    or removed this fails until the headline is updated with it."""
+    presented as the total, and undersold the report by fourteen. The
+    report page is the source of truth, so if a card is added or removed
+    this fails until the headline is updated with it."""
     report = _report(client, fake_report)
-    cards = report.count('<span class="dashboard-card-title">')
     # Two cards (Nearby Essentials, Getting Around) arrive from the
     # follow-up amenities fetch and render as pending placeholders in the
-    # first response, so they are already in the count above.
-    assert cards > 30, f"only {cards} cards found - has the grid changed shape?"
+    # first response, so they are already in this list.
+    titles = re.findall(r'<span class="dashboard-card-title">(.*?)</span>', report)
+    assert len(titles) > 30, f"only {len(titles)} cards found - has the grid changed shape?"
+
+    for name in NOT_AN_OFFICIAL_SOURCE_CHECK:
+        assert name in titles, f"{name!r} is excluded from the count but is no longer on the report"
+    checks = len(titles) - len(NOT_AN_OFFICIAL_SOURCE_CHECK)
 
     home = client.get("/").text
     headline = re.search(r'<span class="stat-count" data-target="(\d+)">0</span> checks', home)
     assert headline, "hero check count not found on the landing page"
-    assert int(headline.group(1)) == cards, (
-        f"landing page claims {headline.group(1)} checks, report renders {cards}"
+    assert int(headline.group(1)) == checks, (
+        f"landing page claims {headline.group(1)} checks, report has {checks} "
+        f"({len(titles)} cards less {sorted(NOT_AN_OFFICIAL_SOURCE_CHECK)})"
     )
