@@ -33,7 +33,7 @@ from app.services import (
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     stripe_billing, surface_water_risk, telegram, valuation,
-    solicitor_questions, indexnow,
+    solicitor_questions, indexnow, council_tax,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -1603,6 +1603,8 @@ async def _full_property_gather(
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
+    # Local JSON lookup, England only; None elsewhere and the card says so.
+    context["council_tax"] = council_tax.for_district(codes.get("admin_district"))
     context["epc_configured"] = epc.is_configured()
     context["amenities_pending"] = False
 

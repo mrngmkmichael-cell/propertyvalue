@@ -400,6 +400,18 @@
             {% endif %}
         </button>
 
+        <button type="button" class="dashboard-card status-{{ 'ok' if council_tax else 'muted' }}" data-modal-target="modal-council-tax" data-animate>
+            <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
+            <span class="dashboard-card-title">Council Tax</span>
+            <span class="dashboard-card-status">
+                {% if council_tax %}Band D: {{ council_tax.band_d | gbp }}/yr
+                {% else %}England only for now{% endif %}
+            </span>
+            {% if council_tax %}
+            <span class="dashboard-card-substat">{{ council_tax.authority }}, {{ council_tax.year }}</span>
+            {% endif %}
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if (valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-valuation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
@@ -883,6 +895,39 @@
             <button type="submit">Search</button>
         </form>
     </section>
+
+    <dialog class="report-modal" id="modal-council-tax">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+                <h2>Council tax</h2>
+                {% if council_tax %}
+                <p class="section-sub">
+                    What each band pays per year in {{ council_tax.authority }} for {{ council_tax.year }},
+                    including all precepts. A property's own band is set by the Valuation Office Agency and
+                    appears on the seller's bill; ask which band this property is in.
+                </p>
+                <table class="tx-table">
+                    <thead><tr><th>Band</th><th class="num">Per year</th><th class="num">Per month</th></tr></thead>
+                    <tbody>
+                        {% for band, amount in council_tax.bands.items() %}
+                        <tr><td>Band {{ band }}</td><td class="num">{{ amount | gbp }}</td><td class="num">{{ (amount / 12) | gbp }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <p class="note">
+                    Band D is the authority's published average area charge (MHCLG, Council Tax levels set by
+                    local authorities in England, {{ council_tax.year }}). Other bands are the statutory ratios
+                    from the Local Government Finance Act 1992, so they are exact for the area charge, though
+                    individual parish precepts can vary within the authority.
+                </p>
+                {% else %}
+                <p class="notice">Council tax rates are shown for England only at the moment. Scotland and Wales publish
+                separate datasets we haven't imported yet.</p>
+                {% endif %}
+            </section>
+        </div>
+    </dialog>
 
     <dialog class="report-modal" id="modal-sold-price-history">
         <div class="report-modal-inner">
