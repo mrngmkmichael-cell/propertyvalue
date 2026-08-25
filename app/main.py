@@ -871,6 +871,42 @@ async def server_error_handler(request: Request, exc: Exception):
     )
 
 
+DATA_SOURCE_GROUPS = [
+    ("Queried live, per postcode", [
+        {"name": "HM Land Registry Price Paid", "powers": "Sold price history, comparables, valuation inputs", "freshness": "Live; the Registry updates monthly", "url": "https://www.gov.uk/government/organisations/land-registry"},
+        {"name": "UK House Price Index", "powers": "Area averages, trends and forecasts", "freshness": "Live; published monthly", "url": "https://www.gov.uk/government/collections/uk-house-price-index-reports"},
+        {"name": "EPC Register", "powers": "Energy ratings, floor area, extension detection, heating costs", "freshness": "Live; certificates appear as lodged", "url": "https://epc.opendatacommunities.org"},
+        {"name": "Environment Agency", "powers": "Flood zones, live flood warnings, surface water risk", "freshness": "Live; warnings update continuously", "url": "https://environment.data.gov.uk"},
+        {"name": "Police.uk", "powers": "Recorded crime by category near the address", "freshness": "Live; forces publish monthly, England and Wales", "url": "https://www.police.uk"},
+        {"name": "British Geological Survey", "powers": "Radon potential, clay subsidence risk", "freshness": "Live against BGS's current atlases", "url": "https://www.bgs.ac.uk"},
+        {"name": "Coal Authority", "powers": "Coal mining reporting areas", "freshness": "Live", "url": "https://www.gov.uk/government/organisations/the-coal-authority"},
+        {"name": "planning.data.gov.uk & council GIS", "powers": "Conservation areas, green belt, listed buildings, designations", "freshness": "Live; national planning data platform", "url": "https://www.planning.data.gov.uk"},
+        {"name": "Food Standards Agency", "powers": "Food hygiene ratings nearby", "freshness": "Live", "url": "https://www.food.gov.uk"},
+        {"name": "OpenStreetMap (Overpass)", "powers": "Shops, GPs, pubs, stations nearby", "freshness": "Live; community-maintained", "url": "https://www.openstreetmap.org"},
+        {"name": "postcodes.io (ONS/OS data)", "powers": "Postcode lookup, coordinates, area codes, autocomplete", "freshness": "Live; rebuilt on ONS postcode releases", "url": "https://postcodes.io"},
+    ]),
+    ("Imported in bulk, refreshed on the publisher's cycle", [
+        {"name": "DfE schools & Ofsted", "powers": "Schools nearby, ratings, exam results, school landscape", "freshness": "Imported; refreshed when DfE/Ofsted publish", "url": "https://www.gov.uk/government/organisations/department-for-education"},
+        {"name": "Council catchment data", "powers": "Published admission distances and boundary shapes", "freshness": "Imported per council academic year, labelled real vs estimated", "url": "https://www.gov.uk/school-admissions"},
+        {"name": "Ofcom Connected Nations", "powers": "Broadband speeds and mobile coverage", "freshness": "Imported; Ofcom publishes twice a year", "url": "https://www.ofcom.org.uk"},
+        {"name": "ONS Census 2021 & area statistics", "powers": "Demographics, occupations, qualifications, wellbeing, income, deprivation", "freshness": "Imported; Census 2021 plus current ONS small-area series", "url": "https://www.ons.gov.uk"},
+        {"name": "ONS Price Index of Private Rents", "powers": "Typical rents by area", "freshness": "Imported; ONS publishes monthly", "url": "https://www.ons.gov.uk"},
+        {"name": "Defra strategic noise mapping", "powers": "Road, rail and air noise levels", "freshness": "Imported; Defra round-based", "url": "https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs"},
+        {"name": "Defra/AURN air quality", "powers": "Pollutants against WHO guidelines", "freshness": "Imported; annual modelled background maps", "url": "https://uk-air.defra.gov.uk"},
+        {"name": "EA historic landfill & sewage returns", "powers": "Former landfill sites, storm overflow spill counts", "freshness": "Imported; EA annual returns", "url": "https://environment.data.gov.uk"},
+        {"name": "MHCLG council tax levels", "powers": "Band A to H charges per English authority", "freshness": "Imported; 2026-27 release, annual", "url": "https://www.gov.uk/government/collections/council-tax-statistics"},
+        {"name": "Bank of England", "powers": "Base rate and its history on the buying guide", "freshness": "Live; updates on MPC decisions", "url": "https://www.bankofengland.co.uk"},
+    ]),
+]
+
+
+@app.get("/data")
+def data_page(request: Request):
+    context = base_context(request)
+    context["source_groups"] = DATA_SOURCE_GROUPS
+    return templates.TemplateResponse(request, "data_page.html", context)
+
+
 def _landing_accuracy_counts() -> dict | None:
     """Total/fixed counts for the landing page's accuracy strip.
     Cached, so the homepage never pays a query per view."""
@@ -1001,7 +1037,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """(url, priority) for every page the sitemap advertises. Shared by
     the sitemap route and the IndexNow pinger so they can never drift."""
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
-                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed"]
+                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data"]
     outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]

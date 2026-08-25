@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Where Every Figure Comes From | UKPropertyInsight{% endblock %}
+{% block meta_description %}Every data source behind UKPropertyInsight: what it provides, whether it is queried live or imported in bulk, and how often it updates. Nothing scraped, nothing guessed.{% endblock %}
+
+{% block content %}
+<span class="kicker">Our data</span>
+<h1>Where every figure comes from</h1>
+<p class="dek">Two kinds of source power a report: official datasets we import in bulk and refresh on the publisher's own cycle, and official APIs we query live per postcode. Here is the whole list, with how fresh each one is.</p>
+
+{% for group_name, sources in source_groups %}
+<section class="report-section">
+    <h2>{{ group_name }}</h2>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Source</th><th>Powers</th><th>Freshness</th></tr></thead>
+        <tbody>
+            {% for src in sources %}
+            <tr>
+                <td><a href="{{ src.url }}" target="_blank" rel="noopener">{{ src.name }}</a></td>
+                <td>{{ src.powers }}</td>
+                <td>{{ src.freshness }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endfor %}
+
+<section class="report-section">
+    <h2>The rules we build by</h2>
+    <ul class="snap-points">
+        <li><strong>Official sources only.</strong> Every figure traces to a named government or public body. Nothing is scraped from listings sites.</li>
+        <li><strong>No source, no feature.</strong> When no reliable national dataset exists (rights of way, per-property council tax bands, planning applications outside four councils), we skip the feature rather than model an answer.</li>
+        <li><strong>Gaps say so.</strong> Where a source doesn't cover an address (Scotland for Ofsted and Environment Agency data, for example) the report says that instead of showing a silent blank.</li>
+        <li><strong>Wrong figures get published.</strong> Anyone can challenge any figure; the outcome, right or wrong, goes on the <a href="/accuracy">accuracy log</a>.</li>
+    </ul>
+</section>
+
+<p class="section-sub">All data used under the <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/" target="_blank" rel="noopener">Open Government Licence v3.0</a> or the publisher's own open licence. Read how figures become verdicts on the <a href="/methodology">methodology page</a>.</p>
+{% endblock %}
