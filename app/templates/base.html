@@ -444,9 +444,20 @@
                     observer.unobserve(el);
                 });
             }
-            revealVisible();
-            window.addEventListener('load', revealVisible);
-            window.addEventListener('hashchange', revealVisible);
+            /* Deferred to the next frame rather than run here. Called
+               during parse it asks for geometry the browser has not
+               worked out yet, so it has to lay the whole page out on the
+               spot to answer - and the observer's own first callback
+               already covers everything visible at load. This stays as
+               the safety net for a #hash jump, which is the case that
+               can land a target in view before that callback runs.
+
+               It also no longer runs on load: the observer has reported
+               by then, so that pass only paid for another layout. */
+            requestAnimationFrame(revealVisible);
+            window.addEventListener('hashchange', function () {
+                requestAnimationFrame(revealVisible);
+            });
         })();
     </script>
     <script>

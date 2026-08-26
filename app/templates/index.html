@@ -9,7 +9,7 @@
    scripts/build_hero_map.py. #}
 
 {% block lcp_preload %}
-<link rel="preload" as="image" href="/static/img/hero-luxonn.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/static/img/hero-luxonn-v2.webp" fetchpriority="high">
 {% endblock %}
 
 {% block extra_head %}
@@ -40,10 +40,12 @@
    the day they move the file, and this keeps the page's zero
    third-party origins intact.
 
-   Re-encoded from the 4.1 MB master to 758 KB (1440 wide, CRF 28, audio
-   stripped) and the PNG poster to a 146 KB webp from 453 KB. Encoded at
-   higher quality than the previous backdrop, because the scrim over
-   this one is deliberately light on the right so the sunset reads.
+   Re-encoded from the 4.1 MB master: video 1.3 MB (1440 wide, CRF 29,
+   audio stripped, mirrored into a seamless 20s loop), poster 63 KB
+   (1200 wide, quality 55) down from the 453 KB PNG. The poster is the
+   LCP element, and at 143 KB it was the largest thing the page drew;
+   1200 wide is still 3x what a phone displays it at, and it sits under
+   a scrim in any case.
    =================================================================== #}
 {# Filename carries the version on purpose. Static assets are served
    Cache-Control: immutable for a year, so replacing a file in place
@@ -63,7 +65,7 @@
            arrives, and nothing shifts when it does. The baked hero map
            is gated the same way for the same reason. #}
         <video class="lx-hero-video" muted loop playsinline
-               poster="/static/img/hero-luxonn.webp" data-src="{{ hero_video }}"></video>
+               poster="/static/img/hero-luxonn-v2.webp" data-src="{{ hero_video }}"></video>
         {% else %}
         <div class="lx-hero-still"></div>
         {% endif %}
@@ -86,12 +88,11 @@
            75 against a real 82) within days of being written. If the
            fetch fails the strip removes itself rather than show a
            number nobody can stand behind. #}
-        {# The first entry's figures, handed over in the page so the strip
-           paints without a round trip. Present only when the route found
-           them already cached; absent means the script asks for them as
-           it did before. #}
-        {% if strip_seed %}
-        <script type="application/json" id="lx-strip-seed">{{ strip_seed | tojson }}</script>
+        {# Whatever the route already had cached, handed over in the page
+           so the strip needs no round trip at all. Anything absent here
+           the script asks for, exactly as before. #}
+        {% if strip_seeds %}
+        <script type="application/json" id="lx-strip-seed">{{ strip_seeds | tojson }}</script>
         {% endif %}
         <div class="lx-strip" id="lx-strip" hidden data-animate>
             <div class="lx-strip-chrome">
@@ -562,11 +563,14 @@
         };
         addEventListener('scroll', onScroll, { passive: true });
         addEventListener('resize', function () { measure(); onScroll(); }, { passive: true });
-        /* After load, so the measurement is taken against the settled
-           page rather than one still waiting on the hero poster. */
-        addEventListener('load', function () { measure(); place(); });
-        measure();
-        place();
+        /* Both deferred to a frame. Measuring during parse forces a
+           layout the browser has not done yet; a frame later it is free.
+           The load pass re-measures against the settled page, once the
+           hero poster has taken its space. */
+        requestAnimationFrame(function () { measure(); place(); });
+        addEventListener('load', function () {
+            requestAnimationFrame(function () { measure(); place(); });
+        });
     }
 })();
 
@@ -605,7 +609,7 @@
     /* The hero strip, fed by this site's own /api/lookup so the numbers
        are whatever the report says today. Five real postcodes across
        four nations; whichever ones answer get rotated through. */
-    const POSTCODES = ['M1 1AE', 'LS1 4DY', 'SW1A 1AA', 'B1 1BD', 'E14 9PR'];
+    const POSTCODES = {{ strip_postcodes | tojson }};
     const strip = document.getElementById('lx-strip');
     if (!strip) return;
 
@@ -739,18 +743,23 @@
     /* If the server handed us the first entry, paint it now and strike
        that postcode off the fetch list. That is one fewer request, and
        it was the longest chain on the page at 2,822ms. */
+    /* Everything the server already had, painted straight away. On a
+       warm cache that is all five and the strip never touches the
+       network; whatever is missing stays in the queue below. */
     const seedEl = document.getElementById('lx-strip-seed');
     let queue = POSTCODES;
     if (seedEl) {
         try {
-            const seed = JSON.parse(seedEl.textContent);
-            if (ok(seed)) {
-                loaded.push(seed);
+            const seeds = JSON.parse(seedEl.textContent).filter(ok);
+            if (seeds.length) {
+                seeds.forEach(function (s) { loaded.push(s); });
                 shown = true;
                 strip.hidden = false;
                 strip.classList.add('in-view');
-                paint(seed);
-                queue = POSTCODES.filter(function (pc) { return pc !== seed.postcode; });
+                paint(seeds[0]);
+                rotate();
+                const have = seeds.map(function (s) { return s.postcode; });
+                queue = POSTCODES.filter(function (pc) { return have.indexOf(pc) === -1; });
             }
         } catch (e) { /* malformed seed: fall through and fetch */ }
     }

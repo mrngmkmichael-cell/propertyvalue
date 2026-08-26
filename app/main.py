@@ -928,10 +928,10 @@ def _landing_accuracy_counts() -> dict | None:
     return counts
 
 
-# The postcode the hero strip opens on. Kept next to the route because
-# the template's rotation list has to start with the same one, or the
-# seed is thrown away on the first paint.
-STRIP_FIRST_POSTCODE = "M1 1AE"
+# The postcodes the hero strip rotates through. The template renders
+# this list, so there is one source of truth and the seeds below can
+# never drift out of step with what the page asks for.
+STRIP_POSTCODES = ["M1 1AE", "LS1 4DY", "SW1A 1AA", "B1 1BD", "E14 9PR"]
 
 
 @app.get("/")
@@ -939,15 +939,19 @@ def index(request: Request):
     context = base_context(request)
     context["accuracy_counts"] = _landing_accuracy_counts()
 
-    # Hand the hero strip its first entry in the page, so it paints with
-    # real figures immediately instead of waiting on a round trip.
+    # Hand the hero strip whatever is already cached, so it paints with
+    # real figures immediately instead of waiting on round trips.
     # /api/lookup caches its finished payload for an hour and this reads
-    # that same entry - cache only, never a fetch. A miss just omits the
-    # seed and the script falls back to asking, so this can only ever
+    # those same entries - cache only, never a fetch. Anything missing is
+    # simply absent and the script asks for it, so this can only ever
     # make the page faster.
-    context["strip_seed"] = _cache.get(
-        ("api_lookup", STRIP_FIRST_POSTCODE), API_LOOKUP_CACHE_TTL_S
-    )
+    context["strip_postcodes"] = STRIP_POSTCODES
+    context["strip_seeds"] = [
+        payload for payload in (
+            _cache.get(("api_lookup", pc), API_LOOKUP_CACHE_TTL_S)
+            for pc in STRIP_POSTCODES
+        ) if payload
+    ]
     return templates.TemplateResponse(request, "index.html", context)
 
 
