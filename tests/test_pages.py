@@ -178,3 +178,51 @@ def test_compare_survives_an_unknown_postcode(client, monkeypatch):
     assert r.status_code == 200
     assert "Not a postcode we could find" in r.text
     assert "Testerton" in r.text
+
+
+def test_report_share_card_is_its_own_image(client, fake_report):
+    """A report shared into a chat should preview as that report, not
+    the generic site image."""
+    fake_report()
+    body = client.get("/property?postcode=M14%205TG").text
+    og = re.search(r'<meta property="og:image" content="([^"]+)"', body).group(1)
+    assert "/og/property.png" in og and "postcode=" in og
+
+
+def test_share_card_renders_a_png_without_running_a_gather(client, monkeypatch):
+    """The card must build from cached data only. A crawler following
+    shared links must never be able to trigger the full gather."""
+    from app import main as app_main
+    from app.services import _cache
+
+    async def _lookup(_pc):
+        return {"postcode": "M14 5TG", "admin_district": "Manchester", "region": "North West"}
+
+    def _boom(*a, **kw):
+        raise AssertionError("an image request must not start a gather")
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "_full_property_gather", _boom)
+    _cache._store.clear()
+    _cache._bytes = 0
+
+    r = client.get("/og/property.png?postcode=M14%205TG")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_share_card_never_shows_premium_figures():
+    """The card is public. Only free-tier data may appear on it."""
+    from app import main as app_main
+
+    facts = app_main._og_facts({
+        "flood_zone": {"label": "Zone 1 (low probability)"},
+        "school_landscape": {"good_or_better_pct": 93},
+        "crime": {"total": 5},
+        "valuation": {"estimate": 999999},
+        "household_income": {"estimate": 41000},
+    })
+    rendered = " ".join(f"{a} {b}" for a, b in facts)
+    assert "999,999" not in rendered and "41,000" not in rendered
+    assert len(facts) <= 3

@@ -8,6 +8,11 @@
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} | UKPropertyInsight{% endblock %}
+{# A share of this report should look like this report, not like the
+   homepage. The card carries the address's own score and figures. The
+   not-found page renders this template with no location, so it keeps
+   the site's default image. #}
+{% block og_image %}{% if location is defined and location %}{{ request.url_for('og_property_image') }}?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}{% else %}{{ request.url_for('static', path='img/og-default.png') }}{% endif %}{% endblock %}
 {% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
 
 {% block content %}

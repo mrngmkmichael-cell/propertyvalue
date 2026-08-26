@@ -34,6 +34,7 @@ from app.services import (
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
+    og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow, council_tax,
 )
@@ -2183,6 +2184,12 @@ async def _full_property_gather(
     # amenities) would otherwise sit un-ticked forever.
     sink["done"] = list(GATHER_SOURCE_ORDER)
     _progress_sink.set(None)
+
+    # A few bytes for the share card. The gather's own cache entry holds
+    # the raw results list rather than this assembled context, and an
+    # image request is not allowed to re-run the gather, so the finished
+    # figures are published here where the card can reach them.
+    _cache.set(("og_payload", canonical, house_number), _og_payload(context))
 
     return context
 
@@ -4690,6 +4697,97 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
     else:
         context["columns"] = []
     return templates.TemplateResponse(request, "compare.html", context)
+
+
+OG_IMAGE_CACHE_TTL_S = 60 * 60 * 6
+
+
+def _og_facts(context: dict) -> list[tuple[str, str]]:
+    """Up to three headline figures for a share card, in the order a
+    reader would want them. Free-tier data only: a share image is
+    public, so nothing behind the paywall belongs on it."""
+    facts: list[tuple[str, str]] = []
+
+    # Values are kept short enough to sit on one line of a chip at the
+    # card's size; anything longer gets clipped, which looks broken.
+    flood_zone = context.get("flood_zone")
+    if context.get("flood_warnings"):
+        facts.append(("Flood risk", "Active warning"))
+    elif flood_zone and flood_zone.get("label"):
+        facts.append(("Flood risk", flood_zone["label"].split(" (")[0]))
+
+    landscape = context.get("school_landscape")
+    if landscape and landscape.get("good_or_better_pct") is not None:
+        facts.append(("Schools", f"{landscape['good_or_better_pct']}% good or better"))
+
+    crime_data = context.get("crime")
+    if crime_data and crime_data.get("total") is not None:
+        facts.append(("Crime", f"{crime_data['total']:,} nearby"))
+    elif crime_data and crime_data.get("unpublished"):
+        facts.append(("Crime", "Not published"))
+
+    if len(facts) < 3:
+        transactions = context.get("transactions")
+        if transactions:
+            facts.append(("Last sale", _format_gbp(transactions[0]["amount"])))
+    return facts[:3]
+
+
+def _og_payload(context: dict) -> dict:
+    """The handful of finished values a share card draws, extracted from
+    a completed gather context."""
+    overview = context.get("overview") or {}
+    return {
+        "score": overview.get("score"),
+        "grade": overview.get("grade", ""),
+        "facts": _og_facts(context),
+    }
+
+
+@app.get("/og/property.png")
+async def og_property_image(request: Request, postcode: str = "", house_number: str = ""):
+    """The share card for one report. Built only from what is already
+    cached: an image request must never be able to start the full
+    gather, or a crawler following a few links would run it for us."""
+    if not og_image.is_available():
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+
+    try:
+        location = await lookup_postcode(postcode.strip())
+    except httpx.HTTPError:
+        location = None
+    if location is None:
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+
+    canonical = location["postcode"]
+    hn = house_number.strip()
+    cache_key = ("og_card", canonical, hn)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        payload = _cache.get(("og_payload", canonical, hn), PROPERTY_SEARCH_CACHE_TTL_S) or {}
+        cached = og_image.render(
+            postcode=canonical,
+            district=location.get("admin_district", ""),
+            region=location.get("region", ""),
+            score=payload.get("score"),
+            grade=payload.get("grade", ""),
+            facts=[tuple(f) for f in payload.get("facts", [])],
+        )
+        # A card drawn before the gather finished has the address but no
+        # score. Serve it (a share should never wait on us) but do not
+        # keep it, or the scoreless version is what everyone sees for
+        # the next six hours.
+        if payload.get("score") is not None:
+            _cache.set(cache_key, cached)
+        else:
+            return Response(content=cached, media_type="image/png",
+                            headers={"Cache-Control": "public, max-age=120"})
+
+    return Response(
+        content=cached,
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=21600"},
+    )
 
 
 MAX_COMPARE_COLUMNS = 3

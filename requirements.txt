@@ -8,3 +8,7 @@ sqlalchemy==2.0.35
 psycopg[binary]==3.2.10
 itsdangerous==2.2.0
 xhtml2pdf==0.2.17
+# Draws the per-property share cards (app/services/og_image.py). Arrived
+# as an xhtml2pdf dependency; pinned here because we now import it
+# directly and must not lose it to a change upstream.
+pillow==12.3.0
