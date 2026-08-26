@@ -876,7 +876,8 @@
             /* 90ms per step, capped so a 23-chip grid doesn't take two
                seconds to finish. */
             var step = cols ? (Math.floor(i / cols) + (i % cols)) : i;
-            child.style.setProperty('--d', Math.min(step * 90, 630) + 'ms');
+            var unit = cols ? 130 : 90;
+            child.style.setProperty('--d', Math.min(step * unit, cols ? 910 : 630) + 'ms');
         });
         grid.classList.add('cascade-ready');
     });
@@ -886,7 +887,10 @@
             e.target.classList.add('cascade-armed');
             io.unobserve(e.target);
         });
-    }, { threshold: 0.15 });
+        /* threshold is a fraction of the TARGET: a grid taller than the
+           viewport can never reach a high ratio, so arm once a slice of
+           it is 10% inside the viewport instead. */
+    }, { threshold: 0.02, rootMargin: '0px 0px -10% 0px' });
     grids.forEach(function (g) { io.observe(g); });
     /* Same insurance base.html's reveal system carries: if the observer
        hasn't fired for a grid that is already on screen (a prerendered
@@ -903,7 +907,10 @@
             }
         });
     }
-    addEventListener('load', armVisible);
+    /* A refresh restores the scroll position, so a grid can be on
+       screen at load; a beat of delay makes that entrance something a
+       person can actually see rather than paint noise. */
+    addEventListener('load', function () { setTimeout(armVisible, 350); });
     document.addEventListener('visibilitychange', function () {
         if (!document.hidden) armVisible();
     });
