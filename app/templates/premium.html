@@ -138,16 +138,28 @@
         <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
         <div class="lx-check-grid">
             {% for icon, title, value, source in [
-                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry'),
-                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency'),
-                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE'),
-                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register'),
-                ('crime', 'Crime', 'By category, against the area', 'Police.uk'),
+                ('market', 'Local Market', 'Every sale since 1995', 'HM Land Registry'),
+                ('prosperity', 'Area Prosperity', 'Area prices, year on year', 'UK House Price Index'),
+                ('energy', 'Energy Efficiency', 'EPC band, running costs, floor area', 'EPC Register'),
+                ('flood', 'Flood Risk', 'Zone and live warnings', 'Environment Agency'),
+                ('flood', 'Surface Water Risk', 'Rainfall flooding, separate from rivers', 'Environment Agency'),
                 ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping'),
-                ('statistics', 'Council tax', 'Band D for the authority', 'MHCLG, 2026-27'),
+                ('crime', 'Crime & Safety', 'By category, against the area', 'Police.uk'),
+                ('radon', 'Radon Gas', 'Affected-area class', 'British Geological Survey'),
+                ('statistics', 'Council Tax', 'Band D for the authority', 'MHCLG, 2026-27'),
                 ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom'),
-                ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency'),
-                ('radon', 'Radon', 'Affected-area class', 'British Geological Survey')
+                ('mobile', 'Mobile Signal', '4G and 5G coverage', 'Ofcom'),
+                ('planning', 'Planning Constraints', 'Protected and designated areas', 'Natural England, Historic England'),
+                ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more', 'Natural England'),
+                ('heritage', 'Listed Buildings', 'Listed buildings nearby', 'Historic England'),
+                ('schools', 'Schools Nearby', 'Ofsted rating and distance', 'Ofsted, DfE'),
+                ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap'),
+                ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
+                ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
+                ('qualification', 'Qualification', 'Degree-educated share', 'Census 2021'),
+                ('age', 'Age Profile', 'Age mix of the area', 'Census 2021'),
+                ('housing', 'Housing Types & Tenure', 'Owned, rented, detached to flats', 'Census 2021'),
+                ('ethnicity', 'Ethnicity, Religion & Origin', 'Community makeup', 'Census 2021')
             ] %}
             <div class="lx-check">
                 <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
@@ -167,17 +179,21 @@
         <p class="lx-tier-note">Free on your first three properties. No card required.</p>
         <div class="lx-check-grid">
             {% for icon, title, value, source in [
-                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales'),
-                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index'),
-                ('rental', 'Rental analysis', 'Typical rent by bedrooms', 'ONS private rents'),
-                ('extension', 'Extension check', 'Floor area changes over time', 'EPC history'),
-                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey'),
-                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN'),
-                ('landfill', 'Historic landfill', 'Former sites nearby', 'Environment Agency'),
-                ('mining', 'Coal mining', 'Reporting areas', 'The Coal Authority'),
-                ('orientation', 'Catchment areas', 'Real admission distances', 'Council admissions data'),
-                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail'),
-                ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income')
+                ('valuation', 'Valuation Estimate', 'Estimate with a range', 'Modelled from nearby sales'),
+                ('valuation', 'Costs & Affordability', 'Stamp duty, mortgage and yield', 'HMRC rates, Bank of England'),
+                ('rental', 'Rental Analysis', 'Typical rent by bedrooms', 'ONS private rents'),
+                ('statistics', 'Price Trend & Forecast', 'Five-year history and trend', 'UK House Price Index'),
+                ('extension', 'Extended or Modified', 'Floor area changes over time', 'EPC history'),
+                ('orientation', 'Aspect', 'Which way garden and rooms face', 'Derived from OpenStreetMap'),
+                ('flood', 'Sewage Discharge', 'Storm overflows, spills and hours', 'Environment Agency'),
+                ('geology', 'Subsidence Risk', 'Clay shrink-swell, 2030 and 2050', 'British Geological Survey'),
+                ('air_quality', 'Air Quality', 'Against WHO guidelines', 'Defra Pollution Climate Mapping'),
+                ('landfill', 'Historic Contamination', 'Former landfill sites nearby', 'Environment Agency'),
+                ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'The Coal Authority'),
+                ('schools', 'School Catchment Areas', 'Real admission distances', 'Council admissions data'),
+                ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
+                ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
+                ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021')
             ] %}
             <div class="lx-check">
                 <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
