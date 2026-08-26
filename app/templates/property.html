@@ -256,6 +256,22 @@
     {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
     {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
     {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
+    {# A locked card's finding must not leak. The score already handles
+       this: its verdict counts only unlocked checks and says "+N more
+       checks factored in with Premium" for the rest. But these statuses
+       also drive the red rings, the Check-this tags, the attention
+       banner and the category counts, so left as attn they leaked the
+       finding anyway, and contradicted the verdict's count on the same
+       screen. Downgrade locked attn to ok before anything below reads
+       them: the lock overlay stays, the flag waits behind it. #}
+    {% if not premium_unlocked %}
+        {% set ext_status = 'ok' if ext_status == 'attn' else ext_status %}
+        {% set sewage_status = 'ok' if sewage_status == 'attn' else sewage_status %}
+        {% set clay_risk_status = 'ok' if clay_risk_status == 'attn' else clay_risk_status %}
+        {% set aq_status = 'ok' if aq_status == 'attn' else aq_status %}
+        {% set landfill_status = 'ok' if landfill_status == 'attn' else landfill_status %}
+        {% set coal_mining_status = 'ok' if coal_mining_status == 'attn' else coal_mining_status %}
+    {% endif %}
     {% set attention_items = [] %}
     {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
     {% if ext_status == 'attn' %}{% set _ = attention_items.append(('modal-extension', 'Possible unrecorded extension/change')) %}{% endif %}

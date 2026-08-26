@@ -108,6 +108,12 @@ async def support_head_requests(request: Request, call_next):
         return await call_next(request)
     request.scope["method"] = "GET"
     response = await call_next(request)
+    # Uvicorn reads the method from this same scope when it sends the
+    # response: left as GET, it expects a body matching Content-Length,
+    # gets the stripped empty one, and kills the connection with
+    # "Response content shorter than Content-Length". Restoring HEAD
+    # before the response goes out tells it an empty body is correct.
+    request.scope["method"] = "HEAD"
     return Response(status_code=response.status_code, headers=dict(response.headers), media_type=response.media_type)
 
 

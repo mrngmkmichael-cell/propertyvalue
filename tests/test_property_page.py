@@ -54,6 +54,23 @@ def test_highlights_never_leak_locked_values(client, fake_report):
     assert "dashboard-card-locked" in body
 
 
+def test_locked_findings_stay_behind_the_lock(client, fake_report):
+    """A Premium-only check that comes back flagged must not leak to an
+    anonymous reader: the score's verdict deliberately excludes locked
+    checks (it says "+N more with Premium" instead), so the attention
+    banner, the red ring and the Check-this tag must not reveal the
+    finding either, or the two counts contradict each other on the same
+    screen."""
+    body = _report(client, fake_report, gather=fake_gather(
+        air_quality={"pollutants": [
+            {"name": "no2", "label": "NO2", "value": 34.0, "who_guideline": 10, "times_guideline": 3.4},
+        ]},
+    ))
+    assert "Air quality well above WHO guideline" not in body
+    # No card may be both locked and wearing the attention ring.
+    assert not re.search(r'class="dashboard-card status-attn[^"]*dashboard-card-locked', body)
+
+
 def test_locked_cards_are_tagged_not_blurred(client, fake_report):
     body = _report(client, fake_report)
     assert "dashboard-card-locked" in body
