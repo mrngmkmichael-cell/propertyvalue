@@ -5624,6 +5624,69 @@ body.theme-dark .leaflet-popup-tip {
     color: var(--ink);
 }
 
+/* ---- Collapsible report categories ---------------------------------
+   A category with nothing flagged folds to its heading. The heading
+   becomes the control, so there is no separate affordance to find and
+   the row keeps the size it already had. Only applied once the script
+   has upgraded the heading, so a no-JS reader gets today's fully-open
+   page rather than a dead toggle. */
+.dashboard-category-heading-toggle { margin-bottom: 0.75rem; }
+
+/* .dashboard-grid sets display: grid, which beats the browser's own
+   [hidden] { display: none } - so the attribute alone leaves the cards
+   on screen and taking their full height. */
+.dashboard-grid[hidden] { display: none; }
+
+.cat-toggle {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.6rem 0;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.cat-toggle:hover { background: none; border-bottom-color: var(--border-strong); }
+
+.cat-name { color: var(--accent); }
+
+.cat-summary {
+    flex: 1;
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-faint);
+}
+.cat-summary-flagged { color: var(--bad); }
+
+/* A chevron drawn from a border, so it needs no icon and rotates to
+   show state. */
+.cat-chevron {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    align-self: center;
+    border-right: 2px solid var(--ink-faint);
+    border-bottom: 2px solid var(--ink-faint);
+    transform: rotate(45deg);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.cat-toggle[aria-expanded="true"] .cat-chevron { transform: rotate(-135deg); }
+.cat-toggle:hover .cat-chevron { border-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+    .cat-chevron { transition: none; }
+}
+
 /* A figure that moved up or down. Token-driven so each theme picks a
    value that clears 4.5:1 on its own background. */
 .num-up { color: var(--good); }

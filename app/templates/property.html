@@ -3631,5 +3631,89 @@ Listed building data from Historic England's
     }, 3600);
 </script>
 {% endif %}
+
+{# Fold the categories where nothing was flagged. See the note in
+   scratchpad/add_collapse.py for why this reads the rendered DOM
+   rather than re-deriving the statuses in Jinja. #}
+<script>
+(function () {
+    var headings = document.querySelectorAll('.dashboard-category-heading');
+    if (!headings.length) return;
+
+    Array.prototype.forEach.call(headings, function (heading) {
+        var grid = heading.nextElementSibling;
+        if (!grid || !grid.classList.contains('dashboard-grid')) return;   // "What stands out"
+
+        var cards = grid.querySelectorAll('.dashboard-card');
+        if (!cards.length) return;
+
+        var flagged = grid.querySelectorAll('.dashboard-card.status-attn').length;
+        var locked = grid.querySelectorAll('.dashboard-card-locked').length;
+        var open = cards.length - locked;
+
+        /* What the fold is worth saying. A locked card is not a finding
+           and not an all-clear either, so it is counted separately
+           rather than folded into "nothing flagged" - claiming a check
+           came back clean when nobody has run it would be the exact
+           thing this site refuses to do. */
+        var parts = [];
+        if (open) parts.push(open + (open === 1 ? ' check' : ' checks') + ', nothing flagged');
+        if (locked) parts.push(locked + ' with Premium');
+
+        var name = heading.textContent.trim();
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cat-toggle';
+        btn.setAttribute('aria-expanded', flagged ? 'true' : 'false');
+
+        var id = 'cat-' + name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
+        grid.id = id;
+        btn.setAttribute('aria-controls', id);
+
+        btn.innerHTML =
+            '<span class="cat-name"></span>' +
+            '<span class="cat-summary"></span>' +
+            '<span class="cat-chevron" aria-hidden="true"></span>';
+        btn.querySelector('.cat-name').textContent = name;
+        btn.querySelector('.cat-summary').textContent =
+            flagged ? (flagged === 1 ? '1 to check' : flagged + ' to check') : parts.join(' \· ');
+        if (flagged) btn.querySelector('.cat-summary').classList.add('cat-summary-flagged');
+
+        heading.textContent = '';
+        heading.appendChild(btn);
+        heading.classList.add('dashboard-category-heading-toggle');
+
+        if (!flagged) grid.hidden = true;
+
+        btn.addEventListener('click', function () {
+            var nowOpen = grid.hidden;
+            grid.hidden = !nowOpen;
+            btn.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
+            if (nowOpen) {
+                /* Cards inside a hidden grid never met the reveal
+                   observer, so they would sit at opacity 0 on open. */
+                Array.prototype.forEach.call(grid.querySelectorAll('[data-animate]'), function (el) {
+                    el.classList.add('in-view');
+                });
+            }
+        });
+    });
+
+    /* The attention banner's chips jump to a card. If its category is
+       folded, open it first or the jump lands on nothing. */
+    document.addEventListener('click', function (e) {
+        var chip = e.target.closest && e.target.closest('[data-modal-target]');
+        if (!chip) return;
+        var card = document.getElementById(chip.getAttribute('data-modal-target'));
+        var grid = card && card.closest('.dashboard-grid');
+        if (grid && grid.hidden) {
+            var t = grid.previousElementSibling &&
+                    grid.previousElementSibling.querySelector('.cat-toggle');
+            if (t) t.click();
+        }
+    }, true);
+})();
+</script>
+
 {% endblock %}
 
