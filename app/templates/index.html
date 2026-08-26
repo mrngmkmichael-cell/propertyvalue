@@ -306,7 +306,7 @@
                 <span class="lx-tier-label lx-tier-free">22 free on every report</span>
             </div>
             <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
-            <div class="lx-check-grid" data-cascade>
+            <div class="lx-check-grid" data-cascade="diagonal">
                 {% for icon, title, value, source, tone in [
                     ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
                     ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
@@ -341,7 +341,7 @@
                 <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
             </div>
             <p class="lx-tier-note">Free on your first three properties. No card required.</p>
-            <div class="lx-check-grid" data-cascade>
+            <div class="lx-check-grid" data-cascade="diagonal">
                 {% for icon, title, value, source, tone in [
                     ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', ''),
                     ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
@@ -866,10 +866,17 @@
     const grids = document.querySelectorAll('[data-cascade]');
     if (!grids.length || reduced || !('IntersectionObserver' in window)) return;
     grids.forEach(function (grid) {
+        /* Diagonal grids sweep corner to corner: delay by row+column,
+           which needs the column count the grid actually resolved to. */
+        var cols = 0;
+        if (grid.dataset.cascade === 'diagonal') {
+            cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 1;
+        }
         Array.prototype.forEach.call(grid.children, function (child, i) {
-            /* 90ms per sibling, capped so a 23-chip grid doesn't take
-               two seconds to finish. */
-            child.style.setProperty('--d', Math.min(i * 90, 630) + 'ms');
+            /* 90ms per step, capped so a 23-chip grid doesn't take two
+               seconds to finish. */
+            var step = cols ? (Math.floor(i / cols) + (i % cols)) : i;
+            child.style.setProperty('--d', Math.min(step * 90, 630) + 'ms');
         });
         grid.classList.add('cascade-ready');
     });
