@@ -1118,6 +1118,12 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
         (f"{base}/school/{s['urn']}/{s['slug']}", "0.6")
         for s in _sitemap_school_pages(set(outcodes))
     ]
+    # The "M20 or M21" comparison pages are deliberately NOT submitted
+    # yet. They are linked from every area guide and fully crawlable,
+    # but there are ~800 of them and this domain is still getting 21
+    # pages indexed out of what it already offers. They graduate into
+    # the sitemap once the indexed count is climbing, on the same
+    # reasoning that keeps 2,576 districts out of it today.
     return entries
 
 
@@ -3458,7 +3464,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 7
+AREA_GUIDE_PAYLOAD_VERSION = 9
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -5381,6 +5387,119 @@ def _areas_param(areas: list[dict]) -> str:
 
 
 SCHOOL_ADMISSION_CACHE_TTL_S = 86400 * 7
+AREA_VS_CACHE_TTL_S = 86400 * 7
+
+
+@app.get("/compare/{left}/vs/{right}")
+async def area_versus(request: Request, left: str, right: str):
+    """One district against another.
+
+    Nobody picks an area in isolation; they pick between two, and they
+    search for it that way ("didsbury or chorlton", "M20 vs M21"). The
+    logged-in compare view answered this for saved properties only, and
+    /compare answers it for a form submission that search engines never
+    see. This is the same answer as a page that can be linked and found.
+
+    Restricted to genuine neighbours: any two of 2,943 districts is four
+    million pages, virtually all of them comparisons nobody would make.
+    """
+    left, right = left.strip().upper(), right.strip().upper()
+    context = base_context(request)
+
+    if not (_OUTCODE_RE.match(left) and _OUTCODE_RE.match(right)) or left == right:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    # One page per pair, not two: A vs B and B vs A are the same
+    # comparison and would compete with each other in search.
+    if left > right:
+        return RedirectResponse(f"/compare/{right}/vs/{left}", status_code=301)
+    if right not in _neighbour_outcodes(left):
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    cache_key = ("area_vs", AREA_GUIDE_PAYLOAD_VERSION, left, right)
+    cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_VS_CACHE_TTL_S)
+    if cached is None:
+        # A district is not a postcode, and lookup_postcode only takes a
+        # real one; resolve each side to an actual postcode inside it
+        # first, the same way the area guide does.
+        places = await asyncio.gather(
+            _resolve_extension_location(left), _resolve_extension_location(right),
+            return_exceptions=True,
+        )
+        if any(isinstance(p, Exception) or p is None or p[0] is None for p in places):
+            return templates.TemplateResponse(request, "404.html", context, status_code=404)
+        # The summary's own average comes from one postcode inside the
+        # district and is often empty. The district-wide median, from
+        # the same query the area guides use, is the figure worth
+        # comparing and is present far more often.
+        sides = await asyncio.gather(
+            _comparison_summary(places[0][0]["postcode"], ""),
+            _comparison_summary(places[1][0]["postcode"], ""),
+            _bounded(_outcode_sales(places[0][0]["latitude"], places[0][0]["longitude"]), 8.0),
+            _bounded(_outcode_sales(places[1][0]["latitude"], places[1][0]["longitude"]), 8.0),
+            return_exceptions=True,
+        )
+        if any(isinstance(s, Exception) for s in sides[:2]):
+            return templates.TemplateResponse(request, "404.html", context, status_code=404)
+        for summary, sales in ((sides[0], sides[2]), (sides[1], sides[3])):
+            if isinstance(sales, dict) and sales.get("enough_for_median"):
+                summary["local_median"] = sales["median"]
+                summary["local_sales_count"] = sales["count"]
+        cached = {"left": sides[0], "right": sides[1]}
+        await asyncio.to_thread(_cache.set_persistent, cache_key, cached)
+
+    context["canonical_url"] = f"{_public_base_url(request)}/compare/{left}/vs/{right}"
+    context["left_code"], context["right_code"] = left, right
+    context["columns"] = [
+        {"postcode": left, "house_number": "", "summary": cached["left"], "outcode": left},
+        {"postcode": right, "house_number": "", "summary": cached["right"], "outcode": right},
+    ]
+    context["versus"] = True
+    context["anonymous_compare"] = False
+    context["differences"] = _versus_differences(left, right, cached["left"], cached["right"])
+    return templates.TemplateResponse(request, "compare.html", context)
+
+
+def _neighbour_outcodes(outcode: str, limit: int = 8) -> list[str]:
+    """The nearest districts by centre point. The comparison pages only
+    exist for these, because "M20 vs M21" is a real question and "M20 vs
+    IV27" is not."""
+    here = next((o for o in ALL_OUTCODES if o["outcode"] == outcode), None)
+    if here is None:
+        return []
+    ranked = sorted(
+        ((o, _haversine_km(here["lat"], here["lon"], o["lat"], o["lon"])) for o in ALL_OUTCODES
+         if o["outcode"] != outcode),
+        key=lambda pair: pair[1],
+    )
+    return [o["outcode"] for o, _ in ranked[:limit]]
+
+
+def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
+    """Plain sentences naming which district wins on what, so the page
+    says something rather than leaving the reader to diff two columns.
+    Only where both sides have the figure: a gap is not a finding."""
+    out = []
+
+    la, lb = a.get("local_median") or a.get("avg_price"), b.get("local_median") or b.get("avg_price")
+    if la and lb and la != lb:
+        cheaper, dearer = (left, right) if la < lb else (right, left)
+        gap = abs(la - lb) / max(la, lb) * 100
+        out.append(f"Homes sell for about {gap:.0f}% less in {cheaper} than in {dearer}.")
+
+    ca, cb = a.get("crime_total"), b.get("crime_total")
+    if ca is not None and cb is not None and ca != cb:
+        quieter = left if ca < cb else right
+        out.append(f"{quieter} recorded fewer crimes in the same period, though busier places always record more.")
+
+    da, db = a.get("imd_decile"), b.get("imd_decile")
+    if da and db and da != db:
+        less = left if da > db else right
+        out.append(f"{less} is the less deprived of the two on the Index of Multiple Deprivation.")
+
+    ea, eb = a.get("energy_band"), b.get("energy_band")
+    if ea and eb and ea != eb:
+        out.append(f"The most recent EPC we hold is {ea} in {left} and {eb} in {right}.")
+    return out
 
 
 @app.get("/school/{urn}/{slug}")

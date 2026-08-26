@@ -246,6 +246,14 @@
         {% endfor %}
         <a class="area-chip area-chip-all" href="/areas">All area guides &rsaquo;</a>
     </div>
+    {# Choosing between two areas is the normal case, so offer the
+       comparison directly rather than making someone open both. #}
+    <p class="section-sub" style="margin-top: 0.9rem;">
+        Weighing two up?
+        {% for n in nearby_outcodes[:3] %}
+        <a href="/compare/{{ [outcode, n.outcode] | sort | first }}/vs/{{ [outcode, n.outcode] | sort | last }}">{{ outcode }} or {{ n.outcode }}</a>{% if not loop.last %}, {% endif %}
+        {%- endfor %}.
+    </p>
 </section>
 {% endif %}
 
