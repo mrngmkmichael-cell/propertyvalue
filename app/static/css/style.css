@@ -5663,14 +5663,15 @@ body.theme-dark .leaflet-popup-tip {
 
 .lx-hero-bg { position: absolute; inset: 0; z-index: 0; }
 
-/* Graded well down and mostly desaturated. The shot is a grey January
-   day over red brick, and left alone the brick pulls warm enough to
-   argue with the gold. */
+/* Barely touched. The render is already graded, and its sunset is the
+   same gold as the accent, so desaturating it would be throwing away
+   the reason it was chosen. A little off the brightness only, to keep
+   the headline sitting on top of it rather than fighting it. */
 .lx-hero-video {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: grayscale(0.68) brightness(0.62) contrast(1.04);
+    filter: brightness(0.88) saturate(1.02);
 }
 
 /* Until a licensed clip of a British property exists, the backdrop is
@@ -5692,9 +5693,16 @@ body.theme-dark .leaflet-popup-tip {
     position: absolute;
     inset: 0;
     z-index: 1;
+    /* Heavy across the left two thirds, where the headline and the form
+       sit, then falling away fast so the house and the sun are open.
+       The hold to 45% is not arbitrary: the gold half of the headline
+       runs to about 64% of the width, and over the brightest frames it
+       measured 1.81:1 against a gentler falloff. The bottom fade is
+       what carries the hero into the page rather than ending on an
+       edge. */
     background:
-        linear-gradient(100deg, rgba(5, 5, 5, 0.97) 0%, rgba(5, 5, 5, 0.86) 46%, rgba(5, 5, 5, 0.6) 100%),
-        linear-gradient(0deg, var(--bg) 2%, rgba(5, 5, 5, 0) 45%);
+        linear-gradient(100deg, rgba(5, 5, 5, 0.95) 0%, rgba(5, 5, 5, 0.86) 45%, rgba(5, 5, 5, 0.42) 70%, rgba(5, 5, 5, 0.06) 88%, rgba(5, 5, 5, 0) 100%),
+        linear-gradient(0deg, var(--bg) 1%, rgba(5, 5, 5, 0) 38%);
     pointer-events: none;
 }
 
@@ -5726,7 +5734,15 @@ body.theme-dark .leaflet-popup-tip {
     letter-spacing: 0.015em;
     text-transform: uppercase;
     margin: 0;
+    /* The backdrop is moving, so the brightness behind any given letter
+       changes over the ten seconds. The scrim is set for the worst frame;
+       this is the belt to its braces, and it costs nothing visually on
+       the dark frames. */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 2px 28px rgba(0, 0, 0, 0.55);
 }
+
+.lx-hero-dek,
+.lx-hero-stats { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55); }
 .lx-hero-h1 .lx-w { display: block; }
 
 .lx-hero-dek {
@@ -6215,9 +6231,14 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
    The page is dark by default, so these are the corrections for anyone
    who has asked for ?theme=light: the hero art and the glass panels are
    the only pieces that assume a dark ground. */
-body:not(.theme-dark) .lx-hero-still,
-body:not(.theme-dark) .lx-hero-video {
+body:not(.theme-dark) .lx-hero-still {
     filter: grayscale(0.6) brightness(1.05) contrast(0.9);
+}
+/* The render keeps its colour here: greyscaling a sunset produces mud,
+   and the light theme's scrim is pale enough that the shot needs to be
+   lifted, not drained. */
+body:not(.theme-dark) .lx-hero-video {
+    filter: brightness(1.06) saturate(0.95);
 }
 body:not(.theme-dark) .lx-hero-scrim {
     background:

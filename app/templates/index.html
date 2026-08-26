@@ -30,37 +30,42 @@
 
 {# ===================================================================
    HERO
-   The backdrop is a drone shot of terraced roofs in Crossgates, Leeds
-   (LS15) by David Pickup, from Pexels: free for commercial use on a
-   site, modification allowed, attribution not required. Self-hosted
-   like the fonts, so the page still has zero third-party origins.
+   The cinematic render from the LUXONN build prompt, which is the shot
+   Michael picked. Served from our own origin rather than the CDN the
+   prompt points at: a hero that loads from someone else's bucket breaks
+   the day they move the file, and this keeps the page's zero
+   third-party origins intact.
 
-   Cut to 7s and mirrored back on itself, so it loops without a visible
-   cut; 1280x720 at CRF 32 because it sits under a scrim at 86-97%
-   black, which is 1.8 MB rather than the 33 MB master. The still
-   remains as the poster and as the fallback if the file is missing.
+   Re-encoded from the 4.1 MB master to 758 KB (1440 wide, CRF 28, audio
+   stripped) and the PNG poster to a 146 KB webp from 453 KB. Encoded at
+   higher quality than the previous backdrop, because the scrim over
+   this one is deliberately light on the right so the sunset reads.
    =================================================================== #}
-{% set hero_video = "/static/video/hero-leeds.mp4" %}
+{% set hero_video = "/static/video/hero-luxonn.mp4" %}
 <section class="lx-hero" id="home">
     <div class="lx-hero-bg" aria-hidden="true">
         {% if hero_video %}
-        {# src is withheld and attached by script, so the 1.8 MB is only
+        {# src is withheld and attached by script, so the 758 KB is only
            ever fetched on a screen wide enough for the shot to be worth
            anything, and never for a reader who asked for reduced motion.
-           Everyone else gets the 200 KB poster, which is a frame of the
-           same footage: the hero is fully composed before a byte of
-           video arrives, and nothing shifts when it does. The baked
-           hero map is gated the same way for the same reason. #}
-        <video class="lx-hero-video" muted loop playsinline
-               poster="/static/img/hero-leeds.webp" data-src="{{ hero_video }}"></video>
+           Everyone else gets the poster, which is the render's own key
+           frame: the hero is fully composed before a byte of video
+           arrives, and nothing shifts when it does. The baked hero map
+           is gated the same way for the same reason. #}
+        <video class="lx-hero-video" muted playsinline
+               poster="/static/img/hero-luxonn.webp" data-src="{{ hero_video }}"></video>
         {% else %}
         <div class="lx-hero-still"></div>
         {% endif %}
     </div>
     <div class="lx-hero-scrim" aria-hidden="true"></div>
-    {# Required by ODbL: the tiles baked into that image come from
-       OpenStreetMap. Do not remove. #}
+    {# ODbL credit, required only when the backdrop is the baked map,
+       whose tiles come from OpenStreetMap. The render carries no such
+       obligation, and crediting OSM over it would be plainly wrong. Do
+       not remove it from the fallback branch. #}
+    {% if not hero_video %}
     <p class="lx-hero-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    {% endif %}
 
     <div class="lx-hero-inner">
         <p class="lx-eyebrow">Due diligence, made simple</p>
@@ -464,6 +469,18 @@
            If it refuses, the poster simply stands. */
         vid.autoplay = true;
         vid.src = vid.dataset.src;
+
+        /* Hold on the last frame for five seconds, then run it again.
+           The shot ends on the sunset, so the pause reads as a held
+           beat rather than a stall, and it keeps the movement from
+           becoming a constant tic in the corner of the eye. This is
+           why the element has no `loop` attribute. */
+        vid.addEventListener('ended', function () {
+            setTimeout(function () {
+                vid.currentTime = 0;
+                vid.play().catch(function () { /* nothing to recover */ });
+            }, 5000);
+        });
     }
 })();
 
