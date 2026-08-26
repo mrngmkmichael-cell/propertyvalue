@@ -6839,3 +6839,50 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
        skips paint), so the tally and the score maths stay at 37. */
     .lx-build-mote:nth-child(2n) { display: none; }
 }
+
+/* ---- Build section: the receipt (all 37 checks, ticked) ---- */
+
+.lx-build-done { margin-top: 1.6rem; }
+
+.lx-build-done-head {
+    margin: 0 0 0.7rem;
+    opacity: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-build-done-head strong { color: var(--accent); }
+
+.lx-build-done-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    max-width: 62rem;
+}
+
+.lx-build-done-pill {
+    opacity: 0;
+    padding: 0.26rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: var(--font-mono, monospace);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.lx-build-done-pill::before {
+    content: "\2713\00a0";
+    color: var(--accent);
+}
+
+@media (max-width: 700px) {
+    /* A phone can't seat 37 pills inside a pinned viewport; the header
+       line carries the "all 37" message and the grid goes. */
+    .lx-build-done-grid { display: none; }
+    .lx-build-done { margin-top: 1rem; }
+}

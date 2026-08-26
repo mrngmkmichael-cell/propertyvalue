@@ -203,6 +203,14 @@
                     </div>
                     <div class="lx-build-chips" id="lx-build-chips"></div>
                 </div>
+                {# The receipt: once every check has been absorbed, the
+                   full list re-emerges as ticked pills, so the closing
+                   frame shows the breadth of the report rather than
+                   four findings. Populated by script from CHECKS. #}
+                <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
+                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>37 checks</strong> &middot; one search</p>
+                    <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
+                </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
                 <a class="lx-build-cta" id="lx-build-cta" href="#contact">Run the checks on your postcode</a>
                 <p class="lx-build-hint" aria-hidden="true">Scroll &middot; the page is the scrubber</p>
@@ -920,7 +928,7 @@
     }
 
     let track = null, heading = null, arcEl = null, numEl = null, cta = null, chips = [];
-    let pin = null, motes = [], tallyEl = null;
+    let pin = null, motes = [], tallyEl = null, donePills = [], doneHead = null;
     const SCORE = seed ? seed.overview.score : 0;
 
     /* The 37 checks by name, matching the report's own card titles
@@ -987,6 +995,20 @@
                 motes.push(m);
             });
             measureSwarm();
+
+            /* The receipt pills: same 37 names, ticked, each with its
+               own slot in the closing phase of the scrub. */
+            const doneGrid = document.getElementById('lx-build-done-grid');
+            CHECKS.forEach(function (name, i) {
+                const d = document.createElement('span');
+                d.className = 'lx-build-done-pill';
+                d.textContent = name;
+                d.dataset.at = (0.60 + 0.24 * (i / (CHECKS.length - 1))).toFixed(4);
+                doneGrid.appendChild(d);
+                donePills.push(d);
+            });
+            doneHead = document.getElementById('lx-build-done-head');
+
             /* The page just grew ~2.5 screens above the coverage map;
                its parallax cached geometry at load, so re-measure. */
             window.dispatchEvent(new Event('resize'));
@@ -1135,9 +1157,19 @@
 
         heading.style.clipPath = 'inset(0 ' + (100 - seg(p, 0, 0.20) * 100) + '% 0 0)';
         chips.forEach(function (chip, i) {
-            const t = easeOut(seg(p, 0.60 + i * 0.08, 0.10));
+            const t = easeOut(seg(p, 0.56 + i * 0.05, 0.08));
             chip.style.opacity = t;
             chip.style.transform = 'translateY(' + (40 * (1 - t)) + 'px)';
+        });
+        if (doneHead) {
+            const th = easeOut(seg(p, 0.58, 0.08));
+            doneHead.style.opacity = th;
+            doneHead.style.transform = 'translateY(' + (14 * (1 - th)) + 'px)';
+        }
+        donePills.forEach(function (pill) {
+            const t = easeOut(seg(p, parseFloat(pill.dataset.at), 0.07));
+            pill.style.opacity = t * 0.92;
+            pill.style.transform = 'translateY(' + (16 * (1 - t)) + 'px) scale(' + (0.85 + 0.15 * t) + ')';
         });
         cta.classList.toggle('on', p > 0.9);
     }
