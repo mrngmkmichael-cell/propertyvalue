@@ -7067,3 +7067,74 @@ body:not(.theme-dark) .lx-hero-scrim {
 @media (max-width: 900px) {
     .premium-tiers { grid-template-columns: 1fr; }
 }
+
+/* ---- Hero Search: blue glassmorphism CTA ------------------------------
+   The reference's glass treatment (hairline gradient edge, top sheen,
+   shimmer sweep, hover lift) rebuilt natively and re-toned to the
+   accent blue. The shimmer idles on a slow loop so the button reads as
+   alive without being asked. */
+.lx-hero-form button[type="submit"] {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border: 0;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #4d78c4 0%, #2b4c8c 55%, #1e3a70 100%);
+    color: #fff;
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.35),
+        0 10px 26px -10px rgba(43, 76, 140, 0.6);
+    transition:
+        transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+        filter 0.3s ease;
+}
+/* the 1px glass edge, brightest at the lit corner */
+.lx-hero-form button[type="submit"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(148deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.18) 34%, rgba(255, 255, 255, 0.06) 58%, rgba(255, 255, 255, 0.4));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+}
+/* top sheen plus the idling shimmer sweep */
+.lx-hero-form button[type="submit"]::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+        linear-gradient(105deg, transparent 30%, rgba(255, 255, 255, 0.35) 48%, rgba(255, 255, 255, 0.12) 52%, transparent 68%) no-repeat,
+        linear-gradient(180deg, rgba(255, 255, 255, 0.28), transparent 46%);
+    background-size: 250% 100%, 100% 100%;
+    background-position: -160% 0, 0 0;
+    animation: lx-btn-shine 4.2s ease-in-out infinite;
+}
+@keyframes lx-btn-shine {
+    0%, 55% { background-position: -160% 0, 0 0; }
+    85%, 100% { background-position: 260% 0, 0 0; }
+}
+.lx-hero-form button[type="submit"]:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.45),
+        0 14px 30px -10px rgba(43, 76, 140, 0.7);
+}
+.lx-hero-form button[type="submit"]:active { transform: translateY(0); }
+.lx-hero-form button[type="submit"]:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .lx-hero-form button[type="submit"] { transition: none; }
+    .lx-hero-form button[type="submit"]::after { animation: none; }
+}
