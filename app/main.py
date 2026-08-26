@@ -1751,7 +1751,7 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
     if current and not premium_unlocked and db.is_configured():
         with db.get_session() as session:
             premium_unlocked = auth.has_unlocked(session, current["id"], location["postcode"], house_number.strip())
-    lock_label = "Sign up: 3 free full reports" if not current else "Upgrade to Premium to unlock"
+    lock_label = "Sign up: 1 free full report" if not current else "Upgrade to Premium to unlock"
     lock_redirect = "/signup?next=" + quote("/premium") if not current else "/premium"
 
     amen = templates.get_template("_amenities.html").module

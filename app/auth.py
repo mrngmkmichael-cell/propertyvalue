@@ -48,9 +48,19 @@ def verify_password(password: str, stored: str) -> bool:
 # house is episodic. Someone signs up, browses, then views nothing for
 # three weeks - a 14-day clock would expire before they ever used it on
 # a real decision, and they would never have seen what they were paying
-# for. Three unlocks survive that gap and match the actual job: check
-# the two or three places you are seriously considering.
-FREE_PREMIUM_UNLOCKS = 3
+# for. An unlock survives that gap.
+#
+# Cut from three to one on 28 Aug 2026. Of 23 accounts, exactly one had
+# ever reached the paywall: almost nobody researching a house opens
+# three different properties in full, so the paid tier was never really
+# being offered. One report still shows the whole product on a property
+# someone actually cares about.
+#
+# Lowering this never takes anything away: claim_unlock returns early
+# for a property already unlocked, so anything opened under a more
+# generous allowance stays open for good, which is what the paywall has
+# always promised.
+FREE_PREMIUM_UNLOCKS = 1
 
 
 def property_key(postcode: str, house_number: str = "") -> tuple[str, str]:

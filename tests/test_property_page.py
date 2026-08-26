@@ -74,7 +74,7 @@ def test_locked_findings_stay_behind_the_lock(client, fake_report):
 def test_locked_cards_are_tagged_not_blurred(client, fake_report):
     body = _report(client, fake_report)
     assert "dashboard-card-locked" in body
-    assert "Sign up: 3 free full reports" in body
+    assert "Sign up: 1 free full report" in body
     assert "blur(5px)" not in body  # the old locked-card treatment
 
 

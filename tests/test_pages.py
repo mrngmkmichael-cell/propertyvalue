@@ -162,11 +162,15 @@ def test_homepage_promo_banner_only_for_signed_out_visitors(client):
 
 
 def test_homepage_promo_banner_copy_matches_the_real_offer(client):
-    """The banner promises free Premium reports; that number must match
-    what a new account actually gets."""
+    """The banner promises a free Premium report; what it promises must
+    match what a new account actually gets. The allowance is written out
+    in words rather than substituted as a number, so this pins the
+    constant instead: change the allowance and this fails, which forces
+    the copy on all four templates to be rewritten with it."""
     from app import auth
+    assert auth.FREE_PREMIUM_UNLOCKS == 1, "allowance changed: update the copy that describes it"
     body = client.get("/").text
-    assert f"get {auth.FREE_PREMIUM_UNLOCKS} full Premium property reports" in body
+    assert "get a full Premium property report on us" in body
 
 
 def test_oauth_buttons_render_only_for_configured_providers(client, monkeypatch):

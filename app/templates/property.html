@@ -385,7 +385,7 @@
     {# Logged-out visitors have a free trial waiting, so say that rather
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
-    {% set lock_label = "Sign up: 3 free full reports" if not current_user else "Upgrade to Premium to unlock" %}
+    {% set lock_label = "Sign up: 1 free full report" if not current_user else "Upgrade to Premium to unlock" %}
     {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
 
     {% if not premium_unlocked %}
@@ -393,12 +393,12 @@
         {% if not current_user %}
         <div class="paywall-banner-copy">
             <strong>The locked cards below are free to open.</strong>
-            Sign up and your first 3 properties get every check in full, this one included. No card needed.
+            Sign up and your first property gets every check in full, this one included. No card needed.
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
         {% else %}
         <div class="paywall-banner-copy">
-            <strong>You've used your 3 free reports.</strong>
+            <strong>You've used your free report.</strong>
             The ones you opened stay unlocked for good. Unlocking new ones is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
         </div>
         <a class="paywall-banner-cta" href="/premium">See plans</a>
