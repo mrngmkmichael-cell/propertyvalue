@@ -5,6 +5,7 @@ any live free API, only a monthly bulk file that needs joining
 against DfE's separate school-establishment data by hand.
 """
 import math
+import re
 
 from sqlalchemy import func, select
 
@@ -399,3 +400,110 @@ def national_baseline() -> dict | None:
     result = {"good_or_better_pct": round(good_or_better / total * 100), "total_graded": total}
     _cache.set(NATIONAL_BASELINE_CACHE_KEY, result)
     return result
+
+
+# ---- Per-school admission-distance pages --------------------------------
+
+def _slugify(name: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return slug[:80] or "school"
+
+
+def admission_page_schools() -> list[dict]:
+    """Every school with a REAL published admission distance behind it.
+
+    Only these get their own page. There are 26,533 schools in the
+    database and about 3,200 with a genuine "last distance offered"
+    figure from their authority; publishing a page for the rest would be
+    the same thin-page problem the area guides just had, with nothing on
+    them a parent could not get from Ofsted directly.
+    """
+    with get_session() as session:
+        rows = session.execute(
+            select(School, SchoolAdmissionRadius)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+        ).all()
+    return [
+        {"urn": s.urn, "name": s.name, "slug": _slugify(s.name)}
+        for s, _ in rows
+    ]
+
+
+def admission_profile(urn: int) -> dict | None:
+    """Everything one school's admission page renders."""
+    with get_session() as session:
+        school = session.get(School, urn)
+        if school is None:
+            return None
+        radius = session.get(SchoolAdmissionRadius, urn)
+        if radius is None:
+            return None
+        detail = session.get(SchoolDetail, urn)
+        chars = session.get(SchoolCharacteristics, urn)
+        ks4 = session.scalars(
+            select(Ks4Result).where(Ks4Result.urn == urn).order_by(Ks4Result.academic_year.desc())
+        ).first()
+        ks2 = session.scalars(
+            select(Ks2Result).where(Ks2Result.urn == urn).order_by(Ks2Result.academic_year.desc())
+        ).first()
+
+        return {
+            "urn": school.urn,
+            "name": school.name,
+            "slug": _slugify(school.name),
+            "phase": school.phase,
+            "group": _phase_group(school.phase),
+            "type": school.type_name,
+            "postcode": school.postcode,
+            "latitude": school.latitude,
+            "longitude": school.longitude,
+            "ofsted_rating": school.ofsted_rating,
+            "ofsted_rating_label": school.ofsted_rating_label,
+            "ofsted_inspection_date": school.ofsted_inspection_date,
+            "miles": radius.last_distance_miles,
+            "academic_year": radius.academic_year,
+            "authority": radius.source_authority,
+            "fsm_eligible_pct": chars.fsm_eligible_pct if chars else None,
+            "street": detail.street if detail else "",
+            "town": detail.town if detail else "",
+            "website": detail.website if detail else "",
+            "ks4": {"year": ks4.academic_year, "attainment8": ks4.attainment8_avg,
+                    "progress8": ks4.progress8_score, "pupils": ks4.pupil_count} if ks4 else None,
+            "ks2": {"year": ks2.academic_year, "rwm_expected_pct": ks2.rwm_expected_pct,
+                    "pupils": ks2.pupil_count} if ks2 else None,
+        }
+
+
+def admission_slugs_by_urn(urns: list[int]) -> dict[int, str]:
+    """Which of these schools have their own admission page, and its
+    slug. Used to link a named school from an area guide only when
+    there is really a page to link to."""
+    if not urns:
+        return {}
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .where(School.urn.in_(urns))
+        ).all()
+    return {urn: _slugify(name) for urn, name in rows}
+
+
+def admission_pages_in_outcodes(outcodes: set[str]) -> list[dict]:
+    """Schools with a real admission distance whose postcode falls in
+    one of the given districts. Feeds the sitemap, which deliberately
+    covers the same curated districts as the area and school guides
+    rather than the whole country at once."""
+    if not outcodes or not is_configured():
+        return []
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name, School.postcode)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+        ).all()
+    out = []
+    for urn, name, postcode in rows:
+        district = (postcode or "").strip().upper().split(" ")[0]
+        if district in outcodes:
+            out.append({"urn": urn, "name": name, "slug": _slugify(name)})
+    return out

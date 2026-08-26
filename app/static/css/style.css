@@ -2147,6 +2147,28 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 .compare-missing { color: var(--ink-soft); }
 
+/* The one number a school admission page exists to show. */
+.admission-hero {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin: 0.75rem 0 1rem;
+}
+.admission-figure {
+    font-family: var(--font-display, var(--font-sans));
+    font-size: clamp(3.5rem, 12vw, 5.5rem);
+    line-height: 0.9;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+.admission-unit {
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
 /* The anonymous compare's own entry form: postcode boxes in a row on a
    desktop, stacked on a phone, with the button sitting on the same
    baseline as the inputs rather than under their labels. */

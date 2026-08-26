@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+
+{% block title %}{{ school.name }}: admission distance and catchment | UKPropertyInsight{% endblock %}
+{% block meta_description %}How far {{ school.name }} admitted from in {{ school.academic_year }}: the last distance offered was {{ school.miles }} miles, published by {{ school.authority }}. What that means for buying nearby, and which postcode districts fall inside it.{% endblock %}
+{% block og_title %}{{ school.name }}: how far it admitted from{% endblock %}
+
+{% block content %}
+<script type="application/ld+json">{{ school_jsonld | safe }}</script>
+
+<a class="back-link" href="/schools/guide">&larr; School guide</a>
+
+<span class="kicker">Admissions</span>
+<h1>{{ school.name }}</h1>
+<p class="dek">
+    {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}.
+    {% if school.ofsted_rating_label %}Rated {{ school.ofsted_rating_label }} by Ofsted{% if school.ofsted_inspection_date %}
+    in {{ school.ofsted_inspection_date.strftime("%B %Y") }}{% endif %}.{% endif %}
+</p>
+
+<section class="report-section">
+    <h2>How far it admitted from</h2>
+    <div class="admission-hero">
+        <span class="admission-figure">{{ school.miles }}</span>
+        <span class="admission-unit">miles</span>
+    </div>
+    <p class="section-sub">
+        In the {{ school.academic_year }} admissions round, the furthest-away child offered a place at
+        {{ school.name }} lived <strong>{{ school.miles }} miles</strong> from the school.
+        Published by {{ school.authority }}.
+    </p>
+
+    {# The honest part, and the reason this page exists. Most sites draw
+       a circle and call it a catchment; there usually isn't one. #}
+    <div class="notice">
+        <strong>This is not a catchment area.</strong>
+        Most English schools do not have one. When a school is oversubscribed, places are offered
+        outward from it until they run out, so the distance changes every year with how many
+        children applied and where they lived. A figure of {{ school.miles }} miles last year does
+        not guarantee a place at {{ school.miles }} miles this year, and living closer than that is
+        not a guarantee either. Treat it as the best available evidence, not a boundary.
+    </div>
+</section>
+
+{% if school.ks4 or school.ks2 or school.fsm_eligible_pct is not none %}
+<section class="report-section">
+    <h2>How the school is doing</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <tbody>
+                {% if school.ofsted_rating_label %}
+                <tr>
+                    <td><strong>Ofsted</strong></td>
+                    <td>{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}, inspected {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}</td>
+                </tr>
+                {% endif %}
+                {% if school.ks4 and school.ks4.progress8 is not none %}
+                <tr>
+                    <td><strong>Progress 8</strong></td>
+                    <td>{{ "%+.2f"|format(school.ks4.progress8) }} ({{ school.ks4.year }}), where 0 is the national average</td>
+                </tr>
+                {% endif %}
+                {% if school.ks4 and school.ks4.attainment8 is not none %}
+                <tr>
+                    <td><strong>Attainment 8</strong></td>
+                    <td>{{ school.ks4.attainment8 }} ({{ school.ks4.year }})</td>
+                </tr>
+                {% endif %}
+                {% if school.ks2 and school.ks2.rwm_expected_pct is not none %}
+                <tr>
+                    <td><strong>Meeting the expected standard</strong></td>
+                    <td>{{ school.ks2.rwm_expected_pct }}% in reading, writing and maths ({{ school.ks2.year }})</td>
+                </tr>
+                {% endif %}
+                {% if school.fsm_eligible_pct is not none %}
+                <tr>
+                    <td><strong>Free school meals</strong></td>
+                    <td>{{ school.fsm_eligible_pct }}% of pupils eligible</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">Ofsted, and the Department for Education's published performance data.</p>
+</section>
+{% endif %}
+
+{% if nearby_areas %}
+<section class="report-section">
+    <h2>Postcode districts within {{ school.miles }} miles</h2>
+    <p class="section-sub">
+        These districts have their centre inside last year's distance. A district covers a wide
+        area, so being listed here does not mean a particular address is in range. Check the
+        address itself.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>District</th><th>Area</th><th class="num">From the school</th></tr></thead>
+            <tbody>
+                {% for a in nearby_areas %}
+                <tr>
+                    <td><a href="/area/{{ a.outcode }}">{{ a.outcode }}</a></td>
+                    <td>{{ a.district }}</td>
+                    <td class="num">{{ a.km }} km</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="report-section">
+    <h2>Checking a specific address</h2>
+    <p class="section-sub">
+        The distance that matters is the one from this school to the front door you are considering.
+        Put the postcode in and the report works it out, alongside flood risk, sold prices, crime
+        and thirty-odd other checks on the same address.
+    </p>
+    <form class="search-form" action="/property" method="get">
+        <div class="search-form-field">
+            <label for="school-postcode">UK postcode</label>
+            <input type="text" id="school-postcode" name="postcode" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>
+        </div>
+        <button type="submit">Check this address</button>
+    </form>
+</section>
+
+<section class="report-section">
+    <h2>Common questions</h2>
+    <div class="faq-list">
+        <details class="faq-item">
+            <summary>What is the catchment area for {{ school.name }}?</summary>
+            <p>
+                It does not have one in the sense most people mean. Like most English schools, when
+                it is oversubscribed it offers places outward from the school until they run out.
+                The nearest thing to an answer is that the furthest child admitted in
+                {{ school.academic_year }} lived {{ school.miles }} miles away, according to
+                {{ school.authority }}.
+            </p>
+        </details>
+        <details class="faq-item">
+            <summary>How close do I need to live to get a place?</summary>
+            <p>
+                Nobody can tell you that in advance, and anyone who says otherwise is guessing.
+                The distance moves every year with the number of applications. {{ school.miles }}
+                miles was enough last year, which makes it the best evidence available, not a
+                promise about next year.
+            </p>
+        </details>
+        <details class="faq-item">
+            <summary>Does buying a house nearby guarantee a place?</summary>
+            <p>
+                No. Admission criteria usually put looked-after children, siblings and sometimes
+                faith or aptitude criteria ahead of distance, so places can be filled before
+                distance is reached at all. Councils also check that the address is genuinely where
+                the child lives.
+            </p>
+        </details>
+    </div>
+</section>
+
+<p class="section-sub">
+    Admission distance published by {{ school.authority }}. School details from the Department for
+    Education's register, ratings from Ofsted. Read how every figure on this site is sourced on the
+    <a href="/methodology">methodology page</a>. If something here looks wrong,
+    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
+</p>
+{% endblock %}

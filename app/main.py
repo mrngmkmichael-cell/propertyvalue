@@ -6,6 +6,7 @@ import datetime
 import hmac
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -1106,7 +1107,25 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # site (30,000-40,000 words of Ofsted and catchment detail against
     # ~600 for an area guide), so they go in at the area guides' priority.
     entries += [(f"{base}/schools/guide?q={o}", "0.7") for o in outcodes]
+    # One page per school with a real published admission distance,
+    # limited to the same curated districts as everything else above.
+    # Each is genuinely distinct (its own school, its own distance, its
+    # own results), which is what the area guides were not, but the
+    # crawl-budget argument still applies: there are ~3,200 of these and
+    # a new domain should not be handed all of them at once. The rest
+    # stay reachable from their district's guide.
+    entries += [
+        (f"{base}/school/{s['urn']}/{s['slug']}", "0.6")
+        for s in _sitemap_school_pages(set(outcodes))
+    ]
     return entries
+
+
+def _sitemap_school_pages(outcodes: set[str]) -> list[dict]:
+    try:
+        return [s for s in schools_db.admission_pages_in_outcodes(outcodes)]
+    except Exception:  # noqa: BLE001 - the sitemap must render without the DB
+        return []
 
 
 @app.get("/sitemap.xml")
@@ -3439,7 +3458,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 6
+AREA_GUIDE_PAYLOAD_VERSION = 7
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -3567,9 +3586,14 @@ def _named_schools(landscape: dict | None) -> list[dict]:
             s.get("distance_m") or 10 ** 9,
         ),
     )
+    picked = ranked[:AREA_NAMED_SCHOOLS]
+    # Link through only where the school really has an admission page.
+    slugs = schools_db.admission_slugs_by_urn([s.get("urn") for s in picked if s.get("urn")])
     return [
         {
             "name": s["name"],
+            "urn": s.get("urn"),
+            "slug": slugs.get(s.get("urn")),
             "rating": s.get("ofsted_rating_label"),
             # 1-4, which is what the site's existing .ofsted-N badge
             # colours key off.
@@ -3577,7 +3601,7 @@ def _named_schools(landscape: dict | None) -> list[dict]:
             "phase": phase_by_urn.get(s.get("urn")),
             "distance_m": s.get("distance_m"),
         }
-        for s in ranked[:AREA_NAMED_SCHOOLS]
+        for s in picked
     ]
 
 
@@ -5354,6 +5378,81 @@ def _parse_areas_param(raw: str) -> list[dict]:
 
 def _areas_param(areas: list[dict]) -> str:
     return "|".join(f"{a['latitude']},{a['longitude']},{a['label']}" for a in areas)
+
+
+SCHOOL_ADMISSION_CACHE_TTL_S = 86400 * 7
+
+
+@app.get("/school/{urn}/{slug}")
+async def school_admission_page(request: Request, urn: int, slug: str):
+    """One school's real admission distance.
+
+    "School catchment area for X" is one of the most searched property
+    questions in the country, and the honest answer for most English
+    schools is that no catchment area exists: places are offered
+    outward from the school until they run out. What does exist is how
+    far the last child admitted actually lived, which each authority
+    publishes and almost nobody surfaces. That number is what this page
+    is built around, described as what it is rather than drawn as a
+    boundary on a map.
+
+    Only the ~3,200 schools with a genuine published figure get a page.
+    """
+    profile = await asyncio.to_thread(schools_db.admission_profile, urn)
+    context = base_context(request)
+    if profile is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    base = _public_base_url(request)
+    canonical_path = f"/school/{urn}/{profile['slug']}"
+    if slug != profile["slug"]:
+        return RedirectResponse(canonical_path, status_code=301)
+
+    context["canonical_url"] = f"{base}{canonical_path}"
+    context["school"] = profile
+    context["nearby_areas"] = await asyncio.to_thread(
+        _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
+    )
+    context["school_jsonld"] = json.dumps({
+        "@context": "https://schema.org",
+        "@type": "School",
+        "name": profile["name"],
+        "url": context["canonical_url"],
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": profile.get("street") or None,
+            "addressLocality": profile.get("town") or None,
+            "postalCode": profile.get("postcode") or None,
+            "addressCountry": "GB",
+        },
+        "geo": {"@type": "GeoCoordinates", "latitude": profile["latitude"], "longitude": profile["longitude"]},
+    }, separators=(",", ":"))
+    return templates.TemplateResponse(request, "school_admission.html", context)
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp, dl = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(a))
+
+
+def _outcodes_within(lat: float, lon: float, miles: float) -> list[dict]:
+    """Postcode districts whose centre falls inside the school's last
+    admitted distance. Not a promise of a place: a district's centre
+    being in range says nothing about a specific address, which is the
+    whole point of checking one."""
+    km = (miles or 0) * 1.60934
+    if km <= 0:
+        return []
+    out = []
+    for entry in ALL_OUTCODES:
+        d = _haversine_km(lat, lon, entry["lat"], entry["lon"])
+        if d <= km:
+            out.append({"outcode": entry["outcode"], "district": entry.get("district", ""), "km": round(d, 1)})
+    out.sort(key=lambda e: e["km"])
+    return out[:12]
 
 
 @app.get("/schools/guide")

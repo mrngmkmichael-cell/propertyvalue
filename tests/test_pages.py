@@ -401,3 +401,59 @@ def test_prewarm_endpoint_needs_the_shared_secret(client, monkeypatch):
     assert client.post("/internal/prewarm-area-guides").status_code == 404
     assert client.post("/internal/prewarm-area-guides",
                        headers={"x-alerts-secret": "nope"}).status_code == 404
+
+
+def test_school_admission_page_is_honest_about_catchments(client, monkeypatch):
+    """The page targets "catchment area for X" searches, and the honest
+    answer is that most English schools do not have one. It must say so
+    rather than drawing a circle and calling it a boundary."""
+    from app.services import schools_db
+
+    profile = {
+        "urn": 100050, "name": "Parliament Hill School", "slug": "parliament-hill-school",
+        "phase": "Secondary", "group": "Secondary", "type": "Community school",
+        "postcode": "NW5 1RL", "latitude": 51.55, "longitude": -0.15,
+        "ofsted_rating": 1, "ofsted_rating_label": "Outstanding",
+        "ofsted_inspection_date": None, "miles": 1.14, "academic_year": "2024",
+        "authority": "Camden", "fsm_eligible_pct": 34.8,
+        "street": "Highgate Road", "town": "London", "website": "",
+        "ks4": None, "ks2": None,
+    }
+    monkeypatch.setattr(schools_db, "admission_profile", lambda urn: profile if urn == 100050 else None)
+
+    body = client.get("/school/100050/parliament-hill-school").text
+    assert "1.14" in body
+    assert "not a catchment area" in body.lower()
+    assert "Camden" in body
+    # The distance is evidence, never a promise.
+    assert "guarantee" in body.lower()
+
+
+def test_school_admission_page_normalises_its_url(client, monkeypatch):
+    """One page per school, not one per spelling of its name."""
+    from app.services import schools_db
+
+    profile = {
+        "urn": 100050, "name": "Parliament Hill School", "slug": "parliament-hill-school",
+        "phase": "Secondary", "group": "Secondary", "type": "Community school",
+        "postcode": "NW5 1RL", "latitude": 51.55, "longitude": -0.15,
+        "ofsted_rating": 1, "ofsted_rating_label": "Outstanding",
+        "ofsted_inspection_date": None, "miles": 1.14, "academic_year": "2024",
+        "authority": "Camden", "fsm_eligible_pct": None,
+        "street": "", "town": "", "website": "", "ks4": None, "ks2": None,
+    }
+    monkeypatch.setattr(schools_db, "admission_profile", lambda urn: profile if urn == 100050 else None)
+
+    r = client.get("/school/100050/some-other-slug", follow_redirects=False)
+    assert r.status_code == 301
+    assert r.headers["location"] == "/school/100050/parliament-hill-school"
+    assert client.get("/school/999999/nope").status_code == 404
+
+
+def test_only_schools_with_real_data_get_a_page(client, monkeypatch):
+    """3,200 schools have a published admission distance; 26,533 exist.
+    A page for the rest would carry nothing Ofsted does not already
+    give away."""
+    from app.services import schools_db
+    monkeypatch.setattr(schools_db, "admission_profile", lambda urn: None)
+    assert client.get("/school/123456/any-school").status_code == 404

@@ -163,7 +163,7 @@
         <tbody>
             {% for s in named_schools %}
             <tr>
-                <td>{{ s.name }}</td>
+                <td>{% if s.slug %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
                 <td>{{ s.phase or "" }}</td>
                 <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
                 <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1000) | round(1) }} km{% endif %}</td>
