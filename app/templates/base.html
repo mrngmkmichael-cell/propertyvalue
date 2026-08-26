@@ -115,9 +115,16 @@
         (function () {
             try {
                 var q = new URLSearchParams(location.search).get('theme');
-                if (q === 'dark' || q === 'light') sessionStorage.setItem('uki-theme', q);
-                if (sessionStorage.getItem('uki-theme') === 'light') {
+                if (q === 'dark' || q === 'light' || q === 'contrast') sessionStorage.setItem('uki-theme', q);
+                var chosen = sessionStorage.getItem('uki-theme');
+                if (chosen === 'light') {
                     document.body.classList.remove('theme-dark');
+                } else if (chosen === 'contrast') {
+                    /* Preview variant: the dark theme with its two dimmer
+                       text colours lifted and the smallest labels set
+                       larger. Reachable only by the ?theme=contrast link,
+                       never a default. */
+                    document.body.classList.add('theme-contrast');
                 }
             } catch (e) { /* storage unavailable: keep the default */ }
         })();

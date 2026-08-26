@@ -6886,3 +6886,24 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
     .lx-build-done-grid { display: none; }
     .lx-build-done { margin-top: 1rem; }
 }
+
+/* ---- ?theme=contrast: readability preview of the dark theme ----
+   The dark palette with the two dimmer inks lifted and the smallest
+   type set larger. #cdc9c2 measures ~10.9:1 on the card surface and
+   #b5ad9f ~7.2:1, against ~7.4:1 and ~4.6:1 before. Small uppercase
+   mono labels also lose some tracking: at 10px, wide letter-spacing
+   costs more legibility than any colour does. */
+body.theme-contrast {
+    --ink-soft: #cdc9c2;
+    --ink-faint: #b5ad9f;
+}
+body.theme-contrast .lx-eyebrow { font-size: 0.78rem; letter-spacing: 0.16em; }
+body.theme-contrast .lx-lede { font-size: 1.09em; }
+body.theme-contrast .lx-check-source,
+body.theme-contrast .lx-tier-note { font-size: 0.86em; }
+body.theme-contrast .lx-build-mote { font-size: 0.66rem; letter-spacing: 0.07em; }
+body.theme-contrast .lx-build-done-pill { font-size: 0.66rem; letter-spacing: 0.05em; }
+body.theme-contrast .lx-build-tally,
+body.theme-contrast .lx-build-hint,
+body.theme-contrast .lx-build-done-head { font-size: 0.74rem; letter-spacing: 0.1em; }
+body.theme-contrast .lx-strip-k { font-size: 0.72rem; }
