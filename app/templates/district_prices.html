@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}What homes really sell for, by postcode district{% endblock %}
+{% block meta_description %}The median recorded home sale in each UK postcode district, from HM Land Registry: the cheapest and dearest districts, and how far apart they are. Updated continuously, not a one-off article.{% endblock %}
+{% block og_title %}What homes really sell for, by postcode district{% endblock %}
+
+{% block content %}
+<span class="kicker">Market data</span>
+<h1>What homes really sell for, district by district</h1>
+<p class="dek">
+    Everyone quotes local authority averages, so "Manchester" becomes one number covering tens of
+    thousands of very different houses. These are medians of the actual recorded sales around each
+    postcode district, which is a much smaller and more honest unit.
+</p>
+
+{% if total %}
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">districts with enough sales to rank</span></div>
+    {% if median_of_medians %}
+    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">the middle district's median</span></div>
+    {% endif %}
+    {% if cheapest and dearest %}
+    <div class="score-tile"><span class="score-tile-value">{{ (dearest[0].median // cheapest[0].median) }}&times;</span><span class="score-tile-label">between the dearest and cheapest</span></div>
+    {% endif %}
+</div>
+
+<section class="report-section">
+    <h2>Where homes sell for least</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
+            <tbody>
+                {% for r in cheapest %}
+                <tr>
+                    <td><a href="/area/{{ r.outcode }}">{{ r.outcode }}</a></td>
+                    <td>{{ r.district }}</td>
+                    <td class="num">{{ r.median | gbp }}</td>
+                    <td class="num">{{ r.count }}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>Where homes sell for most</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
+            <tbody>
+                {% for r in dearest %}
+                <tr>
+                    <td><a href="/area/{{ r.outcode }}">{{ r.outcode }}</a></td>
+                    <td>{{ r.district }}</td>
+                    <td class="num">{{ r.median | gbp }}</td>
+                    <td class="num">{{ r.count }}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% else %}
+<p class="notice">
+    Not enough districts have been through the data refresh yet for a ranking worth publishing.
+    Check back shortly.
+</p>
+{% endif %}
+
+<section class="report-section">
+    <h2>How to read this</h2>
+    <p class="section-sub">
+        Every figure is the median of real recorded sales on the streets around each district's
+        centre, taken from HM Land Registry Price Paid Data, counting homes only. Land Registry's
+        "other" category is commercial property, and including it would put office blocks inside
+        house price ranges.
+    </p>
+    <p class="section-sub">
+        <strong>England and Wales only.</strong> Price Paid Data does not cover Scotland or Northern
+        Ireland, which run their own separate registers, so Scottish and Northern Irish districts are
+        absent from this ranking entirely. That is a gap in what we can see, not a statement about
+        those places.
+    </p>
+    <p class="section-sub">
+        A district needs at least five recorded home sales to appear at all. Below that a median is
+        a number pretending to be a statistic, so those districts are left out rather than ranked on
+        two transactions. That is also why some very central districts are missing: they are mostly
+        commercial and barely any homes change hands there.
+    </p>
+    <p class="section-sub">
+        This is what sold, not what is for sale, and not a valuation. A district that looks cheap may
+        simply have sold a lot of flats that year. Open any district to see the individual sales
+        behind its number, or
+        <a href="/">check a specific address</a> for the full picture on one property.
+    </p>
+    <p class="section-sub">Generated {{ generated_date }}. Source: HM Land Registry Price Paid Data, Open Government Licence.</p>
+</section>
+
+<section class="report-section">
+    <h2>Using these figures</h2>
+    <p class="section-sub">
+        Journalists and researchers are welcome to use anything here with a link back. If you want
+        the same breakdown for a particular area or a set of districts, <a href="/support">ask</a>
+        and we will pull it, at no cost. Every number traces to a named public source, and where a
+        figure has ever turned out to be wrong it goes on the <a href="/accuracy">accuracy log</a>.
+    </p>
+</section>
+{% endblock %}

@@ -457,3 +457,44 @@ def test_only_schools_with_real_data_get_a_page(client, monkeypatch):
     from app.services import schools_db
     monkeypatch.setattr(schools_db, "admission_profile", lambda urn: None)
     assert client.get("/school/123456/any-school").status_code == 404
+
+
+def test_calculator_pages_render_and_share_one_script(client):
+    """Both tool pages exist as their own indexable page, and both are
+    driven by the same file, so the tax bands have one home."""
+    for slug in ("stamp-duty-calculator", "mortgage-calculator"):
+        body = client.get(f"/tools/{slug}").text
+        assert "/static/js/calculators.js" in body, slug
+        assert 'id="calc-price"' in body, slug
+        assert "noindex" not in body, slug
+    assert client.get("/tools/not-a-tool").status_code == 404
+
+
+def test_report_and_tools_use_the_same_tax_bands():
+    """Two copies of the bands would drift the first time a Budget moved
+    a threshold, and the wrong copy would keep answering."""
+    import pathlib
+    from app import main as app_main
+
+    root = pathlib.Path(app_main.__file__).resolve().parent
+    js = (root / "static" / "js" / "calculators.js").read_text(encoding="utf-8")
+    report = (root / "templates" / "property.html").read_text(encoding="utf-8")
+    assert "const BANDS" in js
+    assert "const BANDS" not in report, "the report has its own copy of the tax bands again"
+    assert "/static/js/calculators.js" in report
+
+
+def test_district_price_table_needs_a_real_sample(client, monkeypatch):
+    """A median of two sales is not a statistic, and districts without
+    enough sales must not be ranked."""
+    from app import main as app_main
+    monkeypatch.setattr(app_main, "_district_price_table", lambda: {
+        "total": 0, "cheapest": [], "dearest": [], "median_of_medians": None,
+    })
+    from app.services import _cache
+    _cache._store.clear()
+    _cache._bytes = 0
+    body = client.get("/market/district-prices").text
+    assert "Not enough districts" in body
+    # The England and Wales limit is stated, never silently applied.
+    assert "England and Wales only" in body

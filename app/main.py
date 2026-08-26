@@ -30,7 +30,7 @@ from sqlalchemy import func, select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
-from app.models import FigureReport, PageView, PremiumUnlock, ShareLink, User
+from app.models import FigureReport, PageCache, PageView, PremiumUnlock, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -1098,7 +1098,8 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
-                    "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator"]
+                    "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
+                    "/market/district-prices"]
     outcodes = [o for o in AREA_GUIDE_SEED_OUTCODES if o in KNOWN_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
@@ -5388,6 +5389,71 @@ def _areas_param(areas: list[dict]) -> str:
 
 SCHOOL_ADMISSION_CACHE_TTL_S = 86400 * 7
 AREA_VS_CACHE_TTL_S = 86400 * 7
+
+
+DISTRICT_PRICES_CACHE_TTL_S = 86400
+DISTRICT_PRICES_SHOWN = 25
+
+
+def _district_price_table() -> dict:
+    """What homes actually sell for, district by district, from the
+    medians already computed for every area guide.
+
+    Nobody publishes outcode-level medians from Land Registry for free.
+    The local authority figures everyone quotes cover whole cities, so
+    "Manchester" is one number for eighty thousand very different
+    houses. This reads the medians the area guides already hold, so it
+    costs nothing extra and grows as the prewarm job works through the
+    country.
+    """
+    prefix = f"area_guide:{AREA_GUIDE_PAYLOAD_VERSION}:"
+    rows = []
+    with db.get_session() as session:
+        for entry in session.scalars(select(PageCache)).all():
+            key = entry.cache_key or ""
+            if not key.startswith(prefix):
+                continue
+            try:
+                payload = json.loads(entry.value)
+            except (TypeError, ValueError):
+                continue
+            sales = payload.get("local_sales") or {}
+            if not sales.get("enough_for_median"):
+                continue
+            outcode = key[len(prefix):]
+            hpi_local = (payload.get("hpi") or {}).get("local_authority") or {}
+            rows.append({
+                "outcode": outcode,
+                "median": sales["median"],
+                "count": sales["count"],
+                "low": sales.get("low"),
+                "high": sales.get("high"),
+                "district": hpi_local.get("name") or "",
+            })
+
+    rows.sort(key=lambda r: r["median"])
+    return {
+        "total": len(rows),
+        "cheapest": rows[:DISTRICT_PRICES_SHOWN],
+        "dearest": list(reversed(rows[-DISTRICT_PRICES_SHOWN:])),
+        "median_of_medians": rows[len(rows) // 2]["median"] if rows else None,
+    }
+
+
+@app.get("/market/district-prices")
+async def district_prices(request: Request):
+    """A ranked table of what homes really sell for by postcode
+    district. Refreshes as the area guides do, so it is never a
+    hand-written article going stale the day after publication."""
+    context = base_context(request)
+    cached = _cache.get(("district_prices",), DISTRICT_PRICES_CACHE_TTL_S)
+    if cached is None:
+        cached = await asyncio.to_thread(_district_price_table)
+        _cache.set(("district_prices",), cached)
+    context.update(cached)
+    context["generated_date"] = datetime.date.today().strftime("%d %B %Y")
+    context["canonical_url"] = f"{_public_base_url(request)}/market/district-prices"
+    return templates.TemplateResponse(request, "district_prices.html", context)
 
 
 def _tool_jsonld(name: str, description: str, url: str) -> str:
