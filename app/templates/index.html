@@ -12,21 +12,29 @@
 
 {# ===================================================================
    HERO
-   The backdrop is the baked UK map still. It is a placeholder for a
-   cinematic clip of a British property, which is not in place yet: the
-   only candidate so far was motionsites' own file, on their CDN, of an
-   American house, which fails on licence, on subject and on the
-   no-third-party-origins rule the fonts and maps all follow.
+   The backdrop is a drone shot of terraced roofs in Crossgates, Leeds
+   (LS15) by David Pickup, from Pexels: free for commercial use on a
+   site, modification allowed, attribution not required. Self-hosted
+   like the fonts, so the page still has zero third-party origins.
 
-   Drop a self-hosted file at /static/video/hero.mp4 and set
-   hero_video in the route to switch this over; the markup below
-   already handles both.
+   Cut to 7s and mirrored back on itself, so it loops without a visible
+   cut; 1280x720 at CRF 32 because it sits under a scrim at 86-97%
+   black, which is 1.8 MB rather than the 33 MB master. The still
+   remains as the poster and as the fallback if the file is missing.
    =================================================================== #}
+{% set hero_video = "/static/video/hero-leeds.mp4" %}
 <section class="lx-hero" id="home">
     <div class="lx-hero-bg" aria-hidden="true">
         {% if hero_video %}
-        <video class="lx-hero-video" autoplay muted loop playsinline
-               poster="/static/img/hero-map.webp" src="{{ hero_video }}"></video>
+        {# src is withheld and attached by script, so the 1.8 MB is only
+           ever fetched on a screen wide enough for the shot to be worth
+           anything, and never for a reader who asked for reduced motion.
+           Everyone else gets the 200 KB poster, which is a frame of the
+           same footage: the hero is fully composed before a byte of
+           video arrives, and nothing shifts when it does. The baked
+           hero map is gated the same way for the same reason. #}
+        <video class="lx-hero-video" muted loop playsinline
+               poster="/static/img/hero-leeds.webp" data-src="{{ hero_video }}"></video>
         {% else %}
         <div class="lx-hero-still"></div>
         {% endif %}
@@ -319,6 +327,26 @@
 
 {% block extra_scripts %}
 <script>
+(function () {
+    /* Attach the hero loop only where it earns its bytes. A phone gets
+       the poster and pays nothing for the video; so does anyone who has
+       asked for reduced motion, for whom a looping background is
+       precisely what the setting is about. Both see a frame of the same
+       shot, so nothing is missing, only the movement. */
+    const vid = document.querySelector('.lx-hero-video');
+    if (!vid) return;
+    const wideEnough = window.matchMedia('(min-width: 860px)').matches;
+    const wantsMotion = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (wideEnough && wantsMotion) {
+        /* autoplay rather than a play() call: assigning src starts a
+           load, and a play() in the same tick gets aborted by it. The
+           attribute lets the browser start playback when it is ready.
+           If it refuses, the poster simply stands. */
+        vid.autoplay = true;
+        vid.src = vid.dataset.src;
+    }
+})();
+
 (function () {
     /* Count-up for the hero stats, fired once when scrolled into view.
        Values live in data-target so the markup stays honest for no-JS
