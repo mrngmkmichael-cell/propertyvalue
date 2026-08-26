@@ -86,6 +86,13 @@
            75 against a real 82) within days of being written. If the
            fetch fails the strip removes itself rather than show a
            number nobody can stand behind. #}
+        {# The first entry's figures, handed over in the page so the strip
+           paints without a round trip. Present only when the route found
+           them already cached; absent means the script asks for them as
+           it did before. #}
+        {% if strip_seed %}
+        <script type="application/json" id="lx-strip-seed">{{ strip_seed | tojson }}</script>
+        {% endif %}
         <div class="lx-strip" id="lx-strip" hidden data-animate>
             <div class="lx-strip-chrome">
                 <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
@@ -729,6 +736,25 @@
             });
     };
 
+    /* If the server handed us the first entry, paint it now and strike
+       that postcode off the fetch list. That is one fewer request, and
+       it was the longest chain on the page at 2,822ms. */
+    const seedEl = document.getElementById('lx-strip-seed');
+    let queue = POSTCODES;
+    if (seedEl) {
+        try {
+            const seed = JSON.parse(seedEl.textContent);
+            if (ok(seed)) {
+                loaded.push(seed);
+                shown = true;
+                strip.hidden = false;
+                strip.classList.add('in-view');
+                paint(seed);
+                queue = POSTCODES.filter(function (pc) { return pc !== seed.postcode; });
+            }
+        } catch (e) { /* malformed seed: fall through and fetch */ }
+    }
+
     /* One at a time, spaced out, and only once the page has loaded and
        the main thread is idle.
 
@@ -741,9 +767,9 @@
     const start = function () {
         let next = 0;
         const step = function () {
-            if (next >= POSTCODES.length) return;
-            pull(POSTCODES[next++]).then(function () {
-                if (next < POSTCODES.length) setTimeout(step, 3500);
+            if (next >= queue.length) return;
+            pull(queue[next++]).then(function () {
+                if (next < queue.length) setTimeout(step, 3500);
             });
         };
         step();

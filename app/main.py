@@ -928,10 +928,26 @@ def _landing_accuracy_counts() -> dict | None:
     return counts
 
 
+# The postcode the hero strip opens on. Kept next to the route because
+# the template's rotation list has to start with the same one, or the
+# seed is thrown away on the first paint.
+STRIP_FIRST_POSTCODE = "M1 1AE"
+
+
 @app.get("/")
 def index(request: Request):
     context = base_context(request)
     context["accuracy_counts"] = _landing_accuracy_counts()
+
+    # Hand the hero strip its first entry in the page, so it paints with
+    # real figures immediately instead of waiting on a round trip.
+    # /api/lookup caches its finished payload for an hour and this reads
+    # that same entry - cache only, never a fetch. A miss just omits the
+    # seed and the script falls back to asking, so this can only ever
+    # make the page faster.
+    context["strip_seed"] = _cache.get(
+        ("api_lookup", STRIP_FIRST_POSTCODE), API_LOOKUP_CACHE_TTL_S
+    )
     return templates.TemplateResponse(request, "index.html", context)
 
 
