@@ -212,7 +212,7 @@
                     <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
                 </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
-                <a class="lx-build-cta" id="lx-build-cta" href="#contact">Run the checks on your postcode</a>
+                <a class="lx-build-cta" id="lx-build-cta" href="#home">Run the checks on your postcode</a>
                 <p class="lx-build-hint" aria-hidden="true">Scroll &middot; the page is the scrubber</p>
             </div>
         </div>
@@ -1201,6 +1201,17 @@
             addEventListener('resize', onScroll, { passive: true });
             frame();
         }
+    }
+    if (cta) {
+        /* The CTA sends the reader back up to the hero form, cursor
+           ready in the postcode box. Focus comes after the smooth
+           scroll has had a moment to travel; preventScroll stops the
+           focus itself from yanking the page mid-glide. */
+        cta.addEventListener('click', function () {
+            const field = document.getElementById('postcode');
+            if (!field) return;
+            setTimeout(function () { field.focus({ preventScroll: true }); }, 450);
+        });
     }
     if (track) {
         const pinVis = new IntersectionObserver(function (entries) {
