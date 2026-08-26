@@ -639,21 +639,37 @@
         el.place.textContent = [d.admin_district, d.region].filter(Boolean).join(', ');
         el.grade.textContent = o.grade || '';
         el.grade.hidden = !o.grade;
-        el.rows.innerHTML = '';
-        rows(d).forEach(function (r) {
-            const cell = document.createElement('div');
-            cell.className = 'lx-strip-cell';
-            const k = document.createElement('p');
-            k.className = 'lx-strip-k';
-            const dot = document.createElement('span');
-            dot.className = 'lx-strip-dot lx-tone-' + (r[2] || 'plain');
-            k.appendChild(dot);
-            k.appendChild(document.createTextNode(r[0]));
-            const v = document.createElement('p');
+        /* Four cells are built once and then rewritten in place. Tearing
+           the row down and rebuilding it on every rotation registered a
+           small layout shift each time, several times a minute for as
+           long as the tab stayed open; updating text inside cells that
+           never move registers nothing. Unused cells are emptied rather
+           than removed, so the grid keeps its shape. */
+        if (!el.rows.children.length) {
+            for (let i = 0; i < 4; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'lx-strip-cell';
+                const k = document.createElement('p');
+                k.className = 'lx-strip-k';
+                k.appendChild(document.createElement('span'));      // tone dot
+                k.appendChild(document.createTextNode(''));         // label
+                const v = document.createElement('p');
+                v.className = 'lx-strip-v';
+                cell.appendChild(k);
+                cell.appendChild(v);
+                el.rows.appendChild(cell);
+            }
+        }
+        const data = rows(d);
+        Array.prototype.forEach.call(el.rows.children, function (cell, i) {
+            const r = data[i];
+            const k = cell.firstChild, v = cell.lastChild;
+            if (!r) { cell.style.visibility = 'hidden'; return; }
+            cell.style.visibility = '';
+            k.firstChild.className = 'lx-strip-dot lx-tone-' + (r[2] || 'plain');
+            k.lastChild.nodeValue = r[0];
             v.className = 'lx-strip-v' + (r[2] === 'warn' || r[2] === 'bad' ? ' lx-strip-v-' + r[2] : '');
             v.textContent = r[1];
-            cell.appendChild(k); cell.appendChild(v);
-            el.rows.appendChild(cell);
         });
 
         if (score === null) { el.dial.hidden = true; return; }

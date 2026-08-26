@@ -6087,16 +6087,33 @@ body.theme-dark .leaflet-popup-tip {
    widths on every swap, which is a small layout shift several times a
    minute, for as long as the page is open. Fixed columns mean the
    cells hold their slots whatever lands in them. */
+/* Fixed, not min-. The values that land here vary from "Zone 1" to
+   "Zone 3 (high probability)", so a min-height still grew the row
+   whenever one wrapped to a second line - which is a small shift on
+   every rotation, several times a minute, for as long as the tab is
+   open. A fixed box and a two-line clamp means every value occupies the
+   same space whatever it says. */
 .lx-strip-rows {
     flex: 1 1 18rem;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    min-height: 94px;
+    height: 94px;
 }
 .lx-strip-cell {
     min-width: 0;
+    overflow: hidden;
     padding: 0.9rem;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+/* Two lines' worth, always, whether the value needs one or two. The
+   clamp alone still let the block change height between a "Zone 1" and
+   a "Zone 3 (high probability)", which registered on every rotation. */
+.lx-strip-v {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    height: 2.6em;
 }
 .lx-strip-v { font-variant-numeric: tabular-nums; }
 .lx-strip-k {
