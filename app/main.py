@@ -2071,6 +2071,16 @@ async def api_lookup(postcode: str = ""):
         return JSONResponse({"error": "not_found"}, status_code=404, headers=_EXTENSION_CORS_HEADERS)
 
     canonical = location["postcode"]
+
+    # One entry for the finished payload. The services underneath each
+    # cache already, but the fan-out and the scoring ran on every hit,
+    # and the landing page asks for five postcodes per view. An hour
+    # matches the other public read-only caches here.
+    payload_key = ("api_lookup", canonical)
+    cached_payload = _cache.get(payload_key, API_LOOKUP_CACHE_TTL_S)
+    if cached_payload is not None:
+        return JSONResponse(cached_payload, headers=_EXTENSION_CORS_HEADERS)
+
     lat, lon = location["latitude"], location["longitude"]
 
     tx_result, flood_zone_result, crime_result, landscape_result, hpi_result = await asyncio.gather(
@@ -2103,9 +2113,11 @@ async def api_lookup(postcode: str = ""):
     payload["overview"] = overview_score.compute(mini_context, premium_unlocked=False)
     payload["report_url"] = f"/property?postcode={canonical.replace(' ', '+')}"
 
+    _cache.set(payload_key, payload)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
+API_LOOKUP_CACHE_TTL_S = 3600
 EXTENSION_REPORT_CACHE_TTL_S = 3600
 EXTENSION_SCHOOLS_LIMIT = 8
 EXTENSION_MARKET_HISTORY_LIMIT = 10

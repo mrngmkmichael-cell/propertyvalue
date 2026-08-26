@@ -5704,13 +5704,25 @@ body.theme-dark .leaflet-popup-tip {
    default; the light theme is handled at the foot of the block.
    ==================================================================== */
 
-/* Breaking out of .site-main to the full viewport. --scrollbar-w is set
-   by base.html; the 0px default means this degrades to plain 100vw
-   rather than breaking if the script never runs. */
-:root { --scrollbar-w: 0px; }
-.lx-hero, .promo-banner {
-    --bleed-w: calc(100vw - var(--scrollbar-w));
-    --bleed-m: calc(50% - (100vw - var(--scrollbar-w)) / 2);
+/* Full bleed without 100vw and without measuring anything.
+   .site-main drops its cap on the landing page and the sections inside
+   take the cap instead, so the hero simply fills its parent. The hero
+   used to break out with calc(100vw - scrollbar), and the scrollbar
+   width had to come from script - which meant the page painted at one
+   width and then resized when the script ran. On a fast connection that
+   is invisible; on PageSpeed's throttled run it was 0.876 of layout
+   shift, almost all of it this. No script, no shift. */
+.site-main:has(> .lx-hero) {
+    max-width: none;
+    padding-top: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.site-main:has(> .lx-hero) > *:not(.lx-hero):not(.promo-banner) {
+    max-width: var(--site-width);
+    margin-inline: auto;
+    padding-inline: 1.5rem;
 }
 
 .lx-wrap { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
@@ -5759,23 +5771,10 @@ body.theme-dark .leaflet-popup-tip {
    overflow-x: clip, so the 100vw does not open a scrollbar. */
 .lx-hero {
     position: relative;
-    width: var(--bleed-w);
-    margin-left: var(--bleed-m);
-    margin-right: var(--bleed-m);
-    margin-top: -2.5rem;
     min-height: min(100vh, 900px);
     display: flex;
     align-items: center;
     overflow: hidden;
-}
-
-/* The offer band sits directly under the hero and reads as part of it,
-   so it breaks out to the same width. */
-.lx-hero + .promo-banner,
-.lx-hero + * + .promo-banner {
-    width: var(--bleed-w);
-    margin-left: var(--bleed-m);
-    margin-right: var(--bleed-m);
 }
 
 .lx-hero-bg { position: absolute; inset: 0; z-index: 0; }
@@ -5902,7 +5901,18 @@ body.theme-dark .leaflet-popup-tip {
     text-transform: uppercase;
     color: var(--ink-soft);
 }
-.lx-hero-stats .stat-count { color: var(--accent); font-size: var(--text-sm); }
+/* Same reason as the dial: these count up from zero, and proportional
+   digits reflow the whole line while they do it. inline-block plus a
+   reserved width means the widest value it will ever hold is the width
+   it holds from the first frame. */
+.lx-hero-stats .stat-count {
+    color: var(--accent);
+    font-size: var(--text-sm);
+    display: inline-block;
+    min-width: 2.4ch;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
 .lx-sep { color: var(--ink-faint); }
 
 /* ---- The live report strip ----------------------------------------- */
@@ -5976,6 +5986,10 @@ body.theme-dark .leaflet-popup-tip {
     font-family: var(--font-display);
     font-size: 25px;
     color: var(--ink);
+    /* The number counts 0 up to the score, so proportional digits
+       change its width on every frame and nudge everything beside it.
+       Tabular figures are all one width. */
+    font-variant-numeric: tabular-nums;
 }
 
 .lx-strip-postcode {
@@ -5997,12 +6011,15 @@ body.theme-dark .leaflet-popup-tip {
 }
 .lx-strip-place { margin: 0.35rem 0 0; font-size: var(--text-xs); color: var(--ink-soft); }
 
-.lx-strip-rows { flex: 1 1 18rem; display: flex; flex-wrap: wrap; }
+/* The cells are injected once /api/lookup answers, so the row reserves
+   its height rather than growing into place when the data lands. */
+.lx-strip-rows { flex: 1 1 18rem; display: flex; flex-wrap: wrap; min-height: 94px; }
 .lx-strip-cell {
     flex: 1 1 7rem;
     padding: 0.9rem;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
 }
+.lx-strip-v { font-variant-numeric: tabular-nums; }
 .lx-strip-k {
     display: flex;
     align-items: center;

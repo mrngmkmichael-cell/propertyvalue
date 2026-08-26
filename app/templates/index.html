@@ -8,6 +8,10 @@
    blurred view, so it is baked into a single static image - see
    scripts/build_hero_map.py. #}
 
+{% block lcp_preload %}
+<link rel="preload" as="image" href="/static/img/hero-luxonn.webp" fetchpriority="high">
+{% endblock %}
+
 {% block extra_head %}
 {# FAQ rich result: the five questions at the foot of the page, verbatim. #}
 <script type="application/ld+json">
@@ -523,15 +527,26 @@
            gold glow reads it too and drifts the other way: two things
            moving at different rates is what makes it look like depth. */
         const TRAVEL = 150;
-        let ticking = false;
-        const place = function () {
+        /* Geometry is measured once and cached, not read on every frame.
+           getBoundingClientRect() after a style write forces the browser
+           to lay the page out again to answer, and doing that inside a
+           scroll handler is how you get the "forced reflow" PageSpeed
+           flagged at 108ms. Now the frame's position comes from
+           scrollY and two cached numbers, and the handler only writes. */
+        let top = 0, height = 0, vh = 0, ticking = false;
+        const measure = function () {
             const r = art.getBoundingClientRect();
-            if (r.bottom < 0 || r.top > innerHeight) { ticking = false; return; }
-            /* -1 when the frame is entering at the bottom, +1 leaving at
-               the top, 0 dead centre. */
-            const progress = (r.top + r.height / 2 - innerHeight / 2) / ((innerHeight + r.height) / 2);
-            art.style.setProperty('--shift', (-progress * TRAVEL).toFixed(1) + 'px');
+            top = r.top + window.scrollY;
+            height = r.height;
+            vh = innerHeight;
+        };
+        const place = function () {
             ticking = false;
+            const rTop = top - window.scrollY;
+            if (rTop + height < 0 || rTop > vh) return;
+            /* +1 entering at the bottom, -1 leaving at the top, 0 centred. */
+            const progress = (rTop + height / 2 - vh / 2) / ((vh + height) / 2);
+            art.style.setProperty('--shift', (-progress * TRAVEL).toFixed(1) + 'px');
         };
         const onScroll = function () {
             if (ticking) return;
@@ -539,7 +554,11 @@
             requestAnimationFrame(place);
         };
         addEventListener('scroll', onScroll, { passive: true });
-        addEventListener('resize', onScroll, { passive: true });
+        addEventListener('resize', function () { measure(); onScroll(); }, { passive: true });
+        /* After load, so the measurement is taken against the settled
+           page rather than one still waiting on the hero poster. */
+        addEventListener('load', function () { measure(); place(); });
+        measure();
         place();
     }
 })();
@@ -670,8 +689,8 @@
         setInterval(function () { i = (i + 1) % loaded.length; paint(loaded[i]); }, 4000);
     };
 
-    POSTCODES.forEach(function (pc) {
-        fetch('/api/lookup?postcode=' + encodeURIComponent(pc))
+    const pull = function (pc) {
+        return fetch('/api/lookup?postcode=' + encodeURIComponent(pc))
             .then(function (r) { return r.ok ? r.json() : null; })
             .catch(function () { return null; })
             .then(function (d) {
@@ -685,7 +704,25 @@
                 }
                 rotate();
             });
-    });
+    };
+
+    /* Held back until the page has loaded and the main thread is idle.
+       Fired on script execution these five were 3.4s of critical path on
+       PageSpeed's throttled run, for a strip that is decoration until
+       the reader has finished looking at the headline anyway. The first
+       postcode goes as soon as we are idle; the other four only once it
+       has answered, so they never compete with it. */
+    const start = function () {
+        pull(POSTCODES[0]).then(function () {
+            POSTCODES.slice(1).forEach(pull);
+        });
+    };
+    const idle = function () {
+        if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 2000 });
+        else setTimeout(start, 200);
+    };
+    if (document.readyState === 'complete') idle();
+    else addEventListener('load', idle);
 })();
 </script>
 {% endblock %}
