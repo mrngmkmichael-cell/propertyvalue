@@ -713,16 +713,24 @@
             });
     };
 
-    /* Held back until the page has loaded and the main thread is idle.
-       Fired on script execution these five were 3.4s of critical path on
-       PageSpeed's throttled run, for a strip that is decoration until
-       the reader has finished looking at the headline anyway. The first
-       postcode goes as soon as we are idle; the other four only once it
-       has answered, so they never compete with it. */
+    /* One at a time, spaced out, and only once the page has loaded and
+       the main thread is idle.
+
+       Fired together, these five queued behind each other on a single
+       worker: PageSpeed clocked the last at 6.6s and counted the whole
+       set as critical path. Nothing here is needed until the reader has
+       read the headline, and the strip only needs its second entry by
+       the time it first rotates at four seconds. So one goes, then the
+       rest follow at roughly one per rotation. */
     const start = function () {
-        pull(POSTCODES[0]).then(function () {
-            POSTCODES.slice(1).forEach(pull);
-        });
+        let next = 0;
+        const step = function () {
+            if (next >= POSTCODES.length) return;
+            pull(POSTCODES[next++]).then(function () {
+                if (next < POSTCODES.length) setTimeout(step, 3500);
+            });
+        };
+        step();
     };
     const idle = function () {
         if (window.requestIdleCallback) requestIdleCallback(start, { timeout: 2000 });

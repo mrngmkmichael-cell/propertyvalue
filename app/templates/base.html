@@ -16,6 +16,10 @@
     used to cost. #}
     <link rel="preload" href="/static/fonts/instrument-sans-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/static/fonts/jetbrains-mono-labels.woff2" as="font" type="font/woff2" crossorigin>
+    {# Bebas sets every h1 on the site, so it is always above the fold.
+    Without this it was arriving at 1,854ms, discovered only once the
+    inlined CSS had parsed. #}
+    <link rel="preload" href="/static/fonts/bebas-neue-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
 
     {# The largest thing the landing page paints is the hero's poster
     frame, so it is the LCP element and wants to start downloading with
@@ -421,15 +425,23 @@
             // target already inside the viewport before the observer's
             // first callback has a chance to fire, leaving it stuck
             // invisible - catch that with an immediate manual check.
+            /* Every measurement first, every class change second.
+               Interleaving them made each getBoundingClientRect wait on a
+               fresh layout caused by the class written just before it -
+               with this many targets on the landing page that measured
+               107ms of forced reflow. Reading in one pass costs one
+               layout for the whole set. */
             function revealVisible() {
                 const vh = window.innerHeight || document.documentElement.clientHeight;
+                const pending = [];
                 targets.forEach(function (el) {
                     if (el.classList.contains('in-view')) return;
                     const rect = el.getBoundingClientRect();
-                    if (rect.top < vh * 0.9 && rect.bottom > 0) {
-                        el.classList.add('in-view');
-                        observer.unobserve(el);
-                    }
+                    if (rect.top < vh * 0.9 && rect.bottom > 0) pending.push(el);
+                });
+                pending.forEach(function (el) {
+                    el.classList.add('in-view');
+                    observer.unobserve(el);
                 });
             }
             revealVisible();
