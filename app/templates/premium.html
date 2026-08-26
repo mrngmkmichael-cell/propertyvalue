@@ -124,70 +124,71 @@
 </figure>
 {% endif %}
 
-{% set premium_preview = [
-    {
-        "heading": "Value & Market",
-        "cards": [
-            {"icon": "valuation", "title": "Valuation Estimate", "text": "A data-backed price range from real nearby sales"},
-            {"icon": "valuation", "title": "Costs &amp; Affordability", "text": "Stamp duty, mortgage and rental-yield calculators"},
-            {"icon": "rental", "title": "Rental Analysis", "text": "Typical rent for this area, by bedroom count"},
-            {"icon": "statistics", "title": "Price Trend &amp; Forecast", "text": "5-year price history and a 2-year forecast"},
-        ],
-    },
-    {
-        "heading": "Property & Condition",
-        "cards": [
-            {"icon": "extension", "title": "Extended or Modified", "text": "Spot undisclosed extensions from EPC history"},
-            {"icon": "orientation", "title": "Aspect", "text": "Which way the garden and rooms face"},
-        ],
-    },
-    {
-        "heading": "Risk & Safety",
-        "cards": [
-            {"icon": "flood", "title": "Sewage Discharge", "text": "Every storm overflow nearby, spill counts and hours"},
-            {"icon": "geology", "title": "Subsidence Risk", "text": "Clay shrink-swell risk through 2030 and 2050"},
-            {"icon": "air_quality", "title": "Air Quality", "text": "Pollutant levels against WHO guideline limits"},
-            {"icon": "landfill", "title": "Historic Contamination", "text": "Former landfill sites nearby"},
-            {"icon": "mining", "title": "Mining Risk", "text": "Coal Authority reporting area status"},
-        ],
-    },
-    {
-        "heading": "Location & Connectivity",
-        "cards": [
-            {"icon": "schools", "title": "School Catchment Areas", "text": "Real admission-distance data, not just proximity"},
-            {"icon": "transport", "title": "Getting Around", "text": "Nearest stations, live train times to major cities"},
-        ],
-    },
-    {
-        "heading": "Decision Tools",
-        "cards": [
-            {"icon": "details", "title": "Buyer Questions", "text": "What to ask the seller, solicitor and surveyor, built from this property's own findings"},
-            {"icon": "land_registry", "title": "Full PDF Report", "text": "The whole report as a document to keep, print or send"},
-        ],
-    },
-    {
-        "heading": "Area & Community",
-        "cards": [
-            {"icon": "income", "title": "Household Income", "text": "Compared against the borough and region"},
-            {"icon": "wellbeing", "title": "Health, Relationships &amp; Social Grade", "text": "Health, marital status and social grade breakdown"},
-        ],
-    },
-] %}
-
-<p class="premium-preview-lede">Everything below is locked on the free plan. Unlock it on any property with Premium:</p>
-{% for section in premium_preview %}
-<h3 class="dashboard-category-heading">{{ section.heading }}</h3>
-<div class="dashboard-grid">
-    {% for card in section.cards %}
-    <div class="dashboard-card dashboard-card-locked" data-animate>
-        <div class="dashboard-card-lock-overlay"><span class="dashboard-card-lock-label">Premium</span></div>
-        <span class="dashboard-card-icon icon-{{ card.icon | replace('_', '-') }}">{{ icons.icon(card.icon) }}</span>
-        <span class="dashboard-card-title">{{ card.title | safe }}</span>
-        <span class="dashboard-card-status">{{ card.text }}</span>
+{# The two-tier card layout that used to live on the landing page's
+   checks section (the landing now shows the orbit ring instead). This
+   is the full picture a buyer weighs up: what every report gives away,
+   against what Premium adds. #}
+<p class="premium-preview-lede">Every kind of check on the report, and which plan it comes with:</p>
+<div class="premium-tiers">
+    <div>
+        <div class="lx-tier-head">
+            {{ icons.icon('unlock') }}
+            <span class="lx-tier-label lx-tier-free">22 free on every report</span>
+        </div>
+        <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
+        <div class="lx-check-grid">
+            {% for icon, title, value, source in [
+                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry'),
+                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency'),
+                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE'),
+                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register'),
+                ('crime', 'Crime', 'By category, against the area', 'Police.uk'),
+                ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping'),
+                ('statistics', 'Council tax', 'Band D for the authority', 'MHCLG, 2026-27'),
+                ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom'),
+                ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency'),
+                ('radon', 'Radon', 'Affected-area class', 'British Geological Survey')
+            ] %}
+            <div class="lx-check">
+                <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
+                <p class="lx-check-title">{{ title }}</p>
+                <p class="lx-check-value">{{ value }}</p>
+                <p class="lx-check-source">{{ source }}</p>
+            </div>
+            {% endfor %}
+        </div>
     </div>
-    {% endfor %}
+
+    <div>
+        <div class="lx-tier-head">
+            {{ icons.icon('lock') }}
+            <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
+        </div>
+        <p class="lx-tier-note">Free on your first three properties. No card required.</p>
+        <div class="lx-check-grid">
+            {% for icon, title, value, source in [
+                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales'),
+                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index'),
+                ('rental', 'Rental analysis', 'Typical rent by bedrooms', 'ONS private rents'),
+                ('extension', 'Extension check', 'Floor area changes over time', 'EPC history'),
+                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey'),
+                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN'),
+                ('landfill', 'Historic landfill', 'Former sites nearby', 'Environment Agency'),
+                ('mining', 'Coal mining', 'Reporting areas', 'The Coal Authority'),
+                ('orientation', 'Catchment areas', 'Real admission distances', 'Council admissions data'),
+                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail'),
+                ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income')
+            ] %}
+            <div class="lx-check">
+                <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
+                <p class="lx-check-title">{{ title }}</p>
+                <p class="lx-check-value">{{ value }}</p>
+                <p class="lx-check-source">{{ source }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
 </div>
-{% endfor %}
 
 {% endif %}
 {% endblock %}
