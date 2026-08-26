@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tool.title }} | UKPropertyInsight{% endblock %}
+{% block meta_description %}{{ tool.meta }}{% endblock %}
+{% block og_title %}{{ tool.title }}{% endblock %}
+
+{% block content %}
+<script type="application/ld+json">{{ tool.jsonld | safe }}</script>
+
+<span class="kicker">Free tool</span>
+<h1>{{ tool.heading }}</h1>
+<p class="dek">{{ tool.dek }}</p>
+
+<section class="report-section">
+    {# Same element ids as the report's own calculator, so both are
+       driven by one script and one set of tax bands. #}
+    <div class="calc-grid">
+        <div class="search-form-field">
+            <label for="calc-price">Purchase price (£)</label>
+            <input type="number" id="calc-price" min="0" step="1000" value="300000">
+        </div>
+        {% if tool.key == "stamp-duty" %}
+        <div class="search-form-field">
+            <label for="calc-buyer-type">Buyer type</label>
+            <select id="calc-buyer-type">
+                <option value="standard">Home mover</option>
+                <option value="ftb">First-time buyer</option>
+                <option value="additional">Additional property (buy-to-let/second home)</option>
+            </select>
+        </div>
+        <div class="search-form-field">
+            <label for="calc-region">Tax region</label>
+            <select id="calc-region">
+                <option value="england-ni">England / Northern Ireland (SDLT)</option>
+                <option value="scotland">Scotland (LBTT)</option>
+                <option value="wales">Wales (LTT)</option>
+            </select>
+        </div>
+        {% else %}
+        <div class="search-form-field" hidden>
+            <label for="calc-buyer-type">Buyer type</label>
+            <select id="calc-buyer-type"><option value="standard">Home mover</option></select>
+        </div>
+        <div class="search-form-field" hidden>
+            <label for="calc-region">Tax region</label>
+            <select id="calc-region"><option value="england-ni">England</option></select>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if tool.key == "stamp-duty" %}
+    <p class="calc-result">Estimated tax: <strong id="calc-sdlt-result">£0</strong> (<span id="calc-sdlt-rate">0%</span> effective rate)</p>
+    {% endif %}
+
+    <div class="calc-grid"{% if tool.key == "stamp-duty" %} hidden{% endif %}>
+        <div class="search-form-field">
+            <label for="calc-deposit-pct">Deposit (%)</label>
+            <input type="number" id="calc-deposit-pct" min="0" max="100" step="1" value="10">
+        </div>
+        <div class="search-form-field">
+            <label for="calc-rate">Interest rate (%)</label>
+            <input type="number" id="calc-rate" min="0" max="20" step="0.1" value="{{ tool.default_rate }}">
+        </div>
+        <div class="search-form-field">
+            <label for="calc-term">Term (years)</label>
+            <input type="number" id="calc-term" min="1" max="40" step="1" value="25">
+        </div>
+    </div>
+    {% if tool.key == "mortgage" %}
+    <p class="calc-result">Monthly repayment: <strong id="calc-mortgage-result">£0</strong></p>
+    {% else %}
+    <p class="calc-result" hidden>Monthly repayment: <strong id="calc-mortgage-result">£0</strong></p>
+    {% endif %}
+
+    <div class="calc-grid" hidden>
+        <div class="search-form-field">
+            <label for="calc-rent">Monthly rent (£)</label>
+            <input type="number" id="calc-rent" min="0" step="25" value="1000">
+        </div>
+    </div>
+    <p class="calc-result" hidden>Gross yield: <strong id="calc-yield-result">&mdash;</strong></p>
+
+    <p class="section-sub">{{ tool.disclaimer | safe }}</p>
+</section>
+
+<section class="report-section">
+    <h2>{{ tool.explainer_heading }}</h2>
+    {% for para in tool.explainer %}<p class="section-sub">{{ para | safe }}</p>{% endfor %}
+</section>
+
+<section class="report-section">
+    <h2>Common questions</h2>
+    <div class="faq-list">
+        {% for q, a in tool.faqs %}
+        <details class="faq-item">
+            <summary>{{ q }}</summary>
+            <p>{{ a | safe }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>The rest of the picture</h2>
+    <p class="section-sub">
+        The tax is the easy number. Flood risk, what the neighbours' houses actually sold for,
+        crime, schools and the energy bill are the ones that change your mind about a house.
+        Those are free too, on any UK postcode.
+    </p>
+    <form class="search-form" action="/property" method="get">
+        <div class="search-form-field">
+            <label for="tool-postcode">UK postcode</label>
+            <input type="text" id="tool-postcode" name="postcode" placeholder="e.g. M1 1AE" autocomplete="off" required>
+        </div>
+        <button type="submit">Check an address</button>
+    </form>
+</section>
+
+<script src="/static/js/calculators.js" defer></script>
+{% endblock %}

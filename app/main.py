@@ -1098,7 +1098,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
-                    "/compare"]
+                    "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator"]
     outcodes = [o for o in AREA_GUIDE_SEED_OUTCODES if o in KNOWN_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
@@ -5388,6 +5388,122 @@ def _areas_param(areas: list[dict]) -> str:
 
 SCHOOL_ADMISSION_CACHE_TTL_S = 86400 * 7
 AREA_VS_CACHE_TTL_S = 86400 * 7
+
+
+def _tool_jsonld(name: str, description: str, url: str) -> str:
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": name,
+        "description": description,
+        "url": url,
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Any",
+        "offers": {"@type": "Offer", "price": "0", "priceCurrency": "GBP"},
+    }, separators=(",", ":"))
+
+
+# The report has carried a stamp duty and mortgage calculator since the
+# start, but inside a dialog on a noindex page, where nothing could ever
+# find it. These are the same maths on a page of their own, which is a
+# search anyone buying a house makes and a page other sites link to
+# without being asked.
+TOOLS = {
+    "stamp-duty-calculator": {
+        "key": "stamp-duty",
+        "title": "Stamp Duty Calculator 2026: England, Scotland and Wales",
+        "heading": "Stamp duty calculator",
+        "meta": "Work out stamp duty (SDLT), Scotland's LBTT or Wales's LTT on any purchase price, including first-time buyer relief and the additional property surcharge. Free, no sign-up.",
+        "dek": "Enter a price and it works out the tax, including first-time buyer relief and the extra charge on second homes. Nothing leaves your browser.",
+        "default_rate": "4.5",
+        "disclaimer": (
+            "An estimate, calculated in your browser from published rates as of April 2025. "
+            "Budgets change these, so confirm the exact figure on "
+            '<a href="https://www.gov.uk/stamp-duty-land-tax" rel="noopener" target="_blank">gov.uk</a>, '
+            '<a href="https://www.revenue.scot/land-buildings-transaction-tax" rel="noopener" target="_blank">Revenue Scotland</a> '
+            'or <a href="https://www.gov.uk/land-transaction-tax" rel="noopener" target="_blank">the Welsh Revenue Authority</a> '
+            "before you exchange. Not financial advice."
+        ),
+        "explainer_heading": "How stamp duty actually works",
+        "explainer": [
+            "The tax is charged in slices, not all at one rate. A £400,000 purchase in England does "
+            "not attract one percentage on the whole amount: the first slice is taxed at nothing, "
+            "the next at 2%, the next at 5%, and only the part above each threshold is charged at "
+            "the higher rate. That is why the effective rate above is lower than the headline band.",
+            "The three nations run separate taxes. England and Northern Ireland charge Stamp Duty "
+            "Land Tax, Scotland charges Land and Buildings Transaction Tax, and Wales charges Land "
+            "Transaction Tax. The thresholds differ in all three, so the same price produces three "
+            "different bills.",
+            "First-time buyer relief applies only up to a ceiling, and disappears entirely above it "
+            "rather than tapering. Buying an additional property adds a surcharge on top of the "
+            "whole amount, which is usually the largest single surprise in a buy-to-let sum.",
+        ],
+        "faqs": [
+            ("When do I pay it?",
+             "Within 14 days of completion in England and Northern Ireland, and 30 days in Scotland "
+             "and Wales. In practice your solicitor files and pays it out of the funds you send them, "
+             "so you need the money available at completion, not afterwards."),
+            ("Do first-time buyers pay nothing?",
+             "Only below the relief threshold, and only if every buyer is a first-time buyer. Above "
+             "the ceiling the relief vanishes completely and standard rates apply to the whole price."),
+            ("Does the surcharge apply if I am replacing my main home?",
+             "Not if you sell your previous main residence at the same time. If the sale completes "
+             "later you usually pay the surcharge up front and reclaim it, within a time limit."),
+            ("Is the calculator's figure the exact amount?",
+             "Treat it as an estimate. Rates change at Budgets, and unusual purchases such as shared "
+             "ownership, mixed-use property or company buyers follow different rules entirely."),
+        ],
+    },
+    "mortgage-calculator": {
+        "key": "mortgage",
+        "title": "Mortgage Repayment Calculator: monthly cost on any UK price",
+        "heading": "Mortgage repayment calculator",
+        "meta": "Work out the monthly repayment on a UK mortgage from the purchase price, deposit, interest rate and term. Free, instant, nothing stored.",
+        "dek": "Purchase price, deposit, rate and term in; the monthly repayment out. Calculated in your browser, nothing is sent anywhere.",
+        "default_rate": "4.5",
+        "disclaimer": (
+            "An estimate on a standard repayment mortgage. A lender's own figure will differ with "
+            "fees, the exact product and how they assess affordability. Not financial advice, and "
+            "we are not a broker."
+        ),
+        "explainer_heading": "What the number does and does not include",
+        "explainer": [
+            "This is the capital-and-interest repayment on the amount borrowed, spread evenly over "
+            "the term. Early payments are mostly interest and later ones mostly capital, which is "
+            "why overpaying in the first years saves disproportionately more than overpaying later.",
+            "It does not include the things that arrive alongside it: buildings insurance, ground "
+            "rent and service charge on a leasehold flat, council tax, or the energy bill, which on "
+            "a poorly rated property can exceed the difference between two mortgage rates.",
+            "Almost nobody keeps the same rate for the whole term. A fixed rate ends after two or "
+            "five years and the loan moves to whatever is available then, so it is worth checking "
+            "the payment at a rate two or three points higher than today's before committing.",
+        ],
+        "faqs": [
+            ("How much deposit do I need?",
+             "Five percent is the usual minimum, but rates improve in steps at 10%, 15% and 25%. "
+             "Moving from a 5% to a 10% deposit often cuts the rate enough to change the monthly "
+             "payment by more than the extra deposit costs per month."),
+            ("Why is a lender offering me less than this suggests?",
+             "Affordability is assessed on income, outgoings and a stressed interest rate well above "
+             "the one you are quoted, not on the monthly figure alone."),
+            ("Should I take a longer term to lower the payment?",
+             "It lowers the monthly cost and raises the total interest substantially. Both are true "
+             "at once, and which matters more depends on your circumstances rather than on arithmetic."),
+        ],
+    },
+}
+
+
+@app.get("/tools/{slug}")
+def tool_page(request: Request, slug: str):
+    tool = TOOLS.get(slug)
+    context = base_context(request)
+    if tool is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    url = f"{_public_base_url(request)}/tools/{slug}"
+    context["tool"] = {**tool, "jsonld": _tool_jsonld(tool["heading"], tool["meta"], url)}
+    context["canonical_url"] = url
+    return templates.TemplateResponse(request, "tool_calculator.html", context)
 
 
 @app.get("/compare/{left}/vs/{right}")
