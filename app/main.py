@@ -3798,13 +3798,27 @@ async def prewarm_area_guides(request: Request, limit: int = AREA_PREWARM_BATCH)
     if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
         return JSONResponse({"error": "not_found"}, status_code=404)
 
+    # A batch takes minutes (each cold guide is about five seconds), far
+    # longer than any HTTP client or platform will hold a request open.
+    # Run it detached and answer straight away: the caller is a cron
+    # trigger that only needs to know the work started, and a request
+    # that times out mid-batch would report failure on a run that
+    # actually succeeded.
+    limit = max(1, min(limit, len(ALL_OUTCODES)))
+    task = asyncio.create_task(_prewarm_area_batch(limit))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return JSONResponse({"started": True, "limit": limit, "total": len(ALL_OUTCODES)})
+
+
+async def _prewarm_area_batch(limit: int) -> dict:
     outcodes = [o["outcode"] for o in ALL_OUTCODES]
     # Refresh before expiry, so a guide never goes cold between runs.
     fresh_for = AREA_GUIDE_CACHE_TTL_S - AREA_PREWARM_REFRESH_AHEAD_S
     warmed, skipped, failed = 0, 0, 0
 
     for outcode in outcodes:
-        if warmed >= max(1, min(limit, len(outcodes))):
+        if warmed >= limit:
             break
         cache_key = ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, outcode)
         if await asyncio.to_thread(_cache.get_persistent, cache_key, fresh_for) is not None:
@@ -3821,9 +3835,10 @@ async def prewarm_area_guides(request: Request, limit: int = AREA_PREWARM_BATCH)
             failed += 1
         await asyncio.sleep(AREA_PREWARM_SPACING_S)
 
-    return JSONResponse({
-        "total": len(outcodes), "warmed": warmed, "already_fresh": skipped, "failed": failed,
-    })
+    logging.getLogger(__name__).info(
+        "area prewarm: warmed %d, already fresh %d, failed %d", warmed, skipped, failed
+    )
+    return {"warmed": warmed, "already_fresh": skipped, "failed": failed}
 
 
 async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) -> dict:
