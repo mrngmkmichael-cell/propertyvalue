@@ -40,6 +40,13 @@ class User(Base):
     # partners table: there's no partner management UI yet, just this
     # raw attribution string to query manually until one exists.
     referred_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Opt-in weekly digest of saved properties. Off by default and it
+    # stays that way unless the person ticks the box: the change-alert
+    # email tells every reader it only ever arrives when something
+    # actually changed, never on a schedule, and quietly starting a
+    # weekly send would make that a lie.
+    weekly_digest: Mapped[bool] = mapped_column(Boolean, default=False)
+    digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"

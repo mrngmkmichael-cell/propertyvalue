@@ -4821,6 +4821,107 @@ async def compare_postcodes(request: Request, postcode: list[str] = Query(defaul
     return templates.TemplateResponse(request, "compare.html", context)
 
 
+def _weekly_digest_email_html(rows: list[dict], watchlist_url: str, settings_url: str) -> str:
+    """The opt-in weekly round-up. Every property gets a line whether or
+    not anything moved, because "nothing changed this week" is a real
+    and useful answer for someone tracking an area."""
+    base = watchlist_url.rsplit("/watchlist", 1)[0]
+    blocks = []
+    for row in rows:
+        report_url = f"{base}/property?{urlencode({'postcode': row.get('postcode', ''), 'house_number': row.get('house_number', '')})}"
+        if row["changes"]:
+            body = "".join(
+                f'<li style="margin:4px 0;color:#3d3833;">{c}</li>' for c in row["changes"]
+            )
+            body = f'<ul style="margin:8px 0 0;padding-left:18px;">{body}</ul>'
+        else:
+            body = '<p style="margin:8px 0 0;color:#8a8378;font-size:14px;">No change this week.</p>'
+        blocks.append(
+            f'<div style="border:1px solid #e6e1d8;border-radius:8px;padding:14px 16px;margin-bottom:12px;">'
+            f'<a href="{report_url}" style="font-size:16px;font-weight:600;color:#1f2a5a;text-decoration:none;">{row["label"]}</a>'
+            f'{body}</div>'
+        )
+    moved = sum(1 for r in rows if r["changes"])
+    headline = (
+        f"{moved} of your {len(rows)} propert{'y' if len(rows) == 1 else 'ies'} changed this week"
+        if moved else
+        f"No changes on your {len(rows)} saved propert{'y' if len(rows) == 1 else 'ies'} this week"
+    )
+    return (
+        '<div style="font-family:Georgia,serif;max-width:540px;margin:0 auto;padding:8px;">'
+        '<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8378;margin:0 0 4px;">UKPropertyInsight</p>'
+        f'<h2 style="margin:0 0 14px;color:#191613;">{headline}</h2>'
+        + "".join(blocks) +
+        f'<p style="margin:16px 0;"><a href="{watchlist_url}" style="color:#1f2a5a;">Open My properties</a></p>'
+        '<p style="color:#8a8378;font-size:12px;line-height:1.5;">'
+        "You asked for this weekly round-up when you ticked the box in My properties. "
+        f'<a href="{settings_url}" style="color:#8a8378;">Turn it off</a> and you will only hear from us '
+        "when something on a saved property actually changes."
+        "</p></div>"
+    )
+
+
+@app.post("/watchlist/weekly-digest")
+def watchlist_weekly_digest(request: Request, enabled: str = Form("")):
+    context = base_context(request)
+    if not context["current_user"]:
+        return RedirectResponse("/login?next=/watchlist", status_code=303)
+    watchlist.set_weekly_digest(context["current_user"]["id"], enabled == "on")
+    return RedirectResponse("/watchlist?digest=" + ("on" if enabled == "on" else "off"), status_code=303)
+
+
+@app.post("/internal/send-weekly-digest")
+async def send_weekly_digest(request: Request):
+    """Scheduled job (see .github/workflows/weekly-digest.yml). Emails
+    only the accounts that opted in, and only about properties they
+    saved. Shares the change detection with the daily alert job, but
+    deliberately does NOT consume the snapshot: the alert job owns
+    that, and a digest that silently swallowed a change would stop the
+    person being told about it promptly."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    if not email_service.is_configured():
+        return JSONResponse({"error": "email_not_configured"}, status_code=503)
+
+    watchlist_url = f"{_public_base_url(request)}/watchlist"
+    subscribers = watchlist.digest_subscribers()
+    sent = 0
+
+    for sub in subscribers:
+        rows = []
+        for item in sub["items"]:
+            try:
+                fresh = await _comparison_summary(item["postcode"], item["house_number"])
+            except Exception:  # noqa: BLE001 - one bad address must not sink the digest
+                continue
+            old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
+            rows.append({
+                "label": item["postcode"] + (f", {item['house_number']}" if item["house_number"] else ""),
+                "postcode": item["postcode"],
+                "house_number": item["house_number"],
+                "changes": _snapshot_changes(old, fresh) if old else [],
+            })
+        if not rows:
+            continue
+        moved = sum(1 for r in rows if r["changes"])
+        subject = (
+            f"Your week: {moved} propert{'y' if moved == 1 else 'ies'} changed"
+            if moved else "Your week: nothing changed on your saved properties"
+        )
+        ok = await email_service.send_email(
+            sub["email"], subject,
+            _weekly_digest_email_html(rows, watchlist_url, watchlist_url),
+        )
+        if ok:
+            watchlist.mark_digest_sent(sub["user_id"])
+            sent += 1
+
+    return JSONResponse({"subscribers": len(subscribers), "sent": sent})
+
+
 def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:
     base = watchlist_url.rsplit("/watchlist", 1)[0]
     blocks = []

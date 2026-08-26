@@ -10,6 +10,27 @@
 
 {% if alerts_configured and items %}
 <p class="section-sub">We email you if anything on this list changes. No need to keep checking back.</p>
+
+{# Off unless asked for. The change-alert email tells every reader it
+   only arrives when something actually changed, so a scheduled send
+   has to be something they chose. #}
+<form class="digest-optin" action="/watchlist/weekly-digest" method="post">
+    <label class="digest-optin-label">
+        <input type="checkbox" name="enabled" value="on"
+               {% if current_user.weekly_digest %}checked{% endif %}
+               onchange="this.form.submit()">
+        <span>
+            <strong>Also send me a weekly round-up</strong>
+            Every Monday, one email covering all your saved properties, including the weeks nothing moves. Off by default, and you can stop it any time.
+        </span>
+    </label>
+    <noscript><button type="submit">Save</button></noscript>
+</form>
+{% if request.query_params.get("digest") == "on" %}
+<p class="notice notice-good">Weekly round-up on. The first one arrives Monday.</p>
+{% elif request.query_params.get("digest") == "off" %}
+<p class="notice">Weekly round-up off. You will still hear from us when something changes.</p>
+{% endif %}
 {% endif %}
 
 {% if changed_item_count %}

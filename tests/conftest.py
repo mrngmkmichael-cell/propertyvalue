@@ -39,6 +39,18 @@ def client():
         yield c
 
 
+@pytest.fixture(autouse=True)
+def _no_leaked_session(request):
+    """The client is session-scoped for speed, so its cookie jar is
+    shared by every test. One test signing in would otherwise leave
+    every later test authenticated, which quietly changed what the
+    report page rendered and failed two unrelated tests. Each test
+    starts signed out."""
+    if "client" in request.fixturenames:
+        request.getfixturevalue("client").cookies.clear()
+    yield
+
+
 # ---- Fakes for the property report --------------------------------------
 # The report fans out to ~30 upstream services. Tests don't exercise
 # those (they have their own units); they exercise that the page renders

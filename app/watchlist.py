@@ -2,6 +2,8 @@
 in main.py the same way the external-API lookups live in
 app/services/.
 """
+from datetime import datetime, timezone
+
 from sqlalchemy import select
 
 from app.db import get_session
@@ -106,4 +108,45 @@ def remove_item(user_id: int, item_id: int) -> None:
         item = session.get(WatchlistItem, item_id)
         if item and item.user_id == user_id:
             session.delete(item)
+            session.commit()
+
+
+def digest_subscribers() -> list[dict]:
+    """Everyone who has opted into the weekly digest, with their saved
+    items. Opt-in only: the change-alert email promises readers they
+    hear from us only when something changed, so a scheduled send may
+    never include someone who has not asked for it."""
+    with get_session() as session:
+        rows = session.execute(
+            select(WatchlistItem, User.id, User.email)
+            .join(User, WatchlistItem.user_id == User.id)
+            .where(User.weekly_digest.is_(True))
+            .order_by(WatchlistItem.created_at.desc())
+        ).all()
+
+    by_user: dict[int, dict] = {}
+    for item, user_id, email in rows:
+        entry = by_user.setdefault(user_id, {"user_id": user_id, "email": email, "items": []})
+        entry["items"].append({
+            "id": item.id,
+            "postcode": item.postcode,
+            "house_number": item.house_number,
+            "last_snapshot": item.last_snapshot,
+        })
+    return list(by_user.values())
+
+
+def set_weekly_digest(user_id: int, enabled: bool) -> None:
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.weekly_digest = bool(enabled)
+            session.commit()
+
+
+def mark_digest_sent(user_id: int) -> None:
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if user is not None:
+            user.digest_sent_at = datetime.now(timezone.utc)
             session.commit()

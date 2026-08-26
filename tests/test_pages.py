@@ -226,3 +226,92 @@ def test_share_card_never_shows_premium_figures():
     rendered = " ".join(f"{a} {b}" for a, b in facts)
     assert "999,999" not in rendered and "41,000" not in rendered
     assert len(facts) <= 3
+
+
+def test_weekly_digest_endpoint_needs_the_shared_secret(client, monkeypatch):
+    """It emails real people, so an unauthenticated caller must not be
+    able to fire it. Same gate as the daily alert job."""
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
+    assert client.post("/internal/send-weekly-digest").status_code == 404
+    assert client.post("/internal/send-weekly-digest",
+                       headers={"x-alerts-secret": "wrong"}).status_code == 404
+
+
+def test_weekly_digest_is_opt_in_only(client, monkeypatch):
+    """Every change-alert email already sent promises the reader they
+    only hear from us when something actually changed. A scheduled
+    email may therefore only ever go to someone who ticked the box."""
+    from app import watchlist
+
+    seen = {}
+
+    def _subscribers():
+        seen["called"] = True
+        return []
+
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
+    monkeypatch.setattr(watchlist, "digest_subscribers", _subscribers)
+
+    async def _send(*a, **kw):
+        raise AssertionError("nobody opted in, so nothing may be sent")
+
+    from app.services import email as email_service
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    monkeypatch.setattr(email_service, "send_email", _send)
+
+    r = client.post("/internal/send-weekly-digest", headers={"x-alerts-secret": "s3cret"})
+    assert r.status_code == 200
+    assert r.json() == {"subscribers": 0, "sent": 0}
+    assert seen.get("called")
+
+
+def test_digest_email_covers_quiet_weeks_and_offers_an_off_switch():
+    from app import main as app_main
+
+    html = app_main._weekly_digest_email_html(
+        [{"label": "M1 1AE", "postcode": "M1 1AE", "house_number": "", "changes": []}],
+        "https://example.test/watchlist", "https://example.test/watchlist",
+    )
+    assert "No change this week." in html
+    assert "Turn it off" in html
+    assert "nothing changed" in html.lower() or "No changes" in html
+
+
+def _digest_form(body: str) -> str:
+    """Just the opt-in form. Anchored on its action, not its class: the
+    critical CSS is inlined into the page, so splitting on the class
+    name lands in the stylesheet instead."""
+    return body.split('action="/watchlist/weekly-digest"', 1)[1].split("</form>", 1)[0]
+
+
+def test_watchlist_shows_the_digest_optin_to_a_signed_in_user(client, monkeypatch):
+    """The opt-in has to be visible and reflect the account's current
+    setting, or it is not really an opt-in."""
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
+    monkeypatch.setenv("RESEND_API_KEY", "re_test")
+
+    r = client.post("/signup", data={
+        "email": "digest-tester@example.test", "password": "correct horse battery staple",
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303), r.status_code
+
+    # The opt-in only appears once there is something to digest.
+    from app import auth, watchlist
+    from app.db import get_session
+    with get_session() as db:
+        user = auth.find_user_by_email(db, "digest-tester@example.test")
+        user_id = user.id
+    watchlist.save_item(user_id, "M1 1AE", "", "")
+
+    body = client.get("/watchlist").text
+    assert "Also send me a weekly round-up" in body
+    assert 'name="enabled"' in body
+    assert "checked" not in _digest_form(body)
+
+    client.post("/watchlist/weekly-digest", data={"enabled": "on"}, follow_redirects=False)
+    body = client.get("/watchlist").text
+    assert "checked" in _digest_form(body)
+
+    client.post("/watchlist/weekly-digest", data={}, follow_redirects=False)
+    body = client.get("/watchlist").text
+    assert "checked" not in _digest_form(body)
