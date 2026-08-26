@@ -1473,7 +1473,11 @@ button {
     cursor: pointer;
 }
 
-button:hover { background: var(--accent-hover); }
+/* Hover only for the same unclassed buttons the base rule exists for.
+   A bare `button:hover` outranks `.dashboard-card` (pseudo-class beats
+   the class rule's specificity), which painted every report card navy
+   under the cursor. */
+button:not([class]):hover { background: var(--accent-hover); }
 
 .search-form button,
 .stacked-form button {
