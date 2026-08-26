@@ -12,6 +12,7 @@ import secrets
 import statistics
 import time
 from urllib.parse import quote, urlencode
+from xml.sax.saxutils import escape
 
 import httpx
 from dotenv import load_dotenv
@@ -995,6 +996,11 @@ try:
 except OSError:
     ALL_OUTCODES = []
 
+# Membership test for "is this a real postcode district?", used to decide
+# whether a page gets its own canonical URL. A set so the check is O(1) on
+# a hot path rather than a 2,943-entry scan.
+KNOWN_OUTCODES: frozenset[str] = frozenset(o["outcode"] for o in ALL_OUTCODES)
+
 AREA_GUIDE_SEED_OUTCODES = [
     # Every entry here has been verified against postcodes.io's real
     # /outcodes/{outcode} endpoint (see scripts/validate_outcodes.py) -
@@ -1079,13 +1085,27 @@ AREA_GUIDE_SEED_OUTCODES = [
 
 def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """(url, priority) for every page the sitemap advertises. Shared by
-    the sitemap route and the IndexNow pinger so they can never drift."""
+    the sitemap route and the IndexNow pinger so they can never drift.
+
+    Submits the 367 curated districts, not all 2,943. Search Console on
+    26 Aug 2026 reported 21 pages indexed against 2,956 submitted, with
+    105 "Crawled - currently not indexed": asking a domain this new to
+    take the whole country at once spends its crawl on the long tail
+    before the cities anyone searches for. The rest stay live, linked
+    from /areas and fully crawlable - they are just not queue-jumped to
+    the front. Grow this list as districts earn traffic.
+    """
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
                     "/compare"]
-    outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
+    outcodes = [o for o in AREA_GUIDE_SEED_OUTCODES if o in KNOWN_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
+    # The per-district school guides, now that each one canonicals to
+    # itself and is allowed to rank. These are the deepest pages on the
+    # site (30,000-40,000 words of Ofsted and catchment detail against
+    # ~600 for an area guide), so they go in at the area guides' priority.
+    entries += [(f"{base}/schools/guide?q={o}", "0.7") for o in outcodes]
     return entries
 
 
@@ -1097,10 +1117,14 @@ def sitemap(request: Request):
     # those, so this is honest without tracking per-page dates.
     lastmod = datetime.date.today().isoformat()
     entries = _sitemap_entries(base)
+    # Every URL in the sitemap now carries a query string, and a bare "&"
+    # in <loc> is malformed XML that makes Google reject the whole file.
+    # One param today, so nothing to escape yet; escaping here means a
+    # second one never silently breaks the sitemap.
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>{u}</loc><lastmod>{lastmod}</lastmod><priority>{pr}</priority></url>\n"
+        + "".join(f"  <url><loc>{escape(u)}</loc><lastmod>{lastmod}</lastmod><priority>{pr}</priority></url>\n"
                   for u, pr in entries)
         + "</urlset>"
     )
@@ -5266,6 +5290,23 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
     context["areas"] = areas_with_stats
     context["areas_param"] = _areas_param(area_list)
     context["can_add_more"] = len(area_list) < MAX_COMPARE_AREAS
+
+    # A one-district guide is a real page worth ranking: /schools/guide?q=M1
+    # carries 40,000 words of Ofsted detail found nowhere else on the site.
+    # The default canonical drops the query string, which pointed all of
+    # them at the 3,700-word landing page and told Google to index that
+    # instead - so none of them could ever rank for "schools in M1".
+    #
+    # Only the single-district case gets its own canonical. A two-to-four
+    # area comparison is combinatorial (2,943 districts choose 4) and a
+    # free-text search resolves to whatever a geocoder returns, so both
+    # keep folding into the landing page rather than opening the index up
+    # to an unbounded set of URLs. Normalized to the uppercase outcode, so
+    # "m1", "M1" and " M1 " are one URL rather than three.
+    if len(areas_with_stats) == 1 and areas_with_stats[0]["outcode"] in KNOWN_OUTCODES:
+        context["canonical_url"] = (
+            f"{_public_base_url(request)}/schools/guide?q={areas_with_stats[0]['outcode']}"
+        )
     # The landing state shows the full district index under the search
     # box, like /areas does; the results page does not carry it.
     if not areas_with_stats:

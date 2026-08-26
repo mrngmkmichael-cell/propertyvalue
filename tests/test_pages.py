@@ -69,6 +69,85 @@ def test_canonical_strips_tracking_params(client):
     assert "utm_source" not in canon and "ref=" not in canon
 
 
+@pytest.fixture
+def fake_place(monkeypatch):
+    """Resolve a search term without calling postcodes.io or Nominatim.
+    Mirrors the real resolver's contract: an outcode comes back labelled
+    with the uppercase outcode, a place name with the place name."""
+    from app import main as app_main
+
+    async def _resolve(query):
+        query = query.strip()
+        if re.match(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", query, re.I):
+            return {"latitude": 53.45, "longitude": -2.22, "label": query.upper()}
+        return {"latitude": 53.48, "longitude": -2.24, "label": query}
+
+    monkeypatch.setattr(app_main.place_search, "resolve", _resolve)
+
+
+def _canonical(client, path):
+    body = client.get(path).text
+    return re.search(r'<link rel="canonical" href="([^"]+)"', body).group(1)
+
+
+@pytest.mark.parametrize("query", ["M1", "m1", " M1 "])
+def test_single_district_school_guide_canonicals_to_itself(client, fake_place, query):
+    """These pages carry 30,000-40,000 words of Ofsted detail. They used
+    to inherit the default canonical, which drops the query string and so
+    pointed every one of them at the 3,700-word landing page - telling
+    Google to index that instead, and leaving them unable to rank for
+    "schools in M1" no matter how good they got. Casing and spacing all
+    normalize to the one URL rather than splitting the ranking signal."""
+    canon = _canonical(client, f"/schools/guide?q={query}")
+    assert canon.endswith("/schools/guide?q=M1"), canon
+
+
+def test_multi_area_and_freetext_school_guides_stay_folded(client, fake_place):
+    """Only the single-district case earns its own URL. Comparisons are
+    combinatorial (2,943 districts choose 4) and free text is whatever a
+    geocoder returns, so neither is allowed into the index."""
+    two = "53.4808,-2.2426,M1|53.8008,-1.5491,LS1"
+    assert _canonical(client, f"/schools/guide?areas={two}").endswith("/schools/guide")
+    assert _canonical(client, "/schools/guide?q=Manchester").endswith("/schools/guide")
+    assert _canonical(client, "/schools/guide").endswith("/schools/guide")
+
+
+def test_sitemap_advertises_only_self_canonical_school_guides(client, fake_place):
+    """A sitemap entry that canonicals elsewhere asks Google to crawl a
+    page and then ignore it. Every school guide submitted must point at
+    itself."""
+    root = ET.fromstring(client.get("/sitemap.xml").content)
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    locs = [el.text for el in root.findall(".//s:loc", ns)]
+    schools = [u for u in locs if "/schools/guide?q=" in u]
+    assert len(schools) > 300
+
+    for url in (schools[0], schools[len(schools) // 2], schools[-1]):
+        outcode = url.rsplit("q=", 1)[1]
+        assert _canonical(client, f"/schools/guide?q={outcode}") == url, url
+
+
+def test_sitemap_is_curated_not_the_whole_country(client):
+    """Search Console on 26 Aug 2026: 21 indexed against 2,956 submitted,
+    105 "Crawled - currently not indexed". Submitting every district at
+    once spends a new domain's crawl on the long tail. The rest stay live
+    and linked from /areas, just not queue-jumped."""
+    root = ET.fromstring(client.get("/sitemap.xml").content)
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    locs = [el.text for el in root.findall(".//s:loc", ns)]
+    areas = [u for u in locs if "/area/" in u]
+
+    from app import main as app_main
+    assert len(areas) == len(app_main.AREA_GUIDE_SEED_OUTCODES)
+    assert len(areas) < len(app_main.ALL_OUTCODES) / 2
+
+    # Dropped from the sitemap must not mean hidden: still 200, still
+    # indexable, still reachable by a crawler through /areas.
+    assert client.get("/area/AB12").status_code == 200
+    assert "noindex" not in client.get("/area/AB12").text.lower()
+    assert client.get("/areas").text.count('href="/area/') > 2900
+
+
 def test_page_titles_are_specific_not_generic(client):
     generic = {"Premium", "School Guide", "Chrome Extension", "Why trust this", "UKPropertyInsight"}
     for path in ("/", "/premium", "/schools/guide", "/browser-extension", "/methodology"):
