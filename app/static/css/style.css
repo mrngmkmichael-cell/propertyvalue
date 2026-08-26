@@ -6907,3 +6907,60 @@ body.theme-contrast .lx-build-tally,
 body.theme-contrast .lx-build-hint,
 body.theme-contrast .lx-build-done-head { font-size: 0.74rem; letter-spacing: 0.1em; }
 body.theme-contrast .lx-strip-k { font-size: 0.72rem; }
+
+/* ---- Light theme: polish pass (27 Aug 2026) --------------------------
+   Light became the default and these are its corrections for the pieces
+   that were designed on a dark ground. */
+
+/* 1. The hero type carried a heavy dark-theme glow; on cream it read
+   as smudge. A whisper of lift is all light text needs. */
+body:not(.theme-dark) .lx-hero-h1 { text-shadow: 0 1px 2px rgba(28, 23, 20, 0.07); }
+body:not(.theme-dark) .lx-hero-stats { text-shadow: none; }
+body:not(.theme-dark) .lx-hero-dek { text-shadow: none; }
+
+/* 2. The report strip, restyled for a light ground: full corner radius,
+   frosted white, one soft shadow, and a chrome bar that is a hairline
+   rather than a grey slab. */
+body:not(.theme-dark) .lx-strip {
+    border-radius: var(--radius-lg);
+    border-color: var(--border);
+    background: rgba(255, 255, 255, 0.78);
+    box-shadow: var(--shadow-lg);
+}
+body:not(.theme-dark) .lx-strip-chrome {
+    background: transparent;
+    border-bottom-color: var(--border);
+}
+body:not(.theme-dark) .lx-dot { background: var(--border-strong); }
+body:not(.theme-dark) .lx-dot-gold { background: var(--accent); }
+
+/* 3. The build stage assumed a dark ground: near-black pills with dark
+   text read as blank grey lozenges on cream. White pills, accent-tinted
+   borders, real text. */
+body:not(.theme-dark) .lx-build-mote {
+    background: rgba(255, 255, 255, 0.92);
+    border-color: rgba(43, 76, 140, 0.28);
+    color: var(--ink-soft);
+    box-shadow: var(--shadow-sm);
+}
+body:not(.theme-dark) .lx-build-pin {
+    background:
+        radial-gradient(60rem 30rem at 72% 12%, rgba(43, 76, 140, 0.05), transparent 55%),
+        var(--bg);
+}
+
+/* 4. The coverage map was dimmed for a dark card; on light it sat as a
+   near-black slab. A pale print-style map instead, with ink captions. */
+body:not(.theme-dark) .lx-about-map {
+    filter: grayscale(1) brightness(1.08) contrast(0.82) opacity(0.85);
+}
+body:not(.theme-dark) .lx-about-caption,
+body:not(.theme-dark) .lx-about-caption-figure { color: var(--ink); }
+
+/* 5. The hero image ended in a hard line against the page: the light
+   scrim only dissolved the bottom 2%. A real fade finishes the shot. */
+body:not(.theme-dark) .lx-hero-scrim {
+    background:
+        linear-gradient(100deg, rgba(250, 249, 246, 0.97) 0%, rgba(250, 249, 246, 0.86) 46%, rgba(250, 249, 246, 0.4) 100%),
+        linear-gradient(0deg, var(--bg) 7%, rgba(250, 249, 246, 0) 55%);
+}

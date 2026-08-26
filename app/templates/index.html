@@ -1025,6 +1025,13 @@
         const canvas = document.getElementById('lx-build-orb');
         if (!canvas || !canvas.getContext) return;
         const ctx = canvas.getContext('2d');
+        /* Theme is decided before first paint and sticks for the
+           session, so reading it once here is safe. Gold points vanish
+           on the light ground; the light sphere runs in the accent
+           navy instead. */
+        const darkTheme = document.body.classList.contains('theme-dark');
+        const DOT = darkTheme ? '#d4a95f' : '#2b4c8c';
+        const DOT_BRIGHT = darkTheme ? '#e6c584' : '#5b7ab8';
         const N = 420, pts = [];
         const GOLDEN = Math.PI * (3 - Math.sqrt(5));
         for (let i = 0; i < N; i++) {
@@ -1066,8 +1073,8 @@
                 const px = cx + x * R * persp;
                 const py = cy + y * R * persp;
                 const depth = (z + 1) / 2;           /* 0 back, 1 front */
-                ctx.globalAlpha = 0.08 + depth * (pt.big ? 0.8 : 0.5);
-                ctx.fillStyle = pt.big ? '#e6c584' : '#d4a95f';
+                ctx.globalAlpha = (darkTheme ? 0.08 : 0.05) + depth * (pt.big ? 0.8 : (darkTheme ? 0.5 : 0.38));
+                ctx.fillStyle = pt.big ? DOT_BRIGHT : DOT;
                 ctx.beginPath();
                 ctx.arc(px, py, (pt.big ? 1.7 : 1.05) * (0.6 + depth * 0.9) , 0, 6.2832);
                 ctx.fill();

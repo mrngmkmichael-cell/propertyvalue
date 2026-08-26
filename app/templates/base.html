@@ -97,33 +97,30 @@
 
     {% block extra_head %}{% endblock %}
 </head>
-{# Dark is the site's look, so it ships in the markup rather than being
-   switched on by script: no JavaScript dependency, nothing to paint
-   twice, and the class is there for the very first frame. #}
-<body class="theme-dark">
-    {# The light palette is still complete and still reachable with
-       ?theme=light, which sticks for the session; ?theme=dark returns.
-       Only the opt-out runs in script, so the default survives with
-       JavaScript off or storage disabled.
+<body>
+    {# Light is the default (readers found the dark theme hard going;
+       decided 27 Aug 2026). The dark palette is still complete and
+       reachable with ?theme=dark, which sticks for the session;
+       ?theme=light returns. Only the opt-in runs in script, so the
+       default survives with JavaScript off or storage disabled.
 
        This has to be the first thing inside <body>, not a deferred
-       script: nothing below has been parsed yet, so the class is gone
-       before the first paint and there is no flash of dark on the way to
-       light. The HTML is identical for every visitor either way, so the
-       anonymous report cache still holds a single copy. #}
+       script: nothing below has been parsed yet, so the class lands
+       before the first paint and there is no flash of light on the way
+       to dark. The HTML is identical for every visitor either way, so
+       the anonymous report cache still holds a single copy. #}
     <script>
         (function () {
             try {
                 var q = new URLSearchParams(location.search).get('theme');
                 if (q === 'dark' || q === 'light' || q === 'contrast') sessionStorage.setItem('uki-theme', q);
                 var chosen = sessionStorage.getItem('uki-theme');
-                if (chosen === 'light') {
-                    document.body.classList.remove('theme-dark');
+                if (chosen === 'dark') {
+                    document.body.classList.add('theme-dark');
                 } else if (chosen === 'contrast') {
-                    /* Preview variant: the dark theme with its two dimmer
-                       text colours lifted and the smallest labels set
-                       larger. Reachable only by the ?theme=contrast link,
-                       never a default. */
+                    /* The higher-readability dark preview: dark plus
+                       lifted inks and larger micro-labels. Link-only. */
+                    document.body.classList.add('theme-dark');
                     document.body.classList.add('theme-contrast');
                 }
             } catch (e) { /* storage unavailable: keep the default */ }
