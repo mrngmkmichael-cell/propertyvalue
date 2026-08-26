@@ -315,3 +315,10 @@ def test_watchlist_shows_the_digest_optin_to_a_signed_in_user(client, monkeypatc
     client.post("/watchlist/weekly-digest", data={}, follow_redirects=False)
     body = client.get("/watchlist").text
     assert "checked" not in _digest_form(body)
+
+
+def test_prewarm_endpoint_needs_the_shared_secret(client, monkeypatch):
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
+    assert client.post("/internal/prewarm-area-guides").status_code == 404
+    assert client.post("/internal/prewarm-area-guides",
+                       headers={"x-alerts-secret": "nope"}).status_code == 404

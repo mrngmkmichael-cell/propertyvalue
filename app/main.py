@@ -3413,7 +3413,85 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 
 
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
-AREA_GUIDE_CACHE_TTL_S = 86400  # public, crawler-facing - a day's staleness is a fair trade for not re-running this gather on every crawl hit
+AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
+# Bump whenever the cached area-guide payload gains or loses a field.
+AREA_GUIDE_PAYLOAD_VERSION = 4
+AREA_SALES_RECENT_YEARS = 2
+AREA_SALES_SHOWN = 6
+AREA_SALES_MIN_FOR_MEDIAN = 5
+# Land Registry's residential property types. "other" is its commercial
+# and mixed-use bucket and is deliberately absent.
+AREA_SALES_HOME_TYPES = {"detached", "semi-detached", "terraced", "flat-maisonette"}
+AREA_SALES_TYPE_LABELS = {
+    "detached": "detached houses",
+    "semi-detached": "semi-detached houses",
+    "terraced": "terraced houses",
+    "flat-maisonette": "flats and maisonettes",
+}
+
+
+async def _outcode_sales(lat: float, lon: float) -> dict | None:
+    """Recent real sales on the streets around a district's centre.
+
+    Reuses the comparables chain (nearby postcodes, then one batched
+    Land Registry query) rather than scanning the district: a prefix
+    scan over the whole dataset times out on that endpoint, while a
+    VALUES clause of exact postcodes returns in well under a second.
+    """
+    nearby = await nearby_postcodes(lat, lon)
+    if not nearby:
+        return None
+    transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
+    if not transactions:
+        return None
+
+    # Land Registry's "other" property type is commercial and mixed-use,
+    # not housing. Left in, a city-centre district reported a £22.9m
+    # office block inside its house-price range and told the reader most
+    # local sales were "other properties". This page is about living
+    # somewhere, so it counts homes only.
+    homes = [t for t in transactions if (t.get("property_type") or "").lower() in AREA_SALES_HOME_TYPES]
+    if not homes:
+        return None
+
+    cutoff = (datetime.date.today() - datetime.timedelta(days=365 * AREA_SALES_RECENT_YEARS)).isoformat()
+    recent = [t for t in homes if (t.get("date") or "") >= cutoff]
+    pool = recent or homes
+
+    amounts = sorted(int(t["amount"]) for t in pool if str(t.get("amount", "")).isdigit())
+    if not amounts:
+        return None
+
+    latest = sorted(pool, key=lambda t: t.get("date") or "", reverse=True)[:AREA_SALES_SHOWN]
+    types = collections.Counter(
+        AREA_SALES_TYPE_LABELS.get((t["property_type"] or "").lower(), t["property_type"])
+        for t in pool if t.get("property_type")
+    )
+    return {
+        "count": len(pool),
+        "is_recent": bool(recent),
+        "years": AREA_SALES_RECENT_YEARS,
+        # A "median" of two sales is a number pretending to be a
+        # statistic. Below the threshold the page shows the sales
+        # themselves and says there are too few to average, which is
+        # the honest version and still tells the reader something real
+        # about a district with almost no housing in it.
+        "enough_for_median": len(amounts) >= AREA_SALES_MIN_FOR_MEDIAN,
+        "median": amounts[len(amounts) // 2],
+        "low": amounts[0],
+        "high": amounts[-1],
+        "commonest_type": types.most_common(1)[0][0] if types else None,
+        "latest": [
+            {
+                "address": t["address"],
+                "postcode": t["postcode"],
+                "amount": t["amount"],
+                "date": t["date"],
+                "property_type": t.get("property_type"),
+            }
+            for t in latest
+        ],
+    }
 
 
 # The aggregate fields area_guide.html reads from the schools landscape.
@@ -3467,6 +3545,19 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
                 f"Prices in {la['name']} are {direction} {abs(la['annual_change_pct']):.1f}% on a year ago "
                 "(UK House Price Index).",
             ))
+    # The council-wide average above is shared with every district in the
+    # same authority; this one is specific to these streets, so it is the
+    # answer worth surfacing in a search result.
+    sales = context.get("local_sales")
+    if sales and sales.get("median") and sales.get("enough_for_median"):
+        faqs.append((
+            f"What do houses actually sell for in {outcode}?",
+            f"The median of {sales['count']} recorded sales around central {outcode}"
+            + (f" in the last {sales['years']} years" if sales.get("is_recent") else "")
+            + f" is £{sales['median']:,.0f}, ranging from £{sales['low']:,.0f} to "
+            f"£{sales['high']:,.0f} (HM Land Registry Price Paid Data).",
+        ))
+
     landscape = context.get("landscape")
     if not context.get("is_scotland") and landscape and landscape.get("total_schools") and landscape.get("good_or_better_pct") is not None:
         faqs.append((
@@ -3503,6 +3594,146 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             for q, a in faqs
         ],
     }) if faqs else ""
+
+
+async def _bounded(coro, seconds: float):
+    """Give a slow upstream a hard budget. The task keeps running past
+    the deadline (shielded), so its own cache still fills for the next
+    visitor - we just stop waiting.
+
+    Amenities come from Overpass, which measured 10.6s cold against
+    under 4s for everything else on an area guide. Those pages exist to
+    be crawled and ranked, and a crawler will not wait ten seconds for
+    "12 supermarkets, 40 pubs"; past the budget the line is simply
+    omitted, which the template already copes with.
+    """
+    task = asyncio.ensure_future(coro)
+    try:
+        return await asyncio.wait_for(asyncio.shield(task), timeout=seconds)
+    except asyncio.TimeoutError:
+        return None
+
+
+AREA_PREWARM_BATCH = 250
+AREA_PREWARM_REFRESH_AHEAD_S = 86400 * 2
+AREA_PREWARM_SPACING_S = 0.4
+
+
+@app.post("/internal/prewarm-area-guides")
+async def prewarm_area_guides(request: Request, limit: int = AREA_PREWARM_BATCH):
+    """Warm the persistent cache for area guides that are missing or
+    close to expiring.
+
+    A cold guide takes about five seconds, because it waits on live
+    Police.uk and Land Registry calls. With 2,943 of them and a crawler
+    that visits each URL rarely, essentially every crawl was paying
+    that five seconds, which is a poor use of the crawl budget Google
+    gives a new site. Warmed ahead of time, the same page serves in
+    under half a second from the database.
+
+    Deliberately a small batch on a schedule rather than all 2,943 at
+    once: the upstreams are public services doing us a favour, and
+    nothing here is urgent enough to justify hammering them. At this
+    size the whole set stays warm on a comfortable rotation.
+    """
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    outcodes = [o["outcode"] for o in ALL_OUTCODES]
+    # Refresh before expiry, so a guide never goes cold between runs.
+    fresh_for = AREA_GUIDE_CACHE_TTL_S - AREA_PREWARM_REFRESH_AHEAD_S
+    warmed, skipped, failed = 0, 0, 0
+
+    for outcode in outcodes:
+        if warmed >= max(1, min(limit, len(outcodes))):
+            break
+        cache_key = ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, outcode)
+        if await asyncio.to_thread(_cache.get_persistent, cache_key, fresh_for) is not None:
+            skipped += 1
+            continue
+        try:
+            location, _ = await _resolve_extension_location(outcode)
+            if location is None:
+                failed += 1
+                continue
+            await _build_area_payload(outcode, location, cache_key)
+            warmed += 1
+        except Exception:  # noqa: BLE001 - one bad district must not stop the run
+            failed += 1
+        await asyncio.sleep(AREA_PREWARM_SPACING_S)
+
+    return JSONResponse({
+        "total": len(outcodes), "warmed": warmed, "already_fresh": skipped, "failed": failed,
+    })
+
+
+async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) -> dict:
+    """Fetch and assemble everything an area guide renders, and store
+    it in the persistent cache. Shared by the page itself and the
+    prewarm job, so a warmed entry is exactly what a visitor would
+    have been served rather than a thinner stand-in."""
+    lat, lon = location["latitude"], location["longitude"]
+    codes = location.get("codes", {})
+
+    _last_gather_timings.clear()
+    (hpi_result, crime_result, landscape_result, flood_zone_result, deprivation_result,
+     amenities_result, local_sales_result) = await asyncio.gather(
+        _timed("hpi", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
+        _timed("crime", crime.summary_for_outcode(outcode)),
+        _timed("school-landscape", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
+        _timed("flood-zone", flood_zones.zone_for(lat, lon)),
+        _timed("deprivation", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
+        _timed("amenities", _bounded(amenities.nearby_amenities_and_station(lat, lon, lite=True), 3.0)),
+        # Actual sales on the streets of this district, not the council's
+        # average. Everything else on this page is measured from the
+        # district's centre point, and neighbouring centres in a city are
+        # a few hundred metres apart, so M2 and M3 came out with the same
+        # schools, the same crime and the same flood zone: the pages
+        # differed only in their own name. Real transactions differ
+        # street by street, which is both what makes each guide worth
+        # reading and what makes it a distinct page.
+        _timed("local-sales", _bounded(_outcode_sales(lat, lon), 6.0)),
+        return_exceptions=True,
+    )
+
+    def ok(result):
+        return result if not isinstance(result, Exception) else None
+
+    amenities_data = ok(amenities_result)
+    amenity_plurals = {
+        "supermarket": "supermarkets", "pharmacy": "pharmacies", "restaurant": "restaurants",
+        "pub": "pubs", "hospital": "hospitals",
+    }
+    amenity_summary = [
+        {"count": len(amenities_data["categories"][cat]), "label": label if len(amenities_data["categories"][cat]) != 1 else cat}
+        for cat, label in amenity_plurals.items()
+        if amenities_data and amenities_data["categories"].get(cat)
+    ]
+
+    landscape = ok(landscape_result)
+    if landscape:
+        # This page reads three aggregate fields from the landscape. The
+        # full per-school list that comes with it (250 rows, 1.4 MB for a
+        # central London district) was being cached along with them -
+        # making area guides the heaviest thing in both cache tiers by a
+        # factor of a hundred, and the reason the Render instance ran out
+        # of memory during a crawl. Keep only what the template uses.
+        landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
+
+    page_data = {
+        "hpi": ok(hpi_result),
+        "crime": ok(crime_result),
+        "landscape": landscape,
+        "flood_zone": ok(flood_zone_result),
+        "deprivation": ok(deprivation_result),
+        "amenity_summary": amenity_summary,
+        "local_sales": ok(local_sales_result),
+        "has_data": any([ok(hpi_result), ok(crime_result), ok(landscape_result), ok(flood_zone_result)]),
+    }
+    await asyncio.to_thread(_cache.set_persistent, cache_key, page_data)
+    return page_data
 
 
 @app.get("/area/{outcode}")
@@ -3553,7 +3784,11 @@ async def area_guide(request: Request, outcode: str):
     # property_search.
     context["is_scotland"] = location.get("country") == "Scotland"
 
-    cache_key = ("area_guide", outcode)
+    # Versioned: entries hold a fixed set of fields, and the persistent
+    # tier now keeps them for a week. Without a bump, adding a field
+    # means every already-cached district silently renders without it
+    # until its entry expires.
+    cache_key = ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, outcode)
     # Persistent tier: survives deploys, which is what keeps the 2,943
     # guides warm for crawlers. The DB round trip runs off the event loop.
     cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
@@ -3564,66 +3799,7 @@ async def area_guide(request: Request, outcode: str):
         response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
         return response
 
-    async def _bounded(coro, seconds: float):
-        """Give a slow upstream a hard budget on this page only. The task
-        keeps running past the deadline (shielded), so its own cache
-        still fills for the next visitor - we just stop waiting."""
-        task = asyncio.ensure_future(coro)
-        try:
-            return await asyncio.wait_for(asyncio.shield(task), timeout=seconds)
-        except asyncio.TimeoutError:
-            return None
-
-    # Amenities come from Overpass, which measured 10.6s cold against
-    # under 4s for everything else here. Area guides exist to be crawled
-    # and ranked, and a crawler will not wait ten seconds for "12
-    # supermarkets, 40 pubs". Three seconds, then the line is simply
-    # omitted - the template already copes with it missing.
-    _last_gather_timings.clear()
-    hpi_result, crime_result, landscape_result, flood_zone_result, deprivation_result, amenities_result = await asyncio.gather(
-        _timed("hpi", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
-        _timed("crime", crime.summary_for_outcode(outcode)),
-        _timed("school-landscape", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
-        _timed("flood-zone", flood_zones.zone_for(lat, lon)),
-        _timed("deprivation", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
-        _timed("amenities", _bounded(amenities.nearby_amenities_and_station(lat, lon, lite=True), 3.0)),
-        return_exceptions=True,
-    )
-
-    def ok(result):
-        return result if not isinstance(result, Exception) else None
-
-    amenities_data = ok(amenities_result)
-    amenity_plurals = {
-        "supermarket": "supermarkets", "pharmacy": "pharmacies", "restaurant": "restaurants",
-        "pub": "pubs", "hospital": "hospitals",
-    }
-    amenity_summary = [
-        {"count": len(amenities_data["categories"][cat]), "label": label if len(amenities_data["categories"][cat]) != 1 else cat}
-        for cat, label in amenity_plurals.items()
-        if amenities_data and amenities_data["categories"].get(cat)
-    ]
-
-    landscape = ok(landscape_result)
-    if landscape:
-        # This page reads three aggregate fields from the landscape. The
-        # full per-school list that comes with it (250 rows, 1.4 MB for a
-        # central London district) was being cached along with them -
-        # making area guides the heaviest thing in both cache tiers by a
-        # factor of a hundred, and the reason the Render instance ran out
-        # of memory during a crawl. Keep only what the template uses.
-        landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
-
-    page_data = {
-        "hpi": ok(hpi_result),
-        "crime": ok(crime_result),
-        "landscape": landscape,
-        "flood_zone": ok(flood_zone_result),
-        "deprivation": ok(deprivation_result),
-        "amenity_summary": amenity_summary,
-        "has_data": any([ok(hpi_result), ok(crime_result), ok(landscape_result), ok(flood_zone_result)]),
-    }
-    await asyncio.to_thread(_cache.set_persistent, cache_key, page_data)
+    page_data = await _build_area_payload(outcode, location, cache_key)
     context.update(page_data)
     _area_guide_extras(context, outcode, lat, lon)
     response = templates.TemplateResponse(request, "area_guide.html", context)

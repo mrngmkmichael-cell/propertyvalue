@@ -83,12 +83,25 @@ async def _fetch_summary(lat: float, lon: float) -> dict:
                 latest = ""
             if latest:
                 for month in _previous_months(latest, _WALKBACK_MONTHS):
-                    # Spaced out: the API 429s a burst of back-to-back
-                    # month queries, and a 429 must read as "try the
-                    # next month", never as "no crime".
-                    await asyncio.sleep(0.35)
                     try:
                         records = await _street(client, lat, lon, month)
+                    except httpx.HTTPStatusError as exc:
+                        # Only a rate-limit is worth waiting out, and
+                        # only once. The first version slept 350ms
+                        # before every month unconditionally, which
+                        # cost 2.1s on exactly the rural districts that
+                        # always walk the full six months, and made
+                        # every one of their area guides that much
+                        # slower to crawl. Any other error means try
+                        # the next month, and never means "no crime".
+                        if exc.response is not None and exc.response.status_code == 429:
+                            await asyncio.sleep(1.0)
+                            try:
+                                records = await _street(client, lat, lon, month)
+                            except httpx.HTTPError:
+                                continue
+                        else:
+                            continue
                     except httpx.HTTPError:
                         continue
                     if records:

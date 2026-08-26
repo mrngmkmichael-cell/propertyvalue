@@ -1,0 +1,19 @@
+name: Prewarm area guides
+
+on:
+  schedule:
+    # Four times a day, small batches. 2,943 guides on a 7-day cache
+    # means roughly 420 need refreshing a day; 4 x 250 covers that with
+    # headroom without ever bursting at the upstream APIs.
+    - cron: "20 1,7,13,19 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Warm the next batch
+        run: |
+          curl -sf --max-time 600 -X POST \
+            "https://ukpropertyinsight.co.uk/internal/prewarm-area-guides?limit=250" \
+            -H "x-alerts-secret: ${{ secrets.ALERTS_CRON_SECRET }}"

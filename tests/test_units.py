@@ -219,3 +219,75 @@ def test_progress_sources_match_the_count_the_page_shows():
 
     assert len(app_main.GATHER_SOURCE_ORDER) == len(set(app_main.GATHER_SOURCE_ORDER))
     assert len(app_main.GATHER_SOURCE_ORDER) == len(app_main.GATHER_SOURCE_LABELS)
+
+
+# ---- area guide local sales ---------------------------------------------
+
+def _sale(amount, ptype, date="2026-06-01", postcode="LS1 1AA", address="1 TEST ST"):
+    return {"amount": str(amount), "property_type": ptype, "date": date,
+            "postcode": postcode, "address": address}
+
+
+def test_area_sales_exclude_commercial_transactions(monkeypatch):
+    """Land Registry's "other" type is commercial and mixed-use. Left
+    in, a city-centre district reported a £22.9m office block inside
+    its house-price range."""
+    import asyncio
+    from app import main as app_main
+
+    async def _nearby(lat, lon):
+        return [{"postcode": "M2 4AT", "distance_m": 10}]
+
+    async def _sold(postcodes):
+        return [
+            _sale(22_933_054, "other"),
+            _sale(200_000, "flat-maisonette"),
+            _sale(250_000, "flat-maisonette"),
+            _sale(300_000, "terraced"),
+            _sale(350_000, "detached"),
+            _sale(400_000, "semi-detached"),
+        ]
+
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    out = asyncio.run(app_main._outcode_sales(53.0, -1.0))
+
+    assert out["count"] == 5, "the commercial sale must not be counted"
+    assert out["high"] == 400_000, "a £22.9m office must not set the top of a house-price range"
+    assert out["enough_for_median"] is True
+    assert all(s["property_type"] != "other" for s in out["latest"])
+
+
+def test_area_sales_refuse_to_average_a_tiny_sample(monkeypatch):
+    """A median of two sales is a number pretending to be a statistic."""
+    import asyncio
+    from app import main as app_main
+
+    async def _nearby(lat, lon):
+        return [{"postcode": "M2 4AT", "distance_m": 10}]
+
+    async def _sold(postcodes):
+        return [_sale(200_000, "flat-maisonette"), _sale(450_000, "flat-maisonette")]
+
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    out = asyncio.run(app_main._outcode_sales(53.0, -1.0))
+
+    assert out["count"] == 2
+    assert out["enough_for_median"] is False
+    assert len(out["latest"]) == 2, "the real sales are still shown"
+
+
+def test_area_sales_return_nothing_when_no_homes_sold(monkeypatch):
+    import asyncio
+    from app import main as app_main
+
+    async def _nearby(lat, lon):
+        return [{"postcode": "M2 4AT", "distance_m": 10}]
+
+    async def _sold(postcodes):
+        return [_sale(5_000_000, "other"), _sale(9_000_000, "other")]
+
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    assert asyncio.run(app_main._outcode_sales(53.0, -1.0)) is None

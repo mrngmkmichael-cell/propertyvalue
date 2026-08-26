@@ -99,6 +99,49 @@
     </p>
 </section>
 
+{% if local_sales %}
+{# The council average above is shared with every other district in the
+   same authority. These are the actual transactions on these streets,
+   which is the part of the page that is genuinely about {{ outcode }}
+   and not about the whole city. #}
+<section class="report-section">
+    <h2>What actually sold around {{ outcode }}</h2>
+    <p class="section-sub">
+        {% if local_sales.enough_for_median %}
+        {{ local_sales.count }} recorded home sale{{ "s" if local_sales.count != 1 else "" }} on the streets around
+        central {{ outcode }}{% if local_sales.is_recent %} in the last {{ local_sales.years }} years{% endif %},
+        with a median of <strong>{{ local_sales.median | gbp }}</strong>
+        and a range from {{ local_sales.low | gbp }} to {{ local_sales.high | gbp }}.
+        {% if local_sales.commonest_type %}Mostly {{ local_sales.commonest_type }}.{% endif %}
+        {% else %}
+        Only {{ local_sales.count }} home sale{{ "s" if local_sales.count != 1 else "" }} recorded on the streets around
+        central {{ outcode }}{% if local_sales.is_recent %} in the last {{ local_sales.years }} years{% endif %},
+        too few to average meaningfully. Here they are in full instead. A district with very few
+        residential sales is usually mostly commercial.
+        {% endif %}
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Address</th><th>Type</th><th class="num">Sold for</th><th class="num">Date</th></tr></thead>
+            <tbody>
+                {% for s in local_sales.latest %}
+                <tr>
+                    <td>{{ s.address }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</td>
+                    <td>{{ s.property_type or "&mdash;" | safe }}</td>
+                    <td class="num">{{ s.amount | gbp }}</td>
+                    <td class="num">{{ s.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Source: HM Land Registry Price Paid Data. Every sale of a registered property in England
+        and Wales appears here once it completes, so the most recent weeks are always still filling in.
+    </p>
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>Schools nearby</h2>
     {% if landscape and landscape.total_schools %}
