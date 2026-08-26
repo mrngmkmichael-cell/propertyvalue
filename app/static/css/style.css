@@ -6613,3 +6613,140 @@ body.theme-dark select {
 }
 body.theme-dark input::placeholder,
 body.theme-dark textarea::placeholder { color: var(--ink-faint); }
+
+/* ---- Landing: scroll choreography (B: cascade + hairline, C: pinned build) ---- */
+
+.lx-progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    z-index: 120;
+    background: var(--accent);
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    pointer-events: none;
+}
+
+/* The hidden state is applied by script (cascade-ready), never by the
+   stylesheet alone, so no JavaScript means no hiding. */
+.cascade-ready > * {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+}
+.cascade-armed > * {
+    opacity: 1;
+    transform: none;
+    transition: opacity 500ms cubic-bezier(0.2, 0, 0, 1), transform 500ms cubic-bezier(0.2, 0, 0, 1);
+    transition-delay: var(--d, 0ms);
+}
+
+/* The oversized quote mark drifts against the scroll where the browser
+   supports scroll-linked CSS; elsewhere it simply stands. `translate`
+   rather than `transform` so nothing else that positions it is
+   clobbered. */
+@supports (animation-timeline: view()) {
+    .lx-quote-mark {
+        animation: lx-drift linear both;
+        animation-timeline: view();
+        animation-range: cover 0% cover 100%;
+    }
+    @keyframes lx-drift {
+        from { translate: 0 -6%; }
+        to   { translate: 0 6%; }
+    }
+}
+
+.lx-build[hidden] { display: none !important; }
+.lx-build-track { height: 280vh; }
+.lx-build-pin {
+    position: sticky;
+    top: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background:
+        radial-gradient(60rem 30rem at 72% 12%, rgba(212, 169, 95, 0.06), transparent 55%),
+        var(--bg);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+.lx-build-h { clip-path: inset(0 100% 0 0); }
+.lx-build-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    align-items: center;
+    margin-top: 2rem;
+}
+.lx-build-dial { width: 124px; height: 124px; }
+.lx-build-dial .lx-dial-in { width: 100px; height: 100px; font-size: 34px; }
+.lx-build-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+.lx-build-chip {
+    opacity: 0;
+    transform: translateY(40px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+}
+.lx-build-k {
+    margin: 0 0 0.35rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.64rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+.lx-build-v {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.lx-build-place {
+    margin: 1.5rem 0 0;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+}
+.lx-build-place span:first-child { color: var(--ink); font-weight: 600; letter-spacing: 0.04em; }
+.lx-build-cta {
+    display: inline-block;
+    margin-top: 1.25rem;
+    padding: 0.75rem 1.6rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 600;
+    border-radius: 10px;
+    text-decoration: none;
+    opacity: 0;
+    transition: opacity 400ms ease-out;
+}
+.lx-build-cta.on { opacity: 1; }
+.lx-build-hint {
+    margin-top: 1.6rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+@media (max-width: 700px) {
+    .lx-build-grid { grid-template-columns: 1fr; justify-items: start; }
+    .lx-build-track { height: 240vh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lx-progress { display: none; }
+    .cascade-ready > * { opacity: 1; transform: none; transition: none; }
+    .lx-quote-mark { animation: none; }
+    /* The build section is a motion showcase; its figures already live
+       in the hero strip. Without motion it is a duplicate, so it goes. */
+    .lx-build { display: none !important; }
+}

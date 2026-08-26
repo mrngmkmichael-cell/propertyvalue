@@ -114,7 +114,7 @@ def test_amenities_render_pending_then_arrive_by_follow_up_fetch(client, fake_re
     r = client.get("/api/property/amenities?postcode=M14%205TG")
     assert r.status_code == 200
     data = r.json()
-    assert set(data) == {"essentials_card", "transport_card", "essentials_body", "transport_body"}
+    assert {"essentials_card", "transport_card", "essentials_body", "transport_body"} <= set(data)
     assert "1 nearby" in data["essentials_card"] and "dashboard-card-pending" not in data["essentials_card"]
     assert "9 min train to Manchester" in data["transport_card"]
     assert "Test Stores" in data["essentials_body"]

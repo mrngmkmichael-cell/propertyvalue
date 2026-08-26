@@ -32,6 +32,11 @@
 
 {% block content %}
 
+{# Variant B of the scroll choreography: a gold hairline at the very top
+   of the viewport tracks how far down the page the reader is. Scroll-
+   linked, so it runs linear - eased easing on a scrubber reads as lag. #}
+<div class="lx-progress" id="lx-progress" aria-hidden="true"></div>
+
 {# ===================================================================
    HERO
    The cinematic render from the LUXONN build prompt, which is the shot
@@ -156,6 +161,33 @@
 </section>
 {% endif %}
 
+{# =================================================================== BUILD
+   Variant C of the scroll choreography: one section pins for ~2.5
+   screen-heights and a sample report assembles under the reader's
+   scroll. Every figure is painted from the same server-cached lookup
+   seeds the hero strip uses - never hardcoded, for the same reason the
+   strip isn't: baked-in scores drift wrong within days. No seed, no
+   section (it stays hidden), and reduced-motion readers never see it:
+   its content is a duplicate of the hero strip's, only the motion is
+   the point. #}
+<section class="lx-build" id="build" hidden>
+    <div class="lx-build-track" id="lx-build-track">
+        <div class="lx-build-pin">
+            <div class="lx-wrap">
+                <p class="lx-eyebrow">One search</p>
+                <h2 class="lx-h2 lx-build-h" id="lx-build-h">Watch a report <em class="hl-accent">build itself</em>.</h2>
+                <div class="lx-build-grid">
+                    <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
+                    <div class="lx-build-chips" id="lx-build-chips"></div>
+                </div>
+                <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
+                <a class="lx-build-cta" id="lx-build-cta" href="#contact">Run the checks on your postcode</a>
+                <p class="lx-build-hint" aria-hidden="true">Scroll &middot; the page is the scrubber</p>
+            </div>
+        </div>
+    </div>
+</section>
+
 {# =================================================================== AREAS #}
 <section class="lx-section lx-areas" id="areas">
     <div class="lx-wrap lx-centre">
@@ -165,7 +197,7 @@
             No postcode to hand? Every district has a free guide: prices, schools,
             crime and flood risk at a glance.
         </p>
-        <div class="lx-chips" data-animate>
+        <div class="lx-chips" data-cascade>
             {% for code, place in [
                 ('SW1A', 'Westminster'), ('E14', 'Canary Wharf'), ('N1', 'Islington'), ('SE1', 'Southwark'),
                 ('SW11', 'Battersea'), ('M1', 'Manchester'), ('M20', 'Didsbury'), ('LS1', 'Leeds'),
@@ -212,7 +244,7 @@
             <div class="lx-about-stats">
                 {% for n, label in [('37', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
                 <div>
-                    <p class="lx-about-stat-n">{{ n }}</p>
+                    <p class="lx-about-stat-n"><span class="stat-count" data-target="{{ n | replace(',', '') }}"{% if ',' in n %} data-locale="1"{% endif %}>{{ n }}</span></p>
                     <p class="lx-about-stat-l">{{ label }}</p>
                 </div>
                 {% endfor %}
@@ -243,7 +275,7 @@
                 <span class="lx-tier-label lx-tier-free">22 free on every report</span>
             </div>
             <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
-            <div class="lx-check-grid">
+            <div class="lx-check-grid" data-cascade>
                 {% for icon, title, value, source, tone in [
                     ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
                     ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
@@ -256,7 +288,7 @@
                     ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency', 'good'),
                     ('radon', 'Radon', 'Affected-area class', 'British Geological Survey', 'good')
                 ] %}
-                <div class="lx-check" data-animate>
+                <div class="lx-check">
                     <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
                     <p class="lx-check-title">{{ title }}</p>
                     <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
@@ -278,7 +310,7 @@
                 <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
             </div>
             <p class="lx-tier-note">Free on your first three properties. No card required.</p>
-            <div class="lx-check-grid">
+            <div class="lx-check-grid" data-cascade>
                 {% for icon, title, value, source, tone in [
                     ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', ''),
                     ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
@@ -292,7 +324,7 @@
                     ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', ''),
                     ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income', '')
                 ] %}
-                <div class="lx-check" data-animate>
+                <div class="lx-check">
                     <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
                     <p class="lx-check-title">{{ title }}</p>
                     <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
@@ -313,7 +345,7 @@
     <div class="lx-wrap">
         <p class="lx-eyebrow">Unedited</p>
         <h2 class="lx-h2">What people say</h2>
-        <div class="lx-voice-grid" data-animate>
+        <div class="lx-voice-grid" data-cascade>
             {% for quote, who, where in [
                 ("Its really good, very easy to navigate. Rightmove exist to sell houses where as your service is just a presentation of facts.", "Commenter", "r/HousingUK"),
                 ("I used to build exactly this professionally. You're on the right path.", "Former property-data professional", "Reddit")
@@ -589,14 +621,17 @@
                 const el = entry.target;
                 const target = parseFloat(el.dataset.target);
                 const decimals = parseInt(el.dataset.decimals || '0', 10);
-                if (reduced) { el.textContent = target.toFixed(decimals); return; }
-                el.textContent = (0).toFixed(decimals);   /* only now drop to zero */
+                const fmt = el.dataset.locale
+                    ? function (v) { return Math.round(v).toLocaleString('en-GB'); }
+                    : function (v) { return v.toFixed(decimals); };
+                if (reduced) { el.textContent = fmt(target); return; }
+                el.textContent = fmt(0);   /* only now drop to zero */
                 let start = null;
                 (function step(t) {
                     if (!start) start = t;
                     let p = Math.min((t - start) / 900, 1);
                     p = 1 - Math.pow(1 - p, 3);   /* settle gently */
-                    el.textContent = (target * p).toFixed(decimals);
+                    el.textContent = fmt(target * p);
                     if (p < 1) requestAnimationFrame(step);
                 })(performance.now());
             });
@@ -789,6 +824,152 @@
     };
     if (document.readyState === 'complete') idle();
     else addEventListener('load', idle);
+})();
+
+(function () {
+    /* Variant B: grids cascade. The hidden state is applied by THIS
+       script (cascade-ready), not by the stylesheet, so a reader with
+       JavaScript off sees everything rather than nothing. Runs at end
+       of body, before first paint, so nothing flashes. */
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const grids = document.querySelectorAll('[data-cascade]');
+    if (!grids.length || reduced || !('IntersectionObserver' in window)) return;
+    grids.forEach(function (grid) {
+        Array.prototype.forEach.call(grid.children, function (child, i) {
+            /* 90ms per sibling, capped so a 23-chip grid doesn't take
+               two seconds to finish. */
+            child.style.setProperty('--d', Math.min(i * 90, 630) + 'ms');
+        });
+        grid.classList.add('cascade-ready');
+    });
+    const io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+            if (!e.isIntersecting) return;
+            e.target.classList.add('cascade-armed');
+            io.unobserve(e.target);
+        });
+    }, { threshold: 0.15 });
+    grids.forEach(function (g) { io.observe(g); });
+    /* Same insurance base.html's reveal system carries: if the observer
+       hasn't fired for a grid that is already on screen (a prerendered
+       or restored page starts hidden, and observers don't deliver in
+       hidden documents), arm it manually the moment the page is looked
+       at. A cascade that fails must fail visible, never blank. */
+    function armVisible() {
+        grids.forEach(function (g) {
+            if (g.classList.contains('cascade-armed')) return;
+            const r = g.getBoundingClientRect();
+            if (r.top < window.innerHeight * 0.9 && r.bottom > 0) {
+                g.classList.add('cascade-armed');
+                io.unobserve(g);
+            }
+        });
+    }
+    addEventListener('load', armVisible);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) armVisible();
+    });
+})();
+
+(function () {
+    /* Variant B's hairline and variant C's pinned build section, one
+       rAF-throttled scroll handler between them. Scroll-linked motion
+       runs linear on purpose: an easing curve on a scrubber reads as
+       lag, not polish. */
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bar = document.getElementById('lx-progress');
+    const build = document.getElementById('build');
+
+    /* C only assembles when the server handed the page a cached lookup
+       seed (same data path as the hero strip, so the figures can never
+       drift from what a real report says). No seed at render time means
+       the section simply stays hidden: unhiding it later, after a
+       fetch, would shift everything below it mid-read. */
+    let seed = null;
+    if (build && !reduced) {
+        try {
+            const seedEl = document.getElementById('lx-strip-seed');
+            const seeds = seedEl ? JSON.parse(seedEl.textContent) : [];
+            seed = seeds.find(function (d) {
+                return d && d.postcode && d.overview && typeof d.overview.score === 'number';
+            }) || null;
+        } catch (e) { seed = null; }
+    }
+
+    let track = null, heading = null, arcEl = null, numEl = null, cta = null, chips = [];
+    const SCORE = seed ? seed.overview.score : 0;
+    if (seed) {
+        document.getElementById('lx-build-pc').textContent = seed.postcode;
+        document.getElementById('lx-build-place').textContent =
+            [seed.admin_district, seed.region].filter(Boolean).join(', ');
+        const rows = [];
+        if (seed.flood_zone) rows.push(['Flood', seed.flood_zone.replace(/\s*\(.*\)$/, '')]);
+        if (typeof seed.schools_good_pct === 'number') rows.push(['Schools', seed.schools_good_pct + '% good']);
+        if (typeof seed.avg_price === 'number') rows.push(['Sold price', '£' + Math.round(seed.avg_price).toLocaleString('en-GB')]);
+        if (typeof seed.crime_total === 'number') rows.push(['Crime', seed.crime_total + ' recorded']);
+        if (rows.length >= 3) {
+            const holder = document.getElementById('lx-build-chips');
+            rows.slice(0, 4).forEach(function (r, i) {
+                const chip = document.createElement('div');
+                chip.className = 'lx-build-chip';
+                chip.dataset.at = (0.15 * (i + 1)).toFixed(2);
+                const k = document.createElement('p'); k.className = 'lx-build-k'; k.textContent = r[0];
+                const v = document.createElement('p'); v.className = 'lx-build-v'; v.textContent = r[1];
+                chip.appendChild(k); chip.appendChild(v);
+                holder.appendChild(chip);
+            });
+            build.hidden = false;
+            track = document.getElementById('lx-build-track');
+            heading = document.getElementById('lx-build-h');
+            arcEl = document.getElementById('lx-build-dial');
+            numEl = document.getElementById('lx-build-num');
+            cta = document.getElementById('lx-build-cta');
+            chips = Array.prototype.slice.call(holder.children);
+            /* The page just grew ~2.5 screens above the coverage map;
+               its parallax cached geometry at load, so re-measure. */
+            window.dispatchEvent(new Event('resize'));
+        }
+    }
+
+    const seg = function (p, a, len) { return Math.min(Math.max((p - a) / len, 0), 1); };
+    const easeOut = function (x) { return 1 - Math.pow(1 - x, 3); };
+    let ticking = false;
+    function frame() {
+        ticking = false;
+        const doc = document.documentElement;
+        if (bar) {
+            const total = doc.scrollHeight - doc.clientHeight;
+            bar.style.transform = 'scaleX(' + (total > 0 ? doc.scrollTop / total : 0) + ')';
+        }
+        if (!track) return;
+        const r = track.getBoundingClientRect();
+        const span = r.height - window.innerHeight;
+        if (span <= 0) return;
+        const p = Math.min(Math.max(-r.top / span, 0), 1);
+        const dial = seg(p, 0, 0.45);
+        numEl.textContent = Math.round(SCORE * dial);
+        arcEl.style.setProperty('--arc', (SCORE * dial) + '%');
+        heading.style.clipPath = 'inset(0 ' + (100 - seg(p, 0, 0.25) * 100) + '% 0 0)';
+        chips.forEach(function (chip) {
+            const t = easeOut(seg(p, parseFloat(chip.dataset.at), 0.15));
+            chip.style.opacity = t;
+            chip.style.transform = 'translateY(' + (40 * (1 - t)) + 'px)';
+        });
+        cta.classList.toggle('on', p > 0.8);
+    }
+    function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(frame);
+    }
+    if (bar || track) {
+        if (reduced && bar) bar.remove();
+        else {
+            addEventListener('scroll', onScroll, { passive: true });
+            addEventListener('resize', onScroll, { passive: true });
+            frame();
+        }
+    }
 })();
 </script>
 {% endblock %}

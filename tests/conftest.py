@@ -123,6 +123,13 @@ def fake_report(monkeypatch):
         location = location or fake_location()
         gather = gather or fake_gather()
 
+        # /property caches finished HTML and gather results in-process
+        # for anonymous viewers; without this, one test's rendered page
+        # is served verbatim to the next test's different fake.
+        from app.services import _cache
+        _cache._store.clear()
+        _cache._bytes = 0
+
         async def _lookup(_postcode):
             return location
 
