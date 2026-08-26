@@ -304,6 +304,9 @@
         {% if noise.rail_db is not none %}<tr><td>Rail</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ badge(noise.rail_label) }}</td></tr>{% endif %}
         {% if noise.airport_db is not none %}<tr><td>Aircraft</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ badge(noise.airport_label) }}</td></tr>{% endif %}
     </table>
+    {% if noise.road_db is none or noise.rail_db is none or noise.airport_db is none %}
+    <p class="note" style="font-size:9pt; color:#667085;">Sources not listed are outside DEFRA's mapped area, which only covers levels above its minimum band near major roads, railways and the largest airports. A missing source is not a zero reading.</p>
+    {% endif %}
     {% endif %}
     {% if heritage %}
     <p class="note" style="font-size:9pt; color:#667085;"><strong style="color:#171d2b;">{{ heritage | length }}</strong> listed building{{ "s" if heritage | length != 1 else "" }} nearby. May affect permitted development rights.</p>

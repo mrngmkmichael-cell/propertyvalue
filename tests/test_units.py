@@ -160,3 +160,11 @@ def test_cache_never_holds_an_oversized_entry(monkeypatch):
     _cache._bytes = 0
     _cache.set("huge", "x" * 5000)
     assert _cache.get("huge", 60) is None and _cache._bytes == 0
+
+
+# ---- crime publication gaps ----------------------------------------------
+
+def test_crime_previous_months_walks_the_calendar():
+    from app.services import crime
+    assert crime._previous_months("2026-06-01", 3) == ["2026-05", "2026-04", "2026-03"]
+    assert crime._previous_months("2026-01", 2) == ["2025-12", "2025-11"]

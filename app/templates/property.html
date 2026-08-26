@@ -1680,6 +1680,14 @@
                 </div>
                 {% endif %}
             </div>
+            {% if noise.road_db is none or noise.rail_db is none or noise.airport_db is none %}
+            <p class="section-sub">
+                Sources not listed are outside DEFRA's mapped area. The maps only
+                cover levels above their minimum band near major roads, railways
+                and the largest airports, so a missing source means the address
+                is outside that mapped range, not that the noise is zero.
+            </p>
+            {% endif %}
         {% else %}
             <p class="notice">No modelled road, rail or aircraft noise near this address. DEFRA only maps noise near major roads, railways and the largest airports, so this usually just means none are close by.</p>
         {% endif %}
@@ -1695,6 +1703,13 @@
         {% if crime_error %}
             <p class="notice notice-error">
                 The crime data service didn't respond. Try again in a moment.
+            </p>
+        {% elif crime and crime.unpublished %}
+            <p class="notice">
+                The local police force has not published street-level data for this
+                area in the last six months. Some forces lag or have gaps in
+                Police.uk. We show no figure rather than a zero that would wrongly
+                suggest a crime-free area.
             </p>
         {% elif crime and crime.total %}
             <p class="section-sub">
