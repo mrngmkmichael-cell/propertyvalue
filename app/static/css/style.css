@@ -6775,33 +6775,21 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
 
 .lx-build-pin { position: sticky; }
 
-.lx-build-fx {
+.lx-build-orb {
     position: absolute;
-    inset: 0;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(140vh, 1150px);
+    height: min(140vh, 1150px);
+    max-width: 96vw;
     z-index: 0;
     pointer-events: none;
-    /* Faint gold dot grid, faded out toward the edges so it reads as
-       depth rather than wallpaper. */
-    background-image: radial-gradient(rgba(212, 169, 95, 0.13) 1px, transparent 1.5px);
-    background-size: 30px 30px;
-    -webkit-mask-image: radial-gradient(90rem 55rem at 50% 45%, #000 30%, transparent 75%);
-    mask-image: radial-gradient(90rem 55rem at 50% 45%, #000 30%, transparent 75%);
-}
-
-.lx-build-glow {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(70px);
-}
-.lx-build-glow-a {
-    width: 34rem; height: 34rem;
-    left: -8rem; top: 10%;
-    background: radial-gradient(circle, rgba(212, 169, 95, 0.13), transparent 65%);
-}
-.lx-build-glow-b {
-    width: 28rem; height: 28rem;
-    right: -6rem; bottom: 5%;
-    background: radial-gradient(circle, rgba(212, 169, 95, 0.09), transparent 65%);
+    opacity: 0.85;
+    /* The sphere reads as behind the content: a soft fade at its edges
+       keeps the brightest orbit paths away from the headline. */
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, #000 55%, transparent 78%);
+    mask-image: radial-gradient(circle at 50% 50%, #000 55%, transparent 78%);
 }
 
 .lx-build-swarm {
@@ -6843,7 +6831,6 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
 
 @media (max-width: 700px) {
     .lx-build-mote { font-size: 0.5rem; padding: 0.2rem 0.45rem; }
-    .lx-build-fx { background-size: 24px 24px; }
 }
 
 @media (max-width: 700px) {

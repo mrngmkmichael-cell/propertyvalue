@@ -182,13 +182,12 @@
 <section class="lx-build" id="build" hidden>
     <div class="lx-build-track" id="lx-build-track">
         <div class="lx-build-pin" id="lx-build-pin">
-            {# Backdrop: a faint gold dot-grid and two glow fields that
-               drift with the scrub. Pure decoration, pure CSS, zero
-               requests. #}
-            <div class="lx-build-fx" aria-hidden="true">
-                <div class="lx-build-glow lx-build-glow-a" id="lx-build-glow-a"></div>
-                <div class="lx-build-glow lx-build-glow-b" id="lx-build-glow-b"></div>
-            </div>
+            {# Backdrop: an orbiting sphere of gold points, drawn on a
+               plain canvas - the ThreeUI "orbital sphere" look without
+               React or Three.js, which this page does not carry and, at
+               ~200KB for a decoration, should not start to. Painted only
+               while the section is on screen. #}
+            <canvas class="lx-build-orb" id="lx-build-orb" aria-hidden="true"></canvas>
             {# The 37 checks as named motes, spawned by script from the
                same titles the report's cards carry. They fly into the
                dial as the reader scrolls; the score is the sum of what
@@ -921,7 +920,7 @@
     }
 
     let track = null, heading = null, arcEl = null, numEl = null, cta = null, chips = [];
-    let pin = null, motes = [], tallyEl = null, glowA = null, glowB = null;
+    let pin = null, motes = [], tallyEl = null;
     const SCORE = seed ? seed.overview.score : 0;
 
     /* The 37 checks by name, matching the report's own card titles
@@ -965,9 +964,8 @@
             cta = document.getElementById('lx-build-cta');
             pin = document.getElementById('lx-build-pin');
             tallyEl = document.getElementById('lx-build-tally-n');
-            glowA = document.getElementById('lx-build-glow-a');
-            glowB = document.getElementById('lx-build-glow-b');
             chips = Array.prototype.slice.call(holder.children);
+            startOrb();
 
             /* Spawn the swarm: each check name scattered across the
                stage on a golden-angle spiral (deterministic, so the
@@ -993,6 +991,81 @@
                its parallax cached geometry at load, so re-measure. */
             window.dispatchEvent(new Event('resize'));
         }
+    }
+
+    /* The orbital sphere: ~420 points on a fibonacci sphere, rotated
+       and perspective-projected onto a plain canvas each frame. This is
+       the ThreeUI "orbital sphere" look in the site's own gold, at a
+       few kilobytes instead of React + Three.js. It only draws while
+       the pinned section is actually on screen and the tab visible -
+       an offscreen decoration burning battery is worse than none. */
+    function startOrb() {
+        const canvas = document.getElementById('lx-build-orb');
+        if (!canvas || !canvas.getContext) return;
+        const ctx = canvas.getContext('2d');
+        const N = 420, pts = [];
+        const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+        for (let i = 0; i < N; i++) {
+            const y = 1 - (i / (N - 1)) * 2;
+            const rad = Math.sqrt(1 - y * y);
+            const th = GOLDEN * i;
+            pts.push({ x: Math.cos(th) * rad, y: y, z: Math.sin(th) * rad,
+                       big: i % 29 === 0 });
+        }
+        let w = 0, h = 0, dpr = 1;
+        function size() {
+            dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const r = canvas.getBoundingClientRect();
+            w = r.width; h = r.height;
+            canvas.width = Math.round(w * dpr);
+            canvas.height = Math.round(h * dpr);
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        }
+        size();
+        addEventListener('resize', size, { passive: true });
+
+        let running = false, raf = 0;
+        function draw(now) {
+            raf = 0;
+            if (!running) return;
+            const t = now * 0.00012;                 /* slow, stately spin */
+            const R = Math.min(w, h) * 0.42;
+            const cx = w / 2, cy = h / 2;
+            const tilt = 0.42, ct = Math.cos(tilt), st = Math.sin(tilt);
+            ctx.clearRect(0, 0, w, h);
+            for (let i = 0; i < N; i++) {
+                const pt = pts[i];
+                const ca = Math.cos(t), sa = Math.sin(t);
+                let x = pt.x * ca + pt.z * sa;
+                let z = -pt.x * sa + pt.z * ca;
+                let y = pt.y * ct - z * st;
+                z = pt.y * st + z * ct;
+                const persp = 1 / (1.7 - z * 0.55);  /* z in [-1,1] */
+                const px = cx + x * R * persp;
+                const py = cy + y * R * persp;
+                const depth = (z + 1) / 2;           /* 0 back, 1 front */
+                ctx.globalAlpha = 0.08 + depth * (pt.big ? 0.8 : 0.5);
+                ctx.fillStyle = pt.big ? '#e6c584' : '#d4a95f';
+                ctx.beginPath();
+                ctx.arc(px, py, (pt.big ? 1.7 : 1.05) * (0.6 + depth * 0.9) , 0, 6.2832);
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+            raf = requestAnimationFrame(draw);
+        }
+        function setRunning(on) {
+            if (on === running) return;
+            running = on;
+            if (on && !raf) raf = requestAnimationFrame(draw);
+        }
+        const vis = new IntersectionObserver(function (entries) {
+            setRunning(entries[0].isIntersecting && !document.hidden);
+        }, { threshold: 0 });
+        vis.observe(canvas);
+        document.addEventListener('visibilitychange', function () {
+            setRunning(!document.hidden && canvas.getBoundingClientRect().bottom > 0
+                       && canvas.getBoundingClientRect().top < innerHeight);
+        });
     }
 
     /* Geometry for the swarm, measured once and on resize rather than
@@ -1050,9 +1123,6 @@
         numEl.textContent = Math.round(SCORE * f);
         arcEl.style.setProperty('--arc', (SCORE * f) + '%');
         if (tallyEl) tallyEl.textContent = landed;
-
-        if (glowA) glowA.style.transform = 'translateY(' + (40 - p * 90) + 'px)';
-        if (glowB) glowB.style.transform = 'translateY(' + (p * 70 - 35) + 'px)';
 
         heading.style.clipPath = 'inset(0 ' + (100 - seg(p, 0, 0.20) * 100) + '% 0 0)';
         chips.forEach(function (chip, i) {
