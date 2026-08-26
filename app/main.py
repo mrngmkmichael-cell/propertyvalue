@@ -1,4 +1,6 @@
 import asyncio
+import collections
+import contextvars
 import hashlib
 import datetime
 import hmac
@@ -1399,10 +1401,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             b_canonical = building_location["postcode"]
             b_hn = house_number.strip()
             if _cache.get(("property_search_gather", b_canonical, b_hn), PROPERTY_SEARCH_CACHE_TTL_S) is None:
-                asyncio.create_task(_full_property_gather(building_location, b_hn, premium_unlocked=False))
+                _spawn_gather(building_location, b_hn)
                 ctx = base_context(request)
                 ctx["building_postcode"] = b_canonical
                 ctx["building_house_number"] = b_hn
+                ctx["build_sources"] = GATHER_SOURCE_ORDER
                 return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
 
     response = await _render_property(request, postcode, house_number)
@@ -1557,6 +1560,74 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
 _last_gather_timings: dict[str, float] = {}
 
 
+# Which reader-facing source each gather member belongs to, for the
+# "building your report" page. Only the members named here are counted:
+# the point is to show real progress against the sources the page
+# lists, not to expose every internal call. A member with no entry is
+# simply not part of the tally.
+# Exactly one gather member stands for each source, chosen because it
+# is the call that actually fetches that source's headline figure and
+# because it runs on every gather. One member per source rather than
+# several deliberately: aggregating "all three flood calls" needed a
+# running count, and a source whose members are skipped for a given
+# address (several are England-only) then never completed at all.
+# A member named here that no longer exists would silently stop its
+# source ever ticking, so a test asserts every one of these is still
+# wired into the gather.
+GATHER_SOURCE_LABELS = {
+    "sold-prices-for-postcode": "HM Land Registry",
+    # Its own line rather than folded into Land Registry: at 6-7 s cold
+    # it is the longest call in the gather, and a bar that hit 100% while
+    # this was still running left the reader staring at a full bar.
+    "-nearby-comparables": "Nearby sold comparables",
+    "catchment-catchments-for": "Council admissions data",
+    "-epc-flow": "EPC Register",
+    "flood-zones-zone-for": "Environment Agency flood data",
+    "crime-summary-near": "Police.uk crime data",
+    "schools-db-school-landscape, lat, lon)": "Department for Education & Ofsted",
+    "area-stats-deprivation-for-lsoa, codes-get": "ONS demographics",
+    "noise-noise-near": "Noise & air quality models",
+    "radon-risk-near": "British Geological Survey",
+    "coal-mining-check-near": "Coal Authority",
+    "historic-landfill-check-near": "Historic landfill records",
+    "sewage-discharge-nearby-outfalls": "Sewage discharge records",
+    "broadband-coverage-for-postcode, canonical)": "Ofcom broadband & mobile",
+    "designations-check-all": "Planning designations",
+}
+# In the order the building page lists them.
+GATHER_SOURCE_ORDER = list(GATHER_SOURCE_LABELS.values())
+
+# The live gather a building page is watching. Keyed by address, holds
+# the set of sources finished so far. Bounded and short-lived: an entry
+# is created when a gather starts and dropped when the page it feeds
+# stops polling (see _progress_prune).
+_PROGRESS_TTL_S = 300
+# No source has reported in this long: treat the gather as dead and let
+# the next poll start a fresh one. Comfortably longer than the slowest
+# real member (Overpass amenities, 7-10 s cold).
+STALLED_GATHER_S = 30
+_gather_progress: dict[tuple[str, str], dict] = {}
+_progress_sink: contextvars.ContextVar = contextvars.ContextVar("gather_progress_sink", default=None)
+
+
+# asyncio keeps only a weak reference to a running task, so a bare
+# create_task() can be collected mid-flight and the gather silently
+# stops. Holding a reference until it finishes is the documented fix.
+_background_tasks: set = set()
+
+
+def _spawn_gather(location: dict, house_number: str) -> None:
+    task = asyncio.create_task(_full_property_gather(location, house_number, premium_unlocked=False))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+def _progress_prune() -> None:
+    cutoff = time.time() - _PROGRESS_TTL_S
+    for key in [k for k, v in _gather_progress.items() if v["started"] < cutoff]:
+        _gather_progress.pop(key, None)
+
+
 async def _timed(name: str, coro):
     """Run one gather member and record how long it took. Exceptions are
     returned rather than raised so the surrounding gather's
@@ -1568,6 +1639,15 @@ async def _timed(name: str, coro):
         return exc
     finally:
         _last_gather_timings[name] = time.perf_counter() - t0
+        # A source ticks when its representative call comes back. A
+        # failure ticks too: the source has been tried, and the card it
+        # feeds will say the data was unavailable.
+        sink = _progress_sink.get()
+        label = GATHER_SOURCE_LABELS.get(name)
+        if sink is not None and label is not None:
+            sink["touched"] = time.time()
+            if label not in sink["done"]:
+                sink["done"].append(label)
 
 
 def _server_timing_header() -> str:
@@ -1682,6 +1762,21 @@ async def _full_property_gather(
     canonical = location["postcode"]
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
+
+    # Publish live progress for any "building your report" page waiting
+    # on this address. The sink rides a ContextVar so the individual
+    # _timed members find it without every call site passing it down;
+    # asyncio.gather's tasks inherit the context, and they all share
+    # this one dict object.
+    _progress_prune()
+    sink = {
+        "done": [],
+        "total": len(GATHER_SOURCE_ORDER),
+        "started": time.time(),
+        "touched": time.time(),
+    }
+    _gather_progress[(canonical, house_number)] = sink
+    _progress_sink.set(sink)
     # Local JSON lookup, England only; None elsewhere and the card says so.
     context["council_tax"] = council_tax.for_district(codes.get("admin_district"), location.get("admin_district"))
     context["epc_configured"] = epc.is_configured()
@@ -2082,6 +2177,12 @@ async def _full_property_gather(
     # Premium cards show a summary number before the paywall.
     context["catchment_distance_count"] = len(_distance_schools)
     context["catchment_distance_any_real"] = any(s["is_real"] for s in _distance_schools)
+
+    # Everything this gather was going to do is done. A source whose
+    # members were skipped this run (premium-only paths, cached
+    # amenities) would otherwise sit un-ticked forever.
+    sink["done"] = list(GATHER_SOURCE_ORDER)
+    _progress_sink.set(None)
 
     return context
 
@@ -4094,9 +4195,23 @@ async def report_ready(postcode: str = "", house_number: str = ""):
         return JSONResponse({"ready": True})  # let the reload show not-found
     hn = house_number.strip()
     if _cache.get(("property_search_gather", location["postcode"], hn), PROPERTY_SEARCH_CACHE_TTL_S) is not None:
-        return JSONResponse({"ready": True})
-    asyncio.create_task(_full_property_gather(location, hn, premium_unlocked=False))
-    return JSONResponse({"ready": False})
+        return JSONResponse({"ready": True, "done": GATHER_SOURCE_ORDER, "sources": GATHER_SOURCE_ORDER})
+    progress = _gather_progress.get((location["postcode"], hn))
+    # Restart a gather that never started, or one that has gone quiet
+    # long enough to be dead (a server restart, a task dropped
+    # mid-flight). Without this a polling browser waits forever; with
+    # it firing on every poll we would run a dozen gathers at once, so
+    # a live one is left alone.
+    if progress is None or time.time() - progress["touched"] > STALLED_GATHER_S:
+        _spawn_gather(location, hn)
+        progress = _gather_progress.get((location["postcode"], hn))
+    return JSONResponse({
+        "ready": False,
+        # The sources actually back, so the page ticks off real work
+        # rather than running a timer and hoping.
+        "done": list(progress["done"]) if progress else [],
+        "sources": GATHER_SOURCE_ORDER,
+    })
 
 
 @app.post("/admin/grant-premium")

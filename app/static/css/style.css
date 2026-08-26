@@ -5366,6 +5366,34 @@ main:focus { outline: none; }
 /* ---- Report building page ---- */
 .building-wrap { max-width: 34rem; margin: 3rem auto; }
 .building-heading { letter-spacing: -0.01em; }
+/* Real progress, so it gets a real counter and bar. */
+.building-count {
+    margin: 1.5rem 0 0.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.building-count #building-done { color: var(--accent); font-variant-numeric: tabular-nums; }
+.building-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: var(--radius-pill);
+    overflow: hidden;
+}
+.building-bar-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--good);
+    border-radius: var(--radius-pill);
+    transition: width 0.45s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .building-bar-fill { transition: none; }
+}
+
 .building-list { list-style: none; margin: 2rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
 .building-item {
     display: flex; align-items: center; gap: 0.7rem;

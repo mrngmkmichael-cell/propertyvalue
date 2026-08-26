@@ -190,3 +190,32 @@ def test_crime_previous_months_walks_the_calendar():
     from app.services import crime
     assert crime._previous_months("2026-06-01", 3) == ["2026-05", "2026-04", "2026-03"]
     assert crime._previous_months("2026-01", 2) == ["2025-12", "2025-11"]
+
+
+# ---- report build progress ----------------------------------------------
+
+def test_every_progress_source_is_still_wired_into_the_gather():
+    """The building page ticks a source off when its representative
+    gather member returns. Rename or drop that member and the source
+    would silently never tick, which is how three of them sat at
+    "waiting" for a whole build during development."""
+    import pathlib
+    import re
+
+    from app import main as app_main
+
+    source = pathlib.Path(app_main.__file__).read_text(encoding="utf-8")
+    start = source.index("async def _full_property_gather")
+    end = source.index("\n# --- Lightweight public JSON API", start)
+    gather = source[start:end]
+
+    emitted = set(re.findall(r'_timed\(\s*"([^"]+)"', gather))
+    missing = [name for name in app_main.GATHER_SOURCE_LABELS if name not in emitted]
+    assert not missing, f"progress sources no longer in the gather: {missing}"
+
+
+def test_progress_sources_match_the_count_the_page_shows():
+    from app import main as app_main
+
+    assert len(app_main.GATHER_SOURCE_ORDER) == len(set(app_main.GATHER_SOURCE_ORDER))
+    assert len(app_main.GATHER_SOURCE_ORDER) == len(app_main.GATHER_SOURCE_LABELS)

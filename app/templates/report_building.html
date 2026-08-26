@@ -9,12 +9,19 @@
     <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
     <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
 
+    {# The list is the real gather's source list, and each row ticks
+       when that source actually comes back (see /api/report-ready).
+       The old version ran a timer and looped when the gather was slow,
+       which meant the one screen showing our working was the one
+       screen making it up. #}
+    <p class="building-count" id="building-count" aria-live="polite">
+        <span id="building-done">0</span> of {{ build_sources | length }} sources back
+    </p>
+    <div class="building-bar" aria-hidden="true"><span class="building-bar-fill" id="building-bar"></span></div>
+
     <ul class="building-list" id="building-list">
-        {% for src in ["HM Land Registry", "EPC Register", "Environment Agency flood data", "Police.uk crime data",
-                       "Department for Education & Ofsted", "ONS demographics", "Noise & air quality models",
-                       "British Geological Survey", "Coal Authority", "Historic landfill records",
-                       "Sewage discharge records", "Ofcom broadband & mobile", "Planning designations"] %}
-        <li class="building-item"><span class="building-tick"></span>{{ src }}</li>
+        {% for src in build_sources %}
+        <li class="building-item" data-source="{{ src }}"><span class="building-tick"></span>{{ src }}</li>
         {% endfor %}
     </ul>
     <p class="section-sub">Every figure will name its source. Nothing is scraped, nothing is guessed.</p>
@@ -24,22 +31,38 @@
 <script>
 (function () {
     var items = document.querySelectorAll('.building-item');
-    var i = 0;
-    var ticker = setInterval(function () {
-        if (i < items.length) items[i++].classList.add('done');
-        else i = 0;  /* loop gently if the gather is slow */
-    }, 650);
+    var bar = document.getElementById('building-bar');
+    var doneEl = document.getElementById('building-done');
+    var total = items.length;
     var qs = window.location.search;
+
+    var countEl = document.getElementById('building-count');
+
+    function paint(done) {
+        var set = {};
+        done.forEach(function (d) { set[d] = true; });
+        var n = 0;
+        items.forEach(function (li) {
+            if (set[li.dataset.source]) { li.classList.add('done'); n++; }
+        });
+        doneEl.textContent = n;
+        if (bar) bar.style.width = (total ? (n / total) * 100 : 0) + '%';
+        /* Every source is back but the page is still being put
+           together. Saying so beats a full bar that appears stuck. */
+        if (n >= total && countEl) countEl.textContent = 'All sources back, putting the report together';
+    }
+
     function poll() {
         fetch('/api/report-ready' + qs)
             .then(function (r) { return r.json(); })
             .then(function (d) {
-                if (d.ready) { clearInterval(ticker); window.location.reload(); }
-                else setTimeout(poll, 1200);
+                paint(d.done || []);
+                if (d.ready) window.location.reload();
+                else setTimeout(poll, 900);
             })
             .catch(function () { setTimeout(poll, 2500); });
     }
-    setTimeout(poll, 1500);
+    poll();
 })();
 </script>
 {% endblock %}
