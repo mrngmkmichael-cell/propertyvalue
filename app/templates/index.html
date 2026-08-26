@@ -8,6 +8,24 @@
    blurred view, so it is baked into a single static image - see
    scripts/build_hero_map.py. #}
 
+{% block extra_head %}
+{# FAQ rich result: the five questions at the foot of the page, verbatim. #}
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "What is UKPropertyInsight?", "acceptedAnswer": {"@type": "Answer", "text": "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we show the facts about a property and its area."}},
+        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. Creating an account is free and unlocks every Premium check on the first three properties you look at, no card required."}},
+        {"@type": "Question", "name": "What happens after the three free reports?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good. Opening a new one needs a subscription, and postcode search stays free either way."}},
+        {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
+        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
+        {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
+    ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 
 {# ===================================================================
@@ -292,6 +310,108 @@
     </div>
 </section>
 
+
+{# ---------------------------------------------------------------
+   Restored 26 Aug 2026. The rebuild took these out; they are the
+   reference half of the page and they carry most of its indexed
+   copy, so they sit below the quotes rather than competing with
+   the hero. Markup unchanged from before the rebuild, so the dark
+   theme's existing rules still cover them.
+   --------------------------------------------------------------- #}
+<section class="landing-section" id="compare-alternatives">
+    <span class="section-pill" data-animate>The alternative</span>
+    <h2 class="landing-heading" data-animate>What buyers do instead</h2>
+    <div class="alt-table-wrap" data-animate>
+        <table class="alt-table">
+            <thead><tr>
+                <th></th><th>Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
+            </tr></thead>
+            <tbody>
+                <tr><td>Everything on one page</td><td class="alt-no">Listings, not checks</td><td class="alt-no">12+ separate sites</td><td class="alt-us alt-yes">One report</td></tr>
+                <tr><td>Works for any address, listed or not</td><td class="alt-no">Only what&rsquo;s for sale</td><td class="alt-yes">Yes</td><td class="alt-us alt-yes">Yes</td></tr>
+                <tr><td>Every figure names its source</td><td class="alt-no">No</td><td class="alt-yes">It is the source</td><td class="alt-us alt-yes">Yes, on every card</td></tr>
+                <tr><td>Who pays for it</td><td class="alt-no">Agents&rsquo; listings</td><td>Public</td><td class="alt-us">You do, so it answers to you</td></tr>
+                <tr><td>Time per property</td><td>&mdash;</td><td class="alt-no">Hours</td><td class="alt-us alt-yes">Seconds</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="accuracy-strip" data-animate>
+    <div class="accuracy-strip-inner">
+        <div class="accuracy-strip-copy">
+            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
+            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
+        </div>
+        {% if accuracy_counts %}
+        <div class="accuracy-strip-stats">
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> were wrong, now fixed</span>
+        </div>
+        {% endif %}
+        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
+    </div>
+</section>
+
+<section class="landing-section">
+    <span class="section-pill" data-animate>Questions</span>
+    <h2 class="landing-heading" data-animate>Questions people ask first</h2>
+    <div class="faq-list">
+        {% for q, a in [
+            ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
+            ('Is it free to use?', 'Searching is free and needs no account. You\'ll see headline verdicts on every check straight away. Creating an account is also free, and unlocks every Premium check on the first three properties you look at, no card required. After that the deeper checks lock unless you subscribe.'),
+            ('What happens after the three free reports?', 'Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good, so you can go back to them any time. Opening a new one needs a subscription, and postcode search stays free either way.'),
+            ('How is this different from Rightmove or Zoopla?', 'Those are listings portals. They show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
+            ('Where does the data come from?', 'Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every figure traces back to a source.'),
+            ('Which parts of the UK are covered?', 'Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where a council has published that data openly. Where something isn\'t covered for an address, the report says so rather than leaving a gap unexplained.'),
+        ] %}
+        <details class="faq-item" data-animate>
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="sources-strip" data-animate>
+    <span class="sources-strip-heading">
+        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
+    </span>
+    {# A continuous ticker of the sources, the strongest content this
+       site has. Two passes of the same list make the loop seamless;
+       hover or keyboard focus pauses it; prefers-reduced-motion stops
+       it entirely and falls back to a wrapped row. #}
+    <div class="sources-marquee">
+        <div class="sources-marquee-track">
+            {% for pass_num in range(2) %}
+            {% for icon_name, label, url in [
+                ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
+                ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
+                ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
+                ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
+                ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
+                ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
+                ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
+                ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
+                ('heritage', 'Historic England', 'https://historicengland.org.uk'),
+                ('crime', 'Police.uk', 'https://www.police.uk'),
+                ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
+                ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
+                ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
+            ] %}
+            <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener"{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
+                <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
+                <span class="sources-strip-name">{{ label }}</span>
+            </a>
+            {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+    <p class="sources-strip-note">
+        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
+    </p>
+</section>
+
 {# =================================================================== SEARCH #}
 <section class="lx-section lx-contact" id="contact">
     <div class="lx-wrap lx-contact-grid">
@@ -344,6 +464,39 @@
            If it refuses, the poster simply stands. */
         vid.autoplay = true;
         vid.src = vid.dataset.src;
+    }
+})();
+
+(function () {
+    /* Parallax on the coverage map: it drifts against the page as the
+       section crosses the viewport. The prototype used GSAP ScrollTrigger
+       for this; the same effect is a few lines of rAF-throttled scroll
+       maths, which keeps ~50KB of library off the site's busiest page.
+
+       Only the custom property is written, so the compositor does the
+       transform and nothing triggers layout. */
+    const art = document.querySelector('.lx-about-art');
+    const map = document.querySelector('.lx-about-map');
+    if (art && map && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const TRAVEL = 50;   /* px each way, matching the -14% overscan */
+        let ticking = false;
+        const place = function () {
+            const r = art.getBoundingClientRect();
+            if (r.bottom < 0 || r.top > innerHeight) { ticking = false; return; }
+            /* -1 when the frame is entering at the bottom, +1 leaving at
+               the top, 0 dead centre. */
+            const progress = (r.top + r.height / 2 - innerHeight / 2) / ((innerHeight + r.height) / 2);
+            map.style.setProperty('--shift', (-progress * TRAVEL).toFixed(1) + 'px');
+            ticking = false;
+        };
+        const onScroll = function () {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(place);
+        };
+        addEventListener('scroll', onScroll, { passive: true });
+        addEventListener('resize', onScroll, { passive: true });
+        place();
     }
 })();
 

@@ -5904,6 +5904,24 @@ body.theme-dark .promo-banner-text { color: var(--ink); }
 body.theme-dark .promo-banner-btn { background: var(--accent); color: var(--accent-ink); }
 body.theme-dark .promo-banner-btn:hover { background: var(--accent-hover); }
 
+/* ---- The accuracy strip ---------------------------------------------
+   An inverted slab: dark panel, light type, so it stands out from a
+   pale page. Inverted again on a dark page it turns white, and its copy
+   is hardcoded white, so the whole block went white on white. What
+   stands out against black is gold, not light. (Restored with the
+   section itself; it was lost when the old landing block was replaced
+   wholesale.) */
+body.theme-dark .accuracy-strip {
+    background: linear-gradient(135deg, rgba(212, 169, 95, 0.11), rgba(212, 169, 95, 0.03)), var(--surface);
+    border: 1px solid rgba(212, 169, 95, 0.28);
+}
+body.theme-dark .accuracy-strip-heading { color: var(--accent); }
+body.theme-dark .accuracy-strip-copy p,
+body.theme-dark .accuracy-strip-stat { color: var(--ink-soft); }
+body.theme-dark .accuracy-strip-stat strong { color: var(--ink); }
+body.theme-dark .accuracy-strip-link { color: var(--accent); }
+body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
+
 /* ---- Areas --------------------------------------------------------- */
 .lx-chips {
     display: flex;
@@ -5955,12 +5973,22 @@ body.theme-dark .promo-banner-btn:hover { background: var(--accent-hover); }
     border: 1px solid var(--border);
     overflow: hidden;
 }
+/* Parallax: the map drifts against the scroll inside its frame. --shift
+   is written by script from the section's position in the viewport, so
+   the movement is tied to the scroll rather than to a timer. Oversized
+   and pushed up front so there is image to spare at both ends of the
+   travel and no edge is ever exposed. */
 .lx-about-map {
     position: absolute;
-    inset: 0;
+    inset: -14% 0;
     background: url('/static/img/hero-map.webp') center / cover no-repeat;
     filter: grayscale(1) brightness(0.42) contrast(1.2);
-    transform: scale(1.12);
+    transform: scale(1.12) translate3d(0, var(--shift, 0px), 0);
+    will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lx-about-map { transform: scale(1.12); }
 }
 .lx-about-glow {
     position: absolute;
