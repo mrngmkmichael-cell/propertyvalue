@@ -93,6 +93,28 @@ def test_overview_score_hides_premium_only_concerns_from_free_users():
     assert len(paid["concerns"]) == 2 and paid["premium_extra_checks"] == 0
 
 
+def test_overview_score_counts_sewage_and_subsidence():
+    """Both flag their own card red on the report. Missing from the
+    score, a Premium reader saw a red-ringed card the verdict never
+    mentioned. Thresholds must match the card statuses exactly."""
+    ctx = {
+        "sewage_outfalls": [{"spill_count": 25}],
+        "clay_risk": {"class_2030": "Probable"},
+    }
+    paid = overview_score.compute(ctx, premium_unlocked=True)
+    assert "Frequent sewage discharges nearby" in paid["concerns"]
+    assert "Rising subsidence risk from climate change" in paid["concerns"]
+    # Under the card thresholds, neither counts.
+    quiet = overview_score.compute(
+        {"sewage_outfalls": [{"spill_count": 19}], "clay_risk": {"class_2030": "Unlikely"}},
+        premium_unlocked=True,
+    )
+    assert quiet["concerns"] == []
+    # Both are Premium-only, so a free reader gets the count, not the finding.
+    free = overview_score.compute(ctx, premium_unlocked=False)
+    assert free["concerns"] == [] and free["premium_extra_checks"] == 2
+
+
 # ---- EPC extension detection --------------------------------------------
 
 def test_detect_extension_flags_large_floor_area_growth():

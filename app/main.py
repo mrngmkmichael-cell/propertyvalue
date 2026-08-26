@@ -4182,6 +4182,31 @@ FIGURE_STATUSES = {
     "correct": "Checked, figure was correct",
 }
 
+# Corrections that reached us directly (a reader emailing, a tester
+# going through a PDF) rather than through the report-a-figure form, so
+# they have no FigureReport row. They belong on the accuracy log all the
+# same: the log's whole point is that it shows the misses, and quietly
+# omitting the ones that arrived by another route would defeat it.
+# Newest first. Districts only, never a full postcode.
+CORRECTIONS = [
+    {
+        "date": "2026-08-27",
+        "district": "SK4",
+        "card": "Crime & Safety",
+        "reported": "A reader knew of a fire and a bike theft on their street, but the card showed no crimes at all.",
+        "found": "Greater Manchester Police had published nothing to Police.uk for May or June 2026 while other forces were current. We were reading only the latest month, finding it empty, and rendering that as zero.",
+        "fixed": "The card now walks back up to six months to find the most recent month the force actually published, and where a force has published nothing at all it says so in words instead of showing a figure. A publication gap can never again be displayed as a crime-free area.",
+    },
+    {
+        "date": "2026-08-27",
+        "district": "SK4",
+        "card": "Noise",
+        "reported": "A property known to sit under a flight path showed no aircraft noise, while a quieter one nearby did.",
+        "found": "The figure was correct but the absence was misleading. DEFRA's noise maps only model levels above a minimum threshold near major roads, railways and the largest airports, so an address outside those contours has no reading at all, which is not the same as silence.",
+        "fixed": "Both the report and the PDF now explain that a source not listed is outside DEFRA's mapped area rather than a zero reading.",
+    },
+]
+
 
 @app.post("/report-figure")
 async def report_figure(
@@ -4242,7 +4267,10 @@ def accuracy_log(request: Request):
                 "status_label": FIGURE_STATUSES.get(r.status, r.status),
                 "resolution": r.resolution, "resolved": r.resolved_at,
             })
+    counts["total"] += len(CORRECTIONS)
+    counts["confirmed"] = counts.get("confirmed", 0) + len(CORRECTIONS)
     context["reports"] = reports
+    context["corrections"] = CORRECTIONS
     context["counts"] = counts
     context["statuses"] = FIGURE_STATUSES
     return templates.TemplateResponse(request, "accuracy.html", context)

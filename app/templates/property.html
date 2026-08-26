@@ -589,6 +589,9 @@
             <span class="dashboard-card-status">
                 {% if crime_error %}Data unavailable
                 {% elif crime and crime.total %}{{ crime.total }} crimes recorded
+                {# "No data available" read as "nothing found here". The
+                   force simply hasn't filed to Police.uk; say so. #}
+                {% elif crime and crime.unpublished %}Not published by the force recently
                 {% else %}No data available{% endif %}
             </span>
         </button>
@@ -3745,6 +3748,36 @@ Listed building data from Historic England's
     }, true);
 })();
 </script>
+
+{% if location %}
+<script>
+/* Remember this address so the homepage can offer it back. Stays on
+   this device: localStorage only, never sent anywhere, and the
+   homepage says so next to the list. A shared report is somebody
+   else's address, so it is not recorded. */
+(function () {
+    {% if shared %}return;{% endif %}
+    try {
+        var KEY = 'uki-recent';
+        var entry = {
+            pc: {{ location.postcode | tojson }},
+            hn: {{ (house_number or "") | tojson }},
+            area: {{ (location.admin_district or "") | tojson }},
+            score: {{ (overview.score if overview else none) | tojson }},
+            grade: {{ (overview.grade if overview else none) | tojson }},
+            at: Date.now()
+        };
+        var list = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (!Array.isArray(list)) list = [];
+        list = list.filter(function (e) {
+            return e && e.pc && !(e.pc === entry.pc && (e.hn || '') === entry.hn);
+        });
+        list.unshift(entry);
+        localStorage.setItem(KEY, JSON.stringify(list.slice(0, 6)));
+    } catch (e) { /* private mode, quota, disabled storage: not worth a fuss */ }
+})();
+</script>
+{% endif %}
 
 {% endblock %}
 

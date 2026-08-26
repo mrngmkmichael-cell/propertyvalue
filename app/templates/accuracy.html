@@ -16,6 +16,29 @@
     <div class="score-tile"><span class="score-tile-value">{{ counts.open }}</span><span class="score-tile-label">still checking</span></div>
 </div>
 
+{% if corrections %}
+<h2 class="accuracy-h2">Corrections in full</h2>
+<p class="section-sub">Reported to us directly rather than through the form on a card. What was wrong, why, and what changed.</p>
+<div class="correction-list">
+    {% for c in corrections %}
+    <article class="correction">
+        <header class="correction-head">
+            <span class="status-pill status-confirmed">Confirmed and fixed</span>
+            <span class="correction-meta">{{ c.card }} &middot; {{ c.district }} &middot; {{ c.date }}</span>
+        </header>
+        <dl class="correction-body">
+            <dt>Reported</dt><dd>{{ c.reported }}</dd>
+            <dt>What we found</dt><dd>{{ c.found }}</dd>
+            <dt>What changed</dt><dd>{{ c.fixed }}</dd>
+        </dl>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if reports %}
+<h2 class="accuracy-h2">Reported from a card</h2>
+{% endif %}
 {% if reports %}
 <div class="tablewrap">
 <table class="tx-table accuracy-table">

@@ -148,6 +148,15 @@
             <button type="submit">Search</button>
         </form>
 
+        {# Filled in from this device's own localStorage, so it is empty
+           markup for a first-time visitor and never appears in the
+           cached HTML. #}
+        <div class="lx-recent" id="lx-recent" hidden>
+            <p class="lx-recent-label">Pick up where you left off</p>
+            <div class="lx-recent-items" id="lx-recent-items"></div>
+            <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="lx-recent-clear">Clear</button></p>
+        </div>
+
         <p class="lx-hero-stats" aria-label="37 checks, 13 official sources, 1.7 million postcodes covered">
             <span><span class="stat-count" data-target="37">37</span> checks</span>
             <span class="lx-sep">&middot;</span>
@@ -1454,6 +1463,59 @@
             if (loopOn && !loopRaf) loopRaf = requestAnimationFrame(smoothLoop);
         });
     }
+})();
+</script>
+
+<script>
+/* Recent searches, written by the report page into this device's
+   localStorage. A returning visitor otherwise faces the same empty box
+   every time; this puts them one tap from where they were. */
+(function () {
+    var wrap = document.getElementById('lx-recent');
+    var items = document.getElementById('lx-recent-items');
+    if (!wrap || !items) return;
+
+    var list;
+    try {
+        list = JSON.parse(localStorage.getItem('uki-recent') || '[]');
+    } catch (e) { return; }
+    if (!Array.isArray(list) || !list.length) return;
+
+    list.slice(0, 4).forEach(function (e) {
+        if (!e || !e.pc) return;
+        var a = document.createElement('a');
+        a.className = 'lx-recent-item';
+        a.href = '/property?postcode=' + encodeURIComponent(e.pc) +
+                 (e.hn ? '&house_number=' + encodeURIComponent(e.hn) : '');
+
+        var pc = document.createElement('span');
+        pc.className = 'lx-recent-pc';
+        pc.textContent = e.hn ? e.hn + ', ' + e.pc : e.pc;
+        a.appendChild(pc);
+
+        if (e.area) {
+            var area = document.createElement('span');
+            area.className = 'lx-recent-area';
+            area.textContent = e.area;
+            a.appendChild(area);
+        }
+        if (typeof e.score === 'number') {
+            var s = document.createElement('span');
+            s.className = 'lx-recent-score';
+            s.textContent = e.score;
+            a.appendChild(s);
+        }
+        items.appendChild(a);
+    });
+
+    if (!items.children.length) return;
+    wrap.hidden = false;
+
+    var clear = document.getElementById('lx-recent-clear');
+    if (clear) clear.addEventListener('click', function () {
+        try { localStorage.removeItem('uki-recent'); } catch (e) {}
+        wrap.hidden = true;
+    });
 })();
 </script>
 {% endblock %}

@@ -4959,6 +4959,47 @@ main:focus { outline: none; }
 .status-labelled  { background: var(--warn-bg); color: var(--warn); }
 .status-correct   { background: var(--good-bg); color: var(--good); }
 
+/* Corrections that arrived outside the report-a-figure form. Each one
+   is a short case study rather than a table row: what was reported,
+   what the source actually said, what changed. */
+.accuracy-h2 { margin: 2.5rem 0 0.35rem; font-size: var(--text-xl); }
+.correction-list { display: grid; gap: 1rem; margin: 1.25rem 0 1rem; }
+.correction {
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--bad);
+    border-radius: var(--radius-md);
+}
+.correction-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.85rem;
+}
+.correction-meta { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-soft); }
+.correction-body { display: grid; gap: 0.15rem 1.25rem; margin: 0; }
+.correction-body dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.correction-body dd {
+    margin: 0 0 0.75rem;
+    color: var(--ink);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    max-width: 62ch;
+}
+.correction-body dd:last-child { margin-bottom: 0; }
+@media (min-width: 46rem) {
+    .correction-body { grid-template-columns: 9rem 1fr; }
+    .correction-body dt { padding-top: 0.15rem; }
+}
+
 .figure-resolve { display: grid; gap: 0.4rem; min-width: 14rem; }
 .figure-resolve select, .figure-resolve textarea { font: inherit; font-size: var(--text-sm); padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--ink); }
 .figure-resolve button { padding: 0.4rem 0.9rem; font-size: var(--text-sm); }
@@ -5984,6 +6025,68 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
     backdrop-filter: blur(14px);
     border-color: rgba(255, 255, 255, 0.14);
 }
+
+/* Recent searches: a returning visitor's own addresses, offered back
+   under the search box. Sits between the form and the stat line, so it
+   reads as part of the search rather than a separate feature. */
+.lx-recent { margin: 1.5rem 0 0; }
+.lx-recent-label {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-recent-items { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.lx-recent-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.5rem 0.45rem 0.85rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+.lx-recent-item:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+.lx-recent-pc { font-weight: var(--weight-medium); }
+.lx-recent-area { color: var(--ink-soft); font-size: var(--text-xs); }
+.lx-recent-score {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0 0.3rem;
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+}
+.lx-recent-note {
+    margin: 0.6rem 0 0;
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+}
+.lx-recent-clear {
+    padding: 0;
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.lx-recent-clear:hover { color: var(--ink); background: none; }
 
 .lx-hero-stats {
     display: flex;

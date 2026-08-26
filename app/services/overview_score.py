@@ -26,6 +26,8 @@ CONCERN_LABELS = {
     "air_quality": "Air quality well above WHO guideline",
     "landfill": "Historic landfill on/near site",
     "coal_mining": "In a Coal Mining Reporting Area",
+    "sewage": "Frequent sewage discharges nearby",
+    "clay_risk": "Rising subsidence risk from climate change",
     "planning": "Planning constraints present",
     "environmental": "Environmental designations present",
     "broadband": "Poor broadband availability",
@@ -59,7 +61,7 @@ _EFFICIENT_EPC_BANDS = {"A", "B", "C"}
 # quality well above WHO guideline" in a free verdict would leak the
 # gated card's actual finding without paying for it, undermining the
 # lock on that card. Premium users get the full set.
-_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill", "coal_mining"}
+_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill", "coal_mining", "sewage", "clay_risk"}
 
 
 def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
@@ -107,6 +109,18 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     coal_mining = context.get("coal_mining")
     if coal_mining and coal_mining.get("present"):
         concerns.append("coal_mining")
+
+    # Both of these already flag their own card red on the report; they
+    # were missing here, so a Premium reader could see a red-ringed card
+    # the verdict never mentioned. Thresholds copied from the card
+    # statuses in property.html so the two can't drift.
+    outfalls = context.get("sewage_outfalls")
+    if outfalls and (outfalls[0].get("spill_count") or 0) >= 20:
+        concerns.append("sewage")
+
+    clay = context.get("clay_risk")
+    if clay and clay.get("class_2030") == "Probable":
+        concerns.append("clay_risk")
 
     if context.get("planning_flags"):
         concerns.append("planning")
