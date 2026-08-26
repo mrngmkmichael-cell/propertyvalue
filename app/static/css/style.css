@@ -5789,7 +5789,14 @@ body.theme-dark .leaflet-popup-tip {
 .lx-sep { color: var(--ink-faint); }
 
 /* ---- The live report strip ----------------------------------------- */
+/* The strip is filled from /api/lookup after paint, so it holds its
+   space from the start rather than shoving the headline down when the
+   data lands. `hidden` would remove it from layout entirely, hence the
+   override: present, sized, invisible. */
+.lx-strip[hidden] { display: block; visibility: hidden; }
+
 .lx-strip {
+    min-height: 152px;
     max-width: 46rem;
     margin: 0 0 2.2rem;
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -5996,9 +6003,12 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
    travel and no edge is ever exposed. */
 .lx-about-map {
     position: absolute;
-    inset: -14% 0;
+    inset: -22% 0;
     background: url('/static/img/hero-map.webp') center / cover no-repeat;
-    filter: grayscale(1) brightness(0.42) contrast(1.2);
+    /* Was brightness(0.42), which was so dim that a coastline had no
+       edge to register the movement against - the parallax was running
+       at full travel and still read as a static image. */
+    filter: grayscale(1) brightness(0.52) contrast(1.25);
     transform: scale(1.12) translate3d(0, var(--shift, 0px), 0);
     will-change: transform;
 }

@@ -52,7 +52,7 @@
            frame: the hero is fully composed before a byte of video
            arrives, and nothing shifts when it does. The baked hero map
            is gated the same way for the same reason. #}
-        <video class="lx-hero-video" muted playsinline
+        <video class="lx-hero-video" muted loop playsinline
                poster="/static/img/hero-luxonn.webp" data-src="{{ hero_video }}"></video>
         {% else %}
         <div class="lx-hero-still"></div>
@@ -469,19 +469,32 @@
            If it refuses, the poster simply stands. */
         vid.autoplay = true;
         vid.src = vid.dataset.src;
-
-        /* Hold on the last frame for five seconds, then run it again.
-           The shot ends on the sunset, so the pause reads as a held
-           beat rather than a stall, and it keeps the movement from
-           becoming a constant tic in the corner of the eye. This is
-           why the element has no `loop` attribute. */
-        vid.addEventListener('ended', function () {
-            setTimeout(function () {
-                vid.currentTime = 0;
-                vid.play().catch(function () { /* nothing to recover */ });
-            }, 5000);
-        });
     }
+})();
+
+(function () {
+    /* Typing demo in the postcode field: cycles real postcodes through
+       the placeholder with a caret. Placeholder only, so it stops being
+       visible the instant someone focuses or types and can never
+       interfere with real input. (Lost in the landing rebuild; it lived
+       in the old page's own script block.) */
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const input = document.getElementById('postcode');
+    if (!input) return;
+    const samples = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
+    let si = 0, ci = 0, deleting = false;
+    (function tick() {
+        const word = samples[si];
+        if (document.activeElement !== input && !input.value) {
+            input.placeholder = word.slice(0, ci) + '▏';
+        }
+        let delay;
+        if (!deleting && ci < word.length) { ci++; delay = 110; }
+        else if (!deleting) { deleting = true; delay = 1600; }
+        else if (ci > 0) { ci--; delay = 45; }
+        else { deleting = false; si = (si + 1) % samples.length; delay = 350; }
+        setTimeout(tick, delay);
+    })();
 })();
 
 (function () {
@@ -495,7 +508,10 @@
     const art = document.querySelector('.lx-about-art');
     const map = document.querySelector('.lx-about-map');
     if (art && map && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        const TRAVEL = 50;   /* px each way, matching the -14% overscan */
+        /* px each way. 50 was running correctly and still read as static
+           against a low-detail map, so this is nearly double, within the
+           -22% overscan that keeps an edge from ever showing. */
+        const TRAVEL = 92;
         let ticking = false;
         const place = function () {
             const r = art.getBoundingClientRect();
@@ -627,20 +643,37 @@
         })(t0);
     }
 
-    Promise.all(POSTCODES.map(function (pc) {
-        return fetch('/api/lookup?postcode=' + encodeURIComponent(pc))
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .catch(function () { return null; });
-    })).then(function (results) {
-        const good = results.filter(function (d) { return d && d.postcode && d.overview; });
-        if (!good.length) return;          // no data, no strip
-        strip.hidden = false;
-        strip.classList.add('in-view');
+    /* Show the strip the moment the FIRST postcode answers, rather than
+       waiting on all five. Promise.all held it back by however long the
+       slowest of five lookups took, which read as the card being missing
+       for a couple of seconds after every refresh. The rest arrive in
+       their own time and join the rotation. */
+    const ok = function (d) { return d && d.postcode && d.overview; };
+    const loaded = [];
+    let shown = false, rotating = false;
+
+    const rotate = function () {
+        if (rotating || reduce || loaded.length < 2) return;
+        rotating = true;
         let i = 0;
-        paint(good[0]);
-        if (good.length > 1 && !reduce) {
-            setInterval(function () { i = (i + 1) % good.length; paint(good[i]); }, 4000);
-        }
+        setInterval(function () { i = (i + 1) % loaded.length; paint(loaded[i]); }, 4000);
+    };
+
+    POSTCODES.forEach(function (pc) {
+        fetch('/api/lookup?postcode=' + encodeURIComponent(pc))
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; })
+            .then(function (d) {
+                if (!ok(d)) return;
+                loaded.push(d);
+                if (!shown) {
+                    shown = true;
+                    strip.hidden = false;
+                    strip.classList.add('in-view');
+                    paint(d);
+                }
+                rotate();
+            });
     });
 })();
 </script>
