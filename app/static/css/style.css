@@ -3083,12 +3083,16 @@ a.school-profile-lock-label:hover {
 }
 
 .dashboard-card.status-attn {
-    border-color: #fde68a;
-    background: var(--warn-bg);
+    /* A red ring, not an amber tint: the flag has to be findable from
+       across the page. */
+    border-color: var(--bad);
+    box-shadow: 0 0 0 1px var(--bad);
+    background: var(--bad-bg);
 }
 
 .dashboard-card.status-attn:hover {
-    border-color: #fbbf24;
+    border-color: var(--bad);
+    box-shadow: 0 0 0 2px var(--bad);
 }
 
 .dashboard-card.status-muted {
@@ -5605,7 +5609,8 @@ body.theme-dark .icon-sewage        { background: rgba(129, 124, 116, 0.13); col
    the lifted red the dark theme already uses for a bad flood zone, so
    the report keeps one language for risk. */
 body.theme-dark .dashboard-card.status-attn {
-    border-color: rgba(224, 139, 127, 0.42);
+    border-color: var(--bad);
+    box-shadow: 0 0 0 1px var(--bad);
     background: linear-gradient(180deg, rgba(224, 139, 127, 0.07), transparent), var(--surface);
 }
 body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--bad); }
@@ -7137,4 +7142,25 @@ body:not(.theme-dark) .lx-hero-scrim {
 @media (prefers-reduced-motion: reduce) {
     .lx-hero-form button[type="submit"] { transition: none; }
     .lx-hero-form button[type="submit"]::after { animation: none; }
+}
+
+
+/* ---- Landing: link from the orbit to the full 37 on pricing ---- */
+.lx-orbit-more { margin: 1.1rem 0 0; }
+.lx-orbit-more-btn {
+    display: inline-block;
+    padding: 0.55rem 1.3rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    font-family: var(--font-sans);
+    font-weight: var(--weight-semi);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.lx-orbit-more-btn:hover {
+    background: var(--accent);
+    color: var(--accent-ink);
+    transform: translateY(-1px);
 }

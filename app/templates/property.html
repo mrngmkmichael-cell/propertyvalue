@@ -3664,7 +3664,9 @@ Listed building data from Historic England's
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'cat-toggle';
-        btn.setAttribute('aria-expanded', flagged ? 'true' : 'false');
+        /* Every category starts open (folded-by-default hid the
+           breadth of the report; readers can still fold them away). */
+        btn.setAttribute('aria-expanded', 'true');
 
         var id = 'cat-' + name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
         grid.id = id;
@@ -3682,8 +3684,6 @@ Listed building data from Historic England's
         heading.textContent = '';
         heading.appendChild(btn);
         heading.classList.add('dashboard-category-heading-toggle');
-
-        if (!flagged) grid.hidden = true;
 
         btn.addEventListener('click', function () {
             var nowOpen = grid.hidden;
