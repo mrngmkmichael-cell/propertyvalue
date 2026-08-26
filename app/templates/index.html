@@ -9,7 +9,13 @@
    scripts/build_hero_map.py. #}
 
 {% block lcp_preload %}
-<link rel="preload" as="image" href="/static/img/hero-luxonn-v2.webp" fetchpriority="high">
+{# Two sizes, and `media` so a phone only ever fetches the small one.
+   A Moto G Power is 412 CSS px at ~1.75x, so 820 wide is already more
+   than it can show; it was being sent the 1200 because a <video>
+   poster attribute cannot be responsive. Hence the still moving to a
+   CSS layer, which can. #}
+<link rel="preload" as="image" href="/static/img/hero-luxonn-820.webp" fetchpriority="high" media="(max-width: 860px)">
+<link rel="preload" as="image" href="/static/img/hero-luxonn-1200.webp" fetchpriority="high" media="(min-width: 861px)">
 {% endblock %}
 
 {% block extra_head %}
@@ -62,15 +68,18 @@
 <section class="lx-hero" id="home">
     <div class="lx-hero-bg" aria-hidden="true">
         {% if hero_video %}
-        {# src is withheld and attached by script, so the 758 KB is only
+        {# The still is a layer of its own rather than the video's poster
+           attribute, so it can be served at two sizes. The video sits on
+           top of it and simply covers it once it arrives. #}
+        <div class="lx-hero-poster"></div>
+        {# src is withheld and attached by script, so the 1.3 MB is only
            ever fetched on a screen wide enough for the shot to be worth
            anything, and never for a reader who asked for reduced motion.
-           Everyone else gets the poster, which is the render's own key
+           Everyone else keeps the still, which is the render's own key
            frame: the hero is fully composed before a byte of video
-           arrives, and nothing shifts when it does. The baked hero map
-           is gated the same way for the same reason. #}
+           arrives, and nothing shifts when it does. #}
         <video class="lx-hero-video" muted loop playsinline
-               poster="/static/img/hero-luxonn-v2.webp" data-src="{{ hero_video }}"></video>
+               data-src="{{ hero_video }}"></video>
         {% else %}
         <div class="lx-hero-still"></div>
         {% endif %}
@@ -172,12 +181,27 @@
    the point. #}
 <section class="lx-build" id="build" hidden>
     <div class="lx-build-track" id="lx-build-track">
-        <div class="lx-build-pin">
+        <div class="lx-build-pin" id="lx-build-pin">
+            {# Backdrop: a faint gold dot-grid and two glow fields that
+               drift with the scrub. Pure decoration, pure CSS, zero
+               requests. #}
+            <div class="lx-build-fx" aria-hidden="true">
+                <div class="lx-build-glow lx-build-glow-a" id="lx-build-glow-a"></div>
+                <div class="lx-build-glow lx-build-glow-b" id="lx-build-glow-b"></div>
+            </div>
+            {# The 37 checks as named motes, spawned by script from the
+               same titles the report's cards carry. They fly into the
+               dial as the reader scrolls; the score is the sum of what
+               has been absorbed. #}
+            <div class="lx-build-swarm" id="lx-build-swarm" aria-hidden="true"></div>
             <div class="lx-wrap">
                 <p class="lx-eyebrow">One search</p>
                 <h2 class="lx-h2 lx-build-h" id="lx-build-h">Watch a report <em class="hl-accent">build itself</em>.</h2>
                 <div class="lx-build-grid">
-                    <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
+                    <div class="lx-build-dial-wrap">
+                        <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
+                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 37 checks</p>
+                    </div>
                     <div class="lx-build-chips" id="lx-build-chips"></div>
                 </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
@@ -897,7 +921,22 @@
     }
 
     let track = null, heading = null, arcEl = null, numEl = null, cta = null, chips = [];
+    let pin = null, motes = [], tallyEl = null, glowA = null, glowB = null;
     const SCORE = seed ? seed.overview.score : 0;
+
+    /* The 37 checks by name, matching the report's own card titles
+       (Resident Reviews is the one card that isn't an official check,
+       and it is the one left out). Names, not figures, so nothing here
+       can drift the way a baked-in number would. */
+    const CHECKS = [
+        'Local Market', 'Valuation', 'Costs', 'Rental', 'Area Prosperity', 'Price Trend',
+        'Energy', 'Extension', 'Aspect', 'Flood Risk', 'Surface Water', 'Sewage',
+        'Noise', 'Crime', 'Radon', 'Subsidence', 'Air Quality', 'Contamination',
+        'Mining', 'Planning', 'Designations', 'Listed Buildings', 'Schools', 'Catchments',
+        'Essentials', 'Getting Around', 'Broadband', 'Mobile Signal', 'Income', 'Deprivation',
+        'Occupation', 'Qualifications', 'Age Profile', 'Housing', 'Ethnicity', 'Health',
+        'Council Tax'
+    ];
     if (seed) {
         document.getElementById('lx-build-pc').textContent = seed.postcode;
         document.getElementById('lx-build-place').textContent =
@@ -924,15 +963,61 @@
             arcEl = document.getElementById('lx-build-dial');
             numEl = document.getElementById('lx-build-num');
             cta = document.getElementById('lx-build-cta');
+            pin = document.getElementById('lx-build-pin');
+            tallyEl = document.getElementById('lx-build-tally-n');
+            glowA = document.getElementById('lx-build-glow-a');
+            glowB = document.getElementById('lx-build-glow-b');
             chips = Array.prototype.slice.call(holder.children);
+
+            /* Spawn the swarm: each check name scattered across the
+               stage on a golden-angle spiral (deterministic, so the
+               layout never jumps between visits), each with its own
+               slice of the scrub during which it flies into the dial.
+               Spawn order is shuffled by a coprime stride so
+               neighbours do not leave in reading order. */
+            const swarm = document.getElementById('lx-build-swarm');
+            CHECKS.forEach(function (name, i) {
+                const m = document.createElement('span');
+                m.className = 'lx-build-mote';
+                m.textContent = name;
+                const angle = i * 2.399963;
+                const spread = 0.30 + 0.62 * (((i * 7) % 37) / 37);
+                m.dataset.px = (0.5 + Math.cos(angle) * 0.48 * spread).toFixed(4);
+                m.dataset.py = (0.5 + Math.sin(angle) * 0.44 * spread).toFixed(4);
+                m.dataset.at = (0.04 + 0.44 * (((i * 11) % 37) / 37)).toFixed(4);
+                swarm.appendChild(m);
+                motes.push(m);
+            });
+            measureSwarm();
             /* The page just grew ~2.5 screens above the coverage map;
                its parallax cached geometry at load, so re-measure. */
             window.dispatchEvent(new Event('resize'));
         }
     }
 
+    /* Geometry for the swarm, measured once and on resize rather than
+       per frame: each mote's resting point and its vector to the dial
+       centre, in pixels. The frame handler only writes transforms. */
+    function measureSwarm() {
+        if (!pin || !motes.length) return;
+        const pr = pin.getBoundingClientRect();
+        const dr = document.getElementById('lx-build-dial').getBoundingClientRect();
+        const cx = dr.left - pr.left + dr.width / 2;
+        const cy = dr.top - pr.top + dr.height / 2;
+        motes.forEach(function (m) {
+            const x = parseFloat(m.dataset.px) * pr.width;
+            const y = parseFloat(m.dataset.py) * pr.height;
+            m.style.left = x + 'px';
+            m.style.top = y + 'px';
+            m.dataset.dx = (cx - x).toFixed(1);
+            m.dataset.dy = (cy - y).toFixed(1);
+        });
+    }
+    addEventListener('resize', measureSwarm, { passive: true });
+
     const seg = function (p, a, len) { return Math.min(Math.max((p - a) / len, 0), 1); };
     const easeOut = function (x) { return 1 - Math.pow(1 - x, 3); };
+    const easeIn = function (x) { return x * x * x; };
     let ticking = false;
     function frame() {
         ticking = false;
@@ -946,16 +1031,36 @@
         const span = r.height - window.innerHeight;
         if (span <= 0) return;
         const p = Math.min(Math.max(-r.top / span, 0), 1);
-        const dial = seg(p, 0, 0.45);
-        numEl.textContent = Math.round(SCORE * dial);
-        arcEl.style.setProperty('--arc', (SCORE * dial) + '%');
-        heading.style.clipPath = 'inset(0 ' + (100 - seg(p, 0, 0.25) * 100) + '% 0 0)';
-        chips.forEach(function (chip) {
-            const t = easeOut(seg(p, parseFloat(chip.dataset.at), 0.15));
+
+        /* The score is generated by the checks: each mote's flight
+           contributes its share, so the dial only reaches the real
+           score once every check has been folded in (about p 0.58). */
+        let sum = 0, landed = 0;
+        motes.forEach(function (m) {
+            const t = seg(p, parseFloat(m.dataset.at), 0.10);
+            sum += t;
+            if (t >= 1) landed++;
+            const e = easeIn(t);
+            m.style.transform = 'translate(-50%, -50%) '
+                + 'translate(' + (parseFloat(m.dataset.dx) * e) + 'px,' + (parseFloat(m.dataset.dy) * e) + 'px) '
+                + 'scale(' + (1 - 0.75 * e) + ')';
+            m.style.opacity = t <= 0 ? 0.4 : (t < 1 ? (0.4 + 0.6 * Math.sin(Math.PI * t)) : 0);
+        });
+        const f = motes.length ? sum / motes.length : seg(p, 0, 0.45);
+        numEl.textContent = Math.round(SCORE * f);
+        arcEl.style.setProperty('--arc', (SCORE * f) + '%');
+        if (tallyEl) tallyEl.textContent = landed;
+
+        if (glowA) glowA.style.transform = 'translateY(' + (40 - p * 90) + 'px)';
+        if (glowB) glowB.style.transform = 'translateY(' + (p * 70 - 35) + 'px)';
+
+        heading.style.clipPath = 'inset(0 ' + (100 - seg(p, 0, 0.20) * 100) + '% 0 0)';
+        chips.forEach(function (chip, i) {
+            const t = easeOut(seg(p, 0.60 + i * 0.08, 0.10));
             chip.style.opacity = t;
             chip.style.transform = 'translateY(' + (40 * (1 - t)) + 'px)';
         });
-        cta.classList.toggle('on', p > 0.8);
+        cta.classList.toggle('on', p > 0.9);
     }
     function onScroll() {
         if (ticking) return;

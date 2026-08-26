@@ -289,10 +289,24 @@ def inline_css() -> Markup:
     with open(STYLESHEET_PATH, encoding="utf-8") as fh:
         css = fh.read()
     css = _CSS_COMMENT.sub("", css)
-    # Collapse the blank lines the comments leave behind. Deliberately
-    # not a real minifier: gzip already handles indentation, and a regex
-    # that rewrites declarations is a good way to break a stylesheet.
-    css = re.sub(r"\n\s*\n+", "\n", css).strip()
+    # Strip the indentation and fold onto one line. Still not a real
+    # minifier - nothing here rewrites a declaration, which is the way to
+    # break a stylesheet with a regex. It only removes whitespace between
+    # lines, which CSS does not care about.
+    #
+    # The join is a single space, NOT an empty string. A descendant
+    # selector split across two lines ("h1,\n  .x" is fine, but
+    # ".foo\n  .bar" is one selector) would otherwise be welded into a
+    # compound selector and silently mean something else.
+    #
+    # Worth doing because this sheet is inlined into every response, so
+    # its size sits on the critical path for first paint, and its length
+    # on the parse time of a cheap phone. Measured: 164,896 -> 150,058
+    # bytes raw (9%), 25,883 -> 24,459 gzipped (5.5%), with the brace
+    # count and the whitespace-normalised text identical either way.
+    css = " ".join(
+        line.strip() for line in css.split("\n") if line.strip()
+    )
 
     safe = Markup(css)
     _css_cache = (mtime, safe)

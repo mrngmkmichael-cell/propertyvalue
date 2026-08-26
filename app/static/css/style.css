@@ -5843,11 +5843,31 @@ body.theme-dark .leaflet-popup-tip {
 
 .lx-hero-bg { position: absolute; inset: 0; z-index: 0; }
 
+/* The hero still, as its own layer rather than the video's poster
+   attribute. A poster cannot be responsive, so a phone was downloading
+   the 1200-wide image to show it at about 412 CSS px. This can carry a
+   media query; the video sits on top and covers it once it arrives.
+   Same grade as the video, or the swap would flash. */
+.lx-hero-poster {
+    position: absolute;
+    inset: 0;
+    background: #0a0a0a url('/static/img/hero-luxonn-820.webp') center / cover no-repeat;
+    filter: brightness(0.88) saturate(1.02);
+}
+
+@media (min-width: 861px) {
+    .lx-hero-poster { background-image: url('/static/img/hero-luxonn-1200.webp'); }
+}
+
+body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95); }
+
 /* Barely touched. The render is already graded, and its sunset is the
    same gold as the accent, so desaturating it would be throwing away
    the reason it was chosen. A little off the brightness only, to keep
    the headline sitting on top of it rather than fighting it. */
 .lx-hero-video {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -6657,7 +6677,7 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
 }
 
 .lx-build[hidden] { display: none !important; }
-.lx-build-track { height: 280vh; }
+.lx-build-track { height: 320vh; }
 .lx-build-pin {
     position: sticky;
     top: 0;
@@ -6739,7 +6759,7 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
 }
 @media (max-width: 700px) {
     .lx-build-grid { grid-template-columns: 1fr; justify-items: start; }
-    .lx-build-track { height: 240vh; }
+    .lx-build-track { height: 280vh; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6749,4 +6769,79 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
     /* The build section is a motion showcase; its figures already live
        in the hero strip. Without motion it is a duplicate, so it goes. */
     .lx-build { display: none !important; }
+}
+
+/* ---- Build section: swarm, backdrop FX, tally ---- */
+
+.lx-build-pin { position: sticky; }
+
+.lx-build-fx {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    /* Faint gold dot grid, faded out toward the edges so it reads as
+       depth rather than wallpaper. */
+    background-image: radial-gradient(rgba(212, 169, 95, 0.13) 1px, transparent 1.5px);
+    background-size: 30px 30px;
+    -webkit-mask-image: radial-gradient(90rem 55rem at 50% 45%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(90rem 55rem at 50% 45%, #000 30%, transparent 75%);
+}
+
+.lx-build-glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+}
+.lx-build-glow-a {
+    width: 34rem; height: 34rem;
+    left: -8rem; top: 10%;
+    background: radial-gradient(circle, rgba(212, 169, 95, 0.13), transparent 65%);
+}
+.lx-build-glow-b {
+    width: 28rem; height: 28rem;
+    right: -6rem; bottom: 5%;
+    background: radial-gradient(circle, rgba(212, 169, 95, 0.09), transparent 65%);
+}
+
+.lx-build-swarm {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+}
+.lx-build-mote {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    opacity: 0.4;
+    padding: 0.28rem 0.65rem;
+    border: 1px solid rgba(212, 169, 95, 0.35);
+    border-radius: 999px;
+    background: rgba(18, 18, 18, 0.72);
+    color: var(--ink-soft);
+    font-family: var(--font-mono, monospace);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.lx-build-pin > .lx-wrap { position: relative; z-index: 2; }
+
+.lx-build-tally {
+    margin: 0.7rem 0 0;
+    text-align: center;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+}
+.lx-build-tally span { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 700px) {
+    .lx-build-mote { font-size: 0.5rem; padding: 0.2rem 0.45rem; }
+    .lx-build-fx { background-size: 24px 24px; }
 }
