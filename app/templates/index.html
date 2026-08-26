@@ -41,7 +41,13 @@
    higher quality than the previous backdrop, because the scrim over
    this one is deliberately light on the right so the sunset reads.
    =================================================================== #}
-{% set hero_video = "/static/video/hero-luxonn.mp4" %}
+{# Filename carries the version on purpose. Static assets are served
+   Cache-Control: immutable for a year, so replacing a file in place
+   means every browser that already fetched it keeps the old copy
+   forever - which is exactly what happened when the seamless loop
+   replaced the 10s cut and nobody could see the difference. New
+   content, new name. #}
+{% set hero_video = "/static/video/hero-luxonn-loop.mp4" %}
 <section class="lx-hero" id="home">
     <div class="lx-hero-bg" aria-hidden="true">
         {% if hero_video %}
@@ -508,10 +514,15 @@
     const art = document.querySelector('.lx-about-art');
     const map = document.querySelector('.lx-about-map');
     if (art && map && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        /* px each way. 50 was running correctly and still read as static
-           against a low-detail map, so this is nearly double, within the
-           -22% overscan that keeps an edge from ever showing. */
-        const TRAVEL = 92;
+        /* px each way. This started at 50 and then 92; both were running
+           correctly and both still read as a static image, because the
+           frame is 540px tall and 92px of drift across a whole scroll is
+           simply not enough to register. The image is oversized by 30%
+           either side, so there is room for this without ever showing an
+           edge. --shift goes on the frame, not the image, because the
+           gold glow reads it too and drifts the other way: two things
+           moving at different rates is what makes it look like depth. */
+        const TRAVEL = 150;
         let ticking = false;
         const place = function () {
             const r = art.getBoundingClientRect();
@@ -519,7 +530,7 @@
             /* -1 when the frame is entering at the bottom, +1 leaving at
                the top, 0 dead centre. */
             const progress = (r.top + r.height / 2 - innerHeight / 2) / ((innerHeight + r.height) / 2);
-            map.style.setProperty('--shift', (-progress * TRAVEL).toFixed(1) + 'px');
+            art.style.setProperty('--shift', (-progress * TRAVEL).toFixed(1) + 'px');
             ticking = false;
         };
         const onScroll = function () {

@@ -3128,13 +3128,17 @@ a.school-profile-lock-label:hover {
     right: 1rem;
     padding: 0.15rem 0.55rem;
     border-radius: var(--radius-pill);
-    background: #fef3c7;
+    /* Red, not amber: gold/amber is the accent all over this site, so a
+       warning wearing it reads as emphasis rather than as a flag. Kept
+       in step with the dark theme, which uses --bad here. */
+    background: #fdeceb;
+    border: 1px solid #f3c4bf;
     font-family: var(--font-sans);
     font-size: var(--text-xs);
     font-weight: var(--weight-semi);
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: #92400e;
+    color: #96271c;
 }
 
 .dashboard-card-icon {
@@ -5522,13 +5526,28 @@ body.theme-dark .icon-sewage        { background: rgba(129, 124, 116, 0.13); col
    chips were built for a paper background. Gold does the same job here
    and it is already the accent, so attention reads as emphasis rather
    than as a second colour system. */
+/* A card that needs attention reads red, not gold. Gold is the brand
+   accent and is all over the page - a warning painted in it says
+   "emphasis", not "look at this one". --bad is #e08b7f here, which is
+   the lifted red the dark theme already uses for a bad flood zone, so
+   the report keeps one language for risk. */
 body.theme-dark .dashboard-card.status-attn {
-    border-color: rgba(212, 169, 95, 0.4);
-    background: linear-gradient(180deg, rgba(212, 169, 95, 0.07), transparent), var(--surface);
+    border-color: rgba(224, 139, 127, 0.42);
+    background: linear-gradient(180deg, rgba(224, 139, 127, 0.07), transparent), var(--surface);
 }
-body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--accent); }
+body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--bad); }
+body.theme-dark .dashboard-card.status-attn .dashboard-card-icon {
+    background: rgba(224, 139, 127, 0.14);
+    color: var(--bad);
+    border-color: rgba(224, 139, 127, 0.3);
+}
 
-body.theme-dark .check-this-tag,
+body.theme-dark .check-this-tag {
+    background: rgba(224, 139, 127, 0.14);
+    border: 1px solid rgba(224, 139, 127, 0.4);
+    color: var(--bad);
+}
+
 body.theme-dark .watchlist-change-chip,
 body.theme-dark .attention-banner-chip {
     background: rgba(212, 169, 95, 0.12);
@@ -6032,7 +6051,7 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
    travel and no edge is ever exposed. */
 .lx-about-map {
     position: absolute;
-    inset: -22% 0;
+    inset: -30% 0;
     background: url('/static/img/hero-map.webp') center / cover no-repeat;
     /* Was brightness(0.42), which was so dim that a coastline had no
        edge to register the movement against - the parallax was running
@@ -6049,6 +6068,11 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
     position: absolute;
     inset: 0;
     background: radial-gradient(circle at 46% 44%, rgba(212, 169, 95, 0.22), transparent 58%);
+    transform: translate3d(0, calc(var(--shift, 0px) * -0.35), 0);
+    will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+    .lx-about-glow { transform: none; }
 }
 .lx-about-caption {
     position: absolute;
