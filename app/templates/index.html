@@ -219,6 +219,64 @@
     </div>
 </section>
 
+{# =================================================================== CHECKS
+   The split is the real one: 22 checks open on every report and 15 more
+   come with Premium. A selection of each is shown. Every "sub" line is
+   the body that publishes the figure, which is the whole point of the
+   section. #}
+<section class="lx-section lx-checks" id="checks">
+    <div class="lx-wrap lx-centre">
+        <p class="lx-eyebrow">What we check</p>
+
+        {# The section IS the ring: twelve of the report's own check
+           cards orbit the heading, passing behind and in front of the
+           real DOM words. The card list below feeds the tile painter
+           (content, tones and this site's own icons) and doubles as
+           the static fallback for no-JS and reduced-motion readers,
+           for whom the ring never starts and the list stays. #}
+        <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
+            <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
+            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Thirty<br>seven<br>checks</h2>
+            <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
+        </div>
+
+        <p class="lx-lede lx-lede-centre">
+            Every one on a single address, every one traced to the body that
+            published it. Twelve of them in orbit here; the full report runs
+            all thirty-seven.
+        </p>
+        <p class="lx-orbit-tiers">
+            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
+            <span class="lx-orbit-tiers-sep">&middot;</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first three properties</span>
+        </p>
+
+        <ul class="lx-orbit-cards" id="lx-orbit-cards">
+            {% for icon, title, value, source, tone in [
+                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
+                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
+                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
+                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', 'plain'),
+                ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
+                ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
+                ('broadband', 'Broadband', 'Speeds at the address', 'Ofcom', 'good'),
+                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', 'plain'),
+                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
+                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
+                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
+                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', 'plain')
+            ] %}
+            <li class="lx-check lx-orbit-card" data-title="{{ title }}" data-value="{{ value }}" data-source="{{ source }}">
+                <span class="lx-check-icon lx-tone-{{ tone }}">{{ icons.icon(icon) }}</span>
+                <p class="lx-check-title">{{ title }}</p>
+                <p class="lx-check-value">{{ value }}</p>
+                <p class="lx-check-source">{{ source }}</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+
 {# =================================================================== AREAS #}
 <section class="lx-section lx-areas" id="areas">
     <div class="lx-wrap lx-centre">
@@ -284,63 +342,7 @@
     </div>
 </section>
 
-{# =================================================================== CHECKS
-   The split is the real one: 22 checks open on every report and 15 more
-   come with Premium. A selection of each is shown. Every "sub" line is
-   the body that publishes the figure, which is the whole point of the
-   section. #}
-<section class="lx-section lx-checks" id="checks">
-    <div class="lx-wrap lx-centre">
-        <p class="lx-eyebrow">What we check</p>
 
-        {# The section IS the ring: twelve of the report's own check
-           cards orbit the heading, passing behind and in front of the
-           real DOM words. The card list below feeds the tile painter
-           (content, tones and this site's own icons) and doubles as
-           the static fallback for no-JS and reduced-motion readers,
-           for whom the ring never starts and the list stays. #}
-        <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
-            <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Thirty<br>seven<br>checks</h2>
-            <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
-        </div>
-
-        <p class="lx-lede lx-lede-centre">
-            Every one on a single address, every one traced to the body that
-            published it. Twelve of them in orbit here; the full report runs
-            all thirty-seven.
-        </p>
-        <p class="lx-orbit-tiers">
-            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
-            <span class="lx-orbit-tiers-sep">&middot;</span>
-            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first three properties</span>
-        </p>
-
-        <ul class="lx-orbit-cards" id="lx-orbit-cards">
-            {% for icon, title, value, source, tone in [
-                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
-                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
-                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
-                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', 'plain'),
-                ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
-                ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
-                ('broadband', 'Broadband', 'Speeds at the address', 'Ofcom', 'good'),
-                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', 'plain'),
-                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
-                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
-                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
-                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', 'plain')
-            ] %}
-            <li class="lx-check lx-orbit-card" data-title="{{ title }}" data-value="{{ value }}" data-source="{{ source }}">
-                <span class="lx-check-icon lx-tone-{{ tone }}">{{ icons.icon(icon) }}</span>
-                <p class="lx-check-title">{{ title }}</p>
-                <p class="lx-check-value">{{ value }}</p>
-                <p class="lx-check-source">{{ source }}</p>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</section>
 
 {# =================================================================== VOICES
    Real, unedited comments. No star ratings: nobody gave one, and
