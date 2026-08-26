@@ -293,7 +293,18 @@
     <div class="lx-wrap lx-checks-grid">
         <div class="lx-checks-rail">
             <p class="lx-eyebrow">What we check</p>
-            <h2 class="lx-h2 lx-h2-stack">Thirty<br>seven<br>checks</h2>
+            {# A ring of twelve palette tiles orbits the heading, passing
+               behind the words and in front of them. The words stay real
+               DOM text; the depth illusion is two canvases, one behind
+               the heading for the far half of the ring and one in front
+               for the near half. Geometry adapted from the reference
+               Michael supplied; drawn only while on screen, never under
+               reduced motion. #}
+            <div class="lx-orbit-stage" id="lx-orbit-stage">
+                <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
+                <h2 class="lx-h2 lx-h2-stack lx-orbit-core">Thirty<br>seven<br>checks</h2>
+                <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
+            </div>
             <p class="lx-lede">
                 Every one on a single address, every one traced to the body that
                 published it. A selection of them here.
@@ -855,6 +866,163 @@
     };
     if (document.readyState === 'complete') idle();
     else addEventListener('load', idle);
+})();
+
+(function () {
+    /* The orbit ring around "Thirty seven checks". Twelve rounded
+       tiles on a tilted circle, projected with the same maths as the
+       reference implementation; the far half draws on the canvas
+       behind the heading, the near half on the canvas in front, so
+       the tiles pass through the words. Tiles are flat palette
+       gradients rather than textures - this site's look, and cheap. */
+    const stage = document.getElementById('lx-orbit-stage');
+    const backCv = document.getElementById('lx-orbit-back');
+    const frontCv = document.getElementById('lx-orbit-front');
+    if (!stage || !backCv || !frontCv) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const darkTheme = document.body.classList.contains('theme-dark');
+    /* Twelve tiles from the live palette: navy family, warm neutrals,
+       one green, one rust - or golds and charcoals in the dark theme. */
+    const PALETTES = darkTheme ? [
+        ['#d4a95f', '#8a6a2f'], ['#1b1b1b', '#050505'], ['#e6c584', '#b08a45'],
+        ['#2e2e2e', '#101010'], ['#d4a95f', '#5a4415'], ['#454545', '#161616'],
+        ['#f5e9d0', '#c8a96a'], ['#242424', '#0a0a0a'], ['#b08a45', '#4a3510'],
+        ['#383838', '#141414'], ['#e6c584', '#8a6a2f'], ['#1f1f1f', '#080808']
+    ] : [
+        ['#2b4c8c', '#1e3a70'], ['#f1efe9', '#d3cec2'], ['#5b7ab8', '#2b4c8c'],
+        ['#1c1714', '#3a332e'], ['#d9cdb8', '#b8a888'], ['#2f6b4f', '#1d4634'],
+        ['#eef1f7', '#c9d3e6'], ['#a8541a', '#7a3a10'], ['#8fa7cf', '#5b7ab8'],
+        ['#57504a', '#2e2a26'], ['#e8e4da', '#c5beb0'], ['#1e3a70', '#0f2348']
+    ];
+    const TS = 128;
+    function makeTile(pair, washed) {
+        const c = document.createElement('canvas');
+        c.width = TS; c.height = TS;
+        const x = c.getContext('2d');
+        const g = x.createLinearGradient(0, 0, TS * 0.4, TS);
+        g.addColorStop(0, pair[0]);
+        g.addColorStop(1, pair[1]);
+        x.fillStyle = g;
+        x.fillRect(0, 0, TS, TS);
+        if (washed) {
+            /* the reverse face: dimmed toward the page ground */
+            x.fillStyle = darkTheme ? 'rgba(5,5,5,0.55)' : 'rgba(250,249,246,0.55)';
+            x.fillRect(0, 0, TS, TS);
+        }
+        return c;
+    }
+    const FRONT_TILES = PALETTES.map(function (p) { return makeTile(p, false); });
+    const BACK_TILES = PALETTES.map(function (p) { return makeTile(p, true); });
+
+    /* Ring constants, straight from the reference: plane ratio 0.492
+       (a ~60 degree tilt), major axis rolled 25.5 degrees, camera at
+       13 radii, tile side 0.486 of the radius, 15s per revolution. */
+    const RATIO = 0.492, AXIS_DEG = 25.5, N = 12, SIDE = 0.40, DIST = 13, CORNER = 0.22, DUR = 15;
+    const ax = AXIS_DEG * Math.PI / 180, cf = RATIO, sf = Math.sqrt(1 - cf * cf);
+    const U = [Math.cos(ax), Math.sin(ax), 0];
+    const V = [-Math.sin(ax) * cf, Math.cos(ax) * cf, sf];
+    const AX3 = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
+
+    let W = 0, H = 0, A = 0, dpr = 1;
+    function size() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const r = stage.getBoundingClientRect();
+        /* the canvases are centred on the stage and overflow it */
+        /* The ring is anchored to the heading: a touch wider than the
+           words so tiles graze them rather than bury them, and hard
+           capped so no viewport ever gets a giant ring. */
+        const core = stage.querySelector('.lx-orbit-core');
+        const cw = core ? core.getBoundingClientRect().width : r.width;
+        const Acss = Math.min(Math.max(cw * 0.72, 140), 230);
+        A = Acss * dpr;
+        W = Math.round(A * 3.2);
+        H = Math.round(A * 2.3);
+        /* Centre the ring on the heading itself, not the container -
+           in a single-column layout the container is much wider than
+           the words and the ring would drift off to the right. */
+        const cr = core.getBoundingClientRect();
+        const cxCss = (cr.left - r.left) + cr.width / 2;
+        const cyCss = (cr.top - r.top) + cr.height / 2;
+        [backCv, frontCv].forEach(function (c) {
+            c.width = W; c.height = H;
+            c.style.width = (W / dpr) + 'px';
+            c.style.height = (H / dpr) + 'px';
+            c.style.left = cxCss + 'px';
+            c.style.top = cyCss + 'px';
+        });
+    }
+
+    function roundRect(x, w, h, r) {
+        x.beginPath();
+        x.moveTo(-w / 2 + r, -h / 2);
+        x.lineTo(w / 2 - r, -h / 2); x.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
+        x.lineTo(w / 2, h / 2 - r); x.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
+        x.lineTo(-w / 2 + r, h / 2); x.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
+        x.lineTo(-w / 2, -h / 2 + r); x.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
+        x.closePath();
+    }
+    function project(p) {
+        const k = A * DIST / (DIST - p[2]);
+        return [W / 2 + k * p[0], H / 2 + k * p[1], k];
+    }
+    function drawTile(x, i, psi, faceFront) {
+        const c = Math.cos(psi), s = Math.sin(psi);
+        const C = [c * U[0] + s * V[0], c * U[1] + s * V[1], c * U[2] + s * V[2]];
+        const T = [-s * U[0] + c * V[0], -s * U[1] + c * V[1], -s * U[2] + c * V[2]];
+        const h = SIDE / 2;
+        const p0 = project(C);
+        const pT = project([C[0] + T[0] * h, C[1] + T[1] * h, C[2] + T[2] * h]);
+        const pA = project([C[0] + AX3[0] * h, C[1] + AX3[1] * h, C[2] + AX3[2] * h]);
+        const ex = pT[0] - p0[0], ey = pT[1] - p0[1];
+        const fx = pA[0] - p0[0], fy = pA[1] - p0[1];
+        if (Math.abs(ex * fy - ey * fx) < 0.4) return;
+        const img = (faceFront ? FRONT_TILES : BACK_TILES)[i % N];
+        x.setTransform(ex * 2 / TS, ey * 2 / TS, fx * 2 / TS, fy * 2 / TS, p0[0], p0[1]);
+        roundRect(x, TS, TS, TS * CORNER);
+        x.save(); x.clip();
+        x.drawImage(img, -TS / 2, -TS / 2, TS, TS);
+        x.restore();
+        x.setTransform(1, 0, 0, 1, 0, 0);
+    }
+
+    const bx = backCv.getContext('2d');
+    const fxc = frontCv.getContext('2d');
+    let running = false, raf = 0;
+    const t0 = performance.now();
+    function render(now) {
+        raf = 0;
+        if (!running) return;
+        const spin = ((now - t0) / 1000 / DUR) * Math.PI * 2;
+        bx.clearRect(0, 0, W, H);
+        fxc.clearRect(0, 0, W, H);
+        const list = [];
+        for (let i = 0; i < N; i++) {
+            const psi = -i * 2 * Math.PI / N + spin;
+            const c = Math.cos(psi), s = Math.sin(psi);
+            list.push({ i: i, psi: psi, z: c * U[2] + s * V[2] });
+        }
+        list.sort(function (a, b) { return a.z - b.z; });
+        list.forEach(function (e) {
+            drawTile(e.z > 0 ? fxc : bx, e.i, e.psi, e.z > 0);
+        });
+        raf = requestAnimationFrame(render);
+    }
+    function setRunning(on) {
+        if (on === running) return;
+        running = on;
+        if (on && !raf) raf = requestAnimationFrame(render);
+    }
+    size();
+    addEventListener('resize', function () { size(); }, { passive: true });
+    const vis = new IntersectionObserver(function (entries) {
+        setRunning(entries[0].isIntersecting && !document.hidden);
+    }, { threshold: 0 });
+    vis.observe(stage);
+    document.addEventListener('visibilitychange', function () {
+        const r = stage.getBoundingClientRect();
+        setRunning(!document.hidden && r.bottom > 0 && r.top < innerHeight);
+    });
 })();
 
 (function () {

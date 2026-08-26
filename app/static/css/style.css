@@ -6986,3 +6986,28 @@ body:not(.theme-dark) .lx-hero-scrim {
 @media (prefers-reduced-motion: reduce) {
     [data-cascade="diagonal"].cascade-ready > * { opacity: 1; transform: none; transition: none; }
 }
+
+/* ---- Orbit ring around the "Thirty seven checks" heading ---- */
+
+.lx-orbit-stage {
+    position: relative;
+    /* room for the ring to breathe around the stacked heading */
+    margin: 0.5rem 0 1rem;
+}
+.lx-orbit-core {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+}
+.lx-orbit-canvas {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+.lx-orbit-back { z-index: 0; }
+.lx-orbit-front { z-index: 2; }
+@media (prefers-reduced-motion: reduce) {
+    .lx-orbit-canvas { display: none; }
+}
