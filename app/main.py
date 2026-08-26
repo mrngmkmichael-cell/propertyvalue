@@ -3439,7 +3439,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 4
+AREA_GUIDE_PAYLOAD_VERSION = 6
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -3529,6 +3529,58 @@ AREA_GUIDE_LANDSCAPE_FIELDS = (
 )
 
 
+AREA_NAMED_SCHOOLS = 6
+_RATING_RANK = {"Outstanding": 0, "Good": 1, "Requires improvement": 2, "Inadequate": 3}
+
+
+def _named_schools(landscape: dict | None) -> list[dict]:
+    """The best-rated schools nearest a district's centre, by name.
+
+    A guide that says "109 schools within 5km" tells a parent nothing
+    they can act on, and it is the same sentence on every district in
+    the city. Naming them is what someone searching "schools near M14"
+    actually wants, and it is text no other district's page can have.
+
+    Kept to a handful of fields: the full landscape carries around 250
+    schools with exam histories attached, and caching that whole
+    structure once per district is what previously exhausted the
+    instance's memory during a crawl.
+    """
+    if not landscape:
+        return []
+    # all_schools entries carry no phase of their own; by_phase is where
+    # the grouping lives, so the stage comes from there.
+    phase_by_urn = {
+        s["urn"]: bucket["label"]
+        for bucket in landscape.get("by_phase", [])
+        for s in bucket.get("schools", [])
+    }
+    # Primary and secondary first: a nursery's rating rarely decides
+    # where someone buys, and an Outstanding one would otherwise take
+    # the whole list.
+    phase_rank = {"Primary": 0, "Secondary": 0, "Nursery": 1}
+    ranked = sorted(
+        (s for s in landscape.get("all_schools", []) if s.get("name")),
+        key=lambda s: (
+            phase_rank.get(phase_by_urn.get(s.get("urn")), 1),
+            _RATING_RANK.get(s.get("ofsted_rating_label"), 9),
+            s.get("distance_m") or 10 ** 9,
+        ),
+    )
+    return [
+        {
+            "name": s["name"],
+            "rating": s.get("ofsted_rating_label"),
+            # 1-4, which is what the site's existing .ofsted-N badge
+            # colours key off.
+            "rating_code": s.get("ofsted_rating"),
+            "phase": phase_by_urn.get(s.get("urn")),
+            "distance_m": s.get("distance_m"),
+        }
+        for s in ranked[:AREA_NAMED_SCHOOLS]
+    ]
+
+
 def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> None:
     """FAQs and neighbouring-district links for an area guide. Every
     answer is the guide's own real data rephrased as a sentence, and a
@@ -3608,6 +3660,56 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             f"Central {outcode} sits in {flood['label']} for river and sea flooding (Environment Agency). "
             "Individual addresses vary, so check the full report for a specific property.",
         ))
+    # Two questions people actually type, taken from this site's own
+    # Search Console: "is eh12 a good place to live", "is doncaster
+    # safe". The guide already held the answers and never used those
+    # words, so it could not match the query.
+    #
+    # Both are answered by laying out the figures and their sources,
+    # never by delivering a verdict. Whether somewhere is good to live
+    # is not a thing open data can tell you, and pretending otherwise
+    # would be the opinion this site refuses to trade in.
+    quality_bits = []
+    if landscape and landscape.get("good_or_better_pct") is not None and not context.get("is_scotland"):
+        quality_bits.append(
+            f"{landscape['good_or_better_pct']}% of nearby schools are rated Outstanding or Good by Ofsted"
+        )
+    if sales and sales.get("enough_for_median"):
+        quality_bits.append(f"the median home sells for £{sales['median']:,.0f}")
+    dep = context.get("deprivation")
+    if dep and dep.get("imd_decile"):
+        quality_bits.append(
+            f"the area sits in decile {dep['imd_decile']} of 10 on the Index of Multiple Deprivation"
+        )
+    if crime_data and crime_data.get("total") and not context.get("is_scotland"):
+        quality_bits.append(f"{crime_data['total']} crimes were recorded within about a mile")
+    if len(quality_bits) >= 2:
+        faqs.append((
+            f"Is {outcode} a good place to live?",
+            "That depends on what you need, so here is what the official data says rather than an "
+            f"opinion: {'; '.join(quality_bits)}. Every one of those figures names its source on this page.",
+        ))
+
+    if not context.get("is_scotland") and crime_data:
+        if crime_data.get("total"):
+            month = f" in {crime_data['month']}" if crime_data.get("month") else ""
+            common = (
+                f" The most common category was {crime_data['by_category'][0]['category']}."
+                if crime_data.get("by_category") else ""
+            )
+            faqs.append((
+                f"Is {outcode} safe?",
+                f"{crime_data['total']} crimes were recorded within roughly a mile of central "
+                f"{outcode}{month}, according to Police.uk.{common} Crime counts follow how many "
+                "people are around, so a busy district records more than a quiet one of the same size.",
+            ))
+        elif crime_data.get("unpublished"):
+            faqs.append((
+                f"Is {outcode} safe?",
+                "The local force has not published street-level crime data for this area recently, "
+                "so we show no figure rather than a zero that would wrongly suggest no crime.",
+            ))
+
     context["area_faqs"] = faqs
     context["area_faqs_jsonld"] = json.dumps({
         "@context": "https://schema.org",
@@ -3747,6 +3849,7 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
 
     page_data = {
+        "named_schools": _named_schools(ok(landscape_result)),
         "hpi": ok(hpi_result),
         "crime": ok(crime_result),
         "landscape": landscape,
