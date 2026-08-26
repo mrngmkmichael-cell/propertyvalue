@@ -686,7 +686,14 @@
         if (rotating || reduce || loaded.length < 2) return;
         rotating = true;
         let i = 0;
-        setInterval(function () { i = (i + 1) % loaded.length; paint(loaded[i]); }, 4000);
+        setInterval(function () {
+            /* Nothing to rotate for if the hero has scrolled away or the
+               tab is in the background: repainting off-screen only burns
+               battery and books layout shifts nobody saw. */
+            if (document.hidden || strip.getBoundingClientRect().bottom < 0) return;
+            i = (i + 1) % loaded.length;
+            paint(loaded[i]);
+        }, 4000);
     };
 
     const pull = function (pc) {
