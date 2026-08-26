@@ -225,7 +225,7 @@
                 <span class="lx-tier-label lx-tier-free">22 free on every report</span>
             </div>
             <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
-            <div class="lx-check-grid" data-animate>
+            <div class="lx-check-grid">
                 {% for icon, title, value, source, tone in [
                     ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
                     ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
@@ -238,7 +238,7 @@
                     ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency', 'good'),
                     ('radon', 'Radon', 'Affected-area class', 'British Geological Survey', 'good')
                 ] %}
-                <div class="lx-check">
+                <div class="lx-check" data-animate>
                     <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
                     <p class="lx-check-title">{{ title }}</p>
                     <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
@@ -260,7 +260,7 @@
                 <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
             </div>
             <p class="lx-tier-note">Free on your first three properties. No card required.</p>
-            <div class="lx-check-grid" data-animate>
+            <div class="lx-check-grid">
                 {% for icon, title, value, source, tone in [
                     ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', ''),
                     ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
@@ -274,7 +274,7 @@
                     ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', ''),
                     ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income', '')
                 ] %}
-                <div class="lx-check">
+                <div class="lx-check" data-animate>
                     <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
                     <p class="lx-check-title">{{ title }}</p>
                     <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>

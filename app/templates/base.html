@@ -109,6 +109,25 @@
                     document.body.classList.remove('theme-dark');
                 }
             } catch (e) { /* storage unavailable: keep the default */ }
+
+            /* Width of the vertical scrollbar, for anything that breaks
+               out of the page container to full width. 100vw counts the
+               scrollbar and 100% does not, so a full-bleed element built
+               on 100vw alone sits about 7px off centre and leaves a
+               visible strip down one edge. Defaults to 0 in the
+               stylesheet, so this can only improve on it. */
+            var setGutter = function () {
+                var sbw = window.innerWidth - document.documentElement.clientWidth;
+                document.documentElement.style.setProperty('--scrollbar-w', (sbw > 0 ? sbw : 0) + 'px');
+            };
+            /* This runs at the top of <body>, where nothing has been laid
+               out yet and so there is no scrollbar to measure - measuring
+               only here returns 0 every time. Hence the re-measure once
+               the document has its real height. */
+            setGutter();
+            addEventListener('DOMContentLoaded', setGutter);
+            addEventListener('load', setGutter);
+            addEventListener('resize', setGutter, { passive: true });
         })();
     </script>
     {# First focusable thing on every page: lets a keyboard or screen-reader

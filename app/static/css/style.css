@@ -5616,6 +5616,15 @@ body.theme-dark .leaflet-popup-tip {
    default; the light theme is handled at the foot of the block.
    ==================================================================== */
 
+/* Breaking out of .site-main to the full viewport. --scrollbar-w is set
+   by base.html; the 0px default means this degrades to plain 100vw
+   rather than breaking if the script never runs. */
+:root { --scrollbar-w: 0px; }
+.lx-hero, .promo-banner {
+    --bleed-w: calc(100vw - var(--scrollbar-w));
+    --bleed-m: calc(50% - (100vw - var(--scrollbar-w)) / 2);
+}
+
 .lx-wrap { max-width: 1400px; margin: 0 auto; padding: 0 1.5rem; }
 .lx-centre { text-align: center; }
 
@@ -5653,12 +5662,32 @@ body.theme-dark .leaflet-popup-tip {
 .lx-section { padding: clamp(4rem, 9vw, 8.5rem) 0; }
 
 /* ---- Hero ---------------------------------------------------------- */
+/* Full bleed. .site-main caps everything at --site-width and pads it,
+   which left the hero sitting in a 1280px box with black down both
+   sides - the shot needs the whole viewport or it is just a picture in
+   a frame. The negative margins break it back out, and the negative
+   top margin cancels .site-main's padding so the video runs straight up
+   under the masthead. Safe because html and body already carry
+   overflow-x: clip, so the 100vw does not open a scrollbar. */
 .lx-hero {
     position: relative;
+    width: var(--bleed-w);
+    margin-left: var(--bleed-m);
+    margin-right: var(--bleed-m);
+    margin-top: -2.5rem;
     min-height: min(100vh, 900px);
     display: flex;
     align-items: center;
     overflow: hidden;
+}
+
+/* The offer band sits directly under the hero and reads as part of it,
+   so it breaks out to the same width. */
+.lx-hero + .promo-banner,
+.lx-hero + * + .promo-banner {
+    width: var(--bleed-w);
+    margin-left: var(--bleed-m);
+    margin-right: var(--bleed-m);
 }
 
 .lx-hero-bg { position: absolute; inset: 0; z-index: 0; }
@@ -6086,11 +6115,62 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
 .lx-check-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 
 .lx-check {
+    position: relative;
     padding: 1.25rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.045);
+    transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1),
+                border-color 0.3s ease, background-color 0.3s ease;
+}
+
+/* Reveal: each card rises in turn instead of the grid appearing as one
+   block. The delay is per column-pair, so the two columns of a row come
+   in together and the eye reads it as rows falling into place rather
+   than a queue of eleven separate cards. */
+/* Each rule catches "this card and everything after it", so the later
+   ones overwrite the earlier and every pair lands one step behind the
+   pair above. Do not add an odd/even rule here: it wins over the first
+   of these on card 1 and hands the opening row a backwards stagger. */
+.lx-check-grid .lx-check[data-animate] { transition-delay: 0s; }
+.lx-check-grid .lx-check[data-animate]:nth-child(n+3) { transition-delay: 0.06s; }
+.lx-check-grid .lx-check[data-animate]:nth-child(n+5) { transition-delay: 0.12s; }
+.lx-check-grid .lx-check[data-animate]:nth-child(n+7) { transition-delay: 0.18s; }
+.lx-check-grid .lx-check[data-animate]:nth-child(n+9) { transition-delay: 0.24s; }
+.lx-check-grid .lx-check[data-animate]:nth-child(n+11) { transition-delay: 0.3s; }
+
+/* A gold edge that wipes up the card, drawn on a pseudo-element so the
+   card's own border can stay put and nothing reflows on hover. */
+.lx-check::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), rgba(212, 169, 95, 0));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.lx-check:hover {
+    transform: translateY(-4px);
+    border-color: rgba(212, 169, 95, 0.45);
+    background: var(--surface-2);
+}
+.lx-check:hover::after { transform: scaleX(1); }
+
+.lx-check:hover .lx-check-icon {
+    transform: translateY(-2px) scale(1.06);
+    border-color: rgba(212, 169, 95, 0.35);
+}
+.lx-check:hover .lx-check-source { color: var(--ink-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+    .lx-check, .lx-check::after, .lx-check-icon { transition: none; }
+    .lx-check:hover { transform: none; }
+    .lx-check:hover .lx-check-icon { transform: none; }
 }
 .lx-check-icon {
     display: inline-grid;
@@ -6098,8 +6178,10 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
     width: 36px;
     height: 36px;
     margin-bottom: 1rem;
+    border: 1px solid transparent;
     border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.06);
+    transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.3, 1), border-color 0.3s ease;
 }
 .lx-check-icon svg { width: 17px; height: 17px; }
 /* The tone classes carry both a fill and a text colour; on a chip only
