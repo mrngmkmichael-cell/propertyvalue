@@ -6845,3 +6845,10 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
     .lx-build-mote { font-size: 0.5rem; padding: 0.2rem 0.45rem; }
     .lx-build-fx { background-size: 24px 24px; }
 }
+
+@media (max-width: 700px) {
+    /* A phone-width stage can't seat 37 labelled pills without pile-ups;
+       every other one goes visually. They still fly (display:none only
+       skips paint), so the tally and the score maths stay at 37. */
+    .lx-build-mote:nth-child(2n) { display: none; }
+}
