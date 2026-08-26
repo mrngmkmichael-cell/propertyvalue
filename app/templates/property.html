@@ -91,15 +91,15 @@
                     equivalent wired up yet:
                 </p>
                 <ul class="notice-list">
-                    <li><strong>Sold prices &amp; comparables</strong> — from HM Land Registry, England &amp; Wales only. Not shown for this address.</li>
-                    <li><strong>EPC rating</strong> — from the England &amp; Wales EPC register. Scotland runs a separate register we don't query yet. Not shown.</li>
-                    <li><strong>Schools</strong> — ratings come from Ofsted, which doesn't operate in Scotland. Not shown.</li>
-                    <li><strong>Flood risk</strong> — from the Environment Agency (England only). The "Zone 1 (low probability)" reading below is what we get when no data covers a point at all, not a verified assessment — treat it as unknown, not low risk.</li>
-                    <li><strong>Crime</strong> — from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count below will read far lower than actual local crime levels.</li>
+                    <li><strong>Sold prices &amp; comparables</strong>: from HM Land Registry, England &amp; Wales only. Not shown for this address.</li>
+                    <li><strong>EPC rating</strong>: from the England &amp; Wales EPC register. Scotland runs a separate register we don't query yet. Not shown.</li>
+                    <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland. Not shown.</li>
+                    <li><strong>Flood risk</strong>: from the Environment Agency (England only). The "Zone 1 (low probability)" reading below is what we get when no data covers a point at all, not a verified assessment. Treat it as unknown, not low risk.</li>
+                    <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count below will read far lower than actual local crime levels.</li>
                 </ul>
                 <p class="notice">
                     Flood risk and crime in particular can look reassuring here when they're really
-                    just missing — please don't rely on either for this property.
+                    just missing, so please don't rely on either for this property.
                 </p>
             </section>
         </div>
@@ -914,6 +914,13 @@
             </div>
             <button type="submit">Search</button>
         </form>
+        {# Most people are deciding between areas, not judging one alone.
+           This carries the postcode they are already looking at into the
+           comparison so they only have to think of the other one. #}
+        <p class="keep-exploring-compare">
+            Weighing this up against somewhere else?
+            <a href="/compare?postcode={{ location.postcode | urlencode }}">Put {{ location.postcode }} side by side with another postcode &rarr;</a>
+        </p>
     </section>
 
     <dialog class="report-modal" id="modal-council-tax">
@@ -2093,7 +2100,7 @@
         {% elif catchment_distance_schools %}
             <p class="notice">
                 No real boundary <strong>shape</strong> published for this council, so here's each
-                nearby school's admission-<strong>distance</strong> figure instead — "Published" where
+                nearby school's admission-<strong>distance</strong> figure instead. "Published" means
                 the council has a real figure on file, "Estimated" where none exists and it's a
                 modelled fallback. "In catchment?" compares this property's actual distance against
                 that radius. Not a guarantee, since the radius shifts every year with demand.

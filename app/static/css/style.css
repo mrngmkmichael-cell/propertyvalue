@@ -2145,6 +2145,43 @@ button:not([class]):hover { background: var(--accent-hover); }
     margin-top: 0.2rem;
 }
 
+.compare-missing { color: var(--ink-soft); }
+
+/* The anonymous compare's own entry form: postcode boxes in a row on a
+   desktop, stacked on a phone, with the button sitting on the same
+   baseline as the inputs rather than under their labels. */
+.compare-form {
+    display: grid;
+    gap: 0.75rem 1rem;
+    align-items: end;
+    margin: 1.5rem 0 2rem;
+    padding: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.compare-form .search-form-field { display: grid; gap: 0.3rem; }
+.compare-form label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.compare-form input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    font: inherit;
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.compare-form input:focus { border-color: var(--accent); outline: none; }
+@media (min-width: 46rem) {
+    .compare-form { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+}
+
 /* Price trend chart */
 
 .trend-chart {
@@ -4504,6 +4541,13 @@ html { scroll-behavior: smooth; }
     border-top: 1px solid var(--border);
     max-width: 480px;
 }
+
+.keep-exploring-compare {
+    margin: 0.9rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.keep-exploring-compare a { color: var(--accent); }
 
 /* ---- Homepage promo banner ---- */
 .promo-banner {

@@ -1,16 +1,45 @@
 {% extends "base.html" %}
 
-{% block title %}Compare properties | UKPropertyInsight{% endblock %}
+{% block title %}{% if anonymous_compare %}Compare UK postcodes side by side{% else %}Compare properties{% endif %} | UKPropertyInsight{% endblock %}
+{% if anonymous_compare %}
+{% block meta_description %}Put two or three UK postcodes side by side: sold prices, area growth, energy rating, flood zone, crime and deprivation, all from official public data. Free, no account needed.{% endblock %}
+{% else %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+{% endif %}
 
 {% block content %}
+{% if anonymous_compare %}
+<a class="back-link" href="/">&larr; Back to search</a>
+
+<span class="kicker">Side by side</span>
+<h1>Compare up to {{ max_columns }} postcodes</h1>
+<p class="dek">Choosing between areas is the normal case, not the exception. Put them next to each other and the differences do the arguing.</p>
+
+<form class="compare-form" action="/compare" method="get">
+    {% for i in range(max_columns) %}
+    <div class="search-form-field">
+        <label for="compare-{{ i }}">Postcode {{ i + 1 }}{% if i > 1 %} (optional){% endif %}</label>
+        <input type="text" id="compare-{{ i }}" name="postcode" autocomplete="off"
+               placeholder="{{ ['e.g. M1 1AE', 'e.g. LS1 4DY', 'e.g. SW1A 1AA'][i] }}"
+               value="{{ entered[i] if entered | length > i else '' }}"
+               {% if i < 2 %}required{% endif %}>
+    </div>
+    {% endfor %}
+    <button type="submit">Compare</button>
+</form>
+{% else %}
 <a class="back-link" href="/watchlist">&larr; Back to My properties</a>
 
 <span class="kicker">Side by side</span>
 <h1>Compare properties</h1>
+{% endif %}
 
 {% if not columns %}
+    {% if anonymous_compare %}
+    <p class="section-sub">Enter two or three postcodes above. Every figure comes from the same official sources as the full report.</p>
+    {% else %}
     <p class="notice">No properties selected. Go back to your watchlist and tick 2 or 3 to compare.</p>
+    {% endif %}
 {% else %}
     <div class="compare-table-wrap">
     <table class="tx-table compare-table">
@@ -19,10 +48,16 @@
                 <th></th>
                 {% for col in columns %}
                 <th>
-                    <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
-                        {{ col.house_number ~ ", " ~ col.postcode if col.house_number else col.postcode }}
-                    </a>
-                    {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
+                    {% if col.summary.not_found %}
+                        <span class="compare-missing">{{ col.postcode }}</span>
+                        <div class="compare-note">Not a postcode we could find</div>
+                    {% else %}
+                        <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
+                            {{ col.house_number ~ ", " ~ col.postcode if col.house_number else col.postcode }}
+                        </a>
+                        {% if col.summary.admin_district %}<div class="compare-note">{{ col.summary.admin_district }}</div>{% endif %}
+                        {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
+                    {% endif %}
                 </th>
                 {% endfor %}
             </tr>
@@ -83,7 +118,11 @@
             <tr>
                 <td><strong>Crime nearby</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.crime_total ~ " recorded" if col.summary.crime_total is not none else " — " }}</td>
+                <td>
+                    {%- if col.summary.crime_total is not none %}{{ col.summary.crime_total }} recorded
+                    {%- elif col.summary.crime_unpublished %}Not published by the force
+                    {%- else %} &mdash; {% endif -%}
+                </td>
                 {% endfor %}
             </tr>
             <tr>

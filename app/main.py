@@ -590,6 +590,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
 
     if not isinstance(crime_result, Exception) and crime_result:
         summary["crime_total"] = crime_result.get("total")
+        summary["crime_unpublished"] = bool(crime_result.get("unpublished"))
 
     if not isinstance(deprivation_result, Exception) and deprivation_result:
         summary["imd_decile"] = deprivation_result.get("imd_decile")
@@ -1077,7 +1078,8 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """(url, priority) for every page the sitemap advertises. Shared by
     the sitemap route and the IndexNow pinger so they can never drift."""
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
-                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data"]
+                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
+                    "/compare"]
     outcodes = [o["outcode"] for o in ALL_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
@@ -4572,6 +4574,37 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
         ]
     else:
         context["columns"] = []
+    return templates.TemplateResponse(request, "compare.html", context)
+
+
+MAX_COMPARE_COLUMNS = 3
+
+
+@app.get("/compare")
+async def compare_postcodes(request: Request, postcode: list[str] = Query(default=[])):
+    """Side-by-side for anyone, no account. Buyers are nearly always
+    choosing between two or three areas rather than assessing one in
+    isolation, and until now the only comparison view was behind a
+    login and tied to saved properties. Reuses the watchlist compare's
+    summary gather and table, so there is one comparison to maintain."""
+    context = base_context(request)
+    entered = [p.strip() for p in postcode if p and p.strip()][:MAX_COMPARE_COLUMNS]
+
+    columns = []
+    if entered:
+        summaries = await asyncio.gather(
+            *(_comparison_summary(p, "") for p in entered), return_exceptions=True
+        )
+        for typed, s in zip(entered, summaries):
+            if isinstance(s, Exception):
+                columns.append({"postcode": typed.upper(), "house_number": "", "summary": {"not_found": True}})
+            else:
+                columns.append({"postcode": s["postcode"], "house_number": "", "summary": s})
+
+    context["columns"] = columns
+    context["anonymous_compare"] = True
+    context["entered"] = entered
+    context["max_columns"] = MAX_COMPARE_COLUMNS
     return templates.TemplateResponse(request, "compare.html", context)
 
 

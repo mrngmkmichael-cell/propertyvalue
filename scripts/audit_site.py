@@ -29,6 +29,12 @@ PAGES = [
     "/market-report", "/login", "/signup", "/forgot-password", "/embed",
     "/property?postcode=M1+1AE", "/property/comparables?postcode=M1+1AE",
     "/watchlist", "/watchlist/compare", "/no-such-page-404",
+    # A Scottish postcode renders the data-gap disclaimers, which no
+    # English address shows. They sat outside every audit until they
+    # turned out to be carrying em-dashes (28 Aug 2026), so both the
+    # property and the area-guide versions are now in the sample.
+    "/property?postcode=EH1+1YZ", "/area/EH1",
+    "/compare?postcode=M1+1AE&postcode=LS1+4DY",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)

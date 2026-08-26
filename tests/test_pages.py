@@ -11,6 +11,7 @@ import pytest
 STATIC_PAGES = [
     "/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
     "/support", "/buying-guide", "/browser-extension", "/embed", "/login", "/signup",
+    "/compare",
 ]
 
 
@@ -139,3 +140,41 @@ def test_pricing_page_lists_all_37_checks(client, monkeypatch):
     assert body.count('class="lx-check"') == 37
     assert "22 free on every report" in body
     assert "15 more with Premium" in body
+
+
+def test_anonymous_compare_builds_a_column_per_postcode(client, monkeypatch):
+    """The compare view is open to everyone: no account, no watchlist.
+    Two postcodes in, two columns out, each linking to its own report."""
+    from app import main as app_main
+
+    async def _summary(postcode, house_number):
+        return {
+            "postcode": postcode.upper(), "house_number": house_number,
+            "admin_district": "Testerton", "region": "North",
+            "avg_price": 250000, "crime_total": 12, "imd_decile": 5,
+        }
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    body = client.get("/compare?postcode=M1+1AE&postcode=LS1+4DY").text
+    assert "/property?postcode=M1 1AE" in body
+    assert "/property?postcode=LS1 4DY" in body
+    assert body.count("Testerton") == 2
+    # Never more columns than the cap, however many are passed in.
+    many = "&".join(f"postcode=X{i}" for i in range(8))
+    assert client.get("/compare?" + many).text.count("Testerton") == app_main.MAX_COMPARE_COLUMNS
+
+
+def test_compare_survives_an_unknown_postcode(client, monkeypatch):
+    """One bad postcode must not take the whole comparison down."""
+    from app import main as app_main
+
+    async def _summary(postcode, house_number):
+        if postcode.startswith("ZZ"):
+            raise ValueError("no such postcode")
+        return {"postcode": postcode.upper(), "house_number": "", "admin_district": "Testerton"}
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    r = client.get("/compare?postcode=M1+1AE&postcode=ZZ99+9ZZ")
+    assert r.status_code == 200
+    assert "Not a postcode we could find" in r.text
+    assert "Testerton" in r.text
