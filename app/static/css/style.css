@@ -7011,3 +7011,48 @@ body:not(.theme-dark) .lx-hero-scrim {
 @media (prefers-reduced-motion: reduce) {
     .lx-orbit-canvas { display: none; }
 }
+
+/* ---- Orbit: the checks section as a ring of real cards ---- */
+
+.lx-orbit-wide {
+    min-height: clamp(430px, 58vh, 620px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.lx-orbit-heading { text-align: center; }
+
+.lx-orbit-tiers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem 1rem;
+    margin: 0.75rem 0 0;
+}
+.lx-orbit-tiers .lx-tier-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.lx-orbit-tiers svg { width: 14px; height: 14px; }
+.lx-orbit-tiers-sep { color: var(--ink-faint); }
+
+/* The card list: the painter's source of truth, and the static
+   presentation for anyone whose ring never starts (no JavaScript,
+   reduced motion, or a canvas failure). Hidden only once the ring is
+   actually running. */
+.lx-orbit-cards {
+    list-style: none;
+    margin: 2.5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    text-align: left;
+}
+.lx-orbit-on ~ .lx-orbit-cards { display: none; }
+@media (prefers-reduced-motion: reduce) {
+    /* the ring never runs here, so the list always stands */
+    .lx-orbit-on ~ .lx-orbit-cards { display: grid; }
+}

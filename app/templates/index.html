@@ -290,91 +290,55 @@
    the body that publishes the figure, which is the whole point of the
    section. #}
 <section class="lx-section lx-checks" id="checks">
-    <div class="lx-wrap lx-checks-grid">
-        <div class="lx-checks-rail">
-            <p class="lx-eyebrow">What we check</p>
-            {# A ring of twelve palette tiles orbits the heading, passing
-               behind the words and in front of them. The words stay real
-               DOM text; the depth illusion is two canvases, one behind
-               the heading for the far half of the ring and one in front
-               for the near half. Geometry adapted from the reference
-               Michael supplied; drawn only while on screen, never under
-               reduced motion. #}
-            <div class="lx-orbit-stage" id="lx-orbit-stage">
-                <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-                <h2 class="lx-h2 lx-h2-stack lx-orbit-core">Thirty<br>seven<br>checks</h2>
-                <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
-            </div>
-            <p class="lx-lede">
-                Every one on a single address, every one traced to the body that
-                published it. A selection of them here.
-            </p>
+    <div class="lx-wrap lx-centre">
+        <p class="lx-eyebrow">What we check</p>
+
+        {# The section IS the ring: twelve of the report's own check
+           cards orbit the heading, passing behind and in front of the
+           real DOM words. The card list below feeds the tile painter
+           (content, tones and this site's own icons) and doubles as
+           the static fallback for no-JS and reduced-motion readers,
+           for whom the ring never starts and the list stays. #}
+        <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
+            <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
+            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Thirty<br>seven<br>checks</h2>
+            <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
         </div>
 
-        <div>
-            <div class="lx-tier-head">
-                {{ icons.icon('unlock') }}
-                <span class="lx-tier-label lx-tier-free">22 free on every report</span>
-            </div>
-            <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
-            <div class="lx-check-grid" data-cascade="diagonal">
-                {% for icon, title, value, source, tone in [
-                    ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
-                    ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
-                    ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
-                    ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', ''),
-                    ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
-                    ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
-                    ('statistics', 'Council tax', 'Band D for the authority', 'MHCLG, 2026-27', ''),
-                    ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom', 'good'),
-                    ('flood', 'Surface water', 'Separate from river flooding', 'Environment Agency', 'good'),
-                    ('radon', 'Radon', 'Affected-area class', 'British Geological Survey', 'good')
-                ] %}
-                <div class="lx-check">
-                    <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
-                    <p class="lx-check-title">{{ title }}</p>
-                    <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
-                    <p class="lx-check-source">{{ source }}</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+        <p class="lx-lede lx-lede-centre">
+            Every one on a single address, every one traced to the body that
+            published it. Twelve of them in orbit here; the full report runs
+            all thirty-seven.
+        </p>
+        <p class="lx-orbit-tiers">
+            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
+            <span class="lx-orbit-tiers-sep">&middot;</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first three properties</span>
+        </p>
 
-        <div class="lx-divider" aria-hidden="true">
-            <span class="lx-divider-line"></span>
-            <span class="lx-divider-lock">{{ icons.icon('lock') }}</span>
-            <span class="lx-divider-line"></span>
-        </div>
-
-        <div>
-            <div class="lx-tier-head">
-                {{ icons.icon('lock') }}
-                <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
-            </div>
-            <p class="lx-tier-note">Free on your first three properties. No card required.</p>
-            <div class="lx-check-grid" data-cascade="diagonal">
-                {% for icon, title, value, source, tone in [
-                    ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', ''),
-                    ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
-                    ('rental', 'Rental analysis', 'Typical rent by bedrooms', 'ONS private rents', ''),
-                    ('extension', 'Extension check', 'Floor area changes over time', 'EPC history', 'warn'),
-                    ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
-                    ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
-                    ('landfill', 'Historic landfill', 'Former sites nearby', 'Environment Agency', 'warn'),
-                    ('mining', 'Coal mining', 'Reporting areas', 'The Coal Authority', 'good'),
-                    ('orientation', 'Catchment areas', 'Real admission distances', 'Council admissions data', ''),
-                    ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', ''),
-                    ('income', 'Household income', 'Estimated for the small area', 'ONS small-area income', '')
-                ] %}
-                <div class="lx-check">
-                    <span class="lx-check-icon lx-tone-{{ tone or 'plain' }}">{{ icons.icon(icon) }}</span>
-                    <p class="lx-check-title">{{ title }}</p>
-                    <p class="lx-check-value{% if tone == 'warn' %} lx-check-value-warn{% endif %}">{{ value }}</p>
-                    <p class="lx-check-source">{{ source }}</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+        <ul class="lx-orbit-cards" id="lx-orbit-cards">
+            {% for icon, title, value, source, tone in [
+                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
+                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
+                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
+                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', 'plain'),
+                ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
+                ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
+                ('broadband', 'Broadband', 'Speeds at the address', 'Ofcom', 'good'),
+                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', 'plain'),
+                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
+                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
+                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
+                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', 'plain')
+            ] %}
+            <li class="lx-check lx-orbit-card" data-title="{{ title }}" data-value="{{ value }}" data-source="{{ source }}">
+                <span class="lx-check-icon lx-tone-{{ tone }}">{{ icons.icon(icon) }}</span>
+                <p class="lx-check-title">{{ title }}</p>
+                <p class="lx-check-value">{{ value }}</p>
+                <p class="lx-check-source">{{ source }}</p>
+            </li>
+            {% endfor %}
+        </ul>
     </div>
 </section>
 
@@ -882,43 +846,105 @@
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     const darkTheme = document.body.classList.contains('theme-dark');
-    /* Twelve tiles from the live palette: navy family, warm neutrals,
-       one green, one rust - or golds and charcoals in the dark theme. */
-    const PALETTES = darkTheme ? [
-        ['#d4a95f', '#8a6a2f'], ['#1b1b1b', '#050505'], ['#e6c584', '#b08a45'],
-        ['#2e2e2e', '#101010'], ['#d4a95f', '#5a4415'], ['#454545', '#161616'],
-        ['#f5e9d0', '#c8a96a'], ['#242424', '#0a0a0a'], ['#b08a45', '#4a3510'],
-        ['#383838', '#141414'], ['#e6c584', '#8a6a2f'], ['#1f1f1f', '#080808']
-    ] : [
-        ['#2b4c8c', '#1e3a70'], ['#f1efe9', '#d3cec2'], ['#5b7ab8', '#2b4c8c'],
-        ['#1c1714', '#3a332e'], ['#d9cdb8', '#b8a888'], ['#2f6b4f', '#1d4634'],
-        ['#eef1f7', '#c9d3e6'], ['#a8541a', '#7a3a10'], ['#8fa7cf', '#5b7ab8'],
-        ['#57504a', '#2e2a26'], ['#e8e4da', '#c5beb0'], ['#1e3a70', '#0f2348']
-    ];
-    const TS = 128;
-    function makeTile(pair, washed) {
-        const c = document.createElement('canvas');
-        c.width = TS; c.height = TS;
-        const x = c.getContext('2d');
-        const g = x.createLinearGradient(0, 0, TS * 0.4, TS);
-        g.addColorStop(0, pair[0]);
-        g.addColorStop(1, pair[1]);
-        x.fillStyle = g;
-        x.fillRect(0, 0, TS, TS);
-        if (washed) {
-            /* the reverse face: dimmed toward the page ground */
-            x.fillStyle = darkTheme ? 'rgba(5,5,5,0.55)' : 'rgba(250,249,246,0.55)';
-            x.fillRect(0, 0, TS, TS);
-        }
-        return c;
+    const cardEls = document.querySelectorAll('#lx-orbit-cards .lx-orbit-card');
+    if (!cardEls.length) return;
+
+    /* Each tile is one of the report's check cards, painted onto a
+       canvas from the same content and icons the fallback list holds.
+       The icon SVGs use currentColor, so a clone gets its resolved
+       colour written in before serialisation. */
+    const TS = 384;
+    const INK = darkTheme
+        ? { bg: '#171717', border: '#2e2e2e', eyebrow: '#b3aea6', value: '#ffffff', source: '#8d8779', wash: 'rgba(5,5,5,0.55)' }
+        : { bg: '#ffffff', border: '#e5e1d8', eyebrow: '#57504a', value: '#1c1714', source: '#736a61', wash: 'rgba(250,249,246,0.55)' };
+
+    function wrap(x, text, maxW) {
+        const words = text.split(' ');
+        const lines = [];
+        let line = '';
+        words.forEach(function (w) {
+            const probe = line ? line + ' ' + w : w;
+            if (x.measureText(probe).width > maxW && line) { lines.push(line); line = w; }
+            else line = probe;
+        });
+        if (line) lines.push(line);
+        return lines.slice(0, 2);
     }
-    const FRONT_TILES = PALETTES.map(function (p) { return makeTile(p, false); });
-    const BACK_TILES = PALETTES.map(function (p) { return makeTile(p, true); });
+
+    function paintTile(x, el, iconImg) {
+        x.clearRect(0, 0, TS, TS);
+        x.fillStyle = INK.bg;
+        x.fillRect(0, 0, TS, TS);
+        const chip = el.querySelector('.lx-check-icon');
+        const chipCs = getComputedStyle(chip);
+        /* icon chip */
+        x.fillStyle = chipCs.backgroundColor;
+        x.beginPath();
+        const cx0 = 36, cy0 = 34, cw = 74, cr = 18;
+        x.moveTo(cx0 + cr, cy0);
+        x.arcTo(cx0 + cw, cy0, cx0 + cw, cy0 + cw, cr);
+        x.arcTo(cx0 + cw, cy0 + cw, cx0, cy0 + cw, cr);
+        x.arcTo(cx0, cy0 + cw, cx0, cy0, cr);
+        x.arcTo(cx0, cy0, cx0 + cw, cy0, cr);
+        x.closePath();
+        x.fill();
+        if (iconImg) x.drawImage(iconImg, cx0 + 17, cy0 + 17, 40, 40);
+        /* eyebrow */
+        x.fillStyle = INK.eyebrow;
+        x.font = '400 21px "JetBrains Mono", ui-monospace, monospace';
+        x.fillText(el.dataset.title.toUpperCase().split('').join('\u200a'), 36, 156);
+        /* value */
+        x.fillStyle = INK.value;
+        x.font = '600 33px "Instrument Sans", sans-serif';
+        const lines = wrap(x, el.dataset.value, TS - 72);
+        lines.forEach(function (l, i) { x.fillText(l, 36, 200 + i * 42); });
+        /* hairline + source */
+        x.strokeStyle = INK.border;
+        x.lineWidth = 2;
+        x.beginPath(); x.moveTo(36, 296); x.lineTo(TS - 36, 296); x.stroke();
+        x.fillStyle = INK.source;
+        x.font = '400 22px "Instrument Sans", sans-serif';
+        x.fillText(el.dataset.source, 36, 334);
+    }
+
+    const FRONT_TILES = [], BACK_TILES = [];
+    function buildTiles() {
+        cardEls.forEach(function (el, i) {
+            const f = document.createElement('canvas');
+            f.width = TS; f.height = TS;
+            const fx2 = f.getContext('2d');
+            const b = document.createElement('canvas');
+            b.width = TS; b.height = TS;
+            const bx2 = b.getContext('2d');
+            FRONT_TILES.push(f); BACK_TILES.push(b);
+
+            function finish(img) {
+                paintTile(fx2, el, img);
+                bx2.clearRect(0, 0, TS, TS);
+                bx2.drawImage(f, 0, 0);
+                bx2.fillStyle = INK.wash;
+                bx2.fillRect(0, 0, TS, TS);
+            }
+            finish(null);   /* text-only immediately; icon joins when ready */
+
+            const svg = el.querySelector('.lx-check-icon svg');
+            if (!svg) return;
+            const clone = svg.cloneNode(true);
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clone.setAttribute('width', '40');
+            clone.setAttribute('height', '40');
+            clone.style.color = getComputedStyle(el.querySelector('.lx-check-icon')).color;
+            const img = new Image();
+            img.onload = function () { finish(img); };
+            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(clone))));
+        });
+    }
+    const N = cardEls.length;
 
     /* Ring constants, straight from the reference: plane ratio 0.492
        (a ~60 degree tilt), major axis rolled 25.5 degrees, camera at
        13 radii, tile side 0.486 of the radius, 15s per revolution. */
-    const RATIO = 0.492, AXIS_DEG = 25.5, N = 12, SIDE = 0.40, DIST = 13, CORNER = 0.22, DUR = 15;
+    const RATIO = 0.492, AXIS_DEG = 25.5, SIDE = 0.47, DIST = 13, CORNER = 0.09, DUR = 18;
     const ax = AXIS_DEG * Math.PI / 180, cf = RATIO, sf = Math.sqrt(1 - cf * cf);
     const U = [Math.cos(ax), Math.sin(ax), 0];
     const V = [-Math.sin(ax) * cf, Math.cos(ax) * cf, sf];
@@ -933,11 +959,10 @@
            words so tiles graze them rather than bury them, and hard
            capped so no viewport ever gets a giant ring. */
         const core = stage.querySelector('.lx-orbit-core');
-        const cw = core ? core.getBoundingClientRect().width : r.width;
-        const Acss = Math.min(Math.max(cw * 0.72, 140), 230);
+        const Acss = Math.min(Math.max(r.width * 0.3, 215), 365);
         A = Acss * dpr;
-        W = Math.round(A * 3.2);
-        H = Math.round(A * 2.3);
+        W = Math.round(A * 3.3);
+        H = Math.round(A * 2.35);
         /* Centre the ring on the heading itself, not the container -
            in a single-column layout the container is much wider than
            the words and the ring would drift off to the right. */
@@ -1015,6 +1040,12 @@
     }
     size();
     addEventListener('resize', function () { size(); }, { passive: true });
+    /* Tiles carry text, so they wait for the site's fonts; the ring
+       then takes over from the static list. */
+    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
+        buildTiles();
+        stage.classList.add('lx-orbit-on');
+    });
     const vis = new IntersectionObserver(function (entries) {
         setRunning(entries[0].isIntersecting && !document.hidden);
     }, { threshold: 0 });
