@@ -6148,10 +6148,14 @@ body.theme-dark .promo-banner {
     border-top: 1px solid rgba(212, 169, 95, 0.25);
     border-bottom: 1px solid rgba(212, 169, 95, 0.25);
 }
+/* Colour only. The 220% background-size that used to live here was for
+   the old background-position sweep; the layer itself is now 220% wide
+   and slid with a transform, so sizing the gradient to 220% of that
+   made the bright band nearly five times the banner's width - far too
+   wide to ever clear the left edge, which is exactly how it looked. */
 body.theme-dark .promo-banner::before {
     background: linear-gradient(100deg, transparent 30%,
         rgba(212, 169, 95, 0.14) 45%, rgba(212, 169, 95, 0.14) 50%, transparent 65%);
-    background-size: 220% 100%;
 }
 body.theme-dark .promo-banner-text { color: var(--ink); }
 body.theme-dark .promo-banner-btn { background: var(--accent); color: var(--accent-ink); }
