@@ -961,8 +961,8 @@
         const core = stage.querySelector('.lx-orbit-core');
         const Acss = Math.min(Math.max(r.width * 0.3, 215), 365);
         A = Acss * dpr;
-        W = Math.round(A * 3.3);
-        H = Math.round(A * 2.35);
+        W = Math.round(A * 3.8);
+        H = Math.round(A * 3.0);
         /* Centre the ring on the heading itself, not the container -
            in a single-column layout the container is much wider than
            the words and the ring would drift off to the right. */
@@ -997,8 +997,11 @@
         const T = [-s * U[0] + c * V[0], -s * U[1] + c * V[1], -s * U[2] + c * V[2]];
         const h = SIDE / 2;
         const p0 = project(C);
-        const pT = project([C[0] + T[0] * h, C[1] + T[1] * h, C[2] + T[2] * h]);
-        const pA = project([C[0] + AX3[0] * h, C[1] + AX3[1] * h, C[2] + AX3[2] * h]);
+        /* Both axes sampled negatively: the ring's own axis projects
+           downward on screen, and a card full of text - unlike the
+           reference's abstract tiles - has a right way up. */
+        const pT = project([C[0] - T[0] * h, C[1] - T[1] * h, C[2] - T[2] * h]);
+        const pA = project([C[0] - AX3[0] * h, C[1] - AX3[1] * h, C[2] - AX3[2] * h]);
         const ex = pT[0] - p0[0], ey = pT[1] - p0[1];
         const fx = pA[0] - p0[0], fy = pA[1] - p0[1];
         if (Math.abs(ex * fy - ey * fx) < 0.4) return;
