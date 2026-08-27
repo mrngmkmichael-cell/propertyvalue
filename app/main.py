@@ -3499,6 +3499,15 @@ async def property_checklist(request: Request, postcode: str = "", house_number:
                 session, current["id"], location["postcode"], hn
             )
 
+    # base_context canonicalises to the bare path, which for this route
+    # is /property/checklist with no address: a URL that 404s. The page
+    # is noindex either way, but canonical_url is also the og:url, so
+    # sharing a checklist would have previewed a broken link.
+    canonical_qs = f"postcode={quote(location['postcode'])}"
+    if hn:
+        canonical_qs += f"&house_number={quote(hn)}"
+    context["canonical_url"] = f"{_public_base_url(request)}/property/checklist?{canonical_qs}"
+
     gather = await _full_property_gather(location, hn, premium_unlocked=premium_unlocked)
     context.update(gather)
     context["checklist"] = viewing_checklist.build(gather, premium_unlocked=premium_unlocked)
