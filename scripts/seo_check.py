@@ -190,6 +190,12 @@ def main() -> int:
         have = [u for u in members if u in pages]
         if len(have) < 2:
             continue
+        if fam == "static":
+            # Not a family: 16 unrelated pages that are supposed to
+            # differ from each other. Measuring /premium against
+            # /compare and calling the overlap duplication is noise,
+            # and Google is not choosing between them.
+            continue
         pairs, worst, worst_pair = [], 0.0, None
         for i in range(min(len(have), 8)):
             for j in range(i + 1, min(len(have), 8)):

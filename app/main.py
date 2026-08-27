@@ -895,10 +895,12 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
     full = f"{head}{optional}{tail}"
     if len(full) <= limit or not optional:
         return full
-    without = f"{head}{tail}"
-    # Only worth dropping if it actually helps; a head and tail that
-    # blow the limit on their own keep the more useful version.
-    return without if len(without) <= limit else full
+    # Dropped whenever the title is over, not only when dropping gets it
+    # fully under. The first version kept the long form unless the short
+    # one cleared 60, which left 12 school titles at 82-89 characters
+    # rather than the 62 they would have been: the part that can be
+    # spared is worth sparing even when the rest is still long.
+    return f"{head}{tail}"
 
 
 templates.env.filters["gbp"] = _format_gbp
@@ -5823,7 +5825,7 @@ TOOLS = {
         "key": "stamp-duty",
         "title": "Stamp Duty Calculator 2026: England, Scotland and Wales",
         "heading": "Stamp duty calculator",
-        "meta": "Work out stamp duty (SDLT), Scotland's LBTT or Wales's LTT on any purchase price, including first-time buyer relief and the additional property surcharge. Free, no sign-up.",
+        "meta": "Work out stamp duty (SDLT), Scotland's LBTT or Wales's LTT on any price, with first-time buyer relief and the second-home surcharge. Free, no sign-up.",
         "dek": "Enter a price and it works out the tax, including first-time buyer relief and the extra charge on second homes. Nothing leaves your browser.",
         "default_rate": "4.5",
         "disclaimer": (

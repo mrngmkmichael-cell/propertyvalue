@@ -588,6 +588,10 @@ def test_seo_title_drops_the_council_name_rather_than_truncating():
     unavoidable = seo_title("A school with a very long name indeed here", "", ": catchment")
     assert unavoidable.endswith(": catchment")
 
-    # Dropping the middle does not help, so keep the more useful version.
-    both_too_long = seo_title("x" * 50, " middle", ": " + "y" * 30)
-    assert " middle" in both_too_long
+    # Still over even after dropping: drop it anyway. Getting a title
+    # from 89 characters to 82 is worth having even though neither
+    # clears 60, and the first version kept the long form here, which
+    # left 12 school titles at 82-89.
+    still_long = seo_title("x" * 50, " middle", ": " + "y" * 30)
+    assert " middle" not in still_long
+    assert len(still_long) < len("x" * 50 + " middle" + ": " + "y" * 30)

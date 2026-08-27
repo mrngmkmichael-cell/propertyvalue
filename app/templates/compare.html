@@ -4,7 +4,7 @@
    block at parse time, so wrapping the definition in an {% if %} does
    not do what it looks like it does. #}
 {% block title %}{% if versus %}{{ left_code }} or {{ right_code }}? Prices, schools, crime and flood risk compared{% elif anonymous_compare %}Compare UK postcodes side by side{% else %}Compare properties{% endif %} | UKPropertyInsight{% endblock %}
-{% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, energy ratings, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, area growth, energy rating, flood zone, crime and deprivation, all from official public data. Free, no account needed.{% endif %}{% endblock %}
+{% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, energy ratings, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.{% endif %}{% endblock %}
 {% block robots %}{% if not versus and not anonymous_compare %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block content %}

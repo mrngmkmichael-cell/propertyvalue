@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ seo_title(school.name ~ ": catchment and admission distance", " | UKPropertyInsight", "") }}{% endblock %}
+{% block title %}{{ seo_title(school.name ~ ": catchment", " and admission distance", "") }}{% endblock %}
 {% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Which postcode districts fall inside that.{% endblock %}
 {% block og_title %}{{ school.name }}: how far it admitted from{% endblock %}
 
