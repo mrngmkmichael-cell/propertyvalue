@@ -728,7 +728,12 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('crest') }}</span>
             <span class="dashboard-card-title">Private Schools</span>
             <span class="dashboard-card-status">
-                {%- if sector and school_landscape.independent_count %}{{ sector.independent_primary }} primary, {{ sector.independent_secondary }} senior
+                {%- if sector and school_landscape.independent_count -%}
+                {%- set parts = [] -%}
+                {%- if sector.independent_primary %}{% set _ = parts.append(sector.independent_primary ~ " primary") %}{% endif -%}
+                {%- if sector.independent_secondary %}{% set _ = parts.append(sector.independent_secondary ~ " senior") %}{% endif -%}
+                {%- if sector.independent_all_through %}{% set _ = parts.append(sector.independent_all_through ~ " all-through") %}{% endif -%}
+                {{ parts | join(", ") }}
                 {%- elif sector %}None within {{ school_landscape.radius_miles }} miles
                 {%- else %}No data available{% endif -%}
             </span>
@@ -2043,6 +2048,10 @@
                 Within {{ school_landscape.radius_miles }} miles: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
                 {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }}{% endif %}
                 {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} universit{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
+            </p>
+            <p class="section-sub" style="margin-top: 0;">
+                That total counts state, fee-paying and special schools together. Universities and
+                further education colleges are listed separately above, because they are not schools.
             </p>
             <p class="section-sub" style="margin-top: 0;">Tap a number to see which schools.</p>
             <div class="landscape-stat-row">

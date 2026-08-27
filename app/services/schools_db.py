@@ -238,6 +238,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     by_sector = {
         "state_primary": 0, "state_secondary": 0,
         "independent_primary": 0, "independent_secondary": 0,
+        "independent_all_through": 0,
     }
     independent_names = []
     independent_schools = []
@@ -315,13 +316,27 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             if not phases:
                 continue
             entry["age_low"], entry["age_high"] = low, high
-            entry["phase_group"] = "Secondary" if "Secondary" in phases else "Primary"
+            all_through = phases == {"Primary", "Secondary"}
+            entry["all_through"] = all_through
+            entry["phase_group"] = (
+                "All-through" if all_through else ("Secondary" if "Secondary" in phases else "Primary")
+            )
             independent_names.append(entry["name"])
             independent_schools.append(entry)
-            for phase in phases:
-                by_phase[phase] += 1
-                schools_by_phase[phase].append(entry)
-                by_sector[f"independent_{phase.lower()}"] += 1
+
+            # Counted once, because it is one school. Filing a 5-18
+            # school under both phases made a single school read as
+            # "1 primary, 1 senior" on the card while the list below it
+            # showed one row, and inflated the headline total with it.
+            bucket = "all_through" if all_through else ("secondary" if "Secondary" in phases else "primary")
+            by_sector[f"independent_{bucket}"] += 1
+
+            # The headline total counts schools, so this gets one too.
+            # An all-through school files under Secondary, the older
+            # half of the range it covers.
+            phase_for_total = "Secondary" if "Secondary" in phases else "Primary"
+            by_phase[phase_for_total] += 1
+            schools_by_phase[phase_for_total].append(entry)
             # Independent schools are inspected by the ISI, not Ofsted,
             # so they carry no Ofsted grade at all. They go into the
             # rating buckets as "No current grade" like anything else

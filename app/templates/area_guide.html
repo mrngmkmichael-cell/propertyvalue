@@ -177,8 +177,8 @@
         <strong>{{ by_sector.state_primary }}</strong> state primary and
         <strong>{{ by_sector.state_secondary }}</strong> state secondary schools within range,
         {% if private_school_count %}
-        plus <strong>{{ by_sector.independent_primary }}</strong> fee-paying prep and
-        <strong>{{ by_sector.independent_secondary }}</strong> fee-paying senior schools.
+        plus <strong>{{ private_school_count }}</strong> fee-paying
+        school{{ "s" if private_school_count != 1 else "" }}.
         {% else %}and no fee-paying schools.
         {% endif %}
     </p>
