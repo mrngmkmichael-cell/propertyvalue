@@ -207,17 +207,23 @@ for path, body in pages_html.items():
     # a number written in here. This rule expected 37; the count became
     # 40 and it then flagged every correct mention while a genuinely
     # wrong one looked identical.
-    for m in re.finditer(r"\b(\d+)\s+checks?\b", "\n".join(blocks), re.I):
-        n = m.group(1)
-        if HEADLINE_CHECKS and n == HEADLINE_CHECKS:
-            continue
-        # Tier sizes, and small per-category counts like "3 checks,
-        # nothing flagged", are legitimately other numbers.
-        if n in TIER_COUNTS or int(n) <= 9:
-            continue
-        problems["check count"].append(
-            f"{path}: '{m.group(0)}' but the hero says {HEADLINE_CHECKS}"
-        )
+    # Block by block, like the rule above. Searching the blocks joined
+    # back together does not work: \s+ crosses a newline, so the join
+    # re-creates the very boundary this was moved off the flat text to
+    # avoid, and a year in a price table pairs with a "Check" heading
+    # far below it.
+    for block in blocks:
+        for m in re.finditer(r"\b(\d+)\s+checks?\b", block, re.I):
+            n = m.group(1)
+            if HEADLINE_CHECKS and n == HEADLINE_CHECKS:
+                continue
+            # Tier sizes, and small per-category counts like "3 checks,
+            # nothing flagged", are legitimately other numbers.
+            if n in TIER_COUNTS or int(n) <= 9:
+                continue
+            problems["check count"].append(
+                f"{path}: '{' '.join(m.group(0).split())}' but the hero says {HEADLINE_CHECKS}"
+            )
     if re.search(r"twenty[- ]three checks|thirty[- ]seven checks", text, re.I):
         problems["check count"].append(f"{path}: an old check count spelled out in words")
 
