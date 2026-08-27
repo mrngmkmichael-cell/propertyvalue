@@ -145,9 +145,12 @@ def fake_report(monkeypatch):
         async def _lookup(_postcode):
             return location
 
-        async def _gather(_location, _house_number, _premium_unlocked):
+        # Parameter names mirror the real _full_property_gather, so a
+        # caller passing premium_unlocked by keyword works against the
+        # fake exactly as it does against the real one.
+        async def _gather(location, house_number, premium_unlocked, wait_for_amenities=False):
             # Mirrors what the real gather always puts in its result.
-            return {"location": _location, "epc_configured": True, **gather}
+            return {"location": location, "epc_configured": True, **gather}
 
         monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
         monkeypatch.setattr(app_main, "_full_property_gather", _gather)

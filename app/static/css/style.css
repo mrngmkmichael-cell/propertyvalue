@@ -2147,6 +2147,83 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 .compare-missing { color: var(--ink-soft); }
 
+/* Viewing checklist: made to be printed and written on. */
+.checklist { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.9rem; }
+.checklist-item {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    padding: 0.9rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    break-inside: avoid;
+}
+.checklist-box {
+    flex: none;
+    width: 20px; height: 20px;
+    margin-top: 0.15rem;
+    border: 2px solid var(--ink-faint);
+    border-radius: 4px;
+}
+.checklist-trigger {
+    margin: 0 0 0.2rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--bad);
+}
+.checklist-heading { margin: 0 0 0.2rem; font-weight: var(--weight-semi); color: var(--ink); }
+.checklist-detail { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.55; max-width: 62ch; }
+.checklist-notes { display: grid; gap: 1.5rem; margin-top: 1rem; }
+.checklist-rule { display: block; border-bottom: 1px solid var(--border); }
+
+/* Print: ink on paper, nothing that only works on a screen. */
+@media print {
+    .no-print, .site-nav, .site-footer, .promo-banner, nav, footer { display: none !important; }
+    body { background: #fff; color: #000; }
+    .checklist-item { border-color: #999; background: #fff; }
+    .checklist-detail, .checklist-trigger { color: #333; }
+    a[href]:after { content: ""; }
+}
+
+/* A line from whoever sent the report, shown above it. Deliberately
+   NOT .share-note: that class already exists further down for the small
+   grey caption under the share buttons, and being later in the file it
+   won on font-size and colour, leaving this quote tiny and faint and
+   giving that caption an accent bar it should not have. */
+.share-message {
+    margin: 0 0 0.6rem;
+    padding-left: 0.85rem;
+    border-left: 3px solid var(--accent);
+    font-size: var(--text-base);
+    font-style: italic;
+    color: var(--ink);
+}
+.share-note-label {
+    display: block;
+    margin: 0.75rem 0 0.3rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.share-note-input {
+    width: 100%;
+    max-width: 32rem;
+    padding: 0.55rem 0.8rem;
+    margin-bottom: 0.6rem;
+    font: inherit;
+    font-size: var(--text-sm);
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.share-note-input:focus { border-color: var(--accent); outline: none; }
+
 /* A school name inside a table cell. Reads as a link, because that is
    what it behaves like. The .school-row treatment next to this is a
    full-width bordered card, right for a standalone list and wrong in a

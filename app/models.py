@@ -116,6 +116,10 @@ class ShareLink(Base):
     postcode: Mapped[str] = mapped_column(String(16))
     house_number: Mapped[str] = mapped_column(String(32), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    # A line from the sender to whoever opens it. Buying a house is a
+    # conversation between two people, and a bare link makes the
+    # recipient guess what they were meant to look at.
+    note: Mapped[str] = mapped_column(String(280), default="")
     views: Mapped[int] = mapped_column(Integer, default=0)
 
 

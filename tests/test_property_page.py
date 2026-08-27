@@ -192,3 +192,98 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
         f"landing page claims {target} checks, report has {checks} "
         f"({len(titles)} cards less {sorted(NOT_AN_OFFICIAL_SOURCE_CHECK)})"
     )
+
+
+def test_a_shared_report_carries_the_sender_s_note(client, fake_report):
+    """Buying a house is a conversation between two people. A bare link
+    makes the recipient guess what they were meant to look at."""
+    from app import auth, main as app_main
+    from app.db import get_session
+    from app.models import ShareLink
+
+    fake_report()
+    client.post("/signup", data={"email": "sharer@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    with get_session() as db:
+        user = auth.find_user_by_email(db, "sharer@example.test")
+        auth.claim_unlock(db, user.id, "M14 5TG", "")
+
+    client.post("/share", data={"postcode": "M14 5TG", "house_number": "",
+                                "note": "  the one I mentioned,   look at the flood bit  "},
+                follow_redirects=False)
+
+    with get_session() as db:
+        link = db.query(ShareLink).filter(ShareLink.postcode == "M14 5TG").first()
+        assert link is not None
+        # Whitespace collapsed, so a pasted note cannot wreck the layout.
+        assert link.note == "the one I mentioned, look at the flood bit"
+        token = link.token
+
+    client.cookies.clear()          # open it as a stranger
+    body = client.get(f"/s/{token}").text
+    assert "the one I mentioned, look at the flood bit" in body
+    assert "Someone shared this report with you" in body
+
+
+def test_resharing_updates_the_note_instead_of_minting_a_second_link(client, fake_report):
+    from app import auth
+    from app.db import get_session
+    from app.models import ShareLink
+
+    fake_report()
+    client.post("/signup", data={"email": "resharer@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    with get_session() as db:
+        user = auth.find_user_by_email(db, "resharer@example.test")
+        auth.claim_unlock(db, user.id, "M14 5TG", "")
+
+    for note in ("first note", "second note"):
+        client.post("/share", data={"postcode": "M14 5TG", "house_number": "", "note": note},
+                    follow_redirects=False)
+
+    with get_session() as db:
+        links = db.query(ShareLink).filter(ShareLink.user_id == user.id).all()
+        assert len(links) == 1, "one property should have one share link"
+        assert links[0].note == "second note"
+
+
+def test_viewing_checklist_is_built_from_this_property_s_findings(client, fake_report):
+    """A generic checklist off a blog is no use. Every flagged item has
+    to be triggered by something this address's own report found."""
+    fake_report(gather=fake_gather(
+        flood_zone={"zone": 3, "label": "Zone 3 (high probability)", "source": None},
+        noise={"road_db": 71, "rail_db": None, "airport_db": None},
+    ))
+    body = client.get("/property/checklist?postcode=M14%205TG").text
+    assert "Viewing checklist" in body
+    # Flood was flagged, so the flood prompt appears...
+    assert "Tide marks" in body
+    assert "Listen with the windows open" in body
+    # ...and the always-ask items are there regardless.
+    assert "Water pressure" in body
+
+
+def test_viewing_checklist_never_leaks_a_locked_finding(client, fake_report):
+    """It is built from the same lock-aware concern list the score uses,
+    so a free reader must not learn a Premium finding from it."""
+    fake_report(gather=fake_gather(
+        air_quality={"pollutants": [
+            {"name": "no2", "label": "NO2", "value": 34.0, "who_guideline": 10, "times_guideline": 3.4},
+        ]},
+    ))
+    body = client.get("/property/checklist?postcode=M14%205TG").text
+    assert "Air quality well above WHO guideline" not in body
+    assert "The road at the front" not in body
+
+
+def test_viewing_checklist_says_so_when_nothing_was_flagged(client, fake_report):
+    """Filler would be worse than nothing.
+
+    The default fixture sits in deprivation decile 3, which is itself a
+    finding, so this needs a genuinely unflagged property."""
+    fake_report(gather=fake_gather(deprivation={"imd_decile": 8, "la_name": "Manchester"}))
+    body = client.get("/property/checklist?postcode=M14%205TG").text
+    assert "Nothing specific was flagged here" in body
+    assert "Water pressure" in body

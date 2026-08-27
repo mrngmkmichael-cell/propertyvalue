@@ -38,7 +38,7 @@ from app.services import (
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
-    solicitor_questions, indexnow, council_tax,
+    solicitor_questions, indexnow, council_tax, viewing_checklist,
 )
 from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -3384,6 +3384,42 @@ async def api_commute(lat: float, lon: float, postcode: str = ""):
     return JSONResponse(payload)
 
 
+@app.get("/property/checklist")
+async def property_checklist(request: Request, postcode: str = "", house_number: str = ""):
+    """A printable list of what to look at when you actually stand in
+    the building, built from what this property's report found.
+
+    The report tells someone a house sits in a flood zone. This tells
+    them to look for a tide mark on the wall while they are in the
+    room. It is the one part of buying where the buyer is the
+    instrument, and a generic checklist off a blog is no use for it.
+    """
+    context = base_context(request)
+    try:
+        location = await lookup_postcode(postcode.strip())
+    except httpx.HTTPError:
+        location = None
+    if location is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    hn = house_number.strip()
+    current = context["current_user"]
+    premium_unlocked = False
+    if current and db.is_configured():
+        with db.get_session() as session:
+            premium_unlocked = bool(current.get("subscribed")) or auth.has_unlocked(
+                session, current["id"], location["postcode"], hn
+            )
+
+    gather = await _full_property_gather(location, hn, premium_unlocked=premium_unlocked)
+    context.update(gather)
+    context["checklist"] = viewing_checklist.build(gather, premium_unlocked=premium_unlocked)
+    context["premium_unlocked"] = premium_unlocked
+    context["house_number"] = hn
+    context["query"] = location["postcode"]
+    return templates.TemplateResponse(request, "viewing_checklist.html", context)
+
+
 @app.get("/property/comparables")
 async def property_comparables(request: Request, postcode: str = "", house_number: str = ""):
     postcode = postcode.strip()
@@ -4693,7 +4729,8 @@ def admin_grant_premium(request: Request, email: str = Form(...), action: str = 
 # ---- Shareable reports ----
 
 @app.post("/share")
-def create_share(request: Request, postcode: str = Form(...), house_number: str = Form("")):
+def create_share(request: Request, postcode: str = Form(...), house_number: str = Form(""),
+                 note: str = Form("")):
     """Mint (or reuse) a public link for a report the caller can see in
     full. The access check is the same one the report page makes, so a
     free account can only share a property it has actually unlocked."""
@@ -4711,10 +4748,16 @@ def create_share(request: Request, postcode: str = Form(...), house_number: str 
             ShareLink.user_id == current["id"], ShareLink.postcode == postcode,
             ShareLink.house_number == house_number,
         ))
+        note = " ".join((note or "").split())[:280]
         if link is None:
             link = ShareLink(token=secrets.token_urlsafe(18), user_id=current["id"],
-                             postcode=postcode, house_number=house_number)
+                             postcode=postcode, house_number=house_number, note=note)
             session.add(link)
+            session.commit()
+        elif note != (link.note or ""):
+            # Re-sharing with a different note updates the existing link
+            # rather than minting a second one for the same property.
+            link.note = note
             session.commit()
     return RedirectResponse(back + "&shared=1#share", status_code=303)
 
@@ -4735,7 +4778,7 @@ async def view_share(request: Request, token: str):
         session.commit()
         postcode, house_number = link.postcode, link.house_number
         share = ShareLink(token=link.token, user_id=link.user_id, postcode=postcode,
-                          house_number=house_number, views=link.views)
+                          house_number=house_number, views=link.views, note=link.note or "")
     return await _render_property(request, postcode, house_number, _share=share)
 
 

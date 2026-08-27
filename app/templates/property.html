@@ -19,6 +19,11 @@
 {% if shared %}
 <div class="share-banner">
     <div class="share-banner-text">
+        {% if shared.note %}
+        {# What the sender actually wanted looked at. A bare link makes
+           the recipient guess. #}
+        <p class="share-message">&ldquo;{{ shared.note }}&rdquo;</p>
+        {% endif %}
         <strong>Someone shared this report with you.</strong>
         Every check is unlocked here. Every figure comes from an official source, and you can run the same report on any UK postcode.
     </div>
@@ -156,6 +161,13 @@
                     <form action="/share" method="post" class="share-form">
                         <input type="hidden" name="postcode" value="{{ location.postcode }}">
                         <input type="hidden" name="house_number" value="{{ house_number or '' }}">
+                        {# Optional, and the field says so. Whoever opens
+                           the link sees this above the report, so they
+                           know what they were meant to look at. #}
+                        <label class="share-note-label" for="share-note">Add a line for whoever you send it to (optional)</label>
+                        <input type="text" id="share-note" name="note" maxlength="280"
+                               class="share-note-input" autocomplete="off"
+                               placeholder="e.g. the one I mentioned, look at the flood bit">
                         <button type="submit" class="pdf-download-btn">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
                             Share this report
@@ -976,6 +988,10 @@
         {# Most people are deciding between areas, not judging one alone.
            This carries the postcode they are already looking at into the
            comparison so they only have to think of the other one. #}
+        <p class="keep-exploring-compare">
+            Going to see it?
+            <a href="/property/checklist?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">Print a viewing checklist built from this report's findings &rarr;</a>
+        </p>
         <p class="keep-exploring-compare">
             Weighing this up against somewhere else?
             <a href="/compare?postcode={{ location.postcode | urlencode }}">Put {{ location.postcode }} side by side with another postcode &rarr;</a>

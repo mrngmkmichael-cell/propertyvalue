@@ -21,3 +21,6 @@ app/static/_audit/
 
 # Source video and stills supplied by hand, not shipped
 Background Video/
+
+# Node
+node_modules/
