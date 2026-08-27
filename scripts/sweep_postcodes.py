@@ -124,9 +124,31 @@ async def _postcodes_for(client: httpx.AsyncClient, outcode: str, want: int) -> 
         found = [p["postcode"] for p in result if p.get("postcode", "").upper().startswith(prefix)]
         if len(found) >= want:
             break
-    if not found:
-        return []
-    return random.sample(found, min(want, len(found)))
+    if len(found) >= want:
+        return random.sample(found, want)
+
+    # The nearby search asks for the 100 postcodes closest to the
+    # district's centre and keeps the ones in this district, which fails
+    # at both extremes: in dense cities the nearest 100 are all
+    # neighbouring districts (EC1A and B2 came back empty), and for a
+    # non-geographic or scattered district the centre is nowhere near
+    # its addresses (BS99, M60, IV51, ZE2). That silently skipped 62 of
+    # 2,943 districts, and they were the awkward ones - IV51 is the
+    # district whose null coordinates crashed the area guide in
+    # production. Asking for a postcode in this district by name costs
+    # one call each and cannot miss.
+    for _ in range(want - len(found)):
+        try:
+            r = await client.get(f"{POSTCODES_IO}/random/postcodes", params={"outcode": outcode})
+            if r.status_code != 200:
+                break
+            result = r.json().get("result") or {}
+        except (httpx.HTTPError, ValueError):
+            break
+        postcode = result.get("postcode")
+        if postcode and postcode not in found:
+            found.append(postcode)
+    return found[:want]
 
 
 # Infrastructure, not the application: Render's proxy giving up under
