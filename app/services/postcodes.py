@@ -73,7 +73,20 @@ async def outcode_centroid(outcode: str) -> dict | None:
         return None
     response.raise_for_status()
     result = response.json()["result"]
-    return {"latitude": result["latitude"], "longitude": result["longitude"]}
+    # postcodes.io returns these as lists on an outcode, because a
+    # district can straddle a boundary; the first is the dominant one.
+    def _first(value):
+        if isinstance(value, list):
+            return value[0] if value else None
+        return value
+
+    return {
+        "latitude": result["latitude"],
+        "longitude": result["longitude"],
+        "admin_district": _first(result.get("admin_district")),
+        "region": _first(result.get("region")),
+        "country": _first(result.get("country")),
+    }
 
 
 async def autocomplete(partial: str, limit: int = 8) -> list[str]:

@@ -2413,6 +2413,22 @@ async def _immediate(value):
     return value
 
 
+def _usable_location(location: dict | None) -> dict | None:
+    """A location is only usable once it has actually geocoded.
+
+    postcodes.io returns terminated postcodes with null latitude and
+    longitude, and one of those reaching an area guide took the page
+    down with "unsupported operand type(s) for -: float and NoneType":
+    every distance calculation downstream does arithmetic on those two
+    fields. Caught in production on /area/IV51 (28 Aug 2026).
+    """
+    if not location:
+        return None
+    if location.get("latitude") is None or location.get("longitude") is None:
+        return None
+    return location
+
+
 async def _resolve_extension_location(postcode: str) -> tuple[dict | None, bool]:
     """Resolve a postcode the extension detected on a listing page,
     which is routinely only the outward code (e.g. "BR5") - Rightmove/
@@ -2425,7 +2441,7 @@ async def _resolve_extension_location(postcode: str) -> tuple[dict | None, bool]
     address-specific data (sold price, EPC) as if it belonged to this
     property, when it actually belongs to a geographic neighbour."""
     if _FULL_POSTCODE_RE.match(postcode):
-        return await lookup_postcode(postcode), False
+        return _usable_location(await lookup_postcode(postcode)), False
     centroid = await outcode_centroid(postcode)
     if not centroid:
         return None, True
@@ -2437,14 +2453,34 @@ async def _resolve_extension_location(postcode: str) -> tuple[dict | None, bool]
     for radius_m in (800, 2000):
         nearby = await nearby_postcodes(centroid["latitude"], centroid["longitude"], radius_m=radius_m, limit=1)
         if nearby:
-            return await lookup_postcode(nearby[0]["postcode"]), True
+            located = _usable_location(await lookup_postcode(nearby[0]["postcode"]))
+            if located:
+                return located, True
     # Nothing within 2 km of the centre at all (HS2, Isle of Lewis):
     # take any real postcode in the district. Less central, still the
     # right district, and the area-level data is what this page shows.
     fallback = await any_postcode_in_outcode(postcode)
-    if not fallback:
-        return None, True
-    return await lookup_postcode(fallback), True
+    if fallback:
+        located = _usable_location(await lookup_postcode(fallback))
+        if located:
+            return located, True
+
+    # Every postcode we can find in this district is terminated, and
+    # postcodes.io returns those with null coordinates (IV51, Skye).
+    # The district's own centroid still has them, and area-level data
+    # is all this page shows anyway. codes stays empty on purpose: we
+    # do not know the LSOA, and guessing one would put a real census
+    # figure against the wrong neighbourhood.
+    return {
+        "postcode": postcode.upper(),
+        "outcode": postcode.upper(),
+        "latitude": centroid["latitude"],
+        "longitude": centroid["longitude"],
+        "admin_district": centroid.get("admin_district") or "",
+        "region": centroid.get("region") or "",
+        "country": centroid.get("country") or "",
+        "codes": {},
+    }, True
 
 
 async def _comparables_for_extension(lat: float, lon: float) -> list[dict]:

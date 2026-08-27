@@ -291,3 +291,60 @@ def test_area_sales_return_nothing_when_no_homes_sold(monkeypatch):
     monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
     monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
     assert asyncio.run(app_main._outcode_sales(53.0, -1.0)) is None
+
+
+# ---- locations that never geocoded --------------------------------------
+
+def test_a_location_without_coordinates_is_not_usable():
+    """postcodes.io returns terminated postcodes with null latitude and
+    longitude. One reaching an area guide took the page down with
+    "unsupported operand type(s) for -: float and NoneType", because
+    every distance calculation downstream does arithmetic on them.
+    Caught on /area/IV51 in production."""
+    from app import main as app_main
+
+    assert app_main._usable_location(None) is None
+    assert app_main._usable_location({}) is None
+    assert app_main._usable_location({"postcode": "IV51 0AE", "latitude": None, "longitude": None}) is None
+    assert app_main._usable_location({"postcode": "IV51 0AE", "latitude": 57.4, "longitude": None}) is None
+
+    good = {"postcode": "M1 1AE", "latitude": 53.4, "longitude": -2.2}
+    assert app_main._usable_location(good) is good
+
+
+def test_a_district_of_terminated_postcodes_falls_back_to_its_centroid(monkeypatch):
+    """IV51 (Skye) has no live postcode we can find, but the district
+    itself still has a centre point, and area-level data is all the
+    guide shows. A 404 there would be losing a real page over a
+    postcode that happens to have been retired."""
+    import asyncio
+    from app import main as app_main
+
+    async def _centroid(outcode):
+        return {"latitude": 57.47, "longitude": -6.24, "admin_district": "Highland",
+                "region": None, "country": "Scotland"}
+
+    async def _nearby(lat, lon, radius_m=1000, limit=100):
+        return []
+
+    async def _any_in(outcode):
+        return "IV51 0AE"
+
+    async def _lookup(postcode):
+        # Terminated: postcodes.io knows the postcode, but not where it was.
+        return {"postcode": "IV51 0AE", "latitude": None, "longitude": None,
+                "admin_district": None, "region": None, "country": "Scotland"}
+
+    monkeypatch.setattr(app_main, "outcode_centroid", _centroid)
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "any_postcode_in_outcode", _any_in)
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+
+    location, approximate = asyncio.run(app_main._resolve_extension_location("IV51"))
+    assert approximate is True
+    assert location is not None, "a district with a known centre must still render"
+    assert location["latitude"] == 57.47 and location["longitude"] == -6.24
+    assert location["admin_district"] == "Highland"
+    # No LSOA is known, and guessing one would put a real census figure
+    # against the wrong neighbourhood.
+    assert location["codes"] == {}
