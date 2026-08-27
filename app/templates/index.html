@@ -382,18 +382,28 @@
         <div class="lx-voice-grid" data-cascade>
             {# The Trustpilot ones first: they are the only quotes here a
                reader can go and verify, and the line under the grid
-               tells them where. #}
-            {% for quote, who, where in trustpilot.reviews + [
-                ("Its really good, very easy to navigate. Rightmove exist to sell houses where as your service is just a presentation of facts.", "Commenter", "r/HousingUK"),
-                ("I used to build exactly this professionally. You're on the right path.", "Former property-data professional", "Reddit")
+               tells them where. They are also the only ones carrying a
+               star rating, because they are the only ones anybody
+               rated. The Reddit quotes get none rather than a borrowed
+               five. #}
+            {% for v in trustpilot.reviews + [
+                {"quote": "Its really good, very easy to navigate. Rightmove exist to sell houses where as your service is just a presentation of facts.", "who": "Commenter", "where": "r/HousingUK"},
+                {"quote": "I used to build exactly this professionally. You're on the right path.", "who": "Former property-data professional", "where": "Reddit"}
             ] %}
             <figure class="lx-voice">
-                <blockquote>&ldquo;{{ quote }}&rdquo;</blockquote>
+                {% if v.stars %}
+                <p class="lx-stars" role="img" aria-label="Rated {{ v.stars }} out of 5">
+                    {%- for _ in range(v.stars) -%}
+                    <svg viewBox="0 0 20 19" aria-hidden="true" focusable="false"><path d="M10 0l2.47 6.15 6.61.4-5.1 4.23 1.65 6.42L10 13.62 4.37 17.2l1.65-6.42-5.1-4.23 6.61-.4z"/></svg>
+                    {%- endfor -%}
+                </p>
+                {% endif %}
+                <blockquote>&ldquo;{{ v.quote }}&rdquo;</blockquote>
                 <figcaption>
-                    <span class="lx-voice-avatar" aria-hidden="true">{{ who[0] | upper }}</span>
+                    <span class="lx-voice-avatar" aria-hidden="true">{{ v.who[0] | upper }}</span>
                     <span>
-                        <span class="lx-voice-who">{{ who }}</span>
-                        <span class="lx-voice-where">{{ where }}</span>
+                        <span class="lx-voice-who">{{ v.who }}</span>
+                        <span class="lx-voice-where">{{ v.where }}</span>
                     </span>
                 </figcaption>
             </figure>

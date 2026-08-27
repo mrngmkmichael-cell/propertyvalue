@@ -6890,6 +6890,34 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
 }
 .lx-voice-who { display: block; font-size: var(--text-sm); color: var(--ink); }
 .lx-voice-where { display: block; font-size: var(--text-xs); color: var(--ink-soft); }
+/* A review's own rating, drawn here rather than pulled from
+   Trustpilot's brand assets. Two reasons: their green (#00b67a) is a
+   second accent hue in a warm palette, which the design brief rules
+   out, and their star mark is a trademark whose use is tied to their
+   TrustBox widget, which the privacy promise rules out. The gold is the
+   one this section already uses for its quote mark and avatars, so
+   nothing new enters the palette. */
+.lx-stars {
+    display: flex;
+    gap: 3px;
+    margin: 0 0 1.1rem;
+    /* Not the #d4a95f this section already uses. That gold is the dark
+       theme's accent and appears here only as an 8-16% tint behind the
+       quote mark and avatars, where being faint is the point. A star
+       carries information, so WCAG asks 3:1 against its background, and
+       #d4a95f on the white card measures 2.18:1. This is the same gold
+       walked down to 4.7:1. */
+    --star: #9a6b12;
+}
+.lx-stars svg {
+    width: 17px;
+    height: 17px;
+    fill: var(--star);
+}
+/* On #121212 the lighter gold measures 8.6:1, and the darker one would
+   disappear, so the pair swaps. */
+body.theme-dark .lx-stars { --star: #d4a95f; }
+
 /* The line that makes the quotes above checkable. Quiet on purpose:
    this is a citation, in the same register as the source lines under
    every figure on a report, not a badge. */

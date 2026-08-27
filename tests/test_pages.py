@@ -551,10 +551,10 @@ def test_the_trustpilot_count_matches_the_reviews_actually_quoted(client):
     body = client.get("/").text
     assert TRUSTPILOT["profile_url"] in body
     assert f"{TRUSTPILOT['review_count']} reviews" in body
-    for quote, who, _ in TRUSTPILOT["reviews"]:
-        assert who in body
+    for review in TRUSTPILOT["reviews"]:
+        assert review["who"] in body
         # Quoted verbatim: no silent tidying of someone else's words.
-        assert quote[:40] in body
+        assert review["quote"][:40] in body
 
     # Never claim more quotes than reviews.
     assert len(TRUSTPILOT["reviews"]) <= TRUSTPILOT["review_count"]
@@ -569,3 +569,27 @@ def test_no_third_party_script_runs_on_the_site(client):
         body = client.get(path).text
         for src in re.findall(r'<script[^>]+src="([^"]+)"', body):
             assert src.startswith("/"), f"{path} loads an off-site script: {src}"
+
+
+def test_only_the_rated_reviews_show_stars(client):
+    """Five stars means someone gave five stars. The Reddit quotes on
+    the same row were never rated, so they show none rather than
+    borrowing the Trustpilot ones' rating."""
+    import re
+
+    from app.main import TRUSTPILOT
+
+    body = client.get("/").text
+    figures = re.findall(r"<figure class=\"lx-voice\">(.*?)</figure>", body, re.S)
+    rated = [f for f in figures if "lx-stars" in f]
+
+    assert len(figures) == 4, "two Trustpilot reviews and two Reddit quotes"
+    assert len(rated) == len(TRUSTPILOT["reviews"])
+    for figure, review in zip(rated, TRUSTPILOT["reviews"]):
+        assert figure.count("<svg") == review["stars"]
+        assert f'aria-label="Rated {review["stars"]} out of 5"' in figure
+
+    # A quote nobody rated must not carry a rating.
+    for figure in figures:
+        if "r/HousingUK" in figure or ">Reddit<" in figure:
+            assert "lx-stars" not in figure

@@ -1102,13 +1102,21 @@ TRUSTPILOT = {
     "read_on": "27 August 2026",
     # Verbatim, including the reviewer's own spelling. Correcting someone
     # else's words silently is not ours to do.
+    #
+    # "stars" is each review's own rating, not a decoration: only these
+    # carry one, and the Reddit quotes beside them on the page
+    # deliberately show none, because nobody rated anything there.
     "reviews": [
-        ("A great deal honestly compared to other competitors on the market. Very "
-         "intuative UX and made it very easy to look for the exact criterias.",
-         "rueben yu", "Trustpilot, 25 August 2026"),
-        ("Brilliant website. Convenient and easy to use. Put in the post code and you "
-         "will have all useful information in one place.",
-         "AH", "Trustpilot, 27 August 2026"),
+        {
+            "quote": ("A great deal honestly compared to other competitors on the market. Very "
+                      "intuative UX and made it very easy to look for the exact criterias."),
+            "who": "rueben yu", "where": "Trustpilot, 25 August 2026", "stars": 5,
+        },
+        {
+            "quote": ("Brilliant website. Convenient and easy to use. Put in the post code and you "
+                      "will have all useful information in one place."),
+            "who": "AH", "where": "Trustpilot, 27 August 2026", "stars": 5,
+        },
     ],
 }
 
