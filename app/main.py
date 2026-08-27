@@ -3809,7 +3809,11 @@ async def _bounded(coro, seconds: float):
 
 AREA_PREWARM_BATCH = 250
 AREA_PREWARM_REFRESH_AHEAD_S = 86400 * 2
-AREA_PREWARM_SPACING_S = 0.4
+# Breathing room between districts. Render runs one worker, and a
+# back-to-back batch measurably starved live requests: a report that
+# normally takes seconds timed out twice at two minutes while a 400
+# district batch was in flight. Warming is never urgent, so it yields.
+AREA_PREWARM_SPACING_S = 2.0
 
 
 @app.post("/internal/prewarm-area-guides")
