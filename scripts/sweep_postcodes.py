@@ -16,6 +16,19 @@ sources. Every result is written to the log as it lands and --resume
 skips what is already there, so this is meant to be run in stages and
 stopped whenever.
 
+RUN THIS AGAINST THE DEV SERVER, NOT PRODUCTION. Measured on
+2026-08-29: at 8 concurrent requests Render's proxy started returning
+502s, and even at 4 the live homepage went from 0.3s to 5.7s for a real
+visitor and recovered the moment the sweep stopped. Thousands of cold
+reports is a load test however politely it is paced, and there is no
+setting that makes it not one. The dev server runs the same templates
+and the same gather, which is where render errors live.
+
+The one thing a local sweep cannot see is the report's Google Maps
+branch: production has GOOGLE_MAPS_API_KEY and renders it, dev has no
+key and renders Leaflet instead. Cover that with a small deliberate
+sample against production, not with volume.
+
 Two things keep it from becoming a load test:
 
   Concurrency is low by default and there is a pause between batches.
@@ -116,14 +129,34 @@ async def _postcodes_for(client: httpx.AsyncClient, outcode: str, want: int) -> 
     return random.sample(found, min(want, len(found)))
 
 
+# Infrastructure, not the application: Render's proxy giving up under
+# load, or an upstream rate limiter. Recording these as failures blames
+# the site for the sweep's own weight. A first run at concurrency 8
+# logged 8 "failures" this way, every one of which returned 200 when
+# retried on its own a minute later.
+RETRYABLE = {429, 500, 502, 503, 504}
+RETRIES = 2
+
+
 async def _check(client: httpx.AsyncClient, base: str, outcode: str, postcode: str) -> dict:
     url = f"{base}/property?postcode={postcode.replace(' ', '+')}"
     started = time.monotonic()
-    try:
-        r = await client.get(url)
-    except Exception as exc:  # noqa: BLE001
-        return {"outcode": outcode, "postcode": postcode, "ok": False,
-                "status": 0, "problems": [f"request failed: {exc}"], "seconds": 0}
+    r = None
+    for attempt in range(RETRIES + 1):
+        try:
+            r = await client.get(url)
+        except Exception as exc:  # noqa: BLE001
+            if attempt == RETRIES:
+                return {"outcode": outcode, "postcode": postcode, "ok": False, "status": 0,
+                        "problems": [f"request failed: {exc}"], "seconds": 0}
+            await asyncio.sleep(5 * (attempt + 1))
+            continue
+        if r.status_code not in RETRYABLE:
+            break
+        if attempt < RETRIES:
+            # Alone and unhurried, so the retry is not competing with
+            # the rest of the batch for the same capacity.
+            await asyncio.sleep(10 * (attempt + 1))
 
     elapsed = round(time.monotonic() - started, 1)
     problems = []
@@ -139,7 +172,8 @@ async def _check(client: httpx.AsyncClient, base: str, outcode: str, postcode: s
             if marker not in lowered:
                 problems.append(f"missing {marker!r}")
     return {"outcode": outcode, "postcode": postcode, "ok": not problems,
-            "status": r.status_code, "problems": problems, "seconds": elapsed}
+            "status": r.status_code, "problems": problems, "seconds": elapsed,
+            "infra": r.status_code in RETRYABLE}
 
 
 def _already_done(log: pathlib.Path) -> set[str]:
@@ -156,7 +190,9 @@ def _already_done(log: pathlib.Path) -> set[str]:
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("base", nargs="?", default="https://ukpropertyinsight.co.uk")
+    # Defaults to dev on purpose. See the note at the top: pointing this
+    # at production measurably slows the live site for real visitors.
+    ap.add_argument("base", nargs="?", default="http://127.0.0.1:8010")
     ap.add_argument("--per-outcode", type=int, default=5)
     ap.add_argument("--outcodes", type=int, default=0, help="limit districts, 0 = all")
     ap.add_argument("--concurrency", type=int, default=3)
@@ -192,16 +228,27 @@ async def main() -> int:
                     print(f"  {i}/{len(missing)} districts resolved")
         POSTCODE_CACHE.write_text(json.dumps(cache), encoding="utf-8")
 
-    jobs = [
-        (o, p) for o in districts for p in cache.get(o, [])[: args.per_outcode]
-        if p not in done
-    ]
+    # Breadth first: every district's 1st postcode, then every
+    # district's 2nd, and so on. Depth first (all five of one district
+    # before moving on) means 22 hours of running before the last
+    # districts are touched at all, and five postcodes inside one
+    # district largely re-test the same district-level data. Ordered
+    # this way, each pass is complete national coverage on its own and
+    # stopping early still leaves a result that means something.
+    jobs = []
+    for nth in range(args.per_outcode):
+        for outcode in districts:
+            postcodes = cache.get(outcode, [])
+            if nth < len(postcodes) and postcodes[nth] not in done:
+                jobs.append((outcode, postcodes[nth]))
     no_postcodes = [o for o in districts if not cache.get(o)]
     if no_postcodes:
         print(f"{len(no_postcodes)} districts yielded no postcode from postcodes.io "
               f"(e.g. {', '.join(no_postcodes[:6])})")
 
+    per_pass = sum(1 for o in districts if cache.get(o))
     print(f"\n{len(jobs)} reports to check against {base}, {args.concurrency} at a time")
+    print(f"breadth first: {per_pass} districts per pass, up to {args.per_outcode} passes")
     print(f"writing to {log}\n")
 
     failures, checked, slow = 0, 0, 0
@@ -232,10 +279,20 @@ async def main() -> int:
                         print(f"  slow  {res['postcode']:<10} ({res['outcode']}) {res['seconds']}s")
                 fh.flush()
 
+                # Any 5xx that survived its retries means the site is
+                # struggling under this sweep, so ease off at once
+                # rather than waiting for the batch threshold.
+                infra = sum(1 for res in results if res.get("infra"))
+                if infra and concurrency > 1:
+                    concurrency = max(1, concurrency - 1)
+                    print(f"  ** {infra} request(s) still 5xx after retries: this is load, "
+                          f"not the site. Easing to {concurrency} at a time and pausing 60s")
+                    await asyncio.sleep(60)
+
                 # A cliff is far more likely to be our own rate limiting
                 # than a sudden crop of broken districts, so back off
                 # rather than logging hundreds of manufactured failures.
-                if batch_failures / max(1, len(batch)) > FAILURE_ALARM and concurrency > 1:
+                elif batch_failures / max(1, len(batch)) > FAILURE_ALARM and concurrency > 1:
                     concurrency = max(1, concurrency - 1)
                     print(f"  ** {batch_failures}/{len(batch)} failed in one batch: "
                           f"easing off to {concurrency} at a time and pausing 30s")
