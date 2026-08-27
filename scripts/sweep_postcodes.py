@@ -17,7 +17,7 @@ skips what is already there, so this is meant to be run in stages and
 stopped whenever.
 
 RUN THIS AGAINST THE DEV SERVER, NOT PRODUCTION. Measured on
-2026-08-29: at 8 concurrent requests Render's proxy started returning
+2026-08-27: at 8 concurrent requests Render's proxy started returning
 502s, and even at 4 the live homepage went from 0.3s to 5.7s for a real
 visitor and recovered the moment the sweep stopped. Thousands of cold
 reports is a load test however politely it is paced, and there is no

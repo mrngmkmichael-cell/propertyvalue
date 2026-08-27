@@ -39,7 +39,7 @@ PAGES = [
     "/compare", "/compare/M20/vs/M21",
     "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
     "/market/district-prices", "/school/100050/parliament-hill-school",
-    # Added 29 Aug 2026 with the pages themselves.
+    # Added 27 Aug 2026 with the pages themselves.
     "/area/W4/private-schools", "/property/checklist?postcode=M1+1AE",
 ]
 
