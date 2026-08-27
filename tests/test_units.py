@@ -420,3 +420,73 @@ def test_flood_area_lookups_stop_at_the_cap(monkeypatch):
     from app.services import flood
     assert flood._MAX_AREA_LOOKUPS <= 50
     assert flood._AREA_LOOKUP_BUDGET_S <= 15
+
+
+def test_noise_retries_a_throttled_layer(monkeypatch):
+    """DEFRA throttles this endpoint, and a report fires all three
+    layers at once. When it answers 403 to every one, all three fail
+    together, which noise_near reads as a real outage, and the card
+    said "Data unavailable" for an address with perfectly good noise
+    data. One retry turns a burst into an answer."""
+    import asyncio
+
+    from app.services import noise
+
+    calls = {"n": 0}
+
+    class _Resp:
+        def __init__(self, status, payload=None):
+            self.status_code = status
+            self._payload = payload or {}
+
+        def raise_for_status(self):
+            if self.status_code >= 400:
+                raise AssertionError(f"unexpected raise on {self.status_code}")
+
+        def json(self):
+            return self._payload
+
+    class _Client:
+        async def get(self, url, params=None, timeout=None):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return _Resp(403)                     # throttled
+            return _Resp(200, {"features": [{"properties": {"GRAY_INDEX": 57.0}}]})
+
+    # Zero the pause rather than patching asyncio.sleep, which the
+    # replacement would otherwise call recursively.
+    monkeypatch.setattr(noise, "_RETRY_PAUSE_S", 0)
+    result = asyncio.run(noise._query_layer(_Client(), "ds", "layer", 53.4, -2.2))
+
+    assert calls["n"] == 2, "a throttled layer should be retried once"
+    assert result is not None, "the retry's answer should be used"
+
+
+def test_noise_does_not_retry_a_real_absence(monkeypatch):
+    """A 404 means the layer genuinely has nothing there. Retrying it
+    would double every request for no reason."""
+    import asyncio
+
+    from app.services import noise
+
+    calls = {"n": 0}
+
+    class _Resp:
+        status_code = 404
+
+        def raise_for_status(self):
+            raise noise.httpx.HTTPStatusError("not found", request=None, response=None)
+
+        def json(self):
+            return {}
+
+    class _Client:
+        async def get(self, url, params=None, timeout=None):
+            calls["n"] += 1
+            return _Resp()
+
+    try:
+        asyncio.run(noise._query_layer(_Client(), "ds", "layer", 53.4, -2.2))
+    except Exception:
+        pass
+    assert calls["n"] == 1, "a 404 must not be retried"

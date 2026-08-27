@@ -20,6 +20,10 @@ import httpx
 from app.services import _cache
 
 WMS_BASE = "https://environment.data.gov.uk/geoservices/datasets"
+# Throttling and transient upstream faults, worth one more go. A 404 is
+# not here on purpose: that means the layer genuinely has nothing.
+_RETRY_STATUS = {403, 429, 500, 502, 503, 504}
+_RETRY_PAUSE_S = 0.6
 ROAD_DATASET_ID = "562c9d56-7c2d-4d42-83bb-578d6e97a517"
 RAIL_DATASET_ID = "3fb3c2d7-292c-4e0a-bd5b-d8e4e1fe2947"
 AIRPORT_DATASET_ID = "dac9cba4-abe7-43bd-b8e9-8a83da52edd8"
@@ -64,7 +68,19 @@ async def _query_layer(client: httpx.AsyncClient, dataset_id: str, layer: str, l
     # return_exceptions=True and only treats a TOTAL failure (all
     # three layers erroring) as an error; one flaky layer degrades to
     # "no data for that source" rather than losing the other two.
-    response = await client.get(f"{WMS_BASE}/{dataset_id}/wms", params=params, timeout=10)
+    #
+    # One retry, because this endpoint throttles. A report fires all
+    # three layers at once, and under any burst DEFRA answers 403 to
+    # every one of them: all three fail together, which is exactly the
+    # shape noise_near reads as a real outage, and the card then said
+    # "Data unavailable" for an address that has perfectly good noise
+    # data. Caught on three of seven addresses in a health sweep.
+    for attempt in range(2):
+        response = await client.get(f"{WMS_BASE}/{dataset_id}/wms", params=params, timeout=10)
+        if response.status_code in _RETRY_STATUS and attempt == 0:
+            await asyncio.sleep(_RETRY_PAUSE_S)
+            continue
+        break
     response.raise_for_status()
 
     features = response.json().get("features", [])
