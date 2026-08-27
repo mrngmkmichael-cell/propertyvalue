@@ -229,6 +229,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     special_schools = []
     further_education = 0
     higher_education_names = []
+    higher_education = []
     # State and fee-paying, split by phase. Kept apart from by_phase
     # because they answer a different question ("what are my options
     # here") and because independent schools are not Ofsted-rated, so
@@ -238,6 +239,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "independent_primary": 0, "independent_secondary": 0,
     }
     independent_names = []
+    independent_schools = []
     pending_independent = []
 
     for row in rows:
@@ -248,6 +250,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         type_lower = (row.type_name or "").lower()
         if type_lower == "higher education institutions":
             higher_education_names.append(row.name)
+            higher_education.append({"name": row.name, "distance_m": round(distance_km * 1000)})
             continue  # not Ofsted-rated, not part of the school counts below
         if type_lower == "further education":
             further_education += 1
@@ -284,6 +287,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 by_sector[f"{sector}_{group.lower()}"] += 1
             if entry["independent"]:
                 independent_names.append(entry["name"])
+                independent_schools.append(entry)
 
         # Ofsted's 2024 reform moved many inspections to an ungraded
         # report-card format with no overall 1-4 grade - "no rating"
@@ -312,6 +316,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             entry["age_low"], entry["age_high"] = low, high
             entry["phase_group"] = "Secondary" if "Secondary" in phases else "Primary"
             independent_names.append(entry["name"])
+            independent_schools.append(entry)
             for phase in phases:
                 by_phase[phase] += 1
                 schools_by_phase[phase].append(entry)
@@ -453,6 +458,8 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "by_sector": by_sector,
         "independent_count": sum(v for k, v in by_sector.items() if k.startswith("independent")),
         "independent_names": sorted(independent_names),
+        "independent_schools": sorted(independent_schools, key=lambda e: e["distance_m"]),
+        "higher_education": sorted(higher_education, key=lambda e: e["distance_m"]),
         # Every included school has exactly one rating bucket, so this
         # is already the complete deduplicated set - used to render
         # each school's detail modal exactly once, even though the

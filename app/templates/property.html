@@ -724,7 +724,7 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'ok' if (sector and school_landscape.independent_count) else 'muted' }}" data-modal-target="modal-schools" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'ok' if (sector and school_landscape.independent_count) else 'muted' }}" data-modal-target="modal-private-schools" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Private Schools</span>
             <span class="dashboard-card-status">
@@ -734,7 +734,7 @@
             </span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'ok' if (school_landscape and school_landscape.higher_education_count) else 'muted' }}" data-modal-target="modal-schools" data-animate>
+        <button type="button" class="dashboard-card status-{{ 'ok' if (school_landscape and school_landscape.higher_education_count) else 'muted' }}" data-modal-target="modal-universities" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Universities</span>
             <span class="dashboard-card-status">
@@ -1934,6 +1934,94 @@
         {% else %}
             <p class="notice">No rated establishments found nearby.</p>
         {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-private-schools">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+                <h2>Private schools</h2>
+                {% if school_landscape and school_landscape.independent_schools %}
+                <p class="section-sub">
+                    {{ school_landscape.independent_count }} fee-paying school{{ 's' if school_landscape.independent_count != 1 }}
+                    within {{ school_landscape.radius_miles }} miles, nearest first. Age ranges are the
+                    school's own statutory range, which is what decides whether it takes your child's year group.
+                </p>
+                <div class="tablewrap">
+                    <table class="tx-table">
+                        <thead><tr><th>School</th><th>Ages</th><th>Stage</th><th class="num">Distance</th></tr></thead>
+                        <tbody>
+                            {% for e in school_landscape.independent_schools %}
+                            <tr>
+                                <td>{{ e.name }}</td>
+                                <td>{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
+                                <td>{{ e.phase_group }}</td>
+                                <td class="num">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="notice">
+                    <strong>No Ofsted grade, and that is not a bad sign.</strong>
+                    Fee-paying schools are inspected by the Independent Schools Inspectorate rather than
+                    Ofsted, and the ISI publishes no open data feed. A missing rating here means we cannot
+                    see one, never that the school was judged poorly. Fees are not published as open data
+                    either, so they are not shown.
+                </p>
+                {% elif school_landscape %}
+                <p class="notice">
+                    No fee-paying schools within {{ school_landscape.radius_miles }} miles of this address.
+                </p>
+                {% else %}
+                <p class="notice">School data isn't available for this address right now.</p>
+                {% endif %}
+                <p class="section-sub">Source: Department for Education, Get Information About Schools.</p>
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-universities">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+                <h2>Universities</h2>
+                {% if school_landscape and school_landscape.higher_education %}
+                <p class="section-sub">
+                    {{ school_landscape.higher_education_count }} higher education institution{{ 's' if school_landscape.higher_education_count != 1 }}
+                    within {{ school_landscape.radius_miles }} miles, nearest first.
+                </p>
+                <div class="tablewrap">
+                    <table class="tx-table">
+                        <thead><tr><th>Institution</th><th class="num">Distance</th></tr></thead>
+                        <tbody>
+                            {% for u in school_landscape.higher_education %}
+                            <tr>
+                                <td>{{ u.name }}</td>
+                                <td class="num">{{ (u.distance_m / 1609.34) | round(1) }} mi</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="section-sub">
+                    Worth knowing beyond study: a large student population shapes the rental market
+                    nearby, and term-time letting behaves differently from family letting.
+                </p>
+                {% elif school_landscape %}
+                <p class="notice">
+                    No universities within {{ school_landscape.radius_miles }} miles of this address.
+                    {% if school_landscape.further_education %}
+                    There {{ 'is' if school_landscape.further_education == 1 else 'are' }}
+                    {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }} in range, which is a different thing.
+                    {% endif %}
+                </p>
+                {% else %}
+                <p class="notice">Education data isn't available for this address right now.</p>
+                {% endif %}
+                <p class="section-sub">Source: Department for Education, Get Information About Schools.</p>
             </section>
         </div>
     </dialog>
