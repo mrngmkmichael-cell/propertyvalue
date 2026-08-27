@@ -39,6 +39,10 @@ SEVERITY_LABELS = {
 
 _NATIONAL_KEY = ("flood_warnings_national",)
 _AREA_TTL_S = 86400  # flood area centroids are static geography
+# A report must never wait on this. Both are generous for the normal
+# case (a handful of warnings) and hard stops during a national event.
+_MAX_AREA_LOOKUPS = 40
+_AREA_LOOKUP_BUDGET_S = 8.0
 _refresh_task: asyncio.Task | None = None
 
 
@@ -76,14 +80,45 @@ async def _fetch_national() -> list[dict]:
         response.raise_for_status()
         items = response.json().get("items", [])
 
+        # Warnings that embed no coordinates need one lookup each. Done
+        # one after another inside this loop, a flood event with dozens
+        # of active warnings turned into dozens of sequential requests:
+        # measured at 301 seconds on a live report, which is when this
+        # card matters most. They now go out together, capped, and the
+        # whole resolve step shares a deadline.
+        missing = []
+        for item in items:
+            area = item.get("floodArea") or {}
+            if area.get("lat") is None or area.get("long") is None:
+                area_id = item.get("floodAreaID") or area.get("notation")
+                if area_id:
+                    missing.append(area_id)
+
+        resolved: dict[str, tuple] = {}
+        if missing:
+            wanted = list(dict.fromkeys(missing))[:_MAX_AREA_LOOKUPS]
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(*(_area_coords(client, a) for a in wanted),
+                                   return_exceptions=True),
+                    timeout=_AREA_LOOKUP_BUDGET_S,
+                )
+                resolved = {
+                    a: r for a, r in zip(wanted, results)
+                    if not isinstance(r, Exception)
+                }
+            except asyncio.TimeoutError:
+                # Whatever landed in cache along the way is still used;
+                # the rest are skipped rather than held onto.
+                logging.info("flood area lookups exceeded their budget, using what resolved")
+
         warnings = []
         for item in items:
             area = item.get("floodArea") or {}
             lat, lon = area.get("lat"), area.get("long")
             if lat is None or lon is None:
                 area_id = item.get("floodAreaID") or area.get("notation")
-                if area_id:
-                    lat, lon = await _area_coords(client, area_id)
+                lat, lon = resolved.get(area_id, (None, None))
             if lat is None or lon is None:
                 # Can't place it, so can't honestly attach it to a
                 # property. Logged rather than guessed.

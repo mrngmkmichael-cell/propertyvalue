@@ -348,3 +348,75 @@ def test_a_district_of_terminated_postcodes_falls_back_to_its_centroid(monkeypat
     # No LSOA is known, and guessing one would put a real census figure
     # against the wrong neighbourhood.
     assert location["codes"] == {}
+
+
+# ---- flood warnings: one slow upstream must not hold a report --------
+
+def test_flood_area_lookups_run_together_and_are_capped(monkeypatch):
+    """A live report once spent 301 seconds inside warnings_near.
+
+    Every active warning that embeds no coordinates needs its own
+    lookup, and those were done one after another inside a loop. During
+    a national flood event, when this card matters most, that became
+    dozens of sequential requests and the whole page waited on them.
+    They now go out together, capped, and share a deadline.
+    """
+    import asyncio
+    import time
+
+    from app.services import _cache, flood
+
+    _cache._store.clear()
+    _cache._bytes = 0
+
+    AREAS = 30
+    DELAY = 0.05          # each lookup is slow; sequentially that is 1.5s
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    class _FakeClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url):
+            if url.endswith("/id/floods"):
+                # Every warning missing its coordinates, the worst case.
+                return _Resp({"items": [
+                    {"floodAreaID": f"AREA{i}", "severityLevel": 3,
+                     "description": f"Warning {i}", "floodArea": {}}
+                    for i in range(AREAS)
+                ]})
+            await asyncio.sleep(DELAY)
+            return _Resp({"items": {"lat": 53.8, "long": -1.55}})
+
+    monkeypatch.setattr(flood.httpx, "AsyncClient", lambda *a, **k: _FakeClient())
+
+    started = time.perf_counter()
+    warnings = asyncio.run(flood._fetch_national())
+    elapsed = time.perf_counter() - started
+
+    assert warnings, "warnings with resolvable areas should still come back"
+    # Sequential would be AREAS * DELAY. Concurrent is roughly one DELAY.
+    assert elapsed < AREAS * DELAY / 3, (
+        f"area lookups took {elapsed:.2f}s for {AREAS} areas; they are not running together"
+    )
+    assert elapsed < flood._AREA_LOOKUP_BUDGET_S + 1
+
+
+def test_flood_area_lookups_stop_at_the_cap(monkeypatch):
+    """A cap as well as a deadline, so an event with hundreds of
+    warnings cannot turn into hundreds of requests."""
+    from app.services import flood
+    assert flood._MAX_AREA_LOOKUPS <= 50
+    assert flood._AREA_LOOKUP_BUDGET_S <= 15

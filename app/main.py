@@ -1864,7 +1864,11 @@ async def _full_property_gather(
         gather_results_inner = await asyncio.gather(
             _timed("sold-prices-for-postcode", sold_prices_for_postcode(canonical)),
             _timed("-epc-flow", _epc_flow(canonical, house_number, context["epc_configured"])),
-            _timed("flood-warnings-near", flood.warnings_near(lat, lon)),
+            # Belt and braces over flood.py's own budget: a live report
+            # once spent 301 seconds inside this call. No single check
+            # is worth holding the whole page for, and the card copes
+            # with the data being absent.
+            _timed("flood-warnings-near", _bounded(flood.warnings_near(lat, lon), 12.0)),
             _timed("crime-summary-near", crime.summary_near(lat, lon)),
             _timed("crime-summary-for-outcode", crime.summary_for_outcode(location["outcode"])),
             _timed("amenities-nearby-amenities-and-station", _amenities()),
