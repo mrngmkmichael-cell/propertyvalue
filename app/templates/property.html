@@ -1943,6 +1943,18 @@
         </div>
     </dialog>
 
+    {# One profile popup per school, at page level rather than inside
+       the schools popup. Nested, showModal() on one of these while its
+       parent dialog was closed put an invisible modal into the top
+       layer and swallowed every click on the page: the private schools
+       list links to them too, and that is where it showed up. #}
+    {% if school_landscape %}
+    {% for s in school_landscape.all_schools %}
+    {% set modal_id = "school-modal-" ~ s.urn %}
+    {% include "_school_profile_modal.html" with context %}
+    {% endfor %}
+    {% endif %}
+
     <dialog class="report-modal" id="modal-private-schools">
         <div class="report-modal-inner">
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
@@ -2124,10 +2136,6 @@
             </p>
             {% endif %}
         </div>
-        {% for s in school_landscape.all_schools %}
-        {% set modal_id = "school-modal-" ~ s.urn %}
-        {% include "_school_profile_modal.html" with context %}
-        {% endfor %}
         {% endif %}
         {% if schools_error %}
             <p class="notice notice-error">
