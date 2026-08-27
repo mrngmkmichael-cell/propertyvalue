@@ -165,7 +165,7 @@ def render(
     draw.line((PAD, H - PAD - 40, W - PAD, H - PAD - 40), fill=BORDER, width=2)
     _tracked(
         draw, (PAD, H - PAD - 26),
-        "37 CHECKS  ·  EVERY FIGURE NAMES ITS OFFICIAL SOURCE",
+        "40 CHECKS  ·  EVERY FIGURE NAMES ITS OFFICIAL SOURCE",
         mono(18), INK_FAINT, tracking=1.6,
     )
 

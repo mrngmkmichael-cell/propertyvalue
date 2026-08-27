@@ -132,7 +132,7 @@
         </h1>
 
         <p class="lx-hero-dek">
-            Thirty-seven checks on any UK address, each one traced back to the
+            Forty checks on any UK address, each one traced back to the
             government body that published it. Free, and no account needed.
         </p>
 
@@ -157,8 +157,8 @@
             <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="lx-recent-clear">Clear</button></p>
         </div>
 
-        <p class="lx-hero-stats" aria-label="37 checks, 13 official sources, 1.7 million postcodes covered">
-            <span><span class="stat-count" data-target="37">37</span> checks</span>
+        <p class="lx-hero-stats" aria-label="40 checks, 13 official sources, 1.7 million postcodes covered">
+            <span><span class="stat-count" data-target="40">40</span> checks</span>
             <span class="lx-sep">&middot;</span>
             <span><span class="stat-count" data-target="13">13</span> official sources</span>
             <span class="lx-sep">&middot;</span>
@@ -197,7 +197,7 @@
                ~200KB for a decoration, should not start to. Painted only
                while the section is on screen. #}
             <canvas class="lx-build-orb" id="lx-build-orb" aria-hidden="true"></canvas>
-            {# The 37 checks as named motes, spawned by script from the
+            {# The 40 checks as named motes, spawned by script from the
                same titles the report's cards carry. They fly into the
                dial as the reader scrolls; the score is the sum of what
                has been absorbed. #}
@@ -208,7 +208,7 @@
                 <div class="lx-build-grid">
                     <div class="lx-build-dial-wrap">
                         <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
-                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 37 checks</p>
+                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 40 checks</p>
                     </div>
                     <div class="lx-build-chips" id="lx-build-chips"></div>
                 </div>
@@ -217,7 +217,7 @@
                    frame shows the breadth of the report rather than
                    four findings. Populated by script from CHECKS. #}
                 <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
-                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>37 checks</strong> &middot; one search</p>
+                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>40 checks</strong> &middot; one search</p>
                     <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
                 </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
@@ -245,14 +245,14 @@
            for whom the ring never starts and the list stays. #}
         <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
             <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Thirty<br>seven<br>checks</h2>
+            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Forty<br>checks</h2>
             <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
         </div>
 
         <p class="lx-lede lx-lede-centre">
             Every one on a single address, every one traced to the body that
             published it. Twelve of them in orbit here; the full report runs
-            all thirty-seven.
+            all forty.
         </p>
         <p class="lx-orbit-tiers">
             <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
@@ -260,7 +260,7 @@
             <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first property</span>
         </p>
         <p class="lx-orbit-more">
-            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 37 &rsaquo;</a>
+            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 40 &rsaquo;</a>
         </p>
 
         <ul class="lx-orbit-cards" id="lx-orbit-cards">
@@ -343,7 +343,7 @@
                 <a href="/accuracy">accuracy log</a>, including the times we were wrong.
             </p>
             <div class="lx-about-stats">
-                {% for n, label in [('37', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                {% for n, label in [('40', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
                 <div>
                     <p class="lx-about-stat-n"><span class="stat-count" data-target="{{ n | replace(',', '') }}"{% if ',' in n %} data-locale="1"{% endif %}>{{ n }}</span></p>
                     <p class="lx-about-stat-l">{{ label }}</p>
@@ -514,7 +514,7 @@
                 <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
             </div>
             <button type="submit">Run the checks</button>
-            <p class="lx-contact-note">37 checks &middot; 13 official sources &middot; no card needed</p>
+            <p class="lx-contact-note">40 checks &middot; 13 official sources &middot; no card needed</p>
         </form>
     </div>
 </section>
@@ -847,7 +847,7 @@
 })();
 
 (function () {
-    /* The orbit ring around "Thirty seven checks". Twelve rounded
+    /* The orbit ring around "Forty checks". Twelve rounded
        tiles on a tilted circle, projected with the same maths as the
        reference implementation; the far half draws on the canvas
        behind the heading, the near half on the canvas in front, so
@@ -1161,7 +1161,7 @@
     let pin = null, motes = [], tallyEl = null, donePills = [], doneHead = null;
     const SCORE = seed ? seed.overview.score : 0;
 
-    /* The 37 checks by name, matching the report's own card titles
+    /* The 40 checks by name, matching the report's own card titles
        (Resident Reviews is the one card that isn't an official check,
        and it is the one left out). Names, not figures, so nothing here
        can drift the way a baked-in number would. */
@@ -1172,7 +1172,7 @@
         'Mining', 'Planning', 'Designations', 'Listed Buildings', 'Schools', 'Catchments',
         'Essentials', 'Getting Around', 'Broadband', 'Mobile Signal', 'Income', 'Deprivation',
         'Occupation', 'Qualifications', 'Age Profile', 'Housing', 'Ethnicity', 'Health',
-        'Council Tax'
+        'Council Tax', 'State Schools', 'Private Schools', 'Universities'
     ];
     if (seed) {
         document.getElementById('lx-build-pc').textContent = seed.postcode;
@@ -1226,7 +1226,7 @@
             });
             measureSwarm();
 
-            /* The receipt pills: same 37 names, ticked, each with its
+            /* The receipt pills: same 40 names, ticked, each with its
                own slot in the closing phase of the scrub. */
             const doneGrid = document.getElementById('lx-build-done-grid');
             CHECKS.forEach(function (name, i) {

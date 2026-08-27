@@ -3501,7 +3501,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 9
+AREA_GUIDE_PAYLOAD_VERSION = 11
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -3877,6 +3877,27 @@ async def _prewarm_area_batch(limit: int) -> dict:
     return {"warmed": warmed, "already_fresh": skipped, "failed": failed}
 
 
+def _occupation_mix(lsoa_code: str) -> list[dict] | None:
+    """What people around here do for a living, from Census 2021 (TS063).
+
+    The closest thing in open data to the "job sectors" an investor asks
+    about. It is occupation rather than industry, which is a real
+    distinction: it says a neighbourhood is full of skilled trades or of
+    professionals, not which industries employ them. The page says which
+    of the two it is rather than letting one stand in for the other.
+
+    The breakdown itself already exists on the report; this only picks
+    the largest few, so there is one definition of the categories.
+    """
+    if not lsoa_code:
+        return None
+    data = census_stats.occupation_for_lsoa(lsoa_code)
+    if not data or not data.get("breakdown"):
+        return None
+    top = sorted(data["breakdown"], key=lambda b: -(b.get("count") or 0))
+    return [b for b in top if b.get("count")][:5] or None
+
+
 async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) -> dict:
     """Fetch and assemble everything an area guide renders, and store
     it in the persistent cache. Shared by the page itself and the
@@ -3930,8 +3951,18 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         # of memory during a crawl. Keep only what the template uses.
         landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
 
+    landscape_full = ok(landscape_result)
     page_data = {
-        "named_schools": _named_schools(ok(landscape_result)),
+        "named_schools": _named_schools(landscape_full),
+        # Both already collected and never shown on this page. An
+        # investor browsing area guides had no way to know the site
+        # held either.
+        "universities": (landscape_full or {}).get("higher_education_names", [])[:6],
+        "university_count": (landscape_full or {}).get("higher_education_count", 0),
+        "private_schools": (landscape_full or {}).get("independent_names", [])[:6],
+        "private_school_count": (landscape_full or {}).get("independent_count", 0),
+        "by_sector": (landscape_full or {}).get("by_sector"),
+        "occupation_mix": _occupation_mix(codes.get("lsoa", "")),
         "hpi": ok(hpi_result),
         "crime": ok(crime_result),
         "landscape": landscape,

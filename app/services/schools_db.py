@@ -41,6 +41,35 @@ def _phase_group(phase: str) -> str | None:
     return None
 
 
+# GIAS marks fee-paying schools with an "independent" establishment
+# type. There is no separate flag, and no other type word means the
+# same thing, so this is the whole test.
+def _is_independent(type_name: str) -> bool:
+    return "independent" in (type_name or "").lower()
+
+
+def _phases_from_ages(age_low: int | None, age_high: int | None) -> set[str]:
+    """Which phases a school covers, from its statutory age range.
+
+    Every one of the 2,462 independent schools in GIAS carries
+    phase="Not applicable", so the phase-name route drops all of them:
+    private schools were silently missing from the whole site. They do
+    all carry a real StatutoryLowAge and StatutoryHighAge, which is
+    published data rather than a guess, so the phase comes from that.
+
+    Starts at 7 or under means it teaches the primary years; teaches to
+    14 or beyond means the secondary ones. A prep school running 4-13
+    is therefore primary only, which is what it is, and an all-through
+    4-18 counts as both, which is also what it is.
+    """
+    phases = set()
+    if age_low is not None and age_low <= 7:
+        phases.add("Primary")
+    if age_high is not None and age_high >= 14:
+        phases.add("Secondary")
+    return phases
+
+
 def _latest_and_trend(rows) -> tuple[dict[int, object], dict[int, list]]:
     """Splits a list of Ks4Result/Ks2Result rows (now one per school
     *per year* since they're keyed on (urn, academic_year)) into the
@@ -194,6 +223,16 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     special_schools = []
     further_education = 0
     higher_education_names = []
+    # State and fee-paying, split by phase. Kept apart from by_phase
+    # because they answer a different question ("what are my options
+    # here") and because independent schools are not Ofsted-rated, so
+    # they can never be compared on the same scale.
+    by_sector = {
+        "state_primary": 0, "state_secondary": 0,
+        "independent_primary": 0, "independent_secondary": 0,
+    }
+    independent_names = []
+    pending_independent = []
 
     for row in rows:
         distance_km = _haversine_km(lat, lon, row.latitude, row.longitude)
@@ -222,10 +261,23 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         else:
             group = _phase_group(row.phase)
             if not group:
-                continue  # e.g. "Offshore schools", "Miscellaneous" - not a recognised phase, excluded entirely rather than counted in ratings but not in by_phase
+                # GIAS gives independent schools no phase at all. They
+                # are held back here and classified by age range below,
+                # rather than dropped along with "Offshore schools" and
+                # "Miscellaneous", which genuinely have no phase.
+                if _is_independent(row.type_name):
+                    entry["independent"] = True
+                    pending_independent.append(entry)
+                continue
             entry["phase_group"] = group
+            entry["independent"] = _is_independent(row.type_name)
             by_phase[group] += 1
             schools_by_phase[group].append(entry)
+            if group in ("Primary", "Secondary"):
+                sector = "independent" if entry["independent"] else "state"
+                by_sector[f"{sector}_{group.lower()}"] += 1
+            if entry["independent"]:
+                independent_names.append(entry["name"])
 
         # Ofsted's 2024 reform moved many inspections to an ungraded
         # report-card format with no overall 1-4 grade - "no rating"
@@ -235,6 +287,37 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         label = row.ofsted_rating_label or "No current grade"
         by_rating[label] += 1
         schools_by_rating[label].append(entry)
+
+    if pending_independent:
+        with get_session() as session:
+            ages = {
+                d.urn: (d.age_low, d.age_high)
+                for d in session.scalars(
+                    select(SchoolDetail).where(
+                        SchoolDetail.urn.in_([e["urn"] for e in pending_independent])
+                    )
+                )
+            }
+        for entry in pending_independent:
+            low, high = ages.get(entry["urn"], (None, None))
+            phases = _phases_from_ages(low, high)
+            if not phases:
+                continue
+            entry["age_low"], entry["age_high"] = low, high
+            entry["phase_group"] = "Secondary" if "Secondary" in phases else "Primary"
+            independent_names.append(entry["name"])
+            for phase in phases:
+                by_phase[phase] += 1
+                schools_by_phase[phase].append(entry)
+                by_sector[f"independent_{phase.lower()}"] += 1
+            # Independent schools are inspected by the ISI, not Ofsted,
+            # so they carry no Ofsted grade at all. They go into the
+            # rating buckets as "No current grade" like anything else
+            # ungraded, and the page has to say why rather than let
+            # them read as schools that failed an inspection.
+            label = entry["ofsted_rating_label"] or "No current grade"
+            by_rating[label] += 1
+            schools_by_rating[label].append(entry)
 
     total_schools = sum(by_phase.values()) + special_count
     if total_schools == 0 and not higher_education_names and further_education == 0:
@@ -360,6 +443,9 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "further_education": further_education,
         "higher_education_count": len(higher_education_names),
         "higher_education_names": higher_education_names,
+        "by_sector": by_sector,
+        "independent_count": sum(v for k, v in by_sector.items() if k.startswith("independent")),
+        "independent_names": sorted(independent_names),
         # Every included school has exactly one rating bucket, so this
         # is already the complete deduplicated set - used to render
         # each school's detail modal exactly once, even though the

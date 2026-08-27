@@ -709,6 +709,40 @@
             </span>
         </button>
 
+        {# State and fee-paying, split out. GIAS gives independent
+           schools no phase at all, so they were silently missing from
+           the site entirely until their statutory age range was used
+           instead. #}
+        {% set sector = school_landscape.by_sector if school_landscape else none %}
+        <button type="button" class="dashboard-card status-{{ 'ok' if sector else 'muted' }}" data-modal-target="modal-schools" data-animate>
+            <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
+            <span class="dashboard-card-title">State Schools</span>
+            <span class="dashboard-card-status">
+                {%- if sector %}{{ sector.state_primary }} primary, {{ sector.state_secondary }} secondary
+                {%- else %}No data available{% endif -%}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'ok' if (sector and school_landscape.independent_count) else 'muted' }}" data-modal-target="modal-schools" data-animate>
+            <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
+            <span class="dashboard-card-title">Private Schools</span>
+            <span class="dashboard-card-status">
+                {%- if sector and school_landscape.independent_count %}{{ sector.independent_primary }} primary, {{ sector.independent_secondary }} senior
+                {%- elif sector %}None within {{ school_landscape.radius_km }}km
+                {%- else %}No data available{% endif -%}
+            </span>
+        </button>
+
+        <button type="button" class="dashboard-card status-{{ 'ok' if (school_landscape and school_landscape.higher_education_count) else 'muted' }}" data-modal-target="modal-schools" data-animate>
+            <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
+            <span class="dashboard-card-title">Universities</span>
+            <span class="dashboard-card-status">
+                {%- if school_landscape and school_landscape.higher_education_count %}{{ school_landscape.higher_education_count }} within {{ school_landscape.radius_km }}km
+                {%- elif school_landscape %}None within {{ school_landscape.radius_km }}km
+                {%- else %}No data available{% endif -%}
+            </span>
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if catchment_error else ('ok' if (catchment or catchment_distance_count) else 'muted') }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-catchment" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>

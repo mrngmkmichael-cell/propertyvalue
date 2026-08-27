@@ -172,8 +172,72 @@
         </tbody>
     </table>
     {% endif %}
+    {% if by_sector %}
+    <p class="section-sub">
+        <strong>{{ by_sector.state_primary }}</strong> state primary and
+        <strong>{{ by_sector.state_secondary }}</strong> state secondary schools within range,
+        {% if private_school_count %}
+        plus <strong>{{ by_sector.independent_primary }}</strong> fee-paying prep and
+        <strong>{{ by_sector.independent_secondary }}</strong> fee-paying senior schools.
+        {% else %}and no fee-paying schools.
+        {% endif %}
+    </p>
+    {% endif %}
     <p class="section-sub"><a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} →</a></p>
 </section>
+
+{% if private_school_count %}
+<section class="report-section">
+    <h2>Private schools</h2>
+    <p class="section-sub">
+        {{ private_school_count }} fee-paying school{{ "s" if private_school_count != 1 else "" }} within
+        {{ landscape.radius_km if landscape else 5 }}km:
+        {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} and others{% endif %}.
+    </p>
+    {# Not a caveat we can leave out: a blank rating next to a famous
+       school reads as a school that failed an inspection. #}
+    <p class="notice">
+        Fee-paying schools are inspected by the Independent Schools Inspectorate, not Ofsted, and
+        the ISI publishes no open data feed. That is why they carry no rating here. A missing grade
+        means we cannot see one, not that the school was judged poorly.
+    </p>
+</section>
+{% endif %}
+
+{% if university_count %}
+<section class="report-section">
+    <h2>Universities</h2>
+    <p class="section-sub">
+        {{ university_count }} higher education institution{{ "s" if university_count != 1 else "" }} within
+        {{ landscape.radius_km if landscape else 5 }}km: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
+    </p>
+    <p class="section-sub">
+        Relevant beyond study: a large student population shapes rental demand, and term-time
+        letting is a different market from family letting.
+    </p>
+</section>
+{% endif %}
+
+{% if occupation_mix %}
+<section class="report-section">
+    <h2>What people here do for work</h2>
+    <p class="section-sub">
+        The most common occupations among working residents, from the 2021 Census. This is
+        occupation rather than industry: it says what people do, not which industries employ them.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Occupation group</th><th class="num">Share of workers</th></tr></thead>
+            <tbody>
+                {% for o in occupation_mix %}
+                <tr><td>{{ o.label }}</td><td class="num">{{ o.pct }}%</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">Source: ONS Census 2021, table TS063, for this district's small area.</p>
+</section>
+{% endif %}
 
 <section class="report-section">
     <h2>Crime</h2>

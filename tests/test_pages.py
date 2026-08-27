@@ -212,16 +212,16 @@ def test_oauth_callback_rejects_a_forged_state(client, monkeypatch):
     assert "error=oauth_state" in r.headers["location"]
 
 
-def test_pricing_page_lists_all_37_checks(client, monkeypatch):
+def test_pricing_page_lists_all_40_checks(client, monkeypatch):
     """The pricing page's two tiers mirror the report card-for-card:
-    22 free + 15 Premium = the 37 the hero claims. The tier block only
+    25 free + 15 Premium = the 40 the hero claims. The tier block only
     renders when billing is configured, as it is in production."""
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_x")
     monkeypatch.setenv("STRIPE_PRICE_ID_MONTHLY", "price_m")
     monkeypatch.setenv("STRIPE_PRICE_ID_QUARTERLY", "price_q")
     body = client.get("/premium").text
-    assert body.count('class="lx-check"') == 37
-    assert "22 free on every report" in body
+    assert body.count('class="lx-check"') == 40
+    assert "25 free on every report" in body
     assert "15 more with Premium" in body
 
 
