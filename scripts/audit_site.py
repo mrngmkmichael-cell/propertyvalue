@@ -3,7 +3,7 @@
 Checks, in order:
   1. Every internal href on every rendered page resolves (no 404/500).
   2. The project's copy rules: no em-dashes in user-facing text.
-  3. Stale numbers: the check count must be 37 everywhere it appears.
+  3. Stale numbers: every check count must match the hero's own figure.
   4. Common typos and doubled words.
   5. Placeholder text that should never ship (lorem, TODO, FIXME, XXX).
   6. Accessibility basics: every img has alt, every input has a label,
@@ -35,6 +35,10 @@ PAGES = [
     # property and the area-guide versions are now in the sample.
     "/property?postcode=EH1+1YZ", "/area/EH1",
     "/compare?postcode=M1+1AE&postcode=LS1+4DY",
+    # Added 28 Aug 2026 with the pages themselves.
+    "/compare", "/compare/M20/vs/M21",
+    "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
+    "/market/district-prices", "/school/100050/parliament-hill-school",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)
@@ -106,6 +110,23 @@ for href in targets:
         problems["broken links"].append(f"{href}: {exc}")
 
 # ---- 2..5 copy rules ---------------------------------------------------
+# The count the hero itself claims. The report page is the source of
+# truth for it (see tests/test_property_page.py); everything else on the
+# site has to agree, so the audit reads it once and compares.
+_home = pages_html.get("/", "")
+_hero = re.search(r'data-target="(\d+)">\d+</span>\s*checks', _home)
+HEADLINE_CHECKS = _hero.group(1) if _hero else ""
+# The free and Premium tier sizes are counts of checks too, and are
+# deliberately not the headline number.
+TIER_COUNTS = set(
+    re.findall(
+        r"(\d+)\s+(?:free on every report|more with Premium)",
+        _home + pages_html.get("/premium", ""),
+    )
+)
+if not HEADLINE_CHECKS:
+    print("  WARNING: could not read the hero check count, so that rule is skipped")
+
 print("checking copy...")
 
 
@@ -143,13 +164,23 @@ for path, body in pages_html.items():
     for m in re.finditer(r"\b(\w{4,})\s+\1\b", text, re.I):
         problems["doubled word"].append(f"{path}: '{m.group(0)}'")
 
-    # stale counts: 23 or 38 checks should no longer appear
+    # Stale counts, measured against the site's own headline rather than
+    # a number written in here. This rule expected 37; the count became
+    # 40 and it then flagged every correct mention while a genuinely
+    # wrong one looked identical.
     for m in re.finditer(r"\b(\d+)\s+checks?\b", text, re.I):
         n = m.group(1)
-        if n not in ("37", "22", "15", "1", "2", "3", "4", "5"):
-            problems["check count"].append(f"{path}: '{m.group(0)}'")
-    if re.search(r"twenty[- ]three checks", text, re.I):
-        problems["check count"].append(f"{path}: 'twenty-three checks'")
+        if HEADLINE_CHECKS and n == HEADLINE_CHECKS:
+            continue
+        # Tier sizes, and small per-category counts like "3 checks,
+        # nothing flagged", are legitimately other numbers.
+        if n in TIER_COUNTS or int(n) <= 9:
+            continue
+        problems["check count"].append(
+            f"{path}: '{m.group(0)}' but the hero says {HEADLINE_CHECKS}"
+        )
+    if re.search(r"twenty[- ]three checks|thirty[- ]seven checks", text, re.I):
+        problems["check count"].append(f"{path}: an old check count spelled out in words")
 
 # ---- 6. accessibility basics -------------------------------------------
 print("checking accessibility basics...")
