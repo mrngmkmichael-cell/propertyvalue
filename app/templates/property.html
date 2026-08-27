@@ -112,7 +112,14 @@
     {% endif %}
     <div class="report-head">
         {# premium_unlocked comes from the route: per-property, not per-account. #}
-        {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
+        {# Back to THIS property after signing up, not to the pricing page.
+       Four of the twelve accounts that never opened a report have a
+       logged-in history consisting entirely of /premium: they clicked a
+       locked card on a house they cared about, were promised a free
+       full report, and landed on a page asking them to pay. They never
+       saw the thing they signed up for. #}
+    {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else "/premium" %}
         <div class="report-head-top">
             <div class="report-head-main">
                 {% set breadcrumb_parts = [] %}
@@ -386,7 +393,14 @@
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
     {% set lock_label = "Sign up: 1 free full report" if not current_user else "Upgrade to Premium to unlock" %}
-    {% set lock_redirect = "/signup?next=" ~ ("/premium" | urlencode) if not current_user else "/premium" %}
+    {# Back to THIS property after signing up, not to the pricing page.
+       Four of the twelve accounts that never opened a report have a
+       logged-in history consisting entirely of /premium: they clicked a
+       locked card on a house they cared about, were promised a free
+       full report, and landed on a page asking them to pay. They never
+       saw the thing they signed up for. #}
+    {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else "/premium" %}
 
     {% if not premium_unlocked %}
     <div class="paywall-banner" data-animate>
