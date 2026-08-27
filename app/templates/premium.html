@@ -74,7 +74,7 @@
             <button type="submit">Buy the pass</button>
         </form>
         {% else %}
-        <a href="/signup?next=/premium" class="pricing-card-cta">Sign up to buy the pass</a>
+        <a href="/signup?next=/" class="pricing-card-cta">Sign up to buy the pass</a>
         {% endif %}
     </div>
     {% endif %}
@@ -94,7 +94,7 @@
                 <button type="submit">{{ "Start free trial" if plan.trial_days else "Subscribe" }}</button>
             </form>
             {% else %}
-            <a href="/signup?next=/premium" class="pricing-card-cta">{{ "Sign up to start trial" if plan.trial_days else "Sign up to subscribe" }}</a>
+            <a href="/signup?next=/" class="pricing-card-cta">{{ "Sign up to start trial" if plan.trial_days else "Sign up to subscribe" }}</a>
             {% endif %}
         {% else %}
             <p class="notice">Not available yet.</p>

@@ -177,6 +177,20 @@
         <a href="/signup" class="promo-banner-btn">Sign up free</a>
     </div>
 </section>
+{# A new account used to arrive here with nothing said to it: the
+   signed-out banner vanished at the moment of signing up, and the
+   report it had just been given went unmentioned. Four of the accounts
+   that never opened a report had seen no page but /premium. #}
+{% elif current_user.free_unlocks_left and not current_user.free_unlocks_used %}
+<section class="promo-banner">
+    <div class="promo-banner-inner">
+        <p class="promo-banner-text">
+            <strong>Your account is ready.</strong> You have a full report to use on any address,
+            every check unlocked. Put a postcode in above to spend it.
+        </p>
+        <a href="/premium" class="promo-banner-btn">See plans</a>
+    </div>
+</section>
 {% endif %}
 
 {# =================================================================== BUILD

@@ -504,3 +504,37 @@ def test_district_price_table_needs_a_real_sample(client, monkeypatch):
     assert "Not enough districts" in body
     # The England and Wales limit is stated, never silently applied.
     assert "England and Wales only" in body
+
+
+import pathlib  # noqa: E402
+
+
+def test_a_new_account_is_told_it_has_a_report_to_use(client):
+    """Four accounts signed up and saw no page but /premium, so they
+    never learned they had been given anything. The signed-out banner
+    disappeared at the moment of signing up and nothing replaced it."""
+    client.cookies.clear()
+    anon = client.get("/").text
+    assert "Sign up free" in anon
+
+    client.post("/signup", data={"email": "newcomer@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    body = client.get("/").text
+    assert "Your account is ready" in body
+    assert "full report to use on any address" in body
+
+
+def test_the_pricing_page_never_sends_a_new_account_back_to_itself(client):
+    """Signing up from /premium used to return the person to the price
+    list, having still not seen a report. Nobody buys what they have not
+    seen."""
+    client.cookies.clear()
+    assert "/signup?next=/premium" not in client.get("/premium").text
+
+    # The rendered CTAs carry no ?next at all when Stripe is
+    # unconfigured, as it is here, so the template itself is what has to
+    # be pinned: that is where the destination is written.
+    template = pathlib.Path("app/templates/premium.html").read_text(encoding="utf-8")
+    assert "/signup?next=/premium" not in template
+    assert template.count('href="/signup?next=/"') == 2
