@@ -7506,3 +7506,45 @@ body:not(.theme-dark) .lx-hero-scrim {
     color: var(--accent-ink);
     transform: translateY(-1px);
 }
+
+/* ---- Following a district (area guide) ---- */
+/* Sits under the guide's dek, so it reads as an offer rather than a
+   toolbar. The explanatory line wraps under the button on a phone
+   instead of squeezing it. */
+.follow-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin: 0 0 2rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.follow-row form { margin: 0; }
+.follow-btn {
+    padding: 0.5rem 1.1rem;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--bg);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.follow-btn:hover { filter: brightness(1.08); }
+.follow-btn-off {
+    color: var(--ink-soft);
+    background: none;
+    border-color: var(--border);
+}
+.follow-btn-off:hover { color: var(--bad); border-color: var(--bad); filter: none; }
+.follow-state {
+    flex: 1 1 16rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.follow-link { font-size: var(--text-sm); white-space: nowrap; }

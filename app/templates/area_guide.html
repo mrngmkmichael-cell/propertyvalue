@@ -48,6 +48,34 @@
     as every property report on this site, not opinion or marketing copy.
 </p>
 
+{# Following a district, not an address. Most people choose an area
+   long before they have a door number, and this is the only thing on
+   the site that gives them a reason to come back while they are still
+   deciding. Rendered per request, not from the cached payload, so one
+   person's state never reaches another's page. #}
+{% if following_district %}
+<div class="follow-row">
+    <span class="follow-state">You are following {{ outcode }}</span>
+    <form action="/districts/unfollow" method="post">
+        <input type="hidden" name="outcode" value="{{ outcode }}">
+        <input type="hidden" name="back" value="area">
+        <button type="submit" class="follow-btn follow-btn-off">Stop following</button>
+    </form>
+    <a class="follow-link" href="/watchlist">See what has changed &rarr;</a>
+</div>
+{% else %}
+<div class="follow-row">
+    <form action="/districts/follow" method="post">
+        <input type="hidden" name="outcode" value="{{ outcode }}">
+        <button type="submit" class="follow-btn">Follow {{ outcode }}</button>
+    </form>
+    <span class="follow-state">
+        New sales and the latest crime figures for this district, waiting on My properties next time
+        you visit. No email unless you ask for one.
+    </span>
+</div>
+{% endif %}
+
 {% if is_scotland %}
 <dialog class="report-modal" id="modal-scotland-notice">
     <div class="report-modal-inner">

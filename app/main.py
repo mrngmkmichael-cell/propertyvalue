@@ -655,6 +655,94 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
     return changes
 
 
+DISTRICT_SUMMARY_CACHE_TTL_S = 60 * 60 * 6
+
+# A month's worth of recorded crime in a district swings by a few
+# offences for no reason a reader would care about. Only a move past
+# this counts as something worth telling them.
+DISTRICT_CRIME_DEADBAND = 15
+
+
+async def _district_summary(outcode: str) -> dict:
+    """The handful of district-level figures a followed district is
+    diffed on. Deliberately only the ones that actually move on a
+    monthly cadence and come from a named source: Land Registry lodges
+    new sales, the police publish another month. Everything else on an
+    area guide (schools, broadband, deprivation) changes annually at
+    best, and flagging it would manufacture news out of a refresh."""
+    cache_key = ("district_summary", outcode)
+    cached = _cache.get(cache_key, DISTRICT_SUMMARY_CACHE_TTL_S)
+    if cached is not None:
+        return cached
+
+    summary: dict = {"outcode": outcode}
+    try:
+        centroid = await postcodes.outcode_centroid(outcode)
+    except httpx.HTTPError:
+        centroid = None
+    # A district that straddles a boundary can come back with null
+    # coordinates, the same way a terminated postcode does; everything
+    # below needs a real point to measure from.
+    if not centroid or centroid.get("latitude") is None or centroid.get("longitude") is None:
+        return summary
+
+    summary["admin_district"] = centroid.get("admin_district")
+    sales_result, crime_result = await asyncio.gather(
+        _outcode_sales(centroid["latitude"], centroid["longitude"]),
+        crime.summary_for_outcode(outcode),
+        return_exceptions=True,
+    )
+
+    if not isinstance(sales_result, Exception) and sales_result:
+        summary["sales_count"] = sales_result.get("count")
+        # Only carried when there were enough sales to make a median
+        # mean anything; below that the area guide itself declines to
+        # show one, and a diff must not be braver than the page.
+        if sales_result.get("enough_for_median"):
+            summary["median_price"] = sales_result.get("median")
+        latest = (sales_result.get("latest") or [])
+        if latest:
+            summary["latest_sale_date"] = latest[0].get("date")
+
+    if not isinstance(crime_result, Exception) and crime_result:
+        summary["crime_total"] = crime_result.get("total")
+        summary["crime_month"] = crime_result.get("month")
+
+    _cache.set(cache_key, summary)
+    return summary
+
+
+def _district_changes(old: dict, new: dict) -> list[str]:
+    """What actually moved in a district since this person last looked.
+    Same contract as _snapshot_changes: a sentence a reader can act on,
+    or nothing at all. Silence is a valid and common answer."""
+    changes = []
+
+    old_median, new_median = old.get("median_price"), new.get("median_price")
+    if old_median and new_median and old_median != new_median:
+        direction = "up" if new_median > old_median else "down"
+        changes.append(
+            f"Median sold price {direction} from {_format_gbp(old_median)} to {_format_gbp(new_median)}"
+        )
+
+    old_count, new_count = old.get("sales_count"), new.get("sales_count")
+    if old_count is not None and new_count is not None and new_count > old_count:
+        added = new_count - old_count
+        changes.append(
+            f"{added} new sale{'s' if added != 1 else ''} lodged with Land Registry around here"
+        )
+
+    old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
+    if old_crime is not None and new_crime is not None:
+        diff = new_crime - old_crime
+        if abs(diff) >= DISTRICT_CRIME_DEADBAND:
+            changes.append(
+                f"Recorded crime {'up' if diff > 0 else 'down'} by {abs(diff)} in the latest published month"
+            )
+
+    return changes
+
+
 def _imd_label(decile: int | None) -> str | None:
     if decile is None:
         return None
@@ -3691,6 +3779,17 @@ def _named_schools(landscape: dict | None) -> list[dict]:
     ]
 
 
+def _following_district(context: dict, outcode: str) -> None:
+    """Whether this reader follows this district. Set on the context
+    outside the cached payload on purpose: the payload is shared by
+    every visitor to the guide, so a per-user flag inside it would show
+    one person's follow state to everyone."""
+    user = context.get("current_user")
+    context["following_district"] = bool(
+        user and db.is_configured() and watchlist.is_following(user["id"], outcode)
+    )
+
+
 def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> None:
     """FAQs and neighbouring-district links for an area guide. Every
     answer is the guide's own real data rephrased as a sentence, and a
@@ -4097,6 +4196,7 @@ async def area_guide(request: Request, outcode: str):
     if cached is not None:
         context.update(cached)
         _area_guide_extras(context, outcode, lat, lon)
+        _following_district(context, outcode)
         response = templates.TemplateResponse(request, "area_guide.html", context)
         response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
         return response
@@ -4104,6 +4204,7 @@ async def area_guide(request: Request, outcode: str):
     page_data = await _build_area_payload(outcode, location, cache_key)
     context.update(page_data)
     _area_guide_extras(context, outcode, lat, lon)
+    _following_district(context, outcode)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     timing = _server_timing_header()
     response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{_cache.last_outcome}"'
@@ -5158,7 +5259,30 @@ async def watchlist_view(request: Request):
             item["changes"] = _snapshot_changes(old, fresh) if old else []
             watchlist.update_snapshot(context["current_user"]["id"], item["id"], json.dumps(fresh, default=str))
     context["items"] = items
-    context["changed_item_count"] = sum(1 for item in items if item["changes"])
+
+    # Followed districts, diffed the same way and on the same visit.
+    districts = watchlist.list_districts(context["current_user"]["id"])
+    if districts:
+        fresh_districts = await asyncio.gather(
+            *(_district_summary(d["outcode"]) for d in districts),
+            return_exceptions=True,
+        )
+        for district, fresh in zip(districts, fresh_districts):
+            if isinstance(fresh, Exception):
+                district["changes"] = []
+                continue
+            old_snapshot = json.loads(district["last_snapshot"]) if district["last_snapshot"] else None
+            district["changes"] = _district_changes(old_snapshot, fresh) if old_snapshot else []
+            district["summary"] = fresh
+            watchlist.update_district_snapshot(
+                context["current_user"]["id"], district["id"], json.dumps(fresh, default=str)
+            )
+    context["districts"] = districts
+
+    context["changed_item_count"] = (
+        sum(1 for item in items if item["changes"])
+        + sum(1 for d in districts if d.get("changes"))
+    )
     context["alerts_configured"] = email_service.is_configured()
     return templates.TemplateResponse(request, "watchlist.html", context)
 
@@ -5513,6 +5637,32 @@ def watchlist_remove(request: Request, item_id: int = Form(...)):
     if not user:
         return RedirectResponse("/login?next=/watchlist", status_code=303)
     watchlist.remove_item(user["id"], item_id)
+    return RedirectResponse("/watchlist", status_code=303)
+
+
+@app.post("/districts/follow")
+def district_follow(request: Request, outcode: str = Form(...)):
+    """Follow a district from its area guide. Signing in is required,
+    so an anonymous click goes to /login with next set back to the
+    guide rather than losing the intent."""
+    outcode = outcode.strip().upper()
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse(f"/login?next=/area/{quote(outcode)}", status_code=303)
+    watchlist.follow_district(user["id"], outcode)
+    return RedirectResponse(f"/area/{quote(outcode)}?followed=1", status_code=303)
+
+
+@app.post("/districts/unfollow")
+def district_unfollow(request: Request, outcode: str = Form(...), back: str = Form("")):
+    outcode = outcode.strip().upper()
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse("/login?next=/watchlist", status_code=303)
+    watchlist.unfollow_district(user["id"], outcode)
+    # Unfollowing happens from two places and each should stay put.
+    if back == "area":
+        return RedirectResponse(f"/area/{quote(outcode)}", status_code=303)
     return RedirectResponse("/watchlist", status_code=303)
 
 

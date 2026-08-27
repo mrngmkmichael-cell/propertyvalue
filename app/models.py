@@ -51,6 +51,9 @@ class User(Base):
     watchlist_items: Mapped[list["WatchlistItem"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    saved_districts: Mapped[list["SavedDistrict"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class WatchlistItem(Base):
@@ -72,6 +75,35 @@ class WatchlistItem(Base):
     last_snapshot: Mapped[str | None] = mapped_column(String(2000), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
+
+
+class SavedDistrict(Base):
+    """A postcode district someone follows, as opposed to a single
+    address on the watchlist.
+
+    Most people looking to move are deciding on an area long before
+    they have an address, and the watchlist had nothing for them: they
+    read one area guide and never came back. A district changes on a
+    real, monthly cadence - Land Registry lodges new sales, the police
+    publish another month - so there is something honest to tell them
+    when they return, without inventing a reason to email.
+
+    last_snapshot holds the last-seen _district_summary as JSON, the
+    same trick WatchlistItem uses: the diff is computed on the visit,
+    so following a district needs no cron of its own.
+    """
+    __tablename__ = "saved_districts"
+    __table_args__ = (
+        UniqueConstraint("user_id", "outcode", name="uq_user_outcode"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    outcode: Mapped[str] = mapped_column(String(8))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    last_snapshot: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="saved_districts")
 
 
 class PageCache(Base):

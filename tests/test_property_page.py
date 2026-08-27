@@ -287,3 +287,100 @@ def test_viewing_checklist_says_so_when_nothing_was_flagged(client, fake_report)
     body = client.get("/property/checklist?postcode=M14%205TG").text
     assert "Nothing specific was flagged here" in body
     assert "Water pressure" in body
+
+
+# ---- Following a district -----------------------------------------------
+# The watchlist only ever held addresses, and most people choose an area
+# long before they have a door number. These cover the two things that
+# can go wrong: a follow that leaks between accounts, and a diff that
+# manufactures news out of a data refresh.
+
+
+def test_following_a_district_needs_an_account_and_keeps_the_intent(client):
+    """A stranger clicking Follow must land on login pointed back at the
+    guide, not at a generic page that loses what they wanted."""
+    client.cookies.clear()
+    r = client.post("/districts/follow", data={"outcode": "M14"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/login?next=/area/M14"
+
+
+def test_following_a_district_twice_does_not_raise(client):
+    """The button is a plain form post, so a double submit or a
+    back-and-resubmit hits the unique constraint."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    client.post("/signup", data={"email": "follower@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "follower@example.test").id
+
+    client.post("/districts/follow", data={"outcode": "m14"}, follow_redirects=False)
+    client.post("/districts/follow", data={"outcode": "M14"}, follow_redirects=False)
+
+    districts = watchlist.list_districts(user_id)
+    # Stored uppercase, once, whichever case was typed.
+    assert [d["outcode"] for d in districts] == ["M14"]
+
+    client.post("/districts/unfollow", data={"outcode": "M14"}, follow_redirects=False)
+    assert watchlist.list_districts(user_id) == []
+
+
+def test_one_account_s_followed_district_never_shows_on_another_s_guide(client):
+    """The area guide payload is cached and shared by every visitor, so
+    the follow state has to be set outside it."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    client.post("/signup", data={"email": "followera@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "followera@example.test").id
+    watchlist.follow_district(user_id, "M14")
+
+    from app import main as app_main
+    context = {"current_user": {"id": user_id}}
+    app_main._following_district(context, "M14")
+    assert context["following_district"] is True
+
+    other = {"current_user": {"id": user_id + 9999}}
+    app_main._following_district(other, "M14")
+    assert other["following_district"] is False
+
+    anonymous = {"current_user": None}
+    app_main._following_district(anonymous, "M14")
+    assert anonymous["following_district"] is False
+
+
+def test_district_diff_stays_quiet_unless_something_really_moved():
+    """A few offences either way is a data refresh, not news. Flagging
+    it would train people to ignore the one that matters."""
+    from app import main as app_main
+
+    old = {"median_price": 250000, "sales_count": 40, "crime_total": 120}
+
+    assert app_main._district_changes(old, dict(old)) == []
+    assert app_main._district_changes(old, {**old, "crime_total": 128}) == []
+
+    moved = app_main._district_changes(
+        old, {"median_price": 262000, "sales_count": 43, "crime_total": 145}
+    )
+    assert any("Median sold price up" in c for c in moved)
+    assert any("3 new sales lodged" in c for c in moved)
+    assert any("Recorded crime up by 25" in c for c in moved)
+
+
+def test_district_diff_never_invents_a_median_the_guide_would_not_show():
+    """_district_summary drops the median below the threshold the area
+    guide itself needs, so a diff must cope with it being absent rather
+    than comparing against nothing."""
+    from app import main as app_main
+
+    assert app_main._district_changes({"sales_count": 3}, {"median_price": 250000, "sales_count": 4}) == [
+        "1 new sale lodged with Land Registry around here"
+    ]
+    # A sale count that went down (a correction upstream) is not "new sales".
+    assert app_main._district_changes({"sales_count": 9}, {"sales_count": 4}) == []

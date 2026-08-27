@@ -37,7 +37,7 @@
 <div class="watchlist-alert-banner" data-animate>
     <span class="watchlist-alert-count">{{ changed_item_count }}</span>
     <span>
-        propert{{ "y has" if changed_item_count == 1 else "ies have" }} changed since you last checked. Look for the highlighted cards below.
+        {{ "thing has" if changed_item_count == 1 else "things have" }} changed since you last checked. Look for the highlighted cards below.
     </span>
 </div>
 {% endif %}
@@ -97,6 +97,55 @@
 {% endfor %}
 {% else %}
 <p class="notice">Nothing saved yet. {% if not opened_reports %}Search for a postcode and use "Save" on its report.{% endif %}</p>
+{% endif %}
+
+{% if districts %}
+<section class="landing-section" style="margin-top: 2.5rem;">
+    <h2 class="landing-heading">Districts you follow</h2>
+    <p class="landing-subheading">
+        Whole areas rather than single addresses, for while you are still deciding where. Checked
+        each time you open this page, never on a schedule.
+    </p>
+    <div class="myprops-grid">
+        {% for d in districts %}
+        <div class="myprops-card{{ ' myprops-card-changed' if d.changes else '' }}">
+            <div class="myprops-card-head">
+                <span class="myprops-saved-date">
+                    {%- if d.summary and d.summary.admin_district %}{{ d.summary.admin_district }}{% else %}following since {{ d.created_at.strftime("%d %b") }}{% endif -%}
+                </span>
+            </div>
+            <a class="myprops-address" href="/area/{{ d.outcode }}">{{ d.outcode }}</a>
+
+            {% if d.changes %}
+            <div class="watchlist-changes">
+                {% for change in d.changes %}
+                <span class="watchlist-change-chip">{{ change }}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            {# Silence is the honest and common answer here. Saying so
+               beats an empty card, which reads as one that failed. #}
+            <p class="myprops-note">Nothing has moved here since you last looked.</p>
+            {% endif %}
+
+            {% if d.summary and (d.summary.median_price or d.summary.crime_total is not none) %}
+            <p class="myprops-note">
+                {%- if d.summary.median_price %}Median sold price {{ "£{:,}".format(d.summary.median_price) }}{% endif -%}
+                {%- if d.summary.median_price and d.summary.crime_total is not none %}. {% endif -%}
+                {%- if d.summary.crime_total is not none and d.summary.crime_month %}{{ d.summary.crime_total }} crimes recorded in {{ d.summary.crime_month }}{% endif -%}
+            </p>
+            {% endif %}
+
+            <div class="myprops-card-foot">
+                <form action="/districts/unfollow" method="post">
+                    <input type="hidden" name="outcode" value="{{ d.outcode }}">
+                    <button type="submit" class="myprops-remove">Stop following</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
 {% endif %}
 
 {% if opened_reports %}
