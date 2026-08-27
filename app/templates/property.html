@@ -1960,9 +1960,18 @@
                         <tbody>
                             {% for e in school_landscape.independent_schools %}
                             <tr>
-                                <td>{{ e.name }}</td>
+                                {# Every school in the landscape already has a
+                                   profile popup rendered for it, so the name
+                                   opens the same detail a state school gets:
+                                   head teacher, roll against capacity, sixth
+                                   form, contact details. #}
+                                <td><button type="button" class="school-row" data-modal-target="school-modal-{{ e.urn }}">{{ e.name }}</button></td>
                                 <td>{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
-                                <td>{{ e.phase_group }}</td>
+                                <td>
+                                    {{ e.phase_group }}
+                                    {%- if e.gender and e.gender != 'Mixed' %}<br><span class="school-tag">{{ e.gender }}</span>{% endif -%}
+                                    {%- if e.selective %}<br><span class="school-tag">Selective</span>{% endif -%}
+                                </td>
                                 <td class="num">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
                             </tr>
                             {% endfor %}

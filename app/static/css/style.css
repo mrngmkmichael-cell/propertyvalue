@@ -2147,6 +2147,20 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 .compare-missing { color: var(--ink-soft); }
 
+/* Small qualifiers beside a fee-paying school's stage: single-sex and
+   selective are the two that decide whether it is an option at all. */
+.school-tag {
+    display: inline-block;
+    margin-top: 0.2rem;
+    padding: 0.1rem 0.45rem;
+    background: var(--surface-2);
+    border-radius: var(--radius-pill);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+
 /* The one number a school admission page exists to show. */
 .admission-hero {
     display: flex;

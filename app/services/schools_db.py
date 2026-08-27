@@ -302,20 +302,30 @@ def school_landscape(lat: float, lon: float) -> dict | None:
 
     if pending_independent:
         with get_session() as session:
-            ages = {
-                d.urn: (d.age_low, d.age_high)
+            details = {
+                d.urn: d
                 for d in session.scalars(
                     select(SchoolDetail).where(
                         SchoolDetail.urn.in_([e["urn"] for e in pending_independent])
                     )
                 )
             }
+            ages = {urn: (d.age_low, d.age_high) for urn, d in details.items()}
         for entry in pending_independent:
             low, high = ages.get(entry["urn"], (None, None))
             phases = _phases_from_ages(low, high)
             if not phases:
                 continue
             entry["age_low"], entry["age_high"] = low, high
+            d = details.get(entry["urn"])
+            if d is not None:
+                # Boys/girls/mixed and whether it selects are the two
+                # things that decide whether a fee-paying school is even
+                # an option for a given child, so they belong on the
+                # summary rather than one level down.
+                entry["gender"] = d.gender or ""
+                entry["selective"] = (d.admissions_policy or "").strip().lower() == "selective"
+                entry["religious_character"] = d.religious_character or ""
             all_through = phases == {"Primary", "Secondary"}
             entry["all_through"] = all_through
             entry["phase_group"] = (
