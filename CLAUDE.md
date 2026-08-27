@@ -41,6 +41,10 @@ UK property due-diligence site. FastAPI + Jinja2 + SQLAlchemy on Postgres
 
 Dev server: use the preview tools (`.claude/launch.json`, port 8010), never
 a bare shell command.
-Tests: scratchpad `test_*.py` plus `smoke.py http://127.0.0.1:8010`.
+Tests: `.venv/Scripts/python.exe -m pytest -q` (105 tests, run before
+every push), then `.venv/Scripts/python.exe smoke.py` against a running
+server. pytest fakes the ~30 upstream services; smoke.py walks the real
+pages and catches what a fake cannot. Pass a base URL to point it at
+production.
 Data imports: `scripts/import_*.py`, each re-runnable and commented with
 its source and refresh cadence.

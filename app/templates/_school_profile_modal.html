@@ -40,7 +40,12 @@
                                 {% endif %}
                                 {% if s.detail.gender %}<tr><td>Gender</td><td>{{ s.detail.gender }}</td></tr>{% endif %}
                                 {% if s.detail.has_sixth_form %}<tr><td>Sixth form</td><td>{{ s.detail.has_sixth_form }}</td></tr>{% endif %}
-                                {% if s.detail.religious_character %}<tr><td>Religious character</td><td>{{ s.detail.religious_character }}</td></tr>{% endif %}
+                                {# GIAS records a school with no religious
+                                   affiliation as the literal string "None",
+                                   which in a table cell reads as a missing
+                                   value rather than as the answer. Said in
+                                   words instead. #}
+                                {% if s.detail.religious_character %}<tr><td>Religious character</td><td>{{ "No religious character" if s.detail.religious_character in ("None", "Does not apply") else s.detail.religious_character }}</td></tr>{% endif %}
                                 {% if s.detail.admissions_policy %}<tr><td>Admissions policy</td><td>{{ s.detail.admissions_policy }}</td></tr>{% endif %}
                                 {% if s.detail.trust_name %}<tr><td>Trust</td><td>{{ s.detail.trust_name }}</td></tr>{% endif %}
                                 {% if s.detail.local_authority %}<tr><td>Local authority</td><td>{{ s.detail.local_authority }}</td></tr>{% endif %}
@@ -216,13 +221,22 @@
                     <details class="school-profile-item">
                         <summary>
                             <span class="school-profile-icon">{{ icons.icon('statistics') }}</span>
+                            {# A school can hold an exam record whose headline
+                               figure was never published: too few pupils to
+                               report, or a year the measure was suspended.
+                               Unguarded, that rendered the literal word
+                               "None", which reads as a score rather than as
+                               an absence. The trend table below already knew
+                               this; the headline did not. #}
+                            {% set _headline = s.exam_results.headline_value %}
+                            {% set _pct = "%" if s.exam_results.headline_label != "Progress 8" else "" %}
                             <span class="school-profile-label">Exam Results</span>
-                            <span class="school-profile-preview">{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</span>
+                            <span class="school-profile-preview">{{ (_headline ~ _pct) if _headline is not none else "Not published" }}</span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
                             <table>
-                                <tr><td>{{ s.exam_results.headline_label }}</td><td>{{ s.exam_results.headline_value }}{{ "%" if s.exam_results.headline_label != "Progress 8" else "" }}</td></tr>
+                                <tr><td>{{ s.exam_results.headline_label }}</td><td>{{ (_headline ~ _pct) if _headline is not none else "Not published for this school" }}</td></tr>
                                 {% if s.exam_results.grade5_english_maths_pct is not none %}
                                 <tr><td>Grade 5+ English &amp; Maths</td><td>{{ s.exam_results.grade5_english_maths_pct }}%</td></tr>
                                 {% endif %}
