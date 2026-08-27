@@ -17,6 +17,12 @@ from app.models import (
 from app.services import _cache, overview_score, reviews
 
 SEARCH_RADIUS_KM = 5
+# Everything a reader sees is in miles: the rest of the report already
+# measures distance that way ("0.3 mi" in the school tables), and a UK
+# buyer does not think in kilometres. The search itself stays metric
+# because the maths is.
+KM_PER_MILE = 1.60934
+SEARCH_RADIUS_MILES = round(SEARCH_RADIUS_KM / KM_PER_MILE, 1)
 PER_GROUP_LIMIT = 3
 # Rough degrees-per-km at UK latitudes, generous enough for a first-pass
 # bounding box before the precise haversine distance filter/sort below.
@@ -428,6 +434,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
 
     return {
         "radius_km": SEARCH_RADIUS_KM,
+        "radius_miles": SEARCH_RADIUS_MILES,
         "total_schools": total_schools,
         "good_or_better_pct": good_or_better_pct,
         "by_rating": [

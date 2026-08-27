@@ -8,7 +8,7 @@
 <span class="kicker">School guide</span>
 {% if areas and areas | length == 1 %}
 <h1>Schools near {{ areas[0].label }}</h1>
-<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_km if areas[0].landscape else 3 }} km, against the national picture. Add another area to compare.</p>
+<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3.1 }} miles, against the national picture. Add another area to compare.</p>
 {% elif areas %}
 <h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
 <p class="dek">Side by side, from the same Ofsted and DfE data as every property report here.</p>
@@ -64,7 +64,7 @@
             </p>
             {% endif %}
             <p class="section-sub" style="margin-top: 0;">
-                Within {{ area.landscape.radius_km }} km: {{ area.landscape.total_schools }} school{{ 's' if area.landscape.total_schools != 1 }}
+                Within {{ area.landscape.radius_miles }} miles: {{ area.landscape.total_schools }} school{{ 's' if area.landscape.total_schools != 1 }}
                 {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
                 {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>

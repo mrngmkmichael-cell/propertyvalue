@@ -147,7 +147,7 @@
     {% if landscape and landscape.total_schools %}
     <p class="section-sub">
         {{ landscape.total_schools }} school{{ "s" if landscape.total_schools != 1 else "" }} within
-        {{ landscape.radius_km }}km
+        {{ landscape.radius_miles }} miles
         {% if landscape.good_or_better_pct is not none %}
         , of which <strong>{{ landscape.good_or_better_pct }}%</strong> are rated Outstanding or Good by Ofsted.
         {% endif %}
@@ -166,7 +166,7 @@
                 <td>{% if s.slug %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
                 <td>{{ s.phase or "" }}</td>
                 <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
-                <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1000) | round(1) }} km{% endif %}</td>
+                <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} mi{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -191,7 +191,7 @@
     <h2>Private schools</h2>
     <p class="section-sub">
         {{ private_school_count }} fee-paying school{{ "s" if private_school_count != 1 else "" }} within
-        {{ landscape.radius_km if landscape else 5 }}km:
+        {{ landscape.radius_miles if landscape else 3.1 }} miles:
         {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} and others{% endif %}.
     </p>
     {# Not a caveat we can leave out: a blank rating next to a famous
@@ -209,7 +209,7 @@
     <h2>Universities</h2>
     <p class="section-sub">
         {{ university_count }} higher education institution{{ "s" if university_count != 1 else "" }} within
-        {{ landscape.radius_km if landscape else 5 }}km: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
+        {{ landscape.radius_miles if landscape else 3.1 }} miles: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
     </p>
     <p class="section-sub">
         Relevant beyond study: a large student population shapes rental demand, and term-time

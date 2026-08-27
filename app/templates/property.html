@@ -704,6 +704,7 @@
             <span class="dashboard-card-title">Schools Nearby</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
+                {% elif school_landscape and school_landscape.total_schools %}{{ school_landscape.total_schools }} within {{ school_landscape.radius_miles }} miles
                 {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
             </span>
@@ -728,7 +729,7 @@
             <span class="dashboard-card-title">Private Schools</span>
             <span class="dashboard-card-status">
                 {%- if sector and school_landscape.independent_count %}{{ sector.independent_primary }} primary, {{ sector.independent_secondary }} senior
-                {%- elif sector %}None within {{ school_landscape.radius_km }}km
+                {%- elif sector %}None within {{ school_landscape.radius_miles }} miles
                 {%- else %}No data available{% endif -%}
             </span>
         </button>
@@ -737,8 +738,8 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Universities</span>
             <span class="dashboard-card-status">
-                {%- if school_landscape and school_landscape.higher_education_count %}{{ school_landscape.higher_education_count }} within {{ school_landscape.radius_km }}km
-                {%- elif school_landscape %}None within {{ school_landscape.radius_km }}km
+                {%- if school_landscape and school_landscape.higher_education_count %}{{ school_landscape.higher_education_count }} within {{ school_landscape.radius_miles }} miles
+                {%- elif school_landscape %}None within {{ school_landscape.radius_miles }} miles
                 {%- else %}No data available{% endif -%}
             </span>
         </button>
@@ -1951,7 +1952,7 @@
         <div class="landscape-summary">
             <h3 class="subsection-heading">Local school landscape</h3>
             <p class="section-sub" style="margin-top: 0;">
-                Within {{ school_landscape.radius_km }} km: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
+                Within {{ school_landscape.radius_miles }} miles: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
                 {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }}{% endif %}
                 {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} universit{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>

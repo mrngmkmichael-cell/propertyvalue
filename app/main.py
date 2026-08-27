@@ -3501,7 +3501,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 11
+AREA_GUIDE_PAYLOAD_VERSION = 13
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -3586,7 +3586,7 @@ async def _outcode_sales(lat: float, lon: float) -> dict | None:
 # and over a megabyte for a central London district, cached for a page
 # that never reads them.
 AREA_GUIDE_LANDSCAPE_FIELDS = (
-    "radius_km", "total_schools", "good_or_better_pct", "special_count",
+    "radius_km", "radius_miles", "total_schools", "good_or_better_pct", "special_count",
     "further_education", "higher_education_count",
 )
 
@@ -3705,7 +3705,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     if not context.get("is_scotland") and landscape and landscape.get("total_schools") and landscape.get("good_or_better_pct") is not None:
         faqs.append((
             f"Are the schools good in {outcode}?",
-            f"{landscape['total_schools']} schools sit within {landscape['radius_km']}km of central {outcode}, "
+            f"{landscape['total_schools']} schools sit within {landscape.get('radius_miles', 3.1)} miles of central {outcode}, "
             f"and {landscape['good_or_better_pct']}% are rated Outstanding or Good by Ofsted.",
         ))
     crime_data = context.get("crime")
@@ -5833,8 +5833,13 @@ def _outcodes_within(lat: float, lon: float, miles: float) -> list[dict]:
     for entry in ALL_OUTCODES:
         d = _haversine_km(lat, lon, entry["lat"], entry["lon"])
         if d <= km:
-            out.append({"outcode": entry["outcode"], "district": entry.get("district", ""), "km": round(d, 1)})
-    out.sort(key=lambda e: e["km"])
+            out.append({
+                "outcode": entry["outcode"],
+                "district": entry.get("district", ""),
+                # Shown in miles, like every other distance on the site.
+                "miles": round(d / 1.60934, 1),
+            })
+    out.sort(key=lambda e: e["miles"])
     return out[:12]
 
 
