@@ -380,14 +380,17 @@
         <p class="lx-eyebrow">Unedited</p>
         <h2 class="lx-h2">What people say</h2>
         <div class="lx-voice-grid" data-cascade>
-            {% for quote, who, where in [
+            {# The Trustpilot ones first: they are the only quotes here a
+               reader can go and verify, and the line under the grid
+               tells them where. #}
+            {% for quote, who, where in trustpilot.reviews + [
                 ("Its really good, very easy to navigate. Rightmove exist to sell houses where as your service is just a presentation of facts.", "Commenter", "r/HousingUK"),
                 ("I used to build exactly this professionally. You're on the right path.", "Former property-data professional", "Reddit")
             ] %}
             <figure class="lx-voice">
                 <blockquote>&ldquo;{{ quote }}&rdquo;</blockquote>
                 <figcaption>
-                    <span class="lx-voice-avatar" aria-hidden="true">{{ who[0] }}</span>
+                    <span class="lx-voice-avatar" aria-hidden="true">{{ who[0] | upper }}</span>
                     <span>
                         <span class="lx-voice-who">{{ who }}</span>
                         <span class="lx-voice-where">{{ where }}</span>
@@ -396,6 +399,15 @@
             </figure>
             {% endfor %}
         </div>
+        {# The count is a claim about a number, so it names where the
+           number came from and links to it. Three is a small number and
+           saying so plainly is better than implying more. #}
+        <p class="lx-voices-source">
+            Rated <strong>{{ trustpilot.score }}</strong> from
+            {{ trustpilot.review_count }} review{{ "s" if trustpilot.review_count != 1 }} on
+            <a href="{{ trustpilot.profile_url }}" rel="noopener nofollow" target="_blank">Trustpilot</a>,
+            where every one of them can be read in full.
+        </p>
     </div>
 </section>
 

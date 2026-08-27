@@ -538,3 +538,34 @@ def test_the_pricing_page_never_sends_a_new_account_back_to_itself(client):
     template = pathlib.Path("app/templates/premium.html").read_text(encoding="utf-8")
     assert "/signup?next=/premium" not in template
     assert template.count('href="/signup?next=/"') == 2
+
+
+def test_the_trustpilot_count_matches_the_reviews_actually_quoted(client):
+    """The score and count are claims about numbers, so they name their
+    source and link to it. The count is deliberately higher than the
+    number quoted (one review is a question about schools, not a comment
+    on the site), which is honest only while the link is there for
+    anyone to check."""
+    from app.main import TRUSTPILOT
+
+    body = client.get("/").text
+    assert TRUSTPILOT["profile_url"] in body
+    assert f"{TRUSTPILOT['review_count']} reviews" in body
+    for quote, who, _ in TRUSTPILOT["reviews"]:
+        assert who in body
+        # Quoted verbatim: no silent tidying of someone else's words.
+        assert quote[:40] in body
+
+    # Never claim more quotes than reviews.
+    assert len(TRUSTPILOT["reviews"]) <= TRUSTPILOT["review_count"]
+
+
+def test_no_third_party_script_runs_on_the_site(client):
+    """The privacy page promises no third-party tracking scripts, which
+    rules out the Trustpilot widget however convenient it would be."""
+    import re
+
+    for path in ("/", "/premium", "/privacy"):
+        body = client.get(path).text
+        for src in re.findall(r'<script[^>]+src="([^"]+)"', body):
+            assert src.startswith("/"), f"{path} loads an off-site script: {src}"

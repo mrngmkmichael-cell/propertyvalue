@@ -6890,6 +6890,16 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
 }
 .lx-voice-who { display: block; font-size: var(--text-sm); color: var(--ink); }
 .lx-voice-where { display: block; font-size: var(--text-xs); color: var(--ink-soft); }
+/* The line that makes the quotes above checkable. Quiet on purpose:
+   this is a citation, in the same register as the source lines under
+   every figure on a report, not a badge. */
+.lx-voices-source {
+    position: relative;
+    margin: 1.75rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.lx-voices-source strong { font-family: var(--font-mono); color: var(--ink); }
 
 /* ---- Closing search ------------------------------------------------ */
 .lx-contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }

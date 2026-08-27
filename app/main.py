@@ -1078,10 +1078,46 @@ def _landing_accuracy_counts() -> dict | None:
 STRIP_POSTCODES = ["M1 1AE", "LS1 4DY", "SW1A 1AA", "B1 1BD", "E14 9PR"]
 
 
+# Trustpilot reviews, transcribed by hand from the public profile.
+#
+# NOT the TrustBox widget: that is a third-party script, and the privacy
+# page promises in as many words that "no third-party tracking scripts
+# run on this site". Adding one would make a published promise untrue,
+# which is the same error as showing a data gap as a zero.
+#
+# The Trustpilot API needs a paid plan and scraping the public page is
+# against their terms, so these are copied by hand and go stale by hand.
+# Read 27 Aug 2026. Re-read the profile when a new review lands (the
+# email notification is the prompt) and update BOTH the quotes and the
+# count, since the count is a claim about a number.
+#
+# Judy Ma's 5-star review is deliberately not shown. It is a question
+# about choosing a school rather than a comment on the site, so it tells
+# a reader nothing. It still counts toward the total below, which is why
+# the total says 3 and only two are quoted.
+TRUSTPILOT = {
+    "profile_url": "https://uk.trustpilot.com/review/ukpropertyinsight.co.uk",
+    "score": "4.0",
+    "review_count": 3,
+    "read_on": "27 August 2026",
+    # Verbatim, including the reviewer's own spelling. Correcting someone
+    # else's words silently is not ours to do.
+    "reviews": [
+        ("A great deal honestly compared to other competitors on the market. Very "
+         "intuative UX and made it very easy to look for the exact criterias.",
+         "rueben yu", "Trustpilot, 25 August 2026"),
+        ("Brilliant website. Convenient and easy to use. Put in the post code and you "
+         "will have all useful information in one place.",
+         "AH", "Trustpilot, 27 August 2026"),
+    ],
+}
+
+
 @app.get("/")
 def index(request: Request):
     context = base_context(request)
     context["accuracy_counts"] = _landing_accuracy_counts()
+    context["trustpilot"] = TRUSTPILOT
 
     # Hand the hero strip whatever is already cached, so it paints with
     # real figures immediately instead of waiting on round trips.
