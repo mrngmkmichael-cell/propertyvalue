@@ -1968,7 +1968,10 @@
                 </p>
                 <div class="tablewrap">
                     <table class="tx-table">
-                        <thead><tr><th>School</th><th>Ages</th><th>Stage</th><th class="num">Distance</th></tr></thead>
+                        {# Name and distance first: on a phone the table
+                           scrolls sideways, and those are the two a parent
+                           needs without scrolling. #}
+                        <thead><tr><th>School</th><th class="num">Distance</th><th>Ages</th><th>Stage</th></tr></thead>
                         <tbody>
                             {% for e in school_landscape.independent_schools %}
                             <tr>
@@ -1977,14 +1980,14 @@
                                    opens the same detail a state school gets:
                                    head teacher, roll against capacity, sixth
                                    form, contact details. #}
-                                <td><button type="button" class="school-row" data-modal-target="school-modal-{{ e.urn }}">{{ e.name }}</button></td>
-                                <td>{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
+                                <td><button type="button" class="school-name-btn" data-modal-target="school-modal-{{ e.urn }}">{{ e.name }}</button></td>
+                                <td class="num nowrap">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
+                                <td class="nowrap">{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
                                 <td>
                                     {{ e.phase_group }}
                                     {%- if e.gender and e.gender != 'Mixed' %}<br><span class="school-tag">{{ e.gender }}</span>{% endif -%}
                                     {%- if e.selective %}<br><span class="school-tag">Selective</span>{% endif -%}
                                 </td>
-                                <td class="num">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
                             </tr>
                             {% endfor %}
                         </tbody>

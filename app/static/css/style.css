@@ -2147,6 +2147,32 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 .compare-missing { color: var(--ink-soft); }
 
+/* A school name inside a table cell. Reads as a link, because that is
+   what it behaves like. The .school-row treatment next to this is a
+   full-width bordered card, right for a standalone list and wrong in a
+   cell, where it rendered every name as what looked like a text input. */
+/* Short values that should never break mid-figure. */
+.tx-table td.nowrap { white-space: nowrap; }
+
+.school-name-btn {
+    display: inline;
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
+    font: inherit;
+    color: var(--accent);
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    text-underline-offset: 2px;
+}
+.school-name-btn:hover {
+    background: none;
+    text-decoration-color: var(--accent);
+}
+
 /* Small qualifiers beside a fee-paying school's stage: single-sex and
    selective are the two that decide whether it is an option at all. */
 .school-tag {
