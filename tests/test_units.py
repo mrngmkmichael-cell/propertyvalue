@@ -490,3 +490,80 @@ def test_noise_does_not_retry_a_real_absence(monkeypatch):
     except Exception:
         pass
     assert calls["n"] == 1, "a 404 must not be retried"
+
+
+def test_hpi_picks_the_area_that_was_asked_for_not_the_one_containing_it():
+    """The HPI query matches area labels with CONTAINS, because
+    postcodes.io's "Westminster" is the dataset's "City of Westminster".
+    That substring match also made "Manchester" match Greater
+    Manchester and "York" match six areas at once, so the report showed
+    one area's price under another's name and the trend chart drew a
+    line zigzagging between different places."""
+    from app.services.hpi import _pick_area
+
+    # Exact match wins over a longer area that merely contains it.
+    assert _pick_area({"Manchester", "Greater Manchester"}, "Manchester") == "Manchester"
+    assert _pick_area(
+        {"East Riding of Yorkshire", "North Yorkshire", "South Yorkshire",
+         "West Yorkshire", "York", "Yorkshire and The Humber"},
+        "York",
+    ) == "York"
+
+    # Asking for the larger area still gets the larger area.
+    assert _pick_area({"Manchester", "Greater Manchester"}, "Greater Manchester") == "Greater Manchester"
+
+    # The case CONTAINS exists for: no exact label, one real candidate.
+    assert _pick_area({"City of Westminster"}, "Westminster") == "City of Westminster"
+
+    # Case and stray whitespace must not decide which area is returned.
+    assert _pick_area({"MANCHESTER", "Greater Manchester"}, " manchester ") == "MANCHESTER"
+
+    # Nothing plausible matched: say so rather than returning a wrong area.
+    assert _pick_area(set(), "Nowhere") is None
+    assert _pick_area({"Greater Manchester"}, "Leeds") is None
+
+
+def test_hpi_trend_series_never_interleaves_two_areas():
+    """One point per month, from one area. Before the fix a Manchester
+    trend alternated Manchester and Greater Manchester month by month,
+    which the projection was then fitted to."""
+    import asyncio
+    import httpx
+
+    from app.services import hpi
+
+    rows = []
+    for month in ("2026-05", "2026-06"):
+        for label, price in (("Manchester", 251250.0), ("Greater Manchester", 240130.0)):
+            rows.append({
+                "refMonth": {"value": month}, "label": {"value": label},
+                "averagePrice": {"value": str(price)},
+            })
+
+    class _Response:
+        def raise_for_status(self): pass
+        def json(self): return {"results": {"bindings": rows}}
+
+    class _Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, *a, **k): return _Response()
+
+    real_client = hpi.httpx.AsyncClient
+    real_minimum = hpi.MIN_TREND_POINTS
+    hpi.httpx.AsyncClient = lambda *a, **k: _Client()
+    # The fake supplies two months. Without the lowered minimum this
+    # returns None either way, which would pass whether or not the two
+    # areas were separated.
+    hpi.MIN_TREND_POINTS = 2
+    try:
+        trend = asyncio.run(hpi.price_trend("Manchester"))
+    finally:
+        hpi.httpx.AsyncClient = real_client
+        hpi.MIN_TREND_POINTS = real_minimum
+
+    assert trend is not None
+    assert trend["area_name"] == "Manchester"
+    periods = [p["period"] for p in trend["series"]]
+    assert periods == sorted(set(periods)), "a month must appear exactly once"
+    assert [p["average_price"] for p in trend["series"]] == [251250.0, 251250.0]

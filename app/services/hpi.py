@@ -23,7 +23,7 @@ _QUERY_TEMPLATE = """
 prefix ukhpi: <http://landregistry.data.gov.uk/def/ukhpi/>
 prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?refMonth ?averagePrice ?percentageAnnualChange WHERE {{
+SELECT ?refMonth ?averagePrice ?percentageAnnualChange ?label WHERE {{
   ?obs ukhpi:refRegion ?region ;
        ukhpi:refMonth ?refMonth ;
        ukhpi:averagePrice ?averagePrice ;
@@ -31,16 +31,53 @@ SELECT ?refMonth ?averagePrice ?percentageAnnualChange WHERE {{
   ?region rdfs:label ?label .
   FILTER(LANG(?label) = "en")
   FILTER(CONTAINS(LCASE(STR(?label)), LCASE("{name}")))
+  FILTER(?refMonth >= "{cutoff}"^^<http://www.w3.org/2001/XMLSchema#gYearMonth>)
 }}
 ORDER BY DESC(?refMonth)
-LIMIT 1
 """
+
+# How far back the "latest figure" query looks. Long enough to survive
+# a month where the index has not been published yet, short enough that
+# matching several areas stays a handful of rows rather than a history.
+_LATEST_LOOKBACK_MONTHS = 8
+
+
+def _pick_area(labels, name: str) -> str | None:
+    """Which of the areas the CONTAINS filter matched is the one that
+    was actually asked for.
+
+    CONTAINS is a substring match, and UK area names nest: asking for
+    "Manchester" also matches "Greater Manchester", and asking for
+    "York" matches six areas including "North Yorkshire" and
+    "Yorkshire and The Humber". The filter has to stay, because
+    postcodes.io's admin_district ("Westminster") does not always equal
+    the HPI label ("City of Westminster") - so the choice is made here
+    instead of being left to whichever row the endpoint returned first.
+
+    Exact match wins. Failing that the shortest containing label wins,
+    which resolves "Manchester" over "Greater Manchester" and still
+    picks "City of Westminster" when that is the only candidate.
+    """
+    wanted = name.strip().lower()
+    labels = list(labels)
+    for label in labels:
+        if label.strip().lower() == wanted:
+            return label
+    containing = sorted(
+        (l for l in labels if wanted in l.strip().lower()),
+        key=lambda l: (len(l), l),
+    )
+    return containing[0] if containing else None
+
+
+def _latest_cutoff() -> str:
+    return (date.today() - timedelta(days=31 * _LATEST_LOOKBACK_MONTHS)).strftime("%Y-%m")
 
 
 async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
     if not name:
         return None
-    query = _QUERY_TEMPLATE.format(name=name.replace('"', ""))
+    query = _QUERY_TEMPLATE.format(name=name.replace('"', ""), cutoff=_latest_cutoff())
     try:
         response = await client.get(
             SPARQL_ENDPOINT,
@@ -55,9 +92,19 @@ async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
     if not bindings:
         return None
 
-    row = bindings[0]
+    chosen = _pick_area({row["label"]["value"] for row in bindings}, name)
+    if chosen is None:
+        return None
+    # Rows arrive newest first, so the first one for the chosen area is
+    # its latest published month.
+    row = next((r for r in bindings if r["label"]["value"] == chosen), None)
+    if row is None:
+        return None
     return {
-        "name": name,
+        # The area's own published label, not the name that was searched
+        # for: when they differ the reader should see which area the
+        # figure actually describes.
+        "name": chosen,
         "average_price": float(row["averagePrice"]["value"]),
         "annual_change_pct": float(row["percentageAnnualChange"]["value"]),
         "period": row["refMonth"]["value"],
@@ -78,7 +125,7 @@ _SERIES_QUERY_TEMPLATE = """
 prefix ukhpi: <http://landregistry.data.gov.uk/def/ukhpi/>
 prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?refMonth ?averagePrice WHERE {{
+SELECT ?refMonth ?averagePrice ?label WHERE {{
   ?obs ukhpi:refRegion ?region ;
        ukhpi:refMonth ?refMonth ;
        ukhpi:averagePrice ?averagePrice .
@@ -126,9 +173,20 @@ async def price_trend(admin_district: str, years: int = 5) -> dict | None:
         return None
 
     bindings = response.json()["results"]["bindings"]
+    # One area only. CONTAINS matches every area whose name contains
+    # this one, so an unfiltered series interleaved several: "Manchester"
+    # returned Manchester and Greater Manchester alternating month by
+    # month, and "York" returned six areas at once. The chart drew a
+    # zigzag between different places, the projection was fitted to it,
+    # and the x-axis printed each year once per area, which is how this
+    # was found.
+    chosen = _pick_area({row["label"]["value"] for row in bindings}, admin_district)
+    if chosen is None:
+        return None
     series = [
         {"period": row["refMonth"]["value"][:7], "average_price": float(row["averagePrice"]["value"])}
         for row in bindings
+        if row["label"]["value"] == chosen
     ]
     if len(series) < MIN_TREND_POINTS:
         return None
@@ -147,7 +205,10 @@ async def price_trend(admin_district: str, years: int = 5) -> dict | None:
     pct_change = ((current_price - start_price) / start_price) * 100 if start_price else None
 
     return {
-        "area_name": admin_district,
+        # The area the figures actually describe, which is not always
+        # the name that was searched for ("Westminster" resolves to
+        # "City of Westminster").
+        "area_name": chosen,
         "series": series,
         "start_price": start_price,
         "current_price": current_price,

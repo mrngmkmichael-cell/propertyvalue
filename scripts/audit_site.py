@@ -39,6 +39,8 @@ PAGES = [
     "/compare", "/compare/M20/vs/M21",
     "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
     "/market/district-prices", "/school/100050/parliament-hill-school",
+    # Added 29 Aug 2026 with the pages themselves.
+    "/area/W4/private-schools", "/property/checklist?postcode=M1+1AE",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)
@@ -130,11 +132,43 @@ if not HEADLINE_CHECKS:
 print("checking copy...")
 
 
+# Tags that end a run of prose. Anything not listed is treated as
+# inline, so "<strong>40</strong> checks" stays one phrase.
+_BLOCK_TAGS = (
+    "address|article|aside|blockquote|br|button|caption|dd|details|dialog|div|dl|dt|"
+    "fieldset|figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hr|label|legend|"
+    "li|main|nav|ol|option|p|pre|section|select|summary|table|tbody|td|textarea|tfoot|"
+    "th|thead|tr|ul"
+)
+# A character no page contains, marking where one run of prose ends and
+# the next begins.
+BLOCK_BREAK = "\x00"
+
+
 def visible_text(body):
-    """Strip script, style and tags so only what a reader sees is left."""
+    """Strip script, style and tags so only what a reader sees is left.
+
+    Block boundaries become BLOCK_BREAK rather than whitespace. Without
+    that distinction every tag collapsed to a space, two neighbouring
+    elements read as one sentence, and the adjacency rules below fired
+    on text no reader ever sees together: a heading sitting above a
+    table of the same word counted as a doubled word, and a year in a
+    price table followed much later by a "Check" heading counted as a
+    stale check count. That was 31 false positives in one run against
+    production, which is worse than having no rule at all: a real
+    finding would have been buried among them.
+    """
     body = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", body, flags=re.S | re.I)
+    body = re.sub(rf"</?(?:{_BLOCK_TAGS})\b[^>]*>", BLOCK_BREAK, body, flags=re.I)
     body = re.sub(r"<[^>]+>", " ", body)
     return html.unescape(body)
+
+
+def prose_blocks(text):
+    """The page's text as separate runs, one per block element, for the
+    rules that care whether two words genuinely sit next to each other
+    on the page."""
+    return [b for b in text.split(BLOCK_BREAK) if b.strip()]
 
 
 TYPOS = [
@@ -147,7 +181,11 @@ TYPOS = [
 PLACEHOLDERS = [r"\blorem ipsum\b", r"\bTODO\b", r"\bFIXME\b", r"\bXXX\b", r"\bTBD\b"]
 
 for path, body in pages_html.items():
-    text = visible_text(body)
+    raw = visible_text(body)
+    # Rules that only need to spot a token anywhere on the page read the
+    # flat text; the two adjacency rules below read block by block.
+    blocks = prose_blocks(raw)
+    text = raw.replace(BLOCK_BREAK, " ")
 
     if "—" in text:
         for m in re.finditer(r".{40}—.{40}", text):
@@ -161,14 +199,15 @@ for path, body in pages_html.items():
         if re.search(pattern, text):
             problems["placeholder text"].append(f"{path}: {pattern}")
 
-    for m in re.finditer(r"\b(\w{4,})\s+\1\b", text, re.I):
-        problems["doubled word"].append(f"{path}: '{m.group(0)}'")
+    for block in blocks:
+        for m in re.finditer(r"\b(\w{4,})\s+\1\b", block, re.I):
+            problems["doubled word"].append(f"{path}: '{' '.join(m.group(0).split())}'")
 
     # Stale counts, measured against the site's own headline rather than
     # a number written in here. This rule expected 37; the count became
     # 40 and it then flagged every correct mention while a genuinely
     # wrong one looked identical.
-    for m in re.finditer(r"\b(\d+)\s+checks?\b", text, re.I):
+    for m in re.finditer(r"\b(\d+)\s+checks?\b", "\n".join(blocks), re.I):
         n = m.group(1)
         if HEADLINE_CHECKS and n == HEADLINE_CHECKS:
             continue

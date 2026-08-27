@@ -3631,8 +3631,14 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
-# Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 17
+# Bump whenever the cached area-guide payload gains or loses a field, or
+# when a figure already in it turns out to have been wrong: entries live
+# a week, so without a bump a corrected figure keeps serving the old
+# value until each district happens to expire. 18 corrected the HPI
+# area match (see hpi._pick_area), which had been showing Greater
+# Manchester's average price under Manchester's name. Run
+# scripts/prune_stale_area_cache.py afterwards to drop the orphans.
+AREA_GUIDE_PAYLOAD_VERSION = 18
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
