@@ -18,6 +18,7 @@
     deprivation, all from the same official sources as every report on this site.
 </p>
 
+{% if versus_faqs_jsonld %}<script type="application/ld+json">{{ versus_faqs_jsonld | safe }}</script>{% endif %}
 {% if differences %}
 <div class="notice">
     <strong>The short version</strong>
@@ -168,6 +169,19 @@
         </tbody>
     </table>
     </div>
+    {% if versus_faqs %}
+    <section class="report-section">
+        <h2>Common questions</h2>
+        <div class="faq-list">
+            {% for q, a in versus_faqs %}
+            <details class="faq-item">
+                <summary>{{ q }}</summary>
+                <p>{{ a }}</p>
+            </details>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
     <p class="section-sub">
         A quick side-by-side snapshot only. Open each property's full report for the complete picture.
     </p>

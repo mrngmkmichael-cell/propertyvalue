@@ -7,6 +7,7 @@
 
 {% block content %}
 <script type="application/ld+json">{{ school_jsonld | safe }}</script>
+{% if school_faqs_jsonld %}<script type="application/ld+json">{{ school_faqs_jsonld | safe }}</script>{% endif %}
 
 <a class="back-link" href="/schools/guide">&larr; School guide</a>
 

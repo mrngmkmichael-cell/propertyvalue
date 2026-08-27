@@ -3782,7 +3782,22 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             ))
 
     context["area_faqs"] = faqs
-    context["area_faqs_jsonld"] = json.dumps({
+    context["area_faqs_jsonld"] = _faq_jsonld(faqs)
+
+
+def _faq_jsonld(faqs) -> str:
+    """FAQPage structured data from (question, answer) pairs.
+
+    The area guides had this and nothing else did, so the school
+    admission pages, both calculators and the comparison pages were
+    showing real questions on screen with nothing telling Google they
+    were questions. Those are the pages built around a query someone
+    actually types ("what is the catchment area for X"), which is
+    exactly where an FAQ rich result earns its place.
+    """
+    if not faqs:
+        return ""
+    return json.dumps({
         "@context": "https://schema.org",
         "@type": "FAQPage",
         "mainEntity": [
@@ -3790,7 +3805,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
              "acceptedAnswer": {"@type": "Answer", "text": a}}
             for q, a in faqs
         ],
-    }) if faqs else ""
+    }, separators=(",", ":"))
 
 
 async def _bounded(coro, seconds: float):
@@ -5657,7 +5672,11 @@ def tool_page(request: Request, slug: str):
     if tool is None:
         return templates.TemplateResponse(request, "404.html", context, status_code=404)
     url = f"{_public_base_url(request)}/tools/{slug}"
-    context["tool"] = {**tool, "jsonld": _tool_jsonld(tool["heading"], tool["meta"], url)}
+    context["tool"] = {
+        **tool,
+        "jsonld": _tool_jsonld(tool["heading"], tool["meta"], url),
+        "faq_jsonld": _faq_jsonld(tool["faqs"]),
+    }
     context["canonical_url"] = url
     return templates.TemplateResponse(request, "tool_calculator.html", context)
 
@@ -5728,7 +5747,51 @@ async def area_versus(request: Request, left: str, right: str):
     context["versus"] = True
     context["anonymous_compare"] = False
     context["differences"] = _versus_differences(left, right, cached["left"], cached["right"])
+    context["versus_faqs"] = _versus_faqs(left, right, cached["left"], cached["right"])
+    context["versus_faqs_jsonld"] = _faq_jsonld(context["versus_faqs"])
     return templates.TemplateResponse(request, "compare.html", context)
+
+
+def _versus_faqs(left: str, right: str, a: dict, b: dict):
+    """The questions someone comparing two districts actually types.
+
+    Answered from the two summaries rather than in general terms, and
+    only where both sides hold the figure: a comparison with a gap on
+    one side is not a comparison.
+    """
+    faqs = []
+    la, lb = a.get("local_median") or a.get("avg_price"), b.get("local_median") or b.get("avg_price")
+    if la and lb:
+        cheaper = left if la < lb else right
+        faqs.append((
+            f"Is {left} or {right} cheaper?",
+            f"{cheaper} is the cheaper of the two. Homes around {left} sell for about "
+            f"£{la:,.0f} and around {right} for about £{lb:,.0f}, from HM Land Registry "
+            "records of what actually changed hands.",
+        ))
+    ca, cb = a.get("crime_total"), b.get("crime_total")
+    if ca is not None and cb is not None:
+        quieter = left if ca < cb else right
+        faqs.append((
+            f"Which has less crime, {left} or {right}?",
+            f"{quieter} recorded fewer crimes in the same period ({ca} in {left} against "
+            f"{cb} in {right}, Police.uk). Busier places record more, so read this "
+            "alongside how built-up each area is rather than on its own.",
+        ))
+    da, db = a.get("imd_decile"), b.get("imd_decile")
+    if da and db:
+        faqs.append((
+            f"Is {left} or {right} the more affluent area?",
+            f"On the Index of Multiple Deprivation, {left} sits in decile {da} of 10 and "
+            f"{right} in decile {db}, where 10 is the least deprived.",
+        ))
+    faqs.append((
+        f"Should I buy in {left} or {right}?",
+        "That depends on what you need, and no dataset answers it. What this page gives you "
+        "is the evidence side by side: what homes actually sell for, the energy ratings, the "
+        "flood zone, recorded crime and deprivation, each traced to the body that published it.",
+    ))
+    return faqs
 
 
 def _neighbour_outcodes(outcode: str, limit: int = 8) -> list[str]:
@@ -5804,6 +5867,23 @@ async def school_admission_page(request: Request, urn: int, slug: str):
     context["nearby_areas"] = await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )
+    # The three questions the page answers on screen, as structured data.
+    # Phrased exactly as someone would search them.
+    context["school_faqs_jsonld"] = _faq_jsonld([
+        (f"What is the catchment area for {profile['name']}?",
+         "It does not have one in the sense most people mean. Like most English schools, "
+         "when it is oversubscribed it offers places outward from the school until they run "
+         f"out. The furthest child admitted in {profile['academic_year']} lived "
+         f"{profile['miles']} miles away, according to {profile['authority']}."),
+        (f"How close do I need to live to get into {profile['name']}?",
+         f"{profile['miles']} miles was enough in {profile['academic_year']}, which makes it "
+         "the best evidence available rather than a promise about next year. The distance "
+         "moves every year with the number of applications."),
+        (f"Does buying a house near {profile['name']} guarantee a place?",
+         "No. Admission criteria usually put looked-after children, siblings and sometimes "
+         "faith or aptitude criteria ahead of distance, so places can be filled before "
+         "distance is reached at all."),
+    ])
     context["school_jsonld"] = json.dumps({
         "@context": "https://schema.org",
         "@type": "School",

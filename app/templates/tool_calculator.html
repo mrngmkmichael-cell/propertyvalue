@@ -6,6 +6,7 @@
 
 {% block content %}
 <script type="application/ld+json">{{ tool.jsonld | safe }}</script>
+{% if tool.faq_jsonld %}<script type="application/ld+json">{{ tool.faq_jsonld | safe }}</script>{% endif %}
 
 <span class="kicker">Free tool</span>
 <h1>{{ tool.heading }}</h1>
