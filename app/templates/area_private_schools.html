@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+
+{% block title %}Private schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}: fees, ages and admissions{% endblock %}
+{% block meta_description %}Every fee-paying school within {{ radius_miles }} miles of {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}: age range, whether it selects, single-sex or mixed, and how full it is. From the Department for Education's register.{% endblock %}
+{% block og_title %}Private schools in {{ outcode }}{% endblock %}
+
+{% block content %}
+{% if private_faqs_jsonld %}<script type="application/ld+json">{{ private_faqs_jsonld | safe }}</script>{% endif %}
+
+<a class="back-link" href="/area/{{ outcode }}">&larr; {{ outcode }} area guide</a>
+
+<span class="kicker">Private schools</span>
+<h1>Fee-paying schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
+
+{% if schools %}
+<p class="dek">
+    {{ schools | length }} within {{ radius_miles }} miles of the district's centre, nearest first.
+    Age ranges are each school's own statutory range, which is what decides whether it takes a
+    given year group.
+</p>
+
+<div class="tablewrap">
+    <table class="tx-table">
+        <thead>
+            <tr>
+                <th>School</th>
+                <th class="num">Distance</th>
+                <th>Ages</th>
+                <th>Takes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in schools %}
+            <tr>
+                <td>{{ s.name }}</td>
+                <td class="num nowrap">{{ (s.distance_m / 1609.34) | round(1) }} mi</td>
+                <td class="nowrap">{% if s.age_low and s.age_high %}{{ s.age_low }} to {{ s.age_high }}{% endif %}</td>
+                <td>
+                    {{ s.phase_group }}
+                    {%- if s.gender and s.gender != 'Mixed' %}<br><span class="school-tag">{{ s.gender }}</span>{% endif -%}
+                    {%- if s.selective %}<br><span class="school-tag">Selective</span>{% endif -%}
+                    {%- if s.religious_character and s.religious_character not in ('None', 'Does not apply') %}<br><span class="school-tag">{{ s.religious_character }}</span>{% endif -%}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# Not a footnote. A blank rating column beside a well-known school
+   reads as a school that failed an inspection, so the reason sits
+   where it cannot be missed. #}
+<div class="notice">
+    <strong>None of these carries an Ofsted grade, and that is not a bad sign.</strong>
+    Fee-paying schools are inspected by the Independent Schools Inspectorate, not Ofsted, and the
+    ISI publishes no open data feed. A missing rating here means we cannot see one, never that the
+    school was judged poorly. Fees are not published as open data either, so they are not shown.
+</div>
+
+<section class="report-section">
+    <h2>The state schools alongside them</h2>
+    <p class="section-sub">
+        The same area holds <strong>{{ state_primary }}</strong> state primary and
+        <strong>{{ state_secondary }}</strong> state secondary schools, and those do carry Ofsted
+        ratings and exam results.
+        <a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} &rarr;</a>
+    </p>
+</section>
+{% else %}
+<p class="dek">
+    No fee-paying school sits within {{ radius_miles }} miles of central {{ outcode }}, according to
+    the Department for Education's register of schools.
+</p>
+<section class="report-section">
+    <p class="section-sub">
+        The area does have <strong>{{ state_primary }}</strong> state primary and
+        <strong>{{ state_secondary }}</strong> state secondary schools.
+        <a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} &rarr;</a>
+    </p>
+</section>
+{% endif %}
+
+<section class="report-section">
+    <h2>Checking a specific address</h2>
+    <p class="section-sub">
+        Distance from a school is measured to a front door, not to a district's centre. Put a
+        postcode in and the report works out the real distance to each school, alongside flood
+        risk, sold prices, crime and the rest.
+    </p>
+    <form class="search-form" action="/property" method="get">
+        <div class="search-form-field">
+            <label for="ps-postcode">UK postcode</label>
+            <input type="text" id="ps-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>
+        </div>
+        <button type="submit">Check an address</button>
+    </form>
+</section>
+
+{% if private_faqs %}
+<section class="report-section">
+    <h2>Common questions</h2>
+    <div class="faq-list">
+        {% for q, a in private_faqs %}
+        <details class="faq-item">
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<p class="section-sub">
+    Source: Department for Education, Get Information About Schools. Read how every figure here is
+    sourced on the <a href="/methodology">methodology page</a>. If something looks wrong,
+    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
+</p>
+{% endblock %}

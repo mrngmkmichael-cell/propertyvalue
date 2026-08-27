@@ -135,7 +135,9 @@ def test_sitemap_is_curated_not_the_whole_country(client):
     root = ET.fromstring(client.get("/sitemap.xml").content)
     ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     locs = [el.text for el in root.findall(".//s:loc", ns)]
-    areas = [u for u in locs if "/area/" in u]
+    # Area GUIDES specifically: /area/M1, not /area/M1/private-schools,
+    # which is a different page type that happens to live underneath.
+    areas = [u for u in locs if re.search(r"/area/[A-Z0-9]+$", u)]
 
     from app import main as app_main
     assert len(areas) == len(app_main.AREA_GUIDE_SEED_OUTCODES)

@@ -194,6 +194,9 @@
         {{ landscape.radius_miles if landscape else 3 }} miles:
         {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} and others{% endif %}.
     </p>
+    <p class="section-sub">
+        <a href="/area/{{ outcode }}/private-schools">All {{ private_school_count }} fee-paying schools near {{ outcode }}, with ages and admissions &rarr;</a>
+    </p>
     {# Not a caveat we can leave out: a blank rating next to a famous
        school reads as a school that failed an inspection. #}
     <p class="notice">

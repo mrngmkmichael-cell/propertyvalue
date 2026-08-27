@@ -1108,6 +1108,9 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # site (30,000-40,000 words of Ofsted and catchment detail against
     # ~600 for an area guide), so they go in at the area guides' priority.
     entries += [(f"{base}/schools/guide?q={o}", "0.7") for o in outcodes]
+    # "private schools in X" is a query nobody serves well, and the data
+    # behind it is the site's least reproducible asset.
+    entries += [(f"{base}/area/{o}/private-schools", "0.7") for o in outcodes]
     # One page per school with a real published admission distance,
     # limited to the same curated districts as everything else above.
     # Each is genuinely distinct (its own school, its own distance, its
@@ -5929,6 +5932,86 @@ def _outcodes_within(lat: float, lon: float, miles: float) -> list[dict]:
             })
     out.sort(key=lambda e: e["miles"])
     return out[:12]
+
+
+@app.get("/area/{outcode}/private-schools")
+async def area_private_schools(request: Request, outcode: str):
+    """Fee-paying schools in one postcode district.
+
+    The database holds 2,462 independent schools with a head teacher, a
+    statutory age range, whether they select and how full they are, and
+    almost nobody surfaces any of it: GIAS files every one with
+    phase="Not applicable", so the obvious way to read the register
+    drops all of them. This is the page that answer belongs on.
+    """
+    outcode = outcode.strip().upper()
+    context = base_context(request)
+    if not _OUTCODE_RE.match(outcode):
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    location, _ = await _resolve_extension_location(outcode)
+    if location is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    cache_key = ("private_schools", AREA_GUIDE_PAYLOAD_VERSION, outcode)
+    payload = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
+    if payload is None:
+        landscape = await asyncio.to_thread(
+            schools_db.school_landscape, location["latitude"], location["longitude"]
+        )
+        payload = {
+            "schools": (landscape or {}).get("independent_schools", []),
+            "radius_miles": (landscape or {}).get("radius_miles", 3),
+            "state_primary": ((landscape or {}).get("by_sector") or {}).get("state_primary", 0),
+            "state_secondary": ((landscape or {}).get("by_sector") or {}).get("state_secondary", 0),
+        }
+        await asyncio.to_thread(_cache.set_persistent, cache_key, payload)
+
+    context.update(payload)
+    context["outcode"] = outcode
+    context["admin_district"] = location.get("admin_district") or ""
+    context["canonical_url"] = f"{_public_base_url(request)}/area/{outcode}/private-schools"
+    context["private_faqs"] = _private_school_faqs(outcode, context["admin_district"], payload)
+    context["private_faqs_jsonld"] = _faq_jsonld(context["private_faqs"])
+    return templates.TemplateResponse(request, "area_private_schools.html", context)
+
+
+def _private_school_faqs(outcode: str, district: str, payload: dict):
+    n = len(payload.get("schools") or [])
+    where = f"{outcode}{', ' + district if district else ''}"
+    if not n:
+        return [(
+            f"Are there private schools in {outcode}?",
+            f"No fee-paying school sits within {payload.get('radius_miles', 3)} miles of central "
+            f"{where}, according to the Department for Education's register of schools.",
+        )]
+    selective = sum(1 for s in payload["schools"] if s.get("selective"))
+    single_sex = sum(1 for s in payload["schools"] if (s.get("gender") or "Mixed") != "Mixed")
+    faqs = [(
+        f"How many private schools are there in {outcode}?",
+        f"{n} fee-paying school{'s' if n != 1 else ''} within "
+        f"{payload.get('radius_miles', 3)} miles of central {where}, from the Department for "
+        "Education's register. Each one's age range, whether it selects and how full it is are "
+        "listed on this page.",
+    ), (
+        f"Do private schools in {outcode} have Ofsted ratings?",
+        "No, and a blank rating is not a bad sign. Fee-paying schools are inspected by the "
+        "Independent Schools Inspectorate rather than Ofsted, and the ISI publishes no open "
+        "data feed, so no rating exists for us to show.",
+    )]
+    if selective:
+        faqs.append((
+            f"Are private schools in {outcode} selective?",
+            f"{selective} of the {n} select on ability at entry, according to their admissions "
+            "policy on the register. The rest do not, though most fee-paying schools still "
+            "assess applicants in some way.",
+        ))
+    if single_sex:
+        faqs.append((
+            f"Are there single-sex private schools in {outcode}?",
+            f"{single_sex} of the {n} take boys only or girls only. The rest are mixed.",
+        ))
+    return faqs
 
 
 @app.get("/schools/guide")
