@@ -567,3 +567,27 @@ def test_hpi_trend_series_never_interleaves_two_areas():
     periods = [p["period"] for p in trend["series"]]
     assert periods == sorted(set(periods)), "a month must appear exactly once"
     assert [p["average_price"] for p in trend["series"]] == [251250.0, 251250.0]
+
+
+def test_seo_title_drops_the_council_name_rather_than_truncating():
+    """36 of 80 sampled titles ran past what Google displays, every one
+    of them where a long council name met a fixed suffix. Google cuts
+    mid-word, so the part that can be spared is dropped whole."""
+    from app.main import seo_title
+
+    # Short council: everything fits, nothing is dropped.
+    assert seo_title("M14", " Manchester", ": House Prices, Schools") == "M14 Manchester: House Prices, Schools"
+
+    # Long council: the district goes, the outcode and the keywords stay.
+    long_one = seo_title("BA2", " Bath and North East Somerset",
+                         ": House Prices, Schools, Crime & Flood Risk")
+    assert long_one == "BA2: House Prices, Schools, Crime & Flood Risk"
+    assert len(long_one) <= 60
+
+    # Nothing optional to give: return it whole rather than mangling it.
+    unavoidable = seo_title("A school with a very long name indeed here", "", ": catchment")
+    assert unavoidable.endswith(": catchment")
+
+    # Dropping the middle does not help, so keep the more useful version.
+    both_too_long = seo_title("x" * 50, " middle", ": " + "y" * 30)
+    assert " middle" in both_too_long

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ school.name }}: admission distance and catchment | UKPropertyInsight{% endblock %}
-{% block meta_description %}How far {{ school.name }} admitted from in {{ school.academic_year }}: the last distance offered was {{ school.miles }} miles, published by {{ school.authority }}. What that means for buying nearby, and which postcode districts fall inside it.{% endblock %}
+{% block title %}{{ seo_title(school.name ~ ": catchment and admission distance", " | UKPropertyInsight", "") }}{% endblock %}
+{% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Which postcode districts fall inside that.{% endblock %}
 {% block og_title %}{{ school.name }}: how far it admitted from{% endblock %}
 
 {% block content %}

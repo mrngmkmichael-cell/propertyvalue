@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{% if outcode %}{{ outcode }}{% if admin_district %} {{ admin_district }}{% endif %}: House Prices, Schools, Crime & Flood Risk{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
+{% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ admin_district if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
 {% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block extra_head %}
