@@ -3501,7 +3501,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
 _OUTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9]{1,2}[A-Z]?$", re.I)
 AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day: none of these sources move faster than monthly, there are 2,943 of these pages, and a day's TTL meant a crawler almost always paid the full cold 5s gather. Refreshed ahead of expiry by the prewarm job.
 # Bump whenever the cached area-guide payload gains or loses a field.
-AREA_GUIDE_PAYLOAD_VERSION = 14
+AREA_GUIDE_PAYLOAD_VERSION = 15
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -3705,7 +3705,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     if not context.get("is_scotland") and landscape and landscape.get("total_schools") and landscape.get("good_or_better_pct") is not None:
         faqs.append((
             f"Are the schools good in {outcode}?",
-            f"{landscape['total_schools']} schools sit within {landscape.get('radius_miles', 3.1)} miles of central {outcode}, "
+            f"{landscape['total_schools']} schools sit within {landscape.get('radius_miles', 3)} miles of central {outcode}, "
             f"and {landscape['good_or_better_pct']}% are rated Outstanding or Good by Ofsted.",
         ))
     crime_data = context.get("crime")

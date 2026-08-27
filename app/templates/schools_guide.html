@@ -8,7 +8,7 @@
 <span class="kicker">School guide</span>
 {% if areas and areas | length == 1 %}
 <h1>Schools near {{ areas[0].label }}</h1>
-<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3.1 }} miles, against the national picture. Add another area to compare.</p>
+<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, against the national picture. Add another area to compare.</p>
 {% elif areas %}
 <h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
 <p class="dek">Side by side, from the same Ofsted and DfE data as every property report here.</p>

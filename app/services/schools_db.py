@@ -16,13 +16,14 @@ from app.models import (
 )
 from app.services import _cache, overview_score, reviews
 
-SEARCH_RADIUS_KM = 5
-# Everything a reader sees is in miles: the rest of the report already
-# measures distance that way ("0.3 mi" in the school tables), and a UK
-# buyer does not think in kilometres. The search itself stays metric
-# because the maths is.
+# What counts as "nearby", and it is our choice rather than a measured
+# fact, so it may as well be a number a reader recognises. It was 5 km,
+# which presented as "within 3.1 miles" and read like the output of a
+# conversion nobody asked for. Three miles is the same kind of arbitrary
+# and looks like a decision.
 KM_PER_MILE = 1.60934
-SEARCH_RADIUS_MILES = round(SEARCH_RADIUS_KM / KM_PER_MILE, 1)
+SEARCH_RADIUS_MILES = 3
+SEARCH_RADIUS_KM = SEARCH_RADIUS_MILES * KM_PER_MILE
 PER_GROUP_LIMIT = 3
 # Rough degrees-per-km at UK latitudes, generous enough for a first-pass
 # bounding box before the precise haversine distance filter/sort below.

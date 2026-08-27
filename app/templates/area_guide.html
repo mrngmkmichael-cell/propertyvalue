@@ -191,7 +191,7 @@
     <h2>Private schools</h2>
     <p class="section-sub">
         {{ private_school_count }} fee-paying school{{ "s" if private_school_count != 1 else "" }} within
-        {{ landscape.radius_miles if landscape else 3.1 }} miles:
+        {{ landscape.radius_miles if landscape else 3 }} miles:
         {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} and others{% endif %}.
     </p>
     {# Not a caveat we can leave out: a blank rating next to a famous
@@ -209,7 +209,7 @@
     <h2>Universities</h2>
     <p class="section-sub">
         {{ university_count }} higher education institution{{ "s" if university_count != 1 else "" }} within
-        {{ landscape.radius_miles if landscape else 3.1 }} miles: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
+        {{ landscape.radius_miles if landscape else 3 }} miles: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
     </p>
     <p class="section-sub">
         Relevant beyond study: a large student population shapes rental demand, and term-time
