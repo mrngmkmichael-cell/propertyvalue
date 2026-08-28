@@ -1243,12 +1243,34 @@ AREA_GUIDE_SEED_OUTCODES = [
     "CT1", "CT2",
     # Medway
     "ME1", "ME4",
-    # Added 28 Aug 2026 from Search Console, not from a guess: these are
-    # districts already earning impressions on their own bare postcode
-    # ("sm1", "s20 sheffield", "bedford mk44", "b90 solihull"). Google
-    # found them by crawling /areas rather than from the sitemap, which
-    # is the signal this list was always meant to grow on.
-    "SM1", "S20", "MK44", "B90",
+    # --- Promoted from Search Console, 28 Aug 2026 -------------------
+    # Not a guess about which places matter. The first six days of real
+    # search data showed 186 distinct area guides earning impressions,
+    # and 133 of them were not in this list at all: Google found them by
+    # crawling /areas. The single click the site has ever had came from
+    # /area/PE29 at position 4, and PE29 was not here either.
+    #
+    # The pattern is the opposite of what this list assumed. The
+    # hand-picked entries above are big cities, where Rightmove and
+    # Zoopla own every result. The districts actually ranking are
+    # ordinary residential ones nobody else bothers to serve, which is
+    # where a page of real public data can win. Grow this from the
+    # export, not from intuition about which cities are important.
+    "AB13", "AB16", "AL7", "B61", "B73", "B91", "BB12", "BD10", "BD16",
+    "BD2", "BD7", "BH5", "BL2", "BL8", "BL9", "BR1", "BR2", "BS48",
+    "BT12", "BT32", "BT37", "BT5", "CF30", "CH2", "CH46", "CH65", "CM17",
+    "CM18", "CR4", "CT21", "CT4", "CV34", "CW8", "DA7", "DE11", "DE23",
+    "DE24", "DL1", "DL11", "DN2", "DN4", "DN5", "DN6", "DN7", "DY5",
+    "EC1M", "EN8", "FK2", "G34", "G40", "G75", "G84", "GL53", "GL54",
+    "GU22", "HA2", "IP20", "IP33", "IV45", "IV7", "KA18", "KA3", "KT1",
+    "KT24", "KY8", "LL40", "LN12", "LN5", "LS19", "LS23", "LS88", "LU4",
+    "M24", "M27", "M43", "ME2", "ME3", "MK13", "MK3", "MK41", "ML12",
+    "ML7", "NE13", "NE68", "NE98", "NG22", "NG24", "NN29", "NP18", "OL8",
+    "PE29", "PH1", "PL5", "PL7", "PO20", "PO4", "S45", "S62", "S65",
+    "SA99", "SG1", "SG18", "SK16", "SK5", "SL4", "SO22", "SR5", "ST20",
+    "ST21", "ST3", "ST4", "TA3", "TF1", "TF10", "TN13", "TR4", "TS10",
+    "TS19", "TS24", "TW4", "TW9", "WA4", "WA9", "WD24", "WN2", "WN4",
+    "WS11", "WS13", "WS3", "WV10", "WV11", "WV4", "YO51",
 ]
 
 
