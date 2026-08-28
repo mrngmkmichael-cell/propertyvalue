@@ -1243,6 +1243,9 @@ AREA_GUIDE_SEED_OUTCODES = [
     "CT1", "CT2",
     # Medway
     "ME1", "ME4",
+    # The first four promoted, from the queries visible in the
+    # Search Console screenshots before the full export arrived.
+    "SM1", "S20", "MK44", "B90",
     # --- Promoted from Search Console, 28 Aug 2026 -------------------
     # Not a guess about which places matter. The first six days of real
     # search data showed 186 distinct area guides earning impressions,
