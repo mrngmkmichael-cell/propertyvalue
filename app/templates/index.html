@@ -133,7 +133,8 @@
 
         <p class="lx-hero-dek">
             Forty checks on any UK address, each one traced back to the
-            government body that published it. Free, and no account needed.
+            government body that published it. Every UK postcode, free, and
+            no account needed.
         </p>
 
         <form class="lx-hero-form search-form" action="/property" method="get">
@@ -157,13 +158,14 @@
             <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="lx-recent-clear">Clear</button></p>
         </div>
 
-        <p class="lx-hero-stats" aria-label="40 checks, 13 official sources, 1.7 million postcodes covered">
-            <span><span class="stat-count" data-target="40">40</span> checks</span>
-            <span class="lx-sep">&middot;</span>
-            <span><span class="stat-count" data-target="13">13</span> official sources</span>
-            <span class="lx-sep">&middot;</span>
-            <span><span class="stat-count" data-target="1.7" data-decimals="1">1.7</span>M postcodes</span>
-        </p>
+        {# The "40 CHECKS . 13 OFFICIAL SOURCES . 1.7M POSTCODES" row stood
+           here. Removed 28 Aug 2026 on a reader's feedback: three
+           tracked-caps stats with middot separators, numbers rolling up
+           from zero, is the house style of a generated landing page. That
+           is expensive for a product whose whole claim is that a person
+           did the work of sourcing every figure. It was also the third
+           time this page said "40 checks", after the dek above and the
+           trust section below. The coverage figure moved into the dek. #}
     </div>
 </section>
 
@@ -662,39 +664,11 @@
     }
 })();
 
-(function () {
-    /* Count-up for the hero stats, fired once when scrolled into view.
-       Values live in data-target so the markup stays honest for no-JS
-       readers and crawlers, who see the real figures rather than 0. */
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const counters = document.querySelectorAll('.stat-count');
-    if (counters.length && 'IntersectionObserver' in window) {
-        const seen = new WeakSet();
-        const io = new IntersectionObserver(function (entries) {
-            entries.forEach(function (entry) {
-                if (!entry.isIntersecting || seen.has(entry.target)) return;
-                seen.add(entry.target);
-                const el = entry.target;
-                const target = parseFloat(el.dataset.target);
-                const decimals = parseInt(el.dataset.decimals || '0', 10);
-                const fmt = el.dataset.locale
-                    ? function (v) { return Math.round(v).toLocaleString('en-GB'); }
-                    : function (v) { return v.toFixed(decimals); };
-                if (reduced) { el.textContent = fmt(target); return; }
-                el.textContent = fmt(0);   /* only now drop to zero */
-                let start = null;
-                (function step(t) {
-                    if (!start) start = t;
-                    let p = Math.min((t - start) / 900, 1);
-                    p = 1 - Math.pow(1 - p, 3);   /* settle gently */
-                    el.textContent = fmt(target * p);
-                    if (p < 1) requestAnimationFrame(step);
-                })(performance.now());
-            });
-        }, { threshold: 0.6 });
-        counters.forEach(function (c) { io.observe(c); });
-    }
-})();
+/* The count-up on .stat-count was removed 28 Aug 2026 with the hero
+   stats row. The real values are in the markup, so the figures in the
+   trust section simply render; this script existed only to drop them to
+   zero first and animate back up. A rolling counter on three numbers
+   reads as a template, which is the opposite of what the page says. */
 
 (function () {
     /* The hero strip, fed by this site's own /api/lookup so the numbers

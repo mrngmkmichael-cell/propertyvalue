@@ -116,7 +116,14 @@ for href in targets:
 # truth for it (see tests/test_property_page.py); everything else on the
 # site has to agree, so the audit reads it once and compares.
 _home = pages_html.get("/", "")
-_hero = re.search(r'data-target="(\d+)">\d+</span>\s*checks', _home)
+# Read from the trust section, not the hero: the hero's tracked-caps
+# stats row was removed 28 Aug 2026 and this rule silently skipped
+# itself (it warns below when it cannot find a number).
+_hero = re.search(
+    r'data-target="(\d+)"[^>]*>[\d,]+</span></p>\s*'
+    r'<p class="lx-about-stat-l">Checks per property',
+    _home,
+)
 HEADLINE_CHECKS = _hero.group(1) if _hero else ""
 # The free and Premium tier sizes are counts of checks too, and are
 # deliberately not the headline number.

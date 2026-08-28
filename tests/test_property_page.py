@@ -176,10 +176,15 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
     checks = len(titles) - len(NOT_AN_OFFICIAL_SOURCE_CHECK)
 
     home = client.get("/").text
+    # The hero used to carry this in a tracked-caps stats row. That row
+    # was removed 28 Aug 2026 as an AI-generated-landing-page tell, so
+    # the trust section is now where the page commits to a number.
     headline = re.search(
-        r'<span class="stat-count" data-target="(\d+)">([\d.]+)</span> checks', home
+        r'data-target="(\d+)"[^>]*>([\d,]+)</span></p>\s*'
+        r'<p class="lx-about-stat-l">Checks per property',
+        home,
     )
-    assert headline, "hero check count not found on the landing page"
+    assert headline, "check count not found in the trust section on the landing page"
     target, shown = int(headline.group(1)), headline.group(2)
 
     # The visible text carries the real figure rather than a 0 that only
@@ -191,6 +196,22 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
     assert target == checks, (
         f"landing page claims {target} checks, report has {checks} "
         f"({len(titles)} cards less {sorted(NOT_AN_OFFICIAL_SOURCE_CHECK)})"
+    )
+
+    # The dek spells the same number out in words, and nothing else
+    # checks it. A digit is easy to remember to update; "Forty" reads as
+    # prose and would sit there wrong for months.
+    words = {
+        30: "Thirty", 35: "Thirty-five", 36: "Thirty-six", 37: "Thirty-seven",
+        38: "Thirty-eight", 39: "Thirty-nine", 40: "Forty", 41: "Forty-one",
+        42: "Forty-two", 43: "Forty-three", 44: "Forty-four", 45: "Forty-five",
+        46: "Forty-six", 47: "Forty-seven", 48: "Forty-eight", 49: "Forty-nine",
+        50: "Fifty",
+    }
+    expected = words.get(checks)
+    assert expected, f"no spelled-out form known for {checks}; add it to this test"
+    assert f"{expected} checks on any UK address" in home, (
+        f"the dek should read {expected!r} to match the {checks} checks on the report"
     )
 
 
