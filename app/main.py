@@ -1243,6 +1243,12 @@ AREA_GUIDE_SEED_OUTCODES = [
     "CT1", "CT2",
     # Medway
     "ME1", "ME4",
+    # Added 28 Aug 2026 from Search Console, not from a guess: these are
+    # districts already earning impressions on their own bare postcode
+    # ("sm1", "s20 sheffield", "bedford mk44", "b90 solihull"). Google
+    # found them by crawling /areas rather than from the sitemap, which
+    # is the signal this list was always meant to grow on.
+    "SM1", "S20", "MK44", "B90",
 ]
 
 
