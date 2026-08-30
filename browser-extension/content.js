@@ -67,6 +67,16 @@
       'meta[name="address"]',
       'meta[property="og:title"]',
       "title",
+      // Last on purpose: OnTheMarket's title truncates the address
+      // ("Fog Lane, Didsbury, Manchester...") and carries no postcode,
+      // so detection returned null on a portal the store listing
+      // promises. Its description metas end with the district
+      // ("...Greater Manchester, M20"). Checked 30 Aug 2026 on all
+      // three portals: Rightmove and Zoopla descriptions carry only
+      // the listing's own location, and both match on title first
+      // anyway, so their behaviour is unchanged.
+      'meta[property="og:description"]',
+      'meta[name="description"]',
     ];
     for (const selector of metaCandidates) {
       const el = document.querySelector(selector);
@@ -103,8 +113,12 @@
 
   function distanceText(m) {
     if (m === null || m === undefined) return "";
-    if (m < 1000) return Math.round(m) + " m";
-    return (m / 1000).toFixed(1) + " km";
+    // Miles and yards, matching the site: km was ruled out for
+    // user-facing copy everywhere else on 27 Aug 2026 and this
+    // function never got the memo.
+    const miles = m / 1609.344;
+    if (miles < 0.1) return Math.round(m / 0.9144) + " yd";
+    return miles.toFixed(1) + " mi";
   }
 
   function escapeHtml(s) {
@@ -1448,9 +1462,13 @@
 
   function init() {
     const detected = extractLocation();
-    if (!detected) return;
-    currentPostcode = detected.postcode;
-    postcodeIsPartial = detected.partial;
+    // No detection is a state the widget already knows how to render
+    // ("No postcode detected on this page" plus an Enter postcode
+    // button). Returning here instead made the extension silently
+    // invisible on any page it could not read, which a user cannot
+    // tell apart from broken.
+    currentPostcode = detected ? detected.postcode : null;
+    postcodeIsPartial = detected ? detected.partial : false;
 
     getPostcodeOverride().then(function (override) {
       if (override) {
