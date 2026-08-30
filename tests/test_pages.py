@@ -593,3 +593,13 @@ def test_only_the_rated_reviews_show_stars(client):
     for figure in figures:
         if "r/HousingUK" in figure or ">Reddit<" in figure:
             assert "lx-stars" not in figure
+
+
+def test_the_extension_page_links_to_the_real_store_listing(client):
+    """The extension went public on 20 Aug 2026 and this page spent ten
+    days still saying "pending review": the URL constant was never
+    flipped. The page must carry the install link, and the pending
+    notice must be gone."""
+    body = client.get("/browser-extension").text
+    assert "chromewebstore.google.com/detail/ukpropertyinsight-overlay" in body
+    assert "pending review" not in body.lower()

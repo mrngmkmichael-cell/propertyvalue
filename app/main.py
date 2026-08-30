@@ -1453,9 +1453,14 @@ def support(request: Request):
     return templates.TemplateResponse(request, "support.html", base_context(request))
 
 
-# Set once the Chrome Web Store listing is approved and live - None shows
-# a "pending review" state on /browser-extension instead of a dead link.
-EXTENSION_STORE_URL = None
+# The live Chrome Web Store listing ("UKPropertyInsight Overlay",
+# published 20 Aug 2026). None shows a "pending review" state on
+# /browser-extension instead of a dead link, which is what the page
+# showed for ten days after approval because nobody flipped this.
+EXTENSION_STORE_URL = (
+    "https://chromewebstore.google.com/detail/ukpropertyinsight-overlay/"
+    "poclbfmjpgdnoabacpcdlmiiediakbcl"
+)
 
 
 @app.get("/browser-extension")
