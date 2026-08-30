@@ -47,6 +47,19 @@ CRAWLERS = [
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
     "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
     "curl/8.4.0", "python-httpx/0.27.2", None, "",
+    # The markers added 30 Aug 2026, after a scraper naming none of the
+    # older ones logged 6,600 pageviews in a morning. HTTP libraries,
+    # headless browsers, and the newer AI/measurement crawlers.
+    "Scrapy/2.11.2 (+https://scrapy.org)",
+    "Python-urllib/3.12", "aiohttp/3.9.5", "okhttp/4.12.0",
+    "axios/1.7.2", "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)",
+    "undici", "Java/17.0.1", "Apache-HttpClient/4.5.14 (Java/17)",
+    "Mozilla/5.0 (X11; Linux x86_64) HeadlessChrome/126.0.0.0",
+    "Mozilla/5.0 (compatible; meta-externalagent/1.1)",
+    "GoogleOther", "Amazonbot/0.1", "PerplexityBot/1.0",
+    "Mozilla/5.0 (compatible; DataForSeoBot/1.0; +https://dataforseo.com/dataforseo-bot)",
+    "Mozilla/5.0 (compatible; Barkrowler/0.9; +https://babbar.tech/crawler)",
+    "Expanse, a Palo Alto Networks company",
 ]
 
 

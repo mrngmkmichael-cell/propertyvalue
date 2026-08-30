@@ -189,6 +189,22 @@ _CRAWLER_UA_MARKERS = (
     # to verify changes. A real Chrome, so it was counted as a visitor
     # until 23 Aug 2026; it identifies itself and is now excluded.
     "claude/", "electron/", "testclient",
+    # Widened 30 Aug 2026, after a scraper that names none of the markers
+    # above put 6,600 "pageviews" into one morning: 5,075 hits on
+    # /schools/guide at up to 168 a minute, and every area guide visited
+    # exactly once in sequence. None of these strings appears in any real
+    # browser's user agent; they are HTTP libraries, headless runtimes
+    # and crawl services that simply were not on the list. A bot that
+    # fakes a full browser UA still gets through, since nothing about a
+    # request proves a human, but a filter that misses honest automation
+    # is doing less than it can.
+    "scrapy", "python-urllib", "aiohttp", "okhttp", "axios/", "node-fetch",
+    "undici", "got (", "java/", "libwww", "httpclient", "phantomjs",
+    "puppeteer", "playwright", "selenium", "headless", "meta-externalagent",
+    "googleother", "google-extended", "amazonbot", "anthropic-ai",
+    "perplexitybot", "youbot", "cohere-ai", "dataforseobot", "serpstatbot",
+    "barkrowler", "zoominfobot", "dotnetcrawler", "netcraft", "expanse",
+    "censys", "paloaltonetworks", "internetmeasurement",
 )
 
 
