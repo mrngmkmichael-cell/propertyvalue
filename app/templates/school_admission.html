@@ -16,8 +16,12 @@
 
 <span class="kicker">Admissions</span>
 <h1>{{ school.name }}</h1>
+{# The dek is built from this school's register entry, so no two read
+   alike. This page shares a template with 615 others and was measured
+   at 71% shared phrasing (30 Aug 2026): the cure is more of the
+   school's own facts and fewer sentences every school gets. #}
 <p class="dek">
-    {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}.
+    {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}, taking ages {{ school.age_low }} to {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} on roll{% endif %}.
     {% if school.ofsted_rating_label %}Rated {{ school.ofsted_rating_label }} by Ofsted{% if school.ofsted_inspection_date %}
     in {{ school.ofsted_inspection_date.strftime("%B %Y") }}{% endif %}.{% endif %}
 </p>
@@ -29,22 +33,56 @@
         <span class="admission-unit">miles</span>
     </div>
     <p class="section-sub">
-        In the {{ school.academic_year }} admissions round, the furthest-away child offered a place at
-        {{ school.name }} lived <strong>{{ school.miles }} miles</strong> from the school.
-        Published by {{ school.authority }}.
+        In the {{ school.academic_year }} round, the furthest-away child offered a place at
+        {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
+        {{ school.authority }}.
     </p>
 
     {# The honest part, and the reason this page exists. Most sites draw
        a circle and call it a catchment; there usually isn't one. #}
     <div class="notice">
         <strong>This is not a catchment area.</strong>
-        Most English schools do not have one. When a school is oversubscribed, places are offered
-        outward from it until they run out, so the distance changes every year with how many
-        children applied and where they lived. A figure of {{ school.miles }} miles last year does
-        not guarantee a place at {{ school.miles }} miles this year, and living closer than that is
-        not a guarantee either. Treat it as the best available evidence, not a boundary.
+        Most English schools do not have one. When {{ school.name }} is oversubscribed, places go
+        outward from the school until they run out, so the distance moves each year with how many
+        families applied and where they lived. {{ school.miles }} miles was last year's outcome,
+        not a boundary and not a promise.
     </div>
 </section>
+
+{% set has_profile = school.admissions_policy or school.religious_character or school.has_sixth_form or school.capacity or school.trust_name %}
+{% if has_profile %}
+<section class="report-section">
+    <h2>What kind of school this is</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <tbody>
+                {% if school.admissions_policy and school.admissions_policy not in ("Not applicable", "Unknown") %}
+                <tr><td><strong>Admissions</strong></td><td>{{ school.admissions_policy }}</td></tr>
+                {% endif %}
+                {% if school.religious_character %}
+                <tr><td><strong>Religious character</strong></td><td>{{ "No religious character" if school.religious_character in ("None", "Does not apply") else school.religious_character }}</td></tr>
+                {% endif %}
+                {% if school.has_sixth_form and school.has_sixth_form not in ("Not applicable", "Unknown") %}
+                <tr><td><strong>Sixth form</strong></td><td>{{ school.has_sixth_form }}</td></tr>
+                {% endif %}
+                {% if school.capacity and school.number_on_roll %}
+                <tr>
+                    <td><strong>How full</strong></td>
+                    <td>{{ "{:,}".format(school.number_on_roll) }} pupils in {{ "{:,}".format(school.capacity) }} places ({{ school.occupancy_pct }}% full{% if school.occupancy_pct > 100 %}, over capacity{% endif %})</td>
+                </tr>
+                {% endif %}
+                {% if school.trust_name %}
+                <tr><td><strong>Trust</strong></td><td>{{ school.trust_name }}</td></tr>
+                {% endif %}
+                {% if school.local_authority %}
+                <tr><td><strong>Local authority</strong></td><td>{{ school.local_authority }}</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">Department for Education register (GIAS).</p>
+</section>
+{% endif %}
 
 {% if school.ks4 or school.ks2 or school.fsm_eligible_pct is not none %}
 <section class="report-section">
@@ -76,16 +114,75 @@
                     <td>{{ school.ks2.rwm_expected_pct }}% in reading, writing and maths ({{ school.ks2.year }})</td>
                 </tr>
                 {% endif %}
-                {% if school.fsm_eligible_pct is not none %}
+            </tbody>
+        </table>
+    </div>
+    {% if school.ks2_trend or school.ks4_trend %}
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Year</th><th class="num">{{ "Progress 8" if school.ks4_trend else "Meeting the expected standard" }}</th></tr></thead>
+            <tbody>
+                {% for t in (school.ks4_trend or school.ks2_trend) %}
                 <tr>
-                    <td><strong>Free school meals</strong></td>
-                    <td>{{ school.fsm_eligible_pct }}% of pupils eligible</td>
+                    <td>{{ t.year }}</td>
+                    <td class="num">{% if school.ks4_trend %}{{ "%+.2f"|format(t.progress8) if t.progress8 is not none else "not published" }}{% else %}{{ (t.rwm_expected_pct ~ "%") if t.rwm_expected_pct is not none else "not published" }}{% endif %}</td>
                 </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    <p class="section-sub">Ofsted, and the Department for Education's published performance data.</p>
+</section>
+{% endif %}
+
+{% if school.fsm_eligible_pct is not none or school.eal_pct is not none or school.female_pct is not none %}
+<section class="report-section">
+    <h2>Who goes to {{ school.name }}</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <tbody>
+                {% if school.female_pct is not none and school.male_pct is not none %}
+                <tr><td><strong>Girls and boys</strong></td><td>{{ school.female_pct }}% girls, {{ school.male_pct }}% boys</td></tr>
+                {% endif %}
+                {% if school.eal_pct is not none %}
+                <tr><td><strong>English as an additional language</strong></td><td>{{ school.eal_pct }}% of pupils</td></tr>
+                {% endif %}
+                {% if school.fsm_eligible_pct is not none %}
+                <tr><td><strong>Free school meals</strong></td><td>{{ school.fsm_eligible_pct }}% of pupils eligible</td></tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
-    <p class="section-sub">Ofsted, and the Department for Education's published performance data.</p>
+    <p class="section-sub">DfE school census, most recent published year.</p>
+</section>
+{% endif %}
+
+{% if school.destinations %}
+<section class="report-section">
+    <h2>Where {{ school.name }}'s Year 11 went next</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <tbody>
+                {% for label, value in [
+                    ("Stayed for the sixth form", school.destinations.school_sixth_form_pct),
+                    ("Sixth-form college", school.destinations.sixth_form_college_pct),
+                    ("Further education college", school.destinations.further_education_pct),
+                    ("Apprenticeship", school.destinations.apprenticeship_pct),
+                    ("Employment", school.destinations.employment_pct),
+                    ("No sustained destination recorded", school.destinations.not_sustained_pct),
+                ] %}
+                {% if value is not none %}
+                <tr><td>{{ label }}</td><td class="num">{{ value }}%</td></tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        DfE destination measures, {{ school.destinations.year }}. Broad categories only: the
+        DfE does not publish which named schools or colleges pupils moved to.
+    </p>
 </section>
 {% endif %}
 
@@ -93,9 +190,8 @@
 <section class="report-section">
     <h2>Postcode districts within {{ school.miles }} miles</h2>
     <p class="section-sub">
-        These districts have their centre inside last year's distance. A district covers a wide
-        area, so being listed here does not mean a particular address is in range. Check the
-        address itself.
+        Districts whose centre falls inside {{ school.academic_year }}'s distance. A district is
+        wide, so check the address itself rather than the list.
     </p>
     <div class="tablewrap">
         <table class="tx-table">
@@ -117,9 +213,8 @@
 <section class="report-section">
     <h2>Checking a specific address</h2>
     <p class="section-sub">
-        The distance that matters is the one from this school to the front door you are considering.
-        Put the postcode in and the report works it out, alongside flood risk, sold prices, crime
-        and thirty-odd other checks on the same address.
+        Put a postcode in and the report measures the distance from {{ school.name }} to that
+        front door, alongside the other checks on the same address.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
@@ -136,29 +231,32 @@
         <details class="faq-item">
             <summary>What is the catchment area for {{ school.name }}?</summary>
             <p>
-                It does not have one in the sense most people mean. Like most English schools, when
-                it is oversubscribed it offers places outward from the school until they run out.
-                The nearest thing to an answer is that the furthest child admitted in
-                {{ school.academic_year }} lived {{ school.miles }} miles away, according to
+                {{ school.name }} does not have one in the sense most people mean. Like most
+                English schools, an oversubscribed year offers places outward from the school
+                until they run out. The nearest thing to an answer: the furthest child admitted
+                in {{ school.academic_year }} lived {{ school.miles }} miles away, per
                 {{ school.authority }}.
             </p>
         </details>
         <details class="faq-item">
-            <summary>How close do I need to live to get a place?</summary>
+            <summary>How close do I need to live to get a place at {{ school.name }}?</summary>
             <p>
-                Nobody can tell you that in advance, and anyone who says otherwise is guessing.
-                The distance moves every year with the number of applications. {{ school.miles }}
-                miles was enough last year, which makes it the best evidence available, not a
-                promise about next year.
+                Nobody can say in advance, and anyone who does is guessing. {{ school.miles }}
+                miles was enough in {{ school.academic_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %},
+                and at {{ school.occupancy_pct }}% full the school has little slack{% endif %}.
+                The distance moves every year with the number of applications, so treat last
+                year's figure as evidence, not a promise.
             </p>
         </details>
         <details class="faq-item">
-            <summary>Does buying a house nearby guarantee a place?</summary>
+            <summary>Does buying a house near {{ school.name }} guarantee a place?</summary>
             <p>
-                No. Admission criteria usually put looked-after children, siblings and sometimes
-                faith or aptitude criteria ahead of distance, so places can be filled before
-                distance is reached at all. Councils also check that the address is genuinely where
-                the child lives.
+                No. {% if school.admissions_policy and "Selective" in school.admissions_policy %}This
+                is a selective school, so admission turns on the entrance assessment before
+                distance is considered at all.{% else %}Admission criteria usually put
+                looked-after children, siblings{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
+                ahead of distance, so places can be filled before distance is reached.{% endif %}
+                Councils also check that the address is genuinely where the child lives.
             </p>
         </details>
     </div>

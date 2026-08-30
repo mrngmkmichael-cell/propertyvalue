@@ -566,12 +566,25 @@ def admission_profile(urn: int) -> dict | None:
             return None
         detail = session.get(SchoolDetail, urn)
         chars = session.get(SchoolCharacteristics, urn)
-        ks4 = session.scalars(
+        demo = session.get(SchoolDemographics, urn)
+        dest = session.get(SchoolDestinations, urn)
+        # Every published year, newest first, so the page can show how a
+        # result has moved rather than one number floating alone.
+        ks4_years = session.scalars(
             select(Ks4Result).where(Ks4Result.urn == urn).order_by(Ks4Result.academic_year.desc())
-        ).first()
-        ks2 = session.scalars(
+        ).all()
+        ks2_years = session.scalars(
             select(Ks2Result).where(Ks2Result.urn == urn).order_by(Ks2Result.academic_year.desc())
-        ).first()
+        ).all()
+        ks4 = ks4_years[0] if ks4_years else None
+        ks2 = ks2_years[0] if ks2_years else None
+
+        # How full the school is, only when both halves are published:
+        # a percentage against a missing capacity would be a made-up
+        # number.
+        occupancy_pct = None
+        if detail and detail.school_capacity and detail.number_on_roll:
+            occupancy_pct = round(detail.number_on_roll / detail.school_capacity * 100)
 
         return {
             "urn": school.urn,
@@ -597,6 +610,42 @@ def admission_profile(urn: int) -> dict | None:
                     "progress8": ks4.progress8_score, "pupils": ks4.pupil_count} if ks4 else None,
             "ks2": {"year": ks2.academic_year, "rwm_expected_pct": ks2.rwm_expected_pct,
                     "pupils": ks2.pupil_count} if ks2 else None,
+            # Everything below was imported and sitting unused while the
+            # page repeated the same prose as 615 others (measured 71%
+            # shared 8-word phrases on 30 Aug 2026). A school's own
+            # numbers are what makes its page unlike the next school's.
+            "age_low": detail.age_low if detail else None,
+            "age_high": detail.age_high if detail else None,
+            "gender": detail.gender if detail else "",
+            "religious_character": detail.religious_character if detail else "",
+            "admissions_policy": detail.admissions_policy if detail else "",
+            "has_sixth_form": detail.has_sixth_form if detail else "",
+            "capacity": detail.school_capacity if detail else None,
+            "number_on_roll": detail.number_on_roll if detail else None,
+            "occupancy_pct": occupancy_pct,
+            "trust_name": detail.trust_name if detail else "",
+            "local_authority": detail.local_authority if detail else "",
+            "eal_pct": demo.eal_pct if demo else None,
+            "female_pct": demo.female_pct if demo else None,
+            "male_pct": demo.male_pct if demo else None,
+            "destinations": {
+                "year": dest.academic_year,
+                "school_sixth_form_pct": dest.school_sixth_form_pct,
+                "sixth_form_college_pct": dest.sixth_form_college_pct,
+                "further_education_pct": dest.further_education_pct,
+                "apprenticeship_pct": dest.apprenticeship_pct,
+                "employment_pct": dest.employment_pct,
+                "not_sustained_pct": dest.not_sustained_pct,
+            } if dest else None,
+            "ks4_trend": [
+                {"year": r.academic_year, "progress8": r.progress8_score,
+                 "attainment8": r.attainment8_avg}
+                for r in ks4_years
+            ] if len(ks4_years) > 1 else [],
+            "ks2_trend": [
+                {"year": r.academic_year, "rwm_expected_pct": r.rwm_expected_pct}
+                for r in ks2_years
+            ] if len(ks2_years) > 1 else [],
         }
 
 

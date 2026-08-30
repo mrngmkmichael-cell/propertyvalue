@@ -996,6 +996,16 @@
             Weighing this up against somewhere else?
             <a href="/compare?postcode={{ location.postcode | urlencode }}">Put {{ location.postcode }} side by side with another postcode &rarr;</a>
         </p>
+        {# The review ask lives here, in the product, rather than in an
+           email: the change-alert footer promises readers they only
+           hear from us when something changed, and a review request is
+           not that. One quiet line at the natural end of a read, a
+           plain link, no script. 11 people had used reports before
+           anyone was asked anything (30 Aug 2026). #}
+        <p class="keep-exploring-compare">
+            Did this report help?
+            <a href="https://uk.trustpilot.com/review/ukpropertyinsight.co.uk" rel="noopener nofollow" target="_blank">A sentence on Trustpilot helps the next buyer find it &rarr;</a>
+        </p>
     </section>
 
     <dialog class="report-modal" id="modal-council-tax">

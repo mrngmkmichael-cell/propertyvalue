@@ -14,10 +14,18 @@
 <h1>Fee-paying schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
 
 {% if schools %}
+{# Built from this district's own table, so no two deks read alike:
+   these pages were measured at 58% shared phrasing across districts
+   (30 Aug 2026) and the fixed sentences are what Google folds together. #}
+{% set _nearest = schools[0] %}
+{% set _selective = schools | selectattr("selective") | list | length %}
+{% set _single_sex = schools | rejectattr("gender", "in", ("Mixed", "", None)) | list | length %}
 <p class="dek">
-    {{ schools | length }} within {{ radius_miles }} miles of the district's centre, nearest first.
-    Age ranges are each school's own statutory range, which is what decides whether it takes a
-    given year group.
+    {{ schools | length }} fee-paying school{{ "s" if schools | length != 1 }} sit{{ "s" if schools | length == 1 }} within {{ radius_miles }} miles of central {{ outcode }},
+    the nearest being {{ _nearest.name }} at {{ (_nearest.distance_m / 1609.34) | round(1) }} mi{% if _selective %},
+    {{ _selective }} of them selective{% endif %}{% if _single_sex %}, {{ _single_sex }} single-sex{% endif %}.
+    Nearest first; each age range is the school's own statutory range, which decides whether it
+    takes a given year group.
 </p>
 
 <div class="tablewrap">
@@ -52,19 +60,19 @@
    reads as a school that failed an inspection, so the reason sits
    where it cannot be missed. #}
 <div class="notice">
-    <strong>None of these carries an Ofsted grade, and that is not a bad sign.</strong>
-    Fee-paying schools are inspected by the Independent Schools Inspectorate, not Ofsted, and the
-    ISI publishes no open data feed. A missing rating here means we cannot see one, never that the
-    school was judged poorly. Fees are not published as open data either, so they are not shown.
+    <strong>No Ofsted grades here, and that is not a bad sign.</strong>
+    Fee-paying schools like {{ _nearest.name }} are inspected by the Independent Schools
+    Inspectorate rather than Ofsted, and the ISI publishes no open data feed, so no rating exists
+    for us to show. Fees are not open data either.
 </div>
 
 <section class="report-section">
     <h2>The state schools alongside them</h2>
     <p class="section-sub">
-        The same area holds <strong>{{ state_primary }}</strong> state primary and
-        <strong>{{ state_secondary }}</strong> state secondary schools, and those do carry Ofsted
-        ratings and exam results.
-        <a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} &rarr;</a>
+        {{ outcode }} also holds <strong>{{ state_primary }}</strong> state primary and
+        <strong>{{ state_secondary }}</strong> state secondary school{{ "s" if state_secondary != 1 }},
+        with Ofsted ratings and exam results.
+        <a href="/schools/guide?q={{ outcode }}">The full school breakdown for {{ outcode }} &rarr;</a>
     </p>
 </section>
 {% else %}
@@ -84,9 +92,8 @@
 <section class="report-section">
     <h2>Checking a specific address</h2>
     <p class="section-sub">
-        Distance from a school is measured to a front door, not to a district's centre. Put a
-        postcode in and the report works out the real distance to each school, alongside flood
-        risk, sold prices, crime and the rest.
+        Put a postcode in and the report measures each school's distance from that front door
+        rather than from central {{ outcode }}.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">

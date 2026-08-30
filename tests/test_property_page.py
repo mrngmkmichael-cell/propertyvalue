@@ -405,3 +405,34 @@ def test_district_diff_never_invents_a_median_the_guide_would_not_show():
     ]
     # A sale count that went down (a correction upstream) is not "new sales".
     assert app_main._district_changes({"sales_count": 9}, {"sales_count": 4}) == []
+
+
+def test_the_cold_report_wait_is_recorded_not_invisible(client, fake_report):
+    """The middleware records only status 200, so anyone who abandoned
+    during the 202 "building your report" wait left no row at all: the
+    funnel read "searched, never saw a report" with nothing to say why.
+    The wait is now a synthetic pageview, like the paywall moment."""
+    from app.db import get_session
+    from app.main import BUILDING_PATH
+    from app.models import PageView
+
+    fake_report()
+    browser = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"}
+
+    with get_session() as s:
+        before = s.query(PageView).filter(PageView.path == BUILDING_PATH).count()
+
+    r = client.get("/property?postcode=M14%205TG", headers=browser)
+    assert r.status_code == 202
+    assert "building" in r.text.lower()
+
+    with get_session() as s:
+        after = s.query(PageView).filter(PageView.path == BUILDING_PATH).count()
+    assert after == before + 1, "the wait must leave a row"
+
+    # The crawler path is unchanged: blocking render, no synthetic row.
+    r2 = client.get("/property?postcode=M14%205TG")
+    assert r2.status_code == 200
+    with get_session() as s:
+        assert s.query(PageView).filter(PageView.path == BUILDING_PATH).count() == after

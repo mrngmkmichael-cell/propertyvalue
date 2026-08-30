@@ -160,6 +160,13 @@ if indexnow.key():
 # it exists so the admin funnel can count "hit the wall".
 PAYWALL_PATH = "/paywall"
 
+# Synthetic pageview path for the 202 "building your report" page. Not a
+# real URL either: the middleware records only status 200, so without
+# this row a visitor who searched and abandoned during the cold-report
+# wait left no trace, and the gap between "searched" and "saw a report"
+# could not be measured.
+BUILDING_PATH = "/building-report"
+
 # Search-engine and monitoring crawlers aren't people viewing the site,
 # and with 378 URLs in the sitemap Googlebot alone would otherwise show
 # up as hundreds of "visitors" a day on /admin. The user-agent is only
@@ -1259,8 +1266,14 @@ AREA_GUIDE_SEED_OUTCODES = [
     "CT1", "CT2",
     # Medway
     "ME1", "ME4",
-    # The first four promoted, from the queries visible in the
-    # Search Console screenshots before the full export arrived.
+]
+
+# Districts promoted on evidence rather than intuition. Kept as their
+# own list so anything that wants "the districts Google already shows"
+# (the comparison-page tranche below) can use it without guessing which
+# seed entries were hand-picked. The first four came from queries in the
+# Search Console screenshots; the rest from the first full export.
+GSC_EARNED_OUTCODES = [
     "SM1", "S20", "MK44", "B90",
     # --- Promoted from Search Console, 28 Aug 2026 -------------------
     # Not a guess about which places matter. The first six days of real
@@ -1291,6 +1304,7 @@ AREA_GUIDE_SEED_OUTCODES = [
     "TS19", "TS24", "TW4", "TW9", "WA4", "WA9", "WD24", "WN2", "WN4",
     "WS11", "WS13", "WS3", "WV10", "WV11", "WV4", "YO51",
 ]
+AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
 
 def _sitemap_entries(base: str) -> list[tuple[str, str]]:
@@ -1331,12 +1345,28 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
         (f"{base}/school/{s['urn']}/{s['slug']}", "0.6")
         for s in _sitemap_school_pages(set(outcodes))
     ]
-    # The "M20 or M21" comparison pages are deliberately NOT submitted
-    # yet. They are linked from every area guide and fully crawlable,
-    # but there are ~800 of them and this domain is still getting 21
-    # pages indexed out of what it already offers. They graduate into
-    # the sitemap once the indexed count is climbing, on the same
-    # reasoning that keeps 2,576 districts out of it today.
+    # The 12 per-region price league pages: real Land Registry medians,
+    # one page per region, each row linking to its area guide.
+    entries += [(f"{base}/market/house-prices/{slug}", "0.6") for slug in REGION_SLUGS]
+
+    # Comparison pages, first tranche (30 Aug 2026). The full curated
+    # set is ~1,000 pairs, which is too much to hand a domain still
+    # measured in tens of indexed pages, so only pairs where BOTH sides
+    # are districts Search Console already shows earning impressions
+    # graduate now: the same earned-not-guessed rule the district list
+    # itself grew by. The rest stay linked from every area guide and
+    # fully crawlable, and graduate as the indexed count climbs.
+    earned = set(GSC_EARNED_OUTCODES) & set(outcodes)
+    seen_pairs = set()
+    for oc in sorted(earned):
+        for neighbour in _neighbour_outcodes(oc, limit=6):
+            if neighbour in earned:
+                pair = tuple(sorted((oc, neighbour)))
+                if pair not in seen_pairs:
+                    seen_pairs.add(pair)
+    entries += [
+        (f"{base}/compare/{a}/vs/{b}", "0.5") for a, b in sorted(seen_pairs)
+    ]
     return entries
 
 
@@ -1669,6 +1699,26 @@ async def property_search(request: Request, postcode: str = "", house_number: st
                 ctx["building_postcode"] = b_canonical
                 ctx["building_house_number"] = b_hn
                 ctx["build_sources"] = GATHER_SOURCE_ORDER
+                # The pageview middleware records only status 200, so
+                # until 30 Aug 2026 anyone who abandoned during the
+                # cold-report wait was invisible: their search left no
+                # row at all, and the funnel read "searched, no report"
+                # with nothing to say why. Recorded the same way the
+                # paywall moment is, as a synthetic path, so waiting can
+                # be counted and compared with the finished-report views
+                # that follow it.
+                if not _is_excluded_viewer(request) and db.is_configured():
+                    try:
+                        with db.get_session() as pv_session:
+                            user = auth.current_user(request)
+                            if not _is_admin(user):
+                                pv_session.add(PageView(
+                                    path=BUILDING_PATH,
+                                    user_id=user["id"] if user else None,
+                                ))
+                                pv_session.commit()
+                    except Exception:  # noqa: BLE001 - analytics must never break the page
+                        pass
                 return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
 
     response = await _render_property(request, postcode, house_number)
@@ -4404,7 +4454,9 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         if since is not None:
             pv = pv.where(PageView.created_at >= since)
             users = users.where(User.created_at >= since)
-        visits = session.scalar(pv.where(PageView.path != PAYWALL_PATH)) or 0
+        # Synthetic rows (the paywall moment, the cold-report wait) are
+        # events, not page visits, so they stay out of the top line.
+        visits = session.scalar(pv.where(PageView.path.notin_((PAYWALL_PATH, BUILDING_PATH)))) or 0
         searches = session.scalar(pv.where(PageView.path == "/property")) or 0
         signups = session.scalar(users) or 0
         used_q = select(func.count(func.distinct(PremiumUnlock.user_id)))
@@ -5843,6 +5895,68 @@ def _district_price_table() -> dict:
     costs nothing extra and grows as the prewarm job works through the
     country.
     """
+    rows = _district_price_table_rows()
+    return {
+        "total": len(rows),
+        "cheapest": rows[:DISTRICT_PRICES_SHOWN],
+        "dearest": list(reversed(rows[-DISTRICT_PRICES_SHOWN:])),
+        "median_of_medians": rows[len(rows) // 2]["median"] if rows else None,
+    }
+
+
+# The 12 statistical regions, as slugs a URL can carry. Built from the
+# same region names outcodes.json holds, so a region page can never
+# exist without districts behind it.
+REGION_SLUGS = {
+    "london": "London", "south-east": "South East", "south-west": "South West",
+    "east-of-england": "East of England", "east-midlands": "East Midlands",
+    "west-midlands": "West Midlands",
+    "yorkshire-and-the-humber": "Yorkshire and The Humber",
+    "north-west": "North West", "north-east": "North East",
+    "wales": "Wales", "scotland": "Scotland", "northern-ireland": "Northern Ireland",
+}
+
+
+@app.get("/market/house-prices/{region_slug}")
+async def region_prices(request: Request, region_slug: str):
+    """One region's districts ranked by what homes really sold for.
+
+    The national table shows 25 from each end, which for someone
+    deciding between areas in one region is mostly noise. This is the
+    same medians, already computed for the area guides, filtered to the
+    region and shown in full. Each row links to its area guide, so
+    these pages also stitch the guides together for crawlers."""
+    region = REGION_SLUGS.get(region_slug)
+    context = base_context(request)
+    if region is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+
+    cache_key = ("region_prices", region_slug)
+    cached = _cache.get(cache_key, DISTRICT_PRICES_CACHE_TTL_S)
+    if cached is None:
+        table = await asyncio.to_thread(_district_price_table_rows)
+        wanted = {o["outcode"] for o in ALL_OUTCODES
+                  if (o.get("region") or o.get("country")) == region}
+        rows = [r for r in table if r["outcode"] in wanted]
+        rows.sort(key=lambda r: r["median"])
+        cached = {
+            "region": region,
+            "rows": rows,
+            "total": len(rows),
+            "median_of_medians": rows[len(rows) // 2]["median"] if rows else None,
+        }
+        _cache.set(cache_key, cached)
+    context.update(cached)
+    context["generated_date"] = datetime.date.today().strftime("%d %B %Y")
+    context["canonical_url"] = f"{_public_base_url(request)}/market/house-prices/{region_slug}"
+    context["region_slug"] = region_slug
+    context["other_regions"] = [(s, n) for s, n in REGION_SLUGS.items() if s != region_slug]
+    return templates.TemplateResponse(request, "region_prices.html", context)
+
+
+def _district_price_table_rows() -> list[dict]:
+    """The raw ranked rows behind _district_price_table, shared with the
+    per-region pages so the two can never disagree on a median."""
     prefix = f"area_guide:{AREA_GUIDE_PAYLOAD_VERSION}:"
     rows = []
     with db.get_session() as session:
@@ -5857,24 +5971,17 @@ def _district_price_table() -> dict:
             sales = payload.get("local_sales") or {}
             if not sales.get("enough_for_median"):
                 continue
-            outcode = key[len(prefix):]
             hpi_local = (payload.get("hpi") or {}).get("local_authority") or {}
             rows.append({
-                "outcode": outcode,
+                "outcode": key[len(prefix):],
                 "median": sales["median"],
                 "count": sales["count"],
                 "low": sales.get("low"),
                 "high": sales.get("high"),
                 "district": hpi_local.get("name") or "",
             })
-
     rows.sort(key=lambda r: r["median"])
-    return {
-        "total": len(rows),
-        "cheapest": rows[:DISTRICT_PRICES_SHOWN],
-        "dearest": list(reversed(rows[-DISTRICT_PRICES_SHOWN:])),
-        "median_of_medians": rows[len(rows) // 2]["median"] if rows else None,
-    }
+    return rows
 
 
 @app.get("/market/district-prices")
