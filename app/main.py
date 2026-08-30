@@ -4428,6 +4428,65 @@ def _fmt_change(pct: float | None) -> str:
     return "flat"
 
 
+# Accounts that are not customers: the owner's own, obvious test
+# addresses, and the two Stripe test purchases (both refunded). Counting
+# these as signups or subscribers made every conversion number on /admin
+# quietly wrong: 24 accounts read as 24 prospects when 6 were internal.
+TEST_ACCOUNT_EMAIL_SUFFIXES = ("@example.com", "@example.test", "@ukpropertyinsight.co.uk")
+OWNER_EMAILS = ("mr.ng.m.k.michael@gmail.com",)
+TEST_STRIPE_SUBSCRIPTION_IDS = (
+    "sub_1U6sdxCgR9qEnU7Q6MzgepGM", "sub_1U6rWaCgR9qEnU7QSYzzJh3O",
+)
+
+
+def _test_account_ids(session) -> set[int]:
+    ids = set()
+    for uid, email, sub in session.execute(
+        select(User.id, User.email, User.stripe_subscription_id)
+    ).all():
+        lowered = (email or "").lower()
+        if (lowered in OWNER_EMAILS
+                or any(lowered.endswith(sfx) for sfx in TEST_ACCOUNT_EMAIL_SUFFIXES)
+                or (sub and sub in TEST_STRIPE_SUBSCRIPTION_IDS)):
+            ids.add(uid)
+    return ids
+
+
+# A day of traffic needs at least this many views before its shape is
+# worth judging; below it, "one URL dominated" is three clicks.
+TRAFFIC_SHAPE_MIN_VIEWS = 300
+
+
+def _traffic_day_shape(total: int, top_path: str, top_count: int,
+                       one_hit_paths: int, signed_in: int) -> tuple[bool, str]:
+    """Does one day's traffic look like automation?
+
+    User agents are deliberately not stored, so past rows cannot be
+    reclassified; what a day leaves behind is its shape, and the two
+    real incidents so far each had an unmistakable one. The 30 Aug
+    scraper put 76% of 6,661 views on a single path at up to 168 a
+    minute; the 22 Aug crawl visited 932 distinct guides exactly once
+    each. No human audience produces either.
+
+    Returns (flagged, reason). The reason is shown to the reader,
+    because a flag without its evidence is just another number to
+    trust on faith.
+    """
+    if total < TRAFFIC_SHAPE_MIN_VIEWS:
+        return False, ""
+    top_share = top_count / total
+    # The homepage is exempt from the concentration rule while anyone
+    # was signed in that day: launch and promotion traffic legitimately
+    # piles onto "/" (Product Hunt day was 43% homepage with 53
+    # signed-in views, and people). A scraper hammering the homepage
+    # still gets caught, because scrapers do not log in.
+    if top_share >= 0.4 and (top_path != "/" or signed_in == 0):
+        return True, f"{top_count} of {total} views ({top_share:.0%}) hit {top_path}"
+    if one_hit_paths >= total * 0.6:
+        return True, f"{one_hit_paths} pages visited exactly once, a crawl not an audience"
+    return False, ""
+
+
 def _admin_metrics(session, now: datetime.datetime) -> dict:
     """The query set behind /admin, factored out so the daily Telegram
     summary (see /internal/send-daily-summary below) reads the exact
@@ -4437,6 +4496,16 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     month_start = now - datetime.timedelta(days=30)
 
     m: dict = {}
+    # Every account-based figure excludes these; the page says so and
+    # says how many, because a silently adjusted number is no more
+    # trustworthy than a silently wrong one.
+    test_ids = _test_account_ids(session)
+    m["test_accounts_excluded"] = len(test_ids)
+
+    def _real_users():
+        q = select(func.count()).select_from(User)
+        return q.where(User.id.notin_(test_ids)) if test_ids else q
+
     m["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start)) or 0
     m["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
     m["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
@@ -4445,7 +4514,7 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         select(func.count()).select_from(PageView).where(PageView.created_at >= PAGEVIEW_CLEAN_FROM)
     ) or 0
     m["signups_clean"] = session.scalar(
-        select(func.count()).select_from(User).where(User.created_at >= PAGEVIEW_CLEAN_FROM)
+        _real_users().where(User.created_at >= PAGEVIEW_CLEAN_FROM)
     ) or 0
     m["clean_from"] = PAGEVIEW_CLEAN_FROM
 
@@ -4455,7 +4524,7 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # (accounts), otherwise events.
     def _funnel(since):
         pv = select(func.count()).select_from(PageView)
-        users = select(func.count()).select_from(User)
+        users = _real_users()
         if since is not None:
             pv = pv.where(PageView.created_at >= since)
             users = users.where(User.created_at >= since)
@@ -4465,10 +4534,14 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         searches = session.scalar(pv.where(PageView.path == "/property")) or 0
         signups = session.scalar(users) or 0
         used_q = select(func.count(func.distinct(PremiumUnlock.user_id)))
+        if test_ids:
+            used_q = used_q.where(PremiumUnlock.user_id.notin_(test_ids))
         if since is not None:
             used_q = used_q.where(PremiumUnlock.created_at >= since)
         used_any = session.scalar(used_q) or 0
         wall_q = select(func.count(func.distinct(PageView.user_id))).where(PageView.path == PAYWALL_PATH)
+        if test_ids:
+            wall_q = wall_q.where(PageView.user_id.notin_(test_ids))
         if since is not None:
             wall_q = wall_q.where(PageView.created_at >= since)
         hit_wall = session.scalar(wall_q) or 0
@@ -4494,12 +4567,12 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["share_views"] = session.scalar(select(func.coalesce(func.sum(ShareLink.views), 0))) or 0
     m["share_sharers"] = session.scalar(select(func.count(func.distinct(ShareLink.user_id)))) or 0
 
-    m["signups_today"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= today_start)) or 0
-    m["signups_week"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= week_start)) or 0
-    m["signups_month"] = session.scalar(select(func.count()).select_from(User).where(User.created_at >= month_start)) or 0
-    m["signups_total"] = session.scalar(select(func.count()).select_from(User)) or 0
+    m["signups_today"] = session.scalar(_real_users().where(User.created_at >= today_start)) or 0
+    m["signups_week"] = session.scalar(_real_users().where(User.created_at >= week_start)) or 0
+    m["signups_month"] = session.scalar(_real_users().where(User.created_at >= month_start)) or 0
+    m["signups_total"] = session.scalar(_real_users()) or 0
 
-    m["premium_total"] = session.scalar(select(func.count()).select_from(User).where(User.is_premium.is_(True))) or 0
+    m["premium_total"] = session.scalar(_real_users().where(User.is_premium.is_(True))) or 0
     # Free unlocks spent so far, and how many accounts have used all
     # of theirs - the two numbers that say whether the free allowance is
     # doing its job of showing people the product.
@@ -4515,9 +4588,10 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         )
     ) or 0
 
-    plan_rows = session.execute(
-        select(User.plan, func.count()).where(User.is_premium.is_(True)).group_by(User.plan)
-    ).all()
+    plan_q = select(User.plan, func.count()).where(User.is_premium.is_(True))
+    if test_ids:
+        plan_q = plan_q.where(User.id.notin_(test_ids))
+    plan_rows = session.execute(plan_q.group_by(User.plan)).all()
     m["plan_breakdown"] = [{"plan": p or "Comped / no plan on file", "count": c} for p, c in plan_rows]
 
     # Daily pageviews and signups for the last 14 days, zero-filled so
@@ -4527,13 +4601,38 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # however many rows the query actually returned.
     date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(13, -1, -1)]
 
-    daily_rows = session.execute(
-        select(func.date(PageView.created_at), func.count())
+    # Raw rows rather than a grouped count, because a count cannot say
+    # whether a day was an audience or one scraper: for that, each day
+    # needs its path distribution. Fourteen days is at most a few tens
+    # of thousands of rows, which is nothing.
+    raw_rows = session.execute(
+        select(PageView.created_at, PageView.path, PageView.user_id)
         .where(PageView.created_at >= today_start - datetime.timedelta(days=13))
-        .group_by(func.date(PageView.created_at))
     ).all()
-    pageview_counts = {str(d): c for d, c in daily_rows}
-    m["daily_pageviews"] = [{"date": str(d), "count": pageview_counts.get(str(d), 0)} for d in date_range]
+    by_day: dict = {}
+    for created, path, user_id in raw_rows:
+        day = by_day.setdefault(str(created.date()), {"paths": {}, "signed_in": 0})
+        day["paths"][path] = day["paths"].get(path, 0) + 1
+        if user_id:
+            day["signed_in"] += 1
+
+    m["daily_pageviews"] = []
+    pageview_counts = {}
+    for d in date_range:
+        key = str(d)
+        day = by_day.get(key, {"paths": {}, "signed_in": 0})
+        total = sum(day["paths"].values())
+        pageview_counts[key] = total
+        top_path, top_count = ("", 0)
+        if day["paths"]:
+            top_path, top_count = max(day["paths"].items(), key=lambda kv: kv[1])
+        one_hit = sum(1 for c in day["paths"].values() if c == 1)
+        flagged, reason = _traffic_day_shape(total, top_path, top_count, one_hit, day["signed_in"])
+        m["daily_pageviews"].append({
+            "date": key, "count": total, "distinct": len(day["paths"]),
+            "signed_in": day["signed_in"], "flagged": flagged, "reason": reason,
+        })
+    m["flagged_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["flagged"])
 
     signup_rows = session.execute(
         select(func.date(User.created_at), func.count())
@@ -4568,6 +4667,11 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     daily_counts = [d["count"] for d in m["daily_pageviews"]]
     m["pageviews_avg_14d"] = round(statistics.mean(daily_counts), 1) if daily_counts else 0
     m["pageviews_stdev_14d"] = round(statistics.pstdev(daily_counts), 1) if len(daily_counts) > 1 else 0
+    # The same average with automation-shaped days left out: the number
+    # to compare a normal day against. The flagged days stay visible in
+    # the chart; hiding them would be its own kind of lie.
+    unflagged = [d["count"] for d in m["daily_pageviews"] if not d["flagged"]]
+    m["pageviews_avg_unflagged"] = round(statistics.mean(unflagged), 1) if unflagged else 0
 
     # Top pages in the last 30 days - what's actually getting looked at.
     top_pages_rows = session.execute(

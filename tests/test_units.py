@@ -608,3 +608,63 @@ def test_seo_title_drops_the_council_name_rather_than_truncating():
     still_long = seo_title("x" * 50, " middle", ": " + "y" * 30)
     assert " middle" not in still_long
     assert len(still_long) < len("x" * 50 + " middle" + ": " + "y" * 30)
+
+
+def test_traffic_shape_flags_the_two_real_incidents_and_nothing_normal():
+    """The classifier is calibrated on the two floods that actually
+    happened, and must stay quiet for every legitimate day so far."""
+    from app.main import _traffic_day_shape
+
+    # 30 Aug: 5,075 of 6,661 views on /schools/guide.
+    flagged, reason = _traffic_day_shape(6661, "/schools/guide", 5075, 1548, 0)
+    assert flagged and "/schools/guide" in reason and "76%" in reason
+
+    # 22 Aug: 932 distinct guides visited once each.
+    flagged, reason = _traffic_day_shape(2607, "/", 463, 1900, 40)
+    assert flagged and "exactly once" in reason
+
+    # A launch-day spike concentrated on the homepage is people: the
+    # real Product Hunt day was 43% homepage WITH signed-in views, so
+    # homepage concentration alone must not flag while anyone that day
+    # was logged in. The first version flagged the launch, which is the
+    # classifier calling the site's best day fake.
+    assert _traffic_day_shape(1014, "/", 436, 200, 53) == (False, "")
+    # The same concentration with nobody signed in all day is a bot
+    # hammering the homepage, and does flag.
+    flagged, _ = _traffic_day_shape(1014, "/", 436, 200, 0)
+    assert flagged
+
+    # A quiet day can never be flagged, whatever its shape: three
+    # clicks on one URL is someone reloading, not a scraper.
+    assert _traffic_day_shape(120, "/area/M14", 118, 1, 0) == (False, "")
+
+
+def test_admin_figures_do_not_count_test_accounts(client):
+    """24 accounts read as 24 prospects when 6 were the owner's own or
+    test data. Every account figure the admin page shows must exclude
+    them, and say how many it excluded."""
+    import datetime
+
+    from app import main as app_main
+    from app.db import get_session
+
+    client.post("/signup", data={"email": "seed-bot@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    client.post("/signup", data={"email": "genuine.person@realmail.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+
+    with get_session() as s:
+        m = app_main._admin_metrics(s, datetime.datetime.now(datetime.timezone.utc))
+
+    assert m["test_accounts_excluded"] >= 1
+    signup_stage = next(st for st in m["funnel_all"] if st["label"] == "Signed up")
+    # The genuine signup counts; the example.test one does not.
+    with get_session() as s:
+        total_rows = len(app_main._test_account_ids(s)) + signup_stage["count"]
+        from app.models import User
+        from sqlalchemy import select, func
+        all_users = s.scalar(select(func.count()).select_from(User))
+    assert signup_stage["count"] < all_users
+    assert total_rows == all_users

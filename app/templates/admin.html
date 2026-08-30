@@ -65,7 +65,8 @@
             <span class="feature-card-blurb">people who opened a report someone sent them</span>
         </div>
     </div>
-    <p class="section-sub" style="margin-top: 1rem;">"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.</p>
+    <p class="section-sub" style="margin-top: 1rem;">"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.
+    {% if test_accounts_excluded %}Every account figure on this page excludes {{ test_accounts_excluded }} internal and test account{{ 's' if test_accounts_excluded != 1 }} (the owner's own, example.* addresses, and the two refunded Stripe test purchases), so these are customers, not noise.{% endif %}</p>
 </section>
 
 <section class="landing-section">
@@ -90,16 +91,28 @@
     </div>
 
     {% if daily_pageviews %}
+    {# Amber bars are days whose traffic has the shape of automation:
+       one URL taking most of the day, or a crawl visiting everything
+       once. The count is kept and shown, never subtracted, because
+       user agents are not stored and a guess dressed as a correction
+       would be worse than an honest raw number with a flag on it. #}
     <div style="display:flex; align-items:flex-end; gap:4px; height:100px; margin-top:1.5rem; padding:0 0.25rem;">
         {% set max_count = daily_pageviews | map(attribute='count') | max %}
         {% for d in daily_pageviews %}
-        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;" title="{{ d.date }}: {{ d.count }}">
-            <div style="width:100%; background:var(--accent); border-radius:3px 3px 0 0; height:{{ (d.count / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;"
+             title="{{ d.date }}: {{ d.count }} views, {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}">
+            <div style="width:100%; background:{{ 'var(--warn)' if d.flagged else 'var(--accent)' }}; border-radius:3px 3px 0 0; height:{{ (d.count / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
             <span style="font-size:0.6rem; color:var(--ink-faint);">{{ d.date[5:] }}</span>
         </div>
         {% endfor %}
     </div>
-    <p class="section-sub">Last 14 days</p>
+    <p class="section-sub">
+        Last 14 days. Days that look like people average
+        <strong>{{ pageviews_avg_unflagged }}</strong> views;
+        {% if flagged_days_14d %}the {{ flagged_days_14d }} amber day{{ 's' if flagged_days_14d != 1 }} carr{{ 'y' if flagged_days_14d != 1 else 'ies' }} an
+        automation pattern (hover a bar for the evidence) and {{ 'are' if flagged_days_14d != 1 else 'is' }} left out of that
+        average, though never out of the counts.{% else %}no day in this window shows an automation pattern.{% endif %}
+    </p>
     {% endif %}
 </section>
 
