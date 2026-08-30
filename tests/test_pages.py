@@ -540,24 +540,27 @@ def test_the_pricing_page_never_sends_a_new_account_back_to_itself(client):
     assert template.count('href="/signup?next=/"') == 2
 
 
-def test_the_trustpilot_count_matches_the_reviews_actually_quoted(client):
-    """The score and count are claims about numbers, so they name their
-    source and link to it. The count is deliberately higher than the
-    number quoted (one review is a question about schools, not a comment
-    on the site), which is honest only while the link is there for
-    anyone to check."""
+def test_trustpilot_brand_stays_within_their_guidelines(client):
+    """Trustpilot's compliance team wrote on 31 Aug 2026: no unofficial
+    widget, TrustScore, star rating or review count outside their own
+    widgets, 7 days to fix, consumer alert threatened for repeats. The
+    official widget is ruled out by the privacy promise, so the page
+    shows verbatim quotes and a plain link, and this test keeps every
+    flagged element from coming back."""
     from app.main import TRUSTPILOT
 
     body = client.get("/").text
     assert TRUSTPILOT["profile_url"] in body
-    assert f"{TRUSTPILOT['review_count']} reviews" in body
     for review in TRUSTPILOT["reviews"]:
         assert review["who"] in body
-        # Quoted verbatim: no silent tidying of someone else's words.
         assert review["quote"][:40] in body
 
-    # Never claim more quotes than reviews.
-    assert len(TRUSTPILOT["reviews"]) <= TRUSTPILOT["review_count"]
+    # The elements the notice named, gone and staying gone.
+    assert "lx-stars" not in body
+    assert "TrustScore" not in body
+    lowered = body.lower()
+    for banned in ("rated 4", "from 3 reviews", "out of 5"):
+        assert banned not in lowered, f"{banned!r} reads as a score or count"
 
 
 def test_no_third_party_script_runs_on_the_site(client):
@@ -569,30 +572,6 @@ def test_no_third_party_script_runs_on_the_site(client):
         body = client.get(path).text
         for src in re.findall(r'<script[^>]+src="([^"]+)"', body):
             assert src.startswith("/"), f"{path} loads an off-site script: {src}"
-
-
-def test_only_the_rated_reviews_show_stars(client):
-    """Five stars means someone gave five stars. The Reddit quotes on
-    the same row were never rated, so they show none rather than
-    borrowing the Trustpilot ones' rating."""
-    import re
-
-    from app.main import TRUSTPILOT
-
-    body = client.get("/").text
-    figures = re.findall(r"<figure class=\"lx-voice\">(.*?)</figure>", body, re.S)
-    rated = [f for f in figures if "lx-stars" in f]
-
-    assert len(figures) == 4, "two Trustpilot reviews and two Reddit quotes"
-    assert len(rated) == len(TRUSTPILOT["reviews"])
-    for figure, review in zip(rated, TRUSTPILOT["reviews"]):
-        assert figure.count("<svg") == review["stars"]
-        assert f'aria-label="Rated {review["stars"]} out of 5"' in figure
-
-    # A quote nobody rated must not carry a rating.
-    for figure in figures:
-        if "r/HousingUK" in figure or ">Reddit<" in figure:
-            assert "lx-stars" not in figure
 
 
 def test_the_extension_page_links_to_the_real_store_listing(client):

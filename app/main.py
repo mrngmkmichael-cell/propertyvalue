@@ -1120,8 +1120,12 @@ STRIP_POSTCODES = ["M1 1AE", "LS1 4DY", "SW1A 1AA", "B1 1BD", "E14 9PR"]
 # the total says 3 and only two are quoted.
 TRUSTPILOT = {
     "profile_url": "https://uk.trustpilot.com/review/ukpropertyinsight.co.uk",
-    "score": "4.0",
-    "review_count": 3,
+    # No score, star rating or review count, ON PURPOSE: Trustpilot's
+    # brand guidelines reserve those for their official widgets, and a
+    # compliance notice (31 Aug 2026, 7-day deadline, consumer-alert
+    # threat) confirmed they enforce it. The official widget is itself
+    # ruled out by the privacy page's no-third-party-scripts promise,
+    # so what this site may show is verbatim quotes and a plain link.
     "read_on": "27 August 2026",
     # Verbatim, including the reviewer's own spelling. Correcting someone
     # else's words silently is not ours to do.
@@ -1133,12 +1137,12 @@ TRUSTPILOT = {
         {
             "quote": ("A great deal honestly compared to other competitors on the market. Very "
                       "intuative UX and made it very easy to look for the exact criterias."),
-            "who": "rueben yu", "where": "Trustpilot, 25 August 2026", "stars": 5,
+            "who": "rueben yu", "where": "Trustpilot, 25 August 2026",
         },
         {
             "quote": ("Brilliant website. Convenient and easy to use. Put in the post code and you "
                       "will have all useful information in one place."),
-            "who": "AH", "where": "Trustpilot, 27 August 2026", "stars": 5,
+            "who": "AH", "where": "Trustpilot, 27 August 2026",
         },
     ],
 }

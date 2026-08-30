@@ -393,13 +393,6 @@
                 {"quote": "I used to build exactly this professionally. You're on the right path.", "who": "Former property-data professional", "where": "Reddit"}
             ] %}
             <figure class="lx-voice">
-                {% if v.stars %}
-                <p class="lx-stars" role="img" aria-label="Rated {{ v.stars }} out of 5">
-                    {%- for _ in range(v.stars) -%}
-                    <svg viewBox="0 0 20 19" aria-hidden="true" focusable="false"><path d="M10 0l2.47 6.15 6.61.4-5.1 4.23 1.65 6.42L10 13.62 4.37 17.2l1.65-6.42-5.1-4.23 6.61-.4z"/></svg>
-                    {%- endfor -%}
-                </p>
-                {% endif %}
                 <blockquote>&ldquo;{{ v.quote }}&rdquo;</blockquote>
                 <figcaption>
                     <span class="lx-voice-avatar" aria-hidden="true">{{ v.who[0] | upper }}</span>
@@ -414,11 +407,16 @@
         {# The count is a claim about a number, so it names where the
            number came from and links to it. Three is a small number and
            saying so plainly is better than implying more. #}
+        {# Deliberately NO TrustScore, star rating or review count here.
+           Trustpilot's brand guidelines reserve those for their own
+           widgets (compliance notice received 31 Aug 2026, 7-day
+           deadline), and the widget is ruled out by the privacy
+           promise. Verbatim quotes with a plain link are what remain
+           available, and are honestly enough. #}
         <p class="lx-voices-source">
-            Rated <strong>{{ trustpilot.score }}</strong> from
-            {{ trustpilot.review_count }} review{{ "s" if trustpilot.review_count != 1 }} on
-            <a href="{{ trustpilot.profile_url }}" rel="noopener nofollow" target="_blank">Trustpilot</a>,
-            where every one of them can be read in full.
+            The first two are reviews from
+            <a href="{{ trustpilot.profile_url }}" rel="noopener nofollow" target="_blank">our Trustpilot page</a>,
+            where every review can be read in full.
         </p>
     </div>
 </section>
