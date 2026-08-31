@@ -27,6 +27,7 @@ from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
@@ -1027,6 +1028,30 @@ async def not_found_handler(request: Request, exc: StarletteHTTPException):
     # doesn't route back through the middleware chain correctly and
     # crashes to an unhandled 500 instead of the proper status code.
     return await default_http_exception_handler(request, exc)
+
+
+@app.exception_handler(OperationalError)
+async def database_down_handler(request: Request, exc: OperationalError):
+    """The database is unreachable (Neon quota cut-off, 31 Aug 2026, or
+    any future outage). The pages built from our own tables cannot
+    render, but "something went wrong" with a 500 is the wrong story:
+    nothing is broken in the code, and a 503 with Retry-After tells
+    both crawlers and humans the truth, that this is temporary. Google
+    treats a 503 as "come back later" and keeps the page indexed; a
+    500 that persists gets pages dropped.
+    """
+    logging.error("database unavailable serving %s: %s", request.url.path, str(exc)[:200])
+    if IS_PRODUCTION and telegram.is_configured():
+        if _cache.get(("err_alert", "db-down"), 1800) is None:
+            _cache.set(("err_alert", "db-down"), True)
+            asyncio.create_task(telegram.send_message(
+                "⚠️ Database unreachable, serving 503s on data pages: " + str(exc)[:200]
+            ))
+    response = templates.TemplateResponse(
+        request, "503_data.html", base_context(request), status_code=503
+    )
+    response.headers["Retry-After"] = "600"
+    return response
 
 
 @app.exception_handler(Exception)

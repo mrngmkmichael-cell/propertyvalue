@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Data temporarily unavailable | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block content %}
+<span class="kicker">503</span>
+<h1>The data behind this page is temporarily unavailable</h1>
+<p class="dek">
+    This page is built from our own database, which is not reachable right now.
+    The rest of the site still works, and nothing about this affects the accuracy
+    of what we publish: it is a plumbing problem, not a data problem.
+</p>
+<p class="section-sub">Try again in a few minutes. <a href="/">Back to search</a></p>
+{% endblock %}
