@@ -17,6 +17,37 @@
 </form>
 {% endif %}
 
+{# Render kills an instance with status 137 when it runs out of memory,
+   and the only place that was visible was a dashboard graph. Here it is
+   on the page you already read every day. #}
+{% if process_memory and process_memory.rss_mb %}
+<section class="landing-section">
+    <h2 class="landing-heading">This instance</h2>
+    <p class="landing-subheading">
+        Memory in use right now, and how much of it is the in-process cache. Render restarts the
+        service if this reaches the limit, which shows up as "Exited with status 137". Worth a
+        glance if the site has restarted unexpectedly.
+    </p>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <span class="feature-card-title">Memory used</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:{% if process_memory.rss_pct and process_memory.rss_pct >= 80 %}var(--bad){% elif process_memory.rss_pct and process_memory.rss_pct >= 60 %}var(--warn){% else %}var(--good){% endif %};">{{ process_memory.rss_mb }} MB</span>
+            <span class="feature-card-blurb">of {{ process_memory.limit_mb }} MB{% if process_memory.rss_pct %}, {{ process_memory.rss_pct }}%{% endif %}</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Cache held</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ (process_memory.cache.bytes / 1048576) | round(1) }} MB</span>
+            <span class="feature-card-blurb">ceiling {{ (process_memory.cache.max_bytes / 1048576) | round(0) | int }} MB</span>
+        </div>
+        <div class="feature-card">
+            <span class="feature-card-title">Cached items</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ process_memory.cache.entries }}</span>
+            <span class="feature-card-blurb">ceiling {{ process_memory.cache.max_entries }}</span>
+        </div>
+    </div>
+</section>
+{% endif %}
+
 <section class="landing-section">
     <h2 class="landing-heading">True view, since {{ clean_from.strftime("%d %b %Y") }}</h2>
     <p class="landing-subheading">Everything before this date includes your own logged-out visits and the assistant's browser, and can't be separated after the fact because no user agent is stored. This is the honest baseline.</p>

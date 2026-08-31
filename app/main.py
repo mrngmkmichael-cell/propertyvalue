@@ -2002,8 +2002,25 @@ _progress_sink: contextvars.ContextVar = contextvars.ContextVar("gather_progress
 _background_tasks: set = set()
 
 
+# One cold report holds a full ~38-source result while it builds, which
+# measured at roughly 2.5 MB of live objects on 31 Aug 2026. Nothing
+# capped how many could run at once: every browser that asked for an
+# uncached postcode spawned another, so N simultaneous cold searches
+# meant N simultaneous gathers on a 512 MB instance. The market report
+# has had a semaphore for the same reason (_MARKET_REPORT_CONCURRENCY);
+# this is that, for the path that actually gets the traffic. Queued
+# gathers still run, just not all at once, and the polling page is
+# already built to wait.
+_GATHER_CONCURRENCY = asyncio.Semaphore(4)
+
+
+async def _gather_with_cap(location: dict, house_number: str) -> None:
+    async with _GATHER_CONCURRENCY:
+        await _full_property_gather(location, house_number, premium_unlocked=False)
+
+
 def _spawn_gather(location: dict, house_number: str) -> None:
-    task = asyncio.create_task(_full_property_gather(location, house_number, premium_unlocked=False))
+    task = asyncio.create_task(_gather_with_cap(location, house_number))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
 
@@ -2118,12 +2135,17 @@ async def _deduped(cache_key, ttl_s: float, factory):
     if value is not None:
         return value
     lock = _inflight_locks.setdefault(cache_key, asyncio.Lock())
-    async with lock:
-        value = _cache.get(cache_key, ttl_s)
-        if value is None:
-            value = await factory()
-            _cache.set(cache_key, value)
-    _inflight_locks.pop(cache_key, None)
+    try:
+        async with lock:
+            value = _cache.get(cache_key, ttl_s)
+            if value is None:
+                value = await factory()
+                _cache.set(cache_key, value)
+    finally:
+        # In a finally, not after the block: a factory that raised used
+        # to leave its lock behind for good, so the dict grew with the
+        # key space exactly when things were going wrong.
+        _inflight_locks.pop(cache_key, None)
     return value
 
 
@@ -4803,6 +4825,36 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     return m
 
 
+def _process_memory() -> dict:
+    """Resident memory and what the in-process cache is holding.
+
+    Render killed an instance with status 137 on 31 Aug 2026, and there
+    was no way to tell from here whether memory was the cause: the logs
+    are behind a dashboard and the number was never surfaced. It is a
+    two-line read on Linux, so it is surfaced now. Returns empty on
+    Windows, where /proc does not exist and dev does not need it.
+    """
+    out: dict = {"cache": _cache.stats()}
+    try:
+        with open("/proc/self/status", "r", encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("VmRSS:"):
+                    out["rss_mb"] = round(int(line.split()[1]) / 1024, 1)
+                    break
+    except OSError:
+        pass
+    # The instance size Render reports for the plan, so the page can say
+    # "218 of 512" rather than a number with no scale. Overridable
+    # because the plan can change without this line changing.
+    try:
+        out["limit_mb"] = int(os.environ.get("MEMORY_LIMIT_MB", "512"))
+    except ValueError:
+        out["limit_mb"] = 512
+    if "rss_mb" in out and out["limit_mb"]:
+        out["rss_pct"] = round(100 * out["rss_mb"] / out["limit_mb"])
+    return out
+
+
 @app.get("/admin")
 def admin_dashboard(request: Request):
     """A single daily-review page, not a full admin panel - traffic,
@@ -4827,6 +4879,7 @@ def admin_dashboard(request: Request):
             ).limit(50)
         ).all()
     context["figure_statuses"] = FIGURE_STATUSES
+    context["process_memory"] = _process_memory()
     return templates.TemplateResponse(request, "admin.html", context)
 
 

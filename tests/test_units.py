@@ -1,5 +1,7 @@
 """Pure-function units: the pieces that have no network and no template,
 where a wrong answer is silent rather than a crash."""
+import pytest
+
 from app import main as app_main
 from app.services import _cache, epc, overview_score, stripe_billing
 
@@ -668,3 +670,83 @@ def test_admin_figures_do_not_count_test_accounts(client):
         all_users = s.scalar(select(func.count()).select_from(User))
     assert signup_stage["count"] < all_users
     assert total_rows == all_users
+
+# ---- cache sizing and the memory ceiling ---------------------------------
+
+def test_the_cache_measures_python_cost_not_json_length():
+    """The store used to size entries by len(json.dumps(value)). A
+    gather result is thousands of small nested dicts and strings, and
+    Python charges an object header for every one, so the store held
+    about three times what it thought (measured 31 Aug 2026: it claimed
+    33 MB while holding 93 MB) and never evicted when it should have.
+    A nested structure must now cost more than its JSON text, not
+    less."""
+    import json
+
+    from app.services import _cache
+
+    value = {f"service_{i}": [{"name": "x" * 8, "value": i, "source": "y" * 8}
+                              for _ in range(20)] for i in range(20)}
+    assert _cache._approx_size(value) > len(json.dumps(value))
+
+
+def test_the_cache_evicts_to_stay_inside_its_byte_budget():
+    from app.services import _cache
+
+    _cache._store.clear()
+    _cache._bytes = 0
+    original = _cache.MAX_BYTES
+    try:
+        _cache.MAX_BYTES = 200_000
+        for i in range(80):
+            # Distinct strings on purpose. A list built as ["x"] * 40 is
+            # forty references to one string and genuinely costs one
+            # string, which the sizer is right to count once; sharing
+            # like that would make this test measure nothing.
+            _cache.set(("big", i), [f"padding-{i}-{j}" * 6 for j in range(40)])
+        assert _cache._bytes <= _cache.MAX_BYTES
+        assert len(_cache._store) < 80, "nothing was evicted"
+        # And the accounting must match what is actually in the store,
+        # or the budget drifts and stops meaning anything.
+        recomputed = sum(entry[2] for entry in _cache._store.values())
+        assert recomputed == _cache._bytes
+    finally:
+        _cache.MAX_BYTES = original
+        _cache._store.clear()
+        _cache._bytes = 0
+
+
+def test_an_oversized_entry_is_never_kept():
+    from app.services import _cache
+
+    _cache._store.clear()
+    _cache._bytes = 0
+    _cache.set("huge", [f"row-{i}-" + "x" * 200 for i in range(30_000)])
+    assert "huge" not in _cache._store
+    assert _cache._bytes == 0
+
+
+def test_concurrent_cold_reports_are_capped():
+    """Every browser asking for an uncached postcode spawned a full
+    ~38-source gather with nothing limiting how many ran at once."""
+    from app import main
+
+    assert main._GATHER_CONCURRENCY._value == 4
+
+
+def test_a_failing_factory_does_not_leave_its_lock_behind():
+    """_inflight_locks grew with the key space whenever a gather raised,
+    because the pop sat after the block instead of in a finally."""
+    import asyncio
+
+    from app import main
+    from app.services import _cache
+
+    async def boom():
+        raise RuntimeError("upstream down")
+
+    main._inflight_locks.clear()
+    _cache._store.clear()
+    with pytest.raises(RuntimeError):
+        asyncio.run(main._deduped(("k", "leaky"), 60, boom))
+    assert main._inflight_locks == {}

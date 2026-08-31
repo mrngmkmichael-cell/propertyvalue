@@ -10,8 +10,10 @@ through to tier 1, then to a rebuild, and never to an error page.
 import collections
 import datetime
 import decimal
+import builtins
 import json
 import logging
+import sys
 import time
 
 _store: "collections.OrderedDict" = collections.OrderedDict()
@@ -41,16 +43,67 @@ MAX_ENTRIES = 1500
 # the budget below already allows for on a 512 MB instance. Anything
 # over MAX_ENTRY_BYTES is served but never kept in memory: the second
 # tier (Postgres) is milliseconds away for the things that size.
-MAX_BYTES = 40 * 1024 * 1024
+# Measured 2026-08-31, twenty distinct property reports against the real
+# upstreams: the store said it held 33 MB, and dropping it returned 93 MB
+# to the process. Sizing by JSON text length was undercounting real cost
+# by about three times, because a gather result is thousands of small
+# nested dicts, lists and strings and Python charges ~50-100 bytes of
+# object header per one. So a "40 MB" budget was really licensing ~110 MB
+# on a 512 MB instance, and the eviction loop never fired when it should
+# have. The sizer below walks the object instead, which costs about what
+# the json.dumps it replaces cost, and the number below is now real bytes.
+MAX_BYTES = 48 * 1024 * 1024
 MAX_ENTRY_BYTES = 4 * 1024 * 1024
 _bytes = 0
 
+# Deep enough for a gather result (dict -> service -> list -> row -> value)
+# with room to spare. Anything deeper is charged at the cap rather than
+# walked forever: a cache sizer must never be the thing that hangs.
+_MAX_SIZE_DEPTH = 12
+
 
 def _approx_size(value) -> int:
+    """Roughly what this value costs the process, in bytes.
+
+    Counts each distinct object once (a gather result shares plenty of
+    small strings), and stops at _MAX_SIZE_DEPTH. It is an estimate, but
+    an estimate of the right quantity, which the JSON length was not.
+    """
+    # This module exports a function called set(), which shadows the
+    # builtin for the whole file: bare set() raises here, and so does
+    # isinstance(x, set) below. Hence builtins, spelled out.
+    seen: builtins.set[int] = builtins.set()
+
+    def walk(obj, depth: int) -> int:
+        obj_id = id(obj)
+        if obj_id in seen:
+            return 0
+        seen.add(obj_id)
+        try:
+            size = sys.getsizeof(obj)
+        except TypeError:
+            return 64
+        if depth >= _MAX_SIZE_DEPTH:
+            return size
+        if isinstance(obj, dict):
+            for key, val in obj.items():
+                size += walk(key, depth + 1) + walk(val, depth + 1)
+        elif isinstance(obj, (list, tuple, builtins.set, frozenset)):
+            for item in obj:
+                size += walk(item, depth + 1)
+        return size
+
     try:
-        return len(json.dumps(value, default=str))
-    except (TypeError, ValueError):
-        return 1024
+        return walk(value, 0)
+    except RecursionError:
+        return MAX_ENTRY_BYTES + 1  # too gnarly to keep: never cache it
+
+
+def stats() -> dict:
+    """What the store is holding. Read by the admin page, so a memory
+    problem is visible without reaching Render's logs."""
+    return {"entries": len(_store), "bytes": _bytes,
+            "max_entries": MAX_ENTRIES, "max_bytes": MAX_BYTES}
 
 
 def get(key, ttl_seconds: float, keep_expired: bool = False):
