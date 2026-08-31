@@ -678,6 +678,35 @@ def test_an_unknown_or_regional_language_code_falls_back_sanely(client):
     assert i18n.t("no.such.key", "fr") == "no.such.key"
 
 
+def test_choosing_a_language_on_the_homepage_lands_on_the_translated_one(client):
+    """Picking Traditional Chinese on / used to set the cookie and drop
+    you back on the English hero with a translated menu above it, which
+    reads as a broken translation when /zh-hant was one URL away."""
+    from app import i18n
+
+    for code in i18n.LANGUAGES:
+        if code == i18n.DEFAULT_LANG:
+            continue
+        r = client.get(f"/set-language?lang={code}&next=/", follow_redirects=False)
+        assert r.headers["location"] == f"/{code}",             f"choosing {code} on the homepage went to {r.headers['location']}"
+
+    # ...and back the other way.
+    r = client.get("/set-language?lang=en&next=/ja", follow_redirects=False)
+    assert r.headers["location"] == "/"
+    # Between two translated homepages.
+    r = client.get("/set-language?lang=ko&next=/ja", follow_redirects=False)
+    assert r.headers["location"] == "/ko"
+
+    # Every other page is one page that stays put: only its chrome changes.
+    for path in ("/areas", "/premium", "/schools/guide?q=M1"):
+        r = client.get(f"/set-language?lang=ja&next={path}", follow_redirects=False)
+        assert r.headers["location"] == path
+
+    # The open-redirect guard still applies after the mapping.
+    r = client.get("/set-language?lang=ja&next=https://evil.example", follow_redirects=False)
+    assert r.headers["location"] == "/"
+
+
 def test_the_header_language_menu_lists_every_language_with_a_flag(client):
     """The picker in the top bar. Every language is one link, every
     flag file it names actually exists, and the current one is marked

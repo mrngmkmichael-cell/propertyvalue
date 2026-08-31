@@ -1467,6 +1467,23 @@ def areas_index(request: Request):
     return templates.TemplateResponse(request, "areas.html", context)
 
 
+def _language_equivalent(path: str, chosen: str) -> str:
+    """Where `path` lives in the chosen language.
+
+    Only the homepage has a translated twin: / in Japanese is /ja, and
+    /ja in English is /. Everything else is one page that stays put and
+    only changes its chrome. Without this, choosing a language on the
+    homepage set the cookie and dropped you back on the English hero
+    with a translated menu above it, which reads like the translation
+    is broken when the translated homepage was one URL away.
+    """
+    landing = "/" + chosen if chosen != i18n.DEFAULT_LANG else "/"
+    bare = (path or "/").split("?")[0].rstrip("/") or "/"
+    if bare == "/" or bare.lstrip("/") in i18n.LANGUAGES:
+        return landing
+    return path
+
+
 @app.get("/set-language")
 def set_language(request: Request, lang: str = "", next: str = "/"):
     """Remember a language choice for a year and go back where they
@@ -1474,7 +1491,7 @@ def set_language(request: Request, lang: str = "", next: str = "/"):
     script, works with JavaScript off, which is the whole reason the
     switcher is a list of links rather than a select."""
     chosen = i18n.normalise(lang)
-    response = RedirectResponse(_safe_next(next), status_code=303)
+    response = RedirectResponse(_safe_next(_language_equivalent(next, chosen)), status_code=303)
     response.set_cookie(
         i18n.LANG_COOKIE, chosen,
         max_age=i18n.COOKIE_MAX_AGE, httponly=False, samesite="lax",
