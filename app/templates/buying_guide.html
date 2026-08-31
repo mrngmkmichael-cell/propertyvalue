@@ -1,40 +1,40 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("UK Property Buying Guide | UKPropertyInsight") }}{% endblock %}
+{% block title %}UK Property Buying Guide | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{{ tr("The Bank of England base rate, how a UK property purchase actually works, Stamp Duty and other property taxes explained, and what to check before you commit.") }}{% endblock %}
+{% block meta_description %}The Bank of England base rate, how a UK property purchase actually works, Stamp Duty and other property taxes explained, and what to check before you commit.{% endblock %}
 {% block extra_head %}
 {% endblock %}
 
 {% block content %}
-<span class="kicker">{{ tr("Buying guide") }}</span>
-<h1>{{ tr("Buying a property in the UK") }}</h1>
-<p class="dek">{{ tr("The rate, the process, the taxes, the checks. Four minutes, no padding.") }}</p>
+<span class="kicker">Buying guide</span>
+<h1>Buying a property in the UK</h1>
+<p class="dek">The rate, the process, the taxes, the checks. Four minutes, no padding.</p>
 
 <p class="section-sub">
-    <a href="#rate">{{ tr("Bank Rate") }}</a> &middot;
-    <a href="#procedure">{{ tr("How a purchase works") }}</a> &middot;
-    <a href="#tax">{{ tr("Tax") }}</a> &middot;
-    <a href="#tips">{{ tr("Things to check") }}</a>
+    <a href="#rate">Bank Rate</a> &middot;
+    <a href="#procedure">How a purchase works</a> &middot;
+    <a href="#tax">Tax</a> &middot;
+    <a href="#tips">Things to check</a>
 </p>
 
 <section class="report-section" id="rate">
-    <h2>{{ tr("Bank of England base rate") }}</h2>
+    <h2>Bank of England base rate</h2>
     {% if boe %}
     <div class="snap-stat">
         <span class="snap-stat-value">{{ "%.2f"|format(boe.rate) }}%</span>
-        <span class="snap-stat-label">{{ tr("since") }} {{ boe.since }}</span>
+        <span class="snap-stat-label">since {{ boe.since }}</span>
     </div>
     <ul class="snap-points">
-        <li><strong>{{ tr("Mortgage rates follow it.") }}</strong> {{ tr("Lenders price fixed and tracker deals off this number.") }}</li>
-        <li><strong>{{ tr("Lower rate, cheaper deals.") }}</strong> {{ tr("Higher rate, dearer deals, and less you can afford to borrow.") }}</li>
+        <li><strong>Mortgage rates follow it.</strong> Lenders price fixed and tracker deals off this number.</li>
+        <li><strong>Lower rate, cheaper deals.</strong> Higher rate, dearer deals, and less you can afford to borrow.</li>
     </ul>
     {% if boe_chart %}
     {% set c = boe_chart %}
     <figure class="rate-chart" data-animate>
         <figcaption class="rate-chart-caption">
-            <span class="rate-chart-title">{{ tr("Base rate, last ten years") }}</span>
-            <span class="rate-chart-hint">{{ tr("Each step is a Bank decision. Hover for the date.") }}</span>
+            <span class="rate-chart-title">Base rate, last ten years</span>
+            <span class="rate-chart-hint">Each step is a Bank decision. Hover for the date.</span>
         </figcaption>
         <div class="rate-chart-frame">
             <svg viewBox="0 0 {{ c.w }} {{ c.h }}" class="rate-chart-svg" role="img"
@@ -68,9 +68,9 @@
     </figure>
     {% endif %}
     <details class="rate-table">
-        <summary>{{ tr("Every change, as a table") }}</summary>
+        <summary>Every change, as a table</summary>
         <table class="tx-table">
-            <thead><tr><th>{{ tr("Changed") }}</th><th class="num">{{ tr("New rate") }}</th></tr></thead>
+            <thead><tr><th>Changed</th><th class="num">New rate</th></tr></thead>
             <tbody>
                 {% for h in boe.history | reverse %}
                 <tr><td>{{ h.date }}</td><td class="num">{{ "%.2f"|format(h.rate) }}%</td></tr>
@@ -78,56 +78,56 @@
             </tbody>
         </table>
     </details>
-    <p class="note">{{ tr("Source: Bank of England Interactive Statistical Database (series IUDBEDR).") }}</p>
+    <p class="note">Source: Bank of England Interactive Statistical Database (series IUDBEDR).</p>
     {% else %}
-    <p class="notice">{{ tr("Couldn't load the current rate right now. Try again shortly.") }}</p>
+    <p class="notice">Couldn't load the current rate right now. Try again shortly.</p>
     {% endif %}
 </section>
 
 <section class="report-section" id="procedure">
-    <h2>{{ tr("How a UK property purchase works") }}</h2>
+    <h2>How a UK property purchase works</h2>
     <ol class="guide-steps">
-        <li><strong>{{ tr("Get an Agreement in Principle first.") }}</strong> {{ tr("Agents won't take an offer seriously without one. Budget for Stamp Duty, solicitor, survey, lender fees and removals on top of the price.") }}</li>
-        <li><strong>{{ tr("Make an offer.") }}</strong> {{ tr("Not binding until exchange (step 5) in England, Wales and NI, so either side can walk away until then. Scotland binds much earlier, once missives conclude.") }}</li>
-        <li><strong>{{ tr("Instruct a solicitor. Book a survey.") }}</strong> {{ tr("The lender's valuation is not a survey and won't flag defects.") }} <a href="#tips">{{ tr("Which survey level") }}</a> {{ tr("is below.") }}</li>
-        <li><strong>{{ tr("Apply for the formal mortgage offer.") }}</strong> {{ tr("Only possible once there's a specific property and an agreed price.") }}</li>
-        <li><strong>{{ tr("Searches, then exchange.") }}</strong> {{ tr("Local authority, drainage and environmental searches (a report on this site covers much of this for free, first). Exchange is the point of no return: deposit paid, completion date fixed.") }}</li>
-        <li><strong>{{ tr("Completion.") }}</strong> {{ tr("Balance paid, keys handed over. Days to weeks after exchange, by agreement.") }}</li>
-        <li><strong>{{ tr("After completion.") }}</strong> {{ tr("Your solicitor files the Stamp Duty return and registers you with Land Registry. Check it's in their fee.") }}</li>
+        <li><strong>Get an Agreement in Principle first.</strong> Agents won't take an offer seriously without one. Budget for Stamp Duty, solicitor, survey, lender fees and removals on top of the price.</li>
+        <li><strong>Make an offer.</strong> Not binding until exchange (step 5) in England, Wales and NI, so either side can walk away until then. Scotland binds much earlier, once missives conclude.</li>
+        <li><strong>Instruct a solicitor. Book a survey.</strong> The lender's valuation is not a survey and won't flag defects. <a href="#tips">Which survey level</a> is below.</li>
+        <li><strong>Apply for the formal mortgage offer.</strong> Only possible once there's a specific property and an agreed price.</li>
+        <li><strong>Searches, then exchange.</strong> Local authority, drainage and environmental searches (a report on this site covers much of this for free, first). Exchange is the point of no return: deposit paid, completion date fixed.</li>
+        <li><strong>Completion.</strong> Balance paid, keys handed over. Days to weeks after exchange, by agreement.</li>
+        <li><strong>After completion.</strong> Your solicitor files the Stamp Duty return and registers you with Land Registry. Check it's in their fee.</li>
     </ol>
 </section>
 
 <section class="report-section" id="tax">
-    <h2>{{ tr("Tax on buying and owning property") }}</h2>
+    <h2>Tax on buying and owning property</h2>
 
-    <h3 class="subsection-heading">{{ tr("Stamp Duty (or equivalent)") }}</h3>
+    <h3 class="subsection-heading">Stamp Duty (or equivalent)</h3>
     <ul class="snap-points">
-        <li><strong>{{ tr("One-off, paid on completion.") }}</strong> {{ tr("SDLT in England and NI, LTT in Wales, LBTT in Scotland.") }}</li>
-        <li><strong>{{ tr("Banded, not flat.") }}</strong> {{ tr("Each rate applies only to the slice of the price inside its band. First-time buyers and additional properties have their own bands.") }}</li>
-        <li><strong>{{ tr("Bands change at budgets.") }}</strong> {{ tr("The calculator on any property report here is kept current and does the maths.") }}</li>
+        <li><strong>One-off, paid on completion.</strong> SDLT in England and NI, LTT in Wales, LBTT in Scotland.</li>
+        <li><strong>Banded, not flat.</strong> Each rate applies only to the slice of the price inside its band. First-time buyers and additional properties have their own bands.</li>
+        <li><strong>Bands change at budgets.</strong> The calculator on any property report here is kept current and does the maths.</li>
     </ul>
 
-    <h3 class="subsection-heading">{{ tr("Capital Gains Tax") }}</h3>
+    <h3 class="subsection-heading">Capital Gains Tax</h3>
     <ul class="snap-points">
-        <li><strong>{{ tr("Only when you sell, only on the gain.") }}</strong> {{ tr("Second homes and buy-to-lets. Your main home is normally exempt.") }}</li>
-        <li><strong>{{ tr("Rates and allowance move.") }}</strong> {{ tr("Current figures:") }} <a href="https://www.gov.uk/capital-gains-tax-on-property" target="_blank" rel="noopener">{{ tr("gov.uk") }}</a>.</li>
+        <li><strong>Only when you sell, only on the gain.</strong> Second homes and buy-to-lets. Your main home is normally exempt.</li>
+        <li><strong>Rates and allowance move.</strong> Current figures: <a href="https://www.gov.uk/capital-gains-tax-on-property" target="_blank" rel="noopener">gov.uk</a>.</li>
     </ul>
 
-    <h3 class="subsection-heading">{{ tr("Council Tax") }}</h3>
+    <h3 class="subsection-heading">Council Tax</h3>
     <ul class="snap-points">
-        <li><strong>{{ tr("Annual, set by band.") }}</strong> {{ tr("A to H in England and Scotland, Wales has its own. Based on a 1991 valuation (2003 in Wales), not today's price.") }}</li>
-        <li><strong>{{ tr("Look up any address free") }}</strong> {{ tr("at") }} <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">{{ tr("gov.uk/council-tax-bands") }}</a>{{ tr(". It isn't open data, so reports here don't show it.") }}</li>
+        <li><strong>Annual, set by band.</strong> A to H in England and Scotland, Wales has its own. Based on a 1991 valuation (2003 in Wales), not today's price.</li>
+        <li><strong>Look up any address free</strong> at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>. It isn't open data, so reports here don't show it.</li>
     </ul>
 </section>
 
 <section class="report-section" id="tips">
-    <h2>{{ tr("Things to check before you commit") }}</h2>
+    <h2>Things to check before you commit</h2>
     <ul class="guide-steps">
-        <li><strong>{{ tr("Lease under 80 years is a problem.") }}</strong> {{ tr("Expensive to extend, hard to mortgage. Check years left, ground rent and service charge before offering.") }}</li>
-        <li><strong>{{ tr("Pick the survey level.") }}</strong> {{ tr("Level 1 for newer and sound. Level 2 is the usual choice. Level 3 for older, larger or altered homes.") }}</li>
-        <li><strong>{{ tr("Run the free report first.") }}</strong> {{ tr("Flood, subsidence, radon, contamination, mining, planning, sold prices, EPC, crime and schools, before you pay anyone.") }}</li>
-        <li><strong>{{ tr("Chain-free is safer.") }}</strong> {{ tr("New build, probate, or a seller who has already moved. Chains are why purchases collapse.") }}</li>
-        <li><strong>{{ tr("Book solicitor and surveyor before the offer.") }}</strong> {{ tr("Prices vary a lot. Being ready shortens everything after.") }}</li>
+        <li><strong>Lease under 80 years is a problem.</strong> Expensive to extend, hard to mortgage. Check years left, ground rent and service charge before offering.</li>
+        <li><strong>Pick the survey level.</strong> Level 1 for newer and sound. Level 2 is the usual choice. Level 3 for older, larger or altered homes.</li>
+        <li><strong>Run the free report first.</strong> Flood, subsidence, radon, contamination, mining, planning, sold prices, EPC, crime and schools, before you pay anyone.</li>
+        <li><strong>Chain-free is safer.</strong> New build, probate, or a seller who has already moved. Chains are why purchases collapse.</li>
+        <li><strong>Book solicitor and surveyor before the offer.</strong> Prices vary a lot. Being ready shortens everything after.</li>
     </ul>
 </section>
 {% endblock %}

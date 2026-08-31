@@ -1,34 +1,36 @@
 {% extends "base.html" %}
 
 {% block title %}{{ seo_title(region ~ " House Prices by Postcode District", " | UKPropertyInsight", "") }}{% endblock %}
-{% block meta_description %}{{ tr("Every") }} {{ region }} {{ tr("postcode district with enough recorded sales to rank, by median sold price, from HM Land Registry. Cheapest to dearest, each linked to its full area guide.") }}{% endblock %}
-{% block og_title %}{{ region }}{{ tr(": house prices by district") }}{% endblock %}
+{% block meta_description %}Every {{ region }} postcode district with enough recorded sales to rank, by median sold price, from HM Land Registry. Cheapest to dearest, each linked to its full area guide.{% endblock %}
+{% block og_title %}{{ region }}: house prices by district{% endblock %}
 
 {% block content %}
-<a class="back-link" href="/market/district-prices">{{ tr("&larr; The national table") }}</a>
+<a class="back-link" href="/market/district-prices">&larr; The national table</a>
 
-<span class="kicker">{{ tr("Market data") }}</span>
-<h1>{{ tr("What homes sell for across") }} {{ region }}</h1>
+<span class="kicker">Market data</span>
+<h1>What homes sell for across {{ region }}</h1>
 <p class="dek">
-    {{ tr("Every") }} {{ region }} {{ tr("postcode district with enough recorded sales to rank, by the median of real Land Registry sales around its centre. Updated as the underlying guides refresh, last on") }} {{ generated_date }}.
+    Every {{ region }} postcode district with enough recorded sales to rank, by the median of
+    real Land Registry sales around its centre. Updated as the underlying guides refresh, last
+    on {{ generated_date }}.
 </p>
 
 {% if total %}
 <div class="scorecard-row">
-    <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">{{ tr("districts ranked in") }} {{ region }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">districts ranked in {{ region }}</span></div>
     {% if median_of_medians %}
-    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">{{ tr("the middle district's median") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">the middle district's median</span></div>
     {% endif %}
     {% if rows | length > 1 %}
-    <div class="score-tile"><span class="score-tile-value">{{ (rows[-1].median / rows[0].median) | round(1) }}&times;</span><span class="score-tile-label">{{ tr("between") }} {{ rows[-1].outcode }} {{ tr("and") }} {{ rows[0].outcode }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ (rows[-1].median / rows[0].median) | round(1) }}&times;</span><span class="score-tile-label">between {{ rows[-1].outcode }} and {{ rows[0].outcode }}</span></div>
     {% endif %}
 </div>
 
 <section class="report-section">
-    <h2>{{ tr("Cheapest to dearest") }}</h2>
+    <h2>Cheapest to dearest</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("Median sale") }}</th><th class="num">{{ tr("Sales") }}</th><th class="num">{{ tr("Range") }}</th></tr></thead>
+            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
             <tbody>
                 {% for r in rows %}
                 <tr>
@@ -36,7 +38,7 @@
                     <td>{{ r.district }}</td>
                     <td class="num">{{ r.median | gbp }}</td>
                     <td class="num">{{ r.count }}</td>
-                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} {{ tr("to") }} {{ r.high | gbp }}{% endif %}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -45,17 +47,20 @@
 </section>
 
 <p class="notice">
-    {{ tr("A district is ranked only once enough sales are recorded around its centre for a median to mean something.") }} {{ region }} {{ tr("districts missing from this table have too few recent recorded sales, not zero housing.") }}
+    A district is ranked only once enough sales are recorded around its centre for a median to
+    mean something. {{ region }} districts missing from this table have too few recent recorded
+    sales, not zero housing.
 </p>
 {% else %}
 <p class="notice">
-    {{ tr("No") }} {{ region }} {{ tr("district holds enough recorded sales in the cache yet for a median to mean anything. The table fills as the area guides refresh; the") }}
-    <a href="/market/district-prices">{{ tr("national table") }}</a> {{ tr("shows what is ranked so far.") }}
+    No {{ region }} district holds enough recorded sales in the cache yet for a median to mean
+    anything. The table fills as the area guides refresh; the
+    <a href="/market/district-prices">national table</a> shows what is ranked so far.
 </p>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("Other regions") }}</h2>
+    <h2>Other regions</h2>
     <p class="section-sub">
         {% for slug, name in other_regions %}<a href="/market/house-prices/{{ slug }}">{{ name }}</a>{{ " &middot; " | safe if not loop.last }}{% endfor %}
     </p>
@@ -64,12 +69,15 @@
 {# The backlink offer, same as the national table: links are the one
    ranking input a page cannot give itself. #}
 <p class="section-sub">
-    {{ tr("Run a listings site or a local") }} {{ region }} {{ tr("page? You can") }}
-    <a href="/embed">{{ tr("link any address to its free report") }}</a>{{ tr(", so your readers get the checks without you building anything.") }}
+    Run a listings site or a local {{ region }} page? You can
+    <a href="/embed">link any address to its free report</a>, so your readers get the checks
+    without you building anything.
 </p>
 
 <p class="section-sub">
-    {{ tr("Sold prices from HM Land Registry price paid data; medians computed per district as on each area guide. Read how every figure is sourced on the") }} <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something looks wrong,") }} <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }}
-    <a href="/accuracy">{{ tr("accuracy log") }}</a>.
+    Sold prices from HM Land Registry price paid data; medians computed per district as on each
+    area guide. Read how every figure is sourced on the <a href="/methodology">methodology
+    page</a>. If something looks wrong, <a href="/support">tell us</a> and it goes on the
+    <a href="/accuracy">accuracy log</a>.
 </p>
 {% endblock %}

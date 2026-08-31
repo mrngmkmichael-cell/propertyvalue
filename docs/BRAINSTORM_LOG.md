@@ -6,14 +6,6 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
-- Interface languages: nine (English plus Traditional and Simplified
-  Chinese, Hindi, Spanish, Arabic, French, Japanese, Korean). One
-  hand-written landing page each at /{code}, a footer switcher, a
-  year-long cookie, hreflang, RTL for Arabic, per-script font stacks.
-  The DATA pages stay English on purpose (see app/i18n.py): 2,943 area
-  guides translated eight ways is 28,000+ machine-translated URLs from
-  a domain with 21 pages indexed. Do not suggest translating them.
-
 - One-click sample report link in the hero (M1 1AE), zero-typing route
   into the product.
 - Globe intro and Leaflet self-hosted under /static/vendor/; no scripts
@@ -65,6 +57,16 @@ the local Claude session as things ship. Newest first.
 - Trustpilot email invites (held).
 
 ## Rejected on principle (never suggest)
+
+- Interface languages / translations. Built in full on 31 Aug 2026
+  (nine languages, landing pages, header picker with flags, ~640
+  translated strings per Chinese variant) and rolled back the next day
+  at the owner's request: "the other language is not good". The lesson
+  was quality, not mechanics; machine-authored translations without a
+  native reviewer in the loop were not good enough to ship. Do not
+  re-suggest unless the owner raises it AND brings a reviewer per
+  language. The full implementation lives in git history
+  (028aced..dfca9ad, reverted).
 
 - Any third-party script on the site (privacy page promises none run;
   this killed the Trustpilot widget and any analytics snippet).

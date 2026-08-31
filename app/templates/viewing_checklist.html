@@ -1,26 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Viewing checklist for") }} {{ query }} {{ tr("| UKPropertyInsight") }}{% endblock %}
+{% block title %}Viewing checklist for {{ query }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<a class="back-link no-print" href="/property?postcode={{ query | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">{{ tr("&larr; Back to the report") }}</a>
+<a class="back-link no-print" href="/property?postcode={{ query | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">&larr; Back to the report</a>
 
-<span class="kicker">{{ tr("Take this with you") }}</span>
-<h1>{{ tr("Viewing checklist:") }} {{ house_number ~ ', ' if house_number }}{{ query }}</h1>
+<span class="kicker">Take this with you</span>
+<h1>Viewing checklist: {{ house_number ~ ', ' if house_number }}{{ query }}</h1>
 <p class="dek">
-    {{ tr("Built from what this property's own report found, not a generic list. Print it, or open it on your phone while you are standing there.") }}
+    Built from what this property's own report found, not a generic list. Print it, or open it on
+    your phone while you are standing there.
 </p>
 
 <p class="no-print">
-    <button type="button" class="pdf-download-btn" onclick="window.print()">{{ tr("Print this checklist") }}</button>
+    <button type="button" class="pdf-download-btn" onclick="window.print()">Print this checklist</button>
 </p>
 
 {% if checklist.flagged %}
 <section class="report-section">
-    <h2>{{ tr("Because of what the report found") }}</h2>
+    <h2>Because of what the report found</h2>
     <p class="section-sub">
-        {{ checklist.flagged | length }} {{ tr("thing") }}{{ "s" if checklist.flagged | length != 1 }} {{ tr("this address flagged, and what that means for the half hour you get inside.") }}
+        {{ checklist.flagged | length }} thing{{ "s" if checklist.flagged | length != 1 }} this
+        address flagged, and what that means for the half hour you get inside.
     </p>
     <ul class="checklist">
         {% for item in checklist.flagged %}
@@ -37,16 +39,18 @@
 </section>
 {% else %}
 <section class="report-section">
-    <h2>{{ tr("Nothing specific was flagged here") }}</h2>
+    <h2>Nothing specific was flagged here</h2>
     <p class="section-sub">
-        {{ tr("This property's report raised no risk findings") }}{% if not premium_unlocked %} {{ tr("in the checks you can currently see") }}{% endif %}{{ tr(", so there is nothing address-specific to add. The list below is worth running through anyway.") }}
+        This property's report raised no risk findings{% if not premium_unlocked %} in the checks
+        you can currently see{% endif %}, so there is nothing address-specific to add. The list
+        below is worth running through anyway.
     </p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("At every viewing") }}</h2>
-    <p class="section-sub">{{ tr("The things a report cannot tell you and buyers routinely forget.") }}</p>
+    <h2>At every viewing</h2>
+    <p class="section-sub">The things a report cannot tell you and buyers routinely forget.</p>
     <ul class="checklist">
         {% for item in checklist.always %}
         <li class="checklist-item">
@@ -61,13 +65,14 @@
 </section>
 
 <section class="report-section">
-    <h2>{{ tr("Notes") }}</h2>
+    <h2>Notes</h2>
     <div class="checklist-notes" aria-hidden="true">
         {% for _ in range(8) %}<span class="checklist-rule"></span>{% endfor %}
     </div>
 </section>
 
 <p class="section-sub">
-    {{ tr("Findings from UKPropertyInsight,") }} {{ query }}{{ tr(". Every one traces to a named public source; the report has the detail. This is a prompt for looking, not a survey.") }}
+    Findings from UKPropertyInsight, {{ query }}. Every one traces to a named public source; the
+    report has the detail. This is a prompt for looking, not a survey.
 </p>
 {% endblock %}

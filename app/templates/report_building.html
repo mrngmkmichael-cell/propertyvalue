@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Building your report | UKPropertyInsight") }}{% endblock %}
+{% block title %}Building your report | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
 <div class="building-wrap">
-    <span class="kicker">{{ tr("One moment") }}</span>
-    <h1 class="building-heading">{{ tr("Building the report for") }} {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
-    <p class="dek">{{ tr("We are checking every source live, right now. Usually 5 to 15 seconds.") }}</p>
+    <span class="kicker">One moment</span>
+    <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
+    <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
 
     {# The list is the real gather's source list, and each row ticks
        when that source actually comes back (see /api/report-ready).
@@ -15,7 +15,7 @@
        which meant the one screen showing our working was the one
        screen making it up. #}
     <p class="building-count" id="building-count" aria-live="polite">
-        <span id="building-done">0</span> {{ tr("of") }} {{ build_sources | length }} {{ tr("sources back") }}
+        <span id="building-done">0</span> of {{ build_sources | length }} sources back
     </p>
     <div class="building-bar" aria-hidden="true"><span class="building-bar-fill" id="building-bar"></span></div>
 
@@ -24,8 +24,8 @@
         <li class="building-item" data-source="{{ src }}"><span class="building-tick"></span>{{ src }}</li>
         {% endfor %}
     </ul>
-    <p class="section-sub">{{ tr("Every figure will name its source. Nothing is scraped, nothing is guessed.") }}</p>
-    <noscript><meta http-equiv="refresh" content="10"><p class="notice">{{ tr("This page refreshes automatically.") }}</p></noscript>
+    <p class="section-sub">Every figure will name its source. Nothing is scraped, nothing is guessed.</p>
+    <noscript><meta http-equiv="refresh" content="10"><p class="notice">This page refreshes automatically.</p></noscript>
 </div>
 
 <script>

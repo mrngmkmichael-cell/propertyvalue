@@ -16,7 +16,6 @@ from urllib.parse import quote, urlencode
 from xml.sax.saxutils import escape
 
 import httpx
-import jinja2
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -29,7 +28,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
 
-from app import auth, db, i18n, school_shortlist, translations, watchlist
+from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
@@ -932,56 +931,6 @@ templates.env.filters["distance"] = _format_distance
 templates.env.globals["seo_title"] = seo_title
 
 
-@jinja2.pass_context
-def _t(context, source: str) -> str:
-    """{{ tr("Share this report") }} in a template.
-
-    Named tr, not the conventional _, because these templates already
-    use {% set _ = items.append(...) %} as the discard idiom in about
-    thirty places. That assigns None to _ for the rest of the block, so
-    a gettext-style _ silently became "NoneType is not callable" on the
-    report page. Renaming one global beat rewriting thirty working
-    lines to suit a naming convention.
-
-    Reads the language off the render context, which base_context always
-    sets, so no template has to thread it through. An unknown string or
-    an unknown language returns the English source, which is what lets a
-    template be marked up before its translations exist: the page keeps
-    working in English until the words arrive.
-    """
-    # Markup, not a plain string, so a marked-up literal renders exactly
-    # as the raw template text did: "&rarr;" stays an arrow instead of
-    # becoming "&amp;rarr;", and "it's" keeps its apostrophe rather than
-    # gaining an entity. These strings come from files in this repo, not
-    # from anything a visitor can set, so there is nothing to escape.
-    return Markup(translations.translate(source, context.get("lang") or "en"))
-
-
-templates.env.globals["tr"] = _t
-
-
-@jinja2.pass_context
-def _trd(context, value) -> str:
-    """{{ s.ofsted_rating_label | trd }}: translate a DATA value.
-
-    For the finite vocabularies that arrive from data rather than
-    templates: Ofsted's rating words, school phases and genders,
-    radon and flood-zone labels. Unlike tr() this returns a plain
-    string, so Jinja's autoescaping still applies. That distinction is
-    the whole point: tr() marks repo-authored literals safe, but these
-    values ultimately come from external datasets, and a school name or
-    label must never become a place to smuggle markup into the page.
-    An unknown value passes through untranslated, so no data is ever
-    the wrong kind of surprise.
-    """
-    if value is None:
-        return value
-    return translations.translate(str(value), context.get("lang") or "en")
-
-
-templates.env.filters["trd"] = _trd
-
-
 if indexnow.key():
     @app.get(f"/{indexnow.key()}.txt", include_in_schema=False)
     def indexnow_key_file():
@@ -1035,33 +984,7 @@ async def on_startup():
 
 
 def base_context(request: Request) -> dict:
-    # The reader's interface language, from their own choice first
-    # (?lang= then the cookie), and only then from the browser's
-    # Accept-Language. An explicit choice must always beat a header, or
-    # someone on a German laptop who picked English keeps being handed
-    # something else.
-    lang = i18n.normalise(
-        request.query_params.get("lang")
-        or request.cookies.get(i18n.LANG_COOKIE)
-        or request.headers.get("accept-language", "").split(",")[0]
-    )
-    meta = i18n.LANGUAGES[lang]
-    # Two different languages, and conflating them was a real bug: the
-    # English homepage declared lang="ja" simply because someone had
-    # once visited /ja, so a screen reader would have read English prose
-    # with Japanese pronunciation rules and Google would have been told
-    # the page was Japanese. "lang" is the CHROME language, chosen by
-    # the reader. "page_lang" is the language of the CONTENT, which is
-    # English everywhere except the eight landing pages, and it is
-    # page_lang that <html lang> and dir must follow.
     return {
-        "lang": lang,
-        "lang_meta": meta,
-        "languages": i18n.LANGUAGES,
-        "T": i18n.catalogue(lang),
-        "page_lang": i18n.DEFAULT_LANG,
-        "page_bcp47": i18n.LANGUAGES[i18n.DEFAULT_LANG]["bcp47"],
-        "page_dir": i18n.LANGUAGES[i18n.DEFAULT_LANG]["dir"],
         "current_user": auth.current_user(request),
         "accounts_configured": db.is_configured(),
         # Set here rather than on the two auth routes so the button
@@ -1433,13 +1356,6 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # one page per region, each row linking to its area guide.
     entries += [(f"{base}/market/house-prices/{slug}", "0.6") for slug in REGION_SLUGS]
 
-    # One landing page per interface language. Eight URLs, hand-written
-    # and hreflang'd, which is the whole translated footprint: the data
-    # pages stay English for the reason in app/i18n.py.
-    entries += [
-        (f"{base}/{code}", "0.6") for code in i18n.LANGUAGES if code != i18n.DEFAULT_LANG
-    ]
-
     # Comparison pages, first tranche (30 Aug 2026). The full curated
     # set is ~1,000 pairs, which is too much to hand a domain still
     # measured in tens of indexed pages, so only pairs where BOTH sides
@@ -1518,54 +1434,9 @@ def areas_index(request: Request):
     return templates.TemplateResponse(request, "areas.html", context)
 
 
-def _language_equivalent(path: str, chosen: str) -> str:
-    """Where `path` lives in the chosen language.
-
-    Only the homepage has a translated twin: / in Japanese is /ja, and
-    /ja in English is /. Everything else is one page that stays put and
-    only changes its chrome. Without this, choosing a language on the
-    homepage set the cookie and dropped you back on the English hero
-    with a translated menu above it, which reads like the translation
-    is broken when the translated homepage was one URL away.
-    """
-    landing = "/" + chosen if chosen != i18n.DEFAULT_LANG else "/"
-    bare = (path or "/").split("?")[0].rstrip("/") or "/"
-    if bare == "/" or bare.lstrip("/") in i18n.LANGUAGES:
-        return landing
-    return path
-
-
-@app.get("/set-language")
-def set_language(request: Request, lang: str = "", next: str = "/"):
-    """Remember a language choice for a year and go back where they
-    were. A GET because it is a plain link in the footer: no form, no
-    script, works with JavaScript off, which is the whole reason the
-    switcher is a list of links rather than a select."""
-    chosen = i18n.normalise(lang)
-    response = RedirectResponse(_safe_next(_language_equivalent(next, chosen)), status_code=303)
-    response.set_cookie(
-        i18n.LANG_COOKIE, chosen,
-        max_age=i18n.COOKIE_MAX_AGE, httponly=False, samesite="lax",
-        secure=request.url.scheme == "https",
-    )
-    return response
-
-
 @app.get("/robots.txt")
 def robots(request: Request):
-    # /set-language is a cookie-setter that redirects straight back, and
-    # the language switcher puts eight of them in the header and eight in
-    # the footer of every page. Left crawlable that is ~56,000 redirect
-    # URLs on a site whose actual problem is Google not getting through
-    # the real pages. The translated landings themselves (/ja, /ko, ...)
-    # are in the sitemap and hreflang-linked, so nothing is lost.
-    body = (
-        "User-agent: *\nAllow: /\n"
-        "Disallow: /watchlist\n"
-        "Disallow: /internal/\n"
-        "Disallow: /set-language\n"
-        f"Sitemap: {_public_base_url(request)}/sitemap.xml\n"
-    )
+    body = f"User-agent: *\nAllow: /\nDisallow: /watchlist\nDisallow: /internal/\nSitemap: {_public_base_url(request)}/sitemap.xml\n"
     return Response(content=body, media_type="text/plain")
 
 
@@ -6954,56 +6825,3 @@ def reviews_submit(
         return RedirectResponse(safe_next, status_code=303)
     reviews.submit(user["id"], target_type, target_key, rating, body)
     return RedirectResponse(safe_next, status_code=303)
-
-
-# ---------------------------------------------------------------------
-# LAST ROUTE IN THE FILE, AND IT MUST STAY LAST.
-#
-# "/{lang_code}" matches any single root path segment, and FastAPI
-# resolves routes in registration order. Registered earlier it swallowed
-# 26 real routes, /premium, /property, /robots.txt and /admin among
-# them, all of which come after it in this file. Anything added below
-# this line is unreachable.
-# ---------------------------------------------------------------------
-@app.get("/{lang_code}", include_in_schema=False)
-def language_landing(request: Request, lang_code: str):
-    """The one page per language that is worth indexing: what this site
-    is, how to read it, what it costs, and the plain statement that the
-    reports themselves stay in English.
-
-    Deliberately NOT a translation of the whole site. There are 2,943
-    area guides and 616 school pages; eight translations of those would
-    be over 28,000 machine-translated URLs from a domain currently
-    getting 21 pages indexed, which Google reads as thin duplicate
-    content. These nine pages are hand-written and few.
-    """
-    code = lang_code.lower()
-    # This route sits at the root, so it must not swallow anything else
-    # that lives there. Only real language codes, and never "en", which
-    # is the homepage.
-    if code not in i18n.LANGUAGES or code == i18n.DEFAULT_LANG:
-        return templates.TemplateResponse(request, "404.html", base_context(request), status_code=404)
-
-    context = base_context(request)
-    # The URL wins over cookie and header here: someone following a
-    # link to /ja expects Japanese whatever their browser sends.
-    meta = i18n.LANGUAGES[code]
-    # This page's content really is in that language, so both the chrome
-    # and the page language follow the URL.
-    context.update({
-        "lang": code, "lang_meta": meta, "T": i18n.catalogue(code),
-        "page_lang": code, "page_bcp47": meta["bcp47"], "page_dir": meta["dir"],
-    })
-    base = _public_base_url(request)
-    context["canonical_url"] = f"{base}/{code}"
-    context["alternates"] = [
-        {"href": base if c == i18n.DEFAULT_LANG else f"{base}/{c}", "hreflang": m["bcp47"]}
-        for c, m in i18n.LANGUAGES.items()
-    ]
-    response = templates.TemplateResponse(request, "language_landing.html", context)
-    response.set_cookie(
-        i18n.LANG_COOKIE, code,
-        max_age=i18n.COOKIE_MAX_AGE, httponly=False, samesite="lax",
-        secure=request.url.scheme == "https",
-    )
-    return response

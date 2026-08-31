@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Admin | UKPropertyInsight") }}{% endblock %}
+{% block title %}Admin | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<span class="kicker">{{ tr("Admin") }}</span>
-<h1>{{ tr("Daily overview") }}</h1>
-<p class="dek">{{ tr("Traffic, signups and Premium conversion, from this app's own data. No third-party analytics.") }}</p>
-<p class="section-sub">{{ tr("Pageviews count people only: crawlers, uptime checks, scripts, PageSpeed runs and the assistant's browser are excluded by user agent, and any browser you've marked as yours is excluded by cookie.") }}</p>
+<span class="kicker">Admin</span>
+<h1>Daily overview</h1>
+<p class="dek">Traffic, signups and Premium conversion, from this app's own data. No third-party analytics.</p>
+<p class="section-sub">Pageviews count people only: crawlers, uptime checks, scripts, PageSpeed runs and the assistant's browser are excluded by user agent, and any browser you've marked as yours is excluded by cookie.</p>
 {% if request.cookies.get("pv_exclude") == "1" %}
-<p class="notice" style="background: var(--good-bg); color: var(--good);">{{ tr("This browser is marked as yours. Its visits aren't counted, logged in or out.") }}</p>
+<p class="notice" style="background: var(--good-bg); color: var(--good);">This browser is marked as yours. Its visits aren't counted, logged in or out.</p>
 {% else %}
 <form action="/admin/exclude-me" method="post" class="stacked-form" style="max-width: 28rem;">
-    <p class="section-sub" style="margin: 0 0 0.5rem;">{{ tr("This browser is") }} <strong>{{ tr("not") }}</strong> {{ tr("marked as yours yet, so logged-out visits from it are being counted.") }}</p>
-    <button type="submit">{{ tr("Don't count this browser") }}</button>
+    <p class="section-sub" style="margin: 0 0 0.5rem;">This browser is <strong>not</strong> marked as yours yet, so logged-out visits from it are being counted.</p>
+    <button type="submit">Don't count this browser</button>
 </form>
 {% endif %}
 
@@ -22,48 +22,50 @@
    on the page you already read every day. #}
 {% if process_memory and process_memory.rss_mb %}
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("This instance") }}</h2>
+    <h2 class="landing-heading">This instance</h2>
     <p class="landing-subheading">
-        {{ tr('Memory in use right now, and how much of it is the in-process cache. Render restarts the service if this reaches the limit, which shows up as "Exited with status 137". Worth a glance if the site has restarted unexpectedly.') }}
+        Memory in use right now, and how much of it is the in-process cache. Render restarts the
+        service if this reaches the limit, which shows up as "Exited with status 137". Worth a
+        glance if the site has restarted unexpectedly.
     </p>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Memory used") }}</span>
-            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:{% if process_memory.rss_pct and process_memory.rss_pct >= 80 %}var(--bad){% elif process_memory.rss_pct and process_memory.rss_pct >= 60 %}var(--warn){% else %}var(--good){% endif %};">{{ process_memory.rss_mb }} {{ tr("MB") }}</span>
-            <span class="feature-card-blurb">{{ tr("of") }} {{ process_memory.limit_mb }} {{ tr("MB") }}{% if process_memory.rss_pct %}, {{ process_memory.rss_pct }}%{% endif %}</span>
+            <span class="feature-card-title">Memory used</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:{% if process_memory.rss_pct and process_memory.rss_pct >= 80 %}var(--bad){% elif process_memory.rss_pct and process_memory.rss_pct >= 60 %}var(--warn){% else %}var(--good){% endif %};">{{ process_memory.rss_mb }} MB</span>
+            <span class="feature-card-blurb">of {{ process_memory.limit_mb }} MB{% if process_memory.rss_pct %}, {{ process_memory.rss_pct }}%{% endif %}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Cache held") }}</span>
-            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ (process_memory.cache.bytes / 1048576) | round(1) }} {{ tr("MB") }}</span>
-            <span class="feature-card-blurb">{{ tr("ceiling") }} {{ (process_memory.cache.max_bytes / 1048576) | round(0) | int }} {{ tr("MB") }}</span>
+            <span class="feature-card-title">Cache held</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ (process_memory.cache.bytes / 1048576) | round(1) }} MB</span>
+            <span class="feature-card-blurb">ceiling {{ (process_memory.cache.max_bytes / 1048576) | round(0) | int }} MB</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Cached items") }}</span>
+            <span class="feature-card-title">Cached items</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ process_memory.cache.entries }}</span>
-            <span class="feature-card-blurb">{{ tr("ceiling") }} {{ process_memory.cache.max_entries }}</span>
+            <span class="feature-card-blurb">ceiling {{ process_memory.cache.max_entries }}</span>
         </div>
     </div>
 </section>
 {% endif %}
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("True view, since") }} {{ clean_from.strftime("%d %b %Y") }}</h2>
-    <p class="landing-subheading">{{ tr("Everything before this date includes your own logged-out visits and the assistant's browser, and can't be separated after the fact because no user agent is stored. This is the honest baseline.") }}</p>
+    <h2 class="landing-heading">True view, since {{ clean_from.strftime("%d %b %Y") }}</h2>
+    <p class="landing-subheading">Everything before this date includes your own logged-out visits and the assistant's browser, and can't be separated after the fact because no user agent is stored. This is the honest baseline.</p>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Pageviews") }}</span>
+            <span class="feature-card-title">Pageviews</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_clean }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Signups") }}</span>
+            <span class="feature-card-title">Signups</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_clean }}</span>
         </div>
     </div>
 </section>
 
 <section class="landing-section landing-section-tinted" id="funnel">
-    <h2 class="landing-heading">{{ tr("Funnel") }}</h2>
-    <p class="landing-subheading">{{ tr("Where people drop off between arriving and paying. Each bar is scaled to the stage above it; the percentage is the share of the previous stage that got this far.") }}</p>
+    <h2 class="landing-heading">Funnel</h2>
+    <p class="landing-subheading">Where people drop off between arriving and paying. Each bar is scaled to the stage above it; the percentage is the share of the previous stage that got this far.</p>
     <div class="funnel-grid">
         {% for title, stages in [("Since " ~ clean_from.strftime("%d %b"), funnel_clean), ("All time", funnel_all)] %}
         <div class="funnel-col">
@@ -84,37 +86,37 @@
     </div>
     <div class="feature-grid" style="margin-top: 1.25rem;">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Share links created") }}</span>
+            <span class="feature-card-title">Share links created</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ share_links }}</span>
-            <span class="feature-card-blurb">{{ tr("by") }} {{ share_sharers }} {{ tr("account") }}{{ '' if share_sharers == 1 else 's' }}</span>
+            <span class="feature-card-blurb">by {{ share_sharers }} account{{ '' if share_sharers == 1 else 's' }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Share link views") }}</span>
+            <span class="feature-card-title">Share link views</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ share_views }}</span>
-            <span class="feature-card-blurb">{{ tr("people who opened a report someone sent them") }}</span>
+            <span class="feature-card-blurb">people who opened a report someone sent them</span>
         </div>
     </div>
-    <p class="section-sub" style="margin-top: 1rem;">{{ tr('"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.') }}
-    {% if test_accounts_excluded %}{{ tr("Every account figure on this page excludes") }} {{ test_accounts_excluded }} {{ tr("internal and test account") }}{{ 's' if test_accounts_excluded != 1 }} {{ tr("(the owner's own, example.* addresses, and the two refunded Stripe test purchases), so these are customers, not noise.") }}{% endif %}</p>
+    <p class="section-sub" style="margin-top: 1rem;">"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.
+    {% if test_accounts_excluded %}Every account figure on this page excludes {{ test_accounts_excluded }} internal and test account{{ 's' if test_accounts_excluded != 1 }} (the owner's own, example.* addresses, and the two refunded Stripe test purchases), so these are customers, not noise.{% endif %}</p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Pageviews") }}</h2>
+    <h2 class="landing-heading">Pageviews</h2>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Today") }}</span>
+            <span class="feature-card-title">Today</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_today }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Last 7 days") }}</span>
+            <span class="feature-card-title">Last 7 days</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_week }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Last 30 days") }}</span>
+            <span class="feature-card-title">Last 30 days</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_month }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("All time (inflated before") }} {{ clean_from.strftime("%d %b") }})</span>
+            <span class="feature-card-title">All time (inflated before {{ clean_from.strftime("%d %b") }})</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink-faint);">{{ pageviews_total }}</span>
         </div>
     </div>
@@ -136,30 +138,32 @@
         {% endfor %}
     </div>
     <p class="section-sub">
-        {{ tr("Last 14 days. Days that look like people average") }}
-        <strong>{{ pageviews_avg_unflagged }}</strong> {{ tr("views;") }}
-        {% if flagged_days_14d %}{{ tr("the") }} {{ flagged_days_14d }} {{ tr("amber day") }}{{ 's' if flagged_days_14d != 1 }} {{ tr("carr") }}{{ 'y' if flagged_days_14d != 1 else 'ies' }} {{ tr("an automation pattern (hover a bar for the evidence) and") }} {{ 'are' if flagged_days_14d != 1 else 'is' }} {{ tr("left out of that average, though never out of the counts.") }}{% else %}{{ tr("no day in this window shows an automation pattern.") }}{% endif %}
+        Last 14 days. Days that look like people average
+        <strong>{{ pageviews_avg_unflagged }}</strong> views;
+        {% if flagged_days_14d %}the {{ flagged_days_14d }} amber day{{ 's' if flagged_days_14d != 1 }} carr{{ 'y' if flagged_days_14d != 1 else 'ies' }} an
+        automation pattern (hover a bar for the evidence) and {{ 'are' if flagged_days_14d != 1 else 'is' }} left out of that
+        average, though never out of the counts.{% else %}no day in this window shows an automation pattern.{% endif %}
     </p>
     {% endif %}
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Signups") }}</h2>
+    <h2 class="landing-heading">Signups</h2>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Today") }}</span>
+            <span class="feature-card-title">Today</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_today }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Last 7 days") }}</span>
+            <span class="feature-card-title">Last 7 days</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_week }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Last 30 days") }}</span>
+            <span class="feature-card-title">Last 30 days</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_month }}</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("All time") }}</span>
+            <span class="feature-card-title">All time</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ signups_total }}</span>
         </div>
     </div>
@@ -174,20 +178,21 @@
         </div>
         {% endfor %}
     </div>
-    <p class="section-sub">{{ tr("Last 14 days") }}</p>
+    <p class="section-sub">Last 14 days</p>
     {% endif %}
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Revenue") }}</h2>
+    <h2 class="landing-heading">Revenue</h2>
     <p class="landing-subheading">
-        {{ tr("Estimated") }} <strong>£{{ "%.2f"|format(mrr_estimate) }}{{ tr("/month") }}</strong> {{ tr("in monthly recurring revenue from") }}
-        {{ active_subscriber_count }} {{ tr("active subscriber") }}{{ "s" if active_subscriber_count != 1 else "" }}
-        {% if trialing_count %}{{ tr(", plus") }} {{ trialing_count }} {{ tr("on a free trial (not yet counted in MRR)") }}{% endif %}{{ tr(". A quarterly plan's £24.99/3 months is shown at its monthly-equivalent rate here.") }}
+        Estimated <strong>£{{ "%.2f"|format(mrr_estimate) }}/month</strong> in monthly recurring revenue from
+        {{ active_subscriber_count }} active subscriber{{ "s" if active_subscriber_count != 1 else "" }}
+        {% if trialing_count %}, plus {{ trialing_count }} on a free trial (not yet counted in MRR){% endif %}.
+        A quarterly plan's £24.99/3 months is shown at its monthly-equivalent rate here.
     </p>
     {% if subscription_status_breakdown %}
     <table class="tx-table">
-        <thead><tr><th>{{ tr("Subscription status") }}</th><th class="num">{{ tr("Accounts") }}</th></tr></thead>
+        <thead><tr><th>Subscription status</th><th class="num">Accounts</th></tr></thead>
         <tbody>
             {% for s in subscription_status_breakdown %}
             <tr><td>{{ s.status|capitalize }}</td><td class="num">{{ s.count }}</td></tr>
@@ -198,14 +203,14 @@
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Premium") }}</h2>
+    <h2 class="landing-heading">Premium</h2>
     <p class="landing-subheading">
-        <strong>{{ premium_total }}</strong> {{ tr("premium user") }}{{ "s" if premium_total != 1 else "" }} {{ tr("of") }} {{ signups_total }} {{ tr("total accounts") }}
-        {% if signups_total %}({{ "%.1f"|format(premium_total / signups_total * 100) }}{{ tr("% conversion)") }}{% endif %}.
+        <strong>{{ premium_total }}</strong> premium user{{ "s" if premium_total != 1 else "" }} of {{ signups_total }} total accounts
+        {% if signups_total %}({{ "%.1f"|format(premium_total / signups_total * 100) }}% conversion){% endif %}.
     </p>
     {% if plan_breakdown %}
     <table class="tx-table">
-        <thead><tr><th>{{ tr("Plan") }}</th><th class="num">{{ tr("Users") }}</th></tr></thead>
+        <thead><tr><th>Plan</th><th class="num">Users</th></tr></thead>
         <tbody>
             {% for p in plan_breakdown %}
             <tr><td>{{ p.plan }}</td><td class="num">{{ p.count }}</td></tr>
@@ -217,10 +222,10 @@
 
 {% if top_pages %}
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Top pages") }}</h2>
-    <p class="landing-subheading">{{ tr("Last 30 days, by pageviews.") }}</p>
+    <h2 class="landing-heading">Top pages</h2>
+    <p class="landing-subheading">Last 30 days, by pageviews.</p>
     <table class="tx-table">
-        <thead><tr><th>{{ tr("Page") }}</th><th class="num">{{ tr("Views") }}</th></tr></thead>
+        <thead><tr><th>Page</th><th class="num">Views</th></tr></thead>
         <tbody>
             {% for p in top_pages %}
             <tr><td>{{ p.path }}</td><td class="num">{{ p.count }}</td></tr>
@@ -232,9 +237,9 @@
 
 {% if referral_breakdown %}
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Referral sources") }}</h2>
+    <h2 class="landing-heading">Referral sources</h2>
     <table class="tx-table">
-        <thead><tr><th>{{ tr("Code") }}</th><th class="num">{{ tr("Signups") }}</th></tr></thead>
+        <thead><tr><th>Code</th><th class="num">Signups</th></tr></thead>
         <tbody>
             {% for r in referral_breakdown %}
             <tr><td>{{ r.code }}</td><td class="num">{{ r.count }}</td></tr>
@@ -245,10 +250,10 @@
 {% endif %}
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Recent signups") }}</h2>
+    <h2 class="landing-heading">Recent signups</h2>
     <table class="tx-table">
         <thead>
-            <tr><th>{{ tr("Email") }}</th><th>{{ tr("Joined") }}</th><th>{{ tr("Premium") }}</th><th>{{ tr("Plan") }}</th><th>{{ tr("Status") }}</th><th>{{ tr("Referred by") }}</th></tr>
+            <tr><th>Email</th><th>Joined</th><th>Premium</th><th>Plan</th><th>Status</th><th>Referred by</th></tr>
         </thead>
         <tbody>
             {% for u in recent_signups %}
@@ -266,34 +271,34 @@
 </section>
 
 <section class="landing-section" id="comp">
-    <h2 class="landing-heading">{{ tr("Comp an account") }}</h2>
-    <p class="landing-subheading">{{ tr('Grant free Premium (plan shows as "comped") or take it back. Accounts with a real Stripe subscription are refused; the webhook owns those.') }}</p>
-    {% if request.query_params.get("comp") == "done" %}<p class="notice" style="background: var(--good-bg); color: var(--good);">{{ tr("Done.") }}</p>
-    {% elif request.query_params.get("comp") == "notfound" %}<p class="notice notice-error">{{ tr("No account with that email.") }}</p>
-    {% elif request.query_params.get("comp") == "stripe" %}<p class="notice notice-error">{{ tr("That account has a Stripe subscription; manage it in Stripe instead.") }}</p>{% endif %}
+    <h2 class="landing-heading">Comp an account</h2>
+    <p class="landing-subheading">Grant free Premium (plan shows as "comped") or take it back. Accounts with a real Stripe subscription are refused; the webhook owns those.</p>
+    {% if request.query_params.get("comp") == "done" %}<p class="notice" style="background: var(--good-bg); color: var(--good);">Done.</p>
+    {% elif request.query_params.get("comp") == "notfound" %}<p class="notice notice-error">No account with that email.</p>
+    {% elif request.query_params.get("comp") == "stripe" %}<p class="notice notice-error">That account has a Stripe subscription; manage it in Stripe instead.</p>{% endif %}
     <form action="/admin/grant-premium" method="post" class="stacked-form" style="max-width: 30rem;">
         <div class="search-form-field">
-            <label for="comp-email">{{ tr("Account email") }}</label>
+            <label for="comp-email">Account email</label>
             <input type="email" id="comp-email" name="email" required>
         </div>
         <div class="search-form-field">
-            <label for="comp-action">{{ tr("Action") }}</label>
+            <label for="comp-action">Action</label>
             <select id="comp-action" name="action">
-                <option value="grant">{{ tr("Grant premium") }}</option>
-                <option value="revoke">{{ tr("Revoke") }}</option>
+                <option value="grant">Grant premium</option>
+                <option value="revoke">Revoke</option>
             </select>
         </div>
-        <button type="submit">{{ tr("Apply") }}</button>
+        <button type="submit">Apply</button>
     </form>
 </section>
 
 <section class="landing-section" id="figure-reports">
-    <h2 class="landing-heading">{{ tr("Figure reports") }}</h2>
-    <p class="landing-subheading">{{ tr("What readers said looked wrong. Resolve each one; the outcome is published on") }} <a href="/accuracy">{{ tr("/accuracy") }}</a>.</p>
+    <h2 class="landing-heading">Figure reports</h2>
+    <p class="landing-subheading">What readers said looked wrong. Resolve each one; the outcome is published on <a href="/accuracy">/accuracy</a>.</p>
     {% if figure_reports %}
     <div class="tablewrap">
     <table class="tx-table">
-        <thead><tr><th>{{ tr("When") }}</th><th>{{ tr("Property") }}</th><th>{{ tr("Card") }}</th><th>{{ tr("Message") }}</th><th>{{ tr("Resolve") }}</th></tr></thead>
+        <thead><tr><th>When</th><th>Property</th><th>Card</th><th>Message</th><th>Resolve</th></tr></thead>
         <tbody>
         {% for r in figure_reports %}
         <tr class="{{ 'figure-report-open' if r.status == 'open' else '' }}">
@@ -309,7 +314,7 @@
                         {% endfor %}
                     </select>
                     <textarea name="resolution" rows="2" placeholder="What you found (published)">{{ r.resolution or '' }}</textarea>
-                    <button type="submit">{{ tr("Save") }}</button>
+                    <button type="submit">Save</button>
                 </form>
             </td>
         </tr>
@@ -318,7 +323,7 @@
     </table>
     </div>
     {% else %}
-    <p class="notice">{{ tr("No reports yet.") }}</p>
+    <p class="notice">No reports yet.</p>
     {% endif %}
 </section>
 {% endblock %}

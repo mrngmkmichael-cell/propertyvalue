@@ -1,32 +1,34 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("What homes really sell for, by postcode district") }}{% endblock %}
-{% block meta_description %}{{ tr("The median recorded home sale in every UK postcode district, from HM Land Registry: cheapest to dearest, and how far apart they are. Kept current.") }}{% endblock %}
-{% block og_title %}{{ tr("What homes really sell for, by postcode district") }}{% endblock %}
+{% block title %}What homes really sell for, by postcode district{% endblock %}
+{% block meta_description %}The median recorded home sale in every UK postcode district, from HM Land Registry: cheapest to dearest, and how far apart they are. Kept current.{% endblock %}
+{% block og_title %}What homes really sell for, by postcode district{% endblock %}
 
 {% block content %}
-<span class="kicker">{{ tr("Market data") }}</span>
-<h1>{{ tr("What homes really sell for, district by district") }}</h1>
+<span class="kicker">Market data</span>
+<h1>What homes really sell for, district by district</h1>
 <p class="dek">
-    {{ tr('Everyone quotes local authority averages, so "Manchester" becomes one number covering tens of thousands of very different houses. These are medians of the actual recorded sales around each postcode district, which is a much smaller and more honest unit.') }}
+    Everyone quotes local authority averages, so "Manchester" becomes one number covering tens of
+    thousands of very different houses. These are medians of the actual recorded sales around each
+    postcode district, which is a much smaller and more honest unit.
 </p>
 
 {% if total %}
 <div class="scorecard-row">
-    <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">{{ tr("districts with enough sales to rank") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">districts with enough sales to rank</span></div>
     {% if median_of_medians %}
-    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">{{ tr("the middle district's median") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">the middle district's median</span></div>
     {% endif %}
     {% if cheapest and dearest %}
-    <div class="score-tile"><span class="score-tile-value">{{ (dearest[0].median // cheapest[0].median) }}&times;</span><span class="score-tile-label">{{ tr("between the dearest and cheapest") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ (dearest[0].median // cheapest[0].median) }}&times;</span><span class="score-tile-label">between the dearest and cheapest</span></div>
     {% endif %}
 </div>
 
 <section class="report-section">
-    <h2>{{ tr("Where homes sell for least") }}</h2>
+    <h2>Where homes sell for least</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("Median sale") }}</th><th class="num">{{ tr("Sales") }}</th><th class="num">{{ tr("Range") }}</th></tr></thead>
+            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
             <tbody>
                 {% for r in cheapest %}
                 <tr>
@@ -34,7 +36,7 @@
                     <td>{{ r.district }}</td>
                     <td class="num">{{ r.median | gbp }}</td>
                     <td class="num">{{ r.count }}</td>
-                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} {{ tr("to") }} {{ r.high | gbp }}{% endif %}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -43,10 +45,10 @@
 </section>
 
 <section class="report-section">
-    <h2>{{ tr("Where homes sell for most") }}</h2>
+    <h2>Where homes sell for most</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("Median sale") }}</th><th class="num">{{ tr("Sales") }}</th><th class="num">{{ tr("Range") }}</th></tr></thead>
+            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
             <tbody>
                 {% for r in dearest %}
                 <tr>
@@ -54,7 +56,7 @@
                     <td>{{ r.district }}</td>
                     <td class="num">{{ r.median | gbp }}</td>
                     <td class="num">{{ r.count }}</td>
-                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} {{ tr("to") }} {{ r.high | gbp }}{% endif %}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -63,12 +65,13 @@
 </section>
 {% else %}
 <p class="notice">
-    {{ tr("Not enough districts have been through the data refresh yet for a ranking worth publishing. Check back shortly.") }}
+    Not enough districts have been through the data refresh yet for a ranking worth publishing.
+    Check back shortly.
 </p>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("How to read this") }}</h2>
+    <h2>How to read this</h2>
     <p class="section-sub">
         Every figure is the median of real recorded sales on the streets around each district's
         centre, taken from HM Land Registry Price Paid Data, counting homes only. Land Registry's
@@ -76,31 +79,42 @@
         house price ranges.
     </p>
     <p class="section-sub">
-        <strong>{{ tr("England and Wales only.") }}</strong> {{ tr("Price Paid Data does not cover Scotland or Northern Ireland, which run their own separate registers, so Scottish and Northern Irish districts are absent from this ranking entirely. That is a gap in what we can see, not a statement about those places.") }}
+        <strong>England and Wales only.</strong> Price Paid Data does not cover Scotland or Northern
+        Ireland, which run their own separate registers, so Scottish and Northern Irish districts are
+        absent from this ranking entirely. That is a gap in what we can see, not a statement about
+        those places.
     </p>
     <p class="section-sub">
-        {{ tr("A district needs at least five recorded home sales to appear at all. Below that a median is a number pretending to be a statistic, so those districts are left out rather than ranked on two transactions. That is also why some very central districts are missing: they are mostly commercial and barely any homes change hands there.") }}
+        A district needs at least five recorded home sales to appear at all. Below that a median is
+        a number pretending to be a statistic, so those districts are left out rather than ranked on
+        two transactions. That is also why some very central districts are missing: they are mostly
+        commercial and barely any homes change hands there.
     </p>
     <p class="section-sub">
-        {{ tr("This is what sold, not what is for sale, and not a valuation. A district that looks cheap may simply have sold a lot of flats that year. Open any district to see the individual sales behind its number, or") }}
-        <a href="/">{{ tr("check a specific address") }}</a> {{ tr("for the full picture on one property.") }}
+        This is what sold, not what is for sale, and not a valuation. A district that looks cheap may
+        simply have sold a lot of flats that year. Open any district to see the individual sales
+        behind its number, or
+        <a href="/">check a specific address</a> for the full picture on one property.
     </p>
-    <p class="section-sub">{{ tr("Generated") }} {{ generated_date }}{{ tr(". Source: HM Land Registry Price Paid Data, Open Government Licence.") }}</p>
+    <p class="section-sub">Generated {{ generated_date }}. Source: HM Land Registry Price Paid Data, Open Government Licence.</p>
 </section>
 
 <section class="report-section">
-    <h2>{{ tr("Using these figures") }}</h2>
+    <h2>Using these figures</h2>
     {# The backlink offer. An estate agent or local site that embeds the
    badge links back to us, and links are the one ranking input a page
    cannot give itself. #}
 <p class="section-sub">
-    {{ tr("Run a listings site or a local page? You can") }}
-    <a href="/embed">{{ tr("link any address to its free report") }}</a>{{ tr(", so your readers get the checks without you building anything.") }}
+    Run a listings site or a local page? You can
+    <a href="/embed">link any address to its free report</a>, so your readers get the checks
+    without you building anything.
 </p>
 
 <p class="section-sub">
-        {{ tr("Journalists and researchers are welcome to use anything here with a link back. If you want the same breakdown for a particular area or a set of districts,") }} <a href="/support">{{ tr("ask") }}</a>
-        {{ tr("and we will pull it, at no cost. Every number traces to a named public source, and where a figure has ever turned out to be wrong it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
+        Journalists and researchers are welcome to use anything here with a link back. If you want
+        the same breakdown for a particular area or a set of districts, <a href="/support">ask</a>
+        and we will pull it, at no cost. Every number traces to a named public source, and where a
+        figure has ever turned out to be wrong it goes on the <a href="/accuracy">accuracy log</a>.
     </p>
 </section>
 {% endblock %}

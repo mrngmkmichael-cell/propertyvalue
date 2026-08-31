@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ admin_district if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}{{ tr("Area not found | UKPropertyInsight") }}{% endif %}{% endblock %}
+{% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ admin_district if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
-{% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} {{ tr("area guide: average house prices and price trend, school quality, crime levels") }}{% if flood_zone %} {{ tr("and flood risk") }}{% endif %}{{ tr(", all from open UK government data.") }}{% else %}{{ tr("Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.") }}{% endif %}{% endblock %}
+{% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block extra_head %}
 {% if outcode %}
 <script type="application/ld+json">
@@ -32,19 +32,20 @@
 {% block content %}
 {% if area_faqs_jsonld %}<script type="application/ld+json">{{ area_faqs_jsonld | safe }}</script>{% endif %}
 {% if not outcode %}
-<span class="kicker">{{ tr("Area guide") }}</span>
-<h1>{{ tr("Area not found") }}</h1>
+<span class="kicker">Area guide</span>
+<h1>Area not found</h1>
 <p class="dek">
     "{{ query }}" doesn't look like a UK postcode district (e.g. <code>SW1A</code>, <code>M1</code>,
-    <code>EH1</code>{{ tr("). Try a district code, or") }} <a href="/">{{ tr("search a full postcode or address") }}</a> {{ tr("instead.") }}
+    <code>EH1</code>). Try a district code, or <a href="/">search a full postcode or address</a> instead.
 </p>
 {% else %}
 
-<span class="kicker">{{ tr("Area guide") }}</span>
-<h1>{{ tr("Living in") }} {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
+<span class="kicker">Area guide</span>
+<h1>Living in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
 <p class="dek">
-    {{ tr("What the open data says about house prices, schools, crime and flood risk around") }}
-    {{ outcode }}{% if admin_district %} {{ tr("in") }} {{ admin_district }}{% endif %}{{ tr(". Built from the same sources as every property report on this site, not opinion or marketing copy.") }}
+    What the open data says about house prices, schools, crime and flood risk around
+    {{ outcode }}{% if admin_district %} in {{ admin_district }}{% endif %}. Built from the same sources
+    as every property report on this site, not opinion or marketing copy.
 </p>
 
 {# Following a district, not an address. Most people choose an area
@@ -54,22 +55,23 @@
    person's state never reaches another's page. #}
 {% if following_district %}
 <div class="follow-row">
-    <span class="follow-state">{{ tr("You are following") }} {{ outcode }}</span>
+    <span class="follow-state">You are following {{ outcode }}</span>
     <form action="/districts/unfollow" method="post">
         <input type="hidden" name="outcode" value="{{ outcode }}">
         <input type="hidden" name="back" value="area">
-        <button type="submit" class="follow-btn follow-btn-off">{{ tr("Stop following") }}</button>
+        <button type="submit" class="follow-btn follow-btn-off">Stop following</button>
     </form>
-    <a class="follow-link" href="/watchlist">{{ tr("See what has changed &rarr;") }}</a>
+    <a class="follow-link" href="/watchlist">See what has changed &rarr;</a>
 </div>
 {% else %}
 <div class="follow-row">
     <form action="/districts/follow" method="post">
         <input type="hidden" name="outcode" value="{{ outcode }}">
-        <button type="submit" class="follow-btn">{{ tr("Follow") }} {{ outcode }}</button>
+        <button type="submit" class="follow-btn">Follow {{ outcode }}</button>
     </form>
     <span class="follow-state">
-        {{ tr("New sales and the latest crime figures for this district, waiting on My properties next time you visit. No email unless you ask for one.") }}
+        New sales and the latest crime figures for this district, waiting on My properties next time
+        you visit. No email unless you ask for one.
     </span>
 </div>
 {% endif %}
@@ -79,17 +81,19 @@
     <div class="report-modal-inner">
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
         <section class="report-section">
-            <h2>{{ tr("Two figures on this page aren't reliable for Scotland") }}</h2>
+            <h2>Two figures on this page aren't reliable for Scotland</h2>
             <p class="section-sub">
-                {{ tr("House prices below are genuine (the UK House Price Index covers all four nations), but two other sources are England-only infrastructure with no Scottish equivalent wired up yet:") }}
+                House prices below are genuine (the UK House Price Index covers all four nations),
+                but two other sources are England-only infrastructure with no Scottish equivalent
+                wired up yet:
             </p>
             <ul class="notice-list">
-                <li><strong>{{ tr("Flood risk") }}</strong>{{ tr(': from the Environment Agency (England only). The "Zone 1 (low probability)" reading is what we get when no data covers a point at all, not a verified assessment.') }}</li>
-                <li><strong>{{ tr("Crime") }}</strong>{{ tr(": from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count will read far lower than actual local crime levels.") }}</li>
-                <li><strong>{{ tr("Schools") }}</strong>: ratings come from Ofsted, which doesn't operate in Scotland, so "no schools found" reflects that gap, not an actual absence of schools nearby.</li>
+                <li><strong>Flood risk</strong>: from the Environment Agency (England only). The "Zone 1 (low probability)" reading is what we get when no data covers a point at all, not a verified assessment.</li>
+                <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count will read far lower than actual local crime levels.</li>
+                <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland, so "no schools found" reflects that gap, not an actual absence of schools nearby.</li>
             </ul>
             <p class="notice">
-                {{ tr("Please don't rely on the flood or crime figures on this page for a Scottish area.") }}
+                Please don't rely on the flood or crime figures on this page for a Scottish area.
             </p>
         </section>
     </div>
@@ -97,29 +101,31 @@
 {% endif %}
 {% if not has_data %}
 <p class="notice notice-error">
-    {{ tr("We couldn't pull any data for") }} {{ outcode }} {{ tr("right now, the underlying services may be temporarily unavailable. Try again shortly, or") }}
-    <a href="/property?postcode={{ outcode }}">{{ tr("search") }} {{ outcode }} {{ tr("directly") }}</a>.
+    We couldn't pull any data for {{ outcode }} right now, the underlying services may be
+    temporarily unavailable. Try again shortly, or
+    <a href="/property?postcode={{ outcode }}">search {{ outcode }} directly</a>.
 </p>
 {% else %}
 
 <section class="report-section">
-    <h2>{{ tr("House prices") }}</h2>
+    <h2>House prices</h2>
     {% if hpi and hpi.local_authority %}
     <p class="section-sub">
-        {{ tr("Average price in") }} {{ hpi.local_authority.name }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
-        {% if hpi.local_authority.annual_change_pct >= 0 %}{{ tr("up") }}{% else %}{{ tr("down") }}{% endif %}
-        {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}{{ tr("% on a year ago (") }}{{ hpi.local_authority.period[:7] }}).
+        Average price in {{ hpi.local_authority.name }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
+        {% if hpi.local_authority.annual_change_pct >= 0 %}up{% else %}down{% endif %}
+        {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}% on a year ago
+        ({{ hpi.local_authority.period[:7] }}).
         {% if hpi.region %}
-        {{ tr("The wider") }} {{ hpi.region.name }} {{ tr("average is") }} {{ hpi.region.average_price | gbp }}.
+        The wider {{ hpi.region.name }} average is {{ hpi.region.average_price | gbp }}.
         {% endif %}
     </p>
     {% else %}
-    <p class="notice">{{ tr("House price index data isn't available for this area right now.") }}</p>
+    <p class="notice">House price index data isn't available for this area right now.</p>
     {% endif %}
     <p class="section-sub">
-        <a href="/property?postcode={{ outcode }}">{{ tr("Check sold prices for a specific address in") }} {{ outcode }} →</a>
+        <a href="/property?postcode={{ outcode }}">Check sold prices for a specific address in {{ outcode }} →</a>
         {% if region_slug %}
-        <br><a href="/market/house-prices/{{ region_slug }}">{{ tr("See where") }} {{ outcode }} {{ tr("ranks across") }} {{ region_name }} →</a>
+        <br><a href="/market/house-prices/{{ region_slug }}">See where {{ outcode }} ranks across {{ region_name }} →</a>
         {% endif %}
     </p>
 </section>
@@ -130,19 +136,24 @@
    which is the part of the page that is genuinely about {{ outcode }}
    and not about the whole city. #}
 <section class="report-section">
-    <h2>{{ tr("What actually sold around") }} {{ outcode }}</h2>
+    <h2>What actually sold around {{ outcode }}</h2>
     <p class="section-sub">
         {% if local_sales.enough_for_median %}
-        {{ local_sales.count }} {{ tr("recorded home sale") }}{{ "s" if local_sales.count != 1 else "" }} {{ tr("on the streets around central") }} {{ outcode }}{% if local_sales.is_recent %} {{ tr("in the last") }} {{ local_sales.years }} {{ tr("years") }}{% endif %}{{ tr(", with a median of") }} <strong>{{ local_sales.median | gbp }}</strong>
-        {{ tr("and a range from") }} {{ local_sales.low | gbp }} {{ tr("to") }} {{ local_sales.high | gbp }}.
-        {% if local_sales.commonest_type %}{{ tr("Mostly") }} {{ local_sales.commonest_type }}.{% endif %}
+        {{ local_sales.count }} recorded home sale{{ "s" if local_sales.count != 1 else "" }} on the streets around
+        central {{ outcode }}{% if local_sales.is_recent %} in the last {{ local_sales.years }} years{% endif %},
+        with a median of <strong>{{ local_sales.median | gbp }}</strong>
+        and a range from {{ local_sales.low | gbp }} to {{ local_sales.high | gbp }}.
+        {% if local_sales.commonest_type %}Mostly {{ local_sales.commonest_type }}.{% endif %}
         {% else %}
-        {{ tr("Only") }} {{ local_sales.count }} {{ tr("home sale") }}{{ "s" if local_sales.count != 1 else "" }} {{ tr("recorded on the streets around central") }} {{ outcode }}{% if local_sales.is_recent %} {{ tr("in the last") }} {{ local_sales.years }} {{ tr("years") }}{% endif %}{{ tr(", too few to average meaningfully. Here they are in full instead. A district with very few residential sales is usually mostly commercial.") }}
+        Only {{ local_sales.count }} home sale{{ "s" if local_sales.count != 1 else "" }} recorded on the streets around
+        central {{ outcode }}{% if local_sales.is_recent %} in the last {{ local_sales.years }} years{% endif %},
+        too few to average meaningfully. Here they are in full instead. A district with very few
+        residential sales is usually mostly commercial.
         {% endif %}
     </p>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>{{ tr("Address") }}</th><th>{{ tr("Type") }}</th><th class="num">{{ tr("Sold for") }}</th><th class="num">{{ tr("Date") }}</th></tr></thead>
+            <thead><tr><th>Address</th><th>Type</th><th class="num">Sold for</th><th class="num">Date</th></tr></thead>
             <tbody>
                 {% for s in local_sales.latest %}
                 <tr>
@@ -156,36 +167,37 @@
         </table>
     </div>
     <p class="section-sub">
-        {{ tr("Source: HM Land Registry Price Paid Data. Every sale of a registered property in England and Wales appears here once it completes, so the most recent weeks are always still filling in.") }}
+        Source: HM Land Registry Price Paid Data. Every sale of a registered property in England
+        and Wales appears here once it completes, so the most recent weeks are always still filling in.
     </p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("Schools nearby") }}</h2>
+    <h2>Schools nearby</h2>
     {% if landscape and landscape.total_schools %}
     <p class="section-sub">
-        {{ landscape.total_schools }} {{ tr("school") }}{{ "s" if landscape.total_schools != 1 else "" }} {{ tr("within") }}
-        {{ landscape.radius_miles }} {{ tr("miles") }}
+        {{ landscape.total_schools }} school{{ "s" if landscape.total_schools != 1 else "" }} within
+        {{ landscape.radius_miles }} miles
         {% if landscape.good_or_better_pct is not none %}
-        {{ tr(", of which") }} <strong>{{ landscape.good_or_better_pct }}%</strong> {{ tr("are rated Outstanding or Good by Ofsted.") }}
+        , of which <strong>{{ landscape.good_or_better_pct }}%</strong> are rated Outstanding or Good by Ofsted.
         {% endif %}
     </p>
     {% else %}
-    <p class="notice">{{ tr("No Ofsted-rated schools found within range of") }} {{ outcode }}.</p>
+    <p class="notice">No Ofsted-rated schools found within range of {{ outcode }}.</p>
     {% endif %}
     {% if named_schools %}
     {# A count is the same sentence on every district in the city. The
        names are what a parent is actually searching for. #}
     <table class="tx-table">
-        <thead><tr><th>{{ tr("Nearest well-rated schools") }}</th><th>{{ tr("Stage") }}</th><th>{{ tr("Ofsted") }}</th><th class="num">{{ tr("Distance") }}</th></tr></thead>
+        <thead><tr><th>Nearest well-rated schools</th><th>Stage</th><th>Ofsted</th><th class="num">Distance</th></tr></thead>
         <tbody>
             {% for s in named_schools %}
             <tr>
                 <td>{% if s.slug %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
                 <td>{{ s.phase or "" }}</td>
-                <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">{{ tr("Not rated") }}</span>{% endif %}</td>
-                <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} {{ tr("mi") }}{% endif %}</td>
+                <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
+                <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} mi{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -193,58 +205,63 @@
     {% endif %}
     {% if by_sector %}
     <p class="section-sub">
-        <strong>{{ by_sector.state_primary }}</strong> {{ tr("state primary and") }}
-        <strong>{{ by_sector.state_secondary }}</strong> {{ tr("state secondary schools within range,") }}
+        <strong>{{ by_sector.state_primary }}</strong> state primary and
+        <strong>{{ by_sector.state_secondary }}</strong> state secondary schools within range,
         {% if private_school_count %}
-        {{ tr("plus") }} <strong>{{ private_school_count }}</strong> {{ tr("fee-paying school") }}{{ "s" if private_school_count != 1 else "" }}.
-        {% else %}{{ tr("and no fee-paying schools.") }}
+        plus <strong>{{ private_school_count }}</strong> fee-paying
+        school{{ "s" if private_school_count != 1 else "" }}.
+        {% else %}and no fee-paying schools.
         {% endif %}
     </p>
     {% endif %}
-    <p class="section-sub"><a href="/schools/guide?q={{ outcode }}">{{ tr("See the full school breakdown for") }} {{ outcode }} →</a></p>
+    <p class="section-sub"><a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} →</a></p>
 </section>
 
 {% if private_school_count %}
 <section class="report-section">
-    <h2>{{ tr("Private schools") }}</h2>
+    <h2>Private schools</h2>
     <p class="section-sub">
-        {{ private_school_count }} {{ tr("fee-paying school") }}{{ "s" if private_school_count != 1 else "" }} {{ tr("within") }}
-        {{ landscape.radius_miles if landscape else 3 }} {{ tr("miles:") }}
-        {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} {{ tr("and others") }}{% endif %}.
+        {{ private_school_count }} fee-paying school{{ "s" if private_school_count != 1 else "" }} within
+        {{ landscape.radius_miles if landscape else 3 }} miles:
+        {{ private_schools | join(", ") }}{% if private_school_count > private_schools | length %} and others{% endif %}.
     </p>
     <p class="section-sub">
-        <a href="/area/{{ outcode }}/private-schools">{{ tr("All") }} {{ private_school_count }} {{ tr("fee-paying schools near") }} {{ outcode }}{{ tr(", with ages and admissions &rarr;") }}</a>
+        <a href="/area/{{ outcode }}/private-schools">All {{ private_school_count }} fee-paying schools near {{ outcode }}, with ages and admissions &rarr;</a>
     </p>
     {# Not a caveat we can leave out: a blank rating next to a famous
        school reads as a school that failed an inspection. #}
     <p class="notice">
-        {{ tr("Fee-paying schools are inspected by the Independent Schools Inspectorate, not Ofsted, and the ISI publishes no open data feed. That is why they carry no rating here. A missing grade means we cannot see one, not that the school was judged poorly.") }}
+        Fee-paying schools are inspected by the Independent Schools Inspectorate, not Ofsted, and
+        the ISI publishes no open data feed. That is why they carry no rating here. A missing grade
+        means we cannot see one, not that the school was judged poorly.
     </p>
 </section>
 {% endif %}
 
 {% if university_count %}
 <section class="report-section">
-    <h2>{{ tr("Universities") }}</h2>
+    <h2>Universities</h2>
     <p class="section-sub">
-        {{ university_count }} {{ tr("higher education institution") }}{{ "s" if university_count != 1 else "" }} {{ tr("within") }}
-        {{ landscape.radius_miles if landscape else 3 }} {{ tr("miles:") }} {{ universities | join(", ") }}{% if university_count > universities | length %} {{ tr("and others") }}{% endif %}.
+        {{ university_count }} higher education institution{{ "s" if university_count != 1 else "" }} within
+        {{ landscape.radius_miles if landscape else 3 }} miles: {{ universities | join(", ") }}{% if university_count > universities | length %} and others{% endif %}.
     </p>
     <p class="section-sub">
-        {{ tr("Relevant beyond study: a large student population shapes rental demand, and term-time letting is a different market from family letting.") }}
+        Relevant beyond study: a large student population shapes rental demand, and term-time
+        letting is a different market from family letting.
     </p>
 </section>
 {% endif %}
 
 {% if occupation_mix %}
 <section class="report-section">
-    <h2>{{ tr("What people here do for work") }}</h2>
+    <h2>What people here do for work</h2>
     <p class="section-sub">
-        {{ tr("The most common occupations among working residents, from the 2021 Census. This is occupation rather than industry: it says what people do, not which industries employ them.") }}
+        The most common occupations among working residents, from the 2021 Census. This is
+        occupation rather than industry: it says what people do, not which industries employ them.
     </p>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>{{ tr("Occupation group") }}</th><th class="num">{{ tr("Share of workers") }}</th></tr></thead>
+            <thead><tr><th>Occupation group</th><th class="num">Share of workers</th></tr></thead>
             <tbody>
                 {% for o in occupation_mix %}
                 <tr><td>{{ o.label }}</td><td class="num">{{ o.pct }}%</td></tr>
@@ -252,56 +269,61 @@
             </tbody>
         </table>
     </div>
-    <p class="section-sub">{{ tr("Source: ONS Census 2021, table TS063, for this district's small area.") }}</p>
+    <p class="section-sub">Source: ONS Census 2021, table TS063, for this district's small area.</p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("Crime") }}</h2>
+    <h2>Crime</h2>
     {% if crime and crime.total is not none %}
     <p class="section-sub">
-        {{ crime.total }} {{ tr("crime") }}{{ "s" if crime.total != 1 else "" }} {{ tr("recorded within roughly a mile of central") }} {{ outcode }}{% if crime.month %} {{ tr("in") }} {{ crime.month }}{% endif %}{% if crime.by_category %}{{ tr(", most commonly") }}
+        {{ crime.total }} crime{{ "s" if crime.total != 1 else "" }} recorded within roughly a mile of
+        central {{ outcode }}{% if crime.month %} in {{ crime.month }}{% endif %}{% if crime.by_category %}, most commonly
         <strong>{{ crime.by_category[0].category }}</strong>{% endif %}.
     </p>
     {% else %}
-    <p class="notice">{{ tr("Crime data isn't available for this area right now.") }}</p>
+    <p class="notice">Crime data isn't available for this area right now.</p>
     {% endif %}
 </section>
 
 <section class="report-section">
-    <h2>{{ tr("Flood risk") }}</h2>
+    <h2>Flood risk</h2>
     {% if flood_zone %}
     <p class="section-sub{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
-        <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} {{ tr("flooding") }}{% endif %}{{ tr(". This is the Environment Agency's flood zone for the area's centre point, an individual property's own risk can differ, especially near a specific watercourse.") }}
+        <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} flooding{% endif %}.
+        This is the Environment Agency's flood zone for the area's centre point, an individual
+        property's own risk can differ, especially near a specific watercourse.
     </p>
     {% else %}
-    <p class="notice">{{ outcode }} {{ tr("is not in a mapped flood risk zone (Zone 1, low probability).") }}</p>
+    <p class="notice">{{ outcode }} is not in a mapped flood risk zone (Zone 1, low probability).</p>
     {% endif %}
 </section>
 
 {% if deprivation and deprivation.imd_decile %}
 <section class="report-section">
-    <h2>{{ tr("Deprivation") }}</h2>
+    <h2>Deprivation</h2>
     <p class="section-sub">
-        {{ tr("This area falls in decile") }} {{ deprivation.imd_decile }} {{ tr("of 10 on the Index of Multiple Deprivation (") }}{{ "most" if deprivation.imd_decile <= 3 else ("least" if deprivation.imd_decile >= 8 else "moderately") }}
-        {{ tr("deprived") }} {{ "nationally" if deprivation.imd_decile <= 3 or deprivation.imd_decile >= 8 else "" }}{{ tr("), based on") }} {{ deprivation.la_name }}{{ tr("'s figures.") }}
+        This area falls in decile {{ deprivation.imd_decile }} of 10 on the Index of Multiple
+        Deprivation ({{ "most" if deprivation.imd_decile <= 3 else ("least" if deprivation.imd_decile >= 8 else "moderately") }}
+        deprived {{ "nationally" if deprivation.imd_decile <= 3 or deprivation.imd_decile >= 8 else "" }}),
+        based on {{ deprivation.la_name }}'s figures.
     </p>
 </section>
 {% endif %}
 
 {% if amenity_summary %}
 <section class="report-section">
-    <h2>{{ tr("Getting around & nearby essentials") }}</h2>
+    <h2>Getting around & nearby essentials</h2>
     <p class="section-sub">
         {% for a in amenity_summary %}{{ a.count }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
-        {{ tr("within range of central") }} {{ outcode }}.
+        within range of central {{ outcode }}.
     </p>
 </section>
 {% endif %}
 
 {% if area_faqs %}
 <section class="report-section" id="area-faq">
-    <h2>{{ tr("Common questions about") }} {{ outcode }}</h2>
+    <h2>Common questions about {{ outcode }}</h2>
     <div class="faq-list">
         {% for q, a in area_faqs %}
         <details class="faq-item">
@@ -315,35 +337,37 @@
 
 {% if nearby_outcodes %}
 <section class="report-section" id="nearby-areas">
-    <h2>{{ tr("Neighbouring districts") }}</h2>
+    <h2>Neighbouring districts</h2>
     <div class="area-chip-row">
         {% for n in nearby_outcodes %}
         <a class="area-chip" href="/area/{{ n.outcode }}"><strong>{{ n.outcode }}</strong> {{ n.district }}</a>
         {% endfor %}
-        <a class="area-chip area-chip-all" href="/areas">{{ tr("All area guides &rsaquo;") }}</a>
+        <a class="area-chip area-chip-all" href="/areas">All area guides &rsaquo;</a>
     </div>
     {# Choosing between two areas is the normal case, so offer the
        comparison directly rather than making someone open both. #}
     <p class="section-sub" style="margin-top: 0.9rem;">
-        {{ tr("Weighing two up?") }}
+        Weighing two up?
         {% for n in nearby_outcodes[:3] %}
-        <a href="/compare/{{ [outcode, n.outcode] | sort | first }}/vs/{{ [outcode, n.outcode] | sort | last }}">{{ outcode }} {{ tr("or") }} {{ n.outcode }}</a>{% if not loop.last %}, {% endif %}
+        <a href="/compare/{{ [outcode, n.outcode] | sort | first }}/vs/{{ [outcode, n.outcode] | sort | last }}">{{ outcode }} or {{ n.outcode }}</a>{% if not loop.last %}, {% endif %}
         {%- endfor %}.
     </p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("Want the full picture for a specific property?") }}</h2>
+    <h2>Want the full picture for a specific property?</h2>
     <p class="section-sub">
-        {{ tr("This page covers") }} {{ outcode }} {{ tr("as a whole. For sold price history, EPC rating, exact-address crime and flood risk, school catchment areas and 30+ other checks on one specific property, search its full postcode.") }}
+        This page covers {{ outcode }} as a whole. For sold price history, EPC rating, exact-address
+        crime and flood risk, school catchment areas and 30+ other checks on one specific property,
+        search its full postcode.
     </p>
     <form action="/property" method="get" class="search-form">
         <div class="search-form-field">
-            <label for="area-guide-postcode">{{ tr("Full postcode") }}</label>
+            <label for="area-guide-postcode">Full postcode</label>
             <input type="text" id="area-guide-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>
         </div>
-        <button type="submit">{{ tr("Get the full report") }}</button>
+        <button type="submit">Get the full report</button>
     </form>
 </section>
 

@@ -1,92 +1,92 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ tr("Why Trust This: Every Data Source We Use, Named | UKPropertyInsight") }}{% endblock %}
+{% block title %}Why Trust This: Every Data Source We Use, Named | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{{ tr("Every figure traces back to a named government source. See which datasets UKPropertyInsight uses, how current each is, and what we deliberately don't estimate.") }}{% endblock %}
+{% block meta_description %}Every figure traces back to a named government source. See which datasets UKPropertyInsight uses, how current each is, and what we deliberately don't estimate.{% endblock %}
 {% block content %}
-<span class="kicker">{{ tr("Methodology") }}</span>
-<h1>{{ tr("Why trust this?") }}</h1>
-<p class="dek">{{ tr("Every figure has a named official source. Here is how, what we leave out on purpose, and") }} <a href="/accuracy">{{ tr("every time someone said we were wrong") }}</a>.</p>
+<span class="kicker">Methodology</span>
+<h1>Why trust this?</h1>
+<p class="dek">Every figure has a named official source. Here is how, what we leave out on purpose, and <a href="/accuracy">every time someone said we were wrong</a>.</p>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("How each check works") }}</h2>
+    <h2 class="landing-heading">How each check works</h2>
     <div class="snap-cards">
         <div class="snap-card" data-animate>
             <span class="snap-card-icon">{{ icons.icon('broadband') }}</span>
-            <h3>{{ tr("Queried live") }}</h3>
-            <p>{{ tr("Straight from the body that holds the data, at the moment you search. Land Registry, the Environment Agency, Police.uk.") }}</p>
+            <h3>Queried live</h3>
+            <p>Straight from the body that holds the data, at the moment you search. Land Registry, the Environment Agency, Police.uk.</p>
         </div>
         <div class="snap-card" data-animate>
             <span class="snap-card-icon">{{ icons.icon('details') }}</span>
-            <h3>{{ tr("Never scraped") }}</h3>
-            <p>{{ tr("No listings sites. No third-party aggregators re-packaging someone else's numbers.") }}</p>
+            <h3>Never scraped</h3>
+            <p>No listings sites. No third-party aggregators re-packaging someone else's numbers.</p>
         </div>
         <div class="snap-card" data-animate>
             <span class="snap-card-icon">{{ icons.icon('statistics') }}</span>
-            <h3>{{ tr("A few from bulk files") }}</h3>
-            <p>{{ tr("Ofsted ratings, census figures and air quality are only published that way. Each one says so on its card.") }}</p>
+            <h3>A few from bulk files</h3>
+            <p>Ofsted ratings, census figures and air quality are only published that way. Each one says so on its card.</p>
         </div>
     </div>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("What we deliberately don't show") }}</h2>
-    <p class="landing-subheading">{{ tr("No free official source exists for these. We say so rather than estimate.") }}</p>
+    <h2 class="landing-heading">What we deliberately don't show</h2>
+    <p class="landing-subheading">No free official source exists for these. We say so rather than estimate.</p>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Council Tax band") }}</span>
-            <span class="feature-card-blurb">{{ tr("The VOA's banding list is a paid product.") }}</span>
+            <span class="feature-card-title">Council Tax band</span>
+            <span class="feature-card-blurb">The VOA's banding list is a paid product.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr('Live "for sale" listings') }}</span>
-            <span class="feature-card-blurb">{{ tr("Licensed to Rightmove and Zoopla. We show Land Registry sold prices instead.") }}</span>
+            <span class="feature-card-title">Live "for sale" listings</span>
+            <span class="feature-card-blurb">Licensed to Rightmove and Zoopla. We show Land Registry sold prices instead.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("School catchment areas (most of the UK)") }}</span>
-            <span class="feature-card-blurb">{{ tr("Most English schools have no fixed catchment. We show the council's boundary where one exists, its last-distance-offered figures where not, and a labelled estimate as the last resort.") }}</span>
+            <span class="feature-card-title">School catchment areas (most of the UK)</span>
+            <span class="feature-card-blurb">Most English schools have no fixed catchment. We show the council's boundary where one exists, its last-distance-offered figures where not, and a labelled estimate as the last resort.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Service charge / ground rent amounts") }}</span>
-            <span class="feature-card-blurb">{{ tr("Private lease data, disclosed only to a solicitor. We show freehold or leasehold from Land Registry.") }}</span>
+            <span class="feature-card-title">Service charge / ground rent amounts</span>
+            <span class="feature-card-blurb">Private lease data, disclosed only to a solicitor. We show freehold or leasehold from Land Registry.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Brownfield land status") }}</span>
-            <span class="feature-card-blurb">{{ tr("Around 300 separate council registers, no national feed.") }}</span>
+            <span class="feature-card-title">Brownfield land status</span>
+            <span class="feature-card-blurb">Around 300 separate council registers, no national feed.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Full planning application history") }}</span>
-            <span class="feature-card-blurb">{{ tr("No national API across England's planning authorities.") }}</span>
+            <span class="feature-card-title">Full planning application history</span>
+            <span class="feature-card-blurb">No national API across England's planning authorities.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Actual sunlight hours / overshadowing") }}</span>
-            <span class="feature-card-blurb">{{ tr("Needs LIDAR shadow modelling. We show which way the garden faces instead.") }}</span>
+            <span class="feature-card-title">Actual sunlight hours / overshadowing</span>
+            <span class="feature-card-blurb">Needs LIDAR shadow modelling. We show which way the garden faces instead.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Corporate/overseas property ownership") }}</span>
-            <span class="feature-card-blurb">{{ tr("Land Registry's dataset sits behind a licence click-through.") }}</span>
+            <span class="feature-card-title">Corporate/overseas property ownership</span>
+            <span class="feature-card-blurb">Land Registry's dataset sits behind a licence click-through.</span>
         </div>
     </div>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Every source we query") }}</h2>
+    <h2 class="landing-heading">Every source we query</h2>
     <div class="sources-strip" style="margin-top: 1.5rem;">
         <div class="sources-strip-list">
-            <a href="https://www.gov.uk/government/organisations/land-registry" target="_blank" rel="noopener">{{ tr("HM Land Registry") }}</a>
-            <a href="https://epc.opendatacommunities.org" target="_blank" rel="noopener">{{ tr("EPC Register") }}</a>
-            <a href="https://www.gov.uk/government/organisations/environment-agency" target="_blank" rel="noopener">{{ tr("Environment Agency") }}</a>
-            <a href="https://www.ons.gov.uk" target="_blank" rel="noopener">{{ tr("Office for National Statistics") }}</a>
-            <a href="https://www.gov.uk/government/organisations/department-for-education" target="_blank" rel="noopener">{{ tr("Department for Education") }}</a>
-            <a href="https://www.gov.uk/government/organisations/ofsted" target="_blank" rel="noopener">{{ tr("Ofsted") }}</a>
-            <a href="https://www.ofcom.org.uk" target="_blank" rel="noopener">{{ tr("Ofcom") }}</a>
-            <a href="https://www.gov.uk/government/organisations/natural-england" target="_blank" rel="noopener">{{ tr("Natural England") }}</a>
-            <a href="https://historicengland.org.uk" target="_blank" rel="noopener">{{ tr("Historic England") }}</a>
-            <a href="https://www.police.uk" target="_blank" rel="noopener">{{ tr("Police.uk") }}</a>
-            <a href="https://www.food.gov.uk" target="_blank" rel="noopener">{{ tr("Food Standards Agency") }}</a>
-            <a href="https://www.bgs.ac.uk" target="_blank" rel="noopener">{{ tr("British Geological Survey") }}</a>
-            <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">{{ tr("OpenStreetMap") }}</a>
-            <a href="https://uk-air.defra.gov.uk" target="_blank" rel="noopener">{{ tr("Defra") }}</a>
+            <a href="https://www.gov.uk/government/organisations/land-registry" target="_blank" rel="noopener">HM Land Registry</a>
+            <a href="https://epc.opendatacommunities.org" target="_blank" rel="noopener">EPC Register</a>
+            <a href="https://www.gov.uk/government/organisations/environment-agency" target="_blank" rel="noopener">Environment Agency</a>
+            <a href="https://www.ons.gov.uk" target="_blank" rel="noopener">Office for National Statistics</a>
+            <a href="https://www.gov.uk/government/organisations/department-for-education" target="_blank" rel="noopener">Department for Education</a>
+            <a href="https://www.gov.uk/government/organisations/ofsted" target="_blank" rel="noopener">Ofsted</a>
+            <a href="https://www.ofcom.org.uk" target="_blank" rel="noopener">Ofcom</a>
+            <a href="https://www.gov.uk/government/organisations/natural-england" target="_blank" rel="noopener">Natural England</a>
+            <a href="https://historicengland.org.uk" target="_blank" rel="noopener">Historic England</a>
+            <a href="https://www.police.uk" target="_blank" rel="noopener">Police.uk</a>
+            <a href="https://www.food.gov.uk" target="_blank" rel="noopener">Food Standards Agency</a>
+            <a href="https://www.bgs.ac.uk" target="_blank" rel="noopener">British Geological Survey</a>
+            <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a>
+            <a href="https://uk-air.defra.gov.uk" target="_blank" rel="noopener">Defra</a>
         </div>
     </div>
 </section>

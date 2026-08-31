@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ tr("Chrome Extension: Sold Prices, Flood Risk & Schools on Rightmove and Zoopla | UKPropertyInsight") }}{% endblock %}
-{% block og_title %}{{ tr("UKPropertyInsight . Free Chrome Extension") }}{% endblock %}
-{% block meta_description %}{{ tr("See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.") }}{% endblock %}
+{% block title %}Chrome Extension: Sold Prices, Flood Risk & Schools on Rightmove and Zoopla | UKPropertyInsight{% endblock %}
+{% block og_title %}UKPropertyInsight . Free Chrome Extension{% endblock %}
+{% block meta_description %}See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.{% endblock %}
 {# PNG on purpose: this is the Open Graph preview, fetched by social
    crawlers rather than browsers, and WhatsApp/Facebook/LinkedIn
    previews are unreliable with WebP. The in-page <img> below does
@@ -86,19 +86,23 @@ review data. Only factual fields below. #}
 <section class="hero">
     <div class="hero-inner hero-split">
         <div class="hero-copy">
-            <span class="kicker">{{ tr("Free Chrome extension") }}</span>
-            <h1>{{ tr("Property data") }} <em class="hl-accent">{{ tr("on every listing") }}</em> {{ tr("you browse.") }}</h1>
+            <span class="kicker">Free Chrome extension</span>
+            <h1>Property data <em class="hl-accent">on every listing</em> you browse.</h1>
             <p class="dek">
-                {{ tr("UKPropertyInsight adds a summary bar to Rightmove, Zoopla and OnTheMarket listing pages: sold prices, EPC rating, flood risk, crime stats and nearby schools, pulled from the same official UK data as every report on this site, right where you're already looking.") }}
+                UKPropertyInsight adds a summary bar to Rightmove, Zoopla and OnTheMarket listing
+                pages: sold prices, EPC rating, flood risk, crime stats and nearby schools, pulled
+                from the same official UK data as every report on this site, right where you're
+                already looking.
             </p>
 
             {% if store_url %}
-            <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">{{ tr("Add to Chrome . Free") }}</a>
-            <p class="section-sub" style="margin-top:0.75rem;">{{ tr("No account needed to try it. Log in for the full report.") }}</p>
+            <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome . Free</a>
+            <p class="section-sub" style="margin-top:0.75rem;">No account needed to try it. Log in for the full report.</p>
             {% else %}
             <div class="notice" style="max-width:420px;">
-                <strong>{{ tr("Submitted to the Chrome Web Store, pending review.") }}</strong> {{ tr("This page will link straight to the install page as soon as it's approved. Check back soon, or") }}
-                <a href="/support">{{ tr("contact us") }}</a> {{ tr("to be notified.") }}
+                <strong>Submitted to the Chrome Web Store, pending review.</strong> This page will
+                link straight to the install page as soon as it's approved. Check back soon, or
+                <a href="/support">contact us</a> to be notified.
             </div>
             {% endif %}
         </div>
@@ -110,75 +114,75 @@ review data. Only factual fields below. #}
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("How it works") }}</h2>
+    <h2 class="landing-heading">How it works</h2>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("1. Add to Chrome") }}</span>
-            <span class="feature-card-blurb">{{ tr("One click, no sign-up required to install.") }}</span>
+            <span class="feature-card-title">1. Add to Chrome</span>
+            <span class="feature-card-blurb">One click, no sign-up required to install.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("2. Browse a listing") }}</span>
-            <span class="feature-card-blurb">{{ tr("Open any Rightmove, Zoopla or OnTheMarket property page as normal.") }}</span>
+            <span class="feature-card-title">2. Browse a listing</span>
+            <span class="feature-card-blurb">Open any Rightmove, Zoopla or OnTheMarket property page as normal.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("3. See the data instantly") }}</span>
-            <span class="feature-card-blurb">{{ tr("A summary bar appears automatically. Click it for the full tabbed report, no extra searching.") }}</span>
+            <span class="feature-card-title">3. See the data instantly</span>
+            <span class="feature-card-blurb">A summary bar appears automatically. Click it for the full tabbed report, no extra searching.</span>
         </div>
     </div>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Eight tabs of real data, every time") }}</h2>
+    <h2 class="landing-heading">Eight tabs of real data, every time</h2>
     <p class="landing-subheading">
-        {{ tr("The same official sources as the full site, never the listing's own marketing copy.") }}
+        The same official sources as the full site, never the listing's own marketing copy.
     </p>
     <div class="feature-grid">
         <div class="feature-card">
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
-            <span class="feature-card-title">{{ tr("Overview") }}</span>
-            <span class="feature-card-blurb">{{ tr("A single score and plain-English verdict, weighing up what's actually worth checking about this property.") }}</span>
+            <span class="feature-card-title">Overview</span>
+            <span class="feature-card-blurb">A single score and plain-English verdict, weighing up what's actually worth checking about this property.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-transport">{{ icons.icon('map') }}</span>
-            <span class="feature-card-title">{{ tr("Map") }}</span>
-            <span class="feature-card-blurb">{{ tr("The exact location, so you can see what's actually nearby.") }}</span>
+            <span class="feature-card-title">Map</span>
+            <span class="feature-card-blurb">The exact location, so you can see what's actually nearby.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-market">{{ icons.icon('market') }}</span>
-            <span class="feature-card-title">{{ tr("Market History") }}</span>
-            <span class="feature-card-blurb">{{ tr("Recorded sold prices for this postcode from HM Land Registry, oldest to newest.") }}</span>
+            <span class="feature-card-title">Market History</span>
+            <span class="feature-card-blurb">Recorded sold prices for this postcode from HM Land Registry, oldest to newest.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
-            <span class="feature-card-title">{{ tr("Comparables") }}</span>
-            <span class="feature-card-blurb">{{ tr("What similar nearby properties actually sold for, to sanity-check the asking price.") }}</span>
+            <span class="feature-card-title">Comparables</span>
+            <span class="feature-card-blurb">What similar nearby properties actually sold for, to sanity-check the asking price.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
-            <span class="feature-card-title">{{ tr("Schools") }}</span>
-            <span class="feature-card-blurb">{{ tr("Nearby schools with their current Ofsted ratings.") }}</span>
+            <span class="feature-card-title">Schools</span>
+            <span class="feature-card-blurb">Nearby schools with their current Ofsted ratings.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
-            <span class="feature-card-title">{{ tr("EPC") }}</span>
-            <span class="feature-card-blurb">{{ tr("Energy performance rating and floor area, from the official EPC register.") }}</span>
+            <span class="feature-card-title">EPC</span>
+            <span class="feature-card-blurb">Energy performance rating and floor area, from the official EPC register.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
-            <span class="feature-card-title">{{ tr("Demographics") }}</span>
-            <span class="feature-card-blurb">{{ tr("Household income, deprivation and occupation data for the local area, from Census 2021.") }}</span>
+            <span class="feature-card-title">Demographics</span>
+            <span class="feature-card-blurb">Household income, deprivation and occupation data for the local area, from Census 2021.</span>
         </div>
         <div class="feature-card">
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
-            <span class="feature-card-title">{{ tr("Crime") }}</span>
-            <span class="feature-card-blurb">{{ tr("Recorded crime nearby, broken down by category, from Police.uk.") }}</span>
+            <span class="feature-card-title">Crime</span>
+            <span class="feature-card-blurb">Recorded crime nearby, broken down by category, from Police.uk.</span>
         </div>
     </div>
 </section>
 
 <section class="sources-strip" data-animate>
     <span class="sources-strip-heading">
-        {{ tr("Powered by") }} <em class="hl-warn">{{ tr("official") }}</em> <em class="hl-accent">{{ tr("UK") }}</em> {{ tr("data") }}
+        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
     </span>
     <div class="sources-strip-list">
         {% for icon_name, label, url in [
@@ -197,44 +201,49 @@ review data. Only factual fields below. #}
         {% endfor %}
     </div>
     <p class="sources-strip-note">
-        {{ tr("Never listings scraped from Rightmove, Zoopla or OnTheMarket. Every figure traces back to an official, openly licensed government or public data source. See the") }}
-        <a href="/methodology">{{ tr("full methodology") }}</a> {{ tr("for the complete list.") }}
+        Never listings scraped from Rightmove, Zoopla or OnTheMarket. Every figure traces back to
+        an official, openly licensed government or public data source. See the
+        <a href="/methodology">full methodology</a> for the complete list.
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("See it in action") }}</h2>
-    <p class="landing-subheading">{{ tr("Tap any card in the summary bar for the full detail, right there on the listing page.") }}</p>
+    <h2 class="landing-heading">See it in action</h2>
+    <p class="landing-subheading">Tap any card in the summary bar for the full detail, right there on the listing page.</p>
     <div class="feature-grid">
         <figure style="margin:0;">
             <img src="/static/img/extension/crime-detail.webp" alt="Crime detail popup showing a breakdown of recorded crime categories" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
-            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">{{ tr("Crime card, expanded") }}</figcaption>
+            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Crime card, expanded</figcaption>
         </figure>
         <figure style="margin:0;">
             <img src="/static/img/extension/schools-detail.webp" alt="Schools detail popup listing nearby schools with distance and Ofsted rating" style="width:100%; border-radius: var(--radius-md); border: 1px solid var(--border); display:block;">
-            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">{{ tr("Schools card, expanded") }}</figcaption>
+            <figcaption class="section-sub" style="text-align:center; margin-top:0.5rem;">Schools card, expanded</figcaption>
         </figure>
     </div>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Free to install, more with an account") }}</h2>
+    <h2 class="landing-heading">Free to install, more with an account</h2>
     <p class="landing-subheading">
-        {{ tr("Market History, Comparables and Schools show a free preview on every listing. Log in with a UKPropertyInsight account.") }} <a href="/premium">{{ tr("Premium") }}</a> {{ tr("unlocks the full lists and every other card the main site's own property reports have.") }}
+        Market History, Comparables and Schools show a free preview on every listing. Log in with a
+        UKPropertyInsight account. <a href="/premium">Premium</a> unlocks the full lists and every
+        other card the main site's own property reports have.
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Nothing extra running in the background") }}</h2>
+    <h2 class="landing-heading">Nothing extra running in the background</h2>
     <p class="landing-subheading">
-        {{ tr("The extension only activates on Rightmove, Zoopla and OnTheMarket listing pages, and only reads the postcode from the page. Nothing else. No ads, no analytics, no tracking of your browsing elsewhere. Full detail in the") }}
-        <a href="/privacy">{{ tr("privacy policy") }}</a>.
+        The extension only activates on Rightmove, Zoopla and OnTheMarket listing pages, and only
+        reads the postcode from the page. Nothing else. No ads, no analytics, no tracking of your
+        browsing elsewhere. Full detail in the
+        <a href="/privacy">privacy policy</a>.
     </p>
 </section>
 
 <section class="landing-section">
-    <span class="section-pill" data-animate>{{ tr("Questions") }}</span>
-    <h2 class="landing-heading" data-animate>{{ tr("Questions people ask first") }}</h2>
+    <span class="section-pill" data-animate>Questions</span>
+    <h2 class="landing-heading" data-animate>Questions people ask first</h2>
     <div class="faq-list">
         {% for q, a in [
             ('Is the extension safe to install? What can it see?', 'It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page. It can\'t see anything on any other site, and it doesn\'t have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings.'),
@@ -253,11 +262,12 @@ review data. Only factual fields below. #}
 
 <section class="landing-section landing-section-tinted" style="text-align:center;">
     {% if store_url %}
-    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">{{ tr("Add to Chrome . Free") }}</a>
+    <a href="{{ store_url }}" target="_blank" rel="noopener" class="ext-cta-btn">Add to Chrome . Free</a>
     {% else %}
     <div class="notice" style="max-width:420px; margin:0 auto;">
-        <strong>{{ tr("Submitted to the Chrome Web Store, pending review.") }}</strong> {{ tr("This page will link straight to the install page as soon as it's approved. Check back soon, or") }}
-        <a href="/support">{{ tr("contact us") }}</a> {{ tr("to be notified.") }}
+        <strong>Submitted to the Chrome Web Store, pending review.</strong> This page will
+        link straight to the install page as soon as it's approved. Check back soon, or
+        <a href="/support">contact us</a> to be notified.
     </div>
     {% endif %}
 </section>

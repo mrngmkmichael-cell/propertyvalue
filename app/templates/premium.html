@@ -1,33 +1,39 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ tr("Premium: Unlimited UK Property Reports | UKPropertyInsight") }}{% endblock %}
+{% block title %}Premium: Unlimited UK Property Reports | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{{ tr("Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.") }}{% endblock %}
+{% block meta_description %}Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.{% endblock %}
 {% block content %}
-<span class="kicker">{{ tr("Premium") }}</span>
+<span class="kicker">Premium</span>
 
 {% if not billing_configured %}
-<h1>{{ tr("Premium isn't open for sign-up yet") }}</h1>
+<h1>Premium isn't open for sign-up yet</h1>
 <p class="section-sub">
-    {{ tr("Valuation estimates, cost/affordability calculators, rental analysis, extension detection, air quality, historic contamination, school catchment areas, detailed Ofsted category judgements, and multi-year exam trends are being reserved for a paid Premium tier. We're still building the billing side of this. Check back soon, or") }} <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("email us") }}</a> {{ tr("if you'd like early access.") }}
+    Valuation estimates, cost/affordability calculators, rental analysis, extension detection,
+    air quality, historic contamination, school catchment areas, detailed Ofsted category
+    judgements, and multi-year exam trends are being reserved for a paid Premium tier. We're
+    still building the billing side of this. Check back soon, or <a href="mailto:support@ukpropertyinsight.co.uk">email us</a> if you'd like early access.
 </p>
-<p class="section-sub"><a href="/">{{ tr("&larr; Back to search") }}</a></p>
+<p class="section-sub"><a href="/">&larr; Back to search</a></p>
 
 {% else %}
-<h1>{{ tr("One wrong house costs more than a lifetime of reports") }}</h1>
+<h1>One wrong house costs more than a lifetime of reports</h1>
 <p class="section-sub" style="max-width: 46rem;">
-    {{ tr("Professional property searches are priced per property: a flood report is around &pound;25, an environmental search &pound;50&ndash;&pound;110, a coal mining search &pound;40. Premium is &pound;9.99 a month for") }} <strong>{{ tr("every check, in full, on unlimited properties") }}</strong>{{ tr(", so you can afford to check the ones you walk away from too.") }}
+    Professional property searches are priced per property: a flood report is around &pound;25,
+    an environmental search &pound;50&ndash;&pound;110, a coal mining search &pound;40. Premium is
+    &pound;9.99 a month for <strong>every check, in full, on unlimited properties</strong>, so you can
+    afford to check the ones you walk away from too.
 </p>
 
 {% if checkout_cancelled %}
-<p class="notice">{{ tr("Checkout was cancelled. No payment was taken.") }}</p>
+<p class="notice">Checkout was cancelled. No payment was taken.</p>
 {% endif %}
 {% if checkout_error %}
-<p class="notice notice-error">{{ tr("Something went wrong starting checkout. Please try again.") }}</p>
+<p class="notice notice-error">Something went wrong starting checkout. Please try again.</p>
 {% endif %}
 {% if portal_error %}
-<p class="notice notice-error">{{ tr("Something went wrong opening your billing portal. Please try again.") }}</p>
+<p class="notice notice-error">Something went wrong opening your billing portal. Please try again.</p>
 {% endif %}
 
 {# Three states: subscribed, a free account with unlocks left, and a
@@ -36,10 +42,10 @@
    would be a dead end. #}
 {% if current_user and current_user.subscribed %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
-    <strong>{{ tr("You're on Premium.") }}</strong> {{ tr("Manage your plan, payment details, or cancel any time.") }}
+    <strong>You're on Premium.</strong> Manage your plan, payment details, or cancel any time.
 </p>
 <form action="/premium/manage" method="post" class="stacked-form" style="max-width: 20em;">
-    <button type="submit">{{ tr("Manage subscription") }}</button>
+    <button type="submit">Manage subscription</button>
 </form>
 
 {% else %}
@@ -47,39 +53,39 @@
    subscribe is exactly who this page is for. #}
 {% if current_user and current_user.free_unlocks_left > 0 %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
-    <strong>{{ tr("You have") }} {{ current_user.free_unlocks_left }} {{ tr("free full report") }}{{ "s" if current_user.free_unlocks_left != 1 else "" }} {{ tr("left.") }}</strong>
-    {{ tr("Every check below is unlocked on them. Subscribing removes the limit.") }}
+    <strong>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 else "" }} left.</strong>
+    Every check below is unlocked on them. Subscribing removes the limit.
 </p>
 {% elif current_user %}
 <p class="notice" style="background: var(--warn-bg); color: var(--warn);">
-    <strong>{{ tr("You have used all") }} {{ current_user.free_unlocks_total }} {{ tr("free reports.") }}</strong>
-    {{ tr("The properties you already opened stay unlocked. Subscribe to open new ones.") }}
+    <strong>You have used all {{ current_user.free_unlocks_total }} free reports.</strong>
+    The properties you already opened stay unlocked. Subscribe to open new ones.
 </p>
 {% endif %}
 <div class="pricing-grid">
     {% if pass_available %}
     <div class="pricing-card">
-        <span class="pricing-card-badge">{{ tr("No subscription") }}</span>
-        <h2 class="pricing-card-price">{{ tr("&pound;19 once") }}</h2>
-        <p class="section-sub">{{ pass_months }} {{ tr("months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.") }}</p>
+        <span class="pricing-card-badge">No subscription</span>
+        <h2 class="pricing-card-price">&pound;19 once</h2>
+        <p class="section-sub">{{ pass_months }} months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.</p>
         {% if current_user %}
         <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
             <input type="hidden" name="plan" value="pass">
-            <button type="submit">{{ tr("Buy the pass") }}</button>
+            <button type="submit">Buy the pass</button>
         </form>
         {% else %}
-        <a href="/signup?next=/" class="pricing-card-cta">{{ tr("Sign up to buy the pass") }}</a>
+        <a href="/signup?next=/" class="pricing-card-cta">Sign up to buy the pass</a>
         {% endif %}
     </div>
     {% endif %}
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
-        {% if plan.saving_pct %}<span class="pricing-card-badge">{{ tr("Save") }} {{ plan.saving_pct }}{{ tr("% vs monthly") }}</span>{% endif %}
+        {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}
-        <p class="section-sub">{{ plan.trial_days }}{{ tr("-day free trial, then") }} {{ plan.label }}{{ tr(". Cancel any time.") }}</p>
+        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }}. Cancel any time.</p>
         {% else %}
-        <p class="section-sub">{{ plan.label }}{{ tr(", billed from today. Cancel any time.") }}</p>
+        <p class="section-sub">{{ plan.label }}, billed from today. Cancel any time.</p>
         {% endif %}
         {% if plan.available %}
             {% if current_user %}
@@ -91,30 +97,30 @@
             <a href="/signup?next=/" class="pricing-card-cta">{{ "Sign up to start trial" if plan.trial_days else "Sign up to subscribe" }}</a>
             {% endif %}
         {% else %}
-            <p class="notice">{{ tr("Not available yet.") }}</p>
+            <p class="notice">Not available yet.</p>
         {% endif %}
     </div>
     {% endfor %}
 </div>
-<p class="pricing-reassure">{{ tr("Stripe checkout &middot; Cancel any time in two clicks &middot; The free plan needs no card at all") }}</p>
+<p class="pricing-reassure">Stripe checkout &middot; Cancel any time in two clicks &middot; The free plan needs no card at all</p>
 
 <div class="alt-table-wrap" style="margin-top: 2.5rem;">
     <table class="alt-table">
-        <thead><tr><th></th><th>{{ tr("Free account") }}</th><th class="alt-us">{{ tr("Premium") }}</th></tr></thead>
+        <thead><tr><th></th><th>Free account</th><th class="alt-us">Premium</th></tr></thead>
         <tbody>
-            <tr><td>{{ tr("Postcode search &amp; headline verdicts") }}</td><td class="alt-yes">{{ tr("Always free") }}</td><td class="alt-us alt-yes">{{ tr("Always free") }}</td></tr>
-            <tr><td>{{ tr("Full reports, every check unlocked") }}</td><td>{{ tr("Your first property") }}</td><td class="alt-us alt-yes">{{ tr("Unlimited") }}</td></tr>
-            <tr><td>{{ tr("Questions to ask your solicitor &amp; surveyor") }}</td><td>{{ tr("What triggered them") }}</td><td class="alt-us alt-yes">{{ tr("The full list, with costs") }}</td></tr>
-            <tr><td>{{ tr("PDF report to keep or send") }}</td><td class="alt-no">&mdash;</td><td class="alt-us alt-yes">{{ tr("Every property") }}</td></tr>
-            <tr><td>{{ tr("Share a full report with anyone") }}</td><td>{{ tr("On unlocked properties") }}</td><td class="alt-us alt-yes">{{ tr("Every property") }}</td></tr>
-            <tr><td>{{ tr("My properties: notes, compare, change alerts") }}</td><td class="alt-yes">{{ tr("Included") }}</td><td class="alt-us alt-yes">{{ tr("Included") }}</td></tr>
+            <tr><td>Postcode search &amp; headline verdicts</td><td class="alt-yes">Always free</td><td class="alt-us alt-yes">Always free</td></tr>
+            <tr><td>Full reports, every check unlocked</td><td>Your first property</td><td class="alt-us alt-yes">Unlimited</td></tr>
+            <tr><td>Questions to ask your solicitor &amp; surveyor</td><td>What triggered them</td><td class="alt-us alt-yes">The full list, with costs</td></tr>
+            <tr><td>PDF report to keep or send</td><td class="alt-no">&mdash;</td><td class="alt-us alt-yes">Every property</td></tr>
+            <tr><td>Share a full report with anyone</td><td>On unlocked properties</td><td class="alt-us alt-yes">Every property</td></tr>
+            <tr><td>My properties: notes, compare, change alerts</td><td class="alt-yes">Included</td><td class="alt-us alt-yes">Included</td></tr>
         </tbody>
     </table>
 </div>
 
 <figure class="quote-card" style="max-width: 34rem; margin: 2.5rem 0 0;">
-    <blockquote>{{ tr("&ldquo;Its really good, very easy to navigate&hellip; Rightmove exist to sell houses where as your service is just a presentation of facts.&rdquo;") }}</blockquote>
-    <figcaption>{{ tr("&mdash; commenter on Reddit, unedited") }}</figcaption>
+    <blockquote>&ldquo;Its really good, very easy to navigate&hellip; Rightmove exist to sell houses where as your service is just a presentation of facts.&rdquo;</blockquote>
+    <figcaption>&mdash; commenter on Reddit, unedited</figcaption>
 </figure>
 {% endif %}
 
@@ -122,14 +128,14 @@
    checks section (the landing now shows the orbit ring instead). This
    is the full picture a buyer weighs up: what every report gives away,
    against what Premium adds. #}
-<p class="premium-preview-lede">{{ tr("Every kind of check on the report, and which plan it comes with:") }}</p>
+<p class="premium-preview-lede">Every kind of check on the report, and which plan it comes with:</p>
 <div class="premium-tiers" id="all-checks">
     <div>
         <div class="lx-tier-head">
             {{ icons.icon('unlock') }}
-            <span class="lx-tier-label lx-tier-free">{{ tr("25 free on every report") }}</span>
+            <span class="lx-tier-label lx-tier-free">25 free on every report</span>
         </div>
-        <p class="lx-tier-note">{{ tr("No account needed, no card, no limit on searches.") }}</p>
+        <p class="lx-tier-note">No account needed, no card, no limit on searches.</p>
         <div class="lx-check-grid">
             {% for icon, title, value, source in [
                 ('market', 'Local Market', 'Every sale since 1995', 'HM Land Registry'),
@@ -171,9 +177,9 @@
     <div>
         <div class="lx-tier-head">
             {{ icons.icon('lock') }}
-            <span class="lx-tier-label lx-tier-premium">{{ tr("15 more with Premium") }}</span>
+            <span class="lx-tier-label lx-tier-premium">15 more with Premium</span>
         </div>
-        <p class="lx-tier-note">{{ tr("Free on your first property. No card required.") }}</p>
+        <p class="lx-tier-note">Free on your first property. No card required.</p>
         <div class="lx-check-grid">
             {% for icon, title, value, source in [
                 ('valuation', 'Valuation Estimate', 'Estimate with a range', 'Modelled from nearby sales'),

@@ -1,83 +1,114 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Privacy Policy | UKPropertyInsight") }}{% endblock %}
+{% block title %}Privacy Policy | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{{ tr("How UKPropertyInsight handles your data: what is stored, what is not, and why there is no tracking, fingerprinting or third-party advertising.") }}{% endblock %}
+{% block meta_description %}How UKPropertyInsight handles your data: what is stored, what is not, and why there is no tracking, fingerprinting or third-party advertising.{% endblock %}
 {% block content %}
-<span class="kicker">{{ tr("Legal") }}</span>
-<h1>{{ tr("Privacy Policy") }}</h1>
+<span class="kicker">Legal</span>
+<h1>Privacy Policy</h1>
 <p class="dek">
-    {{ tr('Last updated 20 August 2026. UKPropertyInsight ("we", "us") is operated as a UK-based property due-diligence service at ukpropertyinsight.co.uk. This page explains what personal data we collect, why, and what rights you have over it.') }}
+    Last updated 20 August 2026. UKPropertyInsight ("we", "us") is operated as a UK-based
+    property due-diligence service at ukpropertyinsight.co.uk. This page explains what
+    personal data we collect, why, and what rights you have over it.
 </p>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("What we collect") }}</h2>
+    <h2 class="landing-heading">What we collect</h2>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Account details") }}</span>
-            <span class="feature-card-blurb">{{ tr("Your email address and a securely hashed password (we never store or can see your actual password) if you create an account.") }}</span>
+            <span class="feature-card-title">Account details</span>
+            <span class="feature-card-blurb">Your email address and a securely hashed password (we never store or can see your actual password) if you create an account.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Content you create") }}</span>
-            <span class="feature-card-blurb">{{ tr("Properties/schools you save to a watchlist or shortlist, and any area or school reviews you submit (shown anonymously, never with your name or email attached).") }}</span>
+            <span class="feature-card-title">Content you create</span>
+            <span class="feature-card-blurb">Properties/schools you save to a watchlist or shortlist, and any area or school reviews you submit (shown anonymously, never with your name or email attached).</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Billing information") }}</span>
-            <span class="feature-card-blurb">{{ tr("If you subscribe to Premium, our payment processor Stripe collects and stores your card details directly. We never see or store your full card number ourselves. We keep only your Stripe customer/subscription reference and subscription status.") }}</span>
+            <span class="feature-card-title">Billing information</span>
+            <span class="feature-card-blurb">If you subscribe to Premium, our payment processor Stripe collects and stores your card details directly. We never see or store your full card number ourselves. We keep only your Stripe customer/subscription reference and subscription status.</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">{{ tr("Session cookie") }}</span>
-            <span class="feature-card-blurb">{{ tr("A single signed cookie that keeps you logged in. No advertising or analytics cookies, and no third-party tracking scripts run on this site.") }}</span>
+            <span class="feature-card-title">Session cookie</span>
+            <span class="feature-card-blurb">A single signed cookie that keeps you logged in. No advertising or analytics cookies, and no third-party tracking scripts run on this site.</span>
         </div>
     </div>
     <p class="section-sub">
-        {{ tr("Searching an address, the core of the site, needs no account and stores nothing about you. The postcode/address you look up is sent to the official public data sources listed on our") }} <a href="/methodology">{{ tr("methodology page") }}</a> {{ tr("purely to fetch the relevant public facts about that location, the same way it would be if you queried each of those sources yourself.") }}
+        Searching an address, the core of the site, needs no account and stores nothing about
+        you. The postcode/address you look up is sent to the official public data sources listed
+        on our <a href="/methodology">methodology page</a> purely to fetch the relevant
+        public facts about that location, the same way it would be if you queried each of those
+        sources yourself.
     </p>
     <p class="section-sub">
-        {{ tr("We do log which pages get visited and when, to understand overall traffic, but only the page path and timestamp (and your account if you happen to be logged in already), never an IP address, device fingerprint, or any other way to identify an anonymous visitor. This is our own server logging it, not a third-party analytics service, and it isn't used to track you across visits or build a profile of anyone.") }}
+        We do log which pages get visited and when, to understand overall traffic, but only the page
+        path and timestamp (and your account if you happen to be logged in already), never an
+        IP address, device fingerprint, or any other way to identify an anonymous visitor. This is
+        our own server logging it, not a third-party analytics service, and it isn't used to track
+        you across visits or build a profile of anyone.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("The UKPropertyInsight browser extension") }}</h2>
+    <h2 class="landing-heading">The UKPropertyInsight browser extension</h2>
     <p class="landing-subheading">
-        {{ tr("The extension only activates on Rightmove, Zoopla and OnTheMarket property listing pages. It scans the visible page text for a UK postcode. Nothing else on the page is read, recorded, or sent anywhere, and sends that postcode to ukpropertyinsight.co.uk to fetch the same public report data the website shows. It does not track your browsing on any other site, collect browsing history, or run on any page outside those three listing sites.") }}
+        The extension only activates on Rightmove, Zoopla and OnTheMarket property listing pages.
+        It scans the visible page text for a UK postcode. Nothing else on the page is read,
+        recorded, or sent anywhere, and sends that postcode to ukpropertyinsight.co.uk to fetch
+        the same public report data the website shows. It does not track your browsing on any
+        other site, collect browsing history, or run on any page outside those three listing
+        sites.
     </p>
     <p class="section-sub">
-        {{ tr("If you log in through the extension, your session token is stored locally in your browser's own extension storage (never sent to us except to authenticate your own requests) so you stay logged in across listings without re-entering your password each time. Logging out from the extension clears it immediately. We don't sell or share extension usage data with third parties, and the extension carries no advertising or analytics of any kind.") }}
+        If you log in through the extension, your session token is stored locally in your
+        browser's own extension storage (never sent to us except to authenticate your own
+        requests) so you stay logged in across listings without re-entering your password each
+        time. Logging out from the extension clears it immediately. We don't sell or share
+        extension usage data with third parties, and the extension carries no advertising or
+        analytics of any kind.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Why we collect it, and who we share it with") }}</h2>
+    <h2 class="landing-heading">Why we collect it, and who we share it with</h2>
     <p class="landing-subheading">
-        {{ tr("Account and billing data exists solely to run the service you've asked for: logging you in, remembering your watchlist, and processing a subscription you've chosen to pay for. We don't sell, rent, or otherwise share your personal data with third parties for marketing purposes.") }}
+        Account and billing data exists solely to run the service you've asked for: logging you
+        in, remembering your watchlist, and processing a subscription you've chosen to pay for.
+        We don't sell, rent, or otherwise share your personal data with third parties for
+        marketing purposes.
     </p>
     <p class="section-sub">
-        {{ tr("A small number of processors handle data on our behalf, each only for what's needed to run the service:") }} <strong>{{ tr("Stripe") }}</strong> {{ tr("(payment processing),") }} <strong>{{ tr("Neon") }}</strong>
-        {{ tr("(database hosting for accounts/watchlist/reviews), and") }} <strong>{{ tr("Render") }}</strong> {{ tr("(web hosting). Each is contractually bound to only use your data to provide that service to us.") }}
+        A small number of processors handle data on our behalf, each only for what's needed to
+        run the service: <strong>Stripe</strong> (payment processing), <strong>Neon</strong>
+        (database hosting for accounts/watchlist/reviews), and <strong>Render</strong> (web
+        hosting). Each is contractually bound to only use your data to provide that service to us.
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Your rights") }}</h2>
+    <h2 class="landing-heading">Your rights</h2>
     <p class="landing-subheading">
-        {{ tr("Under UK GDPR, you can ask us at any time to: see a copy of the personal data we hold about you, correct anything that's wrong, delete your account and associated data, or withdraw any consent you've given. Email") }}
-        <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a>
-        {{ tr("for any of these. We'll respond within 30 days as required by law. If you're unhappy with how we've handled your data, you also have the right to complain to the") }}
-        <a href="https://ico.org.uk" target="_blank" rel="noopener">{{ tr("Information Commissioner's Office (ICO)") }}</a>{{ tr(", the UK's independent data protection regulator.") }}
+        Under UK GDPR, you can ask us at any time to: see a copy of the personal data we hold
+        about you, correct anything that's wrong, delete your account and associated data, or
+        withdraw any consent you've given. Email
+        <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>
+        for any of these. We'll respond within 30 days as required by law. If you're unhappy
+        with how we've handled your data, you also have the right to complain to the
+        <a href="https://ico.org.uk" target="_blank" rel="noopener">Information Commissioner's Office (ICO)</a>,
+        the UK's independent data protection regulator.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Data retention") }}</h2>
+    <h2 class="landing-heading">Data retention</h2>
     <p class="landing-subheading">
-        {{ tr("We keep account data for as long as your account is active. If you delete your account (or ask us to), we remove your personal data within 30 days, except where we're legally required to keep billing records for longer (typically 6 years, for UK tax purposes).") }}
+        We keep account data for as long as your account is active. If you delete your account
+        (or ask us to), we remove your personal data within 30 days, except where we're legally
+        required to keep billing records for longer (typically 6 years, for UK tax purposes).
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Other things worth knowing") }}</h2>
+    <h2 class="landing-heading">Other things worth knowing</h2>
     <p class="landing-subheading">
         This service isn't directed at children, and we don't knowingly collect data from anyone
         under 18. We may update this policy from time to time. The "last updated" date at the top will always reflect the latest version, and any significant change will be
@@ -85,5 +116,5 @@
     </p>
 </section>
 
-<p class="section-sub"><a href="/">{{ tr("&larr; Back to search") }}</a></p>
+<p class="section-sub"><a href="/">&larr; Back to search</a></p>
 {% endblock %}

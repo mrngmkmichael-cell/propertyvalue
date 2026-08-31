@@ -1,54 +1,76 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Terms of Service | UKPropertyInsight") }}{% endblock %}
+{% block title %}Terms of Service | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{{ tr("The terms of service for UKPropertyInsight, including what our property reports are and are not, and the limits of the public data they are built from.") }}{% endblock %}
+{% block meta_description %}The terms of service for UKPropertyInsight, including what our property reports are and are not, and the limits of the public data they are built from.{% endblock %}
 {% block content %}
-<span class="kicker">{{ tr("Legal") }}</span>
-<h1>{{ tr("Terms of Service") }}</h1>
+<span class="kicker">Legal</span>
+<h1>Terms of Service</h1>
 <p class="dek">
-    {{ tr("Last updated 21 August 2026. By using ukpropertyinsight.co.uk you agree to these terms. Please read them, the short version is: we give you real, sourced due-diligence data about UK properties, it's not professional advice, and Premium is a straightforward auto-renewing subscription you can cancel any time.") }}
+    Last updated 21 August 2026. By using ukpropertyinsight.co.uk you agree to these terms.
+    Please read them, the short version is: we give you real, sourced due-diligence data about
+    UK properties, it's not professional advice, and Premium is a straightforward auto-renewing
+    subscription you can cancel any time.
 </p>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("What this service is") }}</h2>
+    <h2 class="landing-heading">What this service is</h2>
     <p class="landing-subheading">
-        {{ tr("UKPropertyInsight aggregates publicly available data about UK addresses: sold price history, energy ratings, flood and other environmental risk, crime statistics, school information, local demographics and more, sourced live or periodically from official government and public-body datasets, always attributed to their original source. We are") }}
-        <strong>{{ tr("not") }}</strong> {{ tr("a property listings portal (we don't list homes for sale) and are not affiliated with any estate agent, portal, or the properties' owners.") }}
+        UKPropertyInsight aggregates publicly available data about UK addresses: sold price history, energy ratings, flood and other environmental risk, crime statistics, school
+        information, local demographics and more, sourced live or periodically from official
+        government and public-body datasets, always attributed to their original source. We are
+        <strong>not</strong> a property listings portal (we don't list homes for sale) and are
+        not affiliated with any estate agent, portal, or the properties' owners.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Not professional advice") }}</h2>
+    <h2 class="landing-heading">Not professional advice</h2>
     <p class="landing-subheading">
-        {{ tr("Everything on this site is informational and sourced from official third parties as described on our") }} <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". It is not legal, financial, surveying, or professional property advice, and should not be treated as a substitute for a solicitor's conveyancing search, a qualified surveyor's report, or independent financial advice before buying a property. Data can be delayed, incomplete, or occasionally wrong at the source. Always verify anything material to a purchase decision independently.") }}
+        Everything on this site is informational and sourced from official third parties as
+        described on our <a href="/methodology">methodology page</a>. It is not legal,
+        financial, surveying, or professional property advice, and should not be treated as a
+        substitute for a solicitor's conveyancing search, a qualified surveyor's report, or
+        independent financial advice before buying a property. Data can be delayed, incomplete,
+        or occasionally wrong at the source. Always verify anything material to a purchase
+        decision independently.
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Accounts") }}</h2>
+    <h2 class="landing-heading">Accounts</h2>
     <p class="landing-subheading">
-        {{ tr("You're responsible for keeping your account password secure and for anything that happens under your account. Give us accurate information when you sign up. You can delete your account at any time by emailing") }}
-        <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a>.
+        You're responsible for keeping your account password secure and for anything that
+        happens under your account. Give us accurate information when you sign up. You can
+        delete your account at any time by emailing
+        <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("Premium subscription") }}</h2>
+    <h2 class="landing-heading">Premium subscription</h2>
     <p class="landing-subheading">
-        {{ tr("Premium billing (currently £9.99/month or £24.99/3 months) starts as soon as you subscribe, using the payment method you provide via our payment processor, Stripe, and renews automatically at the end of each period until you cancel. You can cancel any time from the Premium page. Your access continues until the end of the period you've already paid for, and you won't be charged again after that. We don't offer refunds for partial periods already paid for, except where required by law.") }}
+        Premium billing (currently £9.99/month or £24.99/3 months) starts as soon as you
+        subscribe, using the payment method you provide via our payment processor, Stripe, and
+        renews automatically at the end of each period until you cancel. You can cancel any time
+        from the Premium page. Your access continues until the end of the period you've already
+        paid for, and you won't be charged again after that. We don't offer refunds for partial
+        periods already paid for, except where required by law.
     </p>
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Acceptable use") }}</h2>
+    <h2 class="landing-heading">Acceptable use</h2>
     <p class="landing-subheading">
-        {{ tr("Use the site for personal, non-commercial property research. Don't scrape, bulk-download, resell, or systematically republish the data or reports this site generates, attempt to circumvent the Premium paywall, or use the service in any way that disrupts it for other users.") }}
+        Use the site for personal, non-commercial property research. Don't scrape, bulk-download,
+        resell, or systematically republish the data or reports this site generates, attempt to
+        circumvent the Premium paywall, or use the service in any way that disrupts it for other
+        users.
     </p>
 </section>
 
 <section class="landing-section landing-section-tinted">
-    <h2 class="landing-heading">{{ tr("No warranty, limitation of liability") }}</h2>
+    <h2 class="landing-heading">No warranty, limitation of liability</h2>
     <p class="landing-subheading">
         The service is provided "as is". While we take care to source data accurately and label
         clearly what's real versus modelled, we make no guarantee that every figure is complete,
@@ -60,11 +82,13 @@
 </section>
 
 <section class="landing-section">
-    <h2 class="landing-heading">{{ tr("Changes and termination") }}</h2>
+    <h2 class="landing-heading">Changes and termination</h2>
     <p class="landing-subheading">
-        {{ tr('We may update these terms occasionally. The "last updated" date above will always reflect the latest version. We may suspend or terminate an account that breaches these terms. These terms are governed by the law of England and Wales.') }}
+        We may update these terms occasionally. The "last updated" date above will always
+        reflect the latest version. We may suspend or terminate an account that breaches these
+        terms. These terms are governed by the law of England and Wales.
     </p>
 </section>
 
-<p class="section-sub"><a href="/">{{ tr("&larr; Back to search") }}</a></p>
+<p class="section-sub"><a href="/">&larr; Back to search</a></p>
 {% endblock %}

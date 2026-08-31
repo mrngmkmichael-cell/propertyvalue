@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="{{ page_bcp47 | default("en-GB") }}" dir="{{ page_dir | default("ltr") }}">
+<html lang="en-GB">
 <head>
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="ONmACMSK2QA9zket2_0CImCu-k6LpfkSXOOcsopY9Po" />
-    <title>{% block title %}{{ tr("UKPropertyInsight") }}{% endblock %}</title>
+    <title>{% block title %}UKPropertyInsight{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     {# Both typefaces are self-hosted (see the @font-face block at the
     top of style.css). These preloads matter: @font-face lives inside
@@ -36,21 +35,6 @@
     /static/css/style.css for anything that wants it. #}
     <style>{{ inline_css() }}</style>
 
-    {% if lang_meta and lang != 'en' %}
-    {# AFTER the inlined sheet, not before: style.css sets --font-sans
-       on :root itself, so an override earlier in the head loses to it
-       at equal specificity. Checked on /ar, where the stack resolved
-       to Instrument Sans until this moved down here.
-
-       The self-hosted faces cover Latin only, so a non-Latin script
-       would otherwise land on whatever the browser happened to pick.
-       Each stack keeps Instrument Sans first (except Arabic, which
-       leads with a Naskh face) so Latin words inside a translated
-       sentence stay on-brand. See app/i18n.py for why these are system
-       faces rather than another 10 MB of self-hosted Noto. #}
-    <style>:root { --font-sans: {{ lang_meta.font | safe }}; --font-display: {{ lang_meta.font | safe }}; }</style>
-    {% endif %}
-
     {# One block feeds both the search-result snippet and the link
     preview, so a page can never end up with two different summaries of
     itself. Pages that don't override it inherit the site-wide line,
@@ -60,15 +44,6 @@
     <meta name="description" content="{% block meta_description %}Sold prices, EPC, flood risk, crime and schools for any UK postcode, all in one place, sourced from official public data.{% endblock %}">
 
     <link rel="canonical" href="{{ canonical_url }}">
-    {# hreflang only where real translated pages exist. Declaring
-       alternates for pages that are English whatever the URL says
-       would be a claim Google can check and find false. #}
-    {% if alternates %}
-    {% for alt in alternates %}
-    <link rel="alternate" hreflang="{{ alt.hreflang }}" href="{{ alt.href }}">
-    {% endfor %}
-    <link rel="alternate" hreflang="x-default" href="{{ alternates[0].href }}">
-    {% endif %}
 
     {# Sensible site-wide defaults for link previews (Slack, WhatsApp,
     Twitter/X, etc.) - any page can override og_title/og_description/
@@ -153,12 +128,12 @@
     </script>
     {# First focusable thing on every page: lets a keyboard or screen-reader
        user jump past the nav. Visually hidden until it receives focus. #}
-    <a class="skip-link" href="#main">{{ tr("Skip to content") }}</a>
+    <a class="skip-link" href="#main">Skip to content</a>
     <div id="page-loading-overlay" aria-hidden="true">
         <div class="page-loading-inner">
             <div class="page-loading-spinner"></div>
-            <div class="page-loading-title">{{ tr("Gathering your report") }}</div>
-            <div class="page-loading-message" id="page-loading-message">{{ tr("Pulling sold price history&hellip;") }}</div>
+            <div class="page-loading-title">Gathering your report</div>
+            <div class="page-loading-message" id="page-loading-message">Pulling sold price history&hellip;</div>
             <div class="page-loading-bar-track"><div class="page-loading-bar-fill" id="page-loading-bar"></div></div>
         </div>
     </div>
@@ -175,8 +150,8 @@
                             <circle cx="29" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="3.6"/>
                             <line x1="34.5" y1="37.5" x2="41" y2="44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
                         </svg>
-                    </span>{{ tr("UKPropertyInsight") }}</a>
-                <span class="tagline">{{ tr("UK Property Intelligence") }}</span>
+                    </span>UKPropertyInsight</a>
+                <span class="tagline">UK Property Intelligence</span>
             </div>
             {# A postcode box on every page except the homepage, which
                has the full search form in its hero. Same action and field
@@ -184,14 +159,14 @@
             {% if request.url.path != "/" %}
             <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
-                    <label for="header-postcode" class="visually-hidden">{{ tr("Postcode") }}</label>
+                    <label for="header-postcode" class="visually-hidden">Postcode</label>
                     <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" required>
                 </div>
                 {# Slides open when the postcode field is used, so the
                    collapsed header stays narrow enough for one row. Always
                    open on the stacked layouts where there is room. #}
                 <div class="header-search-house">
-                    <label for="header-house" class="visually-hidden">{{ tr("House or flat number (optional)") }}</label>
+                    <label for="header-house" class="visually-hidden">House or flat number (optional)</label>
                     <input type="text" id="header-house" name="house_number" placeholder="No. / Flat" autocomplete="off">
                 </div>
                 <button type="submit" class="header-search-go" aria-label="Search">
@@ -204,66 +179,20 @@
                 <span class="nav-toggle-bars"></span>
             </button>
             <nav class="site-nav" id="site-nav-menu">
-                <a href="/methodology">{{ T["nav.why"] if T else "Why trust this" }}</a>
-                <a href="/areas">{{ T["nav.areas"] if T else "Area Guides" }}</a>
-                <a href="/schools/guide">{{ T["nav.schools"] if T else "School Guide" }}</a>
-                <a href="/buying-guide">{{ T["nav.buying"] if T else "Buying Guide" }}</a>
-                <a href="/browser-extension">{{ T["nav.extension"] if T else "Extension" }}</a>
-                <a href="/premium">{{ T["nav.pricing"] if T else "Pricing" }}</a>
+                <a href="/methodology">Why trust this</a>
+                <a href="/areas">Area Guides</a>
+                <a href="/schools/guide">School Guide</a>
+                <a href="/buying-guide">Buying Guide</a>
+                <a href="/browser-extension">Extension</a>
+                <a href="/premium">Pricing</a>
                 {% if current_user %}
-                    <a href="/watchlist">{{ T["nav.properties"] if T else "My properties" }}</a>
+                    <a href="/watchlist">My properties</a>
                     <form action="/logout" method="post" class="nav-form">
-                        <button type="submit">{{ T["nav.logout"] if T else "Log out" }}</button>
+                        <button type="submit">Log out</button>
                     </form>
                 {% else %}
-                    <a href="/login">{{ T["nav.login"] if T else "Log in" }}</a>
-                    <a href="/signup">{{ T["nav.signup"] if T else "Sign up" }}</a>
-                {% endif %}
-                {# Language picker. A <details> rather than a scripted
-                   dropdown so it opens with JavaScript off, and the
-                   options are ordinary links so keyboard and screen
-                   reader users get the browser's own behaviour. The
-                   flag is decorative (alt="") and the endonym beside
-                   it is the label: a flag names a country, not a
-                   language. rel=nofollow, and /set-language is
-                   disallowed in robots.txt, because these are
-                   cookie-setters, not pages. #}
-                {% if lang_meta and languages %}
-                {% set lang_next = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
-                <details class="lang-menu">
-                    {# The flag carries no accessible name (alt=""), and
-                       on narrower desktops the endonym is hidden, so the
-                       button states both its job and the current choice
-                       here rather than relying on what happens to be
-                       visible. #}
-                    <summary aria-label="{{ T['lang.choose'] if T else 'Choose a language' }}: {{ lang_meta.endonym }}">
-                        <img class="lang-flag" src="/static/flags/{{ lang_meta.flag }}.svg" alt="" width="21" height="16">
-                        <span class="lang-menu-name" lang="{{ lang_meta.bcp47 }}">{{ lang_meta.endonym }}</span>
-                        {# On mobile the list expands directly underneath,
-                           so naming the current language on the button
-                           too just prints it twice in a row. There the
-                           button is a section label instead and the tick
-                           in the list says which one is on. #}
-                        <span class="lang-menu-label">{{ T["lang.label"] if T else "Language" }}</span>
-                        <svg class="lang-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg>
-                    </summary>
-                    <div class="lang-menu-list">
-                        {% for code, meta in languages.items() %}
-                        {%- if code == lang %}
-                        <span class="lang-menu-item is-current" lang="{{ meta.bcp47 }}" aria-current="true">
-                            <img class="lang-flag" src="/static/flags/{{ meta.flag }}.svg" alt="" width="21" height="16">
-                            <span class="lang-menu-item-name">{{ meta.endonym }}</span>
-                            <svg class="lang-menu-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
-                        </span>
-                        {%- else %}
-                        <a class="lang-menu-item" rel="nofollow" href="/set-language?lang={{ code }}&next={{ lang_next | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">
-                            <img class="lang-flag" src="/static/flags/{{ meta.flag }}.svg" alt="" width="21" height="16">
-                            <span class="lang-menu-item-name">{{ meta.endonym }}</span>
-                        </a>
-                        {%- endif %}
-                        {% endfor %}
-                    </div>
-                </details>
+                    <a href="/login">Log in</a>
+                    <a href="/signup">Sign up</a>
                 {% endif %}
             </nav>
             {% endif %}
@@ -278,18 +207,18 @@
     <div class="trial-banner{{ ' trial-banner-ending' if current_user.free_unlocks_left == 1 else '' }}">
         <span class="trial-banner-text">
             {% if current_user.free_unlocks_left == 1 %}
-                {{ tr("1 free full report left") }}
+                1 free full report left
             {% else %}
-                {{ current_user.free_unlocks_left }} {{ tr("free full reports left") }}
+                {{ current_user.free_unlocks_left }} free full reports left
             {% endif %}
         </span>
-        <a href="/premium">{{ tr("See plans") }}</a>
+        <a href="/premium">See plans</a>
     </div>
     {% endif %}
 
     <main class="site-main" id="main" tabindex="-1">
         {% if request.query_params.get("reset") == "done" %}
-        <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>{{ tr("Password changed.") }}</strong> {{ tr("You're signed in.") }}</p>
+        <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Password changed.</strong> You're signed in.</p>
         {% endif %}
         {% block content %}{% endblock %}
     </main>
@@ -297,37 +226,23 @@
     <footer class="site-footer">
         <div class="site-footer-inner">
             <p>
-                {{ tr("Contains data made available under the") }}
+                Contains data made available under the
                 <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/" target="_blank" rel="noopener">
-                    {{ tr("Open Government Licence v3.0") }}
+                    Open Government Licence v3.0
                 </a>.
                 {% block attribution %}{% endblock %}
             </p>
             <p>
-                {{ tr("Questions or feedback?") }} <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a>
-                &middot; <a href="/support">{{ tr("Support") }}</a>
-                &middot; <a href="/privacy">{{ tr("Privacy Policy") }}</a>
-                &middot; <a href="/terms">{{ tr("Terms of Service") }}</a>
-                &middot; <a href="/market-report">{{ tr("Market Report") }}</a>
-                &middot; <a href="/buying-guide">{{ T["nav.buying"] if T else "Buying Guide" }}</a>
-                &middot; <a href="/areas">{{ T["nav.areas"] if T else "Area Guides" }}</a>
-                &middot; <a href="/accuracy">{{ tr("Accuracy log") }}</a>
-                &middot; <a href="/data">{{ tr("Our data") }}</a>
-                &middot; <a href="/embed">{{ tr("For Agents") }}</a>
-            </p>
-            {# Plain links rather than a select: no script needed, and
-               the whole list is visible at once for anyone who did not
-               spot the header menu. The current language is marked but
-               not linked. Same nofollow reasoning as the header. #}
-            {% set lang_next = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
-            <p class="footer-langs"{% if lang != page_lang %} lang="{{ lang_meta.bcp47 }}"{% endif %}>
-                <span class="footer-langs-label">{{ T["lang.label"] if T else "Language" }}</span>
-                {% for code, meta in (languages or {}).items() %}
-                {%- if code == lang %}<span class="footer-lang-current" lang="{{ meta.bcp47 }}">{{ meta.endonym }}</span>
-                {%- else %}<a rel="nofollow" href="/set-language?lang={{ code }}&next={{ lang_next | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">{{ meta.endonym }}</a>
-                {%- endif %}
-                {%- if not loop.last %} <span aria-hidden="true">&middot;</span> {% endif %}
-                {% endfor %}
+                Questions or feedback? <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>
+                &middot; <a href="/support">Support</a>
+                &middot; <a href="/privacy">Privacy Policy</a>
+                &middot; <a href="/terms">Terms of Service</a>
+                &middot; <a href="/market-report">Market Report</a>
+                &middot; <a href="/buying-guide">Buying Guide</a>
+                &middot; <a href="/areas">Area Guides</a>
+                &middot; <a href="/accuracy">Accuracy log</a>
+                &middot; <a href="/data">Our data</a>
+                &middot; <a href="/embed">For Agents</a>
             </p>
         </div>
     </footer>
@@ -488,24 +403,6 @@
                 if (window.innerWidth > 640) {
                     menu.classList.remove('nav-open');
                     toggle.setAttribute('aria-expanded', 'false');
-                }
-            });
-        })();
-
-        (function () {
-            // The language menu opens and closes on its own: <details>
-            // needs no script. This only adds what a native dropdown
-            // would also do, and the menu stays usable without it.
-            const menu = document.querySelector('.lang-menu');
-            if (!menu) return;
-            document.addEventListener('click', function (e) {
-                if (menu.open && !menu.contains(e.target)) menu.open = false;
-            });
-            menu.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' && menu.open) {
-                    menu.open = false;
-                    const s = menu.querySelector('summary');
-                    if (s) s.focus();
                 }
             });
         })();

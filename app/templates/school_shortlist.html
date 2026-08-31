@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tr("Your school shortlist | UKPropertyInsight") }}{% endblock %}
+{% block title %}Your school shortlist | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<span class="kicker">{{ tr("Saved schools") }}</span>
-<h1>{{ tr("Your school shortlist") }}</h1>
+<span class="kicker">Saved schools</span>
+<h1>Your school shortlist</h1>
 
 {% if items %}
     <table class="tx-table">
         <thead>
             <tr>
-                <th>{{ tr("School") }}</th>
-                <th>{{ tr("Note") }}</th>
-                <th>{{ tr("Saved") }}</th>
+                <th>School</th>
+                <th>Note</th>
+                <th>Saved</th>
                 <th class="num"></th>
             </tr>
         </thead>
@@ -26,7 +26,7 @@
                 <td class="num">
                     <form action="/schools/shortlist/remove" method="post" class="nav-form">
                         <input type="hidden" name="item_id" value="{{ item.id }}">
-                        <button type="submit">{{ tr("Remove") }}</button>
+                        <button type="submit">Remove</button>
                     </form>
                 </td>
             </tr>
@@ -34,6 +34,6 @@
         </tbody>
     </table>
 {% else %}
-    <p class="notice">{{ tr('Nothing shortlisted yet. Search for a postcode and use "Shortlist" next to any school in its report.') }}</p>
+    <p class="notice">Nothing shortlisted yet. Search for a postcode and use "Shortlist" next to any school in its report.</p>
 {% endif %}
 {% endblock %}

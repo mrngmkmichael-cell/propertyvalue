@@ -2,16 +2,16 @@
 {% import "_icons.html" as icons %}
 
 {% block title %}{{ seo_title("Private schools in " ~ outcode, ", " ~ admin_district if admin_district else "", ": fees, ages and admissions") }}{% endblock %}
-{% block meta_description %}{{ tr("Every fee-paying school within") }} {{ radius_miles }} {{ tr("miles of") }} {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}{{ tr(": ages, selection, single-sex or mixed. From the DfE register.") }}{% endblock %}
-{% block og_title %}{{ tr("Private schools in") }} {{ outcode }}{% endblock %}
+{% block meta_description %}Every fee-paying school within {{ radius_miles }} miles of {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}: ages, selection, single-sex or mixed. From the DfE register.{% endblock %}
+{% block og_title %}Private schools in {{ outcode }}{% endblock %}
 
 {% block content %}
 {% if private_faqs_jsonld %}<script type="application/ld+json">{{ private_faqs_jsonld | safe }}</script>{% endif %}
 
-<a class="back-link" href="/area/{{ outcode }}">&larr; {{ outcode }} {{ tr("area guide") }}</a>
+<a class="back-link" href="/area/{{ outcode }}">&larr; {{ outcode }} area guide</a>
 
-<span class="kicker">{{ tr("Private schools") }}</span>
-<h1>{{ tr("Fee-paying schools in") }} {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
+<span class="kicker">Private schools</span>
+<h1>Fee-paying schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
 
 {% if schools %}
 {# Built from this district's own table, so no two deks read alike:
@@ -21,30 +21,33 @@
 {% set _selective = schools | selectattr("selective") | list | length %}
 {% set _single_sex = schools | rejectattr("gender", "in", ("Mixed", "", None)) | list | length %}
 <p class="dek">
-    {{ schools | length }} {{ tr("fee-paying school") }}{{ "s" if schools | length != 1 }} {{ tr("sit") }}{{ "s" if schools | length == 1 }} {{ tr("within") }} {{ radius_miles }} {{ tr("miles of central") }} {{ outcode }}{{ tr(", the nearest being") }} {{ _nearest.name }} {{ tr("at") }} {{ (_nearest.distance_m / 1609.34) | round(1) }} {{ tr("mi") }}{% if _selective %},
-    {{ _selective }} {{ tr("of them selective") }}{% endif %}{% if _single_sex %}, {{ _single_sex }} {{ tr("single-sex") }}{% endif %}{{ tr(". Nearest first; each age range is the school's own statutory range, which decides whether it takes a given year group.") }}
+    {{ schools | length }} fee-paying school{{ "s" if schools | length != 1 }} sit{{ "s" if schools | length == 1 }} within {{ radius_miles }} miles of central {{ outcode }},
+    the nearest being {{ _nearest.name }} at {{ (_nearest.distance_m / 1609.34) | round(1) }} mi{% if _selective %},
+    {{ _selective }} of them selective{% endif %}{% if _single_sex %}, {{ _single_sex }} single-sex{% endif %}.
+    Nearest first; each age range is the school's own statutory range, which decides whether it
+    takes a given year group.
 </p>
 
 <div class="tablewrap">
     <table class="tx-table">
         <thead>
             <tr>
-                <th>{{ tr("School") }}</th>
-                <th class="num">{{ tr("Distance") }}</th>
-                <th>{{ tr("Ages") }}</th>
-                <th>{{ tr("Takes") }}</th>
+                <th>School</th>
+                <th class="num">Distance</th>
+                <th>Ages</th>
+                <th>Takes</th>
             </tr>
         </thead>
         <tbody>
             {% for s in schools %}
             <tr>
                 <td>{{ s.name }}</td>
-                <td class="num nowrap">{{ (s.distance_m / 1609.34) | round(1) }} {{ tr("mi") }}</td>
-                <td class="nowrap">{% if s.age_low and s.age_high %}{{ s.age_low }} {{ tr("to") }} {{ s.age_high }}{% endif %}</td>
+                <td class="num nowrap">{{ (s.distance_m / 1609.34) | round(1) }} mi</td>
+                <td class="nowrap">{% if s.age_low and s.age_high %}{{ s.age_low }} to {{ s.age_high }}{% endif %}</td>
                 <td>
                     {{ s.phase_group }}
                     {%- if s.gender and s.gender != 'Mixed' %}<br><span class="school-tag">{{ s.gender }}</span>{% endif -%}
-                    {%- if s.selective %}<br><span class="school-tag">{{ tr("Selective") }}</span>{% endif -%}
+                    {%- if s.selective %}<br><span class="school-tag">Selective</span>{% endif -%}
                     {%- if s.religious_character and s.religious_character not in ('None', 'Does not apply') %}<br><span class="school-tag">{{ s.religious_character }}</span>{% endif -%}
                 </td>
             </tr>
@@ -57,48 +60,53 @@
    reads as a school that failed an inspection, so the reason sits
    where it cannot be missed. #}
 <div class="notice">
-    <strong>{{ tr("No Ofsted grades here, and that is not a bad sign.") }}</strong>
-    {{ tr("Fee-paying schools like") }} {{ _nearest.name }} {{ tr("are inspected by the Independent Schools Inspectorate rather than Ofsted, and the ISI publishes no open data feed, so no rating exists for us to show. Fees are not open data either.") }}
+    <strong>No Ofsted grades here, and that is not a bad sign.</strong>
+    Fee-paying schools like {{ _nearest.name }} are inspected by the Independent Schools
+    Inspectorate rather than Ofsted, and the ISI publishes no open data feed, so no rating exists
+    for us to show. Fees are not open data either.
 </div>
 
 <section class="report-section">
-    <h2>{{ tr("The state schools alongside them") }}</h2>
+    <h2>The state schools alongside them</h2>
     <p class="section-sub">
-        {{ outcode }} {{ tr("also holds") }} <strong>{{ state_primary }}</strong> {{ tr("state primary and") }}
-        <strong>{{ state_secondary }}</strong> {{ tr("state secondary school") }}{{ "s" if state_secondary != 1 }}{{ tr(", with Ofsted ratings and exam results.") }}
-        <a href="/schools/guide?q={{ outcode }}">{{ tr("The full school breakdown for") }} {{ outcode }} &rarr;</a>
+        {{ outcode }} also holds <strong>{{ state_primary }}</strong> state primary and
+        <strong>{{ state_secondary }}</strong> state secondary school{{ "s" if state_secondary != 1 }},
+        with Ofsted ratings and exam results.
+        <a href="/schools/guide?q={{ outcode }}">The full school breakdown for {{ outcode }} &rarr;</a>
     </p>
 </section>
 {% else %}
 <p class="dek">
-    {{ tr("No fee-paying school sits within") }} {{ radius_miles }} {{ tr("miles of central") }} {{ outcode }}{{ tr(", according to the Department for Education's register of schools.") }}
+    No fee-paying school sits within {{ radius_miles }} miles of central {{ outcode }}, according to
+    the Department for Education's register of schools.
 </p>
 <section class="report-section">
     <p class="section-sub">
-        {{ tr("The area does have") }} <strong>{{ state_primary }}</strong> {{ tr("state primary and") }}
-        <strong>{{ state_secondary }}</strong> {{ tr("state secondary schools.") }}
-        <a href="/schools/guide?q={{ outcode }}">{{ tr("See the full school breakdown for") }} {{ outcode }} &rarr;</a>
+        The area does have <strong>{{ state_primary }}</strong> state primary and
+        <strong>{{ state_secondary }}</strong> state secondary schools.
+        <a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} &rarr;</a>
     </p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>{{ tr("Checking a specific address") }}</h2>
+    <h2>Checking a specific address</h2>
     <p class="section-sub">
-        {{ tr("Put a postcode in and the report measures each school's distance from that front door rather than from central") }} {{ outcode }}.
+        Put a postcode in and the report measures each school's distance from that front door
+        rather than from central {{ outcode }}.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
-            <label for="ps-postcode">{{ tr("UK postcode") }}</label>
+            <label for="ps-postcode">UK postcode</label>
             <input type="text" id="ps-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>
         </div>
-        <button type="submit">{{ tr("Check an address") }}</button>
+        <button type="submit">Check an address</button>
     </form>
 </section>
 
 {% if private_faqs %}
 <section class="report-section">
-    <h2>{{ tr("Common questions") }}</h2>
+    <h2>Common questions</h2>
     <div class="faq-list">
         {% for q, a in private_faqs %}
         <details class="faq-item">
@@ -111,7 +119,8 @@
 {% endif %}
 
 <p class="section-sub">
-    {{ tr("Source: Department for Education, Get Information About Schools. Read how every figure here is sourced on the") }} <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something looks wrong,") }}
-    <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
+    Source: Department for Education, Get Information About Schools. Read how every figure here is
+    sourced on the <a href="/methodology">methodology page</a>. If something looks wrong,
+    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
 </p>
 {% endblock %}
