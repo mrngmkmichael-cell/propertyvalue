@@ -678,6 +678,62 @@ def test_an_unknown_or_regional_language_code_falls_back_sanely(client):
     assert i18n.t("no.such.key", "fr") == "no.such.key"
 
 
+def test_the_header_language_menu_lists_every_language_with_a_flag(client):
+    """The picker in the top bar. Every language is one link, every
+    flag file it names actually exists, and the current one is marked
+    rather than linked to itself."""
+    import pathlib
+
+    from app import i18n
+
+    flags_dir = pathlib.Path("app/static/flags")
+    body = client.get("/areas").text
+    assert '<details class="lang-menu">' in body
+
+    for code, meta in i18n.LANGUAGES.items():
+        assert (flags_dir / f"{meta['flag']}.svg").is_file(),             f"{code} names flags/{meta['flag']}.svg, which is not there"
+        assert f'/static/flags/{meta["flag"]}.svg' in body
+        if code == i18n.DEFAULT_LANG:
+            # Current on an English page: shown, not offered.
+            assert f'href="/set-language?lang={code}&' not in body
+        else:
+            assert f'href="/set-language?lang={code}&' in body
+
+    # The flags are decorative. The language's own name is the label, so
+    # nobody has to recognise a flag to find their language, and a
+    # screen reader is not read a list of countries.
+    assert 'class="lang-flag" src="/static/flags/gb.svg" alt=""' in body
+    for meta in i18n.LANGUAGES.values():
+        assert meta["endonym"] in body
+
+
+def test_the_language_links_are_kept_out_of_the_crawl(client):
+    """Sixteen /set-language links sit on every page (header and
+    footer). They are cookie-setters that redirect straight back, so
+    crawling them burns budget this site does not have on a domain
+    with an indexing problem. The real translated pages are reachable
+    from the sitemap and hreflang instead."""
+    import re
+
+    assert "Disallow: /set-language" in client.get("/robots.txt").text
+    body = client.get("/areas").text
+    tags = re.findall(r'<a [^>]*/set-language[^>]*>', body)
+    # 8 in the header menu, 8 in the footer. Asserting the count first
+    # so this cannot quietly pass while checking almost nothing.
+    assert len(tags) == 16, f"expected 16 switcher links, found {len(tags)}"
+    missing = [t for t in tags if 'rel="nofollow"' not in t]
+    assert not missing, f"switcher links without rel=nofollow: {missing[:2]}"
+
+
+def test_switching_language_keeps_you_on_the_same_search(client):
+    """The switcher used to send you back to the bare path, so changing
+    language on a results page threw the search away."""
+    r = client.get("/schools/guide?q=M1")
+    assert r.status_code == 200
+    # The next= target carries the query string, url-encoded.
+    assert "next=/schools/guide%3Fq%3DM1" in r.text
+
+
 def test_the_font_stack_reaches_the_page_unescaped(client):
     """The stacks are CSS, and CSS needs its single quotes. Escaped to
     &#39; the whole custom property was invalid and every page silently

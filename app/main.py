@@ -1485,7 +1485,19 @@ def set_language(request: Request, lang: str = "", next: str = "/"):
 
 @app.get("/robots.txt")
 def robots(request: Request):
-    body = f"User-agent: *\nAllow: /\nDisallow: /watchlist\nDisallow: /internal/\nSitemap: {_public_base_url(request)}/sitemap.xml\n"
+    # /set-language is a cookie-setter that redirects straight back, and
+    # the language switcher puts eight of them in the header and eight in
+    # the footer of every page. Left crawlable that is ~56,000 redirect
+    # URLs on a site whose actual problem is Google not getting through
+    # the real pages. The translated landings themselves (/ja, /ko, ...)
+    # are in the sitemap and hreflang-linked, so nothing is lost.
+    body = (
+        "User-agent: *\nAllow: /\n"
+        "Disallow: /watchlist\n"
+        "Disallow: /internal/\n"
+        "Disallow: /set-language\n"
+        f"Sitemap: {_public_base_url(request)}/sitemap.xml\n"
+    )
     return Response(content=body, media_type="text/plain")
 
 

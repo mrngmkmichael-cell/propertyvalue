@@ -219,6 +219,52 @@
                     <a href="/login">{{ T["nav.login"] if T else "Log in" }}</a>
                     <a href="/signup">{{ T["nav.signup"] if T else "Sign up" }}</a>
                 {% endif %}
+                {# Language picker. A <details> rather than a scripted
+                   dropdown so it opens with JavaScript off, and the
+                   options are ordinary links so keyboard and screen
+                   reader users get the browser's own behaviour. The
+                   flag is decorative (alt="") and the endonym beside
+                   it is the label: a flag names a country, not a
+                   language. rel=nofollow, and /set-language is
+                   disallowed in robots.txt, because these are
+                   cookie-setters, not pages. #}
+                {% if lang_meta and languages %}
+                {% set lang_next = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
+                <details class="lang-menu">
+                    {# The flag carries no accessible name (alt=""), and
+                       on narrower desktops the endonym is hidden, so the
+                       button states both its job and the current choice
+                       here rather than relying on what happens to be
+                       visible. #}
+                    <summary aria-label="{{ T['lang.choose'] if T else 'Choose a language' }}: {{ lang_meta.endonym }}">
+                        <img class="lang-flag" src="/static/flags/{{ lang_meta.flag }}.svg" alt="" width="21" height="16">
+                        <span class="lang-menu-name" lang="{{ lang_meta.bcp47 }}">{{ lang_meta.endonym }}</span>
+                        {# On mobile the list expands directly underneath,
+                           so naming the current language on the button
+                           too just prints it twice in a row. There the
+                           button is a section label instead and the tick
+                           in the list says which one is on. #}
+                        <span class="lang-menu-label">{{ T["lang.label"] if T else "Language" }}</span>
+                        <svg class="lang-menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg>
+                    </summary>
+                    <div class="lang-menu-list">
+                        {% for code, meta in languages.items() %}
+                        {%- if code == lang %}
+                        <span class="lang-menu-item is-current" lang="{{ meta.bcp47 }}" aria-current="true">
+                            <img class="lang-flag" src="/static/flags/{{ meta.flag }}.svg" alt="" width="21" height="16">
+                            <span class="lang-menu-item-name">{{ meta.endonym }}</span>
+                            <svg class="lang-menu-tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17.5 19 7"/></svg>
+                        </span>
+                        {%- else %}
+                        <a class="lang-menu-item" rel="nofollow" href="/set-language?lang={{ code }}&next={{ lang_next | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">
+                            <img class="lang-flag" src="/static/flags/{{ meta.flag }}.svg" alt="" width="21" height="16">
+                            <span class="lang-menu-item-name">{{ meta.endonym }}</span>
+                        </a>
+                        {%- endif %}
+                        {% endfor %}
+                    </div>
+                </details>
+                {% endif %}
             </nav>
             {% endif %}
         </div>
@@ -269,14 +315,16 @@
                 &middot; <a href="/data">Our data</a>
                 &middot; <a href="/embed">For Agents</a>
             </p>
-            {# Plain links rather than a select: no script needed, and a
-               crawler can follow every language from any page. The
-               current language is marked but not linked. #}
+            {# Plain links rather than a select: no script needed, and
+               the whole list is visible at once for anyone who did not
+               spot the header menu. The current language is marked but
+               not linked. Same nofollow reasoning as the header. #}
+            {% set lang_next = request.url.path ~ ("?" ~ request.url.query if request.url.query else "") %}
             <p class="footer-langs"{% if lang != page_lang %} lang="{{ lang_meta.bcp47 }}"{% endif %}>
                 <span class="footer-langs-label">{{ T["lang.label"] if T else "Language" }}</span>
                 {% for code, meta in (languages or {}).items() %}
                 {%- if code == lang %}<span class="footer-lang-current" lang="{{ meta.bcp47 }}">{{ meta.endonym }}</span>
-                {%- else %}<a href="/set-language?lang={{ code }}&next={{ request.url.path | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">{{ meta.endonym }}</a>
+                {%- else %}<a rel="nofollow" href="/set-language?lang={{ code }}&next={{ lang_next | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">{{ meta.endonym }}</a>
                 {%- endif %}
                 {%- if not loop.last %} <span aria-hidden="true">&middot;</span> {% endif %}
                 {% endfor %}
@@ -440,6 +488,24 @@
                 if (window.innerWidth > 640) {
                     menu.classList.remove('nav-open');
                     toggle.setAttribute('aria-expanded', 'false');
+                }
+            });
+        })();
+
+        (function () {
+            // The language menu opens and closes on its own: <details>
+            // needs no script. This only adds what a native dropdown
+            // would also do, and the menu stays usable without it.
+            const menu = document.querySelector('.lang-menu');
+            if (!menu) return;
+            document.addEventListener('click', function (e) {
+                if (menu.open && !menu.contains(e.target)) menu.open = false;
+            });
+            menu.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && menu.open) {
+                    menu.open = false;
+                    const s = menu.querySelector('summary');
+                    if (s) s.focus();
                 }
             });
         })();

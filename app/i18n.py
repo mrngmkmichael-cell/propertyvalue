@@ -40,18 +40,22 @@ _HI = ("'Instrument Sans', 'Kohinoor Devanagari', 'Nirmala UI', 'Noto Sans Devan
        "sans-serif")
 
 # code -> metadata. "code" is what appears in the URL and the cookie;
+# "flag" is a country code, and a country is not a language: Arabic
+# spans 22 of them and most Spanish speakers are nowhere near Spain.
+# The flag is decorative and marked as such; the endonym next to it
+# is what actually identifies the row. See app/static/flags/README.md.
 # "bcp47" is what goes in lang= and hreflang, where the script subtag
 # matters and a bare "zh" would be wrong for either Chinese.
 LANGUAGES = {
-    "en":      {"endonym": "English",    "english": "English",              "bcp47": "en-GB",   "dir": "ltr", "font": _LATIN},
-    "zh-hant": {"endonym": "繁體中文",     "english": "Traditional Chinese",  "bcp47": "zh-Hant", "dir": "ltr", "font": _TC},
-    "zh-hans": {"endonym": "简体中文",     "english": "Simplified Chinese",   "bcp47": "zh-Hans", "dir": "ltr", "font": _SC},
-    "hi":      {"endonym": "हिन्दी",        "english": "Hindi",                "bcp47": "hi",      "dir": "ltr", "font": _HI},
-    "es":      {"endonym": "Español",     "english": "Spanish",              "bcp47": "es",      "dir": "ltr", "font": _LATIN},
-    "ar":      {"endonym": "العربية",       "english": "Standard Arabic",      "bcp47": "ar",      "dir": "rtl", "font": _AR},
-    "fr":      {"endonym": "Français",    "english": "French",               "bcp47": "fr",      "dir": "ltr", "font": _LATIN},
-    "ja":      {"endonym": "日本語",       "english": "Japanese",             "bcp47": "ja",      "dir": "ltr", "font": _JA},
-    "ko":      {"endonym": "한국어",       "english": "Korean",               "bcp47": "ko",      "dir": "ltr", "font": _KO},
+    "en":      {"endonym": "English",    "english": "English",              "bcp47": "en-GB",   "flag": "gb", "dir": "ltr", "font": _LATIN},
+    "zh-hant": {"endonym": "繁體中文",     "english": "Traditional Chinese",  "bcp47": "zh-Hant", "flag": "hk", "dir": "ltr", "font": _TC},
+    "zh-hans": {"endonym": "简体中文",     "english": "Simplified Chinese",   "bcp47": "zh-Hans", "flag": "cn", "dir": "ltr", "font": _SC},
+    "hi":      {"endonym": "हिन्दी",        "english": "Hindi",                "bcp47": "hi",      "flag": "in", "dir": "ltr", "font": _HI},
+    "es":      {"endonym": "Español",     "english": "Spanish",              "bcp47": "es",      "flag": "es", "dir": "ltr", "font": _LATIN},
+    "ar":      {"endonym": "العربية",       "english": "Standard Arabic",      "bcp47": "ar",      "flag": "sa", "dir": "rtl", "font": _AR},
+    "fr":      {"endonym": "Français",    "english": "French",               "bcp47": "fr",      "flag": "fr", "dir": "ltr", "font": _LATIN},
+    "ja":      {"endonym": "日本語",       "english": "Japanese",             "bcp47": "ja",      "flag": "jp", "dir": "ltr", "font": _JA},
+    "ko":      {"endonym": "한국어",       "english": "Korean",               "bcp47": "ko",      "flag": "kr", "dir": "ltr", "font": _KO},
 }
 
 DEFAULT_LANG = "en"
@@ -145,6 +149,8 @@ STRINGS = {
 
     "landing.cta":        {"en": "Check a postcode", "zh-hant": "查詢郵區", "zh-hans": "查询邮区", "hi": "पोस्टकोड जाँचें", "es": "Consultar un código postal", "ar": "افحص رمزًا بريديًا", "fr": "Vérifier un code postal", "ja": "郵便番号を調べる", "ko": "우편번호 확인하기"},
     "lang.label":         {"en": "Language", "zh-hant": "語言", "zh-hans": "语言", "hi": "भाषा", "es": "Idioma", "ar": "اللغة", "fr": "Langue", "ja": "言語", "ko": "언어"},
+    "lang.choose":        {"en": "Choose a language", "zh-hant": "選擇語言", "zh-hans": "选择语言", "hi": "भाषा चुनें", "es": "Elegir idioma", "ar": "اختر لغة", "fr": "Choisir une langue", "ja": "言語を選択", "ko": "언어 선택"},
+    "lang.current":       {"en": "Current language", "zh-hant": "目前語言", "zh-hans": "当前语言", "hi": "वर्तमान भाषा", "es": "Idioma actual", "ar": "اللغة الحالية", "fr": "Langue actuelle", "ja": "現在の言語", "ko": "현재 언어"},
     "lang.english_site":  {"en": "English site", "zh-hant": "英文版網站", "zh-hans": "英文版网站", "hi": "अंग्रेज़ी साइट", "es": "Sitio en inglés", "ar": "الموقع بالإنجليزية", "fr": "Site en anglais", "ja": "英語版サイト", "ko": "영문 사이트"},
 }
 
