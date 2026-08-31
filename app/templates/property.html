@@ -4,16 +4,16 @@
 {% import "_tabs.html" as tabnav %}
 {% import "_map_style.html" as mapstyle %}
 
-{% block title %}{{ query }} | UKPropertyInsight{% endblock %}
+{% block title %}{{ query }} {{ tr("| UKPropertyInsight") }}{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
-{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} | UKPropertyInsight{% endblock %}
+{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} {{ tr("| UKPropertyInsight") }}{% endblock %}
 {# A share of this report should look like this report, not like the
    homepage. The card carries the address's own score and figures. The
    not-found page renders this template with no location, so it keeps
    the site's default image. #}
-{% block og_image %}{% if location is defined and location %}{{ request.url_for('og_property_image') }}?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}{% else %}{{ request.url_for('static', path='img/og-default.png') }}{% endif %}{% endblock %}
-{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
+{% block og_image %}{% if location is defined and location %}{{ request.url_for('og_property_image') }}{{ tr("?postcode=") }}{{ location.postcode | urlencode }}{% if house_number %}{{ tr("&amp;house_number=") }}{{ house_number | urlencode }}{% endif %}{% else %}{{ request.url_for('static', path='img/og-default.png') }}{% endif %}{% endblock %}
+{% block meta_description %}{% if location %}{{ tr("Sold prices, EPC rating, flood risk, crime stats and schools for") }} {{ location.postcode }}, {{ location.admin_district }}{{ tr(". A free UK property due-diligence report from official public data.") }}{% else %}{{ tr("Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.") }}{% endif %}{% endblock %}
 
 {% block content %}
 {% if shared %}
@@ -78,7 +78,7 @@
     <span class="kicker">{{ tr("Not found") }}</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
-        We couldn't find that postcode. Double-check the spelling. It should look like
+        {{ tr("We couldn't find that postcode. Double-check the spelling. It should look like") }}
         <code>SW1A 1AA</code>.
     </p>
 
@@ -196,10 +196,10 @@
             </div>
             <div class="overview-score-body">
                 <span class="overview-score-grade">{{ overview.grade }}</span>
-                <p class="overview-score-verdict">{{ overview.verdict }}</p>
+                <p class="overview-score-verdict">{{ overview.verdict | trd }}</p>
                 {% if overview.premium_extra_checks %}
                 <a href="{{ '/signup' if not current_user else '/premium' }}" class="overview-score-upsell">
-                    +{{ overview.premium_extra_checks }} more check{{ 's' if overview.premium_extra_checks != 1 }} factored in with Premium →
+                    +{{ overview.premium_extra_checks }} {{ tr("more check") }}{{ 's' if overview.premium_extra_checks != 1 }} {{ tr("factored in with Premium →") }}
                 </a>
                 {% endif %}
             </div>
@@ -210,8 +210,8 @@
         <p class="property-detail-line">
             {% if property_detail.dwelling_type %}{{ property_detail.dwelling_type }}{% endif %}
             {% if property_detail.total_floor_area %}· {{ property_detail.total_floor_area }} m²{% endif %}
-            {% if property_detail.habitable_room_count %}· {{ property_detail.habitable_room_count }} habitable rooms{% endif %}
-            {% if property_detail.year_built %}· Built {{ property_detail.year_built }}{% endif %}
+            {% if property_detail.habitable_room_count %}· {{ property_detail.habitable_room_count }} {{ tr("habitable rooms") }}{% endif %}
+            {% if property_detail.year_built %}{{ tr("· Built") }} {{ property_detail.year_built }}{% endif %}
         </p>
         <p class="property-detail-note">{{ tr("Based on the most recent EPC certificate for this postcode, so it may not exactly match a specific unit.") }}</p>
         {% endif %}
@@ -232,7 +232,7 @@
                     </div>
                     <button type="submit">{{ tr("Update") if watchlist_item else tr("Save") }}</button>
                     {% if house_number %}
-                    <p class="section-sub">Saved against this specific house/flat number ({{ house_number }}), not just the postcode.</p>
+                    <p class="section-sub">{{ tr("Saved against this specific house/flat number (") }}{{ house_number }}{{ tr("), not just the postcode.") }}</p>
                     {% else %}
                     <p class="section-sub">{{ tr("No house/flat number filter is set, so this saves the postcode as a whole, the property details shown above may not match a specific unit. Use the filter below to narrow to one address first.") }}</p>
                     {% endif %}
@@ -252,7 +252,7 @@
         <input type="text" id="address-filter" placeholder="e.g. 37 or Avalon Road" autocomplete="off" value="{{ house_number }}">
         {% if house_number %}
             <p class="section-sub">
-                Showing only results matching "{{ house_number }}". <a
+                {{ tr('Showing only results matching "') }}{{ house_number }}". <a
                 href="/property?postcode={{ location.postcode }}">{{ tr("show all results for this postcode") }}</a>.
             </p>
         {% endif %}
@@ -316,7 +316,7 @@
     <div class="attention-banner" data-animate>
         <span class="attention-banner-count">{{ attention_items | length }}</span>
         <div class="attention-banner-body">
-            <strong>{{ attention_items | length }} thing{{ "s" if attention_items | length != 1 else "" }} worth checking on this property</strong>
+            <strong>{{ attention_items | length }} {{ tr("thing") }}{{ "s" if attention_items | length != 1 else "" }} {{ tr("worth checking on this property") }}</strong>
             <div class="attention-banner-list">
                 {% for modal_id, label in attention_items %}
                 <button type="button" class="attention-banner-chip" data-modal-target="{{ modal_id }}">{{ label }}</button>
@@ -402,7 +402,7 @@
     {# Logged-out visitors have a free trial waiting, so say that rather
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
-    {% set lock_label = "Sign up: 1 free full report" if not current_user else "Upgrade to Premium to unlock" %}
+    {% set lock_label = tr("Sign up: 1 free full report") if not current_user else tr("Upgrade to Premium to unlock") %}
     {# Back to THIS property after signing up, not to the pricing page.
        Four of the twelve accounts that never opened a report have a
        logged-in history consisting entirely of /premium: they clicked a
@@ -436,13 +436,13 @@
             <span class="dashboard-card-icon icon-market">{{ icons.icon('market') }}</span>
             <span class="dashboard-card-title">{{ tr("Local Market") }}</span>
             <span class="dashboard-card-status">
-                {% if tx_error %}Data unavailable
-                {% elif transactions %}{{ transactions[0].amount | gbp }} last sale
-                {% elif house_number and postcode_has_transactions %}None for "{{ house_number }}"
-                {% else %}No recorded sales{% endif %}
+                {% if tx_error %}{{ tr("Data unavailable") }}
+                {% elif transactions %}{{ transactions[0].amount | gbp }} {{ tr("last sale") }}
+                {% elif house_number and postcode_has_transactions %}{{ tr('None for "') }}{{ house_number }}"
+                {% else %}{{ tr("No recorded sales") }}{% endif %}
             </span>
             {% if transactions %}
-            <span class="dashboard-card-substat">{{ transactions|length }} sale{{ "s" if transactions|length != 1 else "" }} recorded here</span>
+            <span class="dashboard-card-substat">{{ transactions|length }} {{ tr("sale") }}{{ "s" if transactions|length != 1 else "" }} {{ tr("recorded here") }}</span>
             {% endif %}
         </button>
 
@@ -450,8 +450,8 @@
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
             <span class="dashboard-card-title">{{ tr("Council Tax") }}</span>
             <span class="dashboard-card-status">
-                {% if council_tax %}Band D: {{ council_tax.band_d | gbp }}/yr
-                {% else %}Not available here yet{% endif %}
+                {% if council_tax %}{{ tr("Band D:") }} {{ council_tax.band_d | gbp }}{{ tr("/yr") }}
+                {% else %}{{ tr("Not available here yet") }}{% endif %}
             </span>
             {% if council_tax %}
             <span class="dashboard-card-substat">{{ council_tax.authority }}, {{ council_tax.year }}</span>
@@ -463,12 +463,12 @@
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
             <span class="dashboard-card-title">{{ tr("Valuation Estimate") }}</span>
             <span class="dashboard-card-status">
-                {% if valuation_error %}Data unavailable
+                {% if valuation_error %}{{ tr("Data unavailable") }}
                 {% elif valuation %}{{ valuation.estimate | gbp }}
-                {% else %}Not enough nearby sales{% endif %}
+                {% else %}{{ tr("Not enough nearby sales") }}{% endif %}
             </span>
             {% if valuation %}
-            <span class="dashboard-card-substat">{{ valuation.low | gbp }} – {{ valuation.high | gbp }} range</span>
+            <span class="dashboard-card-substat">{{ valuation.low | gbp }} – {{ valuation.high | gbp }} {{ tr("range") }}</span>
             {% endif %}
         </button>
 
@@ -484,12 +484,12 @@
             <span class="dashboard-card-icon icon-rental">{{ icons.icon('rental') }}</span>
             <span class="dashboard-card-title">{{ tr("Rental Analysis") }}</span>
             <span class="dashboard-card-status">
-                {% if rental_error %}Data unavailable
-                {% elif rental %}{{ rental.price_all | gbp }}/month typical
-                {% else %}No data available{% endif %}
+                {% if rental_error %}{{ tr("Data unavailable") }}
+                {% elif rental %}{{ rental.price_all | gbp }}{{ tr("/month typical") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
             {% if rental %}
-            <span class="dashboard-card-substat">{{ rental.la_name }}, by bedroom count</span>
+            <span class="dashboard-card-substat">{{ rental.la_name }}{{ tr(", by bedroom count") }}</span>
             {% endif %}
         </button>
 
@@ -498,8 +498,8 @@
             <span class="dashboard-card-icon icon-prosperity">{{ icons.icon('prosperity') }}</span>
             <span class="dashboard-card-title">{{ tr("Area Prosperity") }}</span>
             <span class="dashboard-card-status">
-                {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}% YoY ({{ prosperity_area.name }})
-                {% else %}No data available{% endif %}
+                {% if prosperity_area %}{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}{{ tr("% YoY (") }}{{ prosperity_area.name }})
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -508,9 +508,9 @@
             <span class="dashboard-card-icon icon-statistics">{{ icons.icon('statistics') }}</span>
             <span class="dashboard-card-title">{{ tr("Price Trend &amp; Forecast") }}</span>
             <span class="dashboard-card-status">
-                {% if price_trend_error %}Data unavailable
-                {% elif price_trend %}{{ "%+.1f"|format(price_trend.pct_change) }}% over 5 years
-                {% else %}Not enough historical data{% endif %}
+                {% if price_trend_error %}{{ tr("Data unavailable") }}
+                {% elif price_trend %}{{ "%+.1f"|format(price_trend.pct_change) }}{{ tr("% over 5 years") }}
+                {% else %}{{ tr("Not enough historical data") }}{% endif %}
             </span>
         </button>
     </div>
@@ -522,10 +522,10 @@
             <span class="dashboard-card-icon icon-energy">{{ icons.icon('energy') }}</span>
             <span class="dashboard-card-title">{{ tr("Energy Efficiency") }}</span>
             <span class="dashboard-card-status">
-                {% if epc_error %}Data unavailable
-                {% elif certificates %}{{ certificates|length }} certificate{{ "s" if certificates|length != 1 else "" }} found
-                {% elif house_number and postcode_has_certificates %}None for "{{ house_number }}"
-                {% else %}No certificates found{% endif %}
+                {% if epc_error %}{{ tr("Data unavailable") }}
+                {% elif certificates %}{{ certificates|length }} {{ tr("certificate") }}{{ "s" if certificates|length != 1 else "" }} {{ tr("found") }}
+                {% elif house_number and postcode_has_certificates %}{{ tr('None for "') }}{{ house_number }}"
+                {% else %}{{ tr("No certificates found") }}{% endif %}
             </span>
         </button>
         {% endif %}
@@ -536,11 +536,11 @@
             <span class="dashboard-card-icon icon-extension">{{ icons.icon('extension') }}</span>
             <span class="dashboard-card-title">{{ tr("Extended or Modified") }}</span>
             <span class="dashboard-card-status">
-                {% if extension_signal and extension_signal.likely_extended %}Likely extended
-                {% elif extension_signal and extension_signal.change_pct <= -15 %}Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%
-                {% elif extension_signal %}No sign of change
-                {% elif house_number %}Not enough EPC history
-                {% else %}Search with a house number{% endif %}
+                {% if extension_signal and extension_signal.likely_extended %}{{ tr("Likely extended") }}
+                {% elif extension_signal and extension_signal.change_pct <= -15 %}{{ tr("Floor area shrank") }} {{ "%.0f"|format(extension_signal.change_pct) }}%
+                {% elif extension_signal %}{{ tr("No sign of change") }}
+                {% elif house_number %}{{ tr("Not enough EPC history") }}
+                {% else %}{{ tr("Search with a house number") }}{% endif %}
             </span>
         </button>
 
@@ -549,9 +549,9 @@
             <span class="dashboard-card-icon icon-orientation">{{ icons.icon('orientation') }}</span>
             <span class="dashboard-card-title">{{ tr("Aspect") }}</span>
             <span class="dashboard-card-status">
-                {% if orientation %}Garden faces {{ orientation.rear_facing }}
-                {% elif orientation_error %}Data unavailable
-                {% else %}No estimate available{% endif %}
+                {% if orientation %}{{ tr("Garden faces") }} {{ orientation.rear_facing | trd }}
+                {% elif orientation_error %}{{ tr("Data unavailable") }}
+                {% else %}{{ tr("No estimate available") }}{% endif %}
             </span>
         </button>
     </div>
@@ -563,12 +563,12 @@
             <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">{{ tr("Flood Risk") }}</span>
             <span class="dashboard-card-status">
-                {% if flood_zone %}{{ flood_zone.label }}
-                {% elif flood_zone_error %}Zone data unavailable
-                {% else %}Zone 1 (low probability){% endif %}
+                {% if flood_zone %}{{ flood_zone.label | trd }}
+                {% elif flood_zone_error %}{{ tr("Zone data unavailable") }}
+                {% else %}{{ tr("Zone 1 (low probability)") }}{% endif %}
             </span>
             {% if flood_warnings %}
-            <span class="dashboard-card-substat">{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}</span>
+            <span class="dashboard-card-substat">{{ flood_warnings|length }} {{ tr("active alert") }}{{ "s" if flood_warnings|length != 1 else "" }}</span>
             {% elif not flood_error %}
             <span class="dashboard-card-substat">{{ tr("No active warnings") }}</span>
             {% endif %}
@@ -579,9 +579,9 @@
             <span class="dashboard-card-icon icon-flood">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">{{ tr("Surface Water Risk") }}</span>
             <span class="dashboard-card-status">
-                {% if surface_water %}{{ surface_water.label }}
-                {% elif surface_water_error %}Data unavailable
-                {% else %}No data available{% endif %}
+                {% if surface_water %}{{ surface_water.label | trd }}
+                {% elif surface_water_error %}{{ tr("Data unavailable") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -591,9 +591,9 @@
             <span class="dashboard-card-icon icon-sewage">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">{{ tr("Sewage Discharge") }}</span>
             <span class="dashboard-card-status">
-                {% if sewage_error %}Data unavailable
-                {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spills nearby in {{ sewage_outfalls[0].year }}
-                {% else %}No outfalls found nearby{% endif %}
+                {% if sewage_error %}{{ tr("Data unavailable") }}
+                {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} {{ tr("spills nearby in") }} {{ sewage_outfalls[0].year }}
+                {% else %}{{ tr("No outfalls found nearby") }}{% endif %}
             </span>
         </button>
 
@@ -603,12 +603,12 @@
             <span class="dashboard-card-icon icon-noise">{{ icons.icon('noise') }}</span>
             <span class="dashboard-card-title">{{ tr("Noise") }}</span>
             <span class="dashboard-card-status">
-                {% if noise_error %}Data unavailable
-                {% elif noise %}{{ noise_max_label }}
-                {% else %}No modelled noise nearby{% endif %}
+                {% if noise_error %}{{ tr("Data unavailable") }}
+                {% elif noise %}{{ noise_max_label | trd }}
+                {% else %}{{ tr("No modelled noise nearby") }}{% endif %}
             </span>
             {% if noise and noise_max is not none %}
-            <span class="dashboard-card-substat">{{ noise_max }} dB(A) at its loudest</span>
+            <span class="dashboard-card-substat">{{ noise_max }} {{ tr("dB(A) at its loudest") }}</span>
             {% endif %}
         </button>
 
@@ -616,12 +616,12 @@
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">{{ tr("Crime &amp; Safety") }}</span>
             <span class="dashboard-card-status">
-                {% if crime_error %}Data unavailable
-                {% elif crime and crime.total %}{{ crime.total }} crimes recorded
+                {% if crime_error %}{{ tr("Data unavailable") }}
+                {% elif crime and crime.total %}{{ crime.total }} {{ tr("crimes recorded") }}
                 {# "No data available" read as "nothing found here". The
                    force simply hasn't filed to Police.uk; say so. #}
-                {% elif crime and crime.unpublished %}Not published by the force recently
-                {% else %}No data available{% endif %}
+                {% elif crime and crime.unpublished %}{{ tr("Not published by the force recently") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -630,8 +630,8 @@
             <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
             <span class="dashboard-card-title">{{ tr("Radon Gas") }}</span>
             <span class="dashboard-card-status">
-                {% if radon %}{{ radon.label }}
-                {% else %}No data available{% endif %}
+                {% if radon %}{{ radon.label | trd }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -641,9 +641,9 @@
             <span class="dashboard-card-icon icon-geology">{{ icons.icon('geology') }}</span>
             <span class="dashboard-card-title">{{ tr("Subsidence Risk") }}</span>
             <span class="dashboard-card-status">
-                {% if clay_risk_error %}Data unavailable
-                {% elif clay_risk %}{{ clay_risk.label_2030 }} by 2030
-                {% else %}No data available{% endif %}
+                {% if clay_risk_error %}{{ tr("Data unavailable") }}
+                {% elif clay_risk %}{{ clay_risk.label_2030 | trd }} {{ tr("by 2030") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -653,9 +653,9 @@
             <span class="dashboard-card-icon icon-air-quality">{{ icons.icon('air_quality') }}</span>
             <span class="dashboard-card-title">{{ tr("Air Quality") }}</span>
             <span class="dashboard-card-status">
-                {% if air_quality_error %}Data unavailable
-                {% elif air_quality %}{{ aq_worst }}&times; WHO guideline at worst
-                {% else %}No data available{% endif %}
+                {% if air_quality_error %}{{ tr("Data unavailable") }}
+                {% elif air_quality %}{{ aq_worst }}{{ tr("&times; WHO guideline at worst") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -665,11 +665,11 @@
             <span class="dashboard-card-icon icon-landfill">{{ icons.icon('landfill') }}</span>
             <span class="dashboard-card-title">{{ tr("Historic Contamination") }}</span>
             <span class="dashboard-card-status">
-                {% if historic_landfill_error %}Data unavailable
-                {% elif historic_landfill and historic_landfill.status == 'on_site' %}On a former landfill
-                {% elif historic_landfill and historic_landfill.status == 'nearby' %}Former landfill nearby
-                {% elif historic_landfill %}None nearby
-                {% else %}No data available{% endif %}
+                {% if historic_landfill_error %}{{ tr("Data unavailable") }}
+                {% elif historic_landfill and historic_landfill.status == 'on_site' %}{{ tr("On a former landfill") }}
+                {% elif historic_landfill and historic_landfill.status == 'nearby' %}{{ tr("Former landfill nearby") }}
+                {% elif historic_landfill %}{{ tr("None nearby") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -679,10 +679,10 @@
             <span class="dashboard-card-icon icon-mining">{{ icons.icon('mining') }}</span>
             <span class="dashboard-card-title">{{ tr("Mining Risk") }}</span>
             <span class="dashboard-card-status">
-                {% if coal_mining_error %}Data unavailable
-                {% elif coal_mining and coal_mining.present %}In a Coal Mining Reporting Area
-                {% elif coal_mining %}Not in a reporting area
-                {% else %}No data available{% endif %}
+                {% if coal_mining_error %}{{ tr("Data unavailable") }}
+                {% elif coal_mining and coal_mining.present %}{{ tr("In a Coal Mining Reporting Area") }}
+                {% elif coal_mining %}{{ tr("Not in a reporting area") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
     </div>
@@ -694,9 +694,9 @@
             <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
             <span class="dashboard-card-title">{{ tr("Planning Constraints") }}</span>
             <span class="dashboard-card-status">
-                {% if designations_error %}Data unavailable
-                {% elif planning_count %}{{ planning_count }} found
-                {% else %}None found{% endif %}
+                {% if designations_error %}{{ tr("Data unavailable") }}
+                {% elif planning_count %}{{ planning_count }} {{ tr("found") }}
+                {% else %}{{ tr("None found") }}{% endif %}
             </span>
         </button>
 
@@ -705,9 +705,9 @@
             <span class="dashboard-card-icon icon-environmental">{{ icons.icon('environmental') }}</span>
             <span class="dashboard-card-title">{{ tr("Environmental Designations") }}</span>
             <span class="dashboard-card-status">
-                {% if designations_error %}Data unavailable
-                {% elif environmental_count %}{{ environmental_count }} found
-                {% else %}None found{% endif %}
+                {% if designations_error %}{{ tr("Data unavailable") }}
+                {% elif environmental_count %}{{ environmental_count }} {{ tr("found") }}
+                {% else %}{{ tr("None found") }}{% endif %}
             </span>
         </button>
 
@@ -715,8 +715,8 @@
             <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
             <span class="dashboard-card-title">{{ tr("Listed Buildings") }}</span>
             <span class="dashboard-card-status">
-                {% if heritage %}{{ heritage|length }} nearby
-                {% else %}None found nearby{% endif %}
+                {% if heritage %}{{ heritage|length }} {{ tr("nearby") }}
+                {% else %}{{ tr("None found nearby") }}{% endif %}
             </span>
         </button>
     </div>
@@ -727,10 +727,10 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">{{ tr("Schools Nearby") }}</span>
             <span class="dashboard-card-status">
-                {% if schools_error %}Data unavailable
-                {% elif school_landscape and school_landscape.total_schools %}{{ school_landscape.total_schools }} within {{ school_landscape.radius_miles }} miles
-                {% elif schools_total %}{{ schools_total }} nearby
-                {% else %}None found nearby{% endif %}
+                {% if schools_error %}{{ tr("Data unavailable") }}
+                {% elif school_landscape and school_landscape.total_schools %}{{ school_landscape.total_schools }} {{ tr("within") }} {{ school_landscape.radius_miles }} {{ tr("miles") }}
+                {% elif schools_total %}{{ schools_total }} {{ tr("nearby") }}
+                {% else %}{{ tr("None found nearby") }}{% endif %}
             </span>
         </button>
 
@@ -743,8 +743,8 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('heritage') }}</span>
             <span class="dashboard-card-title">{{ tr("State Schools") }}</span>
             <span class="dashboard-card-status">
-                {%- if sector %}{{ sector.state_primary }} primary, {{ sector.state_secondary }} secondary
-                {%- else %}No data available{% endif -%}
+                {%- if sector %}{{ sector.state_primary }} {{ tr("primary,") }} {{ sector.state_secondary }} {{ tr("secondary") }}
+                {%- else %}{{ tr("No data available") }}{% endif -%}
             </span>
         </button>
 
@@ -758,8 +758,8 @@
                 {%- if sector.independent_secondary %}{% set _ = parts.append(sector.independent_secondary ~ " senior") %}{% endif -%}
                 {%- if sector.independent_all_through %}{% set _ = parts.append(sector.independent_all_through ~ " all-through") %}{% endif -%}
                 {{ parts | join(", ") }}
-                {%- elif sector %}None within {{ school_landscape.radius_miles }} miles
-                {%- else %}No data available{% endif -%}
+                {%- elif sector %}{{ tr("None within") }} {{ school_landscape.radius_miles }} {{ tr("miles") }}
+                {%- else %}{{ tr("No data available") }}{% endif -%}
             </span>
         </button>
 
@@ -767,9 +767,9 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('qualification') }}</span>
             <span class="dashboard-card-title">{{ tr("Universities") }}</span>
             <span class="dashboard-card-status">
-                {%- if school_landscape and school_landscape.higher_education_count %}{{ school_landscape.higher_education_count }} within {{ school_landscape.radius_miles }} miles
-                {%- elif school_landscape %}None within {{ school_landscape.radius_miles }} miles
-                {%- else %}No data available{% endif -%}
+                {%- if school_landscape and school_landscape.higher_education_count %}{{ school_landscape.higher_education_count }} {{ tr("within") }} {{ school_landscape.radius_miles }} {{ tr("miles") }}
+                {%- elif school_landscape %}{{ tr("None within") }} {{ school_landscape.radius_miles }} {{ tr("miles") }}
+                {%- else %}{{ tr("No data available") }}{% endif -%}
             </span>
         </button>
 
@@ -778,10 +778,10 @@
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('map') }}</span>
             <span class="dashboard-card-title">{{ tr("School Catchment Areas") }}</span>
             <span class="dashboard-card-status">
-                {% if catchment_error %}Data unavailable
-                {% elif catchment %}In {{ catchment | length }} catchment{{ "s" if catchment | length != 1 else "" }}
-                {% elif catchment_distance_count %}{{ catchment_distance_count }} school{{ "s" if catchment_distance_count != 1 else "" }}, {{ "real + estimated" if catchment_distance_any_real else "estimated" }}
-                {% else %}Not covered for this area{% endif %}
+                {% if catchment_error %}{{ tr("Data unavailable") }}
+                {% elif catchment %}{{ tr("In") }} {{ catchment | length }} {{ tr("catchment") }}{{ "s" if catchment | length != 1 else "" }}
+                {% elif catchment_distance_count %}{{ catchment_distance_count }} {{ tr("school") }}{{ "s" if catchment_distance_count != 1 else "" }}, {{ "real + estimated" if catchment_distance_any_real else "estimated" }}
+                {% else %}{{ tr("Not covered for this area") }}{% endif %}
             </span>
         </button>
 
@@ -795,7 +795,7 @@
             <span class="dashboard-card-title">{{ tr("Broadband") }}</span>
             <span class="dashboard-card-status">
                 {% if broadband %}{{ broadband.label }}
-                {% else %}No data available{% endif %}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -804,8 +804,8 @@
             <span class="dashboard-card-icon icon-mobile">{{ icons.icon('mobile') }}</span>
             <span class="dashboard-card-title">{{ tr("Mobile Signal") }}</span>
             <span class="dashboard-card-status">
-                {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}% 4G outdoor (all networks)
-                {% else %}No data available{% endif %}
+                {% if mobile %}{{ mobile.coverage_4g_outdoor_all_pct }}{{ tr("% 4G outdoor (all networks)") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
     </div>
@@ -818,7 +818,7 @@
             <span class="dashboard-card-title">{{ tr("Household Income") }}</span>
             <span class="dashboard-card-status">
                 {% if household_income %}{{ household_income.here | gbp }} p/a
-                {% else %}No data available{% endif %}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -827,8 +827,8 @@
             <span class="dashboard-card-icon icon-deprivation">{{ icons.icon('deprivation') }}</span>
             <span class="dashboard-card-title">{{ tr("Deprivation") }}</span>
             <span class="dashboard-card-status">
-                {% if deprivation %}Decile {{ deprivation.imd_decile }} of 10
-                {% else %}No data available{% endif %}
+                {% if deprivation %}{{ tr("Decile") }} {{ deprivation.imd_decile }} {{ tr("of 10") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -836,8 +836,8 @@
             <span class="dashboard-card-icon icon-occupation">{{ icons.icon('occupation') }}</span>
             <span class="dashboard-card-title">{{ tr("Occupation") }}</span>
             <span class="dashboard-card-status">
-                {% if occupation %}{{ occupation.professional_pct }}% managerial/professional
-                {% else %}No data available{% endif %}
+                {% if occupation %}{{ occupation.professional_pct }}{{ tr("% managerial/professional") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -845,8 +845,8 @@
             <span class="dashboard-card-icon icon-qualification">{{ icons.icon('qualification') }}</span>
             <span class="dashboard-card-title">{{ tr("Qualification") }}</span>
             <span class="dashboard-card-status">
-                {% if qualification %}{{ qualification.degree_pct }}% degree-educated
-                {% else %}No data available{% endif %}
+                {% if qualification %}{{ qualification.degree_pct }}{{ tr("% degree-educated") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -854,8 +854,8 @@
             <span class="dashboard-card-icon icon-age">{{ icons.icon('age') }}</span>
             <span class="dashboard-card-title">{{ tr("Age Profile") }}</span>
             <span class="dashboard-card-status">
-                {% if age_profile %}{{ age_profile.under_25_pct }}% under 25
-                {% else %}No data available{% endif %}
+                {% if age_profile %}{{ age_profile.under_25_pct }}{{ tr("% under 25") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -863,8 +863,8 @@
             <span class="dashboard-card-icon icon-housing">{{ icons.icon('housing') }}</span>
             <span class="dashboard-card-title">{{ tr("Housing Types &amp; Tenure") }}</span>
             <span class="dashboard-card-status">
-                {% if housing and housing.owned_pct is not none %}{{ housing.owned_pct }}% owner-occupied
-                {% else %}No data available{% endif %}
+                {% if housing and housing.owned_pct is not none %}{{ housing.owned_pct }}{{ tr("% owner-occupied") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -872,8 +872,8 @@
             <span class="dashboard-card-icon icon-ethnicity">{{ icons.icon('ethnicity') }}</span>
             <span class="dashboard-card-title">{{ tr("Ethnicity, Religion &amp; Origin") }}</span>
             <span class="dashboard-card-status">
-                {% if background and background.born_abroad_pct is not none %}{{ background.born_abroad_pct }}% born outside the UK
-                {% else %}No data available{% endif %}
+                {% if background and background.born_abroad_pct is not none %}{{ background.born_abroad_pct }}{{ tr("% born outside the UK") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -882,8 +882,8 @@
             <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
             <span class="dashboard-card-title">{{ tr("Health, Relationships &amp; Social Grade") }}</span>
             <span class="dashboard-card-status">
-                {% if wellbeing and wellbeing.good_health_pct is not none %}{{ wellbeing.good_health_pct }}% good or very good health
-                {% else %}No data available{% endif %}
+                {% if wellbeing and wellbeing.good_health_pct is not none %}{{ wellbeing.good_health_pct }}{{ tr("% good or very good health") }}
+                {% else %}{{ tr("No data available") }}{% endif %}
             </span>
         </button>
 
@@ -891,8 +891,8 @@
             <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
             <span class="dashboard-card-title">{{ tr("Resident Reviews") }}</span>
             <span class="dashboard-card-status">
-                {% if area_reviews.count %}{{ area_reviews.average }}/5 from {{ area_reviews.count }} review{{ "s" if area_reviews.count != 1 }}
-                {% else %}No reviews yet. Be the first{% endif %}
+                {% if area_reviews.count %}{{ area_reviews.average }}{{ tr("/5 from") }} {{ area_reviews.count }} {{ tr("review") }}{{ "s" if area_reviews.count != 1 }}
+                {% else %}{{ tr("No reviews yet. Be the first") }}{% endif %}
             </span>
         </button>
     </div>
@@ -918,7 +918,7 @@
         <p class="section-sub">{{ tr("Take this list to your viewing and your conveyancer. The PDF report includes it.") }}</p>
         {% else %}
         <div class="bq-locked">
-            <p><strong>{{ buyer_questions_count }} questions</strong> {{ tr("were generated for this property, including:") }}</p>
+            <p><strong>{{ buyer_questions_count }} {{ tr("questions") }}</strong> {{ tr("were generated for this property, including:") }}</p>
             <ul class="bq-locked-list">
                 {% for audience, qs in buyer_questions %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
                 <li>{{ item.trigger }}</li>
@@ -944,10 +944,10 @@
         <div class="keep-exploring-grid">
             <a class="keep-exploring-tile" href="/area/{{ kx_outcode }}">
                 <span class="keep-exploring-icon">{{ icons.icon('statistics') }}</span>
-                <span class="keep-exploring-title">{{ kx_outcode }} area guide</span>
+                <span class="keep-exploring-title">{{ kx_outcode }} {{ tr("area guide") }}</span>
                 {% if prosperity_area %}
                 <span class="keep-exploring-stat">
-                    <strong>{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}%</strong> prices this year in {{ prosperity_area.name }}
+                    <strong>{{ "%+.1f"|format(prosperity_area.annual_change_pct) }}%</strong> {{ tr("prices this year in") }} {{ prosperity_area.name }}
                 </span>
                 {% endif %}
                 <span class="keep-exploring-desc">{{ tr("How the whole district compares on prices, schools, crime and flood risk.") }}</span>
@@ -958,7 +958,7 @@
                 <span class="keep-exploring-title">{{ tr("What sold nearby") }}</span>
                 {% if nearby_sales_count %}
                 <span class="keep-exploring-stat">
-                    <strong>{{ nearby_sales_count }}</strong> sale{{ "s" if nearby_sales_count != 1 }} within a short walk{% if nearby_latest_sale %}, latest <strong>{{ nearby_latest_sale.amount | gbp }}</strong>{% endif %}
+                    <strong>{{ nearby_sales_count }}</strong> {{ tr("sale") }}{{ "s" if nearby_sales_count != 1 }} {{ tr("within a short walk") }}{% if nearby_latest_sale %}{{ tr(", latest") }} <strong>{{ nearby_latest_sale.amount | gbp }}</strong>{% endif %}
                 </span>
                 {% endif %}
                 <span class="keep-exploring-desc">{{ tr("Every recent sale on the surrounding streets, on a map, with the distance from this address and the local median.") }}</span>
@@ -966,10 +966,10 @@
             </a>
             <a class="keep-exploring-tile" href="/schools/guide?q={{ kx_outcode }}">
                 <span class="keep-exploring-icon">{{ icons.icon('schools') }}</span>
-                <span class="keep-exploring-title">Schools around {{ kx_outcode }}</span>
+                <span class="keep-exploring-title">{{ tr("Schools around") }} {{ kx_outcode }}</span>
                 {% if school_landscape and school_landscape.total_schools %}
                 <span class="keep-exploring-stat">
-                    <strong>{{ school_landscape.total_schools }}</strong> school{{ "s" if school_landscape.total_schools != 1 }} nearby{% if school_landscape.good_or_better_pct is not none %}, <strong>{{ school_landscape.good_or_better_pct }}%</strong> Good or Outstanding{% endif %}
+                    <strong>{{ school_landscape.total_schools }}</strong> {{ tr("school") }}{{ "s" if school_landscape.total_schools != 1 }} {{ tr("nearby") }}{% if school_landscape.good_or_better_pct is not none %}, <strong>{{ school_landscape.good_or_better_pct }}%</strong> {{ tr("Good or Outstanding") }}{% endif %}
                 </span>
                 {% endif %}
                 <span class="keep-exploring-desc">{{ tr("Every Ofsted-rated school in the area by rating and type, against the national picture, with a second area to compare.") }}</span>
@@ -992,7 +992,7 @@
         </p>
         <p class="keep-exploring-compare">
             {{ tr("Weighing this up against somewhere else?") }}
-            <a href="/compare?postcode={{ location.postcode | urlencode }}">Put {{ location.postcode }} side by side with another postcode &rarr;</a>
+            <a href="/compare?postcode={{ location.postcode | urlencode }}">{{ tr("Put") }} {{ location.postcode }} {{ tr("side by side with another postcode &rarr;") }}</a>
         </p>
         {# The review ask lives here, in the product, rather than in an
            email: the change-alert footer promises readers they only
@@ -1013,21 +1013,18 @@
                 <h2>{{ tr("Council tax") }}</h2>
                 {% if council_tax %}
                 <p class="section-sub">
-                    What each band pays per year in {{ council_tax.authority }} for {{ council_tax.year }},
-                    including all precepts. A property's own band is set by the Valuation Office Agency and
-                    appears on the seller's bill; ask which band this property is in.
+                    {{ tr("What each band pays per year in") }} {{ council_tax.authority }} {{ tr("for") }} {{ council_tax.year }}{{ tr(", including all precepts. A property's own band is set by the Valuation Office Agency and appears on the seller's bill; ask which band this property is in.") }}
                 </p>
                 <table class="tx-table">
                     <thead><tr><th>{{ tr("Band") }}</th><th class="num">{{ tr("Per year") }}</th><th class="num">{{ tr("Per month") }}</th></tr></thead>
                     <tbody>
                         {% for band, amount in council_tax.bands.items() %}
-                        <tr><td>Band {{ band }}</td><td class="num">{{ amount | gbp }}</td><td class="num">{{ (amount / 12) | gbp }}</td></tr>
+                        <tr><td>{{ tr("Band") }} {{ band }}</td><td class="num">{{ amount | gbp }}</td><td class="num">{{ (amount / 12) | gbp }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
                 <p class="note">
-                    {{ council_tax.basis }} Figures are the {{ council_tax.year }} area charge; local
-                    parish or community precepts can vary within the authority.
+                    {{ council_tax.basis }} {{ tr("Figures are the") }} {{ council_tax.year }} {{ tr("area charge; local parish or community precepts can vary within the authority.") }}
                 </p>
                 {% else %}
                 <p class="notice">{{ tr("Council tax rates aren't available for this council yet. England, Scotland and Wales are covered; Northern Ireland uses domestic rates instead of council tax.") }}</p>
@@ -1047,8 +1044,8 @@
             </p>
         {% elif transactions %}
             <p class="section-sub">
-                {{ transactions|length }} sales recorded
-                {% if avg_price %}, postcode average {{ avg_price | gbp }}{% endif %}
+                {{ transactions|length }} {{ tr("sales recorded") }}
+                {% if avg_price %}{{ tr(", postcode average") }} {{ avg_price | gbp }}{% endif %}
             </p>
             {% if transactions|length >= 2 %}
             <div class="price-chart" id="price-chart" data-transactions='{{ transactions | tojson }}'></div>
@@ -1068,7 +1065,7 @@
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.tenure or " — " }}</td>
+                        <td>{{ tx.tenure | trd if tx.tenure else " — " }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1079,13 +1076,13 @@
             </p>
             {% endif %}
         {% elif house_number and postcode_has_transactions %}
-            <p class="notice">No sold transactions found for "{{ house_number }}" at this postcode.</p>
+            <p class="notice">{{ tr('No sold transactions found for "') }}{{ house_number }}{{ tr('" at this postcode.') }}</p>
         {% else %}
             <p class="notice">{{ tr("No recorded sold transactions for this postcode yet.") }}</p>
         {% endif %}
 
         {% if hpi and (hpi.local_authority or hpi.region or hpi.country) %}
-            <p class="section-sub">How this compares ({{ hpi.local_authority.period or hpi.region.period or hpi.country.period }}):</p>
+            <p class="section-sub">{{ tr("How this compares (") }}{{ hpi.local_authority.period or hpi.region.period or hpi.country.period }}):</p>
             <table class="tx-table">
                 <thead>
                     <tr>
@@ -1114,23 +1111,21 @@
 
         {% if new_build_stat %}
             <p class="section-sub">
-                <strong>{{ new_build_stat.pct }}%</strong> of the {{ new_build_stat.total }} sales recorded
-                nearby in the last {{ new_build_stat.years }} years were new-build ({{ new_build_stat.count }}
-                of {{ new_build_stat.total }}), a rough signal of how much new development has been going
-                up in the immediate area recently.
+                <strong>{{ new_build_stat.pct }}%</strong> {{ tr("of the") }} {{ new_build_stat.total }} {{ tr("sales recorded nearby in the last") }} {{ new_build_stat.years }} {{ tr("years were new-build (") }}{{ new_build_stat.count }}
+                {{ tr("of") }} {{ new_build_stat.total }}{{ tr("), a rough signal of how much new development has been going up in the immediate area recently.") }}
             </p>
         {% endif %}
 
         {% if price_position is defined %}
-            <p class="section-sub">Price position (vs {{ price_position_area.name }} average):</p>
+            <p class="section-sub">{{ tr("Price position (vs") }} {{ price_position_area.name }} {{ tr("average):") }}</p>
             <div class="price-position-bar">
                 <div class="price-position-marker" style="left: {{ price_position }}%;"></div>
             </div>
             <p class="price-position-caption">
-                {{ price_position_reference | gbp }} is
+                {{ price_position_reference | gbp }} {{ tr("is") }}
                 {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
                 {{ "%.0f"|format(diff_pct | abs) }}% {{ "above" if diff_pct >= 0 else "below" }}
-                the {{ price_position_area.name }} average of {{ price_position_area.average_price | gbp }}.
+                {{ tr("the") }} {{ price_position_area.name }} {{ tr("average of") }} {{ price_position_area.average_price | gbp }}.
             </p>
         {% endif %}
             </section>
@@ -1151,11 +1146,9 @@
             </p>
         {% elif valuation %}
             <p class="section-sub">
-                Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
-                within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}
-                of a similar size (floor area within {{ valuation.floor_area_variance_pct }}% of this property's),
-                each scaled up for this area's house-price growth since its sale date so older sales
-                aren't taken at face value.
+                {{ tr("Based on") }} {{ valuation.sample_size }} {{ tr("sale") }}{{ "s" if valuation.sample_size != 1 else "" }}
+                {{ tr("within about 0.6 miles, sold in the last") }} {{ valuation.years_window }} {{ tr("year") }}{{ "s" if valuation.years_window != 1 else "" }}
+                {{ tr("of a similar size (floor area within") }} {{ valuation.floor_area_variance_pct }}{{ tr("% of this property's), each scaled up for this area's house-price growth since its sale date so older sales aren't taken at face value.") }}
             </p>
             <table class="tx-table">
                 <thead>
@@ -1203,9 +1196,7 @@
             </p>
         {% elif price_trend %}
             <p class="section-sub">
-                A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
-                Price Index for {{ price_trend.area_name }}. Not a guarantee, just where prices would
-                land if the recent trend continued in a straight line.
+                {{ tr("A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House Price Index for") }} {{ price_trend.area_name }}{{ tr(". Not a guarantee, just where prices would land if the recent trend continued in a straight line.") }}
             </p>
             <svg class="trend-chart" viewBox="0 0 {{ price_trend_chart.width }} {{ price_trend_chart.height }}" role="img" aria-label="5-year house price trend for {{ price_trend.area_name }}, with a 1 and 2 year linear projection">
                 {% for g in price_trend_chart.gridlines %}
@@ -1221,7 +1212,7 @@
                 <path class="trend-chart-line-projected" d="{{ price_trend_chart.projected_path }}" fill="none"/>
 
                 <circle class="trend-chart-dot" cx="{{ price_trend_chart.end_point.x }}" cy="{{ price_trend_chart.end_point.y }}" r="4"/>
-                <text class="trend-chart-point-label" x="{{ price_trend_chart.end_point.x + 8 }}" y="{{ price_trend_chart.end_point.y - 6 }}" dominant-baseline="middle">Now: {{ price_trend_chart.end_point.label }}</text>
+                <text class="trend-chart-point-label" x="{{ price_trend_chart.end_point.x + 8 }}" y="{{ price_trend_chart.end_point.y - 6 }}" dominant-baseline="middle">{{ tr("Now:") }} {{ price_trend_chart.end_point.label }}</text>
 
                 {% for pt in price_trend_chart.projection_points %}
                 <circle class="trend-chart-dot trend-chart-dot-projected" cx="{{ pt.x }}" cy="{{ pt.y }}" r="4"/>
@@ -1249,7 +1240,7 @@
                     </tr>
                     {% for p in price_trend.projections %}
                     <tr>
-                        <td>Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td>
+                        <td>{{ tr("Projected, +") }}{{ p.months_ahead // 12 }} {{ tr("year") }}{{ "s" if p.months_ahead // 12 != 1 else "" }}</td>
                         <td class="num">{{ p.price | gbp }}</td>
                     </tr>
                     {% endfor %}
@@ -1257,8 +1248,8 @@
             </table>
         {% else %}
             <p class="notice">
-                Not enough monthly HPI history for {{ location.admin_district if location else "this area" }}
-                to fit a meaningful trend.
+                {{ tr("Not enough monthly HPI history for") }} {{ location.admin_district if location else "this area" }}
+                {{ tr("to fit a meaningful trend.") }}
             </p>
         {% endif %}
             </section>
@@ -1343,10 +1334,7 @@
             <section class="report-section">
         <h2>{{ tr("Rental analysis") }}</h2>
         <p class="section-sub">
-            Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
-            ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold price
-            register for rents. Tenancies aren't publicly registered the way sales are, so this is an
-            area + bedroom-count typical rent, not a comparison against specific nearby lettings.
+            {{ tr("Typical private-rental price by bedroom count for") }} {{ rental.la_name if rental else "this local authority" }}{{ tr(", from ONS's Price Index of Private Rents (") }}{{ rental.period if rental else "" }}{{ tr("). There's no free equivalent to Land Registry's sold price register for rents. Tenancies aren't publicly registered the way sales are, so this is an area + bedroom-count typical rent, not a comparison against specific nearby lettings.") }}
         </p>
         {% if rental_error %}
             <p class="notice notice-error">
@@ -1430,7 +1418,7 @@
             </div>
         </div>
         {% if property_detail.valid_until %}
-        <p class="property-detail-note">Certificate for the most recent match at this postcode, valid until {{ property_detail.valid_until }}.</p>
+        <p class="property-detail-note">{{ tr("Certificate for the most recent match at this postcode, valid until") }} {{ property_detail.valid_until }}.</p>
         {% endif %}
         {% if property_detail.heating_cost_current or property_detail.lighting_cost_current or property_detail.hot_water_cost_current %}
         <h3 class="subsection-heading">{{ tr("Estimated annual running costs") }}</h3>
@@ -1484,30 +1472,22 @@
             <h3 class="subsection-heading">{{ tr("MEES compliance") }}</h3>
             {% if mees_compliant %}
             <p class="section-sub">
-                Rated {{ certificates[0].rating }}, which meets the Minimum Energy Efficiency Standard
-                (England & Wales requires at least an E rating to legally let a property, with some
-                exemptions).
+                {{ tr("Rated") }} {{ certificates[0].rating }}{{ tr(", which meets the Minimum Energy Efficiency Standard (England & Wales requires at least an E rating to legally let a property, with some exemptions).") }}
             </p>
             {% else %}
             <p class="notice">
-                Rated {{ certificates[0].rating }}, below the Minimum Energy Efficiency Standard.
-                A property must be at least an E rating to be legally let in England & Wales unless
-                a valid exemption is registered. Worth checking if you're planning to rent this out.
+                {{ tr("Rated") }} {{ certificates[0].rating }}{{ tr(", below the Minimum Energy Efficiency Standard. A property must be at least an E rating to be legally let in England & Wales unless a valid exemption is registered. Worth checking if you're planning to rent this out.") }}
             </p>
             {% endif %}
             {% endif %}
             {% if lead_plumbing_era is defined and lead_plumbing_era %}
             <h3 class="subsection-heading">{{ tr("Potential lead plumbing") }}</h3>
             <p class="notice">
-                Built {{ property_detail.year_built }}. UK regulations only phased out lead water
-                supply pipes around the 1970s, so older properties like this one sometimes still have
-                them (usually just the supply pipe from the street, not necessarily the internal
-                plumbing). Not a certainty, but worth asking about or getting checked, not something
-                EPC data can confirm directly.
+                {{ tr("Built") }} {{ property_detail.year_built }}{{ tr(". UK regulations only phased out lead water supply pipes around the 1970s, so older properties like this one sometimes still have them (usually just the supply pipe from the street, not necessarily the internal plumbing). Not a certainty, but worth asking about or getting checked, not something EPC data can confirm directly.") }}
             </p>
             {% endif %}
         {% elif house_number and postcode_has_certificates %}
-            <p class="notice">No EPC certificates found for "{{ house_number }}" at this postcode.</p>
+            <p class="notice">{{ tr('No EPC certificates found for "') }}{{ house_number }}{{ tr('" at this postcode.') }}</p>
         {% else %}
             <p class="notice">{{ tr("No EPC certificates found for this postcode.") }}</p>
         {% endif %}
@@ -1534,22 +1514,16 @@
             </p>
         {% elif extension_signal.likely_extended %}
             <p class="notice">
-                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
-                Large enough that this property has probably been extended or had a loft/garage
-                conversion since the earlier certificate.
+                <strong>{{ tr("Floor area grew") }} {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>{{ tr(", from") }} {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}{{ tr(") to") }} {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}{{ tr("). Large enough that this property has probably been extended or had a loft/garage conversion since the earlier certificate.") }}
             </p>
         {% elif extension_signal.change_pct <= -15 %}
             <p class="notice">
-                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
-                No sign of an extension, but that's a large enough drop to be worth asking about. It
-                could mean the unit was subdivided, or just a re-measurement.
+                <strong>{{ tr("Floor area shrank") }} {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>{{ tr(", from") }} {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}{{ tr(") to") }} {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}{{ tr("). No sign of an extension, but that's a large enough drop to be worth asking about. It could mean the unit was subdivided, or just a re-measurement.") }}
             </p>
         {% else %}
             <p class="notice">
-                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
-                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}). No meaningful change, no sign of an extension from this data.
+                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}{{ tr(") to") }}
+                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}{{ tr("). No meaningful change, no sign of an extension from this data.") }}
             </p>
         {% endif %}
             </section>
@@ -1609,7 +1583,7 @@
             </p>
         {% elif flood_zone %}
             <p class="notice{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
-                <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} flooding{% endif %}
+                <strong>{{ flood_zone.label | trd }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} {{ tr("flooding") }}{% endif %}
             </p>
         {% else %}
             <p class="notice">{{ tr("No flood zone data available for this location.") }}</p>
@@ -1661,7 +1635,7 @@
             </p>
         {% elif surface_water %}
             <p class="notice{{ ' notice-error' if surface_water.label == 'High risk' else '' }}">
-                <strong>{{ surface_water.label }}</strong> &middot; annual chance of surface water flooding:
+                <strong>{{ surface_water.label }}</strong> {{ tr("&middot; annual chance of surface water flooding:") }}
                 {{ surface_water.probability }}.
             </p>
         {% else %}
@@ -1689,7 +1663,7 @@
                     <tr>
                         <th>{{ tr("Outfall") }}</th>
                         <th>{{ tr("Into") }}</th>
-                        <th class="num">Spills ({{ sewage_outfalls[0].year }})</th>
+                        <th class="num">{{ tr("Spills (") }}{{ sewage_outfalls[0].year }})</th>
                         <th class="num">{{ tr("Hours") }}</th>
                         <th class="num">{{ tr("Distance") }}</th>
                     </tr>
@@ -1735,23 +1709,23 @@
             <div class="modal-stat-grid">
                 {% if noise.road_db is not none %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Road</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} {{ tr("Road") }}</span>
                     <span class="noise-badge noise-{{ noise.road_label | lower | replace(' ', '-') }}">{{ noise.road_label }}</span>
-                    <span class="modal-stat-card-value">{{ noise.road_db }} dB(A)</span>
+                    <span class="modal-stat-card-value">{{ noise.road_db }} {{ tr("dB(A)") }}</span>
                 </div>
                 {% endif %}
                 {% if noise.rail_db is not none %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Rail</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} {{ tr("Rail") }}</span>
                     <span class="noise-badge noise-{{ noise.rail_label | lower | replace(' ', '-') }}">{{ noise.rail_label }}</span>
-                    <span class="modal-stat-card-value">{{ noise.rail_db }} dB(A)</span>
+                    <span class="modal-stat-card-value">{{ noise.rail_db }} {{ tr("dB(A)") }}</span>
                 </div>
                 {% endif %}
                 {% if noise.airport_db is not none %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} Aircraft</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('noise') }} {{ tr("Aircraft") }}</span>
                     <span class="noise-badge noise-{{ noise.airport_label | lower | replace(' ', '-') }}">{{ noise.airport_label }}</span>
-                    <span class="modal-stat-card-value">{{ noise.airport_db }} dB(A)</span>
+                    <span class="modal-stat-card-value">{{ noise.airport_db }} {{ tr("dB(A)") }}</span>
                 </div>
                 {% endif %}
             </div>
@@ -1782,8 +1756,8 @@
             </p>
         {% elif crime and crime.total %}
             <p class="section-sub">
-                {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}
-                {%- if district_crime %}, versus {{ district_crime.total }} in the wider {{ location.outcode }} postcode area{% endif %}.
+                {{ crime.total }} {{ tr("crimes recorded within ~1 mile in") }} {{ crime.month }}
+                {%- if district_crime %}{{ tr(", versus") }} {{ district_crime.total }} {{ tr("in the wider") }} {{ location.outcode }} {{ tr("postcode area") }}{% endif %}.
             </p>
             {% if crime_comparison %}
             <table class="tx-table">
@@ -1791,7 +1765,7 @@
                     <tr>
                         <th>{{ tr("Category") }}</th>
                         <th class="num">{{ tr("Here") }}</th>
-                        <th class="num">{{ location.outcode }} area</th>
+                        <th class="num">{{ location.outcode }} {{ tr("area") }}</th>
                         <th>{{ tr("Versus area") }}</th>
                     </tr>
                 </thead>
@@ -1807,7 +1781,7 @@
                 </tbody>
             </table>
             <p class="section-sub">
-                Same ~1 mile radius sample as above, just centred on the {{ location.outcode }} postcode area instead. Not a population-weighted local authority crime rate, which isn't available as clean open data.
+                {{ tr("Same ~1 mile radius sample as above, just centred on the") }} {{ location.outcode }} {{ tr("postcode area instead. Not a population-weighted local authority crime rate, which isn't available as clean open data.") }}
             </p>
             {% else %}
             <table class="tx-table">
@@ -1843,8 +1817,7 @@
         {% if cqc_ratings and (cqc_ratings.gp or cqc_ratings.dentist or cqc_ratings.care_home) %}
         <h3 class="subsection-heading">{{ tr("CQC ratings") }}</h3>
         <p class="section-sub">
-            The Care Quality Commission's official inspection rating for nearby GP practices, dentists
-            and care homes, within {{ (2000 / 1609.34) | round(1) }} miles.
+            {{ tr("The Care Quality Commission's official inspection rating for nearby GP practices, dentists and care homes, within") }} {{ (2000 / 1609.34) | round(1) }} {{ tr("miles.") }}
         </p>
         {% for key, label in [("gp", "GP practices"), ("dentist", "Dentists"), ("care_home", "Care homes")] %}
             {% if cqc_ratings[key] %}
@@ -1959,9 +1932,8 @@
                 <h2>{{ tr("Private schools") }}</h2>
                 {% if school_landscape and school_landscape.independent_schools %}
                 <p class="section-sub">
-                    {{ school_landscape.independent_count }} fee-paying school{{ 's' if school_landscape.independent_count != 1 }}
-                    within {{ school_landscape.radius_miles }} miles, nearest first. Age ranges are the
-                    school's own statutory range, which is what decides whether it takes your child's year group.
+                    {{ school_landscape.independent_count }} {{ tr("fee-paying school") }}{{ 's' if school_landscape.independent_count != 1 }}
+                    {{ tr("within") }} {{ school_landscape.radius_miles }} {{ tr("miles, nearest first. Age ranges are the school's own statutory range, which is what decides whether it takes your child's year group.") }}
                 </p>
                 <div class="tablewrap">
                     <table class="tx-table">
@@ -1978,10 +1950,10 @@
                                    head teacher, roll against capacity, sixth
                                    form, contact details. #}
                                 <td><button type="button" class="school-name-btn" data-modal-target="school-modal-{{ e.urn }}">{{ e.name }}</button></td>
-                                <td class="num nowrap">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
-                                <td class="nowrap">{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
+                                <td class="num nowrap">{{ (e.distance_m / 1609.34) | round(1) }} {{ tr("mi") }}</td>
+                                <td class="nowrap">{% if e.age_low and e.age_high %}{{ e.age_low }} {{ tr("to") }} {{ e.age_high }}{% endif %}</td>
                                 <td>
-                                    {{ e.phase_group }}
+                                    {{ e.phase_group | trd }}
                                     {%- if e.gender and e.gender != 'Mixed' %}<br><span class="school-tag">{{ e.gender }}</span>{% endif -%}
                                     {%- if e.selective %}<br><span class="school-tag">{{ tr("Selective") }}</span>{% endif -%}
                                 </td>
@@ -1996,7 +1968,7 @@
                 </p>
                 {% elif school_landscape %}
                 <p class="notice">
-                    No fee-paying schools within {{ school_landscape.radius_miles }} miles of this address.
+                    {{ tr("No fee-paying schools within") }} {{ school_landscape.radius_miles }} {{ tr("miles of this address.") }}
                 </p>
                 {% else %}
                 <p class="notice">{{ tr("School data isn't available for this address right now.") }}</p>
@@ -2013,8 +1985,8 @@
                 <h2>{{ tr("Universities") }}</h2>
                 {% if school_landscape and school_landscape.higher_education %}
                 <p class="section-sub">
-                    {{ school_landscape.higher_education_count }} higher education institution{{ 's' if school_landscape.higher_education_count != 1 }}
-                    within {{ school_landscape.radius_miles }} miles, nearest first.
+                    {{ school_landscape.higher_education_count }} {{ tr("higher education institution") }}{{ 's' if school_landscape.higher_education_count != 1 }}
+                    {{ tr("within") }} {{ school_landscape.radius_miles }} {{ tr("miles, nearest first.") }}
                 </p>
                 <div class="tablewrap">
                     <table class="tx-table">
@@ -2023,7 +1995,7 @@
                             {% for u in school_landscape.higher_education %}
                             <tr>
                                 <td>{{ u.name }}</td>
-                                <td class="num">{{ (u.distance_m / 1609.34) | round(1) }} mi</td>
+                                <td class="num">{{ (u.distance_m / 1609.34) | round(1) }} {{ tr("mi") }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -2034,10 +2006,10 @@
                 </p>
                 {% elif school_landscape %}
                 <p class="notice">
-                    No universities within {{ school_landscape.radius_miles }} miles of this address.
+                    {{ tr("No universities within") }} {{ school_landscape.radius_miles }} {{ tr("miles of this address.") }}
                     {% if school_landscape.further_education %}
-                    There {{ 'is' if school_landscape.further_education == 1 else 'are' }}
-                    {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }} in range, which is a different thing.
+                    {{ tr("There") }} {{ 'is' if school_landscape.further_education == 1 else 'are' }}
+                    {{ school_landscape.further_education }} {{ tr("further education college") }}{{ 's' if school_landscape.further_education != 1 }} {{ tr("in range, which is a different thing.") }}
                     {% endif %}
                 </p>
                 {% else %}
@@ -2060,9 +2032,9 @@
         <div class="landscape-summary">
             <h3 class="subsection-heading">{{ tr("Local school landscape") }}</h3>
             <p class="section-sub" style="margin-top: 0;">
-                Within {{ school_landscape.radius_miles }} miles: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
-                {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }}{% endif %}
-                {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} universit{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
+                {{ tr("Within") }} {{ school_landscape.radius_miles }} {{ tr("miles:") }} {{ school_landscape.total_schools }} {{ tr("school") }}{{ 's' if school_landscape.total_schools != 1 }}
+                {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} {{ tr("further education college") }}{{ 's' if school_landscape.further_education != 1 }}{% endif %}
+                {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} {{ tr("universit") }}{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
             <p class="section-sub" style="margin-top: 0;">
                 {{ tr("That total counts state, fee-paying and special schools together. Universities and further education colleges are listed separately above, because they are not schools.") }}
@@ -2081,7 +2053,7 @@
                         </li>
                         {% endfor %}
                         {% if r.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
@@ -2100,14 +2072,14 @@
                         </li>
                         {% endfor %}
                         {% if p.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
                 {% endfor %}
                 {% if school_landscape.special_count %}
                 <details class="landscape-stat-details">
-                    <summary><strong>{{ school_landscape.special_count }}</strong> Special school{{ 's' if school_landscape.special_count != 1 }}</summary>
+                    <summary><strong>{{ school_landscape.special_count }}</strong> {{ tr("Special school") }}{{ 's' if school_landscape.special_count != 1 }}</summary>
                     <ul class="landscape-stat-schools">
                         {% for s in school_landscape.special_schools[:25] %}
                         <li>
@@ -2117,7 +2089,7 @@
                         </li>
                         {% endfor %}
                         {% if school_landscape.special_schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ school_landscape.special_schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ school_landscape.special_schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
@@ -2155,7 +2127,7 @@
                             <td>{{ s.name }}</td>
                             <td>
                                 {% if s.ofsted_rating_label %}
-                                    <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                                    <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label | trd }}</span>
                                 {% else %}
                                     <span class="ofsted-none">{{ tr("Not rated") }}</span>
                                 {% endif %}
@@ -2263,16 +2235,16 @@
                     <tr>
                         <td>
                             {{ s.name }}
-                            {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>{% endif %}
+                            {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label | trd }}</span>{% endif %}
                         </td>
-                        <td class="num">{{ s.property_distance_miles }} mi</td>
-                        <td class="num">{{ s.radius_miles }} mi</td>
+                        <td class="num">{{ s.property_distance_miles }} {{ tr("mi") }}</td>
+                        <td class="num">{{ s.radius_miles }} {{ tr("mi") }}</td>
                         <td>
                             {% if s.within_catchment %}<span class="catchment-badge catchment-badge-yes">{{ tr("Likely") }}</span>
                             {% else %}<span class="catchment-badge catchment-badge-no">{{ tr("Unlikely") }}</span>{% endif %}
                         </td>
                         <td>
-                            {% if s.is_real %}Published ({{ s.academic_year }}, {{ s.source_authority }})
+                            {% if s.is_real %}{{ tr("Published (") }}{{ s.academic_year }}, {{ s.source_authority }})
                             {% else %}<span class="estimate-badge">{{ tr("Estimated") }}</span>{% endif %}
                         </td>
                     </tr>
@@ -2283,18 +2255,17 @@
             {% endfor %}
         {% elif catchment_distance_count %}
             <p class="notice">
-                {{ tr("No real boundary") }} <strong>{{ tr("shape") }}</strong> published for this council, but
-                {{ catchment_distance_count }} nearby school{{ "s" if catchment_distance_count != 1 else "" }}
+                {{ tr("No real boundary") }} <strong>{{ tr("shape") }}</strong> {{ tr("published for this council, but") }}
+                {{ catchment_distance_count }} {{ tr("nearby school") }}{{ "s" if catchment_distance_count != 1 else "" }}
                 {{ "have" if catchment_distance_count != 1 else "has" }} a
                 {{ "real or estimated" if catchment_distance_any_real else "modelled estimated" }}
-                admission distance instead. Upgrade to Premium to see them.
+                {{ tr("admission distance instead. Upgrade to Premium to see them.") }}
             </p>
         {% else %}
             <p class="notice">
-                {{ tr("Not covered. This address isn't in one of the local authorities that publishes open catchment-area") }} <strong>{{ tr("boundary shapes") }}</strong>, and no nearby school has a
-                published or modelled admission distance either.
+                {{ tr("Not covered. This address isn't in one of the local authorities that publishes open catchment-area") }} <strong>{{ tr("boundary shapes") }}</strong>{{ tr(", and no nearby school has a published or modelled admission distance either.") }}
                 {% if catchment_covered_authorities %}
-                Boundary shapes currently only cover: {{ catchment_covered_authorities | join(', ') }}.
+                {{ tr("Boundary shapes currently only cover:") }} {{ catchment_covered_authorities | join(', ') }}.
                 {% endif %}
             </p>
         {% endif %}
@@ -2358,7 +2329,7 @@
                     </tr>
                     {% if household_income.la_average %}
                     <tr>
-                        <td>{{ household_income.la_name }} (borough)</td>
+                        <td>{{ household_income.la_name }} {{ tr("(borough)") }}</td>
                         <td class="num">{{ household_income.la_average | gbp }}</td>
                     </tr>
                     {% endif %}
@@ -2388,8 +2359,7 @@
             </p>
         {% elif deprivation %}
             <p class="section-sub">
-                From the official English Indices of Deprivation (IMD 2025). Decile 1 is the most deprived
-                10% of small areas in England, decile 10 the least. {{ imd_label }}.
+                {{ tr("From the official English Indices of Deprivation (IMD 2025). Decile 1 is the most deprived 10% of small areas in England, decile 10 the least.") }} {{ imd_label }}.
             </p>
             <table class="tx-table">
                 <thead>
@@ -2505,23 +2475,23 @@
             </p>
             <div class="modal-stat-grid">
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Gigabit-capable</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} {{ tr("Gigabit-capable") }}</span>
                     <span class="modal-stat-card-value">{{ broadband.gigabit_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("of premises here") }}</span>
                 </div>
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Ultrafast (100Mbit/s+)</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} {{ tr("Ultrafast (100Mbit/s+)") }}</span>
                     <span class="modal-stat-card-value">{{ broadband.ultrafast_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("of premises here") }}</span>
                 </div>
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Superfast (30Mbit/s+)</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} {{ tr("Superfast (30Mbit/s+)") }}</span>
                     <span class="modal-stat-card-value">{{ broadband.superfast_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("of premises here") }}</span>
                 </div>
                 {% if broadband.below_uso_pct %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} Below the USO</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('broadband') }} {{ tr("Below the USO") }}</span>
                     <span class="modal-stat-card-value">{{ broadband.below_uso_pct }}%</span>
                     <span class="noise-badge noise-high">{{ tr("Worth checking") }}</span>
                 </div>
@@ -2545,31 +2515,29 @@
             </p>
         {% elif mobile %}
             <p class="section-sub">
-                Ofcom's Connected Nations coverage estimates for {{ mobile.la_name }} (local authority
-                level, because mobile signal isn't mapped to individual postcodes the way fixed-line
-                broadband is).
+                {{ tr("Ofcom's Connected Nations coverage estimates for") }} {{ mobile.la_name }} {{ tr("(local authority level, because mobile signal isn't mapped to individual postcodes the way fixed-line broadband is).") }}
             </p>
             <div class="modal-stat-grid">
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 4G outdoors</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} {{ tr("4G outdoors") }}</span>
                     <span class="modal-stat-card-value">{{ mobile.coverage_4g_outdoor_all_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("premises covered by at least one network") }}</span>
                 </div>
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 4G indoors</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} {{ tr("4G indoors") }}</span>
                     <span class="modal-stat-card-value">{{ mobile.coverage_4g_indoor_all_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("premises covered by at least one network") }}</span>
                 </div>
                 {% if mobile.coverage_5g_outdoor_pct %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} 5G outdoors</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} {{ tr("5G outdoors") }}</span>
                     <span class="modal-stat-card-value">{{ mobile.coverage_5g_outdoor_pct }}%</span>
                     <span class="modal-stat-card-sub">{{ tr("premises covered by at least one network") }}</span>
                 </div>
                 {% endif %}
                 {% if mobile.no_4g_outdoor_pct %}
                 <div class="modal-stat-card">
-                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} No 4G outdoors</span>
+                    <span class="modal-stat-card-label">{{ icons.icon('mobile') }} {{ tr("No 4G outdoors") }}</span>
                     <span class="modal-stat-card-value">{{ mobile.no_4g_outdoor_pct }}%</span>
                     <span class="noise-badge noise-high">{{ tr("No network reaches here") }}</span>
                 </div>
@@ -2596,7 +2564,7 @@
             <p class="section-sub">
                 {{ tr("From the British Geological Survey's Indicative Atlas of Radon (1km grid square), the percentage of homes estimated to be at or above the UK radon Action Level.") }}
             </p>
-            <p><span class="radon-badge radon-{{ radon.class }}">Class {{ radon.class }}</span> {{ radon.label }}</p>
+            <p><span class="radon-badge radon-{{ radon.class }}">{{ tr("Class") }} {{ radon.class }}</span> {{ radon.label | trd }}</p>
         {% else %}
             <p class="notice">{{ tr("No radon data available for this area.") }}</p>
         {% endif %}
@@ -2632,7 +2600,7 @@
                 <tbody>
                     <tr>
                         <td>2030</td>
-                        <td class="num"><span class="clay-badge clay-{{ clay_risk.class_2030 }}">{{ clay_risk.label_2030 }}</span></td>
+                        <td class="num"><span class="clay-badge clay-{{ clay_risk.class_2030 }}">{{ clay_risk.label_2030 | trd }}</span></td>
                     </tr>
                     <tr>
                         <td>2050</td>
@@ -2673,14 +2641,14 @@
                     {% for p in air_quality.pollutants %}
                     <tr>
                         <td>{{ p.label }}</td>
-                        <td class="num">{{ p.value }} &micro;g/m&sup3;</td>
-                        <td class="num">{{ p.who_guideline }} &micro;g/m&sup3;</td>
+                        <td class="num">{{ p.value }} {{ tr("&micro;g/m&sup3;") }}</td>
+                        <td class="num">{{ p.who_guideline }} {{ tr("&micro;g/m&sup3;") }}</td>
                         <td class="num">{{ p.times_guideline }}&times;</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
-            <p class="section-sub">{{ air_quality.year }} modelled data.</p>
+            <p class="section-sub">{{ air_quality.year }} {{ tr("modelled data.") }}</p>
         {% else %}
             <p class="notice">{{ tr("No air quality data available for this location.") }}</p>
         {% endif %}
@@ -2707,8 +2675,7 @@
             </p>
         {% elif historic_landfill and historic_landfill.status == 'nearby' %}
             <p class="notice">
-                <strong>{{ tr("A former landfill site is nearby") }}</strong> &middot; "{{ historic_landfill.site_name }}",
-                about {{ historic_landfill.distance_m | distance }} away.
+                <strong>{{ tr("A former landfill site is nearby") }}</strong> &middot; "{{ historic_landfill.site_name }}{{ tr('", about') }} {{ historic_landfill.distance_m | distance }} {{ tr("away.") }}
             </p>
         {% elif historic_landfill %}
             <p class="notice">{{ tr("No historic landfill sites found nearby.") }}</p>
@@ -2734,8 +2701,7 @@
         {% elif coal_mining and coal_mining.present %}
             <p class="notice notice-error">
                 <strong>{{ tr("This property is within a Coal Mining Reporting Area") }}</strong>
-                {%- if coal_mining.area_name %} ("{{ coal_mining.area_name }}" coalfield){% endif %}.
-                A coal mining search (CON29M) is recommended before buying.
+                {%- if coal_mining.area_name %} ("{{ coal_mining.area_name }}{{ tr('" coalfield)') }}{% endif %}{{ tr(". A coal mining search (CON29M) is recommended before buying.") }}
             </p>
         {% elif coal_mining %}
             <p class="notice">{{ tr("Not within a Coal Mining Reporting Area.") }}</p>
@@ -3085,7 +3051,7 @@
             {{ tr("What it's like to live here, from people who actually do, the one thing none of our open-data sources can tell you. Starts empty for most areas; be the first to add one.") }}
         </p>
         {% if area_reviews.count %}
-        <p class="review-average">{{ area_reviews.average }}/5 <span class="section-sub">from {{ area_reviews.count }} review{{ "s" if area_reviews.count != 1 }}</span></p>
+        <p class="review-average">{{ area_reviews.average }}/5 <span class="section-sub">{{ tr("from") }} {{ area_reviews.count }} {{ tr("review") }}{{ "s" if area_reviews.count != 1 }}</span></p>
         <ul class="review-list">
             {% for r in area_reviews.reviews %}
             <li class="review-item">
@@ -3108,7 +3074,7 @@
                 <label for="review-rating">{{ tr("Update your review") if my_area_review else tr("Your rating") }}</label>
                 <select id="review-rating" name="rating">
                     {% for n in [5, 4, 3, 2, 1] %}
-                    <option value="{{ n }}" {{ "selected" if my_area_review and my_area_review.rating == n }}>{{ n }} star{{ "s" if n != 1 }}</option>
+                    <option value="{{ n }}" {{ "selected" if my_area_review and my_area_review.rating == n }}>{{ n }} {{ tr("star") }}{{ "s" if n != 1 }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -3131,14 +3097,14 @@
 {% endblock %}
 
 {% block attribution %}
-Sold price data from
+{{ tr("Sold price data from") }}
 <a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">{{ tr("HM Land Registry Price Paid Data") }}</a>{{ tr(". Area price comparison from the") }}
 <a href="https://landregistry.data.gov.uk/app/ukhpi" target="_blank" rel="noopener">{{ tr("UK House Price Index") }}</a>{{ tr(". Postcode data from") }} <a href="https://postcodes.io" target="_blank" rel="noopener">{{ tr("postcodes.io") }}</a>.
 {% if epc_configured %}
-EPC data from
+{{ tr("EPC data from") }}
 <a href="https://get-energy-performance-data.communities.gov.uk" target="_blank" rel="noopener">{{ tr("Get energy performance of buildings data") }}</a>.
 {% endif %}
-Flood warning data from the
+{{ tr("Flood warning data from the") }}
 <a href="https://environment.data.gov.uk/flood-monitoring/doc/reference" target="_blank" rel="noopener">{{ tr("Environment Agency real-time flood-monitoring API") }}</a>{{ tr(". Flood zone data from the Environment Agency's") }}
 <a href="https://www.gov.uk/guidance/flood-map-for-planning-service-guidance" target="_blank" rel="noopener">{{ tr("Flood Map for Planning") }}</a>{{ tr(". Food hygiene ratings from the") }}
 <a href="https://ratings.food.gov.uk" target="_blank" rel="noopener">{{ tr("Food Standards Agency") }}</a>{{ tr(". Crime data from") }} <a href="https://data.police.uk" target="_blank" rel="noopener">{{ tr("data.police.uk") }}</a>{{ tr(". Local amenities and station data from") }}
@@ -3656,6 +3622,19 @@ Flood warning data from the
     var headings = document.querySelectorAll('.dashboard-category-heading');
     if (!headings.length) return;
 
+    /* The summary lines are composed here in the browser, so the
+       translated fragments are injected from the catalogue rather than
+       hard-coded. %s is replaced with the count; the placeholder is %s
+       and not {n} because the translation tests forbid braces inside a
+       catalogue key (a brace normally means the marker swallowed Jinja). */
+    var SUMMARY = {
+        one: {{ tr("1 to check") | tojson }},
+        many: {{ tr("%s to check") | tojson }},
+        clean1: {{ tr("1 check, nothing flagged") | tojson }},
+        cleanN: {{ tr("%s checks, nothing flagged") | tojson }},
+        premium: {{ tr("%s with Premium") | tojson }}
+    };
+
     Array.prototype.forEach.call(headings, function (heading) {
         var grid = heading.nextElementSibling;
         if (!grid || !grid.classList.contains('dashboard-grid')) return;   // "What stands out"
@@ -3673,8 +3652,8 @@ Flood warning data from the
            came back clean when nobody has run it would be the exact
            thing this site refuses to do. */
         var parts = [];
-        if (open) parts.push(open + (open === 1 ? ' check' : ' checks') + ', nothing flagged');
-        if (locked) parts.push(locked + ' with Premium');
+        if (open) parts.push(open === 1 ? SUMMARY.clean1 : SUMMARY.cleanN.replace('%s', open));
+        if (locked) parts.push(SUMMARY.premium.replace('%s', locked));
 
         var name = heading.textContent.trim();
         var btn = document.createElement('button');
@@ -3694,7 +3673,7 @@ Flood warning data from the
             '<span class="cat-chevron" aria-hidden="true"></span>';
         btn.querySelector('.cat-name').textContent = name;
         btn.querySelector('.cat-summary').textContent =
-            flagged ? (flagged === 1 ? '1 to check' : flagged + ' to check') : parts.join(' \· ');
+            flagged ? (flagged === 1 ? SUMMARY.one : SUMMARY.many.replace('%s', flagged)) : parts.join(' · ');
         if (flagged) btn.querySelector('.cat-summary').classList.add('cat-summary-flagged');
 
         heading.textContent = '';

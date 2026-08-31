@@ -5,7 +5,7 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="ONmACMSK2QA9zket2_0CImCu-k6LpfkSXOOcsopY9Po" />
-    <title>{% block title %}UKPropertyInsight{% endblock %}</title>
+    <title>{% block title %}{{ tr("UKPropertyInsight") }}{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     {# Both typefaces are self-hosted (see the @font-face block at the
     top of style.css). These preloads matter: @font-face lives inside
@@ -278,9 +278,9 @@
     <div class="trial-banner{{ ' trial-banner-ending' if current_user.free_unlocks_left == 1 else '' }}">
         <span class="trial-banner-text">
             {% if current_user.free_unlocks_left == 1 %}
-                1 free full report left
+                {{ tr("1 free full report left") }}
             {% else %}
-                {{ current_user.free_unlocks_left }} free full reports left
+                {{ current_user.free_unlocks_left }} {{ tr("free full reports left") }}
             {% endif %}
         </span>
         <a href="/premium">{{ tr("See plans") }}</a>

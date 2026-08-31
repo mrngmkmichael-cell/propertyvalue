@@ -960,6 +960,28 @@ def _t(context, source: str) -> str:
 templates.env.globals["tr"] = _t
 
 
+@jinja2.pass_context
+def _trd(context, value) -> str:
+    """{{ s.ofsted_rating_label | trd }}: translate a DATA value.
+
+    For the finite vocabularies that arrive from data rather than
+    templates: Ofsted's rating words, school phases and genders,
+    radon and flood-zone labels. Unlike tr() this returns a plain
+    string, so Jinja's autoescaping still applies. That distinction is
+    the whole point: tr() marks repo-authored literals safe, but these
+    values ultimately come from external datasets, and a school name or
+    label must never become a place to smuggle markup into the page.
+    An unknown value passes through untranslated, so no data is ever
+    the wrong kind of surprise.
+    """
+    if value is None:
+        return value
+    return translations.translate(str(value), context.get("lang") or "en")
+
+
+templates.env.filters["trd"] = _trd
+
+
 if indexnow.key():
     @app.get(f"/{indexnow.key()}.txt", include_in_schema=False)
     def indexnow_key_file():

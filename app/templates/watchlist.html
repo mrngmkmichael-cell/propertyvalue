@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}My properties | UKPropertyInsight{% endblock %}
+{% block title %}{{ tr("My properties | UKPropertyInsight") }}{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
@@ -37,7 +37,7 @@
 <div class="watchlist-alert-banner" data-animate>
     <span class="watchlist-alert-count">{{ changed_item_count }}</span>
     <span>
-        {{ "thing has" if changed_item_count == 1 else "things have" }} changed since you last checked. Look for the highlighted cards below.
+        {{ "thing has" if changed_item_count == 1 else "things have" }} {{ tr("changed since you last checked. Look for the highlighted cards below.") }}
     </span>
 </div>
 {% endif %}
@@ -52,7 +52,7 @@
                     <input type="checkbox" name="item_ids" value="{{ item.id }}">
                     <span>{{ tr("Compare") }}</span>
                 </label>
-                <span class="myprops-saved-date">saved {{ item.created_at.strftime("%d %b") }}</span>
+                <span class="myprops-saved-date">{{ tr("saved") }} {{ item.created_at.strftime("%d %b") }}</span>
             </div>
             <a class="myprops-address" href="/property?postcode={{ item.postcode | urlencode }}{% if item.house_number %}&house_number={{ item.house_number | urlencode }}{% endif %}">
                 {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
@@ -96,7 +96,7 @@
 </form>
 {% endfor %}
 {% else %}
-<p class="notice">Nothing saved yet. {% if not opened_reports %}Search for a postcode and use "Save" on its report.{% endif %}</p>
+<p class="notice">{{ tr("Nothing saved yet.") }} {% if not opened_reports %}{{ tr('Search for a postcode and use "Save" on its report.') }}{% endif %}</p>
 {% endif %}
 
 {% if districts %}
@@ -110,7 +110,7 @@
         <div class="myprops-card{{ ' myprops-card-changed' if d.changes else '' }}">
             <div class="myprops-card-head">
                 <span class="myprops-saved-date">
-                    {%- if d.summary and d.summary.admin_district %}{{ d.summary.admin_district }}{% else %}following since {{ d.created_at.strftime("%d %b") }}{% endif -%}
+                    {%- if d.summary and d.summary.admin_district %}{{ d.summary.admin_district }}{% else %}{{ tr("following since") }} {{ d.created_at.strftime("%d %b") }}{% endif -%}
                 </span>
             </div>
             <a class="myprops-address" href="/area/{{ d.outcode }}">{{ d.outcode }}</a>
@@ -129,9 +129,9 @@
 
             {% if d.summary and (d.summary.median_price or d.summary.crime_total is not none) %}
             <p class="myprops-note">
-                {%- if d.summary.median_price %}Median sold price {{ "£{:,}".format(d.summary.median_price) }}{% endif -%}
+                {%- if d.summary.median_price %}{{ tr("Median sold price") }} {{ "£{:,}".format(d.summary.median_price) }}{% endif -%}
                 {%- if d.summary.median_price and d.summary.crime_total is not none %}. {% endif -%}
-                {%- if d.summary.crime_total is not none and d.summary.crime_month %}{{ d.summary.crime_total }} crimes recorded in {{ d.summary.crime_month }}{% endif -%}
+                {%- if d.summary.crime_total is not none and d.summary.crime_month %}{{ d.summary.crime_total }} {{ tr("crimes recorded in") }} {{ d.summary.crime_month }}{% endif -%}
             </p>
             {% endif %}
 
@@ -157,7 +157,7 @@
             <a href="/property?postcode={{ r.postcode | urlencode }}{% if r.house_number %}&house_number={{ r.house_number | urlencode }}{% endif %}">
                 {{ r.house_number ~ ", " ~ r.postcode if r.house_number else r.postcode }}
             </a>
-            <span class="myprops-saved-date">opened {{ r.opened_at.strftime("%d %b") }}</span>
+            <span class="myprops-saved-date">{{ tr("opened") }} {{ r.opened_at.strftime("%d %b") }}</span>
             <form action="/watchlist/save" method="post">
                 <input type="hidden" name="postcode" value="{{ r.postcode }}">
                 <input type="hidden" name="house_number" value="{{ r.house_number }}">

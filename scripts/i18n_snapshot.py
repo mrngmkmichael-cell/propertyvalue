@@ -51,6 +51,11 @@ def normalise(html: str) -> str:
     a changed word, a dropped sentence, a double-escaped entity, while
     ignoring the one difference that is known and harmless.
     """
+    # The dev server's own host:port appears in canonical and og:url
+    # tags, so a snapshot taken on one port would flag every page when
+    # checked against another. The self-URL is not what this tool
+    # verifies; blank it.
+    html = re.sub(r"127\.0\.0\.1:\d+", "SELF", html)
     return re.sub(r"\s+", " ", html).strip()
 
 

@@ -778,9 +778,16 @@ def test_every_translation_key_matches_a_real_template_string():
     template has a real one)."""
     from app import translations
 
+    import importlib
+
     sources = _template_strings()
-    for code in translations._MODULES:
-        orphans = sorted(k for k in translations.catalogue(code) if k not in sources)
+    for code, module_name in translations._MODULES.items():
+        module = importlib.import_module(f"app.translations.{module_name}")
+        # TEXT keys must exist in a template. VOCAB keys are data
+        # vocabularies (Ofsted ratings, phases, genders) that reach the
+        # page through the trd filter, so no template contains them.
+        text = getattr(module, "TEXT", {})
+        orphans = sorted(k for k in text if k not in sources)
         assert not orphans, f"{code} has keys no template uses: {orphans[:5]}"
 
 

@@ -5,8 +5,8 @@
    "Cherry Orchard Primary School" and their titles collided.
    Name plus authority is unique in the DfE register. #}
 {% block title %}{{ seo_title(school.name ~ ", " ~ school.authority ~ ": catchment", " and admission distance", "") }}{% endblock %}
-{% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Which postcode districts fall inside that.{% endblock %}
-{% block og_title %}{{ school.name }}: how far it admitted from{% endblock %}
+{% block meta_description %}{{ school.name }} {{ tr("last admitted from") }} {{ school.miles }} {{ tr("miles in") }} {{ school.academic_year }}{{ tr(", published by") }} {{ school.authority }}{{ tr(". Which postcode districts fall inside that.") }}{% endblock %}
+{% block og_title %}{{ school.name }}{{ tr(": how far it admitted from") }}{% endblock %}
 
 {% block content %}
 <script type="application/ld+json">{{ school_jsonld | safe }}</script>
@@ -21,9 +21,9 @@
    at 71% shared phrasing (30 Aug 2026): the cure is more of the
    school's own facts and fewer sentences every school gets. #}
 <p class="dek">
-    {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}, taking ages {{ school.age_low }} to {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} on roll{% endif %}.
-    {% if school.ofsted_rating_label %}Rated {{ school.ofsted_rating_label }} by Ofsted{% if school.ofsted_inspection_date %}
-    in {{ school.ofsted_inspection_date.strftime("%B %Y") }}{% endif %}.{% endif %}
+    {{ school.type }}{% if school.town %} {{ tr("in") }} {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}{{ tr(", taking ages") }} {{ school.age_low }} {{ tr("to") }} {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} {{ tr("on roll") }}{% endif %}.
+    {% if school.ofsted_rating_label %}{{ tr("Rated") }} {{ school.ofsted_rating_label }} {{ tr("by Ofsted") }}{% if school.ofsted_inspection_date %}
+    {{ tr("in") }} {{ school.ofsted_inspection_date.strftime("%B %Y") }}{% endif %}.{% endif %}
 </p>
 
 <section class="report-section">
@@ -33,8 +33,8 @@
         <span class="admission-unit">{{ tr("miles") }}</span>
     </div>
     <p class="section-sub">
-        In the {{ school.academic_year }} round, the furthest-away child offered a place at
-        {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
+        {{ tr("In the") }} {{ school.academic_year }} {{ tr("round, the furthest-away child offered a place at") }}
+        {{ school.name }} {{ tr("lived") }} <strong>{{ school.miles }} {{ tr("miles") }}</strong> {{ tr("away, according to") }}
         {{ school.authority }}.
     </p>
 
@@ -42,10 +42,7 @@
        a circle and call it a catchment; there usually isn't one. #}
     <div class="notice">
         <strong>{{ tr("This is not a catchment area.") }}</strong>
-        Most English schools do not have one. When {{ school.name }} is oversubscribed, places go
-        outward from the school until they run out, so the distance moves each year with how many
-        families applied and where they lived. {{ school.miles }} miles was last year's outcome,
-        not a boundary and not a promise.
+        {{ tr("Most English schools do not have one. When") }} {{ school.name }} {{ tr("is oversubscribed, places go outward from the school until they run out, so the distance moves each year with how many families applied and where they lived.") }} {{ school.miles }} {{ tr("miles was last year's outcome, not a boundary and not a promise.") }}
     </div>
 </section>
 
@@ -68,7 +65,7 @@
                 {% if school.capacity and school.number_on_roll %}
                 <tr>
                     <td><strong>{{ tr("How full") }}</strong></td>
-                    <td>{{ "{:,}".format(school.number_on_roll) }} pupils in {{ "{:,}".format(school.capacity) }} places ({{ school.occupancy_pct }}% full{% if school.occupancy_pct > 100 %}, over capacity{% endif %})</td>
+                    <td>{{ "{:,}".format(school.number_on_roll) }} {{ tr("pupils in") }} {{ "{:,}".format(school.capacity) }} {{ tr("places (") }}{{ school.occupancy_pct }}{{ tr("% full") }}{% if school.occupancy_pct > 100 %}{{ tr(", over capacity") }}{% endif %})</td>
                 </tr>
                 {% endif %}
                 {% if school.trust_name %}
@@ -93,13 +90,13 @@
                 {% if school.ofsted_rating_label %}
                 <tr>
                     <td><strong>{{ tr("Ofsted") }}</strong></td>
-                    <td>{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}, inspected {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}</td>
+                    <td>{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}{{ tr(", inspected") }} {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}</td>
                 </tr>
                 {% endif %}
                 {% if school.ks4 and school.ks4.progress8 is not none %}
                 <tr>
                     <td><strong>{{ tr("Progress 8") }}</strong></td>
-                    <td>{{ "%+.2f"|format(school.ks4.progress8) }} ({{ school.ks4.year }}), where 0 is the national average</td>
+                    <td>{{ "%+.2f"|format(school.ks4.progress8) }} ({{ school.ks4.year }}{{ tr("), where 0 is the national average") }}</td>
                 </tr>
                 {% endif %}
                 {% if school.ks4 and school.ks4.attainment8 is not none %}
@@ -111,7 +108,7 @@
                 {% if school.ks2 and school.ks2.rwm_expected_pct is not none %}
                 <tr>
                     <td><strong>{{ tr("Meeting the expected standard") }}</strong></td>
-                    <td>{{ school.ks2.rwm_expected_pct }}% in reading, writing and maths ({{ school.ks2.year }})</td>
+                    <td>{{ school.ks2.rwm_expected_pct }}{{ tr("% in reading, writing and maths (") }}{{ school.ks2.year }})</td>
                 </tr>
                 {% endif %}
             </tbody>
@@ -138,18 +135,18 @@
 
 {% if school.fsm_eligible_pct is not none or school.eal_pct is not none or school.female_pct is not none %}
 <section class="report-section">
-    <h2>Who goes to {{ school.name }}</h2>
+    <h2>{{ tr("Who goes to") }} {{ school.name }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
             <tbody>
                 {% if school.female_pct is not none and school.male_pct is not none %}
-                <tr><td><strong>{{ tr("Girls and boys") }}</strong></td><td>{{ school.female_pct }}% girls, {{ school.male_pct }}% boys</td></tr>
+                <tr><td><strong>{{ tr("Girls and boys") }}</strong></td><td>{{ school.female_pct }}{{ tr("% girls,") }} {{ school.male_pct }}{{ tr("% boys") }}</td></tr>
                 {% endif %}
                 {% if school.eal_pct is not none %}
-                <tr><td><strong>{{ tr("English as an additional language") }}</strong></td><td>{{ school.eal_pct }}% of pupils</td></tr>
+                <tr><td><strong>{{ tr("English as an additional language") }}</strong></td><td>{{ school.eal_pct }}{{ tr("% of pupils") }}</td></tr>
                 {% endif %}
                 {% if school.fsm_eligible_pct is not none %}
-                <tr><td><strong>{{ tr("Free school meals") }}</strong></td><td>{{ school.fsm_eligible_pct }}% of pupils eligible</td></tr>
+                <tr><td><strong>{{ tr("Free school meals") }}</strong></td><td>{{ school.fsm_eligible_pct }}{{ tr("% of pupils eligible") }}</td></tr>
                 {% endif %}
             </tbody>
         </table>
@@ -160,7 +157,7 @@
 
 {% if school.destinations %}
 <section class="report-section">
-    <h2>Where {{ school.name }}'s Year 11 went next</h2>
+    <h2>{{ tr("Where") }} {{ school.name }}{{ tr("'s Year 11 went next") }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
             <tbody>
@@ -180,18 +177,16 @@
         </table>
     </div>
     <p class="section-sub">
-        DfE destination measures, {{ school.destinations.year }}. Broad categories only: the
-        DfE does not publish which named schools or colleges pupils moved to.
+        {{ tr("DfE destination measures,") }} {{ school.destinations.year }}{{ tr(". Broad categories only: the DfE does not publish which named schools or colleges pupils moved to.") }}
     </p>
 </section>
 {% endif %}
 
 {% if nearby_areas %}
 <section class="report-section">
-    <h2>Postcode districts within {{ school.miles }} miles</h2>
+    <h2>{{ tr("Postcode districts within") }} {{ school.miles }} {{ tr("miles") }}</h2>
     <p class="section-sub">
-        Districts whose centre falls inside {{ school.academic_year }}'s distance. A district is
-        wide, so check the address itself rather than the list.
+        {{ tr("Districts whose centre falls inside") }} {{ school.academic_year }}{{ tr("'s distance. A district is wide, so check the address itself rather than the list.") }}
     </p>
     <div class="tablewrap">
         <table class="tx-table">
@@ -201,7 +196,7 @@
                 <tr>
                     <td><a href="/area/{{ a.outcode }}">{{ a.outcode }}</a></td>
                     <td>{{ a.district }}</td>
-                    <td class="num">{{ a.miles }} mi</td>
+                    <td class="num">{{ a.miles }} {{ tr("mi") }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -214,8 +209,8 @@
 <section class="report-section">
     <h2>{{ tr("The fee-paying alternative") }}</h2>
     <p class="section-sub">
-        Weighing {{ school.name }} against the independent sector?
-        <a href="/area/{{ school_outcode }}/private-schools">Every fee-paying school around {{ school_outcode }}: ages, selection, and how full each one is →</a>
+        {{ tr("Weighing") }} {{ school.name }} {{ tr("against the independent sector?") }}
+        <a href="/area/{{ school_outcode }}/private-schools">{{ tr("Every fee-paying school around") }} {{ school_outcode }}{{ tr(": ages, selection, and how full each one is →") }}</a>
     </p>
 </section>
 {% endif %}
@@ -223,8 +218,7 @@
 <section class="report-section">
     <h2>{{ tr("Checking a specific address") }}</h2>
     <p class="section-sub">
-        Put a postcode in and the report measures the distance from {{ school.name }} to that
-        front door, alongside the other checks on the same address.
+        {{ tr("Put a postcode in and the report measures the distance from") }} {{ school.name }} {{ tr("to that front door, alongside the other checks on the same address.") }}
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
@@ -239,42 +233,32 @@
     <h2>{{ tr("Common questions") }}</h2>
     <div class="faq-list">
         <details class="faq-item">
-            <summary>What is the catchment area for {{ school.name }}?</summary>
+            <summary>{{ tr("What is the catchment area for") }} {{ school.name }}?</summary>
             <p>
-                {{ school.name }} does not have one in the sense most people mean. Like most
-                English schools, an oversubscribed year offers places outward from the school
-                until they run out. The nearest thing to an answer: the furthest child admitted
-                in {{ school.academic_year }} lived {{ school.miles }} miles away, per
+                {{ school.name }} {{ tr("does not have one in the sense most people mean. Like most English schools, an oversubscribed year offers places outward from the school until they run out. The nearest thing to an answer: the furthest child admitted in") }} {{ school.academic_year }} {{ tr("lived") }} {{ school.miles }} {{ tr("miles away, per") }}
                 {{ school.authority }}.
             </p>
         </details>
         <details class="faq-item">
-            <summary>How close do I need to live to get a place at {{ school.name }}?</summary>
+            <summary>{{ tr("How close do I need to live to get a place at") }} {{ school.name }}?</summary>
             <p>
-                Nobody can say in advance, and anyone who does is guessing. {{ school.miles }}
-                miles was enough in {{ school.academic_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %},
-                and at {{ school.occupancy_pct }}% full the school has little slack{% endif %}.
-                The distance moves every year with the number of applications, so treat last
-                year's figure as evidence, not a promise.
+                {{ tr("Nobody can say in advance, and anyone who does is guessing.") }} {{ school.miles }}
+                {{ tr("miles was enough in") }} {{ school.academic_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %}{{ tr(", and at") }} {{ school.occupancy_pct }}{{ tr("% full the school has little slack") }}{% endif %}{{ tr(". The distance moves every year with the number of applications, so treat last year's figure as evidence, not a promise.") }}
             </p>
         </details>
         <details class="faq-item">
-            <summary>Does buying a house near {{ school.name }} guarantee a place?</summary>
+            <summary>{{ tr("Does buying a house near") }} {{ school.name }} {{ tr("guarantee a place?") }}</summary>
             <p>
-                No. {% if school.admissions_policy and "Selective" in school.admissions_policy %}This
-                is a selective school, so admission turns on the entrance assessment before
-                distance is considered at all.{% else %}Admission criteria usually put
-                looked-after children, siblings{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
-                ahead of distance, so places can be filled before distance is reached.{% endif %}
-                Councils also check that the address is genuinely where the child lives.
+                {{ tr("No.") }} {% if school.admissions_policy and "Selective" in school.admissions_policy %}{{ tr("This is a selective school, so admission turns on the entrance assessment before distance is considered at all.") }}{% else %}{{ tr("Admission criteria usually put looked-after children, siblings") }}{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} {{ tr("and faith criteria") }}{% endif %}
+                {{ tr("ahead of distance, so places can be filled before distance is reached.") }}{% endif %}
+                {{ tr("Councils also check that the address is genuinely where the child lives.") }}
             </p>
         </details>
     </div>
 </section>
 
 <p class="section-sub">
-    Admission distance published by {{ school.authority }}. School details from the Department for
-    Education's register, ratings from Ofsted. Read how every figure on this site is sourced on the
+    {{ tr("Admission distance published by") }} {{ school.authority }}{{ tr(". School details from the Department for Education's register, ratings from Ofsted. Read how every figure on this site is sourced on the") }}
     <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something here looks wrong,") }}
     <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
 </p>

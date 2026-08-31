@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}What homes really sell for, by postcode district{% endblock %}
-{% block meta_description %}The median recorded home sale in every UK postcode district, from HM Land Registry: cheapest to dearest, and how far apart they are. Kept current.{% endblock %}
-{% block og_title %}What homes really sell for, by postcode district{% endblock %}
+{% block title %}{{ tr("What homes really sell for, by postcode district") }}{% endblock %}
+{% block meta_description %}{{ tr("The median recorded home sale in every UK postcode district, from HM Land Registry: cheapest to dearest, and how far apart they are. Kept current.") }}{% endblock %}
+{% block og_title %}{{ tr("What homes really sell for, by postcode district") }}{% endblock %}
 
 {% block content %}
 <span class="kicker">{{ tr("Market data") }}</span>
@@ -34,7 +34,7 @@
                     <td>{{ r.district }}</td>
                     <td class="num">{{ r.median | gbp }}</td>
                     <td class="num">{{ r.count }}</td>
-                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} {{ tr("to") }} {{ r.high | gbp }}{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -54,7 +54,7 @@
                     <td>{{ r.district }}</td>
                     <td class="num">{{ r.median | gbp }}</td>
                     <td class="num">{{ r.count }}</td>
-                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} to {{ r.high | gbp }}{% endif %}</td>
+                    <td class="num">{% if r.low and r.high %}{{ r.low | gbp }} {{ tr("to") }} {{ r.high | gbp }}{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -85,7 +85,7 @@
         {{ tr("This is what sold, not what is for sale, and not a valuation. A district that looks cheap may simply have sold a lot of flats that year. Open any district to see the individual sales behind its number, or") }}
         <a href="/">{{ tr("check a specific address") }}</a> {{ tr("for the full picture on one property.") }}
     </p>
-    <p class="section-sub">Generated {{ generated_date }}. Source: HM Land Registry Price Paid Data, Open Government Licence.</p>
+    <p class="section-sub">{{ tr("Generated") }} {{ generated_date }}{{ tr(". Source: HM Land Registry Price Paid Data, Open Government Licence.") }}</p>
 </section>
 
 <section class="report-section">

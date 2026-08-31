@@ -46,7 +46,14 @@ def catalogue(lang: str) -> dict:
         return _loaded[lang]
     try:
         module = importlib.import_module(f"{__name__}.{module_name}")
-        table = getattr(module, "TEXT", {})
+        # TEXT holds template literals: every key must appear inside a
+        # tr("...") call somewhere, and a test enforces that. VOCAB
+        # holds data vocabularies, the finite sets of words that arrive
+        # from datasets rather than templates (Ofsted's rating words,
+        # school phases and genders, radon and flood labels) and reach
+        # the page through the trd filter or tr(variable). Their keys
+        # exist in no template, so the orphan test checks TEXT only.
+        table = {**getattr(module, "TEXT", {}), **getattr(module, "VOCAB", {})}
     except ImportError:
         # A language whose file has not been written yet reads as
         # untranslated, which renders in English. Never an error page.

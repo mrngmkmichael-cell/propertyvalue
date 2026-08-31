@@ -3,16 +3,16 @@
 {# Conditions live inside each block, never around it: Jinja resolves a
    block at parse time, so wrapping the definition in an {% if %} does
    not do what it looks like it does. #}
-{% block title %}{% if versus %}{{ left_code }} or {{ right_code }}? Prices, schools, crime and flood risk compared{% elif anonymous_compare %}Compare UK postcodes side by side{% else %}Compare properties{% endif %} | UKPropertyInsight{% endblock %}
-{% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, energy ratings, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.{% endif %}{% endblock %}
+{% block title %}{% if versus %}{{ left_code }} {{ tr("or") }} {{ right_code }}{{ tr("? Prices, schools, crime and flood risk compared") }}{% elif anonymous_compare %}{{ tr("Compare UK postcodes side by side") }}{% else %}{{ tr("Compare properties") }}{% endif %} {{ tr("| UKPropertyInsight") }}{% endblock %}
+{% block meta_description %}{% if versus %}{{ left_code }} {{ tr("against") }} {{ right_code }}{{ tr(": sold prices, energy ratings, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.") }}{% else %}{{ tr("Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.") }}{% endif %}{% endblock %}
 {% block robots %}{% if not versus and not anonymous_compare %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block content %}
 {% if versus %}
-<a class="back-link" href="/area/{{ left_code }}">&larr; {{ left_code }} area guide</a>
+<a class="back-link" href="/area/{{ left_code }}">&larr; {{ left_code }} {{ tr("area guide") }}</a>
 
 <span class="kicker">{{ tr("Side by side") }}</span>
-<h1>{{ left_code }} or {{ right_code }}?</h1>
+<h1>{{ left_code }} {{ tr("or") }} {{ right_code }}?</h1>
 <p class="dek">
     {{ tr("Two neighbouring postcode districts compared on sold prices, energy, flood risk, crime and deprivation, all from the same official sources as every report on this site.") }}
 </p>
@@ -30,13 +30,13 @@
 <a class="back-link" href="/">{{ tr("&larr; Back to search") }}</a>
 
 <span class="kicker">{{ tr("Side by side") }}</span>
-<h1>Compare up to {{ max_columns }} postcodes</h1>
+<h1>{{ tr("Compare up to") }} {{ max_columns }} {{ tr("postcodes") }}</h1>
 <p class="dek">{{ tr("Choosing between areas is the normal case, not the exception. Put them next to each other and the differences do the arguing.") }}</p>
 
 <form class="compare-form" action="/compare" method="get">
     {% for i in range(max_columns) %}
     <div class="search-form-field">
-        <label for="compare-{{ i }}">Postcode {{ i + 1 }}{% if i > 1 %} (optional){% endif %}</label>
+        <label for="compare-{{ i }}">{{ tr("Postcode") }} {{ i + 1 }}{% if i > 1 %} {{ tr("(optional)") }}{% endif %}</label>
         <input type="text" id="compare-{{ i }}" name="postcode" autocomplete="off"
                placeholder="{{ ['e.g. M1 1AE', 'e.g. LS1 4DY', 'e.g. SW1A 1AA'][i] }}"
                value="{{ entered[i] if entered | length > i else '' }}"
@@ -88,7 +88,7 @@
                 <td>
                     {%- if col.summary.local_median is defined and col.summary.local_median -%}
                     {{ col.summary.local_median | gbp }}
-                    <div class="compare-note">from {{ col.summary.local_sales_count }} sales</div>
+                    <div class="compare-note">{{ tr("from") }} {{ col.summary.local_sales_count }} {{ tr("sales") }}</div>
                     {%- else %} &mdash; {% endif -%}
                 </td>
                 {% endfor %}
@@ -153,8 +153,8 @@
                     {# `is defined` first: an absent key is Undefined, and
                        Jinja counts Undefined as "not none", which rendered
                        a bare "recorded" with no number in front of it. #}
-                    {%- if col.summary.crime_total is defined and col.summary.crime_total is not none %}{{ col.summary.crime_total }} recorded
-                    {%- elif col.summary.crime_unpublished %}Not published by the force
+                    {%- if col.summary.crime_total is defined and col.summary.crime_total is not none %}{{ col.summary.crime_total }} {{ tr("recorded") }}
+                    {%- elif col.summary.crime_unpublished %}{{ tr("Not published by the force") }}
                     {%- else %} &mdash; {% endif -%}
                 </td>
                 {% endfor %}

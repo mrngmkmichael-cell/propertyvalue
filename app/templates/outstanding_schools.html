@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}Ofsted Outstanding Schools Near Me: Search by Postcode{% endblock %}
-{% block meta_description %}Find every Ofsted Outstanding school near any UK postcode: {{ "{:,}".format(outstanding) }} schools hold the grade, {{ "{:,}".format(outstanding_primary) }} primary and {{ "{:,}".format(outstanding_secondary) }} secondary. Free, from official Ofsted and DfE data.{% endblock %}
-{% block og_title %}Ofsted Outstanding schools, by postcode{% endblock %}
+{% block title %}{{ tr("Ofsted Outstanding Schools Near Me: Search by Postcode") }}{% endblock %}
+{% block meta_description %}{{ tr("Find every Ofsted Outstanding school near any UK postcode:") }} {{ "{:,}".format(outstanding) }} {{ tr("schools hold the grade,") }} {{ "{:,}".format(outstanding_primary) }} {{ tr("primary and") }} {{ "{:,}".format(outstanding_secondary) }} {{ tr("secondary. Free, from official Ofsted and DfE data.") }}{% endblock %}
+{% block og_title %}{{ tr("Ofsted Outstanding schools, by postcode") }}{% endblock %}
 
 {% block content %}
 {% if outstanding_faqs_jsonld %}<script type="application/ld+json">{{ outstanding_faqs_jsonld | safe }}</script>{% endif %}
@@ -12,10 +12,7 @@
 <span class="kicker">{{ tr("Schools") }}</span>
 <h1>{{ tr("Ofsted Outstanding schools near you") }}</h1>
 <p class="dek">
-    {{ "{:,}".format(outstanding) }} of the {{ "{:,}".format(total_schools) }} schools on the
-    Department for Education's register hold an Outstanding grade from their most recent graded
-    inspection. Put a postcode in and see every one within 3 miles, alongside the Good ones a
-    hundred yards closer.
+    {{ "{:,}".format(outstanding) }} {{ tr("of the") }} {{ "{:,}".format(total_schools) }} {{ tr("schools on the Department for Education's register hold an Outstanding grade from their most recent graded inspection. Put a postcode in and see every one within 3 miles, alongside the Good ones a hundred yards closer.") }}
 </p>
 
 <section class="report-section">
@@ -81,8 +78,7 @@
    ungraded school failed something, which is the opposite of the
    truth. #}
 <div class="notice">
-    <strong>{{ "{:,}".format(ungraded) }} schools on the register carry no current grade, and that
-    is not a warning sign.</strong>
+    <strong>{{ "{:,}".format(ungraded) }} {{ tr("schools on the register carry no current grade, and that is not a warning sign.") }}</strong>
     {{ tr("Ofsted stopped giving new single-word overall grades in late 2024, so any school inspected since then has a report card instead of a one-word rating. An Outstanding grade shown here is the school's most recent graded inspection, which for some schools is several years old. Read the inspection date on the school's own page before treating the grade as current.") }}
 </div>
 

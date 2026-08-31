@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}UK Area Guides by Postcode District: House Prices, Schools & Crime | UKPropertyInsight{% endblock %}
-{% block meta_description %}Free area guides for all {{ total }} UK postcode districts: average house prices, school ratings, crime levels and flood risk, every figure from official government data.{% endblock %}
+{% block title %}{{ tr("UK Area Guides by Postcode District: House Prices, Schools & Crime | UKPropertyInsight") }}{% endblock %}
+{% block meta_description %}{{ tr("Free area guides for all") }} {{ total }} {{ tr("UK postcode districts: average house prices, school ratings, crime levels and flood risk, every figure from official government data.") }}{% endblock %}
 
 {% block extra_head %}
 <script type="application/ld+json">
@@ -19,7 +19,7 @@
 {% block content %}
 <span class="kicker">{{ tr("Area guides") }}</span>
 <h1>{{ tr("Every UK postcode district, one guide each") }}</h1>
-<p class="dek">{{ total }} districts. House prices, schools, crime and flood risk for each, from the same official sources as a full property report.</p>
+<p class="dek">{{ total }} {{ tr("districts. House prices, schools, crime and flood risk for each, from the same official sources as a full property report.") }}</p>
 
 {% set link_prefix = "/area/" %}
 {% include "_area_index.html" %}

@@ -14,9 +14,9 @@
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
         <section class="report-section">
             <h2>{{ s.name }}</h2>
-            <p class="section-sub">{{ s.type }} &middot; {{ s.distance_m | distance }}</p>
+            <p class="section-sub">{{ s.type | trd }} &middot; {{ s.distance_m | distance }}</p>
             {% if s.verdict %}
-            <p class="school-profile-verdict">{{ s.verdict }}</p>
+            <p class="school-profile-verdict">{{ s.verdict | trd }}</p>
             {% endif %}
 
             <ul class="school-profile-menu">
@@ -26,27 +26,27 @@
                             <span class="school-profile-icon">{{ icons.icon('details') }}</span>
                             <span class="school-profile-label">{{ tr("Details") }}</span>
                             <span class="school-profile-preview">
-                                {%- if s.detail and s.detail.gender %}{{ s.detail.gender }}{% else %}{{ s.type }}{% endif %}
+                                {%- if s.detail and s.detail.gender %}{{ s.detail.gender | trd }}{% else %}{{ s.type | trd }}{% endif %}
                             </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
                             <table>
-                                <tr><td>{{ tr("Phase") }}</td><td>{{ s.phase_group or "Special" }}</td></tr>
-                                <tr><td>{{ tr("Type") }}</td><td>{{ s.type }}</td></tr>
+                                <tr><td>{{ tr("Phase") }}</td><td>{{ s.phase_group | trd if s.phase_group else tr("Special") }}</td></tr>
+                                <tr><td>{{ tr("Type") }}</td><td>{{ s.type | trd }}</td></tr>
                                 {% if s.detail %}
                                 {% if s.detail.age_low is not none and s.detail.age_high is not none %}
                                 <tr><td>{{ tr("Age range") }}</td><td>{{ s.detail.age_low }}–{{ s.detail.age_high }}</td></tr>
                                 {% endif %}
-                                {% if s.detail.gender %}<tr><td>{{ tr("Gender") }}</td><td>{{ s.detail.gender }}</td></tr>{% endif %}
-                                {% if s.detail.has_sixth_form %}<tr><td>{{ tr("Sixth form") }}</td><td>{{ s.detail.has_sixth_form }}</td></tr>{% endif %}
+                                {% if s.detail.gender %}<tr><td>{{ tr("Gender") }}</td><td>{{ s.detail.gender | trd }}</td></tr>{% endif %}
+                                {% if s.detail.has_sixth_form %}<tr><td>{{ tr("Sixth form") }}</td><td>{{ s.detail.has_sixth_form | trd }}</td></tr>{% endif %}
                                 {# GIAS records a school with no religious
                                    affiliation as the literal string "None",
                                    which in a table cell reads as a missing
                                    value rather than as the answer. Said in
                                    words instead. #}
-                                {% if s.detail.religious_character %}<tr><td>{{ tr("Religious character") }}</td><td>{{ "No religious character" if s.detail.religious_character in ("None", "Does not apply") else s.detail.religious_character }}</td></tr>{% endif %}
-                                {% if s.detail.admissions_policy %}<tr><td>{{ tr("Admissions policy") }}</td><td>{{ s.detail.admissions_policy }}</td></tr>{% endif %}
+                                {% if s.detail.religious_character %}<tr><td>{{ tr("Religious character") }}</td><td>{{ tr("No religious character") if s.detail.religious_character in ("None", "Does not apply") else s.detail.religious_character | trd }}</td></tr>{% endif %}
+                                {% if s.detail.admissions_policy %}<tr><td>{{ tr("Admissions policy") }}</td><td>{{ s.detail.admissions_policy | trd }}</td></tr>{% endif %}
                                 {% if s.detail.trust_name %}<tr><td>{{ tr("Trust") }}</td><td>{{ s.detail.trust_name }}</td></tr>{% endif %}
                                 {% if s.detail.local_authority %}<tr><td>{{ tr("Local authority") }}</td><td>{{ s.detail.local_authority }}</td></tr>{% endif %}
                                 {% if s.detail.head_teacher %}<tr><td>{{ tr("Head teacher") }}</td><td>{{ s.detail.head_teacher }}</td></tr>{% endif %}
@@ -55,18 +55,18 @@
                                 {% if s.detail.phone %}<tr><td>{{ tr("Phone") }}</td><td>{{ s.detail.phone }}</td></tr>{% endif %}
                                 {% if s.detail.website %}<tr><td>{{ tr("Website") }}</td><td><a href="{{ s.detail.website }}" target="_blank" rel="noopener">{{ s.detail.website }}</a></td></tr>{% endif %}
                                 {% if s.detail.idaci_quintile %}
-                                <tr><td>{{ tr("Area deprivation") }}</td><td>Quintile {{ s.detail.idaci_quintile }} of 5 (1 = most deprived fifth nationally)</td></tr>
+                                <tr><td>{{ tr("Area deprivation") }}</td><td>{{ tr("Quintile") }} {{ s.detail.idaci_quintile }} {{ tr("of 5 (1 = most deprived fifth nationally)") }}</td></tr>
                                 {% endif %}
                                 {% endif %}
                                 {% if s.admission_radius %}
                                 <tr>
                                     <td>{{ tr("Published admission distance") }}</td>
-                                    <td><span class="{{ value_lock_class }}">{{ s.admission_radius.last_distance_miles }} mi ({{ s.admission_radius.academic_year }})</span></td>
+                                    <td><span class="{{ value_lock_class }}">{{ s.admission_radius.last_distance_miles }} {{ tr("mi (") }}{{ s.admission_radius.academic_year }})</span></td>
                                 </tr>
                                 {% elif s.catchment_estimate %}
                                 <tr>
                                     <td>{{ tr("Estimated admission distance") }}</td>
-                                    <td><span class="{{ value_lock_class }}">{{ s.catchment_estimate.radius_miles }} mi <span class="estimate-badge">{{ tr("Estimated") }}</span></span></td>
+                                    <td><span class="{{ value_lock_class }}">{{ s.catchment_estimate.radius_miles }} {{ tr("mi") }} <span class="estimate-badge">{{ tr("Estimated") }}</span></span></td>
                                 </tr>
                                 {% endif %}
                                 <tr><td>{{ tr("URN") }}</td><td>{{ s.urn }}</td></tr>
@@ -74,17 +74,13 @@
                             </table>
                             {% if s.admission_radius %}
                             <p class="section-sub">
-                                Published admission distance is a real figure from {{ s.admission_radius.source_authority }}
-                                council's own published records: how far the furthest-admitted pupil lived last
-                                year under the distance criterion. Drawn as a circle for simplicity, since real
-                                admission areas aren't circular, but the distance itself isn't modelled or
-                                guessed. It shifts every year with demand and isn't a guarantee.
+                                {{ tr("Published admission distance is a real figure from") }} {{ s.admission_radius.source_authority }}
+                                {{ tr("council's own published records: how far the furthest-admitted pupil lived last year under the distance criterion. Drawn as a circle for simplicity, since real admission areas aren't circular, but the distance itself isn't modelled or guessed. It shifts every year with demand and isn't a guarantee.") }}
                             </p>
                             {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% elif s.catchment_estimate %}
                             <p class="section-sub">
-                                {{ s.detail.local_authority if s.detail else "This school's council" }} hasn't
-                                published a real admission-distance figure, so this is a <strong>{{ tr("modelled estimate") }}</strong> {{ tr("instead, built from local Census population density for this school's age group versus its intake size, the same class of technique other school-search sites use as their default catchment indicator when no official figure exists. Not based on real pupil addresses (nobody outside the school/council has access to that), and meaningfully less reliable than a published figure.") }}
+                                {{ s.detail.local_authority if s.detail else "This school's council" }} {{ tr("hasn't published a real admission-distance figure, so this is a") }} <strong>{{ tr("modelled estimate") }}</strong> {{ tr("instead, built from local Census population density for this school's age group versus its intake size, the same class of technique other school-search sites use as their default catchment indicator when no official figure exists. Not based on real pupil addresses (nobody outside the school/council has access to that), and meaningfully less reliable than a published figure.") }}
                             </p>
                             {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
                             {% endif %}
@@ -102,8 +98,8 @@
                             <span class="school-profile-icon">{{ icons.icon('pupils') }}</span>
                             <span class="school-profile-label">{{ tr("Pupils") }}</span>
                             <span class="school-profile-preview">
-                                {%- if s.detail and s.detail.number_on_roll %}{{ s.detail.number_on_roll }} on roll
-                                {%- elif s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} pupils
+                                {%- if s.detail and s.detail.number_on_roll %}{{ s.detail.number_on_roll }} {{ tr("on roll") }}
+                                {%- elif s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} {{ tr("pupils") }}
                                 {%- else %}—{% endif %}
                             </span>
                             <span class="school-profile-toggle">+</span>
@@ -115,20 +111,19 @@
                                     <td>{{ tr("On roll") }}</td>
                                     <td>
                                         {{ s.detail.number_on_roll }}
-                                        {%- if s.detail.school_capacity %} of {{ s.detail.school_capacity }} capacity
-                                            ({{ (s.detail.number_on_roll / s.detail.school_capacity * 100) | round | int }}% full){% endif %}
+                                        {%- if s.detail.school_capacity %} {{ tr("of") }} {{ s.detail.school_capacity }} {{ tr("capacity (") }}{{ (s.detail.number_on_roll / s.detail.school_capacity * 100) | round | int }}{{ tr("% full)") }}{% endif %}
                                     </td>
                                 </tr>
                                 {% endif %}
                                 {% if s.exam_results and s.exam_results.pupil_count %}
-                                <tr><td>Pupils in exam cohort ({{ s.exam_results.academic_year }})</td><td>{{ s.exam_results.pupil_count }}</td></tr>
+                                <tr><td>{{ tr("Pupils in exam cohort (") }}{{ s.exam_results.academic_year }})</td><td>{{ s.exam_results.pupil_count }}</td></tr>
                                 {% endif %}
                                 {% if s.fsm_eligible_pct is not none %}
                                 <tr><td>{{ tr("Eligible for free school meals") }}</td><td>{{ s.fsm_eligible_pct }}%</td></tr>
                                 {% endif %}
                                 {% if s.demographics %}
                                 {% if s.demographics.male_pct is not none and s.demographics.female_pct is not none %}
-                                <tr><td>{{ tr("Gender split") }}</td><td>{{ s.demographics.male_pct }}% boys, {{ s.demographics.female_pct }}% girls</td></tr>
+                                <tr><td>{{ tr("Gender split") }}</td><td>{{ s.demographics.male_pct }}{{ tr("% boys,") }} {{ s.demographics.female_pct }}{{ tr("% girls") }}</td></tr>
                                 {% endif %}
                                 {% if s.demographics.eal_pct is not none %}
                                 <tr><td>{{ tr("English as an additional language") }}</td><td>{{ s.demographics.eal_pct }}%</td></tr>
@@ -168,20 +163,19 @@
                         <summary>
                             <span class="school-profile-icon">{{ icons.icon('ofsted') }}</span>
                             <span class="school-profile-label">{{ tr("Ofsted Rating") }}</span>
-                            <span class="school-profile-preview">{{ s.ofsted_rating_label or "No current grade" }}</span>
+                            <span class="school-profile-preview">{{ s.ofsted_rating_label | trd if s.ofsted_rating_label else tr("No current grade") }}</span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
                             {% if s.ofsted_rating_label %}
                             <table>
-                                <tr><td>{{ tr("Overall rating") }}</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span></td></tr>
+                                <tr><td>{{ tr("Overall rating") }}</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label | trd }}</span></td></tr>
                                 <tr><td>{{ tr("Inspected") }}</td><td>{{ s.ofsted_inspection_date }}</td></tr>
                             </table>
                             {% else %}
                             <p>
-                                No current overall grade, often means a recent inspection under Ofsted's
-                                newer ungraded report-card format, not that the school hasn't been visited.
-                                {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} Last inspected {{ s.detail.ofsted_ungraded_inspection_date }}.{% endif %}
+                                {{ tr("No current overall grade, often means a recent inspection under Ofsted's newer ungraded report-card format, not that the school hasn't been visited.") }}
+                                {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} {{ tr("Last inspected") }} {{ s.detail.ofsted_ungraded_inspection_date }}.{% endif %}
                             </p>
                             {% endif %}
                             {% if s.detail and (s.detail.ofsted_quality_of_education or s.detail.ofsted_behaviour_attitudes or s.detail.ofsted_personal_development or s.detail.ofsted_leadership_management) %}
@@ -196,11 +190,11 @@
                                     ("Sixth form provision", s.detail.ofsted_sixth_form_provision),
                                 ] %}
                                 {% if value %}
-                                <tr><td>{{ label }}</td><td><span class="{{ value_lock_class }}"><span class="ofsted-badge ofsted-{{ value }}">{{ {1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}[value] }}</span></span></td></tr>
+                                <tr><td>{{ tr(label) }}</td><td><span class="{{ value_lock_class }}"><span class="ofsted-badge ofsted-{{ value }}">{{ tr({1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}[value]) }}</span></span></td></tr>
                                 {% endif %}
                                 {% endfor %}
                                 {% if s.detail.ofsted_safeguarding_effective %}
-                                <tr><td>{{ tr("Safeguarding effective") }}</td><td><span class="{{ value_lock_class }}">{{ s.detail.ofsted_safeguarding_effective }}</span></td></tr>
+                                <tr><td>{{ tr("Safeguarding effective") }}</td><td><span class="{{ value_lock_class }}">{{ s.detail.ofsted_safeguarding_effective | trd }}</span></td></tr>
                                 {% endif %}
                             </table>
                             {% if not premium_unlocked %}{{ premium_lock_banner() }}{% endif %}
@@ -229,14 +223,14 @@
                         </summary>
                         <div class="school-profile-detail">
                             <table>
-                                <tr><td>{{ s.exam_results.headline_label }}</td><td>{{ (_headline ~ _pct) if _headline is not none else "Not published for this school" }}</td></tr>
+                                <tr><td>{{ s.exam_results.headline_label | trd }}</td><td>{{ (_headline ~ _pct) if _headline is not none else tr("Not published for this school") }}</td></tr>
                                 {% if s.exam_results.grade5_english_maths_pct is not none %}
                                 <tr><td>{{ tr("Grade 5+ English &amp; Maths") }}</td><td>{{ s.exam_results.grade5_english_maths_pct }}%</td></tr>
                                 {% endif %}
                                 <tr><td>{{ tr("Academic year") }}</td><td>{{ s.exam_results.academic_year }}</td></tr>
                             </table>
                             {% if s.exam_trend and s.exam_trend | length > 1 %}
-                            <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label }} by year</strong></p>
+                            <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label | trd }} {{ tr("by year") }}</strong></p>
                             <table>
                                 {% for t in s.exam_trend %}
                                 <tr>
@@ -259,7 +253,7 @@
                             <span class="school-profile-label">{{ tr("Destinations") }}</span>
                             <span class="school-profile-preview">
                                 {%- set continuing = (s.destinations.school_sixth_form_pct or 0) + (s.destinations.sixth_form_college_pct or 0) + (s.destinations.further_education_pct or 0) -%}
-                                {{ continuing | round | int }}% into further study
+                                {{ continuing | round | int }}{{ tr("% into further study") }}
                             </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
@@ -274,7 +268,7 @@
                                     ("Not a sustained destination", s.destinations.not_sustained_pct),
                                 ] %}
                                 {% if value is not none %}
-                                <tr><td>{{ label }}</td><td>{{ value }}%</td></tr>
+                                <tr><td>{{ tr(label) }}</td><td>{{ value }}%</td></tr>
                                 {% endif %}
                                 {% endfor %}
                                 <tr><td>{{ tr("Academic year") }}</td><td>{{ s.destinations.academic_year }}</td></tr>
@@ -292,13 +286,13 @@
                             <span class="school-profile-icon">{{ icons.icon('reviews') }}</span>
                             <span class="school-profile-label">{{ tr("Parent Reviews") }}</span>
                             <span class="school-profile-preview">
-                                {%- if s.review_summary and s.review_summary.count %}{{ s.review_summary.average }}/5 ({{ s.review_summary.count }}){% else %}No reviews yet{% endif %}
+                                {%- if s.review_summary and s.review_summary.count %}{{ s.review_summary.average }}/5 ({{ s.review_summary.count }}){% else %}{{ tr("No reviews yet") }}{% endif %}
                             </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
                         <div class="school-profile-detail">
                             {% if s.review_summary and s.review_summary.count %}
-                            <p class="review-average" style="margin: 0 0 0.5rem;">{{ s.review_summary.average }}/5 <span class="section-sub">from {{ s.review_summary.count }} review{{ "s" if s.review_summary.count != 1 }}</span></p>
+                            <p class="review-average" style="margin: 0 0 0.5rem;">{{ s.review_summary.average }}/5 <span class="section-sub">{{ tr("from") }} {{ s.review_summary.count }} {{ tr("review") }}{{ "s" if s.review_summary.count != 1 }}</span></p>
                             {% else %}
                             <p>{{ tr("No parent reviews yet for this school. Be the first.") }}</p>
                             {% endif %}
@@ -311,7 +305,7 @@
                                     <label for="school-review-rating-{{ modal_id }}">{{ tr("Your rating") }}</label>
                                     <select id="school-review-rating-{{ modal_id }}" name="rating">
                                         {% for n in [5, 4, 3, 2, 1] %}
-                                        <option value="{{ n }}">{{ n }} star{{ "s" if n != 1 }}</option>
+                                        <option value="{{ n }}">{{ n }} {{ tr("star") }}{{ "s" if n != 1 }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>

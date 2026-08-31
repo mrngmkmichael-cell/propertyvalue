@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime{% endblock %}
+{% block title %}{{ tr("Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime") }}{% endblock %}
 
-{% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report, built entirely from official government data.{% endblock %}
+{% block meta_description %}{{ tr("Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report, built entirely from official government data.") }}{% endblock %}
 {# No Leaflet on this page. The hero backdrop is a fixed, non-interactive,
    blurred view, so it is baked into a single static image - see
    scripts/build_hero_map.py. #}
@@ -277,9 +277,9 @@
             {{ tr("Every one on a single address, every one traced to the body that published it. Twelve of them in orbit here; the full report runs all forty.") }}
         </p>
         <p class="lx-orbit-tiers">
-            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
+            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} {{ tr("22 free on every report") }}</span>
             <span class="lx-orbit-tiers-sep">&middot;</span>
-            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first property</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} {{ tr("15 more with Premium, free on your first property") }}</span>
         </p>
         <p class="lx-orbit-more">
             <a class="lx-orbit-more-btn" href="/premium#all-checks">{{ tr("See pricing for the full list of 40 &rsaquo;") }}</a>
@@ -456,7 +456,7 @@
         </div>
         {% if accuracy_counts %}
         <div class="accuracy-strip-stats">
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> {{ tr("figure") }}{{ '' if accuracy_counts.total == 1 else 's' }} {{ tr("challenged") }}</span>
             <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> {{ tr("were wrong, now fixed") }}</span>
         </div>
         {% endif %}
@@ -533,8 +533,8 @@
                 {{ tr("Search is free and needs no account. Sign up and the first property come with every Premium check unlocked, no card required.") }}
             </p>
             <ul class="lx-contact-facts">
-                <li>{{ icons.icon('map') }} England, Wales, Scotland and Northern Ireland</li>
-                <li>{{ icons.icon('statistics') }} Open Government Licence v3.0</li>
+                <li>{{ icons.icon('map') }} {{ tr("England, Wales, Scotland and Northern Ireland") }}</li>
+                <li>{{ icons.icon('statistics') }} {{ tr("Open Government Licence v3.0") }}</li>
                 <li>{{ icons.icon('heritage') }} <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a></li>
             </ul>
         </div>

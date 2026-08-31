@@ -2,7 +2,7 @@
 {% import "_map_style.html" as mapstyle %}
 {% import "_tabs.html" as tabnav %}
 
-{% block title %}{{ query }} . Comparables | UKPropertyInsight{% endblock %}
+{% block title %}{{ query }} {{ tr(". Comparables | UKPropertyInsight") }}{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
     <span class="kicker">{{ tr("Not found") }}</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
-        We couldn't find that postcode. Double-check the spelling. It should look like
+        {{ tr("We couldn't find that postcode. Double-check the spelling. It should look like") }}
         <code>SW1A 1AA</code>.
     </p>
 
@@ -53,7 +53,7 @@
             </div>
 
             {% if comparables_median %}
-            <p class="section-sub"><strong>Median: {{ comparables_median | gbp }}</strong></p>
+            <p class="section-sub"><strong>{{ tr("Median:") }} {{ comparables_median | gbp }}</strong></p>
 
             {% if comparables_reference_price %}
             <div class="price-position-bar">
@@ -61,14 +61,13 @@
             </div>
             <p class="price-position-caption">
                 {{ comparables_reference_price | gbp }}
-                {% if house_number %}(for "{{ house_number }}"){% endif %}
-                sits above {{ comparables_percentile }}% of the {{ comparables_count }} nearby sold prices, from {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
+                {% if house_number %}{{ tr('(for "') }}{{ house_number }}"){% endif %}
+                {{ tr("sits above") }} {{ comparables_percentile }}{{ tr("% of the") }} {{ comparables_count }} {{ tr("nearby sold prices, from") }} {{ comparables_min | gbp }} {{ tr("to") }} {{ comparables_max | gbp }}.
             </p>
             {% else %}
             <div class="price-position-bar"></div>
             <p class="price-position-caption">
-                Range: {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
-                No matching sale for this exact address to place a marker.
+                {{ tr("Range:") }} {{ comparables_min | gbp }} {{ tr("to") }} {{ comparables_max | gbp }}{{ tr(". No matching sale for this exact address to place a marker.") }}
             </p>
             {% endif %}
             {% endif %}
@@ -107,7 +106,7 @@
 {% endblock %}
 
 {% block attribution %}
-Sold price data from
+{{ tr("Sold price data from") }}
 <a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">{{ tr("HM Land Registry Price Paid Data") }}</a>{{ tr(". Postcode data from") }} <a href="https://postcodes.io" target="_blank" rel="noopener">{{ tr("postcodes.io") }}</a>.
 {% endblock %}
 

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{% if areas and areas | length == 1 %}Schools near {{ areas[0].label }}: Ofsted Ratings & Catchments{% elif areas %}Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}{% else %}Schools Near Any UK Postcode: Ofsted Ratings & Catchment Areas{% endif %} | UKPropertyInsight{% endblock %}
+{% block title %}{% if areas and areas | length == 1 %}{{ tr("Schools near") }} {{ areas[0].label }}{{ tr(": Ofsted Ratings & Catchments") }}{% elif areas %}{{ tr("Schools compared:") }} {{ areas | map(attribute='label') | join(' vs ') }}{% else %}{{ tr("Schools Near Any UK Postcode: Ofsted Ratings & Catchment Areas") }}{% endif %} {{ tr("| UKPropertyInsight") }}{% endblock %}
 
-{% block meta_description %}{% if areas and areas | length == 1 %}Every Ofsted-rated school near {{ areas[0].label }} by rating and type, and how the area compares with the national picture. Free, from official Ofsted and DfE data.{% else %}Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.{% endif %}{% endblock %}
+{% block meta_description %}{% if areas and areas | length == 1 %}{{ tr("Every Ofsted-rated school near") }} {{ areas[0].label }} {{ tr("by rating and type, and how the area compares with the national picture. Free, from official Ofsted and DfE data.") }}{% else %}{{ tr("Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.") }}{% endif %}{% endblock %}
 {% block content %}
 <span class="kicker">{{ tr("School guide") }}</span>
 {% if areas and areas | length == 1 %}
-<h1>Schools near {{ areas[0].label }}</h1>
-<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, against the national picture. Add another area to compare.</p>
+<h1>{{ tr("Schools near") }} {{ areas[0].label }}</h1>
+<p class="dek">{{ tr("Every Ofsted-rated school within") }} {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} {{ tr("miles, against the national picture. Add another area to compare.") }}</p>
 {% elif areas %}
-<h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
+<h1>{{ tr("Schools compared:") }} {{ areas | map(attribute='label') | join(' vs ') }}</h1>
 <p class="dek">{{ tr("Side by side, from the same Ofsted and DfE data as every property report here.") }}</p>
 {% else %}
 <h1>{{ tr("Schools near any UK postcode") }}</h1>
@@ -35,8 +35,7 @@
 
 {% if search_error %}
 <p class="notice notice-error">
-    Couldn't find "{{ query }}" as a postcode or place name. Try a UK postcode, postcode district
-    (e.g. "OX1"), or a town/city name.
+    Couldn't find "{{ query }}{{ tr('" as a postcode or place name. Try a UK postcode, postcode district (e.g. "OX1"), or a town/city name.') }}
 </p>
 {% elif search_duplicate %}
 <p class="notice">
@@ -59,14 +58,14 @@
                 {%- if national_baseline and area.landscape.good_or_better_pct >= national_baseline.good_or_better_pct %} hl-good
                 {%- elif national_baseline %} hl-warn{% endif %}">
                 {{ area.landscape.good_or_better_pct }}%
-                <span class="school-guide-headline-pct-label">Outstanding or Good
-                {%- if national_baseline %} &middot; {{ 'above' if area.landscape.good_or_better_pct >= national_baseline.good_or_better_pct else 'below' }} the {{ national_baseline.good_or_better_pct }}% national figure{% endif %}</span>
+                <span class="school-guide-headline-pct-label">{{ tr("Outstanding or Good") }}
+                {%- if national_baseline %} &middot; {{ 'above' if area.landscape.good_or_better_pct >= national_baseline.good_or_better_pct else 'below' }} {{ tr("the") }} {{ national_baseline.good_or_better_pct }}{{ tr("% national figure") }}{% endif %}</span>
             </p>
             {% endif %}
             <p class="section-sub" style="margin-top: 0;">
-                Within {{ area.landscape.radius_miles }} miles: {{ area.landscape.total_schools }} school{{ 's' if area.landscape.total_schools != 1 }}
-                {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
-                {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
+                {{ tr("Within") }} {{ area.landscape.radius_miles }} {{ tr("miles:") }} {{ area.landscape.total_schools }} {{ tr("school") }}{{ 's' if area.landscape.total_schools != 1 }}
+                {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} {{ tr("FE college") }}{{ 's' if area.landscape.further_education != 1 }}{% endif %}
+                {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} {{ tr("universit") }}{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
             <h3 class="school-guide-subhead">{{ tr("By Ofsted rating") }}</h3>
             <div class="landscape-stat-row">
@@ -82,7 +81,7 @@
                         </li>
                         {% endfor %}
                         {% if r.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
@@ -102,7 +101,7 @@
                         </li>
                         {% endfor %}
                         {% if p.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
@@ -119,7 +118,7 @@
                         </li>
                         {% endfor %}
                         {% if area.landscape.special_schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ area.landscape.special_schools | length - 25 }} more</li>
+                        <li class="landscape-stat-schools-more">+{{ area.landscape.special_schools | length - 25 }} {{ tr("more") }}</li>
                         {% endif %}
                     </ul>
                 </details>
@@ -133,8 +132,8 @@
                Console shows actually ranking (3 of the top 6 queries,
                31 Aug 2026), and these pages barely linked to it. #}
             <p class="section-sub">
-                <a href="/area/{{ area.outcode }}">House prices, crime and flood risk for {{ area.outcode }} →</a>
-                <br><a href="/area/{{ area.outcode }}/private-schools">Fee-paying schools around {{ area.outcode }}: ages, selection, how full →</a>
+                <a href="/area/{{ area.outcode }}">{{ tr("House prices, crime and flood risk for") }} {{ area.outcode }} →</a>
+                <br><a href="/area/{{ area.outcode }}/private-schools">{{ tr("Fee-paying schools around") }} {{ area.outcode }}{{ tr(": ages, selection, how full →") }}</a>
             </p>
             {% endif %}
             {% for s in area.landscape.all_schools %}
@@ -150,7 +149,7 @@
     {% endfor %}
 </div>
 {% elif not search_error %}
-<p class="dek" style="margin-top: 2rem;">{{ total }} postcode districts. Pick one to see its schools.</p>
+<p class="dek" style="margin-top: 2rem;">{{ total }} {{ tr("postcode districts. Pick one to see its schools.") }}</p>
 {% set link_prefix = "/schools/guide?q=" %}
 {% include "_area_index.html" %}
 {% endif %}

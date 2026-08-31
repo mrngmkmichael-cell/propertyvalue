@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}Chrome Extension: Sold Prices, Flood Risk & Schools on Rightmove and Zoopla | UKPropertyInsight{% endblock %}
-{% block og_title %}UKPropertyInsight . Free Chrome Extension{% endblock %}
-{% block meta_description %}See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.{% endblock %}
+{% block title %}{{ tr("Chrome Extension: Sold Prices, Flood Risk & Schools on Rightmove and Zoopla | UKPropertyInsight") }}{% endblock %}
+{% block og_title %}{{ tr("UKPropertyInsight . Free Chrome Extension") }}{% endblock %}
+{% block meta_description %}{{ tr("See sold prices, EPC, flood risk, crime and schools on any Rightmove, Zoopla or OnTheMarket listing, without leaving the page. Free Chrome extension.") }}{% endblock %}
 {# PNG on purpose: this is the Open Graph preview, fetched by social
    crawlers rather than browsers, and WhatsApp/Facebook/LinkedIn
    previews are unreliable with WebP. The in-page <img> below does

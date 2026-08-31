@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}Premium: Unlimited UK Property Reports | UKPropertyInsight{% endblock %}
+{% block title %}{{ tr("Premium: Unlimited UK Property Reports | UKPropertyInsight") }}{% endblock %}
 
-{% block meta_description %}Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.{% endblock %}
+{% block meta_description %}{{ tr("Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.") }}{% endblock %}
 {% block content %}
 <span class="kicker">{{ tr("Premium") }}</span>
 
@@ -47,12 +47,12 @@
    subscribe is exactly who this page is for. #}
 {% if current_user and current_user.free_unlocks_left > 0 %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
-    <strong>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 else "" }} left.</strong>
+    <strong>{{ tr("You have") }} {{ current_user.free_unlocks_left }} {{ tr("free full report") }}{{ "s" if current_user.free_unlocks_left != 1 else "" }} {{ tr("left.") }}</strong>
     {{ tr("Every check below is unlocked on them. Subscribing removes the limit.") }}
 </p>
 {% elif current_user %}
 <p class="notice" style="background: var(--warn-bg); color: var(--warn);">
-    <strong>You have used all {{ current_user.free_unlocks_total }} free reports.</strong>
+    <strong>{{ tr("You have used all") }} {{ current_user.free_unlocks_total }} {{ tr("free reports.") }}</strong>
     {{ tr("The properties you already opened stay unlocked. Subscribe to open new ones.") }}
 </p>
 {% endif %}
@@ -61,7 +61,7 @@
     <div class="pricing-card">
         <span class="pricing-card-badge">{{ tr("No subscription") }}</span>
         <h2 class="pricing-card-price">{{ tr("&pound;19 once") }}</h2>
-        <p class="section-sub">{{ pass_months }} months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.</p>
+        <p class="section-sub">{{ pass_months }} {{ tr("months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.") }}</p>
         {% if current_user %}
         <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
             <input type="hidden" name="plan" value="pass">
@@ -74,12 +74,12 @@
     {% endif %}
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
-        {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}
+        {% if plan.saving_pct %}<span class="pricing-card-badge">{{ tr("Save") }} {{ plan.saving_pct }}{{ tr("% vs monthly") }}</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}
-        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }}. Cancel any time.</p>
+        <p class="section-sub">{{ plan.trial_days }}{{ tr("-day free trial, then") }} {{ plan.label }}{{ tr(". Cancel any time.") }}</p>
         {% else %}
-        <p class="section-sub">{{ plan.label }}, billed from today. Cancel any time.</p>
+        <p class="section-sub">{{ plan.label }}{{ tr(", billed from today. Cancel any time.") }}</p>
         {% endif %}
         {% if plan.available %}
             {% if current_user %}

@@ -47,10 +47,15 @@ def main():
 
     print(f"{len(all_sources)} distinct strings, {words} words\n")
     print(f"{'language':12}{'done':>7}{'missing':>9}{'coverage':>10}{'orphans':>9}")
-    for code in translations._MODULES:
+    import importlib
+
+    for code, module_name in translations._MODULES.items():
         table = translations.catalogue(code)
+        # Orphans are judged on TEXT only: VOCAB keys are data values
+        # (Ofsted ratings, phases, tenure) that exist in no template.
+        text = getattr(importlib.import_module(f"app.translations.{module_name}"), "TEXT", {})
         done = sum(1 for s in all_sources if s in table)
-        orphans = sum(1 for k in table if k not in all_sources)
+        orphans = sum(1 for k in text if k not in all_sources)
         pct = 100 * done / len(all_sources) if all_sources else 0
         print(f"{code:12}{done:>7}{len(all_sources) - done:>9}{pct:>9.1f}%{orphans:>9}")
 
