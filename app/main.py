@@ -28,7 +28,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
 
-from app import auth, db, school_shortlist, watchlist
+from app import auth, db, i18n, school_shortlist, watchlist
 from app.services import _cache
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
@@ -984,7 +984,33 @@ async def on_startup():
 
 
 def base_context(request: Request) -> dict:
+    # The reader's interface language, from their own choice first
+    # (?lang= then the cookie), and only then from the browser's
+    # Accept-Language. An explicit choice must always beat a header, or
+    # someone on a German laptop who picked English keeps being handed
+    # something else.
+    lang = i18n.normalise(
+        request.query_params.get("lang")
+        or request.cookies.get(i18n.LANG_COOKIE)
+        or request.headers.get("accept-language", "").split(",")[0]
+    )
+    meta = i18n.LANGUAGES[lang]
+    # Two different languages, and conflating them was a real bug: the
+    # English homepage declared lang="ja" simply because someone had
+    # once visited /ja, so a screen reader would have read English prose
+    # with Japanese pronunciation rules and Google would have been told
+    # the page was Japanese. "lang" is the CHROME language, chosen by
+    # the reader. "page_lang" is the language of the CONTENT, which is
+    # English everywhere except the eight landing pages, and it is
+    # page_lang that <html lang> and dir must follow.
     return {
+        "lang": lang,
+        "lang_meta": meta,
+        "languages": i18n.LANGUAGES,
+        "T": i18n.catalogue(lang),
+        "page_lang": i18n.DEFAULT_LANG,
+        "page_bcp47": i18n.LANGUAGES[i18n.DEFAULT_LANG]["bcp47"],
+        "page_dir": i18n.LANGUAGES[i18n.DEFAULT_LANG]["dir"],
         "current_user": auth.current_user(request),
         "accounts_configured": db.is_configured(),
         # Set here rather than on the two auth routes so the button
@@ -1356,6 +1382,13 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # one page per region, each row linking to its area guide.
     entries += [(f"{base}/market/house-prices/{slug}", "0.6") for slug in REGION_SLUGS]
 
+    # One landing page per interface language. Eight URLs, hand-written
+    # and hreflang'd, which is the whole translated footprint: the data
+    # pages stay English for the reason in app/i18n.py.
+    entries += [
+        (f"{base}/{code}", "0.6") for code in i18n.LANGUAGES if code != i18n.DEFAULT_LANG
+    ]
+
     # Comparison pages, first tranche (30 Aug 2026). The full curated
     # set is ~1,000 pairs, which is too much to hand a domain still
     # measured in tens of indexed pages, so only pairs where BOTH sides
@@ -1432,6 +1465,22 @@ def areas_index(request: Request):
     context["regions"] = _area_index()
     context["total"] = len(ALL_OUTCODES)
     return templates.TemplateResponse(request, "areas.html", context)
+
+
+@app.get("/set-language")
+def set_language(request: Request, lang: str = "", next: str = "/"):
+    """Remember a language choice for a year and go back where they
+    were. A GET because it is a plain link in the footer: no form, no
+    script, works with JavaScript off, which is the whole reason the
+    switcher is a list of links rather than a select."""
+    chosen = i18n.normalise(lang)
+    response = RedirectResponse(_safe_next(next), status_code=303)
+    response.set_cookie(
+        i18n.LANG_COOKIE, chosen,
+        max_age=i18n.COOKIE_MAX_AGE, httponly=False, samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return response
 
 
 @app.get("/robots.txt")
@@ -6772,3 +6821,56 @@ def reviews_submit(
         return RedirectResponse(safe_next, status_code=303)
     reviews.submit(user["id"], target_type, target_key, rating, body)
     return RedirectResponse(safe_next, status_code=303)
+
+
+# ---------------------------------------------------------------------
+# LAST ROUTE IN THE FILE, AND IT MUST STAY LAST.
+#
+# "/{lang_code}" matches any single root path segment, and FastAPI
+# resolves routes in registration order. Registered earlier it swallowed
+# 26 real routes, /premium, /property, /robots.txt and /admin among
+# them, all of which come after it in this file. Anything added below
+# this line is unreachable.
+# ---------------------------------------------------------------------
+@app.get("/{lang_code}", include_in_schema=False)
+def language_landing(request: Request, lang_code: str):
+    """The one page per language that is worth indexing: what this site
+    is, how to read it, what it costs, and the plain statement that the
+    reports themselves stay in English.
+
+    Deliberately NOT a translation of the whole site. There are 2,943
+    area guides and 616 school pages; eight translations of those would
+    be over 28,000 machine-translated URLs from a domain currently
+    getting 21 pages indexed, which Google reads as thin duplicate
+    content. These nine pages are hand-written and few.
+    """
+    code = lang_code.lower()
+    # This route sits at the root, so it must not swallow anything else
+    # that lives there. Only real language codes, and never "en", which
+    # is the homepage.
+    if code not in i18n.LANGUAGES or code == i18n.DEFAULT_LANG:
+        return templates.TemplateResponse(request, "404.html", base_context(request), status_code=404)
+
+    context = base_context(request)
+    # The URL wins over cookie and header here: someone following a
+    # link to /ja expects Japanese whatever their browser sends.
+    meta = i18n.LANGUAGES[code]
+    # This page's content really is in that language, so both the chrome
+    # and the page language follow the URL.
+    context.update({
+        "lang": code, "lang_meta": meta, "T": i18n.catalogue(code),
+        "page_lang": code, "page_bcp47": meta["bcp47"], "page_dir": meta["dir"],
+    })
+    base = _public_base_url(request)
+    context["canonical_url"] = f"{base}/{code}"
+    context["alternates"] = [
+        {"href": base if c == i18n.DEFAULT_LANG else f"{base}/{c}", "hreflang": m["bcp47"]}
+        for c, m in i18n.LANGUAGES.items()
+    ]
+    response = templates.TemplateResponse(request, "language_landing.html", context)
+    response.set_cookie(
+        i18n.LANG_COOKIE, code,
+        max_age=i18n.COOKIE_MAX_AGE, httponly=False, samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return response

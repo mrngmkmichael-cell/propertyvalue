@@ -7572,3 +7572,45 @@ body:not(.theme-dark) .lx-hero-scrim {
     color: var(--ink-soft);
 }
 .follow-link { font-size: var(--text-sm); white-space: nowrap; }
+
+/* ---- Language switcher and right-to-left ---------------------------- */
+.footer-langs {
+    margin: 0.9rem 0 0;
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+    line-height: 2;
+}
+.footer-langs-label {
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-inline-end: 0.5rem;
+}
+.footer-langs a { color: var(--ink-soft); }
+.footer-langs a:hover { color: var(--accent); }
+.footer-lang-current { color: var(--ink); font-weight: 600; }
+
+/* Arabic reads right to left. The layout is mostly flow-relative
+   already, so this flips the handful of places that name a physical
+   side. Tables keep their own direction: a column of figures reads the
+   same either way, and mirroring them would put the units on the wrong
+   side of the numbers. */
+[dir="rtl"] .back-link { display: inline-block; transform: scaleX(-1); }
+[dir="rtl"] .back-link > * { display: inline-block; transform: scaleX(-1); }
+[dir="rtl"] .lx-hero-dek,
+[dir="rtl"] .dek,
+[dir="rtl"] .section-sub { text-align: start; }
+[dir="rtl"] .tx-table { direction: ltr; }
+[dir="rtl"] .tx-table td:first-child,
+[dir="rtl"] .tx-table th:first-child { text-align: start; }
+
+/* ---- Translated landing page --------------------------------------- */
+.lang-landing-note {
+    margin: 2rem 0 0;
+    padding: 1.1rem 1.3rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.lang-landing-note strong { display: block; margin-bottom: 0.4rem; color: var(--ink); }
+.lang-landing-note p { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.7; }

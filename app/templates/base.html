@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html lang="en-GB">
+<html lang="{{ page_bcp47 | default("en-GB") }}" dir="{{ page_dir | default("ltr") }}">
 <head>
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google-site-verification" content="ONmACMSK2QA9zket2_0CImCu-k6LpfkSXOOcsopY9Po" />
     <title>{% block title %}UKPropertyInsight{% endblock %}</title>
@@ -35,6 +36,21 @@
     /static/css/style.css for anything that wants it. #}
     <style>{{ inline_css() }}</style>
 
+    {% if lang_meta and lang != 'en' %}
+    {# AFTER the inlined sheet, not before: style.css sets --font-sans
+       on :root itself, so an override earlier in the head loses to it
+       at equal specificity. Checked on /ar, where the stack resolved
+       to Instrument Sans until this moved down here.
+
+       The self-hosted faces cover Latin only, so a non-Latin script
+       would otherwise land on whatever the browser happened to pick.
+       Each stack keeps Instrument Sans first (except Arabic, which
+       leads with a Naskh face) so Latin words inside a translated
+       sentence stay on-brand. See app/i18n.py for why these are system
+       faces rather than another 10 MB of self-hosted Noto. #}
+    <style>:root { --font-sans: {{ lang_meta.font | safe }}; --font-display: {{ lang_meta.font | safe }}; }</style>
+    {% endif %}
+
     {# One block feeds both the search-result snippet and the link
     preview, so a page can never end up with two different summaries of
     itself. Pages that don't override it inherit the site-wide line,
@@ -44,6 +60,15 @@
     <meta name="description" content="{% block meta_description %}Sold prices, EPC, flood risk, crime and schools for any UK postcode, all in one place, sourced from official public data.{% endblock %}">
 
     <link rel="canonical" href="{{ canonical_url }}">
+    {# hreflang only where real translated pages exist. Declaring
+       alternates for pages that are English whatever the URL says
+       would be a claim Google can check and find false. #}
+    {% if alternates %}
+    {% for alt in alternates %}
+    <link rel="alternate" hreflang="{{ alt.hreflang }}" href="{{ alt.href }}">
+    {% endfor %}
+    <link rel="alternate" hreflang="x-default" href="{{ alternates[0].href }}">
+    {% endif %}
 
     {# Sensible site-wide defaults for link previews (Slack, WhatsApp,
     Twitter/X, etc.) - any page can override og_title/og_description/
@@ -179,20 +204,20 @@
                 <span class="nav-toggle-bars"></span>
             </button>
             <nav class="site-nav" id="site-nav-menu">
-                <a href="/methodology">Why trust this</a>
-                <a href="/areas">Area Guides</a>
-                <a href="/schools/guide">School Guide</a>
-                <a href="/buying-guide">Buying Guide</a>
-                <a href="/browser-extension">Extension</a>
-                <a href="/premium">Pricing</a>
+                <a href="/methodology">{{ T["nav.why"] if T else "Why trust this" }}</a>
+                <a href="/areas">{{ T["nav.areas"] if T else "Area Guides" }}</a>
+                <a href="/schools/guide">{{ T["nav.schools"] if T else "School Guide" }}</a>
+                <a href="/buying-guide">{{ T["nav.buying"] if T else "Buying Guide" }}</a>
+                <a href="/browser-extension">{{ T["nav.extension"] if T else "Extension" }}</a>
+                <a href="/premium">{{ T["nav.pricing"] if T else "Pricing" }}</a>
                 {% if current_user %}
-                    <a href="/watchlist">My properties</a>
+                    <a href="/watchlist">{{ T["nav.properties"] if T else "My properties" }}</a>
                     <form action="/logout" method="post" class="nav-form">
-                        <button type="submit">Log out</button>
+                        <button type="submit">{{ T["nav.logout"] if T else "Log out" }}</button>
                     </form>
                 {% else %}
-                    <a href="/login">Log in</a>
-                    <a href="/signup">Sign up</a>
+                    <a href="/login">{{ T["nav.login"] if T else "Log in" }}</a>
+                    <a href="/signup">{{ T["nav.signup"] if T else "Sign up" }}</a>
                 {% endif %}
             </nav>
             {% endif %}
@@ -238,11 +263,23 @@
                 &middot; <a href="/privacy">Privacy Policy</a>
                 &middot; <a href="/terms">Terms of Service</a>
                 &middot; <a href="/market-report">Market Report</a>
-                &middot; <a href="/buying-guide">Buying Guide</a>
-                &middot; <a href="/areas">Area Guides</a>
+                &middot; <a href="/buying-guide">{{ T["nav.buying"] if T else "Buying Guide" }}</a>
+                &middot; <a href="/areas">{{ T["nav.areas"] if T else "Area Guides" }}</a>
                 &middot; <a href="/accuracy">Accuracy log</a>
                 &middot; <a href="/data">Our data</a>
                 &middot; <a href="/embed">For Agents</a>
+            </p>
+            {# Plain links rather than a select: no script needed, and a
+               crawler can follow every language from any page. The
+               current language is marked but not linked. #}
+            <p class="footer-langs"{% if lang != page_lang %} lang="{{ lang_meta.bcp47 }}"{% endif %}>
+                <span class="footer-langs-label">{{ T["lang.label"] if T else "Language" }}</span>
+                {% for code, meta in (languages or {}).items() %}
+                {%- if code == lang %}<span class="footer-lang-current" lang="{{ meta.bcp47 }}">{{ meta.endonym }}</span>
+                {%- else %}<a href="/set-language?lang={{ code }}&next={{ request.url.path | urlencode }}" lang="{{ meta.bcp47 }}" hreflang="{{ meta.bcp47 }}">{{ meta.endonym }}</a>
+                {%- endif %}
+                {%- if not loop.last %} <span aria-hidden="true">&middot;</span> {% endif %}
+                {% endfor %}
             </p>
         </div>
     </footer>

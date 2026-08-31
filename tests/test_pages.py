@@ -595,3 +595,95 @@ def test_outstanding_schools_page_renders_with_real_counts(client):
     assert "no current grade, and that" in body
     assert 'action="/schools/guide"' in body
     assert body.count("<h1") == 1
+
+
+# ---- interface languages -------------------------------------------------
+
+def test_every_language_landing_renders_in_its_own_script(client):
+    """Eight hand-written landing pages. Each must carry its own
+    language and direction on <html>, its own font stack, and prose
+    actually in that language rather than English fallback."""
+    import markupsafe
+
+    from app import i18n
+
+    for code, meta in i18n.LANGUAGES.items():
+        if code == i18n.DEFAULT_LANG:
+            continue
+        r = client.get(f"/{code}")
+        assert r.status_code == 200, f"/{code} returned {r.status_code}"
+        body = r.text
+        assert f'lang="{meta["bcp47"]}"' in body, f"/{code} missing lang tag"
+        assert f'dir="{meta["dir"]}"' in body, f"/{code} missing dir"
+        # Compared as Jinja renders it: the French headline contains an
+        # apostrophe, which is correctly escaped to &#39; in the HTML,
+        # so a raw-string comparison would fail on properly escaped
+        # output.
+        def rendered(key):
+            return str(markupsafe.escape(i18n.t(key, code)))
+
+        assert rendered("hero.title") in body
+        assert str(markupsafe.escape(i18n.t("hero.title", "en"))) not in body,             f"/{code} fell back to English"
+        # The caveat about reports staying English must be in their language.
+        assert rendered("data.english.title") in body
+
+
+def test_the_language_catch_all_never_shadows_a_real_route(client):
+    """/{lang_code} matches any root segment and FastAPI resolves in
+    registration order. Registered anywhere but last it swallowed 26
+    real routes including /premium and /property. These are the ones
+    that broke."""
+    for path in ("/premium", "/robots.txt", "/methodology", "/privacy",
+                 "/terms", "/support", "/buying-guide", "/areas"):
+        assert client.get(path).status_code == 200, f"{path} was shadowed"
+    # A root segment that is not a language is still a 404, not a page.
+    assert client.get("/not-a-language").status_code == 404
+    # English has no /en page: that is the homepage.
+    assert client.get("/en").status_code == 404
+
+
+def test_choosing_a_language_persists_and_returns_you_where_you_were(client):
+    from app import i18n
+
+    client.cookies.clear()
+    r = client.get("/set-language?lang=ja&next=/premium", follow_redirects=False)
+    assert r.status_code == 303
+    assert r.headers["location"] == "/premium"
+    assert i18n.LANG_COOKIE in r.cookies or "uki_lang" in r.headers.get("set-cookie", "")
+
+    # The chrome follows them around the site.
+    body = client.get("/premium", cookies={i18n.LANG_COOKIE: "ja"}).text
+    assert i18n.t("nav.pricing", "ja") in body
+    # ...but an English page must still declare English. Saying lang="ja"
+    # over English prose makes a screen reader read it with Japanese
+    # pronunciation rules and tells Google the page is Japanese.
+    assert '<html lang="en-GB"' in body
+    assert 'dir="ltr"' in body
+
+    # An open redirect must not survive the language switch.
+    r = client.get("/set-language?lang=fr&next=https://evil.example", follow_redirects=False)
+    assert r.headers["location"] == "/"
+
+
+def test_an_unknown_or_regional_language_code_falls_back_sanely(client):
+    from app import i18n
+
+    assert i18n.normalise("zh-TW") == "zh-hant"
+    assert i18n.normalise("zh-CN") == "zh-hans"
+    assert i18n.normalise("es-419") == "es"
+    assert i18n.normalise("de") == "en"
+    assert i18n.normalise(None) == "en"
+    # A missing translation renders English, never a blank or a key.
+    assert i18n.t("nav.pricing", "de") == "Pricing"
+    assert i18n.t("no.such.key", "fr") == "no.such.key"
+
+
+def test_the_font_stack_reaches_the_page_unescaped(client):
+    """The stacks are CSS, and CSS needs its single quotes. Escaped to
+    &#39; the whole custom property was invalid and every page silently
+    fell back to Times New Roman, on English pages too."""
+    from app import i18n
+
+    body = client.get("/ja").text
+    assert "&#39;" not in body.split("--font-sans:")[1].split("}")[0]
+    assert i18n.LANGUAGES["ja"]["font"] in body

@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Interface languages: nine (English plus Traditional and Simplified
+  Chinese, Hindi, Spanish, Arabic, French, Japanese, Korean). One
+  hand-written landing page each at /{code}, a footer switcher, a
+  year-long cookie, hreflang, RTL for Arabic, per-script font stacks.
+  The DATA pages stay English on purpose (see app/i18n.py): 2,943 area
+  guides translated eight ways is 28,000+ machine-translated URLs from
+  a domain with 21 pages indexed. Do not suggest translating them.
+
 - One-click sample report link in the hero (M1 1AE), zero-typing route
   into the product.
 - Globe intro and Leaflet self-hosted under /static/vendor/; no scripts
