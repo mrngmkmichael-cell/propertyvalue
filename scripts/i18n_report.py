@@ -18,7 +18,10 @@ sys.path.insert(0, ".")
 from app import translations  # noqa: E402
 
 TPL = pathlib.Path("app/templates")
-CALL = re.compile(r'tr\(\s*(["\'])(.*?)\1\s*\)', re.S)
+# The lookbehind matters: "selectattr(" ends in "tr(", so without it
+# this matched inside Jinja expressions and invented strings like
+# "trend', 'equalto', 'lower" that no template ever contained.
+CALL = re.compile(r'(?<![A-Za-z0-9_])tr\(\s*(["\'])(.*?)\1\s*\)', re.S)
 
 
 def sources() -> dict[str, list[str]]:

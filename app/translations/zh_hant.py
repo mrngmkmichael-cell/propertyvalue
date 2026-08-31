@@ -1,2 +1,198 @@
-"""Placeholder: see app/translations/__init__.py."""
-TEXT: dict[str, str] = {}
+"""Traditional Chinese.
+
+Hong Kong vocabulary where the two differ, because the readers most
+likely to want this are BN(O) arrivals buying UK property: 物業 rather
+than 房產, 郵區編號 rather than 郵政編碼.
+
+Deliberately absent, and therefore rendering in English:
+  * UKPropertyInsight, the brand.
+  * The names of the bodies that publish each figure: HM Land Registry,
+    Ofsted, Environment Agency, the British Geological Survey. A
+    translated proper noun cannot be checked against its source, which
+    is the one thing this site promises.
+  * Email addresses, URLs, postcodes and prices.
+  * The homepage hero, which is split across three tags for its italic
+    styling. Translating "Know" and "before you commit" separately gives
+    nonsense in a language with different word order; /zh-hant carries a
+    proper whole-sentence version instead.
+
+See app/translations/__init__.py for how a missing key falls back.
+"""
+TEXT: dict[str, str] = {
+    # ---- chrome, on every page ----
+    "Skip to content": "跳至內容",
+    "Gathering your report": "正在整理你的報告",
+    "UK Property Intelligence": "英國物業情報",
+    "Postcode": "郵區編號",
+    "House or flat number (optional)": "門牌或單位號碼（可選）",
+    "House or flat number": "門牌或單位號碼",
+    "House/flat number (optional)": "門牌或單位號碼（可選）",
+    "UK postcode": "英國郵區編號",
+    "Search": "搜尋",
+    "See plans": "查看方案",
+    "Log in": "登入",
+    "Support": "客戶支援",
+    "Privacy Policy": "私隱政策",
+    "Terms of Service": "服務條款",
+    "Market Report": "市場報告",
+    "Accuracy log": "更正紀錄",
+    "accuracy log": "更正紀錄",
+    "Our data": "資料來源",
+    "For Agents": "地產代理專用",
+    "Questions or feedback?": "有疑問或意見？",
+    "Contains data made available under the": "所載資料依據",
+    "Password changed.": "密碼已更新。",
+    "You're signed in.": "你已登入。",
+
+    # ---- the report page: frame and actions ----
+    "Property report": "物業報告",
+    "&larr; New search": "&larr; 重新搜尋",
+    "Share this report": "分享此報告",
+    "Download full PDF report": "下載完整 PDF 報告",
+    "Copy": "複製",
+    "Email": "電郵",
+    "Send report": "傳送報告",
+    "Check a property free": "免費查詢物業",
+    "Check this": "值得查證",
+    "What stands out": "重點摘要",
+    "No major red flags found": "未發現重大警號",
+    "Not found": "沒有紀錄",
+    "Temporarily unavailable": "暫時無法取得",
+    "Tell us what looks wrong": "告訴我們哪裡有誤",
+    "Thanks, we've got it.": "已收到，多謝。",
+    "Unlock this report free": "免費解鎖此報告",
+    "You've used your free report.": "你的免費報告已使用。",
+
+    # ---- the 38 checks, by category ----
+    "Value &amp; Market": "價值與市場",
+    "Local Market": "本地市場",
+    "Council Tax": "市政稅",
+    "Valuation Estimate": "估值",
+    "Costs &amp; Affordability": "成本與負擔能力",
+    "Stamp duty, mortgage, yield": "印花稅、按揭、租金回報",
+    "Rental Analysis": "租金分析",
+    "Area Prosperity": "地區經濟狀況",
+    "Price Trend &amp; Forecast": "價格走勢與預測",
+    "Property &amp; Condition": "物業與狀況",
+    "Energy Efficiency": "能源效益",
+    "Extended or Modified": "曾擴建或改動",
+    "Aspect": "座向",
+    "Risk &amp; Safety": "風險與安全",
+    "Flood Risk": "水浸風險",
+    "Flood risk": "水浸風險",
+    "No active warnings": "目前沒有警報",
+    "Surface Water Risk": "地面積水風險",
+    "Sewage Discharge": "污水排放",
+    "Noise": "噪音",
+    "Crime &amp; Safety": "罪案與治安",
+    "Crime": "罪案",
+    "Radon Gas": "氡氣",
+    "Subsidence Risk": "地基下陷風險",
+    "Air Quality": "空氣質素",
+    "Historic Contamination": "歷史污染",
+    "Mining Risk": "採礦風險",
+    "Planning &amp; Heritage": "規劃與文物",
+    "Planning Constraints": "規劃限制",
+    "Environmental Designations": "環境保育指定",
+    "Listed Buildings": "法定古蹟建築",
+    "Schools": "學校",
+    "EPC rating": "能源表現評級",
+    "Sold prices &amp; comparables": "成交價與同區比較",
+
+    # ---- homepage sections a translated reader still meets ----
+    "Area guides": "地區指南",
+    "Coverage": "覆蓋範圍",
+    "Why trust this": "為何可信",
+    "Every figure names its source": "每項數字均註明出處",
+    "What people say": "用家評價",
+    "Questions": "常見問題",
+    "Questions people ask first": "大家最常問的問題",
+    "Start here": "由此開始",
+    "What we check": "我們查什麼",
+    "Yes": "是",
+    "No": "否",
+    "One report": "一份報告",
+    "Hours": "數小時",
+    "Seconds": "數秒",
+    "Public": "公開資料",
+    "Clear": "清除",
+    "Kept on this device only.": "只儲存在此裝置。",
+    "Pick up where you left off": "繼續之前的查詢",
+    "No postcode in mind?": "未有特定郵區編號？",
+    "Sign up free": "免費註冊",
+    "Your account is ready.": "你的帳戶已開通。",
+    "Run the checks": "開始查核",
+    "Run the checks on your postcode": "查核你的郵區編號",
+
+    "Location &amp; Connectivity": "位置與交通",
+    "Area &amp; Community": "地區與社區",
+
+    # ---- report page: the rest of the frame ----
+    "Summary": "摘要",
+    "Comparables": "同區成交",
+    "PDF report . Premium": "PDF 報告．Premium",
+    "PDF report to keep or send": "可保存或傳送的 PDF 報告",
+    "Share a full report with anyone": "把完整報告分享給任何人",
+    "&larr; Back to the report": "&larr; 返回報告",
+    "&larr; Back to My properties": "&larr; 返回我的物業",
+    "Things to check before you commit": "簽約前應查證的事項",
+    "for the full picture on one property.": "查看單一物業的完整資料。",
+    "Enter a postcode to get started.": "輸入郵區編號即可開始。",
+    "Not a postcode we could find": "找不到這個郵區編號",
+    "No data available for this location.": "此位置沒有相關資料。",
+    "No crime data available for this area.": "此地區沒有罪案資料。",
+    "No radon data available for this area.": "此地區沒有氡氣資料。",
+    "No reviews yet for this area.": "此地區暫時沒有評價。",
+    "No pupil count on file for this school.": "此校沒有學生人數紀錄。",
+    "Full official record on GOV.UK →": "GOV.UK 官方完整紀錄 &rarr;",
+    "Filter by house number or address": "以門牌或地址篩選",
+    "show all results for this postcode": "顯示此郵區編號的所有結果",
+    "search a full postcode or address": "搜尋完整郵區編號或地址",
+    "Upgrade to Premium to unlock →": "升級 Premium 解鎖 &rarr;",
+    "Someone shared this report with you.": "有人與你分享了這份報告。",
+    "This is not a catchment area.": "這並非校網範圍。",
+    "Tap a number to see which schools.": "點擊數字查看是哪些學校。",
+    "What kind of school this is": "此校的類型",
+    "What people here do for work": "本區居民的職業分佈",
+    "Lease under 80 years is a problem.": "租期少於 80 年會構成問題。",
+    "Service charge / ground rent amounts": "管理費／地租金額",
+    "A former landfill site is nearby": "附近曾為堆填區",
+    "Most recent sale here was recorded as": "此處最近一次成交紀錄為",
+    "Only when you sell, only on the gain.": "只在出售時、只就增值部分徵收。",
+    "Tax on buying and owning property": "購買及持有物業的稅項",
+
+    # ---- account and forms ----
+    "Sign up": "註冊",
+    "My properties": "我的物業",
+    "Update": "更新",
+    "Update note": "更新備註",
+    "Save": "儲存",
+    "Save to My properties": "儲存至我的物業",
+    "Your rating": "你的評分",
+    "Update your review": "更新你的評價",
+    "Submit review": "提交評價",
+    "Update review": "更新評價",
+    "Password": "密碼",
+    "Can't log in / forgotten password": "無法登入／忘記密碼",
+    "Sign up to buy the pass": "註冊以購買通行證",
+    "Also send me a weekly round-up": "同時寄給我每週摘要",
+    "Suggest a feature or data source": "建議功能或資料來源",
+    "Common things people write in about": "常見查詢",
+
+    # ---- buying guide ----
+    "Buying a property in the UK": "在英國置業",
+    "How a UK property purchase works": "英國置業流程",
+    "Get an Agreement in Principle first.": "先取得原則上批核。",
+    "Apply for the formal mortgage offer.": "申請正式按揭批文。",
+    "Instruct a solicitor. Book a survey.": "委聘律師，安排驗樓。",
+
+    # ---- extension and misc ----
+    "Free to install, more with an account": "免費安裝，開設帳戶可享更多",
+    "Nothing extra running in the background": "背景不會執行任何額外程式",
+    "Eight tabs of real data, every time": "每次八個分頁的真實資料",
+    "Start with an area you know": "從你熟悉的地區開始",
+    "Works for any address, listed or not": "任何地址適用，不論是否放盤",
+    "You do, so it answers to you": "由你付費，因此對你負責",
+    "districts with enough sales to rank": "有足夠成交量可作排名的地區",
+    "25 free on every report": "每份報告免費提供 25 項",
+}

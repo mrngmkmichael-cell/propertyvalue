@@ -226,11 +226,11 @@
                     <input type="hidden" name="postcode" value="{{ location.postcode }}">
                     <input type="hidden" name="house_number" value="{{ house_number }}">
                     <div class="search-form-field">
-                        <label for="note">{{ "Update note" if watchlist_item else "Save to My properties" }}</label>
+                        <label for="note">{{ tr("Update note") if watchlist_item else tr("Save to My properties") }}</label>
                         <input type="text" id="note" name="note" placeholder="Optional note to yourself"
                                value="{{ watchlist_item.note if watchlist_item else '' }}">
                     </div>
-                    <button type="submit">{{ "Update" if watchlist_item else "Save" }}</button>
+                    <button type="submit">{{ tr("Update") if watchlist_item else tr("Save") }}</button>
                     {% if house_number %}
                     <p class="section-sub">Saved against this specific house/flat number ({{ house_number }}), not just the postcode.</p>
                     {% else %}
@@ -3105,7 +3105,7 @@
             <input type="hidden" name="target_key" value="{{ location.postcode }}">
             <input type="hidden" name="next" value="/property?postcode={{ location.postcode }}{% if house_number %}&house_number={{ house_number }}{% endif %}#reviews">
             <div class="search-form-field">
-                <label for="review-rating">{{ "Update your review" if my_area_review else "Your rating" }}</label>
+                <label for="review-rating">{{ tr("Update your review") if my_area_review else tr("Your rating") }}</label>
                 <select id="review-rating" name="rating">
                     {% for n in [5, 4, 3, 2, 1] %}
                     <option value="{{ n }}" {{ "selected" if my_area_review and my_area_review.rating == n }}>{{ n }} star{{ "s" if n != 1 }}</option>
@@ -3116,7 +3116,7 @@
                 <label for="review-body">{{ tr("Your review (optional)") }}</label>
                 <textarea id="review-body" name="body" maxlength="1000" rows="3">{{ my_area_review.body if my_area_review else "" }}</textarea>
             </div>
-            <button type="submit">{{ "Update review" if my_area_review else "Submit review" }}</button>
+            <button type="submit">{{ tr("Update review") if my_area_review else tr("Submit review") }}</button>
             {% if my_area_review %}<p class="section-sub">{{ tr("Submitting replaces your previous review for this area.") }}</p>{% endif %}
         </form>
         {% else %}

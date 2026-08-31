@@ -1,5 +1,7 @@
 """Pure-function units: the pieces that have no network and no template,
 where a wrong answer is silent rather than a crash."""
+import pathlib
+
 import pytest
 
 from app import main as app_main
@@ -750,3 +752,60 @@ def test_a_failing_factory_does_not_leave_its_lock_behind():
     with pytest.raises(RuntimeError):
         asyncio.run(main._deduped(("k", "leaky"), 60, boom))
     assert main._inflight_locks == {}
+
+# ---- interface translation ----------------------------------------------
+
+def _template_strings():
+    import re
+
+    # Two alternatives rather than a backreference, and a lookbehind
+    # because "selectattr(" also ends in "tr(".
+    call = re.compile(
+        r"""(?<![A-Za-z0-9_])tr\(\s*(?:"([^"]*)"|'([^']*)')\s*\)"""
+    )
+    found = set()
+    for f in pathlib.Path("app/templates").rglob("*.html"):
+        for double, single in call.findall(f.read_text(encoding="utf-8")):
+            found.add(double or single)
+    return found
+
+
+def test_every_translation_key_matches_a_real_template_string():
+    """Keyed by English source, so a typo in a key is not an error, it
+    is a line that silently never applies. Six of these got written on
+    31 Aug 2026 by guessing at strings ("Log out", which goes through
+    the older nav catalogue; two arrows written as &rarr; where the
+    template has a real one)."""
+    from app import translations
+
+    sources = _template_strings()
+    for code in translations._MODULES:
+        orphans = sorted(k for k in translations.catalogue(code) if k not in sources)
+        assert not orphans, f"{code} has keys no template uses: {orphans[:5]}"
+
+
+def test_no_translation_is_blank_or_a_copy_of_the_english():
+    from app import translations
+
+    for code in translations._MODULES:
+        for key, value in translations.catalogue(code).items():
+            assert value.strip(), f"{code}: {key!r} is blank"
+            assert value != key, f"{code}: {key!r} was left in English"
+
+
+def test_an_untranslated_string_falls_back_to_english():
+    from app import translations
+
+    assert translations.translate("Not in any catalogue", "ja") == "Not in any catalogue"
+    assert translations.translate("Property report", "en") == "Property report"
+    assert translations.translate("Property report", "de") == "Property report"
+    # And a language that does have it gets it.
+    assert translations.translate("Property report", "zh-hant") != "Property report"
+
+
+def test_the_marker_never_wrapped_a_jinja_expression():
+    """tr("...") must only ever hold literal text. A wrapped expression
+    would be a string key containing {{ or {%, which can never match a
+    catalogue entry and would render braces to the reader."""
+    for text in _template_strings():
+        assert "{" not in text and "}" not in text, f"markup swallowed Jinja: {text!r}"

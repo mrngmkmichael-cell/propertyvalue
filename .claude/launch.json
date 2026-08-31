@@ -6,6 +6,12 @@
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--port", "8010"],
       "port": 8010
+    },
+    {
+      "name": "propertyvalue-dev-alt",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--reload", "--port", "8011"],
+      "port": 8011
     }
   ]
 }

@@ -17,7 +17,7 @@ import sys
 
 import httpx
 
-BASE = "http://127.0.0.1:8010"
+BASE = sys.argv[2] if len(sys.argv) > 2 else "http://127.0.0.1:8010"
 OUT = pathlib.Path("scratch_i18n_snapshot.json")
 # A crawler UA so cold reports render fully rather than returning the
 # 202 "building" placeholder, which would snapshot nothing useful.
