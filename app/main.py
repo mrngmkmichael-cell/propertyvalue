@@ -977,7 +977,18 @@ async def _prewarm_reports():
 
 @app.on_event("startup")
 async def on_startup():
-    db.init_db()
+    # If the database is unreachable, boot anyway. On 31 Aug 2026 Neon
+    # cut the project off for exceeding its data-transfer quota; this
+    # call raised, uvicorn crash-looped, and Render served 502 for the
+    # WHOLE site, when in fact everything except accounts, pageviews
+    # and the tier-2 cache works without a database. Every request path
+    # already degrades (current_user returns None, the pageview
+    # middleware skips, set_persistent logs and moves on), so the only
+    # thing a hard startup failure protected was nothing at all.
+    try:
+        db.init_db()
+    except Exception as exc:  # noqa: BLE001 - degraded beats down
+        logging.error("database unavailable at startup, running degraded: %s", exc)
     if IS_PRODUCTION:
         asyncio.create_task(_indexnow_ping_if_changed())
         asyncio.create_task(_prewarm_reports())
