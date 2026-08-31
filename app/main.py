@@ -1307,6 +1307,9 @@ GSC_EARNED_OUTCODES = [
     "ST21", "ST3", "ST4", "TA3", "TF1", "TF10", "TN13", "TR4", "TS10",
     "TS19", "TS24", "TW4", "TW9", "WA4", "WA9", "WD24", "WN2", "WN4",
     "WS11", "WS13", "WS3", "WV10", "WV11", "WV4", "YO51",
+    # 31 Aug 2026: "bn8" appeared in the live top queries (Search
+    # Console screenshot) and BN8 was not yet promoted.
+    "BN8",
 ]
 AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
