@@ -210,6 +210,16 @@
 </section>
 {% endif %}
 
+{% if school_outcode %}
+<section class="report-section">
+    <h2>The fee-paying alternative</h2>
+    <p class="section-sub">
+        Weighing {{ school.name }} against the independent sector?
+        <a href="/area/{{ school_outcode }}/private-schools">Every fee-paying school around {{ school_outcode }}: ages, selection, and how full each one is →</a>
+    </p>
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>Checking a specific address</h2>
     <p class="section-sub">

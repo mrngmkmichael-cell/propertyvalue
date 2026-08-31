@@ -124,6 +124,9 @@
     {% endif %}
     <p class="section-sub">
         <a href="/property?postcode={{ outcode }}">Check sold prices for a specific address in {{ outcode }} →</a>
+        {% if region_slug %}
+        <br><a href="/market/house-prices/{{ region_slug }}">See where {{ outcode }} ranks across {{ region_name }} →</a>
+        {% endif %}
     </p>
 </section>
 

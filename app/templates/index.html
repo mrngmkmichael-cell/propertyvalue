@@ -149,6 +149,17 @@
             <button type="submit">Search</button>
         </form>
 
+        {# The funnel loses 96% of visitors before their first search
+           (measured 31 Aug 2026: 12,247 visits, 489 searches), and the
+           first step demands a postcode from memory. One link to a
+           real, usually-cached report shows the product with zero
+           typing. M1 1AE: central Manchester, a full report with every
+           card populated. #}
+        <p class="lx-hero-sample">
+            No postcode in mind?
+            <a href="/property?postcode=M1+1AE">See a real report for M1 1AE, central Manchester &rarr;</a>
+        </p>
+
         {# Filled in from this device's own localStorage, so it is empty
            markup for a first-time visitor and never appears in the
            cached HTML. #}

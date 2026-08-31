@@ -6,6 +6,16 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- One-click sample report link in the hero (M1 1AE), zero-typing route
+  into the product.
+- Globe intro and Leaflet self-hosted under /static/vendor/; no scripts
+  from CDNs anywhere, pinned by a test.
+- Area guides link to their regional price league page.
+- School pages and the schools guide cross-link to the district's
+  private-schools page.
+- /schools/outstanding: targets "ofsted outstanding schools near me"
+  with real register counts, per-region table, top districts.
+
 - Per-school pages de-duplicated: lead with each school's own data
   (roll, capacity, EAL, destinations, result trends). 73% shared
   phrasing down to 53%.

@@ -129,7 +129,13 @@
             <p class="section-sub">{{ area.landscape.higher_education_names | join(', ') }}</p>
             {% endif %}
             {% if area.outcode %}
-            <p class="section-sub"><a href="/area/{{ area.outcode }}">House prices, crime and flood risk for {{ area.outcode }} →</a></p>
+            {# "private school {place}" is the query family Search
+               Console shows actually ranking (3 of the top 6 queries,
+               31 Aug 2026), and these pages barely linked to it. #}
+            <p class="section-sub">
+                <a href="/area/{{ area.outcode }}">House prices, crime and flood risk for {{ area.outcode }} →</a>
+                <br><a href="/area/{{ area.outcode }}/private-schools">Fee-paying schools around {{ area.outcode }}: ages, selection, how full →</a>
+            </p>
             {% endif %}
             {% for s in area.landscape.all_schools %}
             {% set modal_id = "school-modal-" ~ area_idx ~ "-" ~ s.urn %}

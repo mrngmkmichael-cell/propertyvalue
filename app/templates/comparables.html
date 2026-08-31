@@ -114,8 +114,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
 
 {% block extra_head %}
 {% if comparables and not google_maps_api_key %}
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 {% endif %}
 {% endblock %}
 
@@ -176,8 +175,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initComparablesMap&loading=async" async defer></script>
 {% else %}
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
     const compMap = L.map('comparables-map', { scrollWheelZoom: false }).setView(
         [{{ location.latitude | tojson }}, {{ location.longitude | tojson }}], 15

@@ -43,6 +43,8 @@ PAGES = [
     "/area/W4/private-schools", "/property/checklist?postcode=M1+1AE",
     # Added 30 Aug 2026 with the per-region price pages.
     "/market/house-prices/london", "/market/house-prices/north-west",
+    # Added 31 Aug 2026 with the page itself.
+    "/schools/outstanding",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)

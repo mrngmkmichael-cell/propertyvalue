@@ -6231,6 +6231,15 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 
 .lx-hero-dek,
 .lx-hero-stats { text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55); }
+/* The zero-typing route into the product, under the search form. Quiet
+   prose with one link, not a button: the button on this screen is
+   Search, and two competing buttons would cost more than this earns. */
+.lx-hero-sample {
+    margin: 1rem 0 0;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    text-shadow: 0 1px 12px rgba(0, 0, 0, 0.55);
+}
 .lx-hero-h1 .lx-w { display: block; }
 
 .lx-hero-dek {

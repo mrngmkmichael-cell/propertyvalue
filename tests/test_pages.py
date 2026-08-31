@@ -582,3 +582,16 @@ def test_the_extension_page_links_to_the_real_store_listing(client):
     body = client.get("/browser-extension").text
     assert "chromewebstore.google.com/detail/ukpropertyinsight-overlay" in body
     assert "pending review" not in body.lower()
+
+
+def test_outstanding_schools_page_renders_with_real_counts(client):
+    """Targets "ofsted outstanding schools near me", a query Search
+    Console shows at position 59 with no page answering it. Every number
+    on it comes from the schools register, and the no-current-grade
+    caveat must be present: without it the page implies ungraded schools
+    failed something."""
+    body = client.get("/schools/outstanding").text
+    assert "Outstanding schools in England" in body
+    assert "no current grade, and that" in body
+    assert 'action="/schools/guide"' in body
+    assert body.count("<h1") == 1

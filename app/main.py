@@ -30,7 +30,7 @@ from sqlalchemy import func, select
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache
-from app.models import FigureReport, PageCache, PageView, PremiumUnlock, ShareLink, User
+from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -1326,7 +1326,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     from /areas and fully crawlable - they are just not queue-jumped to
     the front. Grow this list as districts earn traffic.
     """
-    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
+    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/schools/outstanding", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
                     "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
                     "/market/district-prices"]
@@ -4011,6 +4011,18 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
 
     context["nearby_outcodes"] = _nearest()
 
+    # Which regional price league this district belongs to, so the
+    # guide's price section can link its reader (and its link equity)
+    # to /market/house-prices/{region}. Set here, outside the cached
+    # payload, purely because this is the shared per-request hook; the
+    # value itself is the same for every viewer.
+    here = next((o for o in ALL_OUTCODES if o["outcode"] == outcode), None)
+    region_name = (here.get("region") or here.get("country")) if here else None
+    context["region_slug"] = next(
+        (slug for slug, name in REGION_SLUGS.items() if name == region_name), None
+    )
+    context["region_name"] = region_name
+
     faqs = []
     la = (context.get("hpi") or {}).get("local_authority") if isinstance(context.get("hpi"), dict) else None
     if la and la.get("average_price"):
@@ -6422,6 +6434,11 @@ async def school_admission_page(request: Request, urn: int, slug: str):
     context["nearby_areas"] = await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )
+    # The district this school stands in, for the link to its
+    # private-schools page. Only when the outcode is real: a malformed
+    # postcode in GIAS must not build a link to a 404.
+    school_outcode = (profile.get("postcode") or "").split(" ")[0].upper()
+    context["school_outcode"] = school_outcode if school_outcode in KNOWN_OUTCODES else None
     # The three questions the page answers on screen, as structured data.
     # Phrased exactly as someone would search them.
     context["school_faqs_jsonld"] = _faq_jsonld([
@@ -6564,6 +6581,84 @@ def _private_school_faqs(outcode: str, district: str, payload: dict):
             f"{single_sex} of the {n} take boys only or girls only. The rest are mixed.",
         ))
     return faqs
+
+
+OUTSTANDING_CACHE_TTL_S = 86400
+
+
+def _outstanding_stats() -> dict:
+    """Everything /schools/outstanding says, computed from the schools
+    register in one scan and cached for a day. The page exists because
+    "ofsted outstanding schools near me" shows up in Search Console
+    (position 59 on 31 Aug 2026) and no page answered it directly."""
+    region_of = {o["outcode"]: (o.get("region") or o.get("country") or "Other")
+                 for o in ALL_OUTCODES}
+    by_region: dict = {}
+    by_outcode: dict = {}
+    total = outstanding = primary = secondary = ungraded = 0
+    with db.get_session() as session:
+        rows = session.execute(
+            select(School.postcode, School.phase, School.ofsted_rating,
+                   School.ofsted_rating_label)
+        ).all()
+    for postcode, phase, rating, label in rows:
+        total += 1
+        if not label:
+            ungraded += 1
+        if rating != 1:
+            continue
+        outstanding += 1
+        if phase == "Primary":
+            primary += 1
+        elif phase == "Secondary":
+            secondary += 1
+        outcode = (postcode or "").split(" ")[0]
+        region = region_of.get(outcode)
+        if region:
+            by_region[region] = by_region.get(region, 0) + 1
+        if outcode:
+            by_outcode[outcode] = by_outcode.get(outcode, 0) + 1
+    top_districts = sorted(by_outcode.items(), key=lambda kv: (-kv[1], kv[0]))[:15]
+    return {
+        "total_schools": total,
+        "outstanding": outstanding,
+        "outstanding_primary": primary,
+        "outstanding_secondary": secondary,
+        "ungraded": ungraded,
+        "by_region": sorted(by_region.items(), key=lambda kv: -kv[1]),
+        "top_districts": [
+            {"outcode": oc, "count": n, "district": next(
+                (o.get("district") or "" for o in ALL_OUTCODES if o["outcode"] == oc), "")}
+            for oc, n in top_districts
+        ],
+    }
+
+
+@app.get("/schools/outstanding")
+async def outstanding_schools(request: Request):
+    context = base_context(request)
+    cached = _cache.get(("outstanding_stats",), OUTSTANDING_CACHE_TTL_S)
+    if cached is None:
+        cached = await asyncio.to_thread(_outstanding_stats)
+        _cache.set(("outstanding_stats",), cached)
+    context.update(cached)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/outstanding"
+    context["outstanding_faqs_jsonld"] = _faq_jsonld([
+        ("How many Ofsted Outstanding schools are there in England?",
+         f"{cached['outstanding']:,} schools on the Department for Education's register carry "
+         f"an Outstanding grade from their most recent graded inspection: "
+         f"{cached['outstanding_primary']:,} primary and {cached['outstanding_secondary']:,} "
+         "secondary, with the rest nurseries, all-through and special schools."),
+        ("How do I find Outstanding schools near me?",
+         "Put your postcode into the school guide and it lists every Ofsted-rated school "
+         "within 3 miles, Outstanding first, with each school's rating, results and real "
+         "admission distance where one is published."),
+        ("Why do so many schools have no Ofsted grade?",
+         "Ofsted stopped giving new single-word overall grades in late 2024, so a school "
+         "inspected since then carries a report card rather than a one-word rating. An "
+         "Outstanding grade shown anywhere is the school's most recent graded inspection."),
+    ])
+    return templates.TemplateResponse(request, "outstanding_schools.html", context)
 
 
 @app.get("/schools/guide")

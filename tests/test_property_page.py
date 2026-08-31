@@ -436,3 +436,19 @@ def test_the_cold_report_wait_is_recorded_not_invisible(client, fake_report):
     assert r2.status_code == 200
     with get_session() as s:
         assert s.query(PageView).filter(PageView.path == BUILDING_PATH).count() == after
+
+
+def test_the_report_loads_no_third_party_scripts_or_styles(client, fake_report):
+    """The globe intro was the one script on the site served from a CDN
+    (jsdelivr), with Leaflet from unpkg beside it on dev. Self-hosted 31
+    Aug 2026: a decorative intro is not worth a third-party dependency
+    on every report. Google Maps is the sole exception in production and
+    only when the key is configured, which in tests it is not."""
+    import re
+
+    body = _report(client, fake_report)
+    for src in re.findall(r'<script[^>]+src="([^"]+)"', body):
+        assert src.startswith("/"), f"off-site script: {src}"
+    for href in re.findall(r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"', body) + \
+                re.findall(r'<link[^>]+href="([^"]+)"[^>]+rel="stylesheet"', body):
+        assert href.startswith("/"), f"off-site stylesheet: {href}"
