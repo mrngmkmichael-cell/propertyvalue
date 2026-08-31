@@ -5,9 +5,9 @@
 {% block og_title %}{{ region }}: house prices by district{% endblock %}
 
 {% block content %}
-<a class="back-link" href="/market/district-prices">&larr; The national table</a>
+<a class="back-link" href="/market/district-prices">{{ tr("&larr; The national table") }}</a>
 
-<span class="kicker">Market data</span>
+<span class="kicker">{{ tr("Market data") }}</span>
 <h1>What homes sell for across {{ region }}</h1>
 <p class="dek">
     Every {{ region }} postcode district with enough recorded sales to rank, by the median of
@@ -19,7 +19,7 @@
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ total }}</span><span class="score-tile-label">districts ranked in {{ region }}</span></div>
     {% if median_of_medians %}
-    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">the middle district's median</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ median_of_medians | gbp }}</span><span class="score-tile-label">{{ tr("the middle district's median") }}</span></div>
     {% endif %}
     {% if rows | length > 1 %}
     <div class="score-tile"><span class="score-tile-value">{{ (rows[-1].median / rows[0].median) | round(1) }}&times;</span><span class="score-tile-label">between {{ rows[-1].outcode }} and {{ rows[0].outcode }}</span></div>
@@ -27,10 +27,10 @@
 </div>
 
 <section class="report-section">
-    <h2>Cheapest to dearest</h2>
+    <h2>{{ tr("Cheapest to dearest") }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>District</th><th>Area</th><th class="num">Median sale</th><th class="num">Sales</th><th class="num">Range</th></tr></thead>
+            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("Median sale") }}</th><th class="num">{{ tr("Sales") }}</th><th class="num">{{ tr("Range") }}</th></tr></thead>
             <tbody>
                 {% for r in rows %}
                 <tr>
@@ -55,12 +55,12 @@
 <p class="notice">
     No {{ region }} district holds enough recorded sales in the cache yet for a median to mean
     anything. The table fills as the area guides refresh; the
-    <a href="/market/district-prices">national table</a> shows what is ranked so far.
+    <a href="/market/district-prices">{{ tr("national table") }}</a> {{ tr("shows what is ranked so far.") }}
 </p>
 {% endif %}
 
 <section class="report-section">
-    <h2>Other regions</h2>
+    <h2>{{ tr("Other regions") }}</h2>
     <p class="section-sub">
         {% for slug, name in other_regions %}<a href="/market/house-prices/{{ slug }}">{{ name }}</a>{{ " &middot; " | safe if not loop.last }}{% endfor %}
     </p>
@@ -70,14 +70,11 @@
    ranking input a page cannot give itself. #}
 <p class="section-sub">
     Run a listings site or a local {{ region }} page? You can
-    <a href="/embed">link any address to its free report</a>, so your readers get the checks
-    without you building anything.
+    <a href="/embed">{{ tr("link any address to its free report") }}</a>{{ tr(", so your readers get the checks without you building anything.") }}
 </p>
 
 <p class="section-sub">
-    Sold prices from HM Land Registry price paid data; medians computed per district as on each
-    area guide. Read how every figure is sourced on the <a href="/methodology">methodology
-    page</a>. If something looks wrong, <a href="/support">tell us</a> and it goes on the
-    <a href="/accuracy">accuracy log</a>.
+    {{ tr("Sold prices from HM Land Registry price paid data; medians computed per district as on each area guide. Read how every figure is sourced on the") }} <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something looks wrong,") }} <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }}
+    <a href="/accuracy">{{ tr("accuracy log") }}</a>.
 </p>
 {% endblock %}

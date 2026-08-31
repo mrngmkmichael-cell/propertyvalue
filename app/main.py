@@ -16,6 +16,7 @@ from urllib.parse import quote, urlencode
 from xml.sax.saxutils import escape
 
 import httpx
+import jinja2
 from dotenv import load_dotenv
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
@@ -28,7 +29,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
 
-from app import auth, db, i18n, school_shortlist, watchlist
+from app import auth, db, i18n, school_shortlist, translations, watchlist
 from app.services import _cache
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
@@ -929,6 +930,34 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
 templates.env.filters["gbp"] = _format_gbp
 templates.env.filters["distance"] = _format_distance
 templates.env.globals["seo_title"] = seo_title
+
+
+@jinja2.pass_context
+def _t(context, source: str) -> str:
+    """{{ tr("Share this report") }} in a template.
+
+    Named tr, not the conventional _, because these templates already
+    use {% set _ = items.append(...) %} as the discard idiom in about
+    thirty places. That assigns None to _ for the rest of the block, so
+    a gettext-style _ silently became "NoneType is not callable" on the
+    report page. Renaming one global beat rewriting thirty working
+    lines to suit a naming convention.
+
+    Reads the language off the render context, which base_context always
+    sets, so no template has to thread it through. An unknown string or
+    an unknown language returns the English source, which is what lets a
+    template be marked up before its translations exist: the page keeps
+    working in English until the words arrive.
+    """
+    # Markup, not a plain string, so a marked-up literal renders exactly
+    # as the raw template text did: "&rarr;" stays an arrow instead of
+    # becoming "&amp;rarr;", and "it's" keeps its apostrophe rather than
+    # gaining an entity. These strings come from files in this repo, not
+    # from anything a visitor can set, so there is nothing to escape.
+    return Markup(translations.translate(source, context.get("lang") or "en"))
+
+
+templates.env.globals["tr"] = _t
 
 
 if indexnow.key():

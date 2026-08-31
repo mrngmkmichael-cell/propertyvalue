@@ -4,12 +4,12 @@
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<span class="kicker">Your research</span>
-<h1>My properties</h1>
-<p class="dek">Every property you're weighing up, in one place. Notes, changes since you last looked, and side-by-side comparison.</p>
+<span class="kicker">{{ tr("Your research") }}</span>
+<h1>{{ tr("My properties") }}</h1>
+<p class="dek">{{ tr("Every property you're weighing up, in one place. Notes, changes since you last looked, and side-by-side comparison.") }}</p>
 
 {% if alerts_configured and items %}
-<p class="section-sub">We email you if anything on this list changes. No need to keep checking back.</p>
+<p class="section-sub">{{ tr("We email you if anything on this list changes. No need to keep checking back.") }}</p>
 
 {# Off unless asked for. The change-alert email tells every reader it
    only arrives when something actually changed, so a scheduled send
@@ -20,16 +20,16 @@
                {% if current_user.weekly_digest %}checked{% endif %}
                onchange="this.form.submit()">
         <span>
-            <strong>Also send me a weekly round-up</strong>
-            Every Monday, one email covering all your saved properties, including the weeks nothing moves. Off by default, and you can stop it any time.
+            <strong>{{ tr("Also send me a weekly round-up") }}</strong>
+            {{ tr("Every Monday, one email covering all your saved properties, including the weeks nothing moves. Off by default, and you can stop it any time.") }}
         </span>
     </label>
-    <noscript><button type="submit">Save</button></noscript>
+    <noscript><button type="submit">{{ tr("Save") }}</button></noscript>
 </form>
 {% if request.query_params.get("digest") == "on" %}
-<p class="notice notice-good">Weekly round-up on. The first one arrives Monday.</p>
+<p class="notice notice-good">{{ tr("Weekly round-up on. The first one arrives Monday.") }}</p>
 {% elif request.query_params.get("digest") == "off" %}
-<p class="notice">Weekly round-up off. You will still hear from us when something changes.</p>
+<p class="notice">{{ tr("Weekly round-up off. You will still hear from us when something changes.") }}</p>
 {% endif %}
 {% endif %}
 
@@ -50,7 +50,7 @@
             <div class="myprops-card-head">
                 <label class="myprops-compare-pick">
                     <input type="checkbox" name="item_ids" value="{{ item.id }}">
-                    <span>Compare</span>
+                    <span>{{ tr("Compare") }}</span>
                 </label>
                 <span class="myprops-saved-date">saved {{ item.created_at.strftime("%d %b") }}</span>
             </div>
@@ -67,24 +67,24 @@
             <div class="myprops-note-block" data-note-block>
                 {% if item.note %}
                 <p class="myprops-note">{{ item.note }}</p>
-                <button type="button" class="myprops-note-edit" data-note-edit>Edit note</button>
+                <button type="button" class="myprops-note-edit" data-note-edit>{{ tr("Edit note") }}</button>
                 {% else %}
-                <button type="button" class="myprops-note-edit" data-note-edit>Add a note</button>
+                <button type="button" class="myprops-note-edit" data-note-edit>{{ tr("Add a note") }}</button>
                 {% endif %}
                 <div class="myprops-note-form" hidden>
                     <textarea form="note-form-{{ item.id }}" name="note" rows="3" maxlength="500" placeholder="e.g. viewing Sat 2pm, garden faces north, ask about the boiler">{{ item.note }}</textarea>
-                    <button type="submit" form="note-form-{{ item.id }}">Save note</button>
+                    <button type="submit" form="note-form-{{ item.id }}">{{ tr("Save note") }}</button>
                 </div>
             </div>
             <div class="myprops-card-foot">
-                <button type="submit" class="myprops-remove" formaction="/watchlist/remove" formmethod="post" name="item_id" value="{{ item.id }}">Remove</button>
+                <button type="submit" class="myprops-remove" formaction="/watchlist/remove" formmethod="post" name="item_id" value="{{ item.id }}">{{ tr("Remove") }}</button>
             </div>
         </div>
         {% endfor %}
     </div>
     <div class="myprops-compare-bar">
-        <button type="submit">Compare selected</button>
-        <span class="section-sub">Tick 2 or 3 properties to see them side by side.</span>
+        <button type="submit">{{ tr("Compare selected") }}</button>
+        <span class="section-sub">{{ tr("Tick 2 or 3 properties to see them side by side.") }}</span>
     </div>
 </form>
 {# Note forms live outside the compare form - nested forms are invalid
@@ -101,10 +101,9 @@
 
 {% if districts %}
 <section class="landing-section" style="margin-top: 2.5rem;">
-    <h2 class="landing-heading">Districts you follow</h2>
+    <h2 class="landing-heading">{{ tr("Districts you follow") }}</h2>
     <p class="landing-subheading">
-        Whole areas rather than single addresses, for while you are still deciding where. Checked
-        each time you open this page, never on a schedule.
+        {{ tr("Whole areas rather than single addresses, for while you are still deciding where. Checked each time you open this page, never on a schedule.") }}
     </p>
     <div class="myprops-grid">
         {% for d in districts %}
@@ -125,7 +124,7 @@
             {% else %}
             {# Silence is the honest and common answer here. Saying so
                beats an empty card, which reads as one that failed. #}
-            <p class="myprops-note">Nothing has moved here since you last looked.</p>
+            <p class="myprops-note">{{ tr("Nothing has moved here since you last looked.") }}</p>
             {% endif %}
 
             {% if d.summary and (d.summary.median_price or d.summary.crime_total is not none) %}
@@ -139,7 +138,7 @@
             <div class="myprops-card-foot">
                 <form action="/districts/unfollow" method="post">
                     <input type="hidden" name="outcode" value="{{ d.outcode }}">
-                    <button type="submit" class="myprops-remove">Stop following</button>
+                    <button type="submit" class="myprops-remove">{{ tr("Stop following") }}</button>
                 </form>
             </div>
         </div>
@@ -150,8 +149,8 @@
 
 {% if opened_reports %}
 <section class="landing-section" style="margin-top: 2.5rem;">
-    <h2 class="landing-heading">Reports you've opened</h2>
-    <p class="landing-subheading">Full reports you've already used. Save one to keep notes on it and get an email when something changes.</p>
+    <h2 class="landing-heading">{{ tr("Reports you've opened") }}</h2>
+    <p class="landing-subheading">{{ tr("Full reports you've already used. Save one to keep notes on it and get an email when something changes.") }}</p>
     <div class="myprops-opened-list">
         {% for r in opened_reports %}
         <div class="myprops-opened-row">
@@ -162,7 +161,7 @@
             <form action="/watchlist/save" method="post">
                 <input type="hidden" name="postcode" value="{{ r.postcode }}">
                 <input type="hidden" name="house_number" value="{{ r.house_number }}">
-                <button type="submit">Save</button>
+                <button type="submit">{{ tr("Save") }}</button>
             </form>
         </div>
         {% endfor %}

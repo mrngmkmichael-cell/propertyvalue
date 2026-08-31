@@ -153,12 +153,12 @@
     </script>
     {# First focusable thing on every page: lets a keyboard or screen-reader
        user jump past the nav. Visually hidden until it receives focus. #}
-    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="skip-link" href="#main">{{ tr("Skip to content") }}</a>
     <div id="page-loading-overlay" aria-hidden="true">
         <div class="page-loading-inner">
             <div class="page-loading-spinner"></div>
-            <div class="page-loading-title">Gathering your report</div>
-            <div class="page-loading-message" id="page-loading-message">Pulling sold price history&hellip;</div>
+            <div class="page-loading-title">{{ tr("Gathering your report") }}</div>
+            <div class="page-loading-message" id="page-loading-message">{{ tr("Pulling sold price history&hellip;") }}</div>
             <div class="page-loading-bar-track"><div class="page-loading-bar-fill" id="page-loading-bar"></div></div>
         </div>
     </div>
@@ -175,8 +175,8 @@
                             <circle cx="29" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="3.6"/>
                             <line x1="34.5" y1="37.5" x2="41" y2="44" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
                         </svg>
-                    </span>UKPropertyInsight</a>
-                <span class="tagline">UK Property Intelligence</span>
+                    </span>{{ tr("UKPropertyInsight") }}</a>
+                <span class="tagline">{{ tr("UK Property Intelligence") }}</span>
             </div>
             {# A postcode box on every page except the homepage, which
                has the full search form in its hero. Same action and field
@@ -184,14 +184,14 @@
             {% if request.url.path != "/" %}
             <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
-                    <label for="header-postcode" class="visually-hidden">Postcode</label>
+                    <label for="header-postcode" class="visually-hidden">{{ tr("Postcode") }}</label>
                     <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" required>
                 </div>
                 {# Slides open when the postcode field is used, so the
                    collapsed header stays narrow enough for one row. Always
                    open on the stacked layouts where there is room. #}
                 <div class="header-search-house">
-                    <label for="header-house" class="visually-hidden">House or flat number (optional)</label>
+                    <label for="header-house" class="visually-hidden">{{ tr("House or flat number (optional)") }}</label>
                     <input type="text" id="header-house" name="house_number" placeholder="No. / Flat" autocomplete="off">
                 </div>
                 <button type="submit" class="header-search-go" aria-label="Search">
@@ -283,13 +283,13 @@
                 {{ current_user.free_unlocks_left }} free full reports left
             {% endif %}
         </span>
-        <a href="/premium">See plans</a>
+        <a href="/premium">{{ tr("See plans") }}</a>
     </div>
     {% endif %}
 
     <main class="site-main" id="main" tabindex="-1">
         {% if request.query_params.get("reset") == "done" %}
-        <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Password changed.</strong> You're signed in.</p>
+        <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>{{ tr("Password changed.") }}</strong> {{ tr("You're signed in.") }}</p>
         {% endif %}
         {% block content %}{% endblock %}
     </main>
@@ -297,23 +297,23 @@
     <footer class="site-footer">
         <div class="site-footer-inner">
             <p>
-                Contains data made available under the
+                {{ tr("Contains data made available under the") }}
                 <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/" target="_blank" rel="noopener">
-                    Open Government Licence v3.0
+                    {{ tr("Open Government Licence v3.0") }}
                 </a>.
                 {% block attribution %}{% endblock %}
             </p>
             <p>
-                Questions or feedback? <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>
-                &middot; <a href="/support">Support</a>
-                &middot; <a href="/privacy">Privacy Policy</a>
-                &middot; <a href="/terms">Terms of Service</a>
-                &middot; <a href="/market-report">Market Report</a>
+                {{ tr("Questions or feedback?") }} <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a>
+                &middot; <a href="/support">{{ tr("Support") }}</a>
+                &middot; <a href="/privacy">{{ tr("Privacy Policy") }}</a>
+                &middot; <a href="/terms">{{ tr("Terms of Service") }}</a>
+                &middot; <a href="/market-report">{{ tr("Market Report") }}</a>
                 &middot; <a href="/buying-guide">{{ T["nav.buying"] if T else "Buying Guide" }}</a>
                 &middot; <a href="/areas">{{ T["nav.areas"] if T else "Area Guides" }}</a>
-                &middot; <a href="/accuracy">Accuracy log</a>
-                &middot; <a href="/data">Our data</a>
-                &middot; <a href="/embed">For Agents</a>
+                &middot; <a href="/accuracy">{{ tr("Accuracy log") }}</a>
+                &middot; <a href="/data">{{ tr("Our data") }}</a>
+                &middot; <a href="/embed">{{ tr("For Agents") }}</a>
             </p>
             {# Plain links rather than a select: no script needed, and
                the whole list is visible at once for anyone who did not

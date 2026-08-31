@@ -12,9 +12,9 @@
 <script type="application/ld+json">{{ school_jsonld | safe }}</script>
 {% if school_faqs_jsonld %}<script type="application/ld+json">{{ school_faqs_jsonld | safe }}</script>{% endif %}
 
-<a class="back-link" href="/schools/guide">&larr; School guide</a>
+<a class="back-link" href="/schools/guide">{{ tr("&larr; School guide") }}</a>
 
-<span class="kicker">Admissions</span>
+<span class="kicker">{{ tr("Admissions") }}</span>
 <h1>{{ school.name }}</h1>
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured
@@ -27,10 +27,10 @@
 </p>
 
 <section class="report-section">
-    <h2>How far it admitted from</h2>
+    <h2>{{ tr("How far it admitted from") }}</h2>
     <div class="admission-hero">
         <span class="admission-figure">{{ school.miles }}</span>
-        <span class="admission-unit">miles</span>
+        <span class="admission-unit">{{ tr("miles") }}</span>
     </div>
     <p class="section-sub">
         In the {{ school.academic_year }} round, the furthest-away child offered a place at
@@ -41,7 +41,7 @@
     {# The honest part, and the reason this page exists. Most sites draw
        a circle and call it a catchment; there usually isn't one. #}
     <div class="notice">
-        <strong>This is not a catchment area.</strong>
+        <strong>{{ tr("This is not a catchment area.") }}</strong>
         Most English schools do not have one. When {{ school.name }} is oversubscribed, places go
         outward from the school until they run out, so the distance moves each year with how many
         families applied and where they lived. {{ school.miles }} miles was last year's outcome,
@@ -52,65 +52,65 @@
 {% set has_profile = school.admissions_policy or school.religious_character or school.has_sixth_form or school.capacity or school.trust_name %}
 {% if has_profile %}
 <section class="report-section">
-    <h2>What kind of school this is</h2>
+    <h2>{{ tr("What kind of school this is") }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
             <tbody>
                 {% if school.admissions_policy and school.admissions_policy not in ("Not applicable", "Unknown") %}
-                <tr><td><strong>Admissions</strong></td><td>{{ school.admissions_policy }}</td></tr>
+                <tr><td><strong>{{ tr("Admissions") }}</strong></td><td>{{ school.admissions_policy }}</td></tr>
                 {% endif %}
                 {% if school.religious_character %}
-                <tr><td><strong>Religious character</strong></td><td>{{ "No religious character" if school.religious_character in ("None", "Does not apply") else school.religious_character }}</td></tr>
+                <tr><td><strong>{{ tr("Religious character") }}</strong></td><td>{{ "No religious character" if school.religious_character in ("None", "Does not apply") else school.religious_character }}</td></tr>
                 {% endif %}
                 {% if school.has_sixth_form and school.has_sixth_form not in ("Not applicable", "Unknown") %}
-                <tr><td><strong>Sixth form</strong></td><td>{{ school.has_sixth_form }}</td></tr>
+                <tr><td><strong>{{ tr("Sixth form") }}</strong></td><td>{{ school.has_sixth_form }}</td></tr>
                 {% endif %}
                 {% if school.capacity and school.number_on_roll %}
                 <tr>
-                    <td><strong>How full</strong></td>
+                    <td><strong>{{ tr("How full") }}</strong></td>
                     <td>{{ "{:,}".format(school.number_on_roll) }} pupils in {{ "{:,}".format(school.capacity) }} places ({{ school.occupancy_pct }}% full{% if school.occupancy_pct > 100 %}, over capacity{% endif %})</td>
                 </tr>
                 {% endif %}
                 {% if school.trust_name %}
-                <tr><td><strong>Trust</strong></td><td>{{ school.trust_name }}</td></tr>
+                <tr><td><strong>{{ tr("Trust") }}</strong></td><td>{{ school.trust_name }}</td></tr>
                 {% endif %}
                 {% if school.local_authority %}
-                <tr><td><strong>Local authority</strong></td><td>{{ school.local_authority }}</td></tr>
+                <tr><td><strong>{{ tr("Local authority") }}</strong></td><td>{{ school.local_authority }}</td></tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
-    <p class="section-sub">Department for Education register (GIAS).</p>
+    <p class="section-sub">{{ tr("Department for Education register (GIAS).") }}</p>
 </section>
 {% endif %}
 
 {% if school.ks4 or school.ks2 or school.fsm_eligible_pct is not none %}
 <section class="report-section">
-    <h2>How the school is doing</h2>
+    <h2>{{ tr("How the school is doing") }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
             <tbody>
                 {% if school.ofsted_rating_label %}
                 <tr>
-                    <td><strong>Ofsted</strong></td>
+                    <td><strong>{{ tr("Ofsted") }}</strong></td>
                     <td>{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}, inspected {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}</td>
                 </tr>
                 {% endif %}
                 {% if school.ks4 and school.ks4.progress8 is not none %}
                 <tr>
-                    <td><strong>Progress 8</strong></td>
+                    <td><strong>{{ tr("Progress 8") }}</strong></td>
                     <td>{{ "%+.2f"|format(school.ks4.progress8) }} ({{ school.ks4.year }}), where 0 is the national average</td>
                 </tr>
                 {% endif %}
                 {% if school.ks4 and school.ks4.attainment8 is not none %}
                 <tr>
-                    <td><strong>Attainment 8</strong></td>
+                    <td><strong>{{ tr("Attainment 8") }}</strong></td>
                     <td>{{ school.ks4.attainment8 }} ({{ school.ks4.year }})</td>
                 </tr>
                 {% endif %}
                 {% if school.ks2 and school.ks2.rwm_expected_pct is not none %}
                 <tr>
-                    <td><strong>Meeting the expected standard</strong></td>
+                    <td><strong>{{ tr("Meeting the expected standard") }}</strong></td>
                     <td>{{ school.ks2.rwm_expected_pct }}% in reading, writing and maths ({{ school.ks2.year }})</td>
                 </tr>
                 {% endif %}
@@ -120,7 +120,7 @@
     {% if school.ks2_trend or school.ks4_trend %}
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>Year</th><th class="num">{{ "Progress 8" if school.ks4_trend else "Meeting the expected standard" }}</th></tr></thead>
+            <thead><tr><th>{{ tr("Year") }}</th><th class="num">{{ "Progress 8" if school.ks4_trend else "Meeting the expected standard" }}</th></tr></thead>
             <tbody>
                 {% for t in (school.ks4_trend or school.ks2_trend) %}
                 <tr>
@@ -132,7 +132,7 @@
         </table>
     </div>
     {% endif %}
-    <p class="section-sub">Ofsted, and the Department for Education's published performance data.</p>
+    <p class="section-sub">{{ tr("Ofsted, and the Department for Education's published performance data.") }}</p>
 </section>
 {% endif %}
 
@@ -143,18 +143,18 @@
         <table class="tx-table">
             <tbody>
                 {% if school.female_pct is not none and school.male_pct is not none %}
-                <tr><td><strong>Girls and boys</strong></td><td>{{ school.female_pct }}% girls, {{ school.male_pct }}% boys</td></tr>
+                <tr><td><strong>{{ tr("Girls and boys") }}</strong></td><td>{{ school.female_pct }}% girls, {{ school.male_pct }}% boys</td></tr>
                 {% endif %}
                 {% if school.eal_pct is not none %}
-                <tr><td><strong>English as an additional language</strong></td><td>{{ school.eal_pct }}% of pupils</td></tr>
+                <tr><td><strong>{{ tr("English as an additional language") }}</strong></td><td>{{ school.eal_pct }}% of pupils</td></tr>
                 {% endif %}
                 {% if school.fsm_eligible_pct is not none %}
-                <tr><td><strong>Free school meals</strong></td><td>{{ school.fsm_eligible_pct }}% of pupils eligible</td></tr>
+                <tr><td><strong>{{ tr("Free school meals") }}</strong></td><td>{{ school.fsm_eligible_pct }}% of pupils eligible</td></tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
-    <p class="section-sub">DfE school census, most recent published year.</p>
+    <p class="section-sub">{{ tr("DfE school census, most recent published year.") }}</p>
 </section>
 {% endif %}
 
@@ -195,7 +195,7 @@
     </p>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>District</th><th>Area</th><th class="num">From the school</th></tr></thead>
+            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("From the school") }}</th></tr></thead>
             <tbody>
                 {% for a in nearby_areas %}
                 <tr>
@@ -212,7 +212,7 @@
 
 {% if school_outcode %}
 <section class="report-section">
-    <h2>The fee-paying alternative</h2>
+    <h2>{{ tr("The fee-paying alternative") }}</h2>
     <p class="section-sub">
         Weighing {{ school.name }} against the independent sector?
         <a href="/area/{{ school_outcode }}/private-schools">Every fee-paying school around {{ school_outcode }}: ages, selection, and how full each one is →</a>
@@ -221,22 +221,22 @@
 {% endif %}
 
 <section class="report-section">
-    <h2>Checking a specific address</h2>
+    <h2>{{ tr("Checking a specific address") }}</h2>
     <p class="section-sub">
         Put a postcode in and the report measures the distance from {{ school.name }} to that
         front door, alongside the other checks on the same address.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
-            <label for="school-postcode">UK postcode</label>
+            <label for="school-postcode">{{ tr("UK postcode") }}</label>
             <input type="text" id="school-postcode" name="postcode" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>
         </div>
-        <button type="submit">Check this address</button>
+        <button type="submit">{{ tr("Check this address") }}</button>
     </form>
 </section>
 
 <section class="report-section">
-    <h2>Common questions</h2>
+    <h2>{{ tr("Common questions") }}</h2>
     <div class="faq-list">
         <details class="faq-item">
             <summary>What is the catchment area for {{ school.name }}?</summary>
@@ -275,7 +275,7 @@
 <p class="section-sub">
     Admission distance published by {{ school.authority }}. School details from the Department for
     Education's register, ratings from Ofsted. Read how every figure on this site is sourced on the
-    <a href="/methodology">methodology page</a>. If something here looks wrong,
-    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
+    <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something here looks wrong,") }}
+    <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
 </p>
 {% endblock %}

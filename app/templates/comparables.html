@@ -6,15 +6,15 @@
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<a class="back-link" href="/">&larr; New search</a>
+<a class="back-link" href="/">{{ tr("&larr; New search") }}</a>
 
 {% if location %}{{ tabnav.tabs(location, house_number, active_tab) }}{% endif %}
 
 {% if not query %}
-    <p>Enter a postcode to get started.</p>
+    <p>{{ tr("Enter a postcode to get started.") }}</p>
 
 {% elif error == "not_found" %}
-    <span class="kicker">Not found</span>
+    <span class="kicker">{{ tr("Not found") }}</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
         We couldn't find that postcode. Double-check the spelling. It should look like
@@ -22,15 +22,15 @@
     </p>
 
 {% elif error == "lookup_error" %}
-    <span class="kicker">Temporarily unavailable</span>
+    <span class="kicker">{{ tr("Temporarily unavailable") }}</span>
     <h1>{{ query }}</h1>
     <p class="notice notice-error">
-        The postcode lookup service didn't respond. Try again in a moment.
+        {{ tr("The postcode lookup service didn't respond. Try again in a moment.") }}
     </p>
 
 {% else %}
     <div class="report-head">
-        <span class="kicker">Comparables</span>
+        <span class="kicker">{{ tr("Comparables") }}</span>
         <h1>{{ location.postcode }}</h1>
         <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
     </div>
@@ -38,7 +38,7 @@
     <section class="report-section" id="comparables" data-animate>
         {% if comparables_error %}
             <p class="notice notice-error">
-                The comparables data service didn't respond. Try again in a moment.
+                {{ tr("The comparables data service didn't respond. Try again in a moment.") }}
             </p>
         {% elif comparables %}
             <p class="section-sub">
@@ -76,13 +76,13 @@
             <table class="tx-table" id="comparables-table">
                 <thead>
                     <tr>
-                        <th>Address</th>
-                        <th>Postcode</th>
-                        <th>Type</th>
-                        <th>Tenure</th>
-                        <th class="num">Price</th>
-                        <th>Date</th>
-                        <th class="num">Distance</th>
+                        <th>{{ tr("Address") }}</th>
+                        <th>{{ tr("Postcode") }}</th>
+                        <th>{{ tr("Type") }}</th>
+                        <th>{{ tr("Tenure") }}</th>
+                        <th class="num">{{ tr("Price") }}</th>
+                        <th>{{ tr("Date") }}</th>
+                        <th class="num">{{ tr("Distance") }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,7 +100,7 @@
                 </tbody>
             </table>
         {% else %}
-            <p class="notice">No sold prices recorded nearby.</p>
+            <p class="notice">{{ tr("No sold prices recorded nearby.") }}</p>
         {% endif %}
     </section>
 {% endif %}
@@ -108,8 +108,7 @@
 
 {% block attribution %}
 Sold price data from
-<a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">HM Land Registry Price Paid Data</a>.
-Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener">postcodes.io</a>.
+<a href="https://www.gov.uk/government/collections/price-paid-data" target="_blank" rel="noopener">{{ tr("HM Land Registry Price Paid Data") }}</a>{{ tr(". Postcode data from") }} <a href="https://postcodes.io" target="_blank" rel="noopener">{{ tr("postcodes.io") }}</a>.
 {% endblock %}
 
 {% block extra_head %}

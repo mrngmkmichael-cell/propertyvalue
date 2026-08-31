@@ -4,40 +4,37 @@
 
 {% block meta_description %}Add a free UKPropertyInsight badge to your property listings, showing sold prices, EPC and flood risk sourced from official UK government data.{% endblock %}
 {% block content %}
-<span class="kicker">For agents & partners</span>
-<h1>Link to a free property report from your listing</h1>
+<span class="kicker">{{ tr("For agents & partners") }}</span>
+<h1>{{ tr("Link to a free property report from your listing") }}</h1>
 <p class="dek">
-    Generate a small badge that links straight to a free UKPropertyInsight report for one of your
-    listings: sold price history, EPC, flood risk, crime and schools, all in one place for whoever's
-    looking at the property. No sign-up needed to generate one.
+    {{ tr("Generate a small badge that links straight to a free UKPropertyInsight report for one of your listings: sold price history, EPC, flood risk, crime and schools, all in one place for whoever's looking at the property. No sign-up needed to generate one.") }}
 </p>
 
 <form action="/embed" method="get" class="search-form" style="margin: 1.5rem 0;">
     <div class="search-form-field">
-        <label for="embed-postcode">Postcode</label>
+        <label for="embed-postcode">{{ tr("Postcode") }}</label>
         <input type="text" id="embed-postcode" name="postcode" placeholder="e.g. SW1A 1AA" value="{{ postcode }}" autocomplete="off" required>
     </div>
     <div class="search-form-field">
-        <label for="embed-ref">Your referral code (optional)</label>
+        <label for="embed-ref">{{ tr("Your referral code (optional)") }}</label>
         <input type="text" id="embed-ref" name="ref" placeholder="e.g. your agency name" value="{{ ref }}" autocomplete="off">
     </div>
-    <button type="submit">Generate badge</button>
+    <button type="submit">{{ tr("Generate badge") }}</button>
 </form>
 
 {% if embed_snippet %}
 <section class="report-section">
-    <h2>Preview</h2>
+    <h2>{{ tr("Preview") }}</h2>
     <p class="section-sub">{{ embed_snippet | safe }}</p>
 
-    <h2>Embed code</h2>
-    <p class="section-sub">Paste this into your listing page's HTML:</p>
+    <h2>{{ tr("Embed code") }}</h2>
+    <p class="section-sub">{{ tr("Paste this into your listing page's HTML:") }}</p>
     <textarea id="embed-code-box" readonly rows="3" style="width:100%; font-family: monospace; font-size: 0.85rem; padding: 0.75rem; border-radius: var(--radius-md); border: 1px solid var(--border);">{{ embed_snippet }}</textarea>
-    <button type="button" id="embed-copy-btn" style="margin-top: 0.5rem;">Copy code</button>
+    <button type="button" id="embed-copy-btn" style="margin-top: 0.5rem;">{{ tr("Copy code") }}</button>
 
     {% if not ref %}
     <p class="section-sub">
-        Add a referral code above and regenerate to get credit if this leads to a signup. No
-        approval or account needed, it's just attached to the link.
+        {{ tr("Add a referral code above and regenerate to get credit if this leads to a signup. No approval or account needed, it's just attached to the link.") }}
     </p>
     {% endif %}
 </section>

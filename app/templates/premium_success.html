@@ -4,11 +4,10 @@
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
-<span class="kicker">Premium</span>
-<h1>You're all set</h1>
+<span class="kicker">{{ tr("Premium") }}</span>
+<h1>{{ tr("You're all set") }}</h1>
 <p class="section-sub">
-    You're subscribed. Full Premium access is unlocked on every property report from now on. Manage
-    your plan, payment details, or cancel any time from the <a href="/premium">Premium</a> page.
+    {{ tr("You're subscribed. Full Premium access is unlocked on every property report from now on. Manage your plan, payment details, or cancel any time from the") }} <a href="/premium">{{ tr("Premium") }}</a> {{ tr("page.") }}
 </p>
-<p class="section-sub"><a href="/">&larr; Back to search</a></p>
+<p class="section-sub"><a href="/">{{ tr("&larr; Back to search") }}</a></p>
 {% endblock %}

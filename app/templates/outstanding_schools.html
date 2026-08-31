@@ -7,10 +7,10 @@
 {% block content %}
 {% if outstanding_faqs_jsonld %}<script type="application/ld+json">{{ outstanding_faqs_jsonld | safe }}</script>{% endif %}
 
-<a class="back-link" href="/schools/guide">&larr; School guide</a>
+<a class="back-link" href="/schools/guide">{{ tr("&larr; School guide") }}</a>
 
-<span class="kicker">Schools</span>
-<h1>Ofsted Outstanding schools near you</h1>
+<span class="kicker">{{ tr("Schools") }}</span>
+<h1>{{ tr("Ofsted Outstanding schools near you") }}</h1>
 <p class="dek">
     {{ "{:,}".format(outstanding) }} of the {{ "{:,}".format(total_schools) }} schools on the
     Department for Education's register hold an Outstanding grade from their most recent graded
@@ -19,31 +19,30 @@
 </p>
 
 <section class="report-section">
-    <h2>Find them around a postcode</h2>
+    <h2>{{ tr("Find them around a postcode") }}</h2>
     <p class="section-sub">
-        The guide lists every Ofsted-rated school near the postcode, by rating and type, with exam
-        results and the real admission distance where a council publishes one.
+        {{ tr("The guide lists every Ofsted-rated school near the postcode, by rating and type, with exam results and the real admission distance where a council publishes one.") }}
     </p>
     <form class="search-form" action="/schools/guide" method="get">
         <div class="search-form-field">
-            <label for="outstanding-q">Postcode or town</label>
+            <label for="outstanding-q">{{ tr("Postcode or town") }}</label>
             <input type="text" id="outstanding-q" name="q" placeholder="e.g. M14 or York" autocomplete="off" required>
         </div>
-        <button type="submit">Find schools</button>
+        <button type="submit">{{ tr("Find schools") }}</button>
     </form>
 </section>
 
 <div class="scorecard-row">
-    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding) }}</span><span class="score-tile-label">Outstanding schools in England</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding_primary) }}</span><span class="score-tile-label">of them primary</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding_secondary) }}</span><span class="score-tile-label">of them secondary</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding) }}</span><span class="score-tile-label">{{ tr("Outstanding schools in England") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding_primary) }}</span><span class="score-tile-label">{{ tr("of them primary") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(outstanding_secondary) }}</span><span class="score-tile-label">{{ tr("of them secondary") }}</span></div>
 </div>
 
 <section class="report-section">
-    <h2>Where they are</h2>
+    <h2>{{ tr("Where they are") }}</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>Region</th><th class="num">Outstanding schools</th></tr></thead>
+            <thead><tr><th>{{ tr("Region") }}</th><th class="num">{{ tr("Outstanding schools") }}</th></tr></thead>
             <tbody>
                 {% for region, count in by_region %}
                 <tr><td>{{ region }}</td><td class="num">{{ "{:,}".format(count) }}</td></tr>
@@ -52,27 +51,25 @@
         </table>
     </div>
     <p class="section-sub">
-        Regions are assigned from each school's own postcode. Ofsted inspects English schools
-        only; Scotland, Wales and Northern Ireland run their own inspectorates.
+        {{ tr("Regions are assigned from each school's own postcode. Ofsted inspects English schools only; Scotland, Wales and Northern Ireland run their own inspectorates.") }}
     </p>
 </section>
 
 <section class="report-section">
-    <h2>The districts with the most</h2>
+    <h2>{{ tr("The districts with the most") }}</h2>
     <p class="section-sub">
-        Postcode districts with the highest count of Outstanding schools, each linked to its full
-        school breakdown.
+        {{ tr("Postcode districts with the highest count of Outstanding schools, each linked to its full school breakdown.") }}
     </p>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>District</th><th>Area</th><th class="num">Outstanding</th><th></th></tr></thead>
+            <thead><tr><th>{{ tr("District") }}</th><th>{{ tr("Area") }}</th><th class="num">{{ tr("Outstanding") }}</th><th></th></tr></thead>
             <tbody>
                 {% for d in top_districts %}
                 <tr>
                     <td><a href="/schools/guide?q={{ d.outcode }}">{{ d.outcode }}</a></td>
                     <td>{{ d.district }}</td>
                     <td class="num">{{ d.count }}</td>
-                    <td><a href="/area/{{ d.outcode }}">area guide &rarr;</a></td>
+                    <td><a href="/area/{{ d.outcode }}">{{ tr("area guide &rarr;") }}</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -86,28 +83,20 @@
 <div class="notice">
     <strong>{{ "{:,}".format(ungraded) }} schools on the register carry no current grade, and that
     is not a warning sign.</strong>
-    Ofsted stopped giving new single-word overall grades in late 2024, so any school inspected
-    since then has a report card instead of a one-word rating. An Outstanding grade shown here is
-    the school's most recent graded inspection, which for some schools is several years old.
-    Read the inspection date on the school's own page before treating the grade as current.
+    {{ tr("Ofsted stopped giving new single-word overall grades in late 2024, so any school inspected since then has a report card instead of a one-word rating. An Outstanding grade shown here is the school's most recent graded inspection, which for some schools is several years old. Read the inspection date on the school's own page before treating the grade as current.") }}
 </div>
 
 <section class="report-section">
-    <h2>Living near one</h2>
+    <h2>{{ tr("Living near one") }}</h2>
     <p class="section-sub">
-        An Outstanding school nearby does not mean a place at it: most English schools have no
-        fixed catchment, and places go outward from the school until they run out. Where a
-        council publishes how far the last admitted child lived, we show it on the school's own
-        page. And the house itself still needs checking:
-        <a href="/">run the full report on any postcode</a> for sold prices, flood risk, crime
-        and the rest.
+        {{ tr("An Outstanding school nearby does not mean a place at it: most English schools have no fixed catchment, and places go outward from the school until they run out. Where a council publishes how far the last admitted child lived, we show it on the school's own page. And the house itself still needs checking:") }}
+        <a href="/">{{ tr("run the full report on any postcode") }}</a> {{ tr("for sold prices, flood risk, crime and the rest.") }}
     </p>
 </section>
 
 <p class="section-sub">
-    Ratings from Ofsted's published management information; school details from the Department
-    for Education's register (GIAS). Read how every figure is sourced on the
-    <a href="/methodology">methodology page</a>. If something looks wrong,
-    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
+    {{ tr("Ratings from Ofsted's published management information; school details from the Department for Education's register (GIAS). Read how every figure is sourced on the") }}
+    <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something looks wrong,") }}
+    <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
 </p>
 {% endblock %}

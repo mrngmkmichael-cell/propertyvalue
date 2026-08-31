@@ -10,7 +10,7 @@
 
 <a class="back-link" href="/area/{{ outcode }}">&larr; {{ outcode }} area guide</a>
 
-<span class="kicker">Private schools</span>
+<span class="kicker">{{ tr("Private schools") }}</span>
 <h1>Fee-paying schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
 
 {% if schools %}
@@ -32,10 +32,10 @@
     <table class="tx-table">
         <thead>
             <tr>
-                <th>School</th>
-                <th class="num">Distance</th>
-                <th>Ages</th>
-                <th>Takes</th>
+                <th>{{ tr("School") }}</th>
+                <th class="num">{{ tr("Distance") }}</th>
+                <th>{{ tr("Ages") }}</th>
+                <th>{{ tr("Takes") }}</th>
             </tr>
         </thead>
         <tbody>
@@ -47,7 +47,7 @@
                 <td>
                     {{ s.phase_group }}
                     {%- if s.gender and s.gender != 'Mixed' %}<br><span class="school-tag">{{ s.gender }}</span>{% endif -%}
-                    {%- if s.selective %}<br><span class="school-tag">Selective</span>{% endif -%}
+                    {%- if s.selective %}<br><span class="school-tag">{{ tr("Selective") }}</span>{% endif -%}
                     {%- if s.religious_character and s.religious_character not in ('None', 'Does not apply') %}<br><span class="school-tag">{{ s.religious_character }}</span>{% endif -%}
                 </td>
             </tr>
@@ -60,16 +60,16 @@
    reads as a school that failed an inspection, so the reason sits
    where it cannot be missed. #}
 <div class="notice">
-    <strong>No Ofsted grades here, and that is not a bad sign.</strong>
+    <strong>{{ tr("No Ofsted grades here, and that is not a bad sign.") }}</strong>
     Fee-paying schools like {{ _nearest.name }} are inspected by the Independent Schools
     Inspectorate rather than Ofsted, and the ISI publishes no open data feed, so no rating exists
     for us to show. Fees are not open data either.
 </div>
 
 <section class="report-section">
-    <h2>The state schools alongside them</h2>
+    <h2>{{ tr("The state schools alongside them") }}</h2>
     <p class="section-sub">
-        {{ outcode }} also holds <strong>{{ state_primary }}</strong> state primary and
+        {{ outcode }} also holds <strong>{{ state_primary }}</strong> {{ tr("state primary and") }}
         <strong>{{ state_secondary }}</strong> state secondary school{{ "s" if state_secondary != 1 }},
         with Ofsted ratings and exam results.
         <a href="/schools/guide?q={{ outcode }}">The full school breakdown for {{ outcode }} &rarr;</a>
@@ -82,31 +82,31 @@
 </p>
 <section class="report-section">
     <p class="section-sub">
-        The area does have <strong>{{ state_primary }}</strong> state primary and
-        <strong>{{ state_secondary }}</strong> state secondary schools.
+        {{ tr("The area does have") }} <strong>{{ state_primary }}</strong> {{ tr("state primary and") }}
+        <strong>{{ state_secondary }}</strong> {{ tr("state secondary schools.") }}
         <a href="/schools/guide?q={{ outcode }}">See the full school breakdown for {{ outcode }} &rarr;</a>
     </p>
 </section>
 {% endif %}
 
 <section class="report-section">
-    <h2>Checking a specific address</h2>
+    <h2>{{ tr("Checking a specific address") }}</h2>
     <p class="section-sub">
         Put a postcode in and the report measures each school's distance from that front door
         rather than from central {{ outcode }}.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
-            <label for="ps-postcode">UK postcode</label>
+            <label for="ps-postcode">{{ tr("UK postcode") }}</label>
             <input type="text" id="ps-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>
         </div>
-        <button type="submit">Check an address</button>
+        <button type="submit">{{ tr("Check an address") }}</button>
     </form>
 </section>
 
 {% if private_faqs %}
 <section class="report-section">
-    <h2>Common questions</h2>
+    <h2>{{ tr("Common questions") }}</h2>
     <div class="faq-list">
         {% for q, a in private_faqs %}
         <details class="faq-item">
@@ -119,8 +119,7 @@
 {% endif %}
 
 <p class="section-sub">
-    Source: Department for Education, Get Information About Schools. Read how every figure here is
-    sourced on the <a href="/methodology">methodology page</a>. If something looks wrong,
-    <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
+    {{ tr("Source: Department for Education, Get Information About Schools. Read how every figure here is sourced on the") }} <a href="/methodology">{{ tr("methodology page") }}</a>{{ tr(". If something looks wrong,") }}
+    <a href="/support">{{ tr("tell us") }}</a> {{ tr("and it goes on the") }} <a href="/accuracy">{{ tr("accuracy log") }}</a>.
 </p>
 {% endblock %}

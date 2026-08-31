@@ -11,7 +11,7 @@
         <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33z"/>
         <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/>
     </svg>
-    Continue with Google
+    {{ tr("Continue with Google") }}
 </a>
 {% endif %}
 {% if "facebook" in oauth_providers_configured %}
@@ -20,7 +20,7 @@
         <circle cx="12" cy="12" r="12" fill="#0866FF"/>
         <path fill="#fff" d="M16.5 12h-3v9h-3.6v-9H8v-3h1.9V7.1c0-2 1.2-3.6 3.7-3.6H16v3h-1.6c-.7 0-.9.35-.9 1V9H16l-.5 3z"/>
     </svg>
-    Continue with Facebook
+    {{ tr("Continue with Facebook") }}
 </a>
 {% endif %}
 {% if "linkedin" in oauth_providers_configured %}
@@ -29,10 +29,10 @@
         <rect width="24" height="24" rx="3" fill="#0A66C2"/>
         <path fill="#fff" d="M7.1 9.4H4.5V19h2.6V9.4zM5.8 8.2a1.55 1.55 0 1 0 0-3.1 1.55 1.55 0 0 0 0 3.1zM19.5 13.6c0-2.7-1.44-4.4-3.72-4.4-1.26 0-2.1.6-2.55 1.4h-.06V9.4H10.6V19h2.6v-4.9c0-1.15.4-2.2 1.7-2.2 1.28 0 1.5 1.15 1.5 2.27V19h2.6v-5.4z"/>
     </svg>
-    Continue with LinkedIn
+    {{ tr("Continue with LinkedIn") }}
 </a>
 {% endif %}
 
 {% if oauth_providers_configured %}
-<p class="oauth-divider"><span>or use your email</span></p>
+<p class="oauth-divider"><span>{{ tr("or use your email") }}</span></p>
 {% endif %}

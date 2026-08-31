@@ -8,7 +8,7 @@
 {% macro essentials_card(amenities, amenities_error, pending) %}
 <button type="button" id="card-amenities" class="dashboard-card status-{{ 'muted' if (pending or amenities_error or not amenities) else 'ok' }}{{ ' dashboard-card-pending' if pending else '' }}" data-modal-target="modal-amenities" data-animate>
     <span class="dashboard-card-icon icon-amenities">{{ icons.icon('amenities') }}</span>
-    <span class="dashboard-card-title">Nearby Essentials</span>
+    <span class="dashboard-card-title">{{ tr("Nearby Essentials") }}</span>
     <span class="dashboard-card-status">
         {% if pending %}Finding what's nearby&hellip;
         {% elif amenities_error %}Data unavailable
@@ -22,7 +22,7 @@
 <button type="button" id="card-transport" class="dashboard-card status-{{ 'muted' if (pending or amenities_error or not nearest_transport) else 'ok' }}{{ ' dashboard-card-pending' if pending else '' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-getting-around" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
     {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
     <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
-    <span class="dashboard-card-title">Getting Around</span>
+    <span class="dashboard-card-title">{{ tr("Getting Around") }}</span>
     <span class="dashboard-card-status">
         {% if pending %}Finding stations&hellip;
         {% elif amenities_error %}Data unavailable
@@ -38,13 +38,13 @@
 {% macro essentials_body(amenities, amenities_error, pending) %}
 <div id="amenities-body">
 {% if pending %}
-    <p class="notice">Finding restaurants, shops and services nearby&hellip; this takes a few seconds the first time an address is looked up.</p>
+    <p class="notice">{{ tr("Finding restaurants, shops and services nearby&hellip; this takes a few seconds the first time an address is looked up.") }}</p>
 {% elif amenities_error %}
     <p class="notice notice-error">
-        The amenities data service didn't respond. Try again in a moment.
+        {{ tr("The amenities data service didn't respond. Try again in a moment.") }}
     </p>
 {% elif amenities %}
-    <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
+    <p class="section-sub">{{ tr("Restaurants, shops and services nearby, from OpenStreetMap.") }}</p>
     {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
     <details class="amenity-group">
         <summary>{{ amenities[key]|length }} {{ label }}</summary>
@@ -52,13 +52,13 @@
             <ul class="amenity-list">
                 {% for a in amenities[key][:10] %}
                 <li>
-                    {% if a.lat and a.lon %}<a href="https://www.google.com/maps/search/?api=1&query={{ (a.name ~ ' near ' ~ a.lat ~ ',' ~ a.lon) | urlencode }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">Paid</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">Free</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
+                    {% if a.lat and a.lon %}<a href="https://www.google.com/maps/search/?api=1&query={{ (a.name ~ ' near ' ~ a.lat ~ ',' ~ a.lon) | urlencode }}" target="_blank" rel="noopener">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}{% if key == 'parking' and a.fee == 'yes' %} <span class="school-type-badge">{{ tr("Paid") }}</span>{% elif key == 'parking' and a.fee == 'no' %} <span class="school-type-badge">{{ tr("Free") }}</span>{% elif key == 'ev_charging' and a.connectors %} <span class="school-type-badge">{{ a.connectors | join(", ") }}</span>{% endif %}
                     <span class="amenity-distance">{{ a.distance_m | distance }}</span>
                 </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p class="notice">None found nearby.</p>
+            <p class="notice">{{ tr("None found nearby.") }}</p>
         {% endif %}
     </details>
     {% endfor %}
@@ -69,10 +69,10 @@
 {% macro transport_body(stations, stations_list, amenities_error, pending) %}
 <div id="transport-body">
 {% if pending %}
-    <p class="notice">Finding stations and stops nearby&hellip;</p>
+    <p class="notice">{{ tr("Finding stations and stops nearby&hellip;") }}</p>
 {% elif amenities_error %}
     <p class="notice notice-error">
-        The amenities data service didn't respond. Try again in a moment.
+        {{ tr("The amenities data service didn't respond. Try again in a moment.") }}
     </p>
 {% elif stations_list and (stations_list.rail or stations_list.tube or stations_list.tram or stations_list.bus) %}
     {% if stations.rail and stations.rail.city_journeys is defined %}
@@ -96,8 +96,7 @@
         </p>
         {% endif %}
         <p class="section-sub" style="margin-top: -0.5rem;">
-            Live scheduled trains, checked just now, a slower result late at night or early
-            morning reflects reduced off-peak service, not the typical daytime journey.
+            {{ tr("Live scheduled trains, checked just now, a slower result late at night or early morning reflects reduced off-peak service, not the typical daytime journey.") }}
         </p>
     {% endif %}
     {% for mode, label in [("rail", "Rail"), ("tube", "Tube"), ("tram", "Tram")] %}
@@ -124,16 +123,16 @@
         {% endif %}
     {% endfor %}
     {% if stations_list.bus %}
-    <h3 class="subsection-heading">Nearest bus stop</h3>
+    <h3 class="subsection-heading">{{ tr("Nearest bus stop") }}</h3>
     <ul class="transport-list">
         <li>
-            <span class="transport-mode">Bus</span>
+            <span class="transport-mode">{{ tr("Bus") }}</span>
             <strong>{{ stations_list.bus[0].name }}</strong> &middot; {{ stations_list.bus[0].distance_m | distance }}
         </li>
     </ul>
     {% endif %}
 {% else %}
-    <p class="notice">No public transport found nearby.</p>
+    <p class="notice">{{ tr("No public transport found nearby.") }}</p>
 {% endif %}
 </div>
 {% endmacro %}

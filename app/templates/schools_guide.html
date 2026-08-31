@@ -5,29 +5,29 @@
 
 {% block meta_description %}{% if areas and areas | length == 1 %}Every Ofsted-rated school near {{ areas[0].label }} by rating and type, and how the area compares with the national picture. Free, from official Ofsted and DfE data.{% else %}Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.{% endif %}{% endblock %}
 {% block content %}
-<span class="kicker">School guide</span>
+<span class="kicker">{{ tr("School guide") }}</span>
 {% if areas and areas | length == 1 %}
 <h1>Schools near {{ areas[0].label }}</h1>
 <p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, against the national picture. Add another area to compare.</p>
 {% elif areas %}
 <h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
-<p class="dek">Side by side, from the same Ofsted and DfE data as every property report here.</p>
+<p class="dek">{{ tr("Side by side, from the same Ofsted and DfE data as every property report here.") }}</p>
 {% else %}
-<h1>Schools near any UK postcode</h1>
-<p class="dek">Ofsted ratings, school types and how an area stacks up nationally. Search a postcode or town, then add a second to compare.</p>
+<h1>{{ tr("Schools near any UK postcode") }}</h1>
+<p class="dek">{{ tr("Ofsted ratings, school types and how an area stacks up nationally. Search a postcode or town, then add a second to compare.") }}</p>
 {% endif %}
 
 {% if current_user %}
-<p class="section-sub"><a href="/schools/shortlist">My shortlisted schools</a></p>
+<p class="section-sub"><a href="/schools/shortlist">{{ tr("My shortlisted schools") }}</a></p>
 {% endif %}
 
 {% if not areas %}
-<p class="section-sub" style="margin-bottom: 0.25rem;">Type an exact postcode for the most accurate result, or pick a district from the list below.</p>
+<p class="section-sub" style="margin-bottom: 0.25rem;">{{ tr("Type an exact postcode for the most accurate result, or pick a district from the list below.") }}</p>
 {% endif %}
 <form action="/schools/guide" method="get" class="search-form" style="margin: 1.5rem 0;">
     <input type="hidden" name="areas" value="{{ areas_param }}">
     <div class="search-form-field">
-        <label for="q">Postcode or town</label>
+        <label for="q">{{ tr("Postcode or town") }}</label>
         <input type="text" id="q" name="q" placeholder="e.g. Oxford, or OX1 1BP" autocomplete="off" required>
     </div>
     <button type="submit">{{ "Add area to compare" if areas else "Search" }}</button>
@@ -40,7 +40,7 @@
 </p>
 {% elif search_duplicate %}
 <p class="notice">
-    That area's already in the comparison below.
+    {{ tr("That area's already in the comparison below.") }}
 </p>
 {% endif %}
 
@@ -51,7 +51,7 @@
     <div class="school-guide-area">
         <div class="school-guide-area-header">
             <h2>{{ area.label }}</h2>
-            <a href="/schools/guide?areas={{ area.remove_areas_param | urlencode }}" class="shortlist-btn">Remove</a>
+            <a href="/schools/guide?areas={{ area.remove_areas_param | urlencode }}" class="shortlist-btn">{{ tr("Remove") }}</a>
         </div>
         {% if area.landscape %}
             {% if area.landscape.good_or_better_pct is not none %}
@@ -68,7 +68,7 @@
                 {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
                 {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
-            <h3 class="school-guide-subhead">By Ofsted rating</h3>
+            <h3 class="school-guide-subhead">{{ tr("By Ofsted rating") }}</h3>
             <div class="landscape-stat-row">
                 {% for r in area.landscape.by_rating %}
                 <details class="landscape-stat-details {{ r.css }}">
@@ -88,7 +88,7 @@
                 </details>
                 {% endfor %}
             </div>
-            <h3 class="school-guide-subhead">By phase</h3>
+            <h3 class="school-guide-subhead">{{ tr("By phase") }}</h3>
             <div class="landscape-stat-row">
                 {% for p in area.landscape.by_phase %}
                 <details class="landscape-stat-details">
@@ -109,7 +109,7 @@
                 {% endfor %}
                 {% if area.landscape.special_count %}
                 <details class="landscape-stat-details">
-                    <summary><strong>{{ area.landscape.special_count }}</strong> Special</summary>
+                    <summary><strong>{{ area.landscape.special_count }}</strong> {{ tr("Special") }}</summary>
                     <ul class="landscape-stat-schools">
                         {% for s in area.landscape.special_schools[:25] %}
                         <li>
@@ -143,9 +143,7 @@
             {% endfor %}
         {% else %}
             <p class="notice">
-                No Ofsted/GIAS school data available here. Our schools database only covers England
-                (Scotland, Wales and Northern Ireland have their own separate inspection bodies we
-                don't yet source from).
+                {{ tr("No Ofsted/GIAS school data available here. Our schools database only covers England (Scotland, Wales and Northern Ireland have their own separate inspection bodies we don't yet source from).") }}
             </p>
         {% endif %}
     </div>

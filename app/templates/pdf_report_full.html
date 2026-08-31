@@ -114,8 +114,8 @@
 {% endmacro %}
 
 <table class="masthead"><tr>
-    <td><span class="brand">UKPropertyInsight</span><br/><span class="brand-sub">UK Property Intelligence</span></td>
-    <td class="doc-type">Premium report<br/>{{ generated_date }}</td>
+    <td><span class="brand">{{ tr("UKPropertyInsight") }}</span><br/><span class="brand-sub">{{ tr("UK Property Intelligence") }}</span></td>
+    <td class="doc-type">{{ tr("Premium report") }}<br/>{{ generated_date }}</td>
 </tr></table>
 
 <h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
@@ -130,13 +130,13 @@
     </td>
 </tr></table>
 {% if overview.positives %}
-<p class="chip-row-label">Working in its favour</p>
+<p class="chip-row-label">{{ tr("Working in its favour") }}</p>
 <table class="chip-table chips-good">
     {% for p in overview.positives %}<tr><td class="chip-good">+ {{ p }}</td></tr>{% endfor %}
 </table>
 {% endif %}
 {% if overview.concerns %}
-<p class="chip-row-label">Worth checking further</p>
+<p class="chip-row-label">{{ tr("Worth checking further") }}</p>
 <table class="chip-table chips-warn">
     {% for c in overview.concerns %}<tr><td class="chip-warn">! {{ c }}</td></tr>{% endfor %}
 </table>
@@ -163,9 +163,9 @@
 {% call card("£", "#eff6ff", "#3b5bfd", "Sold prices") %}
     <table>
         {% if avg_price %}
-        <tr><td class="label">Average sold price (postcode)</td><td class="value">{{ avg_price | gbp }}</td></tr>
+        <tr><td class="label">{{ tr("Average sold price (postcode)") }}</td><td class="value">{{ avg_price | gbp }}</td></tr>
         {% else %}
-        <tr><td class="label">Average sold price (postcode)</td><td class="value">No recorded sales</td></tr>
+        <tr><td class="label">{{ tr("Average sold price (postcode)") }}</td><td class="value">{{ tr("No recorded sales") }}</td></tr>
         {% endif %}
         {% if price_position is defined and price_position_area %}
         {% set diff_pct = ((price_position_reference / price_position_area.average_price) - 1) * 100 %}
@@ -175,7 +175,7 @@
     </table>
     {% if transactions %}
     <table class="row-table">
-        <tr><th>Address</th><th>Date</th><th class="num">Price</th><th>Tenure</th></tr>
+        <tr><th>{{ tr("Address") }}</th><th>{{ tr("Date") }}</th><th class="num">{{ tr("Price") }}</th><th>{{ tr("Tenure") }}</th></tr>
         {% for tx in transactions[:15] %}
         <tr><td>{{ tx.address }}</td><td>{{ tx.date }}</td><td class="num">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or " — " }}</td></tr>
         {% endfor %}
@@ -188,19 +188,19 @@
     <table class="two-col"><tr>
         <td>
             {% if valuation %}
-            <h3>Estimated value</h3>
+            <h3>{{ tr("Estimated value") }}</h3>
             <table>
-                <tr><td class="label">Estimate</td><td class="value">{{ valuation.estimate | gbp }}</td></tr>
-                <tr><td class="label">Range</td><td class="value">{{ valuation.low | gbp }} – {{ valuation.high | gbp }}</td></tr>
+                <tr><td class="label">{{ tr("Estimate") }}</td><td class="value">{{ valuation.estimate | gbp }}</td></tr>
+                <tr><td class="label">{{ tr("Range") }}</td><td class="value">{{ valuation.low | gbp }} – {{ valuation.high | gbp }}</td></tr>
             </table>
             <p class="note">Based on {{ valuation.sample_size }} comparable sale{{ "s" if valuation.sample_size != 1 else "" }} within ~0.6 miles, last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}.</p>
             {% endif %}
         </td>
         <td>
             {% if rental %}
-            <h3>Typical rent nearby</h3>
+            <h3>{{ tr("Typical rent nearby") }}</h3>
             <table>
-                <tr><td class="label">All bedroom counts</td><td class="value">{{ rental.price_all | gbp }}/month</td></tr>
+                <tr><td class="label">{{ tr("All bedroom counts") }}</td><td class="value">{{ rental.price_all | gbp }}/month</td></tr>
             </table>
             <p class="note">{{ rental.la_name }}, ONS Price Index of Private Rents{% if rental.period %} ({{ rental.period }}){% endif %}.</p>
             {% endif %}
@@ -214,8 +214,8 @@
     {% if price_trend %}
     <table>
         <tr><td class="label">5 years ago ({{ price_trend.area_name }})</td><td class="value">{{ price_trend.start_price | gbp }}</td></tr>
-        <tr><td class="label">Current</td><td class="value">{{ price_trend.current_price | gbp }}</td></tr>
-        <tr><td class="label">Change</td><td class="value">
+        <tr><td class="label">{{ tr("Current") }}</td><td class="value">{{ price_trend.current_price | gbp }}</td></tr>
+        <tr><td class="label">{{ tr("Change") }}</td><td class="value">
             <span class="badge {{ 'badge-good' if price_trend.pct_change >= 0 else 'badge-bad' }}">{{ "%+.1f"|format(price_trend.pct_change) }}%</span></td></tr>
         {% for p in price_trend.projections %}
         <tr><td class="label">Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td><td class="value">{{ p.price | gbp }}</td></tr>
@@ -224,7 +224,7 @@
     {% endif %}
     {% if hpi %}
     <table class="row-table">
-        <tr><th>Area</th><th class="num">Average price</th><th class="num">Annual change</th></tr>
+        <tr><th>{{ tr("Area") }}</th><th class="num">{{ tr("Average price") }}</th><th class="num">{{ tr("Annual change") }}</th></tr>
         {% for area in [hpi.local_authority, hpi.region, hpi.country] %}
         {% if area %}
         <tr><td>{{ area.name if area.name else "" }}</td><td class="num">{{ area.average_price | gbp }}</td>
@@ -239,25 +239,25 @@
 {% call card("E", "#eff6ff", "#3b5bfd", "Property & energy") %}
     <table>
         {% if property_detail %}
-        <tr><td class="label">Dwelling type</td><td class="value">{{ property_detail.dwelling_type or "Not available" }}</td></tr>
-        <tr><td class="label">Floor area</td><td class="value">{% if property_detail.total_floor_area %}{{ property_detail.total_floor_area }} m&sup2;{% else %}Not available{% endif %}</td></tr>
-        <tr><td class="label">Habitable rooms</td><td class="value">{{ property_detail.habitable_room_count or "Not available" }}</td></tr>
-        <tr><td class="label">Year built (band)</td><td class="value">{{ property_detail.year_built or "Not available" }}</td></tr>
+        <tr><td class="label">{{ tr("Dwelling type") }}</td><td class="value">{{ property_detail.dwelling_type or "Not available" }}</td></tr>
+        <tr><td class="label">{{ tr("Floor area") }}</td><td class="value">{% if property_detail.total_floor_area %}{{ property_detail.total_floor_area }} m&sup2;{% else %}Not available{% endif %}</td></tr>
+        <tr><td class="label">{{ tr("Habitable rooms") }}</td><td class="value">{{ property_detail.habitable_room_count or "Not available" }}</td></tr>
+        <tr><td class="label">{{ tr("Year built (band)") }}</td><td class="value">{{ property_detail.year_built or "Not available" }}</td></tr>
         {% endif %}
         {% if mees_compliant is not none %}
-        <tr><td class="label">MEES compliant (min. lettable rating)</td><td class="value">
+        <tr><td class="label">{{ tr("MEES compliant (min. lettable rating)") }}</td><td class="value">
             <span class="badge {{ 'badge-good' if mees_compliant else 'badge-bad' }}">{{ "Yes" if mees_compliant else "No, rated F or G" }}</span></td></tr>
         {% endif %}
         {% if lead_plumbing_era %}
-        <tr><td class="label">Lead plumbing era risk</td><td class="value"><span class="badge badge-warn">Built before ~1970</span></td></tr>
+        <tr><td class="label">{{ tr("Lead plumbing era risk") }}</td><td class="value"><span class="badge badge-warn">{{ tr("Built before ~1970") }}</span></td></tr>
         {% endif %}
         {% if extension_signal and extension_signal.likely_extended %}
-        <tr><td class="label">Possible unrecorded extension</td><td class="value"><span class="badge badge-warn">Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}% since last EPC</span></td></tr>
+        <tr><td class="label">{{ tr("Possible unrecorded extension") }}</td><td class="value"><span class="badge badge-warn">Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}% since last EPC</span></td></tr>
         {% endif %}
     </table>
     {% if certificates %}
     <table class="row-table">
-        <tr><th>Address</th><th>Date</th><th class="num">EPC rating</th></tr>
+        <tr><th>{{ tr("Address") }}</th><th>{{ tr("Date") }}</th><th class="num">{{ tr("EPC rating") }}</th></tr>
         {% for cert in certificates[:10] %}
         <tr><td>{{ cert.address }}</td><td>{{ cert.date }}</td><td class="num">{{ epc_badge(cert.rating) }}</td></tr>
         {% endfor %}
@@ -267,45 +267,45 @@
 
 {% call card("!", "#eff6ff", "#3b5bfd", "Risk & environment") %}
     <table>
-        <tr><td class="label">Flood zone (rivers &amp; sea)</td><td class="value">{{ badge(flood_zone.label if flood_zone else "Zone 1 (low probability)") }}</td></tr>
+        <tr><td class="label">{{ tr("Flood zone (rivers &amp; sea)") }}</td><td class="value">{{ badge(flood_zone.label if flood_zone else "Zone 1 (low probability)") }}</td></tr>
         {% if flood_warnings %}
-        <tr><td class="label">Active flood alerts</td><td class="value"><span class="badge badge-bad">{{ flood_warnings | length }} active</span></td></tr>
+        <tr><td class="label">{{ tr("Active flood alerts") }}</td><td class="value"><span class="badge badge-bad">{{ flood_warnings | length }} active</span></td></tr>
         {% endif %}
         {% if surface_water %}
-        <tr><td class="label">Surface water flood risk</td><td class="value">{{ badge(surface_water.label) }}</td></tr>
+        <tr><td class="label">{{ tr("Surface water flood risk") }}</td><td class="value">{{ badge(surface_water.label) }}</td></tr>
         {% endif %}
         {% if radon %}
-        <tr><td class="label">Radon risk</td><td class="value">{{ badge(radon.label if radon.label else radon) }}</td></tr>
+        <tr><td class="label">{{ tr("Radon risk") }}</td><td class="value">{{ badge(radon.label if radon.label else radon) }}</td></tr>
         {% endif %}
         {% if clay_risk %}
-        <tr><td class="label">Subsidence risk, 2030 / 2050</td><td class="value">{{ badge(clay_risk.label_2030) }} &nbsp;/&nbsp; {{ badge(clay_risk.label_2050) }}</td></tr>
+        <tr><td class="label">{{ tr("Subsidence risk, 2030 / 2050") }}</td><td class="value">{{ badge(clay_risk.label_2030) }} &nbsp;/&nbsp; {{ badge(clay_risk.label_2050) }}</td></tr>
         {% endif %}
         {% if coal_mining and coal_mining.present %}
-        <tr><td class="label">Coal Mining Reporting Area</td><td class="value"><span class="badge badge-warn">Yes{% if coal_mining.area_name %}, {{ coal_mining.area_name }}{% endif %}</span></td></tr>
+        <tr><td class="label">{{ tr("Coal Mining Reporting Area") }}</td><td class="value"><span class="badge badge-warn">Yes{% if coal_mining.area_name %}, {{ coal_mining.area_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if sewage_outfalls %}
-        <tr><td class="label">Nearby sewage outfalls</td><td class="value">{{ sewage_outfalls | length }} within range</td></tr>
+        <tr><td class="label">{{ tr("Nearby sewage outfalls") }}</td><td class="value">{{ sewage_outfalls | length }} within range</td></tr>
         {% endif %}
         {% if historic_landfill and historic_landfill.status != "clear" %}
-        <tr><td class="label">Historic landfill</td>
+        <tr><td class="label">{{ tr("Historic landfill") }}</td>
             <td class="value"><span class="badge badge-warn">{% if historic_landfill.status == "on_site" %}On the site itself: {{ historic_landfill.site_name }}
                 {%- else %}{{ historic_landfill.distance_m }}m away: {{ historic_landfill.site_name }}{% endif %}</span></td></tr>
         {% endif %}
         {% if air_quality and air_quality.pollutants %}
         {% set aq_worst = air_quality.pollutants | map(attribute="times_guideline") | list | max %}
-        <tr><td class="label">Air quality, worst pollutant vs WHO guideline</td>
+        <tr><td class="label">{{ tr("Air quality, worst pollutant vs WHO guideline") }}</td>
             <td class="value"><span class="badge {{ 'badge-bad' if aq_worst >= 3 else ('badge-warn' if aq_worst >= 1.5 else 'badge-good') }}">{{ "%.1f"|format(aq_worst) }}&times; guideline</span></td></tr>
         {% endif %}
     </table>
     {% if noise and (noise.road_db is not none or noise.rail_db is not none or noise.airport_db is not none) %}
     <table class="row-table">
-        <tr><th>Noise source</th><th class="num">Level</th><th>Rating</th></tr>
-        {% if noise.road_db is not none %}<tr><td>Road</td><td class="num">{{ noise.road_db }} dB(A)</td><td>{{ badge(noise.road_label) }}</td></tr>{% endif %}
-        {% if noise.rail_db is not none %}<tr><td>Rail</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ badge(noise.rail_label) }}</td></tr>{% endif %}
-        {% if noise.airport_db is not none %}<tr><td>Aircraft</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ badge(noise.airport_label) }}</td></tr>{% endif %}
+        <tr><th>{{ tr("Noise source") }}</th><th class="num">{{ tr("Level") }}</th><th>{{ tr("Rating") }}</th></tr>
+        {% if noise.road_db is not none %}<tr><td>{{ tr("Road") }}</td><td class="num">{{ noise.road_db }} dB(A)</td><td>{{ badge(noise.road_label) }}</td></tr>{% endif %}
+        {% if noise.rail_db is not none %}<tr><td>{{ tr("Rail") }}</td><td class="num">{{ noise.rail_db }} dB(A)</td><td>{{ badge(noise.rail_label) }}</td></tr>{% endif %}
+        {% if noise.airport_db is not none %}<tr><td>{{ tr("Aircraft") }}</td><td class="num">{{ noise.airport_db }} dB(A)</td><td>{{ badge(noise.airport_label) }}</td></tr>{% endif %}
     </table>
     {% if noise.road_db is none or noise.rail_db is none or noise.airport_db is none %}
-    <p class="note" style="font-size:9pt; color:#667085;">Sources not listed are outside DEFRA's mapped area, which only covers levels above its minimum band near major roads, railways and the largest airports. A missing source is not a zero reading.</p>
+    <p class="note" style="font-size:9pt; color:#667085;">{{ tr("Sources not listed are outside DEFRA's mapped area, which only covers levels above its minimum band near major roads, railways and the largest airports. A missing source is not a zero reading.") }}</p>
     {% endif %}
     {% endif %}
     {% if heritage %}
@@ -316,13 +316,13 @@
 {% if planning_flags or environmental_flags %}
 {% call card("P", "#eff6ff", "#3b5bfd", "Planning & designations") %}
     {% if planning_flags %}
-    <p class="chip-row-label">Planning constraints present</p>
+    <p class="chip-row-label">{{ tr("Planning constraints present") }}</p>
     <table class="chip-table">
         {% for d in planning_flags %}<tr><td><span class="chip chip-warn">{{ d.label }}</span></td></tr>{% endfor %}
     </table>
     {% endif %}
     {% if environmental_flags %}
-    <p class="chip-row-label">Environmental designations present</p>
+    <p class="chip-row-label">{{ tr("Environmental designations present") }}</p>
     <table class="chip-table">
         {% for d in environmental_flags %}<tr><td><span class="chip chip-warn">{{ d.label }}</span></td></tr>{% endfor %}
     </table>
@@ -340,7 +340,7 @@
     </table>
     {% if crime and crime.by_category %}
     <table class="row-table">
-        <tr><th>Category</th><th class="num">Count</th></tr>
+        <tr><th>{{ tr("Category") }}</th><th class="num">{{ tr("Count") }}</th></tr>
         {% for cat in crime.by_category[:10] %}
         <tr><td>{{ cat.category }}</td><td class="num">{{ cat.count }}</td></tr>
         {% endfor %}
@@ -354,7 +354,7 @@
     {% if list %}
     <h3>{{ group }}</h3>
     <table class="row-table">
-        <tr><th>Name</th><th>Type</th><th class="num">Distance</th><th>Ofsted</th></tr>
+        <tr><th>{{ tr("Name") }}</th><th>{{ tr("Type") }}</th><th class="num">{{ tr("Distance") }}</th><th>{{ tr("Ofsted") }}</th></tr>
         {% for s in list[:8] %}
         <tr><td>{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td>{{ ofsted_badge(s.ofsted_rating_label) }}</td></tr>
         {% endfor %}
@@ -368,34 +368,34 @@
     <table class="two-col"><tr>
         <td>
             <table>
-                {% if deprivation %}<tr><td class="label">Deprivation decile</td><td class="value">{{ deprivation.imd_decile }} of 10 {% if imd_label %}({{ imd_label }}){% endif %}</td></tr>{% endif %}
-                {% if household_income %}<tr><td class="label">Median household income</td><td class="value">{{ household_income.here | gbp }}/yr</td></tr>{% endif %}
-                {% if occupation %}<tr><td class="label">Managerial/professional</td><td class="value">{{ occupation.professional_pct }}%</td></tr>{% endif %}
-                {% if qualification %}<tr><td class="label">Degree-educated</td><td class="value">{{ qualification.degree_pct }}%</td></tr>{% endif %}
+                {% if deprivation %}<tr><td class="label">{{ tr("Deprivation decile") }}</td><td class="value">{{ deprivation.imd_decile }} of 10 {% if imd_label %}({{ imd_label }}){% endif %}</td></tr>{% endif %}
+                {% if household_income %}<tr><td class="label">{{ tr("Median household income") }}</td><td class="value">{{ household_income.here | gbp }}/yr</td></tr>{% endif %}
+                {% if occupation %}<tr><td class="label">{{ tr("Managerial/professional") }}</td><td class="value">{{ occupation.professional_pct }}%</td></tr>{% endif %}
+                {% if qualification %}<tr><td class="label">{{ tr("Degree-educated") }}</td><td class="value">{{ qualification.degree_pct }}%</td></tr>{% endif %}
             </table>
         </td>
         <td>
             <table>
-                {% if age_profile %}<tr><td class="label">Under 25</td><td class="value">{{ age_profile.under_25_pct }}%</td></tr>{% endif %}
-                {% if housing and housing.owned_pct is not none %}<tr><td class="label">Owner-occupied</td><td class="value">{{ housing.owned_pct }}%</td></tr>{% endif %}
-                {% if background and background.born_abroad_pct is not none %}<tr><td class="label">Born outside the UK</td><td class="value">{{ background.born_abroad_pct }}%</td></tr>{% endif %}
-                {% if wellbeing and wellbeing.good_health_pct is not none %}<tr><td class="label">Good/very good health</td><td class="value">{{ wellbeing.good_health_pct }}%</td></tr>{% endif %}
+                {% if age_profile %}<tr><td class="label">{{ tr("Under 25") }}</td><td class="value">{{ age_profile.under_25_pct }}%</td></tr>{% endif %}
+                {% if housing and housing.owned_pct is not none %}<tr><td class="label">{{ tr("Owner-occupied") }}</td><td class="value">{{ housing.owned_pct }}%</td></tr>{% endif %}
+                {% if background and background.born_abroad_pct is not none %}<tr><td class="label">{{ tr("Born outside the UK") }}</td><td class="value">{{ background.born_abroad_pct }}%</td></tr>{% endif %}
+                {% if wellbeing and wellbeing.good_health_pct is not none %}<tr><td class="label">{{ tr("Good/very good health") }}</td><td class="value">{{ wellbeing.good_health_pct }}%</td></tr>{% endif %}
             </table>
         </td>
     </tr></table>
-    <p class="note">Census/ONS figures are for the surrounding local area (LSOA/MSOA), not this specific property.</p>
+    <p class="note">{{ tr("Census/ONS figures are for the surrounding local area (LSOA/MSOA), not this specific property.") }}</p>
 {% endcall %}
 
 {% if broadband or mobile %}
 {% call card("N", "#eff6ff", "#3b5bfd", "Connectivity") %}
     <table>
         {% if broadband %}
-        <tr><td class="label">Broadband</td><td class="value">{{ badge(broadband.label) }}</td></tr>
-        {% if broadband.gigabit_pct %}<tr><td class="label">Premises gigabit-capable</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
-        {% if broadband.below_uso_pct %}<tr><td class="label">Below Universal Service Obligation</td><td class="value"><span class="badge badge-warn">{{ broadband.below_uso_pct }}%</span></td></tr>{% endif %}
+        <tr><td class="label">{{ tr("Broadband") }}</td><td class="value">{{ badge(broadband.label) }}</td></tr>
+        {% if broadband.gigabit_pct %}<tr><td class="label">{{ tr("Premises gigabit-capable") }}</td><td class="value">{{ broadband.gigabit_pct }}%</td></tr>{% endif %}
+        {% if broadband.below_uso_pct %}<tr><td class="label">{{ tr("Below Universal Service Obligation") }}</td><td class="value"><span class="badge badge-warn">{{ broadband.below_uso_pct }}%</span></td></tr>{% endif %}
         {% endif %}
         {% if mobile %}
-        <tr><td class="label">4G outdoor coverage (all networks)</td><td class="value">{{ mobile.coverage_4g_outdoor_all_pct }}%</td></tr>
+        <tr><td class="label">{{ tr("4G outdoor coverage (all networks)") }}</td><td class="value">{{ mobile.coverage_4g_outdoor_all_pct }}%</td></tr>
         {% endif %}
     </table>
 {% endcall %}
@@ -404,14 +404,14 @@
 {% if nearest_transport %}
 {% call card("T", "#eff6ff", "#3b5bfd", "Transport") %}
     <table>
-        <tr><td class="label">Nearest station</td>
+        <tr><td class="label">{{ tr("Nearest station") }}</td>
             <td class="value">{{ nearest_transport.name }} &middot; {% if nearest_transport.walking_distance_m %}{{ nearest_transport.walking_distance_m | distance }} walk{% else %}{{ nearest_transport.distance_m | distance }}{% endif %}</td></tr>
     </table>
 {% endcall %}
 {% endif %}
 
 {% if buyer_questions %}
-<h2>Questions to ask, from this report's findings</h2>
+<h2>{{ tr("Questions to ask, from this report's findings") }}</h2>
 {% for audience, qs in buyer_questions %}
 <h3>{{ audience }}</h3>
 <ul>
@@ -429,6 +429,6 @@
     or solicitor's searches. Full live report: ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}
 </div>
 
-<div id="pdf-running-footer">UKPropertyInsight &middot; ukpropertyinsight.co.uk &middot; Data under the Open Government Licence v3.0 &middot; Page <pdf:pagenumber/> of <pdf:pagecount/></div>
+<div id="pdf-running-footer">{{ tr("UKPropertyInsight &middot; ukpropertyinsight.co.uk &middot; Data under the Open Government Licence v3.0 &middot; Page") }} <pdf:pagenumber/> {{ tr("of") }} <pdf:pagecount/></div>
 </body>
 </html>

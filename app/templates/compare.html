@@ -11,28 +11,27 @@
 {% if versus %}
 <a class="back-link" href="/area/{{ left_code }}">&larr; {{ left_code }} area guide</a>
 
-<span class="kicker">Side by side</span>
+<span class="kicker">{{ tr("Side by side") }}</span>
 <h1>{{ left_code }} or {{ right_code }}?</h1>
 <p class="dek">
-    Two neighbouring postcode districts compared on sold prices, energy, flood risk, crime and
-    deprivation, all from the same official sources as every report on this site.
+    {{ tr("Two neighbouring postcode districts compared on sold prices, energy, flood risk, crime and deprivation, all from the same official sources as every report on this site.") }}
 </p>
 
 {% if versus_faqs_jsonld %}<script type="application/ld+json">{{ versus_faqs_jsonld | safe }}</script>{% endif %}
 {% if differences %}
 <div class="notice">
-    <strong>The short version</strong>
+    <strong>{{ tr("The short version") }}</strong>
     <ul class="notice-list">
         {% for d in differences %}<li>{{ d }}</li>{% endfor %}
     </ul>
 </div>
 {% endif %}
 {% elif anonymous_compare %}
-<a class="back-link" href="/">&larr; Back to search</a>
+<a class="back-link" href="/">{{ tr("&larr; Back to search") }}</a>
 
-<span class="kicker">Side by side</span>
+<span class="kicker">{{ tr("Side by side") }}</span>
 <h1>Compare up to {{ max_columns }} postcodes</h1>
-<p class="dek">Choosing between areas is the normal case, not the exception. Put them next to each other and the differences do the arguing.</p>
+<p class="dek">{{ tr("Choosing between areas is the normal case, not the exception. Put them next to each other and the differences do the arguing.") }}</p>
 
 <form class="compare-form" action="/compare" method="get">
     {% for i in range(max_columns) %}
@@ -44,20 +43,20 @@
                {% if i < 2 %}required{% endif %}>
     </div>
     {% endfor %}
-    <button type="submit">Compare</button>
+    <button type="submit">{{ tr("Compare") }}</button>
 </form>
 {% else %}
-<a class="back-link" href="/watchlist">&larr; Back to My properties</a>
+<a class="back-link" href="/watchlist">{{ tr("&larr; Back to My properties") }}</a>
 
-<span class="kicker">Side by side</span>
-<h1>Compare properties</h1>
+<span class="kicker">{{ tr("Side by side") }}</span>
+<h1>{{ tr("Compare properties") }}</h1>
 {% endif %}
 
 {% if not columns %}
     {% if anonymous_compare %}
-    <p class="section-sub">Enter two or three postcodes above. Every figure comes from the same official sources as the full report.</p>
+    <p class="section-sub">{{ tr("Enter two or three postcodes above. Every figure comes from the same official sources as the full report.") }}</p>
     {% else %}
-    <p class="notice">No properties selected. Go back to your watchlist and tick 2 or 3 to compare.</p>
+    <p class="notice">{{ tr("No properties selected. Go back to your watchlist and tick 2 or 3 to compare.") }}</p>
     {% endif %}
 {% else %}
     <div class="compare-table-wrap">
@@ -69,7 +68,7 @@
                 <th>
                     {% if col.summary.not_found %}
                         <span class="compare-missing">{{ col.postcode }}</span>
-                        <div class="compare-note">Not a postcode we could find</div>
+                        <div class="compare-note">{{ tr("Not a postcode we could find") }}</div>
                     {% else %}
                         <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
                             {{ col.house_number ~ ", " ~ col.postcode if col.house_number else col.postcode }}
@@ -84,7 +83,7 @@
         <tbody>
             {% if versus %}
             <tr>
-                <td><strong>Median home sale nearby</strong></td>
+                <td><strong>{{ tr("Median home sale nearby") }}</strong></td>
                 {% for col in columns %}
                 <td>
                     {%- if col.summary.local_median is defined and col.summary.local_median -%}
@@ -96,13 +95,13 @@
             </tr>
             {% endif %}
             <tr>
-                <td><strong>Average sold price</strong></td>
+                <td><strong>{{ tr("Average sold price") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.avg_price | gbp if col.summary.avg_price else " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Area price growth (YoY)</strong></td>
+                <td><strong>{{ tr("Area price growth (YoY)") }}</strong></td>
                 {% for col in columns %}
                 <td>
                     {% if col.summary.price_growth_pct is defined and col.summary.price_growth_pct is not none %}
@@ -112,43 +111,43 @@
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Dwelling type</strong></td>
+                <td><strong>{{ tr("Dwelling type") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.dwelling_type or " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Floor area</strong></td>
+                <td><strong>{{ tr("Floor area") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ (col.summary.floor_area ~ " m²") if col.summary.floor_area else " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Built</strong></td>
+                <td><strong>{{ tr("Built") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.year_built or " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Energy rating</strong></td>
+                <td><strong>{{ tr("Energy rating") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.energy_band or " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Heating cost (EPC est.)</strong></td>
+                <td><strong>{{ tr("Heating cost (EPC est.)") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ ("£" ~ col.summary.heating_cost ~ "/yr") if col.summary.heating_cost else " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Flood zone</strong></td>
+                <td><strong>{{ tr("Flood zone") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.flood_zone or " — " }}</td>
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Crime nearby</strong></td>
+                <td><strong>{{ tr("Crime nearby") }}</strong></td>
                 {% for col in columns %}
                 <td>
                     {# `is defined` first: an absent key is Undefined, and
@@ -161,7 +160,7 @@
                 {% endfor %}
             </tr>
             <tr>
-                <td><strong>Deprivation decile</strong></td>
+                <td><strong>{{ tr("Deprivation decile") }}</strong></td>
                 {% for col in columns %}
                 <td>{{ (col.summary.imd_decile ~ " of 10") if col.summary.imd_decile else " — " }}</td>
                 {% endfor %}
@@ -171,7 +170,7 @@
     </div>
     {% if versus_faqs %}
     <section class="report-section">
-        <h2>Common questions</h2>
+        <h2>{{ tr("Common questions") }}</h2>
         <div class="faq-list">
             {% for q, a in versus_faqs %}
             <details class="faq-item">
@@ -183,7 +182,7 @@
     </section>
     {% endif %}
     <p class="section-sub">
-        A quick side-by-side snapshot only. Open each property's full report for the complete picture.
+        {{ tr("A quick side-by-side snapshot only. Open each property's full report for the complete picture.") }}
     </p>
 {% endif %}
 {% endblock %}

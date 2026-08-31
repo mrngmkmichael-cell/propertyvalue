@@ -28,3 +28,6 @@ node_modules/
 # Sweep output: a 14,715-line log and its postcode cache, regenerated on demand
 sweep_results.jsonl
 sweep_postcodes.json
+
+# scripts/i18n_snapshot.py working files
+scratch_i18n_*.json

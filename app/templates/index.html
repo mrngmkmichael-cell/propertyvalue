@@ -90,11 +90,11 @@
        obligation, and crediting OSM over it would be plainly wrong. Do
        not remove it from the fallback branch. #}
     {% if not hero_video %}
-    <p class="lx-hero-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    <p class="lx-hero-credit">&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">{{ tr("OpenStreetMap") }}</a> {{ tr("contributors") }}</p>
     {% endif %}
 
     <div class="lx-hero-inner">
-        <p class="lx-eyebrow">Due diligence, made simple</p>
+        <p class="lx-eyebrow">{{ tr("Due diligence, made simple") }}</p>
 
         {# Live report strip. Every figure is fetched from this site's own
            /api/lookup at page load, never hardcoded: the prototype's
@@ -111,7 +111,7 @@
         <div class="lx-strip" id="lx-strip" hidden data-animate>
             <div class="lx-strip-chrome">
                 <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
-                <span class="lx-strip-url">ukpropertyinsight.co.uk/property?postcode=<span id="lx-strip-pc"></span></span>
+                <span class="lx-strip-url">{{ tr("ukpropertyinsight.co.uk/property?postcode=") }}<span id="lx-strip-pc"></span></span>
             </div>
             <div class="lx-strip-body">
                 <div class="lx-strip-score">
@@ -127,26 +127,24 @@
         </div>
 
         <h1 class="lx-hero-h1">
-            <span class="lx-w">Any UK postcode.</span>
-            <span class="lx-w">Know <em class="hl-accent">before you commit</em>.</span>
+            <span class="lx-w">{{ tr("Any UK postcode.") }}</span>
+            <span class="lx-w">{{ tr("Know") }} <em class="hl-accent">{{ tr("before you commit") }}</em>.</span>
         </h1>
 
         <p class="lx-hero-dek">
-            Forty checks on any UK address, each one traced back to the
-            government body that published it. Every UK postcode, free, and
-            no account needed.
+            {{ tr("Forty checks on any UK address, each one traced back to the government body that published it. Every UK postcode, free, and no account needed.") }}
         </p>
 
         <form class="lx-hero-form search-form" action="/property" method="get">
             <div class="search-form-field lx-field">
-                <label for="postcode">UK postcode</label>
+                <label for="postcode">{{ tr("UK postcode") }}</label>
                 <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" required>
             </div>
             <div class="search-form-field lx-field lx-field-narrow">
-                <label for="house_number">House/flat number (optional)</label>
+                <label for="house_number">{{ tr("House/flat number (optional)") }}</label>
                 <input type="text" id="house_number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
             </div>
-            <button type="submit">Search</button>
+            <button type="submit">{{ tr("Search") }}</button>
         </form>
 
         {# The funnel loses 96% of visitors before their first search
@@ -156,17 +154,17 @@
            typing. M1 1AE: central Manchester, a full report with every
            card populated. #}
         <p class="lx-hero-sample">
-            No postcode in mind?
-            <a href="/property?postcode=M1+1AE">See a real report for M1 1AE, central Manchester &rarr;</a>
+            {{ tr("No postcode in mind?") }}
+            <a href="/property?postcode=M1+1AE">{{ tr("See a real report for M1 1AE, central Manchester &rarr;") }}</a>
         </p>
 
         {# Filled in from this device's own localStorage, so it is empty
            markup for a first-time visitor and never appears in the
            cached HTML. #}
         <div class="lx-recent" id="lx-recent" hidden>
-            <p class="lx-recent-label">Pick up where you left off</p>
+            <p class="lx-recent-label">{{ tr("Pick up where you left off") }}</p>
             <div class="lx-recent-items" id="lx-recent-items"></div>
-            <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="lx-recent-clear">Clear</button></p>
+            <p class="lx-recent-note">{{ tr("Kept on this device only.") }} <button type="button" class="lx-recent-clear" id="lx-recent-clear">{{ tr("Clear") }}</button></p>
         </div>
 
         {# The "40 CHECKS . 13 OFFICIAL SOURCES . 1.7M POSTCODES" row stood
@@ -184,10 +182,10 @@
 <section class="promo-banner">
     <div class="promo-banner-inner">
         <p class="promo-banner-text">
-            <strong>Sign up free</strong> and get a full Premium property report on us, normally
-            <span class="promo-banner-price">£9.99/month</span>. No card required.
+            <strong>{{ tr("Sign up free") }}</strong> {{ tr("and get a full Premium property report on us, normally") }}
+            <span class="promo-banner-price">{{ tr("£9.99/month") }}</span>{{ tr(". No card required.") }}
         </p>
-        <a href="/signup" class="promo-banner-btn">Sign up free</a>
+        <a href="/signup" class="promo-banner-btn">{{ tr("Sign up free") }}</a>
     </div>
 </section>
 {# A new account used to arrive here with nothing said to it: the
@@ -198,10 +196,9 @@
 <section class="promo-banner">
     <div class="promo-banner-inner">
         <p class="promo-banner-text">
-            <strong>Your account is ready.</strong> You have a full report to use on any address,
-            every check unlocked. Put a postcode in above to spend it.
+            <strong>{{ tr("Your account is ready.") }}</strong> {{ tr("You have a full report to use on any address, every check unlocked. Put a postcode in above to spend it.") }}
         </p>
-        <a href="/premium" class="promo-banner-btn">See plans</a>
+        <a href="/premium" class="promo-banner-btn">{{ tr("See plans") }}</a>
     </div>
 </section>
 {% endif %}
@@ -230,12 +227,12 @@
                has been absorbed. #}
             <div class="lx-build-swarm" id="lx-build-swarm" aria-hidden="true"></div>
             <div class="lx-wrap">
-                <p class="lx-eyebrow">One search</p>
-                <h2 class="lx-h2 lx-build-h" id="lx-build-h">Watch a report <em class="hl-accent">build itself</em>.</h2>
+                <p class="lx-eyebrow">{{ tr("One search") }}</p>
+                <h2 class="lx-h2 lx-build-h" id="lx-build-h">{{ tr("Watch a report") }} <em class="hl-accent">{{ tr("build itself") }}</em>.</h2>
                 <div class="lx-build-grid">
                     <div class="lx-build-dial-wrap">
                         <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
-                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 40 checks</p>
+                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> {{ tr("/ 40 checks") }}</p>
                     </div>
                     <div class="lx-build-chips" id="lx-build-chips"></div>
                 </div>
@@ -244,12 +241,12 @@
                    frame shows the breadth of the report rather than
                    four findings. Populated by script from CHECKS. #}
                 <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
-                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>40 checks</strong> &middot; one search</p>
+                    <p class="lx-build-done-head" id="lx-build-done-head">{{ tr("All") }} <strong>{{ tr("40 checks") }}</strong> {{ tr("&middot; one search") }}</p>
                     <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
                 </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
-                <a class="lx-build-cta" id="lx-build-cta" href="#home">Run the checks on your postcode</a>
-                <p class="lx-build-hint" aria-hidden="true">Scroll &middot; the page is the scrubber</p>
+                <a class="lx-build-cta" id="lx-build-cta" href="#home">{{ tr("Run the checks on your postcode") }}</a>
+                <p class="lx-build-hint" aria-hidden="true">{{ tr("Scroll &middot; the page is the scrubber") }}</p>
             </div>
         </div>
     </div>
@@ -262,7 +259,7 @@
    section. #}
 <section class="lx-section lx-checks" id="checks">
     <div class="lx-wrap lx-centre">
-        <p class="lx-eyebrow">What we check</p>
+        <p class="lx-eyebrow">{{ tr("What we check") }}</p>
 
         {# The section IS the ring: twelve of the report's own check
            cards orbit the heading, passing behind and in front of the
@@ -272,14 +269,12 @@
            for whom the ring never starts and the list stays. #}
         <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
             <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Forty<br>checks</h2>
+            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">{{ tr("Forty") }}<br>{{ tr("checks") }}</h2>
             <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
         </div>
 
         <p class="lx-lede lx-lede-centre">
-            Every one on a single address, every one traced to the body that
-            published it. Twelve of them in orbit here; the full report runs
-            all forty.
+            {{ tr("Every one on a single address, every one traced to the body that published it. Twelve of them in orbit here; the full report runs all forty.") }}
         </p>
         <p class="lx-orbit-tiers">
             <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
@@ -287,7 +282,7 @@
             <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first property</span>
         </p>
         <p class="lx-orbit-more">
-            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 40 &rsaquo;</a>
+            <a class="lx-orbit-more-btn" href="/premium#all-checks">{{ tr("See pricing for the full list of 40 &rsaquo;") }}</a>
         </p>
 
         <ul class="lx-orbit-cards" id="lx-orbit-cards">
@@ -319,11 +314,10 @@
 {# =================================================================== AREAS #}
 <section class="lx-section lx-areas" id="areas">
     <div class="lx-wrap lx-centre">
-        <p class="lx-eyebrow">Area guides</p>
-        <h2 class="lx-h2">Start with an area you know</h2>
+        <p class="lx-eyebrow">{{ tr("Area guides") }}</p>
+        <h2 class="lx-h2">{{ tr("Start with an area you know") }}</h2>
         <p class="lx-lede lx-lede-centre">
-            No postcode to hand? Every district has a free guide: prices, schools,
-            crime and flood risk at a glance.
+            {{ tr("No postcode to hand? Every district has a free guide: prices, schools, crime and flood risk at a glance.") }}
         </p>
         <div class="lx-chips" data-cascade>
             {% for code, place in [
@@ -339,7 +333,7 @@
                 <span class="lx-chip-place">{{ place }}</span>
             </a>
             {% endfor %}
-            <a class="lx-chip lx-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
+            <a class="lx-chip lx-chip-all" href="/areas">{{ tr("All 2,943 guides &rsaquo;") }}</a>
         </div>
     </div>
 </section>
@@ -351,23 +345,19 @@
             <div class="lx-about-map"></div>
             <div class="lx-about-glow" aria-hidden="true"></div>
             <div class="lx-about-caption">
-                <p class="lx-eyebrow">Coverage</p>
-                <p class="lx-about-caption-figure">1.7M postcodes &middot; 2,943 districts</p>
+                <p class="lx-eyebrow">{{ tr("Coverage") }}</p>
+                <p class="lx-about-caption-figure">{{ tr("1.7M postcodes &middot; 2,943 districts") }}</p>
             </div>
         </div>
         <div>
-            <p class="lx-eyebrow">Why trust this</p>
-            <h2 class="lx-h2">Every figure names its source</h2>
+            <p class="lx-eyebrow">{{ tr("Why trust this") }}</p>
+            <h2 class="lx-h2">{{ tr("Every figure names its source") }}</h2>
             <p class="lx-lede">
-                Sold prices from HM Land Registry. Flood zones from the Environment Agency.
-                School ratings from Ofsted. Subsidence from the British Geological Survey.
-                Nothing is scraped from a listings site, and nothing is guessed.
+                {{ tr("Sold prices from HM Land Registry. Flood zones from the Environment Agency. School ratings from Ofsted. Subsidence from the British Geological Survey. Nothing is scraped from a listings site, and nothing is guessed.") }}
             </p>
             <p class="lx-lede">
-                Where a source does not cover an address, the report says so, rather than
-                leaving a gap that looks like good news. When a reader tells us a figure is
-                wrong, we check it and publish what we find on the
-                <a href="/accuracy">accuracy log</a>, including the times we were wrong.
+                {{ tr("Where a source does not cover an address, the report says so, rather than leaving a gap that looks like good news. When a reader tells us a figure is wrong, we check it and publish what we find on the") }}
+                <a href="/accuracy">{{ tr("accuracy log") }}</a>{{ tr(", including the times we were wrong.") }}
             </p>
             <div class="lx-about-stats">
                 {% for n, label in [('40', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
@@ -390,8 +380,8 @@
 <section class="lx-section lx-voices">
     <span class="lx-quote-mark" aria-hidden="true">&ldquo;</span>
     <div class="lx-wrap">
-        <p class="lx-eyebrow">Unedited</p>
-        <h2 class="lx-h2">What people say</h2>
+        <p class="lx-eyebrow">{{ tr("Unedited") }}</p>
+        <h2 class="lx-h2">{{ tr("What people say") }}</h2>
         <div class="lx-voice-grid" data-cascade>
             {# The Trustpilot ones first: they are the only quotes here a
                reader can go and verify, and the line under the grid
@@ -425,9 +415,8 @@
            promise. Verbatim quotes with a plain link are what remain
            available, and are honestly enough. #}
         <p class="lx-voices-source">
-            The first two are reviews from
-            <a href="{{ trustpilot.profile_url }}" rel="noopener nofollow" target="_blank">our Trustpilot page</a>,
-            where every review can be read in full.
+            {{ tr("The first two are reviews from") }}
+            <a href="{{ trustpilot.profile_url }}" rel="noopener nofollow" target="_blank">{{ tr("our Trustpilot page") }}</a>{{ tr(", where every review can be read in full.") }}
         </p>
     </div>
 </section>
@@ -441,19 +430,19 @@
    theme's existing rules still cover them.
    --------------------------------------------------------------- #}
 <section class="landing-section" id="compare-alternatives">
-    <span class="section-pill" data-animate>The alternative</span>
-    <h2 class="landing-heading" data-animate>What buyers do instead</h2>
+    <span class="section-pill" data-animate>{{ tr("The alternative") }}</span>
+    <h2 class="landing-heading" data-animate>{{ tr("What buyers do instead") }}</h2>
     <div class="alt-table-wrap" data-animate>
         <table class="alt-table">
             <thead><tr>
-                <th></th><th>Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
+                <th></th><th>{{ tr("Listings portals") }}</th><th>{{ tr("DIY on gov.uk") }}</th><th class="alt-us">{{ tr("UKPropertyInsight") }}</th>
             </tr></thead>
             <tbody>
-                <tr><td>Everything on one page</td><td class="alt-no">Listings, not checks</td><td class="alt-no">12+ separate sites</td><td class="alt-us alt-yes">One report</td></tr>
-                <tr><td>Works for any address, listed or not</td><td class="alt-no">Only what&rsquo;s for sale</td><td class="alt-yes">Yes</td><td class="alt-us alt-yes">Yes</td></tr>
-                <tr><td>Every figure names its source</td><td class="alt-no">No</td><td class="alt-yes">It is the source</td><td class="alt-us alt-yes">Yes, on every card</td></tr>
-                <tr><td>Who pays for it</td><td class="alt-no">Agents&rsquo; listings</td><td>Public</td><td class="alt-us">You do, so it answers to you</td></tr>
-                <tr><td>Time per property</td><td>&mdash;</td><td class="alt-no">Hours</td><td class="alt-us alt-yes">Seconds</td></tr>
+                <tr><td>{{ tr("Everything on one page") }}</td><td class="alt-no">{{ tr("Listings, not checks") }}</td><td class="alt-no">{{ tr("12+ separate sites") }}</td><td class="alt-us alt-yes">{{ tr("One report") }}</td></tr>
+                <tr><td>{{ tr("Works for any address, listed or not") }}</td><td class="alt-no">{{ tr("Only what&rsquo;s for sale") }}</td><td class="alt-yes">{{ tr("Yes") }}</td><td class="alt-us alt-yes">{{ tr("Yes") }}</td></tr>
+                <tr><td>{{ tr("Every figure names its source") }}</td><td class="alt-no">{{ tr("No") }}</td><td class="alt-yes">{{ tr("It is the source") }}</td><td class="alt-us alt-yes">{{ tr("Yes, on every card") }}</td></tr>
+                <tr><td>{{ tr("Who pays for it") }}</td><td class="alt-no">{{ tr("Agents&rsquo; listings") }}</td><td>{{ tr("Public") }}</td><td class="alt-us">{{ tr("You do, so it answers to you") }}</td></tr>
+                <tr><td>{{ tr("Time per property") }}</td><td>&mdash;</td><td class="alt-no">{{ tr("Hours") }}</td><td class="alt-us alt-yes">{{ tr("Seconds") }}</td></tr>
             </tbody>
         </table>
     </div>
@@ -462,22 +451,22 @@
 <section class="accuracy-strip" data-animate>
     <div class="accuracy-strip-inner">
         <div class="accuracy-strip-copy">
-            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
-            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
+            <h2 class="accuracy-strip-heading">{{ tr("Think a figure is wrong? Say so, publicly.") }}</h2>
+            <p>{{ tr("Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.") }}</p>
         </div>
         {% if accuracy_counts %}
         <div class="accuracy-strip-stats">
             <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> were wrong, now fixed</span>
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> {{ tr("were wrong, now fixed") }}</span>
         </div>
         {% endif %}
-        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
+        <a class="accuracy-strip-link" href="/accuracy">{{ tr("Read the accuracy log &rsaquo;") }}</a>
     </div>
 </section>
 
 <section class="landing-section">
-    <span class="section-pill" data-animate>Questions</span>
-    <h2 class="landing-heading" data-animate>Questions people ask first</h2>
+    <span class="section-pill" data-animate>{{ tr("Questions") }}</span>
+    <h2 class="landing-heading" data-animate>{{ tr("Questions people ask first") }}</h2>
     <div class="faq-list">
         {% for q, a in [
             ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
@@ -497,7 +486,7 @@
 
 <section class="sources-strip" data-animate>
     <span class="sources-strip-heading">
-        Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
+        {{ tr("Powered by") }} <em class="hl-warn">{{ tr("official") }}</em> <em class="hl-accent">{{ tr("UK") }}</em> {{ tr("data") }}
     </span>
     {# A continuous ticker of the sources, the strongest content this
        site has. Two passes of the same list make the loop seamless;
@@ -530,7 +519,7 @@
         </div>
     </div>
     <p class="sources-strip-note">
-        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
+        {{ tr("Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.") }}
     </p>
 </section>
 
@@ -538,30 +527,29 @@
 <section class="lx-section lx-contact" id="contact">
     <div class="lx-wrap lx-contact-grid">
         <div>
-            <p class="lx-eyebrow">Start here</p>
-            <h2 class="lx-h2">One search.<br>Every check.</h2>
+            <p class="lx-eyebrow">{{ tr("Start here") }}</p>
+            <h2 class="lx-h2">{{ tr("One search.") }}<br>{{ tr("Every check.") }}</h2>
             <p class="lx-lede">
-                Search is free and needs no account. Sign up and the first property
-                come with every Premium check unlocked, no card required.
+                {{ tr("Search is free and needs no account. Sign up and the first property come with every Premium check unlocked, no card required.") }}
             </p>
             <ul class="lx-contact-facts">
                 <li>{{ icons.icon('map') }} England, Wales, Scotland and Northern Ireland</li>
                 <li>{{ icons.icon('statistics') }} Open Government Licence v3.0</li>
-                <li>{{ icons.icon('heritage') }} <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a></li>
+                <li>{{ icons.icon('heritage') }} <a href="mailto:support@ukpropertyinsight.co.uk">{{ tr("support@ukpropertyinsight.co.uk") }}</a></li>
             </ul>
         </div>
 
         <form class="lx-contact-card stacked-form" action="/property" method="get">
             <div class="search-form-field">
-                <label for="contact-postcode">UK postcode</label>
+                <label for="contact-postcode">{{ tr("UK postcode") }}</label>
                 <input type="text" id="contact-postcode" name="postcode" placeholder="M1 1AE" autocomplete="off" required>
             </div>
             <div class="search-form-field">
-                <label for="contact-house">House or flat number</label>
+                <label for="contact-house">{{ tr("House or flat number") }}</label>
                 <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
             </div>
-            <button type="submit">Run the checks</button>
-            <p class="lx-contact-note">40 checks &middot; 13 official sources &middot; no card needed</p>
+            <button type="submit">{{ tr("Run the checks") }}</button>
+            <p class="lx-contact-note">{{ tr("40 checks &middot; 13 official sources &middot; no card needed") }}</p>
         </form>
     </div>
 </section>

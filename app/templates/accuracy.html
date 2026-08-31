@@ -4,32 +4,32 @@
 {% block meta_description %}Every figure a reader has questioned on UKPropertyInsight, and what we found when we checked it against the source. Published in full, including the times we were wrong.{% endblock %}
 
 {% block content %}
-<span class="kicker">Accuracy</span>
-<h1>Every figure someone questioned, and what we found</h1>
-<p class="dek">Any card on any report has an "Is this wrong?" link. This is where those go. We check each one against its source and publish the outcome, including the times the site was wrong.</p>
+<span class="kicker">{{ tr("Accuracy") }}</span>
+<h1>{{ tr("Every figure someone questioned, and what we found") }}</h1>
+<p class="dek">{{ tr('Any card on any report has an "Is this wrong?" link. This is where those go. We check each one against its source and publish the outcome, including the times the site was wrong.') }}</p>
 
 <div class="scorecard-row">
-    <div class="score-tile"><span class="score-tile-value">{{ counts.total }}</span><span class="score-tile-label">reported</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ counts.confirmed }}</span><span class="score-tile-label">were wrong, now fixed</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ counts.labelled }}</span><span class="score-tile-label">right, but explained better now</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ counts.correct }}</span><span class="score-tile-label">checked, correct</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ counts.open }}</span><span class="score-tile-label">still checking</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.total }}</span><span class="score-tile-label">{{ tr("reported") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.confirmed }}</span><span class="score-tile-label">{{ tr("were wrong, now fixed") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.labelled }}</span><span class="score-tile-label">{{ tr("right, but explained better now") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.correct }}</span><span class="score-tile-label">{{ tr("checked, correct") }}</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ counts.open }}</span><span class="score-tile-label">{{ tr("still checking") }}</span></div>
 </div>
 
 {% if corrections %}
-<h2 class="accuracy-h2">Corrections in full</h2>
-<p class="section-sub">Reported to us directly rather than through the form on a card. What was wrong, why, and what changed.</p>
+<h2 class="accuracy-h2">{{ tr("Corrections in full") }}</h2>
+<p class="section-sub">{{ tr("Reported to us directly rather than through the form on a card. What was wrong, why, and what changed.") }}</p>
 <div class="correction-list">
     {% for c in corrections %}
     <article class="correction">
         <header class="correction-head">
-            <span class="status-pill status-confirmed">Confirmed and fixed</span>
+            <span class="status-pill status-confirmed">{{ tr("Confirmed and fixed") }}</span>
             <span class="correction-meta">{{ c.card }} &middot; {{ c.district }} &middot; {{ c.date }}</span>
         </header>
         <dl class="correction-body">
-            <dt>Reported</dt><dd>{{ c.reported }}</dd>
-            <dt>What we found</dt><dd>{{ c.found }}</dd>
-            <dt>What changed</dt><dd>{{ c.fixed }}</dd>
+            <dt>{{ tr("Reported") }}</dt><dd>{{ c.reported }}</dd>
+            <dt>{{ tr("What we found") }}</dt><dd>{{ c.found }}</dd>
+            <dt>{{ tr("What changed") }}</dt><dd>{{ c.fixed }}</dd>
         </dl>
     </article>
     {% endfor %}
@@ -37,12 +37,12 @@
 {% endif %}
 
 {% if reports %}
-<h2 class="accuracy-h2">Reported from a card</h2>
+<h2 class="accuracy-h2">{{ tr("Reported from a card") }}</h2>
 {% endif %}
 {% if reports %}
 <div class="tablewrap">
 <table class="tx-table accuracy-table">
-    <thead><tr><th>When</th><th>District</th><th>Card</th><th>Outcome</th><th>What we found</th></tr></thead>
+    <thead><tr><th>{{ tr("When") }}</th><th>{{ tr("District") }}</th><th>{{ tr("Card") }}</th><th>{{ tr("Outcome") }}</th><th>{{ tr("What we found") }}</th></tr></thead>
     <tbody>
     {% for r in reports %}
     <tr>
@@ -57,8 +57,8 @@
 </table>
 </div>
 {% else %}
-<p class="notice">Nothing reported yet. When someone questions a figure, it appears here with what we found.</p>
+<p class="notice">{{ tr("Nothing reported yet. When someone questions a figure, it appears here with what we found.") }}</p>
 {% endif %}
 
-<p class="section-sub" style="margin-top: 2rem;">Postcodes are shown as districts only, so no individual home is identifiable. Read how each figure is sourced on the <a href="/methodology">methodology page</a>.</p>
+<p class="section-sub" style="margin-top: 2rem;">{{ tr("Postcodes are shown as districts only, so no individual home is identifiable. Read how each figure is sourced on the") }} <a href="/methodology">{{ tr("methodology page") }}</a>.</p>
 {% endblock %}
