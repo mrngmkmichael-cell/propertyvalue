@@ -51,8 +51,9 @@ async def _fetch_risk(lat: float, lon: float) -> dict | None:
     # Catching and returning None for both here made a live BGS outage
     # indistinguishable from "no radon risk here", and risk_near below
     # would then cache that wrong answer for 30 days.
-    response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
-    response.raise_for_status()
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(IDENTIFY_URL, params=params)
+        response.raise_for_status()
 
     results = response.json().get("results", [])
     if not results:

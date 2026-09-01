@@ -69,8 +69,9 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
         "f": "json",
     }
     try:
-        response = await httpx.AsyncClient(timeout=15).get(QUERY_URL, params=params)
-        response.raise_for_status()
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.get(QUERY_URL, params=params)
+            response.raise_for_status()
     except httpx.HTTPError:
         return []
 

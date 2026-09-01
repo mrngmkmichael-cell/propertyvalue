@@ -58,8 +58,9 @@ async def _fetch_risk(lat: float, lon: float) -> dict | None:
     # and returning None made a live BGS outage indistinguishable from
     # "no shrink-swell data here", and risk_near below would cache
     # that wrong answer for 30 days.
-    response = await httpx.AsyncClient(timeout=10).get(IDENTIFY_URL, params=params)
-    response.raise_for_status()
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(IDENTIFY_URL, params=params)
+        response.raise_for_status()
 
     by_horizon = {}
     for res in response.json().get("results", []):

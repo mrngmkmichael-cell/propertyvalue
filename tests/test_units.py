@@ -750,3 +750,28 @@ def test_a_failing_factory_does_not_leave_its_lock_behind():
     with pytest.raises(RuntimeError):
         asyncio.run(main._deduped(("k", "leaky"), 60, boom))
     assert main._inflight_locks == {}
+
+def test_no_service_leaks_an_unclosed_http_client():
+    """An httpx.AsyncClient that is never closed keeps its connection
+    pool and TLS context alive: measured 1 Sep 2026 at ~702 KB each,
+    against ~3.7 KB for one closed properly. Three services were
+    creating one per call on the report path, leaking ~2.1 MB per
+    render, which is what took the live instance to 458 MB of 512.
+
+    Every client must be opened with `async with`, or accepted as a
+    parameter from a caller that owns it.
+    """
+    import pathlib
+    import re
+
+    offenders = []
+    for f in sorted(pathlib.Path("app").rglob("*.py")):
+        for n, line in enumerate(f.read_text(encoding="utf-8").split("\n"), 1):
+            if "httpx.AsyncClient(" not in line:
+                continue
+            if "async with" in line:
+                continue
+            if re.search(r":\s*httpx\.AsyncClient", line):   # a type annotation
+                continue
+            offenders.append(f"{f.as_posix()}:{n}: {line.strip()}")
+    assert not offenders, "unclosed httpx clients:\n" + "\n".join(offenders)
