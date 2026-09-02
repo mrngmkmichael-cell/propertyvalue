@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Private Schools by Council: {{ "{:,}".format(total) }} Independent Schools in England, Listed{% endblock %}
+{% block meta_description %}Every fee-paying school in England from the Department for Education register, listed council by council: ages, single-sex or mixed, faith, special schools, and how full. Pick a council.{% endblock %}
+{% block og_title %}Private schools in England, by council{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/guide">&larr; School guide</a>
+
+<span class="kicker">Independent schools</span>
+<h1>Private schools, council by council</h1>
+<p class="dek">
+    The Department for Education registers every fee-paying school in England, {{ "{:,}".format(total) }} of them,
+    with its age range, whether it is single-sex, its faith and how many pupils it has. Almost nobody
+    surfaces that register, because it files every one of them under "phase: not applicable". This does.
+    Pick a council for the full list, or an <a href="/areas">area guide</a> for the schools within reach of one postcode.
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(total) }}</span><span class="score-tile-label">independent schools on the register</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ districts | length }}</span><span class="score-tile-label">councils with at least one</span></div>
+</div>
+
+<section class="report-section">
+    <h2>Councils</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Council</th><th class="num">Independent schools</th></tr></thead>
+            <tbody>
+                {% for d in districts %}
+                <tr>
+                    <td><a href="/schools/independent/{{ d.slug }}">{{ d.name }}</a></td>
+                    <td class="num">{{ d.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Independent schools are inspected by the Independent Schools Inspectorate or Ofsted and set their
+        own fees and entry tests; none of that is on the register, so none of it is here. What is here is
+        exactly what the register holds, refreshed with each import.
+    </p>
+</section>
+{% endblock %}

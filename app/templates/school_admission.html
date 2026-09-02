@@ -472,4 +472,25 @@
     })();
 </script>
 {% endif %}
+{% if nearby_with_figure %}
+<section class="report-section">
+    <h2>Other schools nearby with a published distance</h2>
+    <p class="section-sub">The closest schools to {{ school.name }} that also have a council-published admission distance, nearest first.</p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>School</th><th>Phase</th><th class="num">Admitted from</th><th class="num">Away</th></tr></thead>
+            <tbody>
+                {% for n in nearby_with_figure %}
+                <tr>
+                    <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a></td>
+                    <td>{{ n.phase }}</td>
+                    <td class="num">{{ n.miles }} mi{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
+                    <td class="num">{{ n.away_miles }} mi</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
 {% endblock %}

@@ -3,6 +3,7 @@
 {% block title %}England's Tightest School Catchments: {{ data.under_half }} Schools Admitted From Under Half a Mile{% endblock %}
 {% block meta_description %}Every published admission distance we hold, ranked: the {{ data.under_half }} English schools that admitted from under half a mile, the widest gates, and {{ data.council_count }} councils compared on how far the last child offered a place lived.{% endblock %}
 {% block og_title %}England's tightest school catchments{% endblock %}
+{% block og_image %}{{ og_story_url }}{% endblock %}
 
 {% block content %}
 <a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
@@ -145,7 +146,8 @@
     </p>
     <p class="section-sub">
         Journalists and researchers: the figures on this page and on every council page may be quoted with a
-        link to the page they came from. For the underlying spreadsheet or a figure for a school not shown,
+        link to the page they came from. The whole dataset is one file:
+        <a href="/schools/admission-distances.csv">admission-distances.csv</a>, one row per school. For the underlying spreadsheet or a figure for a school not shown,
         email <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>.
     </p>
 </section>

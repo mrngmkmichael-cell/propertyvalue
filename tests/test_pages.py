@@ -1055,3 +1055,85 @@ def test_internal_check_header_is_not_a_pageview(client):
     second = client.get("/methodology", headers={"User-Agent": "Mozilla/5.0"})
     assert second.status_code == 200 and second.headers.get("x-anon-cache") == "hit"
     assert count() == before + 1
+
+
+# ---- exposure work, 3 Sep 2026 -------------------------------------------
+
+def _seed_independent_school():
+    from app import db
+    from app.models import School, SchoolDetail
+    with db.get_session() as session:
+        if session.get(School, 990021) is None:
+            session.add(School(urn=990021, name="Whitworth House School", phase="Not applicable",
+                               type_name="Other independent school", postcode="M1 3CC",
+                               latitude=53.47, longitude=-2.25))
+            session.add(SchoolDetail(urn=990021, local_authority="Manchester", town="Manchester",
+                                     gender="Girls", religious_character="None", age_low=3, age_high=18,
+                                     website="https://example.org", school_capacity=400, number_on_roll=300))
+            session.commit()
+
+
+def test_independent_school_pages_by_council(client):
+    _seed_independent_school()
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    index = client.get("/schools/independent")
+    assert index.status_code == 200
+    assert 'href="/schools/independent/manchester"' in index.text
+    page = client.get("/schools/independent/manchester")
+    assert page.status_code == 200
+    body = page.text
+    assert "<title>Private schools in Manchester" in body
+    assert "Whitworth House School" in body and "3 to 18" in body and "Girls" in body
+    assert "75%" in body  # 300 of 400
+    assert '"BreadcrumbList"' in body and '"FAQPage"' in body
+    # Links across to the state-school hub for the same council.
+    assert 'href="/schools/admissions/manchester"' in body
+    assert client.get("/schools/independent/no-such-council").status_code == 404
+    assert "/schools/independent/manchester" in client.get("/sitemap.xml").text
+
+
+def test_structured_data_and_share_cards_on_the_admissions_pages(client):
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    story = client.get("/schools/tightest-catchments").text
+    assert '"Dataset"' in story and "/schools/admission-distances.csv" in story
+    assert '"BreadcrumbList"' in story
+    assert 'property="og:image" content="https://testserver/og/tightest-catchments.png"' in story
+    hub = client.get("/schools/admissions/manchester").text
+    assert '"Dataset"' in hub and '"BreadcrumbList"' in hub
+    assert "<title>Manchester school catchments" in hub
+    assert 'content="https://testserver/og/council/manchester.png"' in hub
+    school = client.get("/school/990012/quayside-academy").text
+    assert '"BreadcrumbList"' in school
+    # The mesh: the other seeded school is a few hundred metres away.
+    assert 'href="/school/990011/harbour-lane-primary"' in school
+    assert "Other schools nearby with a published distance" in school
+
+
+def test_csv_and_llms_txt(client):
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    csv = client.get("/schools/admission-distances.csv")
+    assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
+    assert csv.text.splitlines()[0] == "urn,school,phase,council,town,last_distance_miles,intake_year,page"
+    assert "990011,Harbour Lane Primary,Primary,Manchester" in csv.text
+    llms = client.get("/llms.txt")
+    assert llms.status_code == 200 and llms.text.startswith("# UKPropertyInsight")
+    assert "/schools/admissions" in llms.text
+    # Neither is a pageview.
+    assert client.get("/internal/indexnow-resubmit").status_code == 405
+    assert client.post("/internal/indexnow-resubmit").status_code == 404
+
+
+def test_admissions_index_shows_each_council_figure(client):
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/schools/admissions").text
+    assert "Middle distance" in body and "Filled from under a mile" in body
+    assert 'href="/school/990011/harbour-lane-primary"' in body
+    assert 'href="/schools/tightest-catchments"' in client.get("/methodology").text  # footer

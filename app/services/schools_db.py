@@ -736,6 +736,121 @@ def tightest_catchments() -> dict:
     return result
 
 
+INDEPENDENT_CACHE_KEY = "schools:independent_districts"
+
+
+def independent_districts() -> list[dict]:
+    """Every council with at least one fee-paying school on the DfE
+    register, with the count. Backs /schools/independent. Cached a day."""
+    cached = _cache.get(INDEPENDENT_CACHE_KEY, 24 * 3600)
+    if cached is not None:
+        return cached
+    with get_session() as session:
+        rows = session.execute(
+            select(SchoolDetail.local_authority, func.count())
+            .join(School, School.urn == SchoolDetail.urn)
+            .where(func.lower(School.type_name).like("%independent%"))
+            .group_by(SchoolDetail.local_authority)
+        ).all()
+    out = [{"name": name, "slug": _slugify(name), "count": count} for name, count in rows if name]
+    out.sort(key=lambda d: d["name"])
+    _cache.set(INDEPENDENT_CACHE_KEY, out)
+    return out
+
+
+def independent_district_for(name: str | None) -> dict | None:
+    """The independent-schools page for a council name as postcodes.io
+    spells it, if the register agrees on the spelling."""
+    if not name:
+        return None
+    slug = _slugify(name)
+    return next((d for d in independent_districts() if d["slug"] == slug), None)
+
+
+def independent_district(slug: str) -> dict | None:
+    """One council's fee-paying schools, grouped for the page: the
+    register's own fields, nothing inferred. Special schools are listed
+    apart because a parent looking for one is not looking for the other."""
+    district = next((d for d in independent_districts() if d["slug"] == slug), None)
+    if district is None:
+        return None
+    with get_session() as session:
+        rows = session.execute(
+            select(School, SchoolDetail)
+            .join(SchoolDetail, SchoolDetail.urn == School.urn)
+            .where(SchoolDetail.local_authority == district["name"])
+            .where(func.lower(School.type_name).like("%independent%"))
+        ).all()
+    schools = []
+    for s, det in rows:
+        occupancy = (
+            round(det.number_on_roll / det.school_capacity * 100)
+            if det.school_capacity and det.number_on_roll else None
+        )
+        schools.append({
+            "urn": s.urn, "name": s.name, "town": det.town or "", "postcode": s.postcode or "",
+            "special": "special" in (s.type_name or "").lower(),
+            "gender": det.gender or "", "religious_character": det.religious_character or "",
+            "age_low": det.age_low, "age_high": det.age_high,
+            "has_sixth_form": (det.has_sixth_form or "").lower().startswith("has"),
+            "website": det.website if (det.website or "").startswith("http") else "",
+            "number_on_roll": det.number_on_roll, "capacity": det.school_capacity,
+            "occupancy_pct": occupancy,
+        })
+    schools.sort(key=lambda x: x["name"])
+    mainstream = [x for x in schools if not x["special"]]
+    special = [x for x in schools if x["special"]]
+    groups = []
+    if mainstream:
+        groups.append(("Mainstream independent schools", mainstream))
+    if special:
+        groups.append(("Independent special schools", special))
+    return {
+        **district,
+        "count": len(schools),
+        "mainstream": len(mainstream),
+        "special": len(special),
+        "single_sex": sum(1 for x in schools if x["gender"].lower() in ("boys", "girls")),
+        "with_sixth_form": sum(1 for x in schools if x["age_high"] and x["age_high"] >= 18),
+        "pupils": sum(x["number_on_roll"] or 0 for x in schools),
+        "groups": groups,
+        "schools": schools,
+    }
+
+
+def nearby_admission_pages(urn: int, limit: int = 6, radius_miles: float = 3.0) -> list[dict]:
+    """Other schools within a few miles that also have a published
+    admission distance, nearest first. Each school page links to these,
+    so the 3,478 pages form a mesh a crawler can walk rather than 3,478
+    leaves hanging off 85 hubs."""
+    with get_session() as session:
+        me = session.get(School, urn)
+        if me is None or me.latitude is None or me.longitude is None:
+            return []
+        dlat = radius_miles / 69.0
+        dlon = radius_miles / (69.0 * max(math.cos(math.radians(me.latitude)), 0.2))
+        rows = session.execute(
+            select(School, SchoolAdmissionRadius)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .where(School.urn != urn)
+            .where(School.latitude.between(me.latitude - dlat, me.latitude + dlat))
+            .where(School.longitude.between(me.longitude - dlon, me.longitude + dlon))
+        ).all()
+        out = []
+        for s, r in rows:
+            if s.latitude is None or s.longitude is None or r.last_distance_miles is None:
+                continue
+            away = _haversine_km(me.latitude, me.longitude, s.latitude, s.longitude) / 1.609344
+            out.append({
+                "urn": s.urn, "name": s.name, "slug": _slugify(s.name),
+                "phase": _phase_group(s.phase) or "Other",
+                "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year or "",
+                "away_miles": round(away, 1),
+            })
+    out.sort(key=lambda x: (x["away_miles"], x["name"]))
+    return out[:limit]
+
+
 def admission_profile(urn: int) -> dict | None:
     """Everything one school's admission page renders."""
     with get_session() as session:

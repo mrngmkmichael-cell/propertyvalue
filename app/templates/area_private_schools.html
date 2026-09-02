@@ -9,6 +9,9 @@
 {% if private_faqs_jsonld %}<script type="application/ld+json">{{ private_faqs_jsonld | safe }}</script>{% endif %}
 
 <a class="back-link" href="/area/{{ outcode }}">&larr; {{ outcode }} area guide</a>
+{% if independent_district %}
+<p class="section-sub">Every fee-paying school in the council, not just within reach of {{ outcode }}: <a href="/schools/independent/{{ independent_district.slug }}">Private schools in {{ independent_district.name }} ({{ independent_district.count }}) →</a></p>
+{% endif %}
 
 <span class="kicker">Private schools</span>
 <h1>Fee-paying schools in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>

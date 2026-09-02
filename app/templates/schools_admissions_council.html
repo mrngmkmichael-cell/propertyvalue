@@ -1,8 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}{{ seo_title(council.name ~ " School Admission Distances", ": how far each school admitted from", "") }}{% endblock %}
+{% block title %}{{ seo_title(council.name ~ " school catchments", " and admission distances", ": how far each school admitted from") }}{% endblock %}
 {% block meta_description %}How far the last child admitted lived, for {{ council.count }} {{ council.name }} schools, from the council's own published figures. Median {{ council.median_miles }} miles; tightest {{ council.tightest.name }} at {{ council.tightest.miles }} miles.{% endblock %}
 {% block og_title %}{{ council.name }}: how far each school admitted from{% endblock %}
+{% block og_image %}{{ og_council_url }}{% endblock %}
 
 {% block content %}
 {% if admissions_faqs_jsonld %}<script type="application/ld+json">{{ admissions_faqs_jsonld | safe }}</script>{% endif %}

@@ -139,7 +139,7 @@ _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
 _ANON_HTML_TTL_S = 600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
-    "/schools/tightest-catchments",
+    "/schools/tightest-catchments", "/schools/independent",
     "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
@@ -223,7 +223,8 @@ async def capture_referral(request: Request, call_next):
 # webhook are all real traffic but not what "how many people viewed
 # the site" is asking about.
 _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
-_PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico"}
+_PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico", "/llms.txt",
+                           "/schools/admission-distances.csv"}
 if indexnow.key():
     _PAGEVIEW_EXCLUDE_PATHS.add(f"/{indexnow.key()}.txt")
 
@@ -1492,6 +1493,15 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/admissions", "0.7"))
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
+    # "private schools in {council}" is the query Search Console shows
+    # us being surfaced for at position 46 with the per-postcode pages;
+    # one page per council is the shape of the query.
+    entries.append((f"{base}/schools/independent", "0.6"))
+    try:
+        entries += [(f"{base}/schools/independent/{d['slug']}", "0.6")
+                    for d in schools_db.independent_districts()]
+    except Exception:  # noqa: BLE001 - a database blip must not break the sitemap
+        pass
     try:
         entries += [(f"{base}/schools/admissions/{c['slug']}", "0.6")
                     for c in schools_db.admission_councils()]
@@ -4326,6 +4336,59 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     context["area_faqs_jsonld"] = _faq_jsonld(faqs)
 
 
+def _breadcrumb_jsonld(base: str, items: list[tuple[str, str]]) -> str:
+    """Search Console reads these (it has a Breadcrumbs report), and a
+    result that shows "Schools > Admission distances > Essex" instead of
+    a bare URL is the one people click."""
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": i, "name": name, "item": f"{base}{path}"}
+            for i, (name, path) in enumerate(items, 1)
+        ],
+    })
+
+
+def _dataset_jsonld(base: str, name: str, description: str, path: str, spatial: str,
+                    years: list[str], keywords: list[str], csv_path: str | None = None) -> str:
+    """Dataset markup for Google Dataset Search, a second front door that
+    the admissions figures qualify for: a real collated dataset with a
+    named source per row and a CSV distribution."""
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": name,
+        "description": description,
+        "url": f"{base}{path}",
+        "keywords": keywords,
+        "spatialCoverage": spatial,
+        "creator": {"@type": "Organization", "name": "UKPropertyInsight", "url": base},
+        "isAccessibleForFree": True,
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+        "sourceOrganization": {"@type": "Organization", "name": "English local authorities, published admission statistics"},
+    }
+    if years:
+        data["temporalCoverage"] = f"{years[0]}/{years[-1]}" if len(years) > 1 else years[0]
+    if csv_path:
+        data["distribution"] = [{
+            "@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": f"{base}{csv_path}",
+        }]
+    return json.dumps(data)
+
+
+def _council_hub_for(name: str | None) -> dict | None:
+    """The admissions hub for a council as postcodes.io names it, when
+    we hold that council's figures under the same spelling."""
+    if not name:
+        return None
+    slug = schools_db._slugify(name)
+    try:
+        return next((c for c in schools_db.admission_councils() if c["slug"] == slug), None)
+    except Exception:  # noqa: BLE001 - a link is not worth a failed page
+        return None
+
+
 def _faq_jsonld(faqs) -> str:
     """FAQPage structured data from (question, answer) pairs.
 
@@ -4579,6 +4642,7 @@ async def area_guide(request: Request, outcode: str):
     codes = location.get("codes", {})
     context["outcode"] = outcode
     context["admin_district"] = location["admin_district"]
+    context["council_hub"] = await asyncio.to_thread(_council_hub_for, location.get("admin_district"))
     context["region"] = location["region"]
     # House prices (UK HPI) are a genuine 4-nations dataset and work
     # fine here - it's crime (data.police.uk: British Transport Police
@@ -6777,6 +6841,12 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["school"] = profile
     context["og_school_url"] = f"{base}/og/school/{urn}.png"
     context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+        (profile.get("authority", "Council"), f"/schools/admissions/{context['council_slug']}"),
+        (profile["name"], canonical_path),
+    ])
+    context["nearby_with_figure"] = await asyncio.to_thread(schools_db.nearby_admission_pages, urn)
     context["shortlisted"] = bool(context["current_user"]) and any(
         i["urn"] == urn for i in school_shortlist.list_items(context["current_user"]["id"])
     )
@@ -6934,6 +7004,11 @@ async def area_private_schools(request: Request, outcode: str):
     context["outcode"] = outcode
     context["admin_district"] = location.get("admin_district") or ""
     context["canonical_url"] = f"{_public_base_url(request)}/area/{outcode}/private-schools"
+    context["independent_district"] = await asyncio.to_thread(schools_db.independent_district_for, context["admin_district"])
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_public_base_url(request), [
+        ("Area guides", "/areas"), (f"{outcode} area guide", f"/area/{outcode}"),
+        (f"Private schools in {outcode}", f"/area/{outcode}/private-schools"),
+    ])
     context["private_faqs"] = _private_school_faqs(outcode, context["admin_district"], payload)
     context["private_faqs_jsonld"] = _faq_jsonld(context["private_faqs"])
     return templates.TemplateResponse(request, "area_private_schools.html", context)
@@ -7135,6 +7210,14 @@ async def admissions_index(request: Request):
     context["councils"] = councils
     context["total_schools"] = sum(c["count"] for c in councils)
     context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions"
+    try:
+        stats = await asyncio.to_thread(schools_db.tightest_catchments)
+        context["council_stats"] = {c["slug"]: c for c in stats["councils"]}
+    except Exception:  # noqa: BLE001 - the plain list still renders
+        context["council_stats"] = {}
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_public_base_url(request), [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+    ])
     return templates.TemplateResponse(request, "schools_admissions_index.html", context)
 
 
@@ -7159,6 +7242,22 @@ async def admissions_council(request: Request, council_slug: str):
         _cache.set(cache_key, council)
     context["council"] = council
     context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions/{council_slug}"
+    _base = _public_base_url(request)
+    context["og_council_url"] = f"{_base}/og/council/{council_slug}.png"
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_base, [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+        (council["name"], f"/schools/admissions/{council_slug}"),
+    ])
+    context["dataset_jsonld"] = _dataset_jsonld(
+        _base,
+        name=f"{council['name']} school admission distances (last distance offered)",
+        description=(f"How far from the school the last child offered a place lived, for "
+                     f"{council['count']} oversubscribed schools in {council['name']}, as published "
+                     f"by the council after offer day. Straight-line miles unless the council states otherwise."),
+        path=f"/schools/admissions/{council_slug}", spatial=f"{council['name']}, England",
+        years=council.get("years") or [], keywords=["school admissions", "catchment", "last distance offered", council["name"]],
+        csv_path="/schools/admission-distances.csv",
+    )
     context["admissions_faqs_jsonld"] = _faq_jsonld([
         (f"How far do you need to live from a school in {council['name']} to get a place?",
          f"It depends on the school. Across the {council['count']} {council['name']} schools with a "
@@ -7180,9 +7279,196 @@ def tightest_catchments_page(request: Request):
     hold. Written to be quoted by a local paper or a parents' forum,
     with every number linking to the school or council page behind it."""
     context = base_context(request)
-    context["canonical_url"] = f"{_public_base_url(request)}/schools/tightest-catchments"
+    _base = _public_base_url(request)
+    context["canonical_url"] = f"{_base}/schools/tightest-catchments"
     context["data"] = schools_db.tightest_catchments()
+    context["og_story_url"] = f"{_base}/og/tightest-catchments.png"
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_base, [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+        ("England's tightest school catchments", "/schools/tightest-catchments"),
+    ])
+    context["dataset_jsonld"] = _dataset_jsonld(
+        _base,
+        name="School admission distances, England: last distance offered by school",
+        description=(f"The distance from home to school of the last child offered a place at "
+                     f"{context['data']['total']:,} oversubscribed English schools across "
+                     f"{context['data']['council_count']} councils, collated from each council's published "
+                     f"admission statistics. One row per school with council, phase, distance in miles and intake year."),
+        path="/schools/tightest-catchments", spatial="England",
+        years=context["data"]["years"], keywords=["school admissions", "catchment areas", "last distance offered", "oversubscribed schools", "England"],
+        csv_path="/schools/admission-distances.csv",
+    )
     return templates.TemplateResponse(request, "schools_tightest.html", context)
+
+
+@app.get("/schools/independent")
+async def independent_index(request: Request):
+    """Fee-paying schools by council, the index."""
+    context = base_context(request)
+    districts = await asyncio.to_thread(schools_db.independent_districts)
+    context["districts"] = districts
+    context["total"] = sum(d["count"] for d in districts)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/independent"
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_public_base_url(request), [
+        ("Schools", "/schools/guide"), ("Private schools", "/schools/independent"),
+    ])
+    return templates.TemplateResponse(request, "schools_independent_index.html", context)
+
+
+@app.get("/schools/independent/{slug}")
+async def independent_district_page(request: Request, slug: str):
+    """Every fee-paying school registered in one council. "private
+    schools in {town}" is the query family Search Console shows this
+    site surfacing for already; this is the page shaped like it."""
+    context = base_context(request)
+    district = await asyncio.to_thread(schools_db.independent_district, slug)
+    if district is None:
+        return templates.TemplateResponse(request, "404.html", context, status_code=404)
+    base = _public_base_url(request)
+    context["district"] = district
+    context["council_hub"] = await asyncio.to_thread(_council_hub_for, district["name"])
+    context["canonical_url"] = f"{base}/schools/independent/{slug}"
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [
+        ("Schools", "/schools/guide"), ("Private schools", "/schools/independent"),
+        (district["name"], f"/schools/independent/{slug}"),
+    ])
+    faqs = [
+        (f"How many private schools are there in {district['name']}?",
+         f"{district['count']} independent schools are registered in {district['name']} with the Department "
+         f"for Education: {district['mainstream']} mainstream and {district['special']} special schools."),
+        (f"Are there single-sex private schools in {district['name']}?",
+         (f"Yes, {district['single_sex']} of the {district['count']} are single-sex according to the register."
+          if district["single_sex"] else f"No: every independent school registered in {district['name']} is mixed.")),
+        (f"Which private schools in {district['name']} take pupils to 18?",
+         (f"{district['with_sixth_form']} of them have a registered upper age of 18 or over. The table on this page shows each school's age range."
+          if district["with_sixth_form"] else "None registered in this council has an upper age of 18 or over.")),
+    ]
+    context["independent_faqs_jsonld"] = _faq_jsonld(faqs)
+    return templates.TemplateResponse(request, "schools_independent_district.html", context)
+
+
+@app.get("/schools/admission-distances.csv")
+async def admission_distances_csv(request: Request):
+    """The whole admissions dataset as one CSV: the distribution the
+    Dataset markup points at, and what a journalist asks for first."""
+    data = await asyncio.to_thread(schools_db.tightest_catchments)
+    base = _public_base_url(request)
+    lines = ["urn,school,phase,council,town,last_distance_miles,intake_year,page"]
+    for s in data["schools"]:
+        cells = [str(s["urn"]), s["name"], s["phase"], s["authority"], s["town"],
+                 f"{s['miles']:g}", s["academic_year"], f"{base}/school/{s['urn']}/{s['slug']}"]
+        lines.append(",".join('"' + c.replace('"', '""') + '"' if ("," in c or '"' in c) else c for c in cells))
+    body = "\n".join(lines) + "\n"
+    return Response(content=body, media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'inline; filename="uk-school-admission-distances.csv"',
+                             "Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/llms.txt")
+async def llms_txt(request: Request):
+    """What this site is, for the AI search crawlers that read it (the
+    llmstxt.org convention): the data pages and what each one answers,
+    so an assistant citing a figure can link the page it came from."""
+    base = _public_base_url(request)
+    text = f"""# UKPropertyInsight
+
+> Free due-diligence reports for UK home buyers, from official sources only: sold prices, flood risk, crime, schools and, uniquely, how far each state school admitted from (the council's published "last distance offered"). Every figure names its source; nothing is modelled where a real figure exists.
+
+## Data pages
+
+- [School admission distances by council]({base}/schools/admissions): 85 English councils, 3,400+ schools, how far the last child offered a place lived, from each council's published statistics.
+- [England's tightest school catchments]({base}/schools/tightest-catchments): the national ranking, the widest gates, and the councils compared.
+- [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
+- [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.
+- [Private schools by council]({base}/schools/independent): every fee-paying school on the Department for Education register, by council.
+- [Area guides]({base}/areas): house prices, schools, crime and flood risk for each postcode district.
+- [House prices by region]({base}/market-report): Land Registry medians and trends.
+- [Methodology]({base}/methodology): every source, its licence and its refresh cadence.
+
+## Individual pages
+
+- School pages: {base}/school/{{urn}}/{{slug}}, one per school with a published admission distance, with a postcode checker.
+- Council hubs: {base}/schools/admissions/{{council-slug}}.
+- Area guides: {base}/area/{{outcode}}.
+
+## Rules for reuse
+
+Figures may be quoted with a link to the page they came from. Admission distances are the council's own and move every year; a school without a figure took everyone who applied. Contact: support@ukpropertyinsight.co.uk
+"""
+    return Response(content=text, media_type="text/plain; charset=utf-8",
+                    headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/og/council/{slug}.png")
+async def og_council_image(request: Request, slug: str):
+    """The share card for a council hub: the middle school's distance."""
+    if not og_image.is_available():
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+    cache_key = ("og_council", slug)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        stats = await asyncio.to_thread(schools_db.tightest_catchments)
+        council = next((c for c in stats["councils"] if c["slug"] == slug), None)
+        if council is None:
+            return RedirectResponse("/static/img/og-default.png", status_code=302)
+        cached = og_image.render_headline(
+            kicker=f"UKPROPERTYINSIGHT  ·  {council['name'].upper()} SCHOOL ADMISSIONS",
+            title=f"How far {council['name']} schools admitted from",
+            sub="The last child offered a place, school by school",
+            big=f"{council['median_miles']:g}", big_label="MILES", big_sub="THE MIDDLE SCHOOL'S DISTANCE",
+            facts=[("Schools with a figure", str(council["count"])),
+                   ("Filled from under a mile", f"{council['share_under_a_mile']}%"),
+                   ("Tightest", f"{council['tightest']['miles']:g} mi")],
+            foot=f"PUBLISHED BY {council['name'].upper()}  ·  NOT A CATCHMENT, A REAL DISTANCE",
+        )
+        _cache.set(cache_key, cached)
+    return Response(content=cached, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=21600"})
+
+
+@app.get("/og/tightest-catchments.png")
+async def og_story_image(request: Request):
+    """The share card for the national story."""
+    if not og_image.is_available():
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+    cache_key = ("og_story",)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        d = await asyncio.to_thread(schools_db.tightest_catchments)
+        cached = og_image.render_headline(
+            kicker="UKPROPERTYINSIGHT  ·  SCHOOL ADMISSIONS DATA",
+            title="England's tightest school catchments",
+            sub=f"{d['total']:,} schools across {d['council_count']} councils, ranked",
+            big=str(d["under_half"]), big_label="SCHOOLS", big_sub="FILLED FROM UNDER HALF A MILE",
+            facts=[("Under a quarter of a mile", str(d["under_quarter"])),
+                   ("Under a mile", f"{d['under_a_mile']:,}"),
+                   ("Middle distance", f"{d['median_miles']:g} mi")],
+            foot="COLLATED FROM COUNCIL PUBLICATIONS  ·  NOTHING MODELLED",
+        )
+        _cache.set(cache_key, cached)
+    return Response(content=cached, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=21600"})
+
+
+@app.post("/internal/indexnow-resubmit")
+async def indexnow_resubmit(request: Request):
+    """Push every school page, hub and data page to IndexNow again. The
+    startup job only submits when the sitemap's URL set changes, so a
+    title change across 3,478 existing pages never reaches Bing without
+    this. Same secret as the other internal jobs."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    base = _public_base_url(request)
+    urls = [f"{base}{p}" for p in ("/", "/schools/tightest-catchments", "/schools/admissions",
+                                   "/schools/how-admissions-work", "/schools/independent", "/schools/guide")]
+    urls += [f"{base}/schools/admissions/{c['slug']}" for c in await asyncio.to_thread(schools_db.admission_councils)]
+    urls += [f"{base}/schools/independent/{d['slug']}" for d in await asyncio.to_thread(schools_db.independent_districts)]
+    urls += [f"{base}/school/{s['urn']}/{s['slug']}" for s in await asyncio.to_thread(schools_db.admission_page_schools)]
+    urls = urls[:10000]
+    accepted = await indexnow.submit(request.url.hostname or "ukpropertyinsight.co.uk", urls)
+    return JSONResponse({"submitted": len(urls), "accepted": bool(accepted)})
 
 
 @app.get("/schools/how-admissions-work")

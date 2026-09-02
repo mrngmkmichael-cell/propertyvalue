@@ -203,6 +203,11 @@
         </tbody>
     </table>
     {% endif %}
+    {% if council_hub %}
+    <p class="section-sub">
+        Will an address here get a place? <a href="/schools/admissions/{{ council_hub.slug }}">How far {{ council_hub.name }} schools admitted from, school by school →</a>
+    </p>
+    {% endif %}
     {% if by_sector %}
     <p class="section-sub">
         <strong>{{ by_sector.state_primary }}</strong> state primary and

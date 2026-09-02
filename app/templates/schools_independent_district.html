@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seo_title("Private schools in " ~ district.name, "", ": " ~ district.count ~ " independent schools, ages and admissions") }}{% endblock %}
+{% block meta_description %}All {{ district.count }} fee-paying schools registered in {{ district.name }}: age range, single-sex or mixed, faith, special schools and how full each is, from the Department for Education register. With the state schools' admission distances alongside.{% endblock %}
+{% block og_title %}Private schools in {{ district.name }}: {{ district.count }} listed{% endblock %}
+
+{% block content %}
+{% if independent_faqs_jsonld %}<script type="application/ld+json">{{ independent_faqs_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/schools/independent">&larr; All councils</a>
+
+<span class="kicker">Independent schools</span>
+<h1>Private schools in {{ district.name }}</h1>
+<p class="dek">
+    {{ district.count }} fee-paying school{{ "s" if district.count != 1 else "" }} {{ "are" if district.count != 1 else "is" }} registered in
+    {{ district.name }}: {{ district.mainstream }} mainstream and {{ district.special }} special.
+    {% if district.single_sex %}{{ district.single_sex }} {{ "are" if district.single_sex != 1 else "is" }} single-sex.{% endif %}
+    {% if district.with_sixth_form %}{{ district.with_sixth_form }} take pupils to 18.{% endif %}
+    Everything below is the Department for Education's register as it stands; fees, entrance tests and
+    inspection reports live on each school's own site.
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ district.count }}</span><span class="score-tile-label">independent schools</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ district.mainstream }}</span><span class="score-tile-label">mainstream</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ district.special }}</span><span class="score-tile-label">special schools</span></div>
+    {% if district.pupils %}<div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(district.pupils) }}</span><span class="score-tile-label">pupils on roll, where reported</span></div>{% endif %}
+</div>
+
+{% if council_hub %}
+<p class="section-sub">
+    Weighing a state place instead? <a href="/schools/admissions/{{ council_hub.slug }}">How far {{ council_hub.name }} state schools admitted from, school by school →</a>
+</p>
+{% endif %}
+
+{% for group_name, schools in district.groups %}
+<section class="report-section">
+    <h2>{{ group_name }}</h2>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text" aria-sort="ascending">School</th>
+                    <th data-sort="text">Ages</th>
+                    <th data-sort="text">Pupils</th>
+                    <th data-sort="text">Faith</th>
+                    <th class="num" data-sort="num">On roll</th>
+                    <th class="num" data-sort="num">How full</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in schools %}
+                <tr>
+                    <td data-value="{{ s.name }}">
+                        {% if s.website %}<a href="{{ s.website }}" rel="noopener nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}
+                        {% if s.town %}<span class="school-table-type">{{ s.town }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</span>{% endif %}
+                    </td>
+                    <td data-value="{{ s.age_low or 0 }}">{% if s.age_low is not none and s.age_high is not none %}{{ s.age_low }} to {{ s.age_high }}{% else %}Not stated{% endif %}</td>
+                    <td data-value="{{ s.gender }}">{{ s.gender or "Not stated" }}</td>
+                    <td data-value="{{ s.religious_character }}">{{ s.religious_character or "None" }}</td>
+                    <td class="num" data-value="{{ s.number_on_roll or 0 }}">{% if s.number_on_roll %}{{ "{:,}".format(s.number_on_roll) }}{% else %}Not reported{% endif %}</td>
+                    <td class="num" data-value="{{ s.occupancy_pct or 0 }}">{% if s.occupancy_pct %}{{ s.occupancy_pct }}%{% else %}Not reported{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endfor %}
+
+<section class="report-section">
+    <h2>What this list is, and is not</h2>
+    <p class="section-sub">
+        Source: the Department for Education's Get Information About Schools register, which every school
+        in England must keep current, refreshed here with each import. "How full" is pupils on roll against
+        the school's stated capacity, where both are reported. The register carries no fees, no entrance
+        requirements and no inspection grades for independent schools: those are on each school's own site
+        and the Independent Schools Inspectorate's. A school missing here is not registered in
+        {{ district.name }}, which for a school on a boundary can mean it is listed under the neighbouring
+        council.
+    </p>
+    <p class="section-sub">
+        Choosing between a private place and a state one? The <a href="/">full property report</a> puts every
+        school near an address, state and independent, on one page with the house itself.
+    </p>
+</section>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

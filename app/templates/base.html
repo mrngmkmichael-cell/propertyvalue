@@ -34,6 +34,8 @@
     rather than a critical subset. The file is still served at
     /static/css/style.css for anything that wants it. #}
     <style>{{ inline_css() }}</style>
+    {% if breadcrumb_jsonld %}<script type="application/ld+json">{{ breadcrumb_jsonld | safe }}</script>{% endif %}
+    {% if dataset_jsonld %}<script type="application/ld+json">{{ dataset_jsonld | safe }}</script>{% endif %}
 
     {# One block feeds both the search-result snippet and the link
     preview, so a page can never end up with two different summaries of
@@ -240,6 +242,10 @@
                 &middot; <a href="/market-report">Market Report</a>
                 &middot; <a href="/buying-guide">Buying Guide</a>
                 &middot; <a href="/areas">Area Guides</a>
+                &middot; <a href="/schools/admissions">School Admission Distances</a>
+                &middot; <a href="/schools/tightest-catchments">Tightest Catchments</a>
+                &middot; <a href="/schools/independent">Private Schools</a>
+                &middot; <a href="/schools/how-admissions-work">How Admissions Work</a>
                 &middot; <a href="/accuracy">Accuracy log</a>
                 &middot; <a href="/data">Our data</a>
                 &middot; <a href="/embed">For Agents</a>

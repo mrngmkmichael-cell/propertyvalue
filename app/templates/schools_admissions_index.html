@@ -30,12 +30,16 @@
     <h2>Councils</h2>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr><th>Council</th><th class="num">Schools with a figure</th></tr></thead>
+            <thead><tr><th>Council</th><th class="num">Schools with a figure</th><th class="num">Middle distance</th><th class="num">Filled from under a mile</th><th>Tightest school</th></tr></thead>
             <tbody>
                 {% for c in councils %}
+                {% set st = council_stats.get(c.slug) if council_stats else none %}
                 <tr>
                     <td><a href="/schools/admissions/{{ c.slug }}">{{ c.name }}</a></td>
                     <td class="num">{{ c.count }}</td>
+                    <td class="num">{% if st %}{{ st.median_miles }} mi{% endif %}</td>
+                    <td class="num">{% if st %}{{ st.share_under_a_mile }}%{% endif %}</td>
+                    <td>{% if st %}<a href="/school/{{ st.tightest.urn }}/{{ st.tightest.slug }}">{{ st.tightest.name }}</a> <span class="school-table-type">{{ st.tightest.miles }} mi</span>{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

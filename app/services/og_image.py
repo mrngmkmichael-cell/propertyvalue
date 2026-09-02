@@ -248,3 +248,72 @@ def render_school(
     img.save(buf, format="PNG", optimize=True)
     return buf.getvalue()
 
+
+def render_headline(
+    kicker: str,
+    title: str,
+    sub: str,
+    big: str,
+    big_label: str,
+    big_sub: str,
+    facts: list[tuple[str, str]] | None = None,
+    foot: str = "",
+) -> bytes:
+    """PNG bytes for a page whose headline is one number: a council hub
+    or the national story. Same bones as the school card, so the family
+    reads as one thing in a feed."""
+    img = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(img)
+    draw.rectangle((0, 0, W, 8), fill=ACCENT)
+    _tracked(draw, (PAD, PAD), kicker, mono(20, 500), ACCENT, tracking=3.2)
+
+    name_w = W - PAD * 2 - 400
+    size = 60
+    while size > 34 and draw.textlength(title, font=sans(size, 700)) > name_w * 1.9:
+        size -= 4
+    f = sans(size, 700)
+    words, lines, cur = title.split(), [], ""
+    for w_ in words:
+        trial = (cur + " " + w_).strip()
+        if draw.textlength(trial, font=f) <= name_w or not cur:
+            cur = trial
+        else:
+            lines.append(cur)
+            cur = w_
+    if cur:
+        lines.append(cur)
+    y = PAD + 54
+    for ln in lines[:2]:
+        draw.text((PAD, y), ln, font=f, fill=INK)
+        y += size + 8
+    if sub:
+        fs = sans(28)
+        while draw.textlength(sub, font=fs) > name_w and len(sub) > 8:
+            sub = sub[:-2].rstrip() + "…"
+        draw.text((PAD, y + 6), sub, font=fs, fill=INK_SOFT)
+
+    # The number and its captions hang off the right edge, so the
+    # captions are right-aligned too: a caption longer than the number
+    # must grow leftwards, not run off the card.
+    ff = sans(120, 700)
+    tw = draw.textlength(big, font=ff)
+    draw.text((W - PAD - tw, PAD + 44), big, font=ff, fill=ACCENT)
+    for text, font, colour, tracking, y in ((big_label, mono(22, 500), INK_SOFT, 3, PAD + 176),
+                                            (big_sub, mono(18), INK_FAINT, 1.4, PAD + 206)):
+        width = draw.textlength(text, font=font) + tracking * max(len(text) - 1, 0)
+        _tracked(draw, (W - PAD - width, y), text, font, colour, tracking=tracking)
+
+    facts = (facts or [])[:3]
+    if facts:
+        gap = 24
+        cw = (W - PAD * 2 - gap * (len(facts) - 1)) // len(facts)
+        for i, (label, value) in enumerate(facts):
+            _chip(draw, PAD + i * (cw + gap), H - PAD - 176, cw, label, value)
+
+    draw.line((PAD, H - PAD - 40, W - PAD, H - PAD - 40), fill=BORDER, width=2)
+    _tracked(draw, (PAD, H - PAD - 26), foot or "OFFICIAL DATA, EVERY FIGURE NAMES ITS SOURCE", mono(18), INK_FAINT, tracking=1.6)
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
