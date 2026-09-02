@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- School shortlist + admission-update alerts (1 Sep 2026): the
+  shortlist shows each saved school's grade and current published
+  distance with its round; a "Save to my shortlist" button on every
+  school page; an opt-in email sent only when a council republishes a
+  saved school's distance, via /internal/send-admission-updates run
+  after an admissions import (first sighting records, never emails).
+  Honours the "never on a schedule" promise: event-driven only.
+
 - Anonymous HTML cache (1 Sep 2026): the finished HTML of the slow
   pages (homepage, area guides, schools guide, admissions hubs, school
   pages without ?check, market pages) is kept ten minutes and served

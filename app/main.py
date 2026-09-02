@@ -6655,6 +6655,9 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["school"] = profile
     context["og_school_url"] = f"{base}/og/school/{urn}.png"
     context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
+    context["shortlisted"] = bool(context["current_user"]) and any(
+        i["urn"] == urn for i in school_shortlist.list_items(context["current_user"]["id"])
+    )
 
     # "Will this address get in?" A postcode is measured against how far
     # the school admitted from last time. Postcode centre, not the
@@ -7102,23 +7105,104 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
 
 
 @app.get("/schools/shortlist")
-def school_shortlist_view(request: Request):
+def school_shortlist_view(request: Request, alerts: str = ""):
     context = base_context(request)
     if not context["current_user"]:
         return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
-    context["items"] = school_shortlist.list_items(context["current_user"]["id"])
+    uid = context["current_user"]["id"]
+    context["items"] = school_shortlist.list_items(uid)
+    context["alerts_enabled"] = school_shortlist.alerts_enabled(uid)
+    context["alerts_changed"] = alerts
     return templates.TemplateResponse(request, "school_shortlist.html", context)
 
 
 @app.post("/schools/shortlist/save")
 def school_shortlist_save(
-    request: Request, urn: int = Form(...), postcode: str = Form(...), note: str = Form("")
+    request: Request, urn: int = Form(...), postcode: str = Form(""), note: str = Form(""),
+    next: str = Form(""),
 ):
+    """Save a school. From a report this returns to the report's schools
+    section; from a school page, `next` brings it back there."""
+    back = _safe_next(next) if next else (f"/property?postcode={postcode}#schools" if postcode else "/schools/shortlist")
     user = auth.current_user(request)
     if not user:
-        return RedirectResponse(f"/login?next=/property?postcode={postcode}", status_code=303)
+        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
     school_shortlist.save_item(user["id"], urn, note.strip())
-    return RedirectResponse(f"/property?postcode={postcode}#schools", status_code=303)
+    return RedirectResponse(back, status_code=303)
+
+
+@app.post("/schools/shortlist/alerts")
+def school_shortlist_alerts(request: Request, enabled: str = Form("")):
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
+    school_shortlist.set_alerts(user["id"], enabled == "on")
+    return RedirectResponse("/schools/shortlist?alerts=" + ("on" if enabled == "on" else "off"), status_code=303)
+
+
+def _admission_update_email_html(rows: list[dict], shortlist_url: str) -> str:
+    blocks = []
+    base = shortlist_url.rsplit("/schools/shortlist", 1)[0]
+    for r in rows:
+        url = f"{base}/school/{r['urn']}/{r['slug']}"
+        was = f"{r['was_miles']} miles ({r['was_year']})" if r["was_miles"] is not None else "no published figure"
+        blocks.append(
+            f'<div style="border:1px solid #e6e1d8;border-radius:8px;padding:14px 16px;margin-bottom:12px;">'
+            f'<a href="{url}" style="font-size:16px;font-weight:600;color:#1f2a5a;text-decoration:none;">{r["name"]}</a>'
+            f'<p style="margin:8px 0 0;color:#3d3833;">Now admits from <strong>{r["miles"]} miles</strong> ({r["academic_year"]}). '
+            f'Was {was}.</p></div>'
+        )
+    return (
+        '<div style="font-family:Georgia,serif;max-width:540px;margin:0 auto;padding:8px;">'
+        '<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8378;margin:0 0 4px;">UKPropertyInsight</p>'
+        f'<h2 style="margin:0 0 14px;color:#191613;">{len(rows)} of your saved schools '
+        f'{"has" if len(rows) == 1 else "have"} a new admission distance</h2>'
+        + "".join(blocks) +
+        f'<p style="margin:16px 0;"><a href="{shortlist_url}" style="color:#1f2a5a;">Open your shortlist</a></p>'
+        '<p style="color:#8a8378;font-size:12px;line-height:1.5;">'
+        "You asked for this when you ticked the box on your school shortlist. It is sent only when a "
+        "council republishes a figure for a school you saved, never on a schedule. "
+        f'<a href="{shortlist_url}" style="color:#8a8378;">Turn it off</a> there.'
+        "</p></div>"
+    )
+
+
+@app.post("/internal/send-admission-updates")
+async def send_admission_updates(request: Request):
+    """Run after an admissions import lands. For every opted-in user,
+    compares each shortlisted school's published distance with what
+    we recorded last time and emails only the ones that changed. The
+    first sighting of a school records it and says nothing: an alert
+    that fires on sign-up is noise. Returns counts, so the person
+    running it can see what happened."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    shortlist_url = f"{_public_base_url(request)}/schools/shortlist"
+    sent, recorded, changed = 0, 0, 0
+    for sub in await asyncio.to_thread(school_shortlist.alert_subscribers):
+        rows = []
+        for item in sub["items"]:
+            snap = item.get("snapshot")
+            if snap is not None and item["miles"] is not None and (
+                snap["miles"] != item["miles"] or snap["academic_year"] != item["academic_year"]
+            ):
+                rows.append({**item, "was_miles": snap["miles"], "was_year": snap["academic_year"]})
+            if snap is None or snap["miles"] != item["miles"] or snap["academic_year"] != item["academic_year"]:
+                await asyncio.to_thread(school_shortlist.record_snapshot, item["id"], item["miles"], item["academic_year"])
+                recorded += 1
+        if rows:
+            changed += len(rows)
+            if email_service.is_configured() and await email_service.send_email(
+                sub["email"],
+                f"{rows[0]['name']} now admits from {rows[0]['miles']} miles" if len(rows) == 1
+                else f"{len(rows)} of your saved schools have new admission distances",
+                _admission_update_email_html(rows, shortlist_url),
+            ):
+                sent += 1
+    return JSONResponse({"subscribers_emailed": sent, "changes": changed, "snapshots_recorded": recorded})
 
 
 @app.post("/schools/shortlist/remove")

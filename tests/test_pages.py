@@ -827,3 +827,77 @@ def test_cache_never_serves_a_personalised_or_parameterised_page(client):
     r = client.get("/buying-guide?ref=partner1")
     assert r.headers.get("x-anon-cache") is None
     assert "set-cookie" in r.headers
+
+
+
+# ---- school shortlist + admission-update alerts ----------------------------
+
+def _signed_in(client, email="parent@example.com"):
+    client.post("/signup", data={"email": email, "password": "correct-horse-battery"}, follow_redirects=True)
+    client.post("/login", data={"email": email, "password": "correct-horse-battery"}, follow_redirects=True)
+
+
+def test_saving_a_school_from_its_page_returns_there_and_lists_its_distance(client):
+    _seed_admission_school()
+    _signed_in(client)
+    r = client.post("/schools/shortlist/save", data={"urn": "990002", "next": "/school/990002/riverside-academy"},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/school/990002/riverside-academy"
+    page = client.get("/school/990002/riverside-academy").text
+    assert "Saved to" in page
+    shortlist = client.get("/schools/shortlist").text
+    assert "Riverside Academy" in shortlist and "1.5 mi" in shortlist and "2025" in shortlist
+    # Opt in to alerts.
+    r = client.post("/schools/shortlist/alerts", data={"enabled": "on"}, follow_redirects=True)
+    assert "You will hear from us" in r.text
+
+
+def test_admission_update_alert_fires_only_on_a_real_change(client, monkeypatch):
+    import os
+    from app import db, main as app_main
+    from app.models import SchoolAdmissionRadius
+    from app.services import email as email_service
+
+    _seed_admission_school()
+    _signed_in(client, "alerts@example.com")
+    client.post("/schools/shortlist/save", data={"urn": "990002", "next": "/schools/shortlist"})
+    client.post("/schools/shortlist/alerts", data={"enabled": "on"})
+    client.cookies.clear()
+
+    sent = []
+
+    async def _send(to, subject, html):
+        sent.append((to, subject, html))
+        return True
+
+    monkeypatch.setattr(email_service, "send_email", _send)
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
+    headers = {"x-alerts-secret": "s3cret"}
+
+    # Wrong secret: not found, not a hint.
+    assert client.post("/internal/send-admission-updates", headers={"x-alerts-secret": "nope"}).status_code == 404
+
+    # First run only records: nothing has changed since sign-up.
+    r = client.post("/internal/send-admission-updates", headers=headers).json()
+    assert r["subscribers_emailed"] == 0 and r["snapshots_recorded"] >= 1
+    assert sent == []
+
+    # Same figure again: silence.
+    r = client.post("/internal/send-admission-updates", headers=headers).json()
+    assert r["subscribers_emailed"] == 0 and r["changes"] == 0
+
+    # The council republishes: one email, naming the school and both figures.
+    with db.get_session() as session:
+        row = session.get(SchoolAdmissionRadius, 990002)
+        row.last_distance_miles, row.academic_year = 1.2, "2026"
+        session.commit()
+    # Another test's user may have saved the same school with alerts on,
+    # so count this user's email rather than the total.
+    r = client.post("/internal/send-admission-updates", headers=headers).json()
+    assert r["subscribers_emailed"] >= 1 and r["changes"] >= 1
+    mine = [m for m in sent if m[0] == "alerts@example.com"]
+    assert len(mine) == 1
+    to, subject, html = mine[0]
+    assert "Riverside Academy" in subject and "1.2" in subject
+    assert "1.5 miles (2025)" in html and "never on a schedule" in html

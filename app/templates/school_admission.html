@@ -20,6 +20,22 @@
 
 <span class="kicker">Admissions</span>
 <h1>{{ school.name }}</h1>
+{% if current_user %}
+<form action="/schools/shortlist/save" method="post" class="nav-form" style="margin: -0.5rem 0 1rem;">
+    <input type="hidden" name="urn" value="{{ school.urn }}">
+    <input type="hidden" name="next" value="/school/{{ school.urn }}/{{ school.slug }}">
+    {% if shortlisted %}
+    <span class="section-sub">Saved to <a href="/schools/shortlist">your shortlist</a>.</span>
+    {% else %}
+    <button type="submit">Save to my shortlist</button>
+    <span class="section-sub">and be told when {{ school.authority }} republishes this distance.</span>
+    {% endif %}
+</form>
+{% else %}
+<p class="section-sub" style="margin: -0.5rem 0 1rem;">
+    <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> to save this school and be told when {{ school.authority }} republishes its distance.
+</p>
+{% endif %}
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured
    at 71% shared phrasing (30 Aug 2026): the cure is more of the

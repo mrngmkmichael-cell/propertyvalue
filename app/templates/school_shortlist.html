@@ -6,23 +6,47 @@
 {% block content %}
 <span class="kicker">Saved schools</span>
 <h1>Your school shortlist</h1>
+<p class="dek">
+    Each saved school with its current published admission distance. Tick the box below and you will
+    be emailed when a council republishes a figure for one of them, which happens a few times a year,
+    never on a schedule.
+</p>
+
+{% if alerts_changed == "on" %}
+<p class="notice" style="background: var(--good-bg); color: var(--good);">Done. You will hear from us when a saved school's distance is republished.</p>
+{% elif alerts_changed == "off" %}
+<p class="notice">Alerts off. Your shortlist is kept.</p>
+{% endif %}
 
 {% if items %}
+<div class="tablewrap">
     <table class="tx-table">
         <thead>
             <tr>
                 <th>School</th>
+                <th>Ofsted</th>
+                <th class="num">Admitted from</th>
                 <th>Note</th>
-                <th>Saved</th>
                 <th class="num"></th>
             </tr>
         </thead>
         <tbody>
             {% for item in items %}
             <tr>
-                <td>{{ item.name }}</td>
-                <td>{{ item.note or " — " }}</td>
-                <td>{{ item.created_at.strftime("%Y-%m-%d") }}</td>
+                <td>
+                    {% if item.has_page %}<a href="/school/{{ item.urn }}/{{ item.slug }}">{{ item.name }}</a>
+                    {% else %}{{ item.name }}{% endif %}
+                    <span class="school-table-type">{{ item.type }}</span>
+                </td>
+                <td>
+                    {% if item.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ item.ofsted_rating }}">{{ item.ofsted_rating_label }}</span>
+                    {% else %}<span class="section-sub">No current grade</span>{% endif %}
+                </td>
+                <td class="num">
+                    {% if item.miles is not none %}<strong>{{ item.miles }} mi</strong> <span class="school-table-note">{{ item.academic_year }}</span>
+                    {% else %}<span class="section-sub">no published figure</span>{% endif %}
+                </td>
+                <td>{{ item.note or "" }}</td>
                 <td class="num">
                     <form action="/schools/shortlist/remove" method="post" class="nav-form">
                         <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -33,7 +57,21 @@
             {% endfor %}
         </tbody>
     </table>
+</div>
+
+<form action="/schools/shortlist/alerts" method="post" class="stacked-form" style="margin-top: 1.25rem; max-width: 34rem;">
+    <label style="display:flex; gap:0.6rem; align-items:flex-start; font-family: var(--font-sans); font-size: var(--text-sm);">
+        <input type="checkbox" name="enabled" value="on" {% if alerts_enabled %}checked{% endif %} style="margin-top:0.2rem">
+        <span>Email me when a council republishes the admission distance for a school on this list.
+            Only then: not weekly, not for marketing. You can turn it off here at any time.</span>
+    </label>
+    <button type="submit" style="margin-top:0.6rem">{{ "Update" if alerts_enabled else "Turn on" }}</button>
+</form>
 {% else %}
-    <p class="notice">Nothing shortlisted yet. Search for a postcode and use "Shortlist" next to any school in its report.</p>
+<p class="notice">
+    Nothing saved yet. Every school page has a "Save to my shortlist" button:
+    <a href="/schools/admissions">find a school by council</a> or
+    <a href="/schools/guide">by postcode</a>.
+</p>
 {% endif %}
 {% endblock %}

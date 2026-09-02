@@ -254,6 +254,35 @@ class SchoolShortlistItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class SchoolAlertOptIn(Base):
+    """Whether a user wants an email when a shortlisted school's
+    published admission distance is republished. Its own table rather
+    than a column on users: create_all makes new tables but never adds
+    columns to an existing one, and the site has no migration tool.
+    Event-driven only. The change-alert emails promise "never on a
+    schedule", and this keeps that: it fires when a council publishes
+    a new figure and the import lands, which is a handful of times a
+    year, not weekly."""
+    __tablename__ = "school_alert_opt_ins"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class SchoolShortlistSnapshot(Base):
+    """The admission distance a shortlisted school had when we last
+    looked, so the alert job can tell "republished" from "same as
+    before". One row per shortlist item; first sight records, never
+    emails."""
+    __tablename__ = "school_shortlist_snapshots"
+
+    item_id: Mapped[int] = mapped_column(ForeignKey("school_shortlist_items.id"), primary_key=True)
+    miles: Mapped[float | None] = mapped_column(Float, nullable=True)
+    academic_year: Mapped[str] = mapped_column(String(32), default="")
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class School(Base):
     """Open schools in England, from DfE's GIAS establishment data,
     joined with Ofsted's state-funded school inspection outcomes.
