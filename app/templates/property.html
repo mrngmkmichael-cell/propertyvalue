@@ -1988,12 +1988,15 @@
        parent dialog was closed put an invisible modal into the top
        layer and swallowed every click on the page: the private schools
        list links to them too, and that is where it showed up. #}
-    {% if school_landscape %}
-    {% for s in school_landscape.all_schools %}
-    {% set modal_id = "school-modal-" ~ s.urn %}
-    {% include "_school_profile_modal.html" with context %}
-    {% endfor %}
-    {% endif %}
+    {# The per-school popups are no longer rendered here. Each is
+       fetched from /schools/profile/{urn} the first time its name is
+       tapped (see the loader in base.html), which took 2.3 MB off this
+       page on 1 Sep 2026. The loader reads the search point and the
+       property's postcode from these attributes so distances and the
+       free-report unlock still apply. #}
+    <div hidden data-school-ctx
+         data-lat="{{ location.latitude }}" data-lon="{{ location.longitude }}"
+         data-postcode="{{ location.postcode }}" data-house="{{ house_number or '' }}"></div>
 
     <dialog class="report-modal" id="modal-private-schools">
         <div class="report-modal-inner">
@@ -2020,7 +2023,7 @@
                                    opens the same detail a state school gets:
                                    head teacher, roll against capacity, sixth
                                    form, contact details. #}
-                                <td><button type="button" class="school-name-btn" data-modal-target="school-modal-{{ e.urn }}">{{ e.name }}</button></td>
+                                <td><button type="button" class="school-name-btn" data-school-urn="{{ e.urn }}">{{ e.name }}</button></td>
                                 <td class="num nowrap">{{ (e.distance_m / 1609.34) | round(1) }} mi</td>
                                 <td class="nowrap">{% if e.age_low and e.age_high %}{{ e.age_low }} to {{ e.age_high }}{% endif %}</td>
                                 <td>
@@ -2125,7 +2128,7 @@
                     <ul class="landscape-stat-schools">
                         {% for s in r.schools[:25] %}
                         <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
+                            <button type="button" class="school-row" data-school-urn="{{ s.urn }}">
                                 <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
@@ -2144,7 +2147,7 @@
                     <ul class="landscape-stat-schools">
                         {% for s in p.schools[:25] %}
                         <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
+                            <button type="button" class="school-row" data-school-urn="{{ s.urn }}">
                                 <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>
@@ -2161,7 +2164,7 @@
                     <ul class="landscape-stat-schools">
                         {% for s in school_landscape.special_schools[:25] %}
                         <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ s.urn }}">
+                            <button type="button" class="school-row" data-school-urn="{{ s.urn }}">
                                 <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
                             </button>
                         </li>

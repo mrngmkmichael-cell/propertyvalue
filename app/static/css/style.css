@@ -7572,3 +7572,108 @@ body:not(.theme-dark) .lx-hero-scrim {
     color: var(--ink-soft);
 }
 .follow-link { font-size: var(--text-sm); white-space: nowrap; }
+
+/* Schools guide: the map, its key, and the school table. The chips
+   above the map keep the old at-a-glance counts; the table underneath
+   is the page's real content, visible without a tap (it used to be
+   folded away behind those counts, and Google saw an empty page). */
+.school-guide-chips { margin-bottom: 0.75rem; }
+
+.school-guide-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--border);
+}
+
+.school-guide-chip strong { font-size: var(--text-base); font-weight: var(--weight-bold); }
+.school-guide-chip.rating-outstanding, .school-guide-chip.rating-good { background: var(--good-bg); color: var(--good); border-color: transparent; }
+.school-guide-chip.rating-reqimprovement { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.school-guide-chip.rating-inadequate { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.school-guide-chip.rating-none { color: var(--ink-soft); }
+
+.school-guide-map {
+    width: 100%;
+    height: 420px;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    overflow: hidden;
+    margin: 0.25rem 0 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .school-guide-map { height: 300px; }
+}
+
+.school-guide-map-key {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.8rem;
+    margin: 0 0 1rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+}
+
+.key-dot {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    border: 1.5px solid #fff;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15);
+    margin-right: 0.25rem;
+    vertical-align: -1px;
+}
+
+.key-ring {
+    display: inline-block;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 50%;
+    margin-right: 0.25rem;
+    vertical-align: -2px;
+}
+
+.key-ring-real { border: 2px solid #d97706; }
+.key-ring-est { border: 2px dashed #78716c; }
+
+.school-table th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+.school-table th[data-sort]:hover { color: var(--accent); }
+.school-table th[aria-sort="ascending"]::after { content: " \2191"; color: var(--accent); }
+.school-table th[aria-sort="descending"]::after { content: " \2193"; color: var(--accent); }
+.school-table td { vertical-align: top; }
+
+.school-table .school-name-btn {
+    font: inherit;
+    font-weight: var(--weight-semi);
+    color: var(--accent);
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.school-table .school-name-btn[aria-busy="true"] { opacity: 0.6; }
+
+.school-table-type,
+.school-table-note {
+    display: block;
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+}
+
+.school-table-note { display: inline; margin-left: 0.25rem; }

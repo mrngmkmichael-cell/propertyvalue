@@ -6750,6 +6750,74 @@ async def outstanding_schools(request: Request):
     return templates.TemplateResponse(request, "outstanding_schools.html", context)
 
 
+def _guide_rows(landscape: dict | None) -> list[dict]:
+    """Every school in the landscape as one flat, JSON-safe row for the
+    guide's table and map: no date objects, nearest first. Admission
+    distance carries its provenance (published figure with its year, or
+    a modelled estimate) so the table can say which it is."""
+    rows = []
+    for s in (landscape or {}).get("all_schools", []):
+        if s.get("latitude") is None or s.get("longitude") is None:
+            continue
+        adm, kind, year = None, None, None
+        if s.get("admission_radius"):
+            adm = s["admission_radius"]["last_distance_miles"]
+            kind, year = "published", s["admission_radius"]["academic_year"]
+        elif s.get("catchment_estimate"):
+            adm, kind = s["catchment_estimate"]["radius_miles"], "estimated"
+        ex = s.get("exam_results") or {}
+        rows.append({
+            "urn": s["urn"], "name": s["name"],
+            "phase": s.get("phase_group") or "Special",
+            "type": s.get("type") or "",
+            "independent": bool(s.get("independent")),
+            "rating": s.get("ofsted_rating_label"),
+            "rating_code": s.get("ofsted_rating"),
+            "distance_m": s["distance_m"],
+            "admission_miles": adm, "admission_kind": kind, "admission_year": year,
+            "result_label": ex.get("headline_label"),
+            "result_value": ex.get("headline_value"),
+            "latitude": s["latitude"], "longitude": s["longitude"],
+        })
+    rows.sort(key=lambda r: r["distance_m"])
+    return rows
+
+
+@app.get("/schools/profile/{urn}")
+async def school_profile_fragment(
+    request: Request, urn: int, lat: float, lon: float,
+    postcode: str = "", house_number: str = "", back: str = "",
+):
+    """One school's profile popup, rendered on demand.
+
+    The schools guide and the property report used to render every
+    school's full popup into the page: 99 dialogs on a district guide,
+    1.6 MB of HTML, of which a visitor opened perhaps two. Now the page
+    carries the list and the map, and a click fetches the one popup it
+    needs. Same template, same data, same Premium gating: the report
+    passes its postcode so a free-report unlock still applies.
+    """
+    entry = await asyncio.to_thread(schools_db.school_entry, urn, lat, lon)
+    if entry is None:
+        return HTMLResponse("", status_code=404)
+    context = base_context(request)
+    current = context["current_user"]
+    premium_unlocked = bool(current and current.get("subscribed"))
+    if current and not premium_unlocked and postcode and db.is_configured():
+        with db.get_session() as session:
+            premium_unlocked = auth.has_unlocked(
+                session, current["id"], postcode.strip().upper(), house_number.strip()
+            )
+    context.update({
+        "s": entry, "modal_id": f"school-modal-{urn}",
+        "premium_unlocked": premium_unlocked,
+        "back_url": _safe_next(back) if back else request.url.path,
+    })
+    response = templates.TemplateResponse(request, "_school_profile_fragment.html", context)
+    response.headers["Cache-Control"] = "private, max-age=300"
+    return response
+
+
 @app.get("/schools/guide")
 async def schools_guide(request: Request, q: str = "", areas: str = ""):
     context = base_context(request)
@@ -6780,6 +6848,7 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
         label = (area.get("label") or "").strip().upper()
         areas_with_stats.append({
             **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
+            "rows": _guide_rows(landscape),
             # A search that was a postcode district gets a link to its area
             # guide; a town or full postcode doesn't have one.
             "outcode": label if _OUTCODE_RE.match(label) else None,

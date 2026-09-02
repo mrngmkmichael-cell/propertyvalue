@@ -505,12 +505,56 @@
                 });
             }
 
-            document.querySelectorAll('dialog.report-modal').forEach(function (dialog) {
+            function wireDialog(dialog) {
                 dialog.addEventListener('click', function (e) {
                     if (e.target === dialog) dialog.close();
                 });
                 const closeBtn = dialog.querySelector('[data-modal-close]');
                 if (closeBtn) closeBtn.addEventListener('click', function () { dialog.close(); });
+            }
+            document.querySelectorAll('dialog.report-modal').forEach(wireDialog);
+
+            /* School profiles load on demand. A district guide used to
+               ship 99 of these popups inline (1.6 MB of HTML); now a
+               tap fetches the one it needs, once, and keeps it. The
+               nearest [data-school-ctx] supplies the search point (so
+               the popup's distance is measured from the right place)
+               and, on a report, the property's postcode so a
+               free-report unlock still applies. */
+            const loaded = {};
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('[data-school-urn]');
+                if (!btn) return;
+                e.preventDefault();
+                const urn = btn.dataset.schoolUrn;
+                const open = function () {
+                    const d = document.getElementById('school-modal-' + urn);
+                    if (d && typeof d.showModal === 'function') d.showModal();
+                };
+                if (loaded[urn]) { open(); return; }
+                const ctx = btn.closest('[data-school-ctx]') || document.querySelector('[data-school-ctx]');
+                if (!ctx) return;
+                const q = new URLSearchParams({
+                    lat: ctx.dataset.lat, lon: ctx.dataset.lon,
+                    postcode: ctx.dataset.postcode || '', house_number: ctx.dataset.house || '',
+                    back: location.pathname + location.search,
+                });
+                btn.setAttribute('aria-busy', 'true');
+                fetch('/schools/profile/' + urn + '?' + q.toString(), { credentials: 'same-origin' })
+                    .then(function (r) { return r.ok ? r.text() : ''; })
+                    .then(function (html) {
+                        btn.removeAttribute('aria-busy');
+                        if (!html) return;
+                        const holder = document.createElement('div');
+                        holder.innerHTML = html;
+                        const dialog = holder.querySelector('dialog');
+                        if (!dialog) return;
+                        document.body.appendChild(dialog);
+                        wireDialog(dialog);
+                        loaded[urn] = true;
+                        open();
+                    })
+                    .catch(function () { btn.removeAttribute('aria-busy'); });
             });
         })();
     </script>

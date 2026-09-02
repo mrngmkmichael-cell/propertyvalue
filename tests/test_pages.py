@@ -595,3 +595,69 @@ def test_outstanding_schools_page_renders_with_real_counts(client):
     assert "no current grade, and that" in body
     assert 'action="/schools/guide"' in body
     assert body.count("<h1") == 1
+
+
+# ---- schools guide: visible, mapped, lazily detailed ---------------------
+
+def _seed_school_near(lat, lon, urn=990001, name="Testbrook Primary School"):
+    """One real-looking school in the test database, close to the point
+    the guide will be asked about. The test SQLite starts empty, and
+    an empty landscape renders the no-data notice rather than the table."""
+    from app import db
+    from app.models import School
+    with db.get_session() as session:
+        if session.get(School, urn) is None:
+            session.add(School(
+                urn=urn, name=name, phase="Primary", type_name="Community school",
+                postcode="M1 1AE", latitude=lat + 0.004, longitude=lon - 0.003,
+                ofsted_rating=2, ofsted_rating_label="Good",
+            ))
+            session.commit()
+
+
+def _resolve_to(monkeypatch, lat, lon, label):
+    from app import main as app_main
+
+    async def _resolve(_query):
+        return {"latitude": lat, "longitude": lon, "label": label}
+
+    monkeypatch.setattr(app_main.place_search, "resolve", _resolve)
+
+
+def test_school_guide_shows_its_schools_without_a_tap(client, monkeypatch):
+    """Before 1 Sep 2026 a district guide rendered 99 schools into the
+    page and hid every one of them behind count chips: a visitor (and
+    Googlebot) saw a summary card and nothing else. The table is the
+    page now."""
+    _seed_school_near(53.48, -2.24)
+    _resolve_to(monkeypatch, 53.48, -2.24, "M1")
+    body = client.get("/schools/guide?q=M1").text
+    assert 'class="tx-table school-table"' in body
+    assert 'data-school-urn="990001"' in body
+    assert "Testbrook Primary School" in body
+    assert 'id="school-map-0"' in body
+    assert 'data-school-ctx data-lat="53.48"' in body
+    # No inline popups: they load on demand now.
+    assert '<dialog class="report-modal" id="school-modal-' not in body
+
+
+def test_school_profile_loads_on_demand(client):
+    """The popup that used to be rendered 99 times per page comes from
+    one endpoint per school, measured from the search point."""
+    _seed_school_near(53.48, -2.24)
+    r = client.get("/schools/profile/990001?lat=53.48&lon=-2.24&back=/schools/guide%3Fq%3DM1")
+    assert r.status_code == 200
+    assert 'id="school-modal-990001"' in r.text
+    assert "Testbrook Primary School" in r.text
+    assert "report-modal-close" in r.text
+    # Signed out, the review section offers a login rather than a form.
+    assert "to leave a review" in r.text
+    # Unknown school: nothing, not an error page.
+    assert client.get("/schools/profile/1?lat=53.48&lon=-2.24").status_code == 404
+
+
+def test_property_report_no_longer_ships_every_school_popup(client, fake_report):
+    fake_report()
+    body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
+    assert '<dialog class="report-modal" id="school-modal-' not in body
+    assert 'data-school-ctx' in body

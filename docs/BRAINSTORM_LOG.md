@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Schools guide rebuilt (1 Sep 2026): every school visible in a
+  sortable table (name, phase, Ofsted, distance, admission distance
+  with provenance, results), a map with Ofsted-coloured pins and
+  admission-distance circles (solid = published, dashed = estimate),
+  Google in production and Leaflet in dev. School profile popups load
+  on demand from /schools/profile/{urn} instead of 99 inline dialogs:
+  guide HTML 1.6 MB to 0.37 MB, report 2.3 MB to 0.47 MB.
+
 - One-click sample report link in the hero (M1 1AE), zero-typing route
   into the product.
 - Globe intro and Leaflet self-hosted under /static/vendor/; no scripts

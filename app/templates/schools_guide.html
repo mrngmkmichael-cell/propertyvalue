@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_map_style.html" as mapstyle %}
 
 {% block title %}{% if areas and areas | length == 1 %}Schools near {{ areas[0].label }}: Ofsted Ratings & Catchments{% elif areas %}Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}{% else %}Schools Near Any UK Postcode: Ofsted Ratings & Catchment Areas{% endif %} | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}{% if areas and areas | length == 1 %}Every Ofsted-rated school near {{ areas[0].label }} by rating and type, and how the area compares with the national picture. Free, from official Ofsted and DfE data.{% else %}Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.{% endif %}{% endblock %}
+{% block meta_description %}{% if areas and areas | length == 1 %}Every Ofsted-rated school near {{ areas[0].label }} on a map, with grades, admission distances and results, and how the area compares nationally. Free, from official Ofsted and DfE data.{% else %}Find every Ofsted-rated school near any UK postcode, see how the area compares nationally, and understand how catchment areas and admission distances actually work.{% endif %}{% endblock %}
 {% block content %}
 <span class="kicker">School guide</span>
 {% if areas and areas | length == 1 %}
 <h1>Schools near {{ areas[0].label }}</h1>
-<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, against the national picture. Add another area to compare.</p>
+<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, on the map and in the table, against the national picture. Add another area to compare.</p>
 {% elif areas %}
 <h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
 <p class="dek">Side by side, from the same Ofsted and DfE data as every property report here.</p>
 {% else %}
 <h1>Schools near any UK postcode</h1>
-<p class="dek">Ofsted ratings, school types and how an area stacks up nationally. Search a postcode or town, then add a second to compare.</p>
+<p class="dek">Ofsted ratings, admission distances and how an area stacks up nationally. Search a postcode or town, then add a second to compare.</p>
 {% endif %}
 
 {% if current_user %}
@@ -48,7 +49,11 @@
 <div class="school-guide-compare">
     {% for area in areas %}
     {% set area_idx = loop.index0 %}
-    <div class="school-guide-area">
+    {# data-school-ctx: the lazy profile loader in base.html reads the
+       search point from here, so each popup's distance is measured
+       from the area that was searched, not from the other one in a
+       comparison. #}
+    <div class="school-guide-area" data-school-ctx data-lat="{{ area.latitude }}" data-lon="{{ area.longitude }}">
         <div class="school-guide-area-header">
             <h2>{{ area.label }}</h2>
             <a href="/schools/guide?areas={{ area.remove_areas_param | urlencode }}" class="shortlist-btn">Remove</a>
@@ -68,63 +73,84 @@
                 {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
                 {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
-            <h3 class="school-guide-subhead">By Ofsted rating</h3>
-            <div class="landscape-stat-row">
+
+            {# Rating chips: the at-a-glance count, kept from the old
+               page but no longer the only way in. #}
+            <div class="landscape-stat-row school-guide-chips">
                 {% for r in area.landscape.by_rating %}
-                <details class="landscape-stat-details {{ r.css }}">
-                    <summary><strong>{{ r.count }}</strong> {{ r.label }}</summary>
-                    <ul class="landscape-stat-schools">
-                        {% for s in r.schools[:25] %}
-                        <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
-                            </button>
-                        </li>
-                        {% endfor %}
-                        {% if r.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ r.schools | length - 25 }} more</li>
-                        {% endif %}
-                    </ul>
-                </details>
+                <span class="school-guide-chip {{ r.css }}"><strong>{{ r.count }}</strong> {{ r.label }}</span>
                 {% endfor %}
             </div>
-            <h3 class="school-guide-subhead">By phase</h3>
-            <div class="landscape-stat-row">
-                {% for p in area.landscape.by_phase %}
-                <details class="landscape-stat-details">
-                    <summary><strong>{{ p.count }}</strong> {{ p.label }}</summary>
-                    <ul class="landscape-stat-schools">
-                        {% for s in p.schools[:25] %}
-                        <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
-                            </button>
-                        </li>
+
+            {# The map. Pins coloured by Ofsted grade; a circle for
+               every school with a known admission distance, solid
+               where a council published the figure and dashed where
+               it is a modelled estimate. #}
+            <div class="school-guide-map" id="school-map-{{ area_idx }}" data-map-idx="{{ area_idx }}" role="img"
+                 aria-label="Map of schools near {{ area.label }}"></div>
+            <p class="school-guide-map-key">
+                <span class="key-dot" style="background:#2f6b4f"></span> Outstanding
+                <span class="key-dot" style="background:#3f7d5c"></span> Good
+                <span class="key-dot" style="background:#8a5a12"></span> Requires improvement
+                <span class="key-dot" style="background:#a83a32"></span> Inadequate
+                <span class="key-dot" style="background:#8a8378"></span> No current grade
+                <span class="key-ring key-ring-real"></span> published admission distance
+                <span class="key-ring key-ring-est"></span> estimated
+            </p>
+
+            {# Every school, visible. Sort by any column; tap a name for
+               its full profile, fetched on demand. #}
+            <div class="tablewrap">
+                <table class="tx-table school-table" id="school-table-{{ area_idx }}">
+                    <thead>
+                        <tr>
+                            <th data-sort="text">School</th>
+                            <th data-sort="text">Phase</th>
+                            <th data-sort="text">Ofsted</th>
+                            <th class="num" data-sort="num" aria-sort="ascending">Distance</th>
+                            <th class="num" data-sort="num">Admitted from</th>
+                            <th class="num" data-sort="num">Results</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in area.rows %}
+                        <tr>
+                            <td data-value="{{ r.name | lower }}">
+                                <button type="button" class="school-name-btn" data-school-urn="{{ r.urn }}">{{ r.name }}</button>
+                                <span class="school-table-type">{{ r.type }}</span>
+                            </td>
+                            <td data-value="{{ r.phase }}">{{ r.phase }}{% if r.independent %} <span class="estimate-badge">fee-paying</span>{% endif %}</td>
+                            <td data-value="{{ r.rating_code or 9 }}">
+                                {% if r.rating %}<span class="ofsted-badge ofsted-{{ r.rating_code }}">{{ r.rating }}</span>
+                                {% elif r.independent %}<span class="section-sub">Not Ofsted-rated</span>
+                                {% else %}<span class="section-sub">No current grade</span>{% endif %}
+                            </td>
+                            <td class="num" data-value="{{ r.distance_m }}">{{ r.distance_m | distance }}</td>
+                            <td class="num" data-value="{{ r.admission_miles if r.admission_miles is not none else 999 }}">
+                                {% if r.admission_miles is not none %}{{ r.admission_miles }} mi
+                                    {% if r.admission_kind == 'published' %}<span class="school-table-note">{{ r.admission_year }}</span>
+                                    {% else %}<span class="estimate-badge">est.</span>{% endif %}
+                                {% else %}<span class="section-sub">no figure</span>{% endif %}
+                            </td>
+                            <td class="num" data-value="{{ r.result_value if r.result_value is not none else -999 }}">
+                                {% if r.result_value is not none %}
+                                    {{ r.result_value }}{{ '%' if r.result_label != 'Progress 8' }}
+                                    <span class="school-table-note">{{ 'P8' if r.result_label == 'Progress 8' else 'KS2' }}</span>
+                                {% else %}<span class="section-sub">no figure</span>{% endif %}
+                            </td>
+                        </tr>
                         {% endfor %}
-                        {% if p.schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ p.schools | length - 25 }} more</li>
-                        {% endif %}
-                    </ul>
-                </details>
-                {% endfor %}
-                {% if area.landscape.special_count %}
-                <details class="landscape-stat-details">
-                    <summary><strong>{{ area.landscape.special_count }}</strong> Special</summary>
-                    <ul class="landscape-stat-schools">
-                        {% for s in area.landscape.special_schools[:25] %}
-                        <li>
-                            <button type="button" class="school-row" data-modal-target="school-modal-{{ area_idx }}-{{ s.urn }}">
-                                <strong>{{ s.name }}</strong> &middot; {{ s.type }} &middot; {{ s.distance_m | distance }}
-                            </button>
-                        </li>
-                        {% endfor %}
-                        {% if area.landscape.special_schools | length > 25 %}
-                        <li class="landscape-stat-schools-more">+{{ area.landscape.special_schools | length - 25 }} more</li>
-                        {% endif %}
-                    </ul>
-                </details>
-                {% endif %}
+                    </tbody>
+                </table>
             </div>
+            <p class="section-sub">
+                "Admitted from" is how far the last child offered a place lived, in the year shown, from the
+                council's own published figure. Where a council publishes none, "est." is a modelled estimate
+                and meaningfully less reliable. Results are Progress 8 for secondaries and the share meeting the
+                expected standard for primaries. Nothing here is a catchment boundary: most English schools
+                have none, and the distance moves every year.
+            </p>
+
             {% if area.landscape.higher_education_names %}
             <p class="section-sub">{{ area.landscape.higher_education_names | join(', ') }}</p>
             {% endif %}
@@ -137,10 +163,6 @@
                 <br><a href="/area/{{ area.outcode }}/private-schools">Fee-paying schools around {{ area.outcode }}: ages, selection, how full →</a>
             </p>
             {% endif %}
-            {% for s in area.landscape.all_schools %}
-            {% set modal_id = "school-modal-" ~ area_idx ~ "-" ~ s.urn %}
-            {% include "_school_profile_modal.html" with context %}
-            {% endfor %}
         {% else %}
             <p class="notice">
                 No Ofsted/GIAS school data available here. Our schools database only covers England
@@ -151,6 +173,131 @@
     </div>
     {% endfor %}
 </div>
+
+<script>
+    window.SCHOOL_GUIDE_AREAS = {{ areas | map(attribute='rows') | list | tojson }};
+    window.SCHOOL_GUIDE_CENTRES = {{ areas | map(attribute='latitude') | list | tojson }}.map(function (lat, i) {
+        return { lat: lat, lng: {{ areas | map(attribute='longitude') | list | tojson }}[i] };
+    });
+
+    /* Column sorting for every school table on the page. Click a
+       heading to sort by it; click again to flip. */
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const current = th.getAttribute('aria-sort');
+                    const dir = current === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+
+{% if google_maps_api_key %}
+{{ mapstyle.dark_map_style() }}
+<script>
+    function initSchoolMaps() {
+        const ratingColors = {
+            'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
+            'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+        };
+        window.SCHOOL_GUIDE_AREAS.forEach(function (rows, idx) {
+            const el = document.getElementById('school-map-' + idx);
+            if (!el) return;
+            const centre = window.SCHOOL_GUIDE_CENTRES[idx];
+            const map = new google.maps.Map(el, {
+                center: centre, zoom: 13, scrollwheel: false,
+                streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
+                styles: window.mapStyles(),
+            });
+            new google.maps.Marker({ position: centre, map: map, title: 'Search point' });
+            const info = new google.maps.InfoWindow();
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(centre);
+            rows.forEach(function (r) {
+                const color = ratingColors[r.rating] || '#8a8378';
+                const pos = { lat: r.latitude, lng: r.longitude };
+                bounds.extend(pos);
+                const m = new google.maps.Marker({
+                    position: pos, map: map,
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 0.95, strokeColor: '#ffffff', strokeWeight: 1.5 },
+                });
+                const miles = (r.distance_m / 1609.34).toFixed(1);
+                m.addListener('click', function () {
+                    info.setContent('<strong>' + r.name + '</strong><br>' + r.phase + (r.rating ? ', ' + r.rating : '') + '<br>' + miles + ' miles away');
+                    info.open(map, m);
+                });
+                if (r.admission_miles !== null && r.admission_miles !== undefined) {
+                    const real = r.admission_kind === 'published';
+                    const c = real ? '#d97706' : '#78716c';
+                    new google.maps.Circle({
+                        center: pos, radius: r.admission_miles * 1609.34, map: map,
+                        strokeColor: c, strokeWeight: 2, strokeOpacity: real ? 0.8 : 0.5,
+                        fillColor: c, fillOpacity: 0.05,
+                    }).addListener('click', function (e) {
+                        info.setContent(r.name + (real ? ' · published admission distance ' + r.admission_miles + ' mi (' + r.admission_year + ')' : ' · estimated admission distance ' + r.admission_miles + ' mi (modelled)'));
+                        info.setPosition(e.latLng); info.open(map);
+                    });
+                }
+            });
+            map.fitBounds(bounds, 24);
+            google.maps.event.addListenerOnce(map, 'bounds_changed', function () { if (map.getZoom() > 14) map.setZoom(14); });
+        });
+    }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initSchoolMaps&loading=async" async defer></script>
+{% else %}
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script>
+    (function () {
+        const ratingColors = {
+            'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
+            'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+        };
+        window.SCHOOL_GUIDE_AREAS.forEach(function (rows, idx) {
+            const el = document.getElementById('school-map-' + idx);
+            if (!el) return;
+            const centre = window.SCHOOL_GUIDE_CENTRES[idx];
+            const map = L.map(el, { scrollWheelZoom: false }).setView([centre.lat, centre.lng], 13);
+            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19,
+            }).addTo(map);
+            L.marker([centre.lat, centre.lng]).addTo(map).bindPopup('Search point');
+            const pts = [[centre.lat, centre.lng]];
+            rows.forEach(function (r) {
+                const color = ratingColors[r.rating] || '#8a8378';
+                pts.push([r.latitude, r.longitude]);
+                const miles = (r.distance_m / 1609.34).toFixed(1);
+                L.circleMarker([r.latitude, r.longitude], { radius: 7, color: '#ffffff', weight: 1.5, fillColor: color, fillOpacity: 0.95 })
+                    .bindPopup('<strong>' + r.name + '</strong><br>' + r.phase + (r.rating ? ', ' + r.rating : '') + '<br>' + miles + ' miles away').addTo(map);
+                if (r.admission_miles !== null && r.admission_miles !== undefined) {
+                    const real = r.admission_kind === 'published';
+                    const c = real ? '#d97706' : '#78716c';
+                    L.circle([r.latitude, r.longitude], {
+                        radius: r.admission_miles * 1609.34, color: c, weight: 2, opacity: real ? 0.8 : 0.5, fillOpacity: 0.05,
+                        dashArray: real ? null : '6 4',
+                    }).bindPopup(r.name + (real ? ' · published admission distance ' + r.admission_miles + ' mi (' + r.admission_year + ')' : ' · estimated admission distance ' + r.admission_miles + ' mi (modelled)')).addTo(map);
+                }
+            });
+            if (pts.length > 1) map.fitBounds(pts, { padding: [24, 24], maxZoom: 14 });
+        });
+    })();
+</script>
+{% endif %}
+
 {% elif not search_error %}
 <p class="dek" style="margin-top: 2rem;">{{ total }} postcode districts. Pick one to see its schools.</p>
 {% set link_prefix = "/schools/guide?q=" %}

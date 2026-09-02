@@ -315,7 +315,7 @@
                             <form class="stacked-form" action="/reviews/submit" method="post">
                                 <input type="hidden" name="target_type" value="school">
                                 <input type="hidden" name="target_key" value="{{ s.urn }}">
-                                <input type="hidden" name="next" value="{{ request.url.path }}{{ '?' ~ request.url.query if request.url.query else '' }}">
+                                <input type="hidden" name="next" value="{{ back_url if back_url is defined else (request.url.path ~ ('?' ~ request.url.query if request.url.query else '')) }}">
                                 <div class="search-form-field">
                                     <label for="school-review-rating-{{ modal_id }}">Your rating</label>
                                     <select id="school-review-rating-{{ modal_id }}" name="rating">

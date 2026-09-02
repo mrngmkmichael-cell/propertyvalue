@@ -364,6 +364,72 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     # that's the complete set to enrich - one batched IN-query each
     # rather than a query per school, same pattern as nearby_schools().
     all_entries = [e for bucket in schools_by_rating.values() for e in bucket]
+    _enrich_entries(all_entries)
+
+    higher_education_names.sort()
+    # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class
+    # names are already used for the small inline Ofsted badge in the
+    # plain school table (.ofsted-1 { background: ... }), and being
+    # unscoped, they'd match this chip too and paint the whole
+    # expandable container solid green - a real bug caught by testing.
+    rating_css = {
+        "Outstanding": "rating-outstanding", "Good": "rating-good",
+        "Requires improvement": "rating-reqimprovement", "Inadequate": "rating-inadequate",
+        "No current grade": "rating-none",
+    }
+    graded = total_schools - by_rating["No current grade"]
+    good_or_better_pct = (
+        round((by_rating["Outstanding"] + by_rating["Good"]) / graded * 100) if graded else None
+    )
+    for bucket in schools_by_rating.values():
+        bucket.sort(key=lambda s: s["distance_m"])
+    for bucket in schools_by_phase.values():
+        bucket.sort(key=lambda s: s["distance_m"])
+    special_schools.sort(key=lambda s: s["distance_m"])
+
+    return {
+        "radius_km": SEARCH_RADIUS_KM,
+        "radius_miles": SEARCH_RADIUS_MILES,
+        "total_schools": total_schools,
+        "good_or_better_pct": good_or_better_pct,
+        "by_rating": [
+            {"label": label, "count": by_rating[label], "css": rating_css[label], "schools": schools_by_rating[label]}
+            for label in RATING_ORDER if by_rating[label]
+        ],
+        "by_phase": [
+            {"label": name, "count": by_phase[name], "schools": schools_by_phase[name]}
+            for name in GROUP_ORDER if by_phase[name]
+        ],
+        "special_count": special_count,
+        "special_schools": special_schools,
+        "further_education": further_education,
+        "higher_education_count": len(higher_education_names),
+        "higher_education_names": higher_education_names,
+        "by_sector": by_sector,
+        "independent_count": sum(v for k, v in by_sector.items() if k.startswith("independent")),
+        "independent_names": sorted(independent_names),
+        "independent_schools": sorted(independent_schools, key=lambda e: e["distance_m"]),
+        "higher_education": sorted(higher_education, key=lambda e: e["distance_m"]),
+        # Every included school has exactly one rating bucket, so this
+        # is already the complete deduplicated set - used to render
+        # each school's detail modal exactly once, even though the
+        # same school can appear in both its rating list and its
+        # phase list.
+        "all_schools": all_entries,
+    }
+
+
+def _enrich_entries(all_entries: list[dict]) -> None:
+    """Attach everything the profile popup shows to each bare entry:
+    exam results and trend, free school meals, GIAS detail,
+    destinations, admission distance (published, else modelled),
+    demographics, parent reviews, and the one-line verdict.
+
+    One batched IN-query per table for the whole list, never a query
+    per school. Pulled out of school_landscape() on 1 Sep 2026 so a
+    single school can be built the same way for the popup that now
+    loads on click instead of being rendered 99 times into the page.
+    """
     all_urns = [e["urn"] for e in all_entries]
     if all_urns:
         with get_session() as session:
@@ -442,57 +508,44 @@ def school_landscape(lat: float, lon: float) -> dict | None:
                 e["exam_trend"] = []
             e["verdict"] = overview_score.school_verdict(e)
 
-    higher_education_names.sort()
-    # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class
-    # names are already used for the small inline Ofsted badge in the
-    # plain school table (.ofsted-1 { background: ... }), and being
-    # unscoped, they'd match this chip too and paint the whole
-    # expandable container solid green - a real bug caught by testing.
-    rating_css = {
-        "Outstanding": "rating-outstanding", "Good": "rating-good",
-        "Requires improvement": "rating-reqimprovement", "Inadequate": "rating-inadequate",
-        "No current grade": "rating-none",
-    }
-    graded = total_schools - by_rating["No current grade"]
-    good_or_better_pct = (
-        round((by_rating["Outstanding"] + by_rating["Good"]) / graded * 100) if graded else None
-    )
-    for bucket in schools_by_rating.values():
-        bucket.sort(key=lambda s: s["distance_m"])
-    for bucket in schools_by_phase.values():
-        bucket.sort(key=lambda s: s["distance_m"])
-    special_schools.sort(key=lambda s: s["distance_m"])
 
-    return {
-        "radius_km": SEARCH_RADIUS_KM,
-        "radius_miles": SEARCH_RADIUS_MILES,
-        "total_schools": total_schools,
-        "good_or_better_pct": good_or_better_pct,
-        "by_rating": [
-            {"label": label, "count": by_rating[label], "css": rating_css[label], "schools": schools_by_rating[label]}
-            for label in RATING_ORDER if by_rating[label]
-        ],
-        "by_phase": [
-            {"label": name, "count": by_phase[name], "schools": schools_by_phase[name]}
-            for name in GROUP_ORDER if by_phase[name]
-        ],
-        "special_count": special_count,
-        "special_schools": special_schools,
-        "further_education": further_education,
-        "higher_education_count": len(higher_education_names),
-        "higher_education_names": higher_education_names,
-        "by_sector": by_sector,
-        "independent_count": sum(v for k, v in by_sector.items() if k.startswith("independent")),
-        "independent_names": sorted(independent_names),
-        "independent_schools": sorted(independent_schools, key=lambda e: e["distance_m"]),
-        "higher_education": sorted(higher_education, key=lambda e: e["distance_m"]),
-        # Every included school has exactly one rating bucket, so this
-        # is already the complete deduplicated set - used to render
-        # each school's detail modal exactly once, even though the
-        # same school can appear in both its rating list and its
-        # phase list.
-        "all_schools": all_entries,
+def school_entry(urn: int, lat: float, lon: float) -> dict | None:
+    """One school, built exactly as school_landscape() would have built
+    it, measured from (lat, lon). Backs /schools/profile/{urn}."""
+    if not is_configured():
+        return None
+    with get_session() as session:
+        row = session.scalar(select(School).where(School.urn == urn))
+        if row is None or row.latitude is None or row.longitude is None:
+            return None
+        detail = session.scalar(select(SchoolDetail).where(SchoolDetail.urn == urn))
+    distance_km = _haversine_km(lat, lon, row.latitude, row.longitude)
+    entry = {
+        "urn": row.urn, "name": row.name, "type": row.type_name,
+        "distance_m": round(distance_km * 1000), "phase_group": None,
+        "ofsted_rating": row.ofsted_rating, "ofsted_rating_label": row.ofsted_rating_label,
+        "ofsted_inspection_date": row.ofsted_inspection_date,
+        "latitude": row.latitude, "longitude": row.longitude,
+        "independent": _is_independent(row.type_name),
     }
+    type_lower = (row.type_name or "").lower()
+    if "special" not in type_lower:
+        group = _phase_group(row.phase)
+        if group:
+            entry["phase_group"] = group
+        elif entry["independent"] and detail is not None:
+            # Same age-range classification the landscape applies to
+            # fee-paying schools, which GIAS gives no phase.
+            phases = _phases_from_ages(detail.age_low, detail.age_high)
+            if phases:
+                entry["age_low"], entry["age_high"] = detail.age_low, detail.age_high
+                entry["all_through"] = phases == {"Primary", "Secondary"}
+                entry["phase_group"] = (
+                    "All-through" if entry["all_through"]
+                    else ("Secondary" if "Secondary" in phases else "Primary")
+                )
+    _enrich_entries([entry])
+    return entry
 
 
 NATIONAL_BASELINE_CACHE_KEY = "schools_national_baseline"

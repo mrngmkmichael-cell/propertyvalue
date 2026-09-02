@@ -1,0 +1,6 @@
+{% import "_icons.html" as icons %}
+{# The school profile popup on its own, for /schools/profile/{urn}.
+   Fetched on click by the loader in base.html and injected into the
+   page, so a district guide no longer ships 99 of these inline. The
+   route sets s, modal_id, premium_unlocked and back_url. #}
+{% include "_school_profile_modal.html" with context %}
