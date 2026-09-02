@@ -6,6 +6,20 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Council coverage widened (2 Sep 2026): Essex (188 primary schools,
+  the council's FOI spreadsheet ECC19026611), Sheffield (34 schools,
+  the council's two oversubscribed-schools PDFs) and Manchester (7
+  secondaries from "The demand for secondary school places"; the
+  council's firewall refuses scripts, so the fetcher falls back to the
+  figures read in a browser, dated). 85 councils now. The importer
+  gained --only "Essex,Sheffield" to replace one council's rows without
+  re-fetching the other 82, and a phase hint so a council's short
+  "Ecclesfield" matches the primary in the reception table and the
+  secondary in the Year 7 one. Looked at and left: Lincolnshire (two
+  grammar schools only), Lancashire (booklet links rotate and carry no
+  per-school distance that a script can find), Kent and Hampshire (no
+  parsable document found).
+
 - The intersection made visible (1 Sep 2026): every school page prices
   the districts inside its admission distance ("What it costs to live
   within reach of X", from the area guides' medians, with an FAQ);

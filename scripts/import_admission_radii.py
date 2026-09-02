@@ -3971,7 +3971,133 @@ def fetch_west_northamptonshire() -> list[dict]:
 
 # (local authority - must exactly match SchoolDetail.local_authority,
 #  academic year label, fetch function)
+def fetch_essex() -> list[dict]:
+    """Essex County Council: "Last Distance offered, Reception and Year 2
+    to 3 - Main Round Admissions 2025", released by the council as an
+    Excel attachment to FOI ECC19026611 (10 Sep 2025) on its own FOI
+    publication site, so a council-published figure rather than a
+    third party's. Straight-line miles, furthest distance under the
+    lowest criterion offered, as at national offer day. A blank
+    distance means the school was undersubscribed and no distance was
+    recorded, so those rows are skipped. Primary only (Reception and
+    junior transfer); Essex's secondary figures were not in the
+    release. Columns: DfE No., School name, Distance.
+    """
+    url = "https://secureapps.essex.gov.uk/Freedom_of_information/view_doc.aspx?DocID=56825"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True, read_only=True)
+    records = []
+    for ws in wb.worksheets:
+        for row in ws.iter_rows(values_only=True):
+            cells = [c for c in row if c is not None]
+            if len(cells) < 3:
+                continue
+            dfe, name, dist = cells[0], cells[1], cells[2]
+            if str(name).strip().lower() == "school name":
+                continue
+            try:
+                miles = float(str(dist).strip())
+            except (TypeError, ValueError):
+                continue
+            if miles <= 0:
+                continue
+            records.append({"school_name": str(name).strip(), "last_distance_miles": miles})
+    return records
+
+
+
+def fetch_sheffield() -> list[dict]:
+    """Sheffield City Council publishes two PDFs of oversubscribed
+    schools for the September 2025 intake, each a single table with
+    the allocations by criterion and a "distance of last place
+    offered" (secondary) or "distance of last child allocated as at
+    16th April" (reception) column in straight-line miles. Only
+    oversubscribed schools appear, so a school missing from the file
+    took everyone who applied. Names are the council's short forms
+    ("Meadowhead", "Anns Grove") and are fuzzy-matched within
+    Sheffield. Secondary rows carry a DfE number in column 0; the
+    reception table does not, and its second page repeats no header.
+    """
+    sources = [
+        ("https://www.sheffield.gov.uk/sites/default/files/2025-02/oversubscribed_secondary_schools_2025.pdf", 1, 11, "secondary"),
+        ("https://www.sheffield.gov.uk/sites/default/files/2025-07/oversubscribed_infant_and_primary_schools.pdf", 0, 9, "reception"),
+    ]
+    records = []
+    for url, name_col, dist_col, phase_hint in sources:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                for table in page.extract_tables():
+                    for row in table:
+                        if len(row) <= dist_col:
+                            continue
+                        name = (row[name_col] or "").replace(chr(10), " ").strip()
+                        if not name or name.lower() == "school":
+                            continue
+                        try:
+                            miles = float((row[dist_col] or "").strip())
+                        except ValueError:
+                            continue
+                        if miles <= 0:
+                            continue
+                        records.append({"school_name": name, "phase_hint": phase_hint, "last_distance_miles": miles})
+    return records
+
+
+# Manchester's web application firewall answers every scripted request
+# with 403, so the live parse below cannot be exercised from here. These
+# are the figures on the page as read in a browser on 2 Sep 2026, kept as
+# the fallback so a re-run still loads Manchester when the fetch is
+# refused. Re-read the page when the next offer-day figures appear
+# (early March) and update both the list and the date.
+_MANCHESTER_FALLBACK = [
+    ("Burnage Academy for Boys", 2.152),
+    ("Chorlton High School", 1.375),
+    ("Co-op Academy Belle Vue", 0.853),
+    ("Co-op Academy North Manchester", 1.267),
+    ("Didsbury High School", 0.999),
+    ("Levenshulme High School", 1.623),
+    ("Parrs Wood High School", 2.275),
+]
+
+
+def fetch_manchester() -> list[dict]:
+    """Manchester City Council: "The demand for secondary school places",
+    a web page listing every secondary school with its places, offers and,
+    for the schools that filled on distance, the sentence "If they were in
+    category N they had to live within X miles". Year 7, September 2026
+    intake, offers to on-time and late applicants received by 22 Feb 2026.
+    Straight-line miles to the school's centre, per the council's rules.
+    Schools that took everyone, or that use their own rules and publish no
+    distance, are not given a figure.
+    """
+    url = "https://www.manchester.gov.uk/schools-education-and-childcare/school-admissions/the-demand-for-secondary-school-places"
+    print(f"  Downloading {url}")
+    try:
+        resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+    except httpx.HTTPError as exc:
+        print(f"  Manchester refused the request ({exc}); using the figures read in a browser on 2 Sep 2026")
+        return [{"school_name": n, "phase_hint": "secondary", "last_distance_miles": d} for n, d in _MANCHESTER_FALLBACK]
+    text = re.sub(r"<(br|/p|/h[1-6]|/li|/div)[^>]*>", "\n", resp.text, flags=re.I)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"[ \t]+", " ", text)
+    records = []
+    for m in re.finditer(r"([^\n]+)\n\s*Places: *\d+\s*\n\s*Offers made:[^\n]*\n\s*Unfilled places:[^\n]*\n\s*([^\n]+)", text):
+        name, rule = m.group(1).strip(), m.group(2)
+        miles = re.search(r"live within ([0-9.]+) *miles", rule)
+        if miles:
+            records.append({"school_name": name, "phase_hint": "secondary", "last_distance_miles": float(miles.group(1))})
+    return records
+
 _AUTHORITIES = [
+    ("Manchester", "2026/27", fetch_manchester),
+    ("Sheffield", "2025/26", fetch_sheffield),
+    ("Essex", "2025/26", fetch_essex),
     ("Hounslow", "2025/26", fetch_hounslow),
     ("Wandsworth", "2024/25", fetch_wandsworth),
     ("Brent", "2023/24", fetch_brent),
@@ -4064,7 +4190,13 @@ _AUTHORITIES = [
 def _match_urn(school_name: str, candidates: dict[str, int]) -> int | None:
     normalized = _normalize_school_name(school_name)
     matches = difflib.get_close_matches(normalized, candidates.keys(), n=1, cutoff=_MATCH_CUTOFF)
-    return candidates[matches[0]] if matches else None
+    if matches:
+        return candidates[matches[0]]
+    # Councils shorten names ("Meadowhead" for "Meadowhead School Academy
+    # Trust"). A whole-word prefix that fits exactly one school in the
+    # authority is safe; two or more and the row is left unmatched.
+    prefixed = [urn for name, urn in candidates.items() if name.startswith(normalized + " ")]
+    return prefixed[0] if len(prefixed) == 1 else None
 
 
 def build_records(session) -> list[dict]:
@@ -4084,19 +4216,45 @@ def build_records(session) -> list[dict]:
         print(f"  {len(rows)} schools with a distance figure in the source file")
 
         schools_in_la = session.execute(
-            select(School.urn, School.name)
+            select(School.urn, School.name, School.phase)
             .join(SchoolDetail, SchoolDetail.urn == School.urn)
             .where(SchoolDetail.local_authority == authority)
         ).all()
-        candidates = {_normalize_school_name(name): urn for urn, name in schools_in_la}
-        valid_urns = {urn for urn, _ in schools_in_la}
+        candidates = {_normalize_school_name(name): urn for urn, name, _ in schools_in_la}
+        valid_urns = {urn for urn, _, _ in schools_in_la}
+        # A fetcher that knows which intake a table describes can say so
+        # ("phase_hint": "secondary", "primary" or "reception") and is
+        # then matched only against schools of that phase, so a council's
+        # short "Ecclesfield" finds the primary in the reception table and
+        # the secondary in the Year 7 one. Reception also drops junior
+        # schools, which have no reception year.
+        _PHASES = {
+            "secondary": {"Secondary", "Middle deemed secondary", "All-through"},
+            "primary": {"Primary", "Middle deemed primary", "All-through"},
+            "reception": {"Primary", "Middle deemed primary", "All-through"},
+        }
+        candidates_by_phase = {}
+        for hint, phases in _PHASES.items():
+            pool = {}
+            for urn, name, phase in schools_in_la:
+                if phase not in phases:
+                    continue
+                norm = _normalize_school_name(name)
+                if hint == "reception" and re.search(r"\bjunior\b", norm) and not re.search(r"\b(infant|primary)\b", norm):
+                    continue
+                pool[norm] = urn
+            candidates_by_phase[hint] = pool
 
         matched = 0
         unmatched = []
         for row in rows:
             # A source that publishes its own URN (e.g. Greenwich) is matched directly rather than
             # by fuzzy name, but still checked against this authority's real URNs rather than trusted blindly.
-            urn = row["urn"] if row.get("urn") in valid_urns else _match_urn(row["school_name"], candidates)
+            if row.get("urn") in valid_urns:
+                urn = row["urn"]
+            else:
+                pool = candidates_by_phase.get(row.get("phase_hint"), candidates)
+                urn = _match_urn(row["school_name"], pool)
             if urn is None:
                 unmatched.append(row["school_name"])
                 continue
@@ -4129,14 +4287,22 @@ def build_records(session) -> list[dict]:
     return list(by_urn.values())
 
 
-def load_into_db(records: list[dict]) -> None:
+def load_into_db(records: list[dict], only: list[str] | None = None) -> None:
     engine = _get_engine()
     Base.metadata.create_all(engine, tables=[SchoolAdmissionRadius.__table__])
     SessionLocal = sessionmaker(bind=engine)
 
     with SessionLocal() as session:
-        print("Clearing existing school_admission_radii table...")
-        session.query(SchoolAdmissionRadius).delete()
+        if only:
+            # Adding one council must not re-fetch 83 others, any of
+            # whose URLs may have rotted since, and lose their rows.
+            print(f"Replacing rows for {', '.join(only)} only...")
+            session.query(SchoolAdmissionRadius).filter(
+                SchoolAdmissionRadius.source_authority.in_(only)
+            ).delete(synchronize_session=False)
+        else:
+            print("Clearing existing school_admission_radii table...")
+            session.query(SchoolAdmissionRadius).delete()
         session.commit()
 
         print(f"Inserting {len(records)} rows...")
@@ -4146,11 +4312,23 @@ def load_into_db(records: list[dict]) -> None:
 
 
 def main():
+    """Usage: import_admission_radii.py [--only "Essex,Lincolnshire"]
+
+    With --only, just those authorities are fetched and their rows
+    replaced; everything else in the table is left exactly as it was."""
+    global _AUTHORITIES
+    only = None
+    if "--only" in sys.argv:
+        only = [a.strip() for a in sys.argv[sys.argv.index("--only") + 1].split(",") if a.strip()]
+        _AUTHORITIES = [t for t in _AUTHORITIES if t[0] in only]
+        missing = set(only) - {t[0] for t in _AUTHORITIES}
+        if missing:
+            sys.exit(f"not in the registry: {sorted(missing)}")
     engine = _get_engine()
     SessionLocal = sessionmaker(bind=engine)
     with SessionLocal() as session:
         records = build_records(session)
-    load_into_db(records)
+    load_into_db(records, only=only)
     print("Done.")
 
 
