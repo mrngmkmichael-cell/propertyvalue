@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Extension 2.3.0 (1 Sep 2026): the Schools tab shows, for each nearby
+  school, whether this listing is Likely / Borderline / Unlikely to
+  get a place, against how far the school admitted from last time
+  (published figure linked to the school page; estimates marked).
+  Homepage and extension page now say the positioning out loud:
+  school sites show you the school, this shows you whether the house
+  gets a child in. Zip rebuilt; owner uploads to the Chrome store.
+
 - School shortlist + admission-update alerts (1 Sep 2026): the
   shortlist shows each saved school's grade and current published
   distance with its round; a "Save to my shortlist" button on every

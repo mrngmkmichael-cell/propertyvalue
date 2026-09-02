@@ -775,3 +775,26 @@ def test_no_service_leaks_an_unclosed_http_client():
                 continue
             offenders.append(f"{f.as_posix()}:{n}: {line.strip()}")
     assert not offenders, "unclosed httpx clients:\n" + "\n".join(offenders)
+
+
+
+# ---- the extension's admissions verdict -----------------------------------
+
+def test_extension_schools_carry_a_verdict_and_a_link():
+    """The one line a listing portal cannot show. Built from the same
+    landscape the report uses; a published figure gets a link to the
+    school page, an estimate is marked, nothing is invented."""
+    from app.main import _admission_verdict
+
+    assert _admission_verdict(0.5, 1.0)["level"] == "likely"
+    # A modelled estimate still yields a verdict but no school page.
+    from app.services.schools_db import _slugify
+    assert _slugify("St Mary's C of E Primary") == "st-mary-s-c-of-e-primary"
+
+
+def test_extension_manifest_version_moved_with_the_feature():
+    import json, pathlib
+    manifest = json.loads(pathlib.Path("browser-extension/manifest.json").read_text(encoding="utf-8"))
+    assert manifest["version"] == "2.3.0"
+    js = pathlib.Path("browser-extension/content.js").read_text(encoding="utf-8")
+    assert "pv-verdict-likely" in js and "Will this address get in?" in js

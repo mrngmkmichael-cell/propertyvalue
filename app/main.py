@@ -3093,11 +3093,30 @@ async def api_extension_report(request: Request, postcode: str = ""):
     schools_payload = []
     if landscape_result:
         for s in sorted(landscape_result.get("all_schools", []), key=lambda s: s["distance_m"])[:EXTENSION_SCHOOLS_LIMIT]:
+            # The one line the listing portals cannot show: whether this
+            # listing's distance is inside how far the school admitted
+            # from last time. Published figure where the council has
+            # one, modelled estimate marked as such where it has not,
+            # nothing where there is neither.
+            adm_miles, adm_kind, adm_year, verdict = None, None, None, None
+            if s.get("admission_radius"):
+                adm_miles = s["admission_radius"]["last_distance_miles"]
+                adm_kind, adm_year = "published", s["admission_radius"]["academic_year"]
+            elif s.get("catchment_estimate"):
+                adm_miles, adm_kind = s["catchment_estimate"]["radius_miles"], "estimated"
+            if adm_miles:
+                verdict = _admission_verdict(s["distance_m"] / 1609.34, adm_miles)["level"]
             schools_payload.append({
                 "name": s["name"],
+                "urn": s["urn"],
+                "slug": schools_db._slugify(s["name"]) if adm_kind == "published" else None,
                 "distance_m": s["distance_m"],
                 "phase": s.get("phase_group"),
                 "ofsted_rating_label": s.get("ofsted_rating_label"),
+                "admission_miles": adm_miles,
+                "admission_kind": adm_kind,
+                "admission_year": adm_year,
+                "verdict": verdict,
             })
     payload["schools"] = schools_payload
 

@@ -332,6 +332,11 @@
     .icon-flood        { background: #ecfeff; color: #0891b2; }
     .icon-crime        { background: #fff1f2; color: #e11d48; }
     .icon-schools      { background: #f5f3ff; color: #7c3aed; }
+    .pv-verdict { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+    .pv-verdict-likely { background:#e7f3ec; color:#2f6b4f; }
+    .pv-verdict-borderline { background:#fbf1dc; color:#8a5a12; }
+    .pv-verdict-unlikely { background:#f8e5e3; color:#a83a32; }
+    .pv-muted { color:#8a8378; font-size:12px; }
     .icon-prosperity   { background: #ecfdf5; color: #059669; }
     .icon-rental       { background: #ecfeff; color: #0e7490; }
     .icon-orientation  { background: #fefce8; color: #a16207; }
@@ -1062,7 +1067,7 @@
     "Avg sold price": "Full sold-transaction history for this postcode, from HM Land Registry Price Paid Data.",
     "Flood risk": "Environment Agency flood zone (rivers & sea) - Zone 3 is high probability, Zone 2 medium, Zone 1 low.",
     "Crime nearby": "Crimes recorded within roughly 1 mile, from police.uk's public data.",
-    "Schools": "The 3 nearest schools of each type by proximity - not a catchment-area guarantee, since no free UK-wide catchment dataset exists.",
+    "Schools": "Nearest schools, each with this listing's distance against how far the school admitted from last time: Likely, Borderline or Unlikely. Published council figures where they exist, estimates marked as such. Not a catchment guarantee: the distance moves every year.",
     "EPC rating": "From the property's Energy Performance Certificate, checked against the Minimum Energy Efficiency Standard (England & Wales require at least an E rating to legally let).",
     "Area Prosperity": "5-year sold price trend for this area, from HM Land Registry's House Price Index.",
     "Price Trend & Forecast": "A straight-line trend fitted to 5 years of HM Land Registry's House Price Index - not a guarantee, just where prices land if the recent trend continued.",
@@ -1202,13 +1207,32 @@
     schools: function (data) {
       const rows = data.schools || [];
       if (!rows.length) return '<p class="pv-empty">No nearby schools found.</p>';
+      // The verdict column is the thing no listing portal shows: this
+      // listing's distance against how far the school admitted from
+      // last time. Published council figure, or a modelled estimate
+      // marked "est.", or "no figure" in words.
+      const verdictHtml = function (s) {
+        if (!s.admission_miles) return '<span class="pv-muted">no figure</span>';
+        const label = { likely: "Likely", borderline: "Borderline", unlikely: "Unlikely" }[s.verdict] || "";
+        const cls = { likely: "pv-verdict-likely", borderline: "pv-verdict-borderline", unlikely: "pv-verdict-unlikely" }[s.verdict] || "";
+        const from = s.admission_kind === "published"
+          ? "admitted from " + s.admission_miles + " mi" + (s.admission_year ? " (" + escapeHtml(String(s.admission_year)) + ")" : "")
+          : "est. " + s.admission_miles + " mi";
+        return '<span class="pv-verdict ' + cls + '">' + label + "</span> <span class=\"pv-muted\">" + from + "</span>";
+      };
+      const nameHtml = function (s) {
+        return s.slug
+          ? '<a href="' + API_BASE + "/school/" + s.urn + "/" + s.slug + '" target="_blank" rel="noopener">' + escapeHtml(s.name) + "</a>"
+          : escapeHtml(s.name);
+      };
       const html =
-        '<table class="pv-table"><thead><tr><th>School</th><th>Phase</th><th class="pv-num">Distance</th><th class="pv-num">Ofsted</th></tr></thead><tbody>' +
+        '<p class="pv-muted" style="margin:0 0 8px">Will this address get in? Each school\'s distance to this listing, against how far it admitted from last time.</p>' +
+        '<table class="pv-table"><thead><tr><th>School</th><th>Phase</th><th class="pv-num">Distance</th><th>Admission</th><th class="pv-num">Ofsted</th></tr></thead><tbody>' +
         rows.map(function (s) {
           const badge = s.ofsted_rating_label
             ? '<span class="pv-badge ' + ratingBadgeClass(s.ofsted_rating_label) + '">' + escapeHtml(s.ofsted_rating_label) + "</span>"
             : "—";
-          return "<tr><td>" + escapeHtml(s.name) + "</td><td>" + escapeHtml(s.phase || "—") + "</td><td class=\"pv-num\">" + distanceText(s.distance_m) + "</td><td class=\"pv-num\">" + badge + "</td></tr>";
+          return "<tr><td>" + nameHtml(s) + "</td><td>" + escapeHtml(s.phase || "—") + "</td><td class=\"pv-num\">" + distanceText(s.distance_m) + "</td><td>" + verdictHtml(s) + "</td><td class=\"pv-num\">" + badge + "</td></tr>";
         }).join("") +
         "</tbody></table>";
       return html + (data.premium_unlocked ? "" : gateHtml("schools"));
