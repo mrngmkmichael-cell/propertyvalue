@@ -1391,6 +1391,16 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # The 12 per-region price league pages: real Land Registry medians,
     # one page per region, each row linking to its area guide.
     entries += [(f"{base}/market/house-prices/{slug}", "0.6") for slug in REGION_SLUGS]
+    # Admissions: one hub per council we hold published distances for,
+    # plus the index and the guide. 82 pages as of 1 Sep 2026, each a
+    # real table of real figures, so they earn their place.
+    entries.append((f"{base}/schools/admissions", "0.7"))
+    entries.append((f"{base}/schools/how-admissions-work", "0.7"))
+    try:
+        entries += [(f"{base}/schools/admissions/{c['slug']}", "0.6")
+                    for c in schools_db.admission_councils()]
+    except Exception:  # noqa: BLE001 - a database blip must not break the sitemap
+        pass
 
     # Comparison pages, first tranche (30 Aug 2026). The full curated
     # set is ~1,000 pairs, which is too much to hand a domain still
@@ -6574,6 +6584,7 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["canonical_url"] = f"{base}{canonical_path}"
     context["school"] = profile
     context["og_school_url"] = f"{base}/og/school/{urn}.png"
+    context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
 
     # "Will this address get in?" A postcode is measured against how far
     # the school admitted from last time. Postcode centre, not the
@@ -6893,6 +6904,64 @@ async def school_profile_fragment(
     response = templates.TemplateResponse(request, "_school_profile_fragment.html", context)
     response.headers["Cache-Control"] = "private, max-age=300"
     return response
+
+
+@app.get("/schools/admissions")
+async def admissions_index(request: Request):
+    """Every council whose published admission distances we hold."""
+    context = base_context(request)
+    cache_key = ("admission_councils",)
+    councils = _cache.get(cache_key, 6 * 3600)
+    if councils is None:
+        councils = await asyncio.to_thread(schools_db.admission_councils)
+        _cache.set(cache_key, councils)
+    context["councils"] = councils
+    context["total_schools"] = sum(c["count"] for c in councils)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions"
+    return templates.TemplateResponse(request, "schools_admissions_index.html", context)
+
+
+@app.get("/schools/admissions/{council_slug}")
+async def admissions_council(request: Request, council_slug: str):
+    """One council's schools, each with how far it admitted from.
+
+    This is the page parents actually search for between September
+    and the January and October deadlines: "{council} school
+    admission distances". The specialist sites hold the same figures
+    inside an app that barely indexes; a plain table per council, each
+    row linking to the school's own page and checker, is the thing a
+    search engine can send someone to.
+    """
+    context = base_context(request)
+    cache_key = ("admission_council", council_slug)
+    council = _cache.get(cache_key, 6 * 3600)
+    if council is None:
+        council = await asyncio.to_thread(schools_db.admission_council, council_slug)
+        if council is None:
+            return templates.TemplateResponse(request, "404.html", context, status_code=404)
+        _cache.set(cache_key, council)
+    context["council"] = council
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions/{council_slug}"
+    context["admissions_faqs_jsonld"] = _faq_jsonld([
+        (f"How far do you need to live from a school in {council['name']} to get a place?",
+         f"It depends on the school. Across the {council['count']} {council['name']} schools with a "
+         f"published figure, the last child admitted lived a median of {council['median_miles']} miles "
+         f"away; the tightest was {council['tightest']['name']} at {council['tightest']['miles']} miles. "
+         "The distance moves every year with demand."),
+        (f"Do {council['name']} schools have catchment areas?",
+         "Most English schools do not. When a school is oversubscribed, places are offered outward "
+         "from the school until they run out, so what exists is how far the last admitted child "
+         "lived, which the council publishes after each round. That is the figure on this page."),
+    ])
+    return templates.TemplateResponse(request, "schools_admissions_council.html", context)
+
+
+@app.get("/schools/how-admissions-work")
+def admissions_guide(request: Request):
+    """How school admissions actually work in England, in plain words."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/how-admissions-work"
+    return templates.TemplateResponse(request, "admissions_guide.html", context)
 
 
 @app.get("/schools/guide")

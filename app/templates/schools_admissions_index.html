@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}School Admission Distances by Council: How Far Each School Admitted From{% endblock %}
+{% block meta_description %}Published last-distance-offered figures for {{ "{:,}".format(total_schools) }} English schools across {{ councils | length }} councils: how far the last child admitted lived, school by school. Pick a council.{% endblock %}
+{% block og_title %}School admission distances, by council{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/guide">&larr; School guide</a>
+
+<span class="kicker">Admissions</span>
+<h1>How far schools admitted from, council by council</h1>
+<p class="dek">
+    After each admissions round, councils publish how far away the last child offered a place at each
+    oversubscribed school lived. That figure is the closest thing most English schools have to a
+    catchment. We hold it for {{ "{:,}".format(total_schools) }} schools across {{ councils | length }}
+    councils. Pick yours.
+</p>
+
+<p class="section-sub">
+    New to this? <a href="/schools/how-admissions-work">How school admissions actually work, and what the distance means →</a>
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ councils | length }}</span><span class="score-tile-label">councils with published figures</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(total_schools) }}</span><span class="score-tile-label">schools with a real distance</span></div>
+</div>
+
+<section class="report-section">
+    <h2>Councils</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Council</th><th class="num">Schools with a figure</th></tr></thead>
+            <tbody>
+                {% for c in councils %}
+                <tr>
+                    <td><a href="/schools/admissions/{{ c.slug }}">{{ c.name }}</a></td>
+                    <td class="num">{{ c.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        A council missing from this list has not published its figures in a form we can import, or
+        publishes none. We add councils as their data becomes available and never model a distance
+        where none was published: a modelled estimate is marked as such wherever it appears on this site.
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Checking one address</h2>
+    <p class="section-sub">
+        Every school page has a checker: put a postcode in and it is measured against that school's
+        distance. The <a href="/">full property report</a> does the same for every school near an
+        address at once, alongside the house itself.
+    </p>
+</section>
+{% endblock %}

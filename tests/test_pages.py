@@ -734,3 +734,62 @@ def test_school_share_card_is_a_real_png(client):
     # Unknown school falls back to the default image rather than erroring.
     r = client.get("/og/school/1.png", follow_redirects=False)
     assert r.status_code == 302
+
+# ---- admissions: council hubs and the guide -------------------------------
+
+def test_admissions_index_lists_councils(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/schools/admissions").text
+    assert 'href="/schools/admissions/manchester"' in body
+    assert "Manchester" in body
+    assert 'href="/schools/how-admissions-work"' in body
+
+
+def test_council_hub_shows_every_school_tightest_first(client):
+    _seed_admission_school()
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        if session.get(School, 990003) is None:
+            session.add(School(urn=990003, name="Canal Street Primary", phase="Primary",
+                               type_name="Community school", postcode="M1 2BB",
+                               latitude=53.47, longitude=-2.23, ofsted_rating=2, ofsted_rating_label="Good"))
+            session.add(SchoolAdmissionRadius(urn=990003, last_distance_miles=0.4,
+                                              academic_year="2025", source_authority="Manchester"))
+            session.commit()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get("/schools/admissions/manchester")
+    assert r.status_code == 200
+    body = r.text
+    assert "How far Manchester schools admitted from" in body
+    assert 'href="/school/990003/canal-street-primary"' in body
+    assert 'href="/school/990002/riverside-academy"' in body
+    # Tightest first: the 0.4-mile school is named as the tightest.
+    assert "The tightest is" in body and "Canal Street Primary" in body.split("The tightest is")[1][:200]
+    assert "0.4 mi" in body
+    assert "Primary schools" in body and "Secondary schools" in body
+    assert client.get("/schools/admissions/no-such-council").status_code == 404
+
+
+def test_admissions_guide_and_links(client):
+    body = client.get("/schools/how-admissions-work").text
+    assert "31 October" in body and "15 January" in body
+    assert "Why most schools have no catchment area" in body
+    # The school page and the guide link to the hubs.
+    _seed_admission_school()
+    page = client.get("/school/990002/riverside-academy").text
+    assert 'href="/schools/admissions/manchester"' in page
+    assert 'href="/schools/how-admissions-work"' in page
+
+
+def test_sitemap_carries_the_admissions_pages(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/sitemap.xml").text
+    assert "/schools/admissions</loc>" in body
+    assert "/schools/how-admissions-work</loc>" in body
+    assert "/schools/admissions/manchester</loc>" in body

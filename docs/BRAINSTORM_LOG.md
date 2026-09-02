@@ -6,6 +6,15 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Admissions pages (1 Sep 2026): /schools/admissions (82 councils,
+  3,251 schools with a published last-distance-offered figure), one
+  hub per council listing every school tightest first with grade,
+  round and how full, each linking to the school page and checker,
+  and /schools/how-admissions-work, a plain-English guide to the
+  calendar, criteria order, how distance is measured and why most
+  schools have no catchment. All in the sitemap; linked from every
+  school page and the schools guide.
+
 - School pages (1 Sep 2026): a free "will an address get in?" checker
   (postcode measured against the school's published admission
   distance, three honest bands: Likely / Borderline / Unlikely), a map

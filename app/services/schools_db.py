@@ -608,6 +608,69 @@ def admission_page_schools() -> list[dict]:
     ]
 
 
+def admission_councils() -> list[dict]:
+    """Every council we hold published admission distances for, with
+    how many of its schools are covered. One entry per source
+    authority, alphabetical, slug included for the URL."""
+    with get_session() as session:
+        rows = session.execute(
+            select(SchoolAdmissionRadius.source_authority, func.count())
+            .group_by(SchoolAdmissionRadius.source_authority)
+        ).all()
+    out = [
+        {"name": name, "slug": _slugify(name), "count": count}
+        for name, count in rows if name
+    ]
+    out.sort(key=lambda c: c["name"])
+    return out
+
+
+def admission_council(slug: str) -> dict | None:
+    """One council's schools with a published admission distance,
+    grouped by phase and sorted so the tightest (most oversubscribed,
+    in effect) come first. Backs /schools/admissions/{council}."""
+    councils = {c["slug"]: c for c in admission_councils()}
+    council = councils.get(slug)
+    if council is None:
+        return None
+    with get_session() as session:
+        rows = session.execute(
+            select(School, SchoolAdmissionRadius, SchoolDetail)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
+            .where(SchoolAdmissionRadius.source_authority == council["name"])
+        ).all()
+    schools = []
+    for s, r, det in rows:
+        schools.append({
+            "urn": s.urn, "name": s.name, "slug": _slugify(s.name),
+            "phase": _phase_group(s.phase) or ("Special" if "special" in (s.type_name or "").lower() else "Other"),
+            "type": s.type_name, "town": det.town if det else "",
+            "ofsted_rating": s.ofsted_rating, "ofsted_rating_label": s.ofsted_rating_label,
+            "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year,
+            "occupancy_pct": (
+                round(det.number_on_roll / det.school_capacity * 100)
+                if det and det.school_capacity and det.number_on_roll else None
+            ),
+        })
+    schools.sort(key=lambda x: (x["miles"], x["name"]))
+    miles = sorted(x["miles"] for x in schools)
+    by_phase = {}
+    for x in schools:
+        by_phase.setdefault(x["phase"], []).append(x)
+    years = sorted({x["academic_year"] for x in schools if x["academic_year"]})
+    return {
+        **council,
+        "schools": schools,
+        "by_phase": [(p, by_phase[p]) for p in ("Primary", "Secondary", "All-through", "Nursery", "Special", "Other") if p in by_phase],
+        "median_miles": miles[len(miles) // 2] if miles else None,
+        "tightest": schools[0] if schools else None,
+        "widest": schools[-1] if schools else None,
+        "years": years,
+        "under_a_mile": sum(1 for m in miles if m < 1),
+    }
+
+
 def admission_profile(urn: int) -> dict | None:
     """Everything one school's admission page renders."""
     with get_session() as session:

@@ -45,6 +45,8 @@ PAGES = [
     "/market/house-prices/london", "/market/house-prices/north-west",
     # Added 31 Aug 2026 with the page itself.
     "/schools/outstanding",
+    # Added 1 Sep 2026 with the admissions pages.
+    "/schools/admissions", "/schools/admissions/hertfordshire", "/schools/how-admissions-work",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}{{ seo_title(council.name ~ " School Admission Distances", ": how far each school admitted from", "") }}{% endblock %}
+{% block meta_description %}How far the last child admitted lived, for {{ council.count }} {{ council.name }} schools, from the council's own published figures. Median {{ council.median_miles }} miles; tightest {{ council.tightest.name }} at {{ council.tightest.miles }} miles.{% endblock %}
+{% block og_title %}{{ council.name }}: how far each school admitted from{% endblock %}
+
+{% block content %}
+{% if admissions_faqs_jsonld %}<script type="application/ld+json">{{ admissions_faqs_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/schools/admissions">&larr; All councils</a>
+
+<span class="kicker">Admissions</span>
+<h1>How far {{ council.name }} schools admitted from</h1>
+<p class="dek">
+    For every oversubscribed school, {{ council.name }} publishes how far away the last child offered a
+    place lived. This is that figure for {{ council.count }} schools, tightest first. A short distance
+    means a school that fills up close to its gates; a long one means places went further afield.
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ council.count }}</span><span class="score-tile-label">schools with a published figure</span></div>
+    {% if council.median_miles is not none %}
+    <div class="score-tile"><span class="score-tile-value">{{ council.median_miles }} mi</span><span class="score-tile-label">the middle school's distance</span></div>
+    {% endif %}
+    <div class="score-tile"><span class="score-tile-value">{{ council.under_a_mile }}</span><span class="score-tile-label">filled within a mile</span></div>
+</div>
+
+{% if council.tightest and council.widest and council.tightest.urn != council.widest.urn %}
+<p class="section-sub">
+    The tightest is <a href="/school/{{ council.tightest.urn }}/{{ council.tightest.slug }}">{{ council.tightest.name }}</a>
+    at {{ council.tightest.miles }} miles{% if council.tightest.academic_year %} in {{ council.tightest.academic_year }}{% endif %};
+    the most far-reaching, <a href="/school/{{ council.widest.urn }}/{{ council.widest.slug }}">{{ council.widest.name }}</a>,
+    admitted from {{ council.widest.miles }} miles.
+    {% if council.years | length > 1 %}Figures are from the {{ council.years | join(', ') }} rounds, each row saying which.{% endif %}
+</p>
+{% endif %}
+
+{% for phase, schools in council.by_phase %}
+<section class="report-section">
+    <h2>{{ phase }} schools</h2>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">School</th>
+                    <th data-sort="text">Ofsted</th>
+                    <th class="num" data-sort="num" aria-sort="ascending">Admitted from</th>
+                    <th data-sort="text">Round</th>
+                    <th class="num" data-sort="num">How full</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in schools %}
+                <tr>
+                    <td data-value="{{ s.name | lower }}">
+                        <a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>
+                        {% set sub = s.town or s.type %}
+                        {% if sub and not s.name.lower().endswith(sub.split(' ')[0].lower()) %}<span class="school-table-type">{{ sub }}</span>{% endif %}
+                    </td>
+                    <td data-value="{{ s.ofsted_rating or 9 }}">
+                        {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
+                        {% else %}<span class="section-sub">No current grade</span>{% endif %}
+                    </td>
+                    <td class="num" data-value="{{ s.miles }}"><strong>{{ s.miles }} mi</strong></td>
+                    <td data-value="{{ s.academic_year }}">{{ s.academic_year }}</td>
+                    <td class="num" data-value="{{ s.occupancy_pct if s.occupancy_pct is not none else -1 }}">
+                        {% if s.occupancy_pct is not none %}{{ s.occupancy_pct }}%{% else %}<span class="section-sub">not published</span>{% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endfor %}
+
+<section class="report-section">
+    <h2>Reading the numbers</h2>
+    <p class="section-sub">
+        These are not catchment areas: most English schools have none. Each figure is the distance
+        from the school to the home of the furthest child who was offered a place under the distance
+        criterion in that round, as {{ council.name }} measures it, which is usually a straight line
+        from a fixed point at the home to one at the school. Looked-after children, siblings and,
+        at faith schools, faith criteria come before distance, so a school can fill before distance
+        is reached at all. The figure moves every year with the number of applications.
+        <a href="/schools/how-admissions-work">How the whole process works →</a>
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Checking an address against these</h2>
+    <p class="section-sub">
+        Each school's page has a checker that measures a postcode against that school's distance.
+        The <a href="/">full property report</a> measures every nearby school at once, alongside sold
+        prices, flood risk and the rest of the house.
+    </p>
+</section>
+
+<p class="section-sub">
+    Admission distances published by {{ council.name }}. School details and grades from the Department
+    for Education's register and Ofsted. If a figure looks wrong, <a href="/support">tell us</a> and it
+    goes on the <a href="/accuracy">accuracy log</a>.
+</p>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}
