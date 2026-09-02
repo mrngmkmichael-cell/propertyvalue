@@ -31,7 +31,7 @@ BASE = (sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8010").rstrip("/
 # Identifies these requests in the analytics as a bot rather than a
 # visitor. Dev and production share one database, so an unmarked sweep
 # writes itself into the real pageview counts.
-UA = {"User-Agent": "UKPropertyInsightSmoke/1.0 (+bot)"}
+UA = {"User-Agent": "UKPropertyInsightSmoke/1.0 (+bot)", "X-Internal-Check": "1"}
 
 # Text that means the renderer fell over, whatever the status code says.
 # A Jinja page can return 200 with an exception baked into the body.
@@ -59,6 +59,7 @@ CHECKS = [
     ("/schools/admissions", {200}, ["council by council"]),
     ("/schools/admissions/hertfordshire", {200}, ["Hertfordshire", "Admitted from"]),
     ("/schools/how-admissions-work", {200}, ["31 October", "15 January"]),
+    ("/schools/tightest-catchments", {200}, ["tightest gates in England", "councils compared"]),
     ("/property?postcode=M1+1AE", {200, 202}, ["M1 1AE"]),
     ("/property?postcode=EH1+1YZ", {200, 202}, ["EH1 1YZ"]),
     ("/property/comparables?postcode=M1+1AE", {200}, ["Comparables"]),

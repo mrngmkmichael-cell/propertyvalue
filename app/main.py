@@ -139,6 +139,7 @@ _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
 _ANON_HTML_TTL_S = 600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
+    "/schools/tightest-catchments",
     "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
@@ -296,7 +297,13 @@ def _is_crawler(user_agent: str | None) -> bool:
 def _is_excluded_viewer(request: Request) -> bool:
     """Crawlers, scripts and any browser the owner has marked as theirs.
     Shared by the pageview middleware and the paywall event."""
-    return _is_crawler(request.headers.get("user-agent")) or request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) == "1"
+    # Our own checks (smoke, audits, deploy polls) send this header so
+    # a verification run never reads as visitors on the dashboard.
+    return (
+        _is_crawler(request.headers.get("user-agent"))
+        or request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) == "1"
+        or request.headers.get("x-internal-check") == "1"
+    )
 
 
 @app.middleware("http")
@@ -325,14 +332,20 @@ async def capture_pageview(request: Request, call_next):
         and db.is_configured()
     ):
         try:
-            user = auth.current_user(request)
+            # A page served from the anonymous HTML cache returns before
+            # the session layer has run, so request.session does not
+            # exist there. Those visitors are anonymous by construction
+            # (the cache never serves anyone with a session cookie); from
+            # 1 to 2 Sep 2026 this raised instead and every cached view
+            # went uncounted.
+            user = auth.current_user(request) if "session" in request.scope else None
             if _is_admin(user):
                 return response
             with db.get_session() as session:
                 session.add(PageView(path=path, user_id=user["id"] if user else None))
                 session.commit()
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - a counter must never break a page
+            logging.getLogger(__name__).warning("pageview not recorded for %s: %s", path, exc)
     return response
 
 
@@ -1478,6 +1491,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # real table of real figures, so they earn their place.
     entries.append((f"{base}/schools/admissions", "0.7"))
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
+    entries.append((f"{base}/schools/tightest-catchments", "0.7"))
     try:
         entries += [(f"{base}/schools/admissions/{c['slug']}", "0.6")
                     for c in schools_db.admission_councils()]
@@ -7157,6 +7171,18 @@ async def admissions_council(request: Request, council_slug: str):
          "lived, which the council publishes after each round. That is the figure on this page."),
     ])
     return templates.TemplateResponse(request, "schools_admissions_council.html", context)
+
+
+@app.get("/schools/tightest-catchments")
+def tightest_catchments_page(request: Request):
+    """The national data story: England's tightest school gates, the
+    widest, and the councils compared, from every published figure we
+    hold. Written to be quoted by a local paper or a parents' forum,
+    with every number linking to the school or council page behind it."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/tightest-catchments"
+    context["data"] = schools_db.tightest_catchments()
+    return templates.TemplateResponse(request, "schools_tightest.html", context)
 
 
 @app.get("/schools/how-admissions-work")

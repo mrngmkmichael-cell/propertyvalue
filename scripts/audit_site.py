@@ -20,7 +20,7 @@ from collections import defaultdict
 import httpx
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8010"
-UA = {"User-Agent": "Googlebot/2.1 (+audit)"}
+UA = {"User-Agent": "Googlebot/2.1 (+audit)", "X-Internal-Check": "1"}
 
 PAGES = [
     "/", "/areas", "/area/M1", "/area/SW1A", "/schools/guide?q=M1",
@@ -47,6 +47,7 @@ PAGES = [
     "/schools/outstanding",
     # Added 1 Sep 2026 with the admissions pages.
     "/schools/admissions", "/schools/admissions/hertfordshire", "/schools/how-admissions-work",
+    "/schools/tightest-catchments",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)

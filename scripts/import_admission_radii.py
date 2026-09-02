@@ -4250,6 +4250,13 @@ def build_records(session) -> list[dict]:
         for row in rows:
             # A source that publishes its own URN (e.g. Greenwich) is matched directly rather than
             # by fuzzy name, but still checked against this authority's real URNs rather than trusted blindly.
+            # A distance of nothing is a council's way of writing "no place
+            # was decided on distance" (Gloucestershire's 0.0) or a unit slip
+            # (Sutton's 0.002 miles, four metres). Either way it is not a
+            # figure, and shown as one it would top the national ranking.
+            if (row.get("last_distance_miles") or 0) < 0.01:
+                unmatched.append(f"{row['school_name']} (no usable distance: {row.get('last_distance_miles')})")
+                continue
             if row.get("urn") in valid_urns:
                 urn = row["urn"]
             else:

@@ -985,3 +985,73 @@ def test_compare_page_gets_a_schools_row(client, monkeypatch):
     body = client.get("/compare?postcode=M1+1AE&postcode=LS1+4DY").text
     assert "Schools likely to admit" in body
     assert "2 likely" in body and "Near Primary, Other Primary" in body
+
+
+# ---- the tightest-catchments story, the catchment title, the counter ------
+
+def _seed_two_schools():
+    """Two schools of our own, so no other test's edits to the shared
+    Riverside Academy row can change what these assertions see."""
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        for urn, name, phase, miles in ((990011, "Harbour Lane Primary", "Primary", 0.37),
+                                        (990012, "Quayside Academy", "Secondary", 1.7)):
+            if session.get(School, urn) is None:
+                session.add(School(urn=urn, name=name, phase=phase, type_name="Academy converter",
+                                   postcode="M1 2BB", latitude=53.47, longitude=-2.23,
+                                   ofsted_rating=2, ofsted_rating_label="Good"))
+                session.add(SchoolAdmissionRadius(urn=urn, last_distance_miles=miles,
+                                                  academic_year="2025", source_authority="Manchester"))
+        session.commit()
+
+
+def test_tightest_catchments_ranks_nationally_and_by_council(client):
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get("/schools/tightest-catchments")
+    assert r.status_code == 200
+    body = r.text
+    assert "tightest school catchments" in body.lower()
+    # The 0.37-mile school heads the national table and links to its page.
+    first, second = body.index("harbour-lane-primary"), body.index("quayside-academy")
+    assert first < second
+    assert 'href="/schools/admissions/manchester"' in body
+    assert "0.37 mi" in body and "1.7 mi" in body
+    # Every figure names where it came from.
+    assert "published" in body.lower() and "straight line" in body.lower()
+    assert 'href="/schools/tightest-catchments"' in client.get("/schools/admissions").text
+    assert "/schools/tightest-catchments" in client.get("/sitemap.xml").text
+
+
+def test_school_title_answers_the_catchment_query(client):
+    """Parents search "X catchment area"; the title says that and gives
+    the number, which no other result has."""
+    _seed_two_schools()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/990012/quayside-academy").text
+    title = body.split("<title>")[1].split("</title>")[0]
+    assert title.startswith("Quayside Academy catchment area")
+    assert "admitted from 1.7 miles in 2025" in title
+    assert "Quayside Academy catchment area:" in body  # meta description
+
+
+def test_internal_check_header_is_not_a_pageview(client):
+    from app import db
+    from app.models import PageView
+    from sqlalchemy import func, select
+
+    def count():
+        with db.get_session() as session:
+            return session.execute(select(func.count()).select_from(PageView)).scalar_one()
+
+    before = count()
+    first = client.get("/methodology", headers={"X-Internal-Check": "1", "User-Agent": "Mozilla/5.0"})
+    assert first.status_code == 200 and count() == before
+    # The second request is served from the anonymous HTML cache, where
+    # the session layer never ran. It must still count.
+    second = client.get("/methodology", headers={"User-Agent": "Mozilla/5.0"})
+    assert second.status_code == 200 and second.headers.get("x-anon-cache") == "hit"
+    assert count() == before + 1

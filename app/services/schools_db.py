@@ -671,6 +671,71 @@ def admission_council(slug: str) -> dict | None:
     }
 
 
+TIGHTEST_CACHE_KEY = "schools:tightest_catchments"
+TIGHTEST_TTL_S = 24 * 3600
+
+
+def tightest_catchments() -> dict:
+    """Every published admission distance we hold, ranked nationally and
+    summarised per council. Backs /schools/tightest-catchments, the page
+    written to be quoted: the tightest gates in England, the widest, and
+    how the councils compare. Cached a day; the underlying table changes
+    only when an import runs."""
+    cached = _cache.get(TIGHTEST_CACHE_KEY, TIGHTEST_TTL_S)
+    if cached is not None:
+        return cached
+    with get_session() as session:
+        rows = session.execute(
+            select(School, SchoolAdmissionRadius, SchoolDetail)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
+            .where(SchoolAdmissionRadius.source_authority != "")
+        ).all()
+    schools = []
+    for s, r, det in rows:
+        if not r.source_authority or r.last_distance_miles is None:
+            continue
+        schools.append({
+            "urn": s.urn, "name": s.name, "slug": _slugify(s.name),
+            "phase": _phase_group(s.phase) or "Other",
+            "town": det.town if det else "",
+            "authority": r.source_authority, "authority_slug": _slugify(r.source_authority),
+            "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year or "",
+        })
+    schools.sort(key=lambda x: (x["miles"], x["name"]))
+    by_council: dict[str, list] = {}
+    for x in schools:
+        by_council.setdefault(x["authority"], []).append(x)
+    councils = []
+    for name, items in by_council.items():
+        miles = [x["miles"] for x in items]  # already ascending
+        councils.append({
+            "name": name, "slug": _slugify(name), "count": len(items),
+            "median_miles": miles[len(miles) // 2],
+            "tightest": items[0], "widest": items[-1],
+            "under_a_mile": sum(1 for m in miles if m < 1),
+            "share_under_a_mile": round(100 * sum(1 for m in miles if m < 1) / len(miles)),
+        })
+    councils.sort(key=lambda c: (c["median_miles"], c["name"]))
+    all_miles = [x["miles"] for x in schools]
+    result = {
+        "schools": schools,
+        "tightest": schools[:50],
+        "widest": sorted(schools, key=lambda x: (-x["miles"], x["name"]))[:20],
+        "councils": councils,
+        "total": len(schools),
+        "council_count": len(councils),
+        "under_quarter": sum(1 for m in all_miles if m < 0.25),
+        "under_half": sum(1 for m in all_miles if m < 0.5),
+        "under_a_mile": sum(1 for m in all_miles if m < 1),
+        "over_five": sum(1 for m in all_miles if m >= 5),
+        "median_miles": all_miles[len(all_miles) // 2] if all_miles else None,
+        "years": sorted({x["academic_year"] for x in schools if x["academic_year"]}),
+    }
+    _cache.set(TIGHTEST_CACHE_KEY, result)
+    return result
+
+
 def admission_profile(urn: int) -> dict | None:
     """Everything one school's admission page renders."""
     with get_session() as session:

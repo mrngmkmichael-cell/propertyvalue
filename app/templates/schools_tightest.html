@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}England's Tightest School Catchments: {{ data.under_half }} Schools Admitted From Under Half a Mile{% endblock %}
+{% block meta_description %}Every published admission distance we hold, ranked: the {{ data.under_half }} English schools that admitted from under half a mile, the widest gates, and {{ data.council_count }} councils compared on how far the last child offered a place lived.{% endblock %}
+{% block og_title %}England's tightest school catchments{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
+
+<span class="kicker">Admissions data</span>
+<h1>England's tightest school catchments</h1>
+<p class="dek">
+    After each admissions round, a council publishes how far away the last child offered a place at each
+    oversubscribed school lived. We have gathered that figure for {{ "{:,}".format(data.total) }} schools across
+    {{ data.council_count }} councils, and ranked it. {{ data.under_half }} schools admitted nobody from more than half a mile
+    away; {{ data.under_quarter }} filled from under a quarter. At the other end, {{ data.over_five }} schools reached five
+    miles or more. Every number below links to the school or council it came from.
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ data.under_quarter }}</span><span class="score-tile-label">schools that filled from under a quarter of a mile</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ data.under_half }}</span><span class="score-tile-label">from under half a mile</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(data.under_a_mile) }}</span><span class="score-tile-label">from under a mile</span></div>
+    {% if data.median_miles is not none %}
+    <div class="score-tile"><span class="score-tile-value">{{ data.median_miles }} mi</span><span class="score-tile-label">the middle school's distance, nationally</span></div>
+    {% endif %}
+</div>
+
+<section class="report-section">
+    <h2>The 50 tightest gates in England</h2>
+    <p class="section-sub">
+        The last child offered a place at each of these schools lived this close. A parent a street further
+        away did not get in. Straight-line miles as the council measured them; the round is the intake year.
+        A figure under a tenth of a mile usually means siblings and other criteria filled the school and
+        only one or two places were decided on distance at all.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="num" aria-sort="ascending">#</th>
+                    <th data-sort="text">School</th>
+                    <th data-sort="text">Council</th>
+                    <th data-sort="text">Phase</th>
+                    <th class="num" data-sort="num">Admitted from</th>
+                    <th data-sort="text">Round</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in data.tightest %}
+                <tr>
+                    <td data-value="{{ loop.index }}">{{ loop.index }}</td>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
+                    <td data-value="{{ s.phase }}">{{ s.phase }}</td>
+                    <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
+                    <td data-value="{{ s.academic_year }}">{{ s.academic_year }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>{{ data.council_count }} councils compared</h2>
+    <p class="section-sub">
+        The middle school's distance in each council, tightest councils first. A low figure means places
+        went to the nearest doors; a high one means most schools had room. Click a heading to re-sort.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num" aria-sort="ascending">Middle distance</th>
+                    <th class="num" data-sort="num">Schools with a figure</th>
+                    <th class="num" data-sort="num">Filled from under a mile</th>
+                    <th data-sort="text">Tightest school</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in data.councils %}
+                <tr>
+                    <td data-value="{{ c.name }}"><a href="/schools/admissions/{{ c.slug }}">{{ c.name }}</a></td>
+                    <td class="num" data-value="{{ c.median_miles }}">{{ c.median_miles }} mi</td>
+                    <td class="num" data-value="{{ c.count }}">{{ c.count }}</td>
+                    <td class="num" data-value="{{ c.share_under_a_mile }}">{{ c.share_under_a_mile }}%</td>
+                    <td data-value="{{ c.tightest.name }}"><a href="/school/{{ c.tightest.urn }}/{{ c.tightest.slug }}">{{ c.tightest.name }}</a> <span class="school-table-type">{{ c.tightest.miles }} mi</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>The widest gates</h2>
+    <p class="section-sub">
+        Where places went furthest afield. Rural schools and grammar schools dominate this end: children
+        travel a long way for a place that a distance rule barely constrains.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">School</th>
+                    <th data-sort="text">Council</th>
+                    <th data-sort="text">Phase</th>
+                    <th class="num" data-sort="num" aria-sort="descending">Admitted from</th>
+                    <th data-sort="text">Round</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in data.widest %}
+                <tr>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
+                    <td data-value="{{ s.phase }}">{{ s.phase }}</td>
+                    <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
+                    <td data-value="{{ s.academic_year }}">{{ s.academic_year }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>Where the figures come from, and what they cannot tell you</h2>
+    <p class="section-sub">
+        Each distance is the one the council itself published after offer day, for the last child admitted
+        under the distance criterion: usually a PDF or spreadsheet on the council's admissions pages, sometimes
+        a Freedom of Information release. The source for each council is named on its page. We never model a
+        distance where none was published, and a council with no figures is simply not here.
+    </p>
+    <p class="section-sub">
+        Three cautions. Only oversubscribed schools get a figure: a school that took everyone who applied has
+        no distance, so its absence means it had room, not that it is unpopular. Councils measure differently:
+        most use a straight line from home to the school gate, a few use the shortest walking route, and a few
+        round to three decimal places while others round to one. And the distance moves every year with the
+        birth rate, the housing built nearby and the number of siblings, so last year's figure is a guide to
+        next year's, not a guarantee. <a href="/schools/how-admissions-work">How admissions actually work</a>
+        explains the rest.
+    </p>
+    <p class="section-sub">
+        Journalists and researchers: the figures on this page and on every council page may be quoted with a
+        link to the page they came from. For the underlying spreadsheet or a figure for a school not shown,
+        email <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a>.
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Checking one address</h2>
+    <p class="section-sub">
+        Every school page has a checker: put a postcode in and it is measured against that school's
+        distance. The <a href="/">full property report</a> does the same for every school near an
+        address at once, alongside the house itself.
+    </p>
+</section>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

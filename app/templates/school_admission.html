@@ -5,8 +5,11 @@
 {# The authority is not optional: two real schools are called
    "Cherry Orchard Primary School" and their titles collided.
    Name plus authority is unique in the DfE register. #}
-{% block title %}{{ seo_title(school.name ~ ", " ~ school.authority ~ ": catchment", " and admission distance", "") }}{% endblock %}
-{% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Check whether an address is inside that, on the map.{% endblock %}
+{# "X catchment area" is the query parents type; the figure in the
+   title is the answer they are after, and no other result has it. The
+   authority is the part that can be spared when the title runs long. #}
+{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": admitted from " ~ school.miles ~ " miles in " ~ school.academic_year) }}{% endblock %}
+{% block meta_description %}{{ school.name }} catchment area: the school last admitted from {{ school.miles }} miles in {{ school.academic_year }}, the figure published by {{ school.authority }}. Check any postcode against it on the map, free.{% endblock %}
 {% block og_title %}{{ school.name }}: admitted from {{ school.miles }} miles{% endblock %}
 {# A card of this school's own figure, so a link shared into a
    parents' group says the number before anyone taps it. #}
