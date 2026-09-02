@@ -6,6 +6,22 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Ten exposure moves (3 Sep 2026), after the first Search Console
+  look (8 clicks, 2,830 impressions, position 46, surfaced for "private
+  school [town]"): /schools/independent and one page per council (151,
+  DfE register) shaped like that query; BreadcrumbList on every
+  admissions page; Dataset markup with a CSV distribution
+  (/schools/admission-distances.csv) on the story page and each hub for
+  Google Dataset Search; share cards for hubs and the story; /llms.txt
+  for AI search; /internal/indexnow-resubmit for pages whose titles
+  changed; council hub titles that say "catchments"; area guides and the
+  footer linking into the admissions pages; each school page linking its
+  nearest six with a figure (a mesh, not 3,478 leaves); the admissions
+  index carrying each council's middle distance and tightest school.
+  Not done, on purpose: externalising the 238 KB inlined stylesheet. It
+  was measured and chosen (see inline_css); ~25 KB gzipped per page is
+  not the bottleneck.
+
 - The data story and the press kit (2 Sep 2026): /schools/tightest-catchments
   ranks every published admission distance we hold (3,478 schools, 85
   councils): the 50 tightest gates, the widest, and the councils compared
