@@ -56,7 +56,8 @@
                     </td>
                     <td data-value="{{ s.age_low or 0 }}">{% if s.age_low is not none and s.age_high is not none %}{{ s.age_low }} to {{ s.age_high }}{% else %}Not stated{% endif %}</td>
                     <td data-value="{{ s.gender }}">{{ s.gender or "Not stated" }}</td>
-                    <td data-value="{{ s.religious_character }}">{{ s.religious_character or "None" }}</td>
+                    {% set faith = s.religious_character if s.religious_character not in ("", "None", "Does not apply") else "Non-faith" %}
+                    <td data-value="{{ faith }}">{{ faith }}</td>
                     <td class="num" data-value="{{ s.number_on_roll or 0 }}">{% if s.number_on_roll %}{{ "{:,}".format(s.number_on_roll) }}{% else %}Not reported{% endif %}</td>
                     <td class="num" data-value="{{ s.occupancy_pct or 0 }}">{% if s.occupancy_pct %}{{ s.occupancy_pct }}%{% else %}Not reported{% endif %}</td>
                 </tr>
