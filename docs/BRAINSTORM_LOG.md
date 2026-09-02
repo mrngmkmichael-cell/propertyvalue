@@ -6,6 +6,15 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The intersection made visible (1 Sep 2026): every school page prices
+  the districts inside its admission distance ("What it costs to live
+  within reach of X", from the area guides' medians, with an FAQ);
+  the report's Schools card leads with "Likely for N schools" and the
+  catchment card with the three-band counts; the compare page has a
+  "Schools likely to admit" row; school pages carry the next statutory
+  deadline for their phase. Positioning sentence on the admissions
+  index.
+
 - Extension 2.3.0 (1 Sep 2026): the Schools tab shows, for each nearby
   school, whether this listing is Likely / Borderline / Unlikely to
   get a place, against how far the school admitted from last time

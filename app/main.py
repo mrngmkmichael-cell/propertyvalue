@@ -652,7 +652,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     codes = location.get("codes", {})
     epc_configured = epc.is_configured()
 
-    tx_result, epc_flow_result, flood_zone_result, crime_result, deprivation_result, hpi_result = (
+    tx_result, epc_flow_result, flood_zone_result, crime_result, deprivation_result, hpi_result, landscape_result = (
         await asyncio.gather(
             sold_prices_for_postcode(canonical),
             _epc_flow(canonical, house_number, epc_configured),
@@ -660,6 +660,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
             crime.summary_near(lat, lon),
             asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
             hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
+            asyncio.to_thread(schools_db.school_landscape, lat, lon),
             return_exceptions=True,
         )
     )
@@ -699,6 +700,17 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         if growth_area:
             summary["price_growth_pct"] = growth_area.get("annual_change_pct")
             summary["price_growth_area"] = growth_area.get("name")
+
+    # Which schools each house is likely to get into: the row parents
+    # actually compare two houses on. Kept JSON-safe for the snapshot.
+    if not isinstance(landscape_result, Exception):
+        verdicts = _school_verdict_summary(landscape_result)
+        if verdicts:
+            summary["school_verdicts"] = {
+                "counts": verdicts["counts"], "total": verdicts["total"],
+                "likely": [r["name"] for r in verdicts["schools"] if r["level"] == "likely"][:4],
+                "borderline": [r["name"] for r in verdicts["schools"] if r["level"] == "borderline"][:3],
+            }
 
     _cache.set(cache_key, summary)
     return summary
@@ -1985,6 +1997,11 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             )
             if existing is not None:
                 context["share_link"] = f"{_public_base_url(request)}/s/{existing.token}"
+    # Normally built inside the gather; computed here too so a gather
+    # result cached before this existed, or a test's faked gather,
+    # still gives the schools card its headline.
+    if "school_verdicts" not in context:
+        context["school_verdicts"] = _school_verdict_summary(context.get("school_landscape"))
     response = templates.TemplateResponse(request, "property.html", context)
     timing = _server_timing_header()
     if timing:
@@ -2639,6 +2656,11 @@ async def _full_property_gather(
                 "within_catchment": property_distance_miles <= radius_miles,
             })
 
+    for _ds in _distance_schools:
+        _ds["verdict"] = _admission_verdict(_ds["property_distance_miles"], _ds["radius_miles"])
+    # Ungated: the counts are the headline of the schools card, and a
+    # count is a teaser, not the finding. The list stays Premium.
+    context["school_verdicts"] = _school_verdict_summary(context.get("school_landscape"))
     context["catchment_distance_schools"] = _distance_schools if premium_unlocked else []
     # Ungated teaser counts for the dashboard card, matching how other
     # Premium cards show a summary number before the paywall.
@@ -6592,6 +6614,73 @@ def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
     return out
 
 
+DISTRICT_PRICE_ROWS_TTL_S = 86400
+
+
+def _district_price_rows_by_outcode() -> dict[str, dict]:
+    """outcode -> {median, count, district} for every district with
+    enough sales to rank. One scan of the area-guide cache a day,
+    shared by every school page, rather than a scan per page."""
+    cached = _cache.get(("district_price_rows",), DISTRICT_PRICE_ROWS_TTL_S)
+    if cached is None:
+        cached = {r["outcode"]: r for r in _district_price_table_rows()}
+        _cache.set(("district_price_rows",), cached)
+    return cached
+
+
+def _admissions_deadline(phase_group: str | None, today: datetime.date | None = None) -> dict:
+    """The next statutory deadline for this kind of school, and the
+    September it is for. Secondary closes 31 October, offers 1 March;
+    primary closes 15 January, offers 16 April. Passing 15 January
+    for a primary means the next round, a year and a bit away."""
+    today = today or datetime.date.today()
+    secondary = (phase_group or "") in ("Secondary", "All-through", "16 plus")
+    def _text(d):  # "31 October 2026": no platform-specific strftime flags
+        return f"{d.day} {d:%B %Y}"
+    if secondary:
+        deadline = datetime.date(today.year, 10, 31)
+        if today > deadline:
+            deadline = datetime.date(today.year + 1, 10, 31)
+        offers = datetime.date(deadline.year + 1, 3, 1)
+        return {"phase": "secondary", "deadline": deadline, "offers": offers, "entry_year": deadline.year + 1,
+                "deadline_text": _text(deadline), "offers_text": _text(offers)}
+    deadline = datetime.date(today.year, 1, 15)
+    if today > deadline:
+        deadline = datetime.date(today.year + 1, 1, 15)
+    offers = datetime.date(deadline.year, 4, 16)
+    return {"phase": "primary", "deadline": deadline, "offers": offers, "entry_year": deadline.year,
+            "deadline_text": _text(deadline), "offers_text": _text(offers)}
+
+
+def _school_verdict_summary(landscape: dict | None, limit: int = 8) -> dict | None:
+    """For an address: the nearest schools with a known admission
+    distance, each with the three-band verdict, and the counts. This
+    is the line the report and the compare page lead with."""
+    if not landscape:
+        return None
+    rows = []
+    for sch in sorted(landscape.get("all_schools", []), key=lambda x: x["distance_m"]):
+        if sch.get("admission_radius"):
+            radius, kind = sch["admission_radius"]["last_distance_miles"], "published"
+        elif sch.get("catchment_estimate"):
+            radius, kind = sch["catchment_estimate"]["radius_miles"], "estimated"
+        else:
+            continue
+        v = _admission_verdict(sch["distance_m"] / 1609.34, radius)
+        rows.append({"name": sch["name"], "phase": sch.get("phase_group"), "level": v["level"],
+                     "label": v["label"], "kind": kind, "radius_miles": radius,
+                     "distance_miles": v["distance_miles"]})
+        if len(rows) >= limit:
+            break
+    if not rows:
+        return None
+    counts = {"likely": 0, "borderline": 0, "unlikely": 0}
+    for r in rows:
+        counts[r["level"]] += 1
+    return {"schools": rows, "counts": counts, "total": len(rows),
+            "any_published": any(r["kind"] == "published" for r in rows)}
+
+
 def _admission_verdict(distance_miles: float, radius_miles: float) -> dict:
     """Compare an address's distance from a school with how far the
     school admitted from last time. Three honest bands rather than a
@@ -6703,6 +6792,19 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["nearby_areas"] = await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )
+    # What it costs to live within reach: the districts inside the
+    # distance, each with its median sold price from the area guides.
+    # The one page a school site cannot make (no prices) and a portal
+    # will not (no admission data).
+    prices = await asyncio.to_thread(_district_price_rows_by_outcode)
+    reach = []
+    for a in context["nearby_areas"]:
+        row = prices.get(a["outcode"])
+        if row:
+            reach.append({**a, "median": row["median"], "count": row["count"]})
+    reach.sort(key=lambda r: r["median"])
+    context["reach_prices"] = reach
+    context["deadline"] = _admissions_deadline(profile.get("group"))
     # The district this school stands in, for the link to its
     # private-schools page. Only when the outcode is real: a malformed
     # postcode in GIAS must not build a link to a 404.
@@ -6710,7 +6812,7 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["school_outcode"] = school_outcode if school_outcode in KNOWN_OUTCODES else None
     # The three questions the page answers on screen, as structured data.
     # Phrased exactly as someone would search them.
-    context["school_faqs_jsonld"] = _faq_jsonld([
+    faqs = [
         (f"What is the catchment area for {profile['name']}?",
          "It does not have one in the sense most people mean. Like most English schools, "
          "when it is oversubscribed it offers places outward from the school until they run "
@@ -6724,7 +6826,16 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
          "No. Admission criteria usually put looked-after children, siblings and sometimes "
          "faith or aptitude criteria ahead of distance, so places can be filled before "
          "distance is reached at all."),
-    ])
+    ]
+    if reach:
+        faqs.append((
+            f"How much does it cost to live within reach of {profile['name']}?",
+            f"Of the postcode districts whose centre falls inside the {profile['miles']} miles the school "
+            f"admitted from in {profile['academic_year']}, the cheapest by median sold price is "
+            f"{reach[0]['outcode']} at {_format_gbp(reach[0]['median'])} and the dearest is "
+            f"{reach[-1]['outcode']} at {_format_gbp(reach[-1]['median'])}, from HM Land Registry sales.",
+        ))
+    context["school_faqs_jsonld"] = _faq_jsonld(faqs)
     context["school_jsonld"] = json.dumps({
         "@context": "https://schema.org",
         "@type": "School",

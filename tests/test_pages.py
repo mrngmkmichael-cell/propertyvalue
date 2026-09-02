@@ -901,3 +901,87 @@ def test_admission_update_alert_fires_only_on_a_real_change(client, monkeypatch)
     to, subject, html = mine[0]
     assert "Riverside Academy" in subject and "1.2" in subject
     assert "1.5 miles (2025)" in html and "never on a schedule" in html
+
+
+# ---- the intersection: prices within reach, verdict-led cards, deadlines ---
+
+def test_admissions_deadline_rolls_over():
+    import datetime
+    from app.main import _admissions_deadline
+
+    d = _admissions_deadline("Secondary", datetime.date(2026, 9, 1))
+    assert d["deadline"] == datetime.date(2026, 10, 31) and d["entry_year"] == 2027
+    d = _admissions_deadline("Secondary", datetime.date(2026, 11, 2))
+    assert d["deadline"] == datetime.date(2027, 10, 31) and d["entry_year"] == 2028
+    d = _admissions_deadline("Primary", datetime.date(2026, 9, 1))
+    assert d["deadline"] == datetime.date(2027, 1, 15) and d["offers"] == datetime.date(2027, 4, 16)
+    d = _admissions_deadline("Primary", datetime.date(2027, 1, 20))
+    assert d["deadline"] == datetime.date(2028, 1, 15)
+
+
+def test_school_page_prices_the_districts_within_reach(client):
+    """The page a school site cannot make and a portal will not: the
+    districts inside the admission distance, each with what homes
+    there actually sold for."""
+    import json
+    from app import db, main as app_main
+    from app.models import PageCache
+    from app.services import _cache
+    _seed_admission_school()
+    # An area-guide payload for a district whose centre is near the school.
+    near = [o for o in app_main.ALL_OUTCODES
+            if app_main._haversine_km(53.48, -2.24, o["lat"], o["lon"]) < 1.5 * 1.60934]
+    assert near, "no outcode centroid near the seeded school"
+    oc = near[0]["outcode"]
+    with db.get_session() as session:
+        session.merge(PageCache(
+            cache_key=f"area_guide:{app_main.AREA_GUIDE_PAYLOAD_VERSION}:{oc}",
+            value=json.dumps({"local_sales": {"enough_for_median": True, "median": 250000, "count": 31},
+                              "hpi": {"local_authority": {"name": "Manchester"}}}),
+            created_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+        ))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/990002/riverside-academy").text
+    assert "What it costs to live within reach of Riverside Academy" in body
+    assert "£250,000" in body and f'href="/area/{oc}"' in body
+    assert "How much does it cost to live within reach" in body   # the FAQ JSON-LD
+    assert "Applying for September 2027?" in body
+
+
+def test_report_schools_card_leads_with_the_verdict(client, fake_report):
+    from tests.conftest import fake_gather
+    landscape = {
+        "total_schools": 3, "good_or_better_pct": 80, "radius_miles": 3, "radius_km": 4.8,
+        "by_rating": [], "by_phase": [], "by_sector": {}, "special_count": 0, "special_schools": [],
+        "further_education": 0, "higher_education_count": 0, "higher_education_names": [],
+        "independent_count": 0, "independent_names": [], "independent_schools": [], "higher_education": [],
+        "all_schools": [
+            {"urn": 1, "name": "Near Primary", "type": "Community school", "distance_m": 600, "phase_group": "Primary",
+             "ofsted_rating": 2, "ofsted_rating_label": "Good", "latitude": 53.45, "longitude": -2.22,
+             "admission_radius": {"last_distance_miles": 1.0, "academic_year": "2025", "source_authority": "Manchester"}},
+            {"urn": 2, "name": "Far Secondary", "type": "Academy", "distance_m": 3000, "phase_group": "Secondary",
+             "ofsted_rating": 1, "ofsted_rating_label": "Outstanding", "latitude": 53.46, "longitude": -2.23,
+             "catchment_estimate": {"radius_miles": 1.0}},
+            {"urn": 3, "name": "No Figure School", "type": "Academy", "distance_m": 900, "phase_group": "Primary",
+             "ofsted_rating": None, "ofsted_rating_label": "", "latitude": 53.45, "longitude": -2.22},
+        ],
+    }
+    fake_report(gather=fake_gather(school_landscape=landscape))
+    body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
+    assert "Likely for 1 school" in body
+    assert "3 within 3 miles" in body
+
+
+def test_compare_page_gets_a_schools_row(client, monkeypatch):
+    from app import main as app_main
+
+    async def _summary(postcode, house_number):
+        return {"postcode": postcode.upper(), "house_number": "", "avg_price": 200000,
+                "school_verdicts": {"counts": {"likely": 2, "borderline": 1, "unlikely": 0}, "total": 3,
+                                    "likely": ["Near Primary", "Other Primary"], "borderline": ["Far Secondary"]}}
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    body = client.get("/compare?postcode=M1+1AE&postcode=LS1+4DY").text
+    assert "Schools likely to admit" in body
+    assert "2 likely" in body and "Near Primary, Other Primary" in body

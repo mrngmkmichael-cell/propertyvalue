@@ -7730,3 +7730,6 @@ body:not(.theme-dark) .lx-hero-scrim {
     .school-page-map { height: 280px; }
 }
 
+.catchment-badge-mid { background: var(--warn-bg); color: var(--warn); }
+.admission-deadline { margin: 0.25rem 0 0.75rem; }
+

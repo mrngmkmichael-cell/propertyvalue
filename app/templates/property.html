@@ -730,10 +730,15 @@
             <span class="dashboard-card-title">Schools Nearby</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
+                {% elif school_verdicts and school_verdicts.counts.likely %}Likely for {{ school_verdicts.counts.likely }} school{{ 's' if school_verdicts.counts.likely != 1 }}{% if school_verdicts.counts.borderline %}, borderline {{ school_verdicts.counts.borderline }}{% endif %}
+                {% elif school_verdicts %}Borderline {{ school_verdicts.counts.borderline }}, unlikely {{ school_verdicts.counts.unlikely }}
                 {% elif school_landscape and school_landscape.total_schools %}{{ school_landscape.total_schools }} within {{ school_landscape.radius_miles }} miles
                 {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
             </span>
+            {% if school_verdicts and school_landscape and school_landscape.total_schools %}
+            <span class="dashboard-card-substat">{{ school_landscape.total_schools }} within {{ school_landscape.radius_miles }} miles{% if not school_verdicts.any_published %}, estimated distances{% endif %}</span>
+            {% endif %}
         </button>
 
         {# State and fee-paying, split out. GIAS gives independent
@@ -782,6 +787,7 @@
             <span class="dashboard-card-status">
                 {% if catchment_error %}Data unavailable
                 {% elif catchment %}In {{ catchment | length }} catchment{{ "s" if catchment | length != 1 else "" }}
+                {% elif school_verdicts %}{{ school_verdicts.counts.likely }} likely, {{ school_verdicts.counts.borderline }} borderline, {{ school_verdicts.counts.unlikely }} unlikely
                 {% elif catchment_distance_count %}{{ catchment_distance_count }} school{{ "s" if catchment_distance_count != 1 else "" }}, {{ "real + estimated" if catchment_distance_any_real else "estimated" }}
                 {% else %}Not covered for this area{% endif %}
             </span>
@@ -2329,8 +2335,8 @@
                         <td class="num">{{ s.property_distance_miles }} mi</td>
                         <td class="num">{{ s.radius_miles }} mi</td>
                         <td>
-                            {% if s.within_catchment %}<span class="catchment-badge catchment-badge-yes">Likely</span>
-                            {% else %}<span class="catchment-badge catchment-badge-no">Unlikely</span>{% endif %}
+                            {% set lvl = s.verdict.level if s.verdict else ('likely' if s.within_catchment else 'unlikely') %}
+                            <span class="catchment-badge catchment-badge-{{ 'yes' if lvl == 'likely' else ('mid' if lvl == 'borderline' else 'no') }}">{{ s.verdict.label if s.verdict else ('Likely' if s.within_catchment else 'Unlikely') }}</span>
                         </td>
                         <td>
                             {% if s.is_real %}Published ({{ s.academic_year }}, {{ s.source_authority }})

@@ -83,6 +83,14 @@
         {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
         {{ school.authority }}. Put a postcode in and it is measured against that distance.
     </p>
+    {% if deadline %}
+    <p class="section-sub admission-deadline">
+        Applying for September {{ deadline.entry_year }}? {{ "Secondary" if deadline.phase == "secondary" else "Primary" }}
+        applications close on <strong>{{ deadline.deadline_text }}</strong>,
+        with offers on {{ deadline.offers_text }}. The address on the deadline is the one the council uses.
+        <a href="/schools/how-admissions-work">How it works</a>.
+    </p>
+    {% endif %}
     <form class="search-form admission-check" action="/school/{{ school.urn }}/{{ school.slug }}" method="get">
         <div class="search-form-field">
             <label for="check-postcode">Postcode to check</label>
@@ -267,7 +275,35 @@
 </section>
 {% endif %}
 
-{% if nearby_areas %}
+{% if reach_prices %}
+<section class="report-section">
+    <h2>What it costs to live within reach of {{ school.name }}</h2>
+    <p class="section-sub">
+        The postcode districts whose centre falls inside the {{ school.miles }} miles the school admitted
+        from in {{ school.academic_year }}, cheapest first, by the median of real sales around each
+        district's centre. The cheapest is <a href="/area/{{ reach_prices[0].outcode }}">{{ reach_prices[0].outcode }}</a>
+        at {{ reach_prices[0].median | gbp }}{% if reach_prices | length > 1 %}; the dearest,
+        <a href="/area/{{ reach_prices[-1].outcode }}">{{ reach_prices[-1].outcode }}</a>, {{ reach_prices[-1].median | gbp }}{% endif %}.
+        A district is wide, so check the address itself, not the list.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>District</th><th>Area</th><th class="num">From the school</th><th class="num">Median sold price</th></tr></thead>
+            <tbody>
+                {% for a in reach_prices %}
+                <tr>
+                    <td><a href="/area/{{ a.outcode }}">{{ a.outcode }}</a></td>
+                    <td>{{ a.district }}</td>
+                    <td class="num">{{ a.miles }} mi</td>
+                    <td class="num"><strong>{{ a.median | gbp }}</strong> <span class="school-table-note">{{ a.count }} sales</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">Sold prices from HM Land Registry, via each district's area guide. Districts without enough recorded sales to rank are not shown.</p>
+</section>
+{% elif nearby_areas %}
 <section class="report-section">
     <h2>Postcode districts within {{ school.miles }} miles</h2>
     <p class="section-sub">

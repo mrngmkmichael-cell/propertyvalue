@@ -142,6 +142,18 @@
                 {% endfor %}
             </tr>
             <tr>
+                <td><strong>Schools likely to admit</strong></td>
+                {% for col in columns %}
+                <td>
+                    {%- if col.summary.school_verdicts is defined and col.summary.school_verdicts -%}
+                    {% set v = col.summary.school_verdicts %}
+                    <strong>{{ v.counts.likely }} likely</strong>{% if v.counts.borderline %}, {{ v.counts.borderline }} borderline{% endif %} of {{ v.total }} with a figure
+                    {% if v.likely %}<div class="compare-note">{{ v.likely | join(', ') }}</div>{% endif %}
+                    {%- else %} no admission figures nearby {% endif -%}
+                </td>
+                {% endfor %}
+            </tr>
+            <tr>
                 <td><strong>Flood zone</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.flood_zone or " — " }}</td>
