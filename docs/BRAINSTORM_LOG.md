@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- School pages (1 Sep 2026): a free "will an address get in?" checker
+  (postcode measured against the school's published admission
+  distance, three honest bands: Likely / Borderline / Unlikely), a map
+  with the distance drawn as a circle and the checked address on it,
+  a grade strip of tiles, and a per-school share card at
+  /og/school/{urn}.png so links into WhatsApp and Mumsnet show the
+  figure. Google and Leaflet branches both done.
+
 - Schools guide rebuilt (1 Sep 2026): every school visible in a
   sortable table (name, phase, Ofsted, distance, admission distance
   with provenance, results), a map with Ofsted-coloured pins and

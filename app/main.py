@@ -6493,8 +6493,61 @@ def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
     return out
 
 
+def _admission_verdict(distance_miles: float, radius_miles: float) -> dict:
+    """Compare an address's distance from a school with how far the
+    school admitted from last time. Three honest bands rather than a
+    yes/no: the distance moves every year, so anything within about a
+    tenth of it either way is genuinely uncertain and says so."""
+    ratio = distance_miles / radius_miles if radius_miles else 99
+    if ratio <= 0.85:
+        level, label = "likely", "Likely"
+        why = "comfortably inside the distance the school admitted from last time"
+    elif ratio <= 1.1:
+        level, label = "borderline", "Borderline"
+        why = "close to last time's distance, which moves every year with demand"
+    else:
+        level, label = "unlikely", "Unlikely"
+        why = "outside the distance the school admitted from last time"
+    return {
+        "level": level, "label": label, "why": why,
+        "distance_miles": round(distance_miles, 2), "radius_miles": radius_miles,
+        "margin_miles": round(radius_miles - distance_miles, 2),
+    }
+
+
+@app.get("/og/school/{urn}.png")
+async def og_school_image(request: Request, urn: int):
+    """The share card for one school page."""
+    if not og_image.is_available():
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+    cache_key = ("og_school", urn)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        profile = await asyncio.to_thread(schools_db.admission_profile, urn)
+        if profile is None:
+            return RedirectResponse("/static/img/og-default.png", status_code=302)
+        facts = []
+        if profile.get("ofsted_rating_label"):
+            facts.append(("Ofsted", profile["ofsted_rating_label"]))
+        if profile.get("occupancy_pct"):
+            facts.append(("How full", f"{profile['occupancy_pct']}%"))
+        if profile.get("ks4") and profile["ks4"].get("progress8") is not None:
+            facts.append(("Progress 8", f"{profile['ks4']['progress8']:+.2f}"))
+        elif profile.get("ks2") and profile["ks2"].get("rwm_expected_pct") is not None:
+            facts.append(("Expected standard", f"{profile['ks2']['rwm_expected_pct']}%"))
+        cached = og_image.render_school(
+            name=profile["name"], authority=profile.get("authority", ""),
+            miles=profile.get("miles"), academic_year=profile.get("academic_year", ""),
+            rating_label=profile.get("ofsted_rating_label", ""), town=profile.get("town", ""),
+            facts=facts,
+        )
+        _cache.set(cache_key, cached)
+    return Response(content=cached, media_type="image/png",
+                    headers={"Cache-Control": "public, max-age=21600"})
+
+
 @app.get("/school/{urn}/{slug}")
-async def school_admission_page(request: Request, urn: int, slug: str):
+async def school_admission_page(request: Request, urn: int, slug: str, check: str = ""):
     """One school's real admission distance.
 
     "School catchment area for X" is one of the most searched property
@@ -6520,6 +6573,30 @@ async def school_admission_page(request: Request, urn: int, slug: str):
 
     context["canonical_url"] = f"{base}{canonical_path}"
     context["school"] = profile
+    context["og_school_url"] = f"{base}/og/school/{urn}.png"
+
+    # "Will this address get in?" A postcode is measured against how far
+    # the school admitted from last time. Postcode centre, not the
+    # front door, and the page says so: a postcode covers a few doors,
+    # and the result is evidence about last year rather than a promise
+    # about next. Free, because it is one school and one number; the
+    # full report does every school at once.
+    context["check_query"] = check.strip()
+    context["check"] = None
+    context["check_error"] = False
+    if check.strip():
+        try:
+            where = await lookup_postcode(check.strip())
+        except httpx.HTTPError:
+            where = None
+        if where is None:
+            context["check_error"] = True
+        else:
+            km = _haversine_km(profile["latitude"], profile["longitude"], where["latitude"], where["longitude"])
+            verdict = _admission_verdict(km / 1.60934, profile["miles"])
+            verdict.update({"postcode": where["postcode"], "latitude": where["latitude"],
+                            "longitude": where["longitude"]})
+            context["check"] = verdict
     context["nearby_areas"] = await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )

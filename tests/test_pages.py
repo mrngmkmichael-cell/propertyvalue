@@ -661,3 +661,76 @@ def test_property_report_no_longer_ships_every_school_popup(client, fake_report)
     body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
     assert '<dialog class="report-modal" id="school-modal-' not in body
     assert 'data-school-ctx' in body
+
+# ---- school page: checker, map, share card --------------------------------
+
+def _seed_admission_school(urn=990002):
+    """A school with a published admission distance, so the school page
+    (which only exists for those) renders in the empty test database."""
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        if session.get(School, urn) is None:
+            session.add(School(
+                urn=urn, name="Riverside Academy", phase="Secondary", type_name="Academy converter",
+                postcode="M1 1AE", latitude=53.48, longitude=-2.24,
+                ofsted_rating=1, ofsted_rating_label="Outstanding",
+            ))
+            session.add(SchoolAdmissionRadius(
+                urn=urn, last_distance_miles=1.5, academic_year="2025",
+                source_authority="Manchester",
+            ))
+            session.commit()
+
+
+def test_admission_verdict_bands():
+    from app.main import _admission_verdict
+
+    assert _admission_verdict(1.0, 1.5)["level"] == "likely"
+    assert _admission_verdict(1.4, 1.5)["level"] == "borderline"
+    assert _admission_verdict(1.6, 1.5)["level"] == "borderline"
+    assert _admission_verdict(2.0, 1.5)["level"] == "unlikely"
+    # Distance and margin are reported, rounded for reading.
+    v = _admission_verdict(1.234, 1.5)
+    assert v["distance_miles"] == 1.23 and v["margin_miles"] == 0.27
+
+
+def test_school_page_has_map_checker_and_share_card(client, monkeypatch):
+    _seed_admission_school()
+    body = client.get("/school/990002/riverside-academy").text
+    assert 'id="school-page-map"' in body
+    assert 'name="check"' in body
+    assert "Will an address get in?" in body
+    assert 'property="og:image" content="https://testserver/og/school/990002.png"' in body
+    # The grade strip carries the admission figure.
+    assert "Admitted from, 2025" in body
+
+    # Checking a postcode: the geocoder is stubbed to a point 1 mile away.
+    from app import main as app_main
+
+    async def _lookup(_pc):
+        return {"postcode": "M1 2AA", "latitude": 53.4945, "longitude": -2.24}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    body = client.get("/school/990002/riverside-academy?check=M1+2AA").text
+    assert "admission-verdict-likely" in body
+    assert "M1 2AA" in body
+    assert 'href="/property?postcode=M1%202AA"' in body
+
+    async def _nowhere(_pc):
+        return None
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _nowhere)
+    body = client.get("/school/990002/riverside-academy?check=ZZ1+1ZZ").text
+    assert "as a UK postcode" in body
+
+
+def test_school_share_card_is_a_real_png(client):
+    _seed_admission_school()
+    r = client.get("/og/school/990002.png")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    assert r.content[:8] == b"\x89PNG\r\n\x1a\n"
+    # Unknown school falls back to the default image rather than erroring.
+    r = client.get("/og/school/1.png", follow_redirects=False)
+    assert r.status_code == 302

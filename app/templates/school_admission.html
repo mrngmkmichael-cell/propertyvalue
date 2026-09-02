@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_map_style.html" as mapstyle %}
 
 {# The authority is not optional: two real schools are called
    "Cherry Orchard Primary School" and their titles collided.
    Name plus authority is unique in the DfE register. #}
 {% block title %}{{ seo_title(school.name ~ ", " ~ school.authority ~ ": catchment", " and admission distance", "") }}{% endblock %}
-{% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Which postcode districts fall inside that.{% endblock %}
-{% block og_title %}{{ school.name }}: how far it admitted from{% endblock %}
+{% block meta_description %}{{ school.name }} last admitted from {{ school.miles }} miles in {{ school.academic_year }}, published by {{ school.authority }}. Check whether an address is inside that, on the map.{% endblock %}
+{% block og_title %}{{ school.name }}: admitted from {{ school.miles }} miles{% endblock %}
+{# A card of this school's own figure, so a link shared into a
+   parents' group says the number before anyone taps it. #}
+{% block og_image %}{{ og_school_url }}{% endblock %}
 
 {% block content %}
 <script type="application/ld+json">{{ school_jsonld | safe }}</script>
@@ -22,20 +26,81 @@
    school's own facts and fewer sentences every school gets. #}
 <p class="dek">
     {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}, taking ages {{ school.age_low }} to {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} on roll{% endif %}.
-    {% if school.ofsted_rating_label %}Rated {{ school.ofsted_rating_label }} by Ofsted{% if school.ofsted_inspection_date %}
-    in {{ school.ofsted_inspection_date.strftime("%B %Y") }}{% endif %}.{% endif %}
 </p>
 
-<section class="report-section">
-    <h2>How far it admitted from</h2>
-    <div class="admission-hero">
-        <span class="admission-figure">{{ school.miles }}</span>
-        <span class="admission-unit">miles</span>
+{# The grade strip: the four things a parent scans for, as tiles. #}
+<div class="scorecard-row">
+    <div class="score-tile">
+        <span class="score-tile-value">
+            {% if school.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ school.ofsted_rating }}" style="font-size:1rem">{{ school.ofsted_rating_label }}</span>
+            {% else %}<span class="section-sub">No current grade</span>{% endif %}
+        </span>
+        <span class="score-tile-label">Ofsted{% if school.ofsted_inspection_date %}, {{ school.ofsted_inspection_date.strftime("%b %Y") }}{% endif %}</span>
     </div>
+    <div class="score-tile">
+        <span class="score-tile-value">{{ school.miles }} mi</span>
+        <span class="score-tile-label">Admitted from, {{ school.academic_year }}</span>
+    </div>
+    {% if school.occupancy_pct %}
+    <div class="score-tile">
+        <span class="score-tile-value">{{ school.occupancy_pct }}%</span>
+        <span class="score-tile-label">Full{% if school.occupancy_pct > 100 %}, over capacity{% endif %}</span>
+    </div>
+    {% endif %}
+    {% if school.ks4 and school.ks4.progress8 is not none %}
+    <div class="score-tile">
+        <span class="score-tile-value">{{ "%+.2f"|format(school.ks4.progress8) }}</span>
+        <span class="score-tile-label">Progress 8, {{ school.ks4.year }}</span>
+    </div>
+    {% elif school.ks2 and school.ks2.rwm_expected_pct is not none %}
+    <div class="score-tile">
+        <span class="score-tile-value">{{ school.ks2.rwm_expected_pct }}%</span>
+        <span class="score-tile-label">Met the expected standard, {{ school.ks2.year }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<section class="report-section">
+    <h2>Will an address get in?</h2>
     <p class="section-sub">
         In the {{ school.academic_year }} round, the furthest-away child offered a place at
         {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
-        {{ school.authority }}.
+        {{ school.authority }}. Put a postcode in and it is measured against that distance.
+    </p>
+    <form class="search-form admission-check" action="/school/{{ school.urn }}/{{ school.slug }}" method="get">
+        <div class="search-form-field">
+            <label for="check-postcode">Postcode to check</label>
+            <input type="text" id="check-postcode" name="check" value="{{ check_query }}" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>
+        </div>
+        <button type="submit">Check this postcode</button>
+    </form>
+
+    {% if check_error %}
+    <p class="notice notice-error">Couldn't find "{{ check_query }}" as a UK postcode. Check the spelling and try again.</p>
+    {% elif check %}
+    <div class="admission-verdict admission-verdict-{{ check.level }}" id="verdict">
+        <span class="admission-verdict-label">{{ check.label }}</span>
+        <span class="admission-verdict-detail">
+            <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles }} miles</strong> from {{ school.name }},
+            {{ check.why }} ({{ check.radius_miles }} miles in {{ school.academic_year }}).
+            {% if check.level == 'likely' %}That is {{ check.margin_miles }} miles inside it.
+            {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) }} miles outside it.{% endif %}
+        </span>
+        <span class="section-sub" style="flex-basis:100%; margin:0">
+            Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
+            looked-after children{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
+            come before distance, and the distance moves every year.
+            <a href="/property?postcode={{ check.postcode | urlencode }}">Run the full report on {{ check.postcode }}</a> for every school at once, and the house itself.
+        </span>
+    </div>
+    {% endif %}
+
+    {# The map: the school, the distance drawn as a circle, and the
+       checked address when there is one. A circle is a simplification
+       and the caption says so, but it beats a number floating alone. #}
+    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }} and the {{ school.miles }} mile admission distance"></div>
+    <p class="section-sub">
+        The circle is {{ school.miles }} miles, the distance the school admitted from in {{ school.academic_year }}. Real admission areas are not circular: this is the distance, not a boundary.
     </p>
 
     {# The honest part, and the reason this page exists. Most sites draw
@@ -221,17 +286,17 @@
 {% endif %}
 
 <section class="report-section">
-    <h2>Checking a specific address</h2>
+    <h2>Checking the house as well as the school</h2>
     <p class="section-sub">
-        Put a postcode in and the report measures the distance from {{ school.name }} to that
-        front door, alongside the other checks on the same address.
+        The full report measures the distance from every nearby school to one address, alongside
+        sold prices, flood risk, crime and the other checks on the same house.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">
             <label for="school-postcode">UK postcode</label>
             <input type="text" id="school-postcode" name="postcode" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>
         </div>
-        <button type="submit">Check this address</button>
+        <button type="submit">Run the full report</button>
     </form>
 </section>
 
@@ -278,4 +343,70 @@
     <a href="/methodology">methodology page</a>. If something here looks wrong,
     <a href="/support">tell us</a> and it goes on the <a href="/accuracy">accuracy log</a>.
 </p>
+
+<script>
+    window.SCHOOL_PAGE = {
+        lat: {{ school.latitude | tojson }}, lng: {{ school.longitude | tojson }},
+        name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }},
+        year: {{ school.academic_year | tojson }},
+        check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }}
+    };
+</script>
+{% if google_maps_api_key %}
+{{ mapstyle.dark_map_style() }}
+<script>
+    function initSchoolPageMap() {
+        const S = window.SCHOOL_PAGE;
+        const el = document.getElementById('school-page-map');
+        if (!el) return;
+        const centre = { lat: S.lat, lng: S.lng };
+        const map = new google.maps.Map(el, {
+            center: centre, zoom: 13, scrollwheel: false,
+            streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
+            styles: window.mapStyles(),
+        });
+        new google.maps.Marker({ position: centre, map: map, title: S.name });
+        const circle = new google.maps.Circle({
+            center: centre, radius: S.miles * 1609.34, map: map,
+            strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
+        });
+        const bounds = circle.getBounds();
+        if (S.check) {
+            const pos = { lat: S.check.lat, lng: S.check.lng };
+            new google.maps.Marker({
+                position: pos, map: map, title: S.check.postcode,
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 9, fillColor: '#2b4c8c', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 2 },
+            });
+            bounds.extend(pos);
+        }
+        map.fitBounds(bounds, 30);
+    }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initSchoolPageMap&loading=async" async defer></script>
+{% else %}
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script>
+    (function () {
+        const S = window.SCHOOL_PAGE;
+        const el = document.getElementById('school-page-map');
+        if (!el) return;
+        const map = L.map(el, { scrollWheelZoom: false }).setView([S.lat, S.lng], 13);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19,
+        }).addTo(map);
+        L.marker([S.lat, S.lng]).addTo(map).bindPopup(S.name);
+        const circle = L.circle([S.lat, S.lng], {
+            radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
+        }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map);
+        const bounds = circle.getBounds();
+        if (S.check) {
+            L.circleMarker([S.check.lat, S.check.lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: '#2b4c8c', fillOpacity: 1 })
+                .bindPopup(S.check.postcode + ': ' + S.check.label).addTo(map);
+            bounds.extend([S.check.lat, S.check.lng]);
+        }
+        map.fitBounds(bounds, { padding: [30, 30] });
+    })();
+</script>
+{% endif %}
 {% endblock %}
