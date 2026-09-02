@@ -128,6 +128,76 @@ REFERRAL_COOKIE_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days between clicking a part
 _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
 
 
+# Pages whose HTML is identical for every signed-out visitor, and slow
+# to build: a homepage that reads three tables, an area guide or school
+# guide that assembles a district, an admissions hub that walks a
+# council. Measured 1 Sep 2026 on the live site: 1.0 to 2.6 s to first
+# byte, all of it server time, much of it round trips to a database in
+# another country. The finished HTML is kept for ten minutes and served
+# straight back. Same rule the property report has used since launch,
+# widened to the pages that actually get search traffic.
+_ANON_HTML_TTL_S = 600
+_ANON_HTML_PREFIXES = (
+    "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
+    "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
+    "/buying-guide", "/methodology", "/browser-extension", "/premium",
+)
+# Query parameters that change nothing a cache should care about are
+# not on this list on purpose: a page with any query string other than
+# these is rendered fresh. `q` is the schools guide's district; `check`
+# is a school page's address check, which must not be shared.
+_ANON_HTML_QUERY_OK = {"q"}
+
+
+def _anon_html_key(request: Request):
+    """The cache key for this request, or None if it must not be cached."""
+    if request.method != "GET":
+        return None
+    path = request.url.path
+    if path != "/" and not path.startswith(_ANON_HTML_PREFIXES):
+        return None
+    if set(request.query_params.keys()) - _ANON_HTML_QUERY_OK:
+        return None
+    # A session cookie means a possibly signed-in visitor with personal
+    # content on the page; the referral cookie means a visit that a
+    # partner should get credit for. Neither is served from here.
+    if "session" in request.cookies or REFERRAL_COOKIE in request.cookies:
+        return None
+    # Crawlers are deliberately NOT excluded: Googlebot is the reader
+    # who benefits most from a page that answers in 50 ms instead of
+    # two seconds, and the pageview middleware wraps this one, so a
+    # served-from-cache view still counts exactly as before.
+    return ("anon_html", path, str(request.query_params))
+
+
+@app.middleware("http")
+async def anon_html_cache(request: Request, call_next):
+    key = _anon_html_key(request)
+    if key is None:
+        return await call_next(request)
+    hit = _cache.get(key, _ANON_HTML_TTL_S)
+    if hit is not None:
+        status, body = hit
+        return HTMLResponse(body, status_code=status, headers={"X-Anon-Cache": "hit"})
+    response = await call_next(request)
+    if (
+        response.status_code in (200, 404)
+        and response.headers.get("content-type", "").startswith("text/html")
+        and "set-cookie" not in response.headers
+    ):
+        # Starlette streams template responses; read the body once to
+        # keep it, then hand back an equivalent response.
+        chunks = []
+        async for chunk in response.body_iterator:
+            chunks.append(chunk)
+        body = b"".join(chunks).decode("utf-8")
+        _cache.set(key, (response.status_code, body))
+        headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+        headers["X-Anon-Cache"] = "miss"
+        return HTMLResponse(body, status_code=response.status_code, headers=headers)
+    return response
+
+
 @app.middleware("http")
 async def capture_referral(request: Request, call_next):
     """A ?ref=CODE on any URL (not just /signup) gets remembered in a

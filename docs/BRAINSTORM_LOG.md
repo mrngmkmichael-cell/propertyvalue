@@ -6,6 +6,14 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Anonymous HTML cache (1 Sep 2026): the finished HTML of the slow
+  pages (homepage, area guides, schools guide, admissions hubs, school
+  pages without ?check, market pages) is kept ten minutes and served
+  to signed-out visitors and crawlers. Dev measurements: schools guide
+  3.5 s to 1 ms, area guide 1.2 s to 1 ms, council hub 2.0 s to 1 ms.
+  Never for a session or referral cookie, never for unknown query
+  strings, never when the response sets a cookie.
+
 - Admissions pages (1 Sep 2026): /schools/admissions (82 councils,
   3,251 schools with a published last-distance-offered figure), one
   hub per council listing every school tightest first with grade,

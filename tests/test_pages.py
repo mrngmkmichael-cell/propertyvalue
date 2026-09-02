@@ -793,3 +793,37 @@ def test_sitemap_carries_the_admissions_pages(client):
     assert "/schools/admissions</loc>" in body
     assert "/schools/how-admissions-work</loc>" in body
     assert "/schools/admissions/manchester</loc>" in body
+
+
+# ---- anonymous HTML cache ---------------------------------------------------
+
+def test_slow_pages_are_served_from_cache_for_anonymous_visitors(client):
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    first = client.get("/schools/how-admissions-work")
+    assert first.headers.get("x-anon-cache") == "miss"
+    second = client.get("/schools/how-admissions-work")
+    assert second.headers.get("x-anon-cache") == "hit"
+    assert second.text == first.text
+    assert second.headers["content-type"].startswith("text/html")
+
+
+def test_cache_never_serves_a_personalised_or_parameterised_page(client):
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    # A query the cache does not understand: rendered fresh both times.
+    _seed_admission_school()
+    for _ in range(2):
+        r = client.get("/school/990002/riverside-academy?check=M1+1AE")
+        assert r.headers.get("x-anon-cache") is None
+    # A session cookie: never cached, never served from cache.
+    client.cookies.set("session", "anything")
+    try:
+        r = client.get("/schools/how-admissions-work")
+        assert r.headers.get("x-anon-cache") is None
+    finally:
+        client.cookies.clear()
+    # A referral visit must keep its Set-Cookie, so it is not cached either.
+    r = client.get("/buying-guide?ref=partner1")
+    assert r.headers.get("x-anon-cache") is None
+    assert "set-cookie" in r.headers

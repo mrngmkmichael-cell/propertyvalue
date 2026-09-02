@@ -48,6 +48,12 @@ def _no_leaked_session(request):
     starts signed out."""
     if "client" in request.fixturenames:
         request.getfixturevalue("client").cookies.clear()
+    # The anonymous-HTML cache is process-wide too: a page rendered
+    # under one test's environment (say, Stripe unconfigured) would be
+    # served verbatim to the next test that expects the other.
+    from app.services import _cache
+    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] == "anon_html"]:
+        _cache._evict(key)
     yield
 
 
