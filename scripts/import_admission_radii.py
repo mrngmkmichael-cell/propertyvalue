@@ -4218,7 +4218,47 @@ def fetch_nottinghamshire() -> list[dict]:
                     records.append({"school_name": name, "phase_hint": phase_hint, "last_distance_miles": miles})
     return records
 
+
+def fetch_croydon() -> list[dict]:
+    """London Borough of Croydon, "How places were allocated at
+    oversubscribed Croydon Primary and Infant Schools", an Excel file
+    linked from the council's after-you-apply page (the path carries the
+    year, so check that page before re-running). Reception, September
+    2026 intake, national offer day 16 April 2026. One row per
+    oversubscribed school with offers by criterion and "Max Distance
+    offered (miles)", direct-line measurement. Only oversubscribed
+    schools are listed, so a missing school took everyone."""
+    url = "https://www.croydon.gov.uk/sites/default/files/2026-04/allocation-breakdown-2026.xlsx"
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=90, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True, read_only=True)
+    records = []
+    for ws in wb.worksheets:
+        name_col = dist_col = None
+        for row in ws.iter_rows(values_only=True):
+            cells = list(row)
+            if dist_col is None:
+                header = [str(c or "").strip().lower().replace("\n", " ") for c in cells]
+                if any(h.startswith("max distance offered") for h in header):
+                    dist_col = next(i for i, h in enumerate(header) if h.startswith("max distance offered"))
+                    name_col = next(i for i, h in enumerate(header) if h == "school")
+                continue
+            name = cells[name_col] if len(cells) > name_col else None
+            dist = cells[dist_col] if len(cells) > dist_col else None
+            if not isinstance(name, str) or dist in (None, ""):
+                continue
+            try:
+                miles = float(dist)
+            except (TypeError, ValueError):
+                continue
+            if miles <= 0:
+                continue
+            records.append({"school_name": name.strip(), "phase_hint": "reception", "last_distance_miles": miles})
+    return records
+
 _AUTHORITIES = [
+    ("Croydon", "2026/27", fetch_croydon),
     ("Nottinghamshire", "2025/26", fetch_nottinghamshire),
     ("Devon", "2024/25", fetch_devon_secondary),
     ("Devon", "2026/27", fetch_devon_primary),
