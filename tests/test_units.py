@@ -731,7 +731,7 @@ def test_concurrent_cold_reports_are_capped():
     ~38-source gather with nothing limiting how many ran at once."""
     from app import main
 
-    assert main._GATHER_CONCURRENCY._value == 4
+    assert main._GATHER_CONCURRENCY._value == 2  # lowered 2 Sep 2026 for the 512 MB instance
 
 
 def test_a_failing_factory_does_not_leave_its_lock_behind():

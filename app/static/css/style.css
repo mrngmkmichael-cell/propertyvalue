@@ -6949,7 +6949,11 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
     .lx-about-grid, .lx-contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
     .lx-voice-grid { grid-template-columns: 1fr; }
     .lx-hero { min-height: auto; }
-    .lx-hero-inner { padding-top: 5rem; }
+    /* Headline and search first on a phone. The live-report strip is
+       235px tall and sat between the eyebrow and the headline, which put
+       both the promise and the search box below the first screen. */
+    .lx-hero-inner { padding-top: 5rem; display: flex; flex-direction: column; }
+    .lx-strip { order: 10; margin-top: 1.5rem; }
     .lx-strip-score { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.08); width: 100%; }
     .lx-quote-mark { font-size: 14rem; top: -2.5rem; }
 }

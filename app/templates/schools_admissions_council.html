@@ -16,6 +16,11 @@
     place lived. This is that figure for {{ council.count }} schools, tightest first. A short distance
     means a school that fills up close to its gates; a long one means places went further afield.
 </p>
+{% if not current_user %}
+<p class="section-sub" style="margin: -0.5rem 0 1rem;">
+    <a href="/signup?next=/schools/admissions/{{ council.slug }}">Sign up</a> to save the schools you care about and be told when {{ council.name }} republishes a distance.
+</p>
+{% endif %}
 
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ council.count }}</span><span class="score-tile-label">schools with a published figure</span></div>

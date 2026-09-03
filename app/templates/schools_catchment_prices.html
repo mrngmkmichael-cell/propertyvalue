@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}What a Tight School Catchment Costs: House Prices Within Reach of {{ "{:,}".format(data.school_count) }} Schools{% endblock %}
+{% block meta_description %}Every school with a published admission distance, priced: the Land Registry median for the districts within reach, the tight gates you can still afford, and {{ data.council_count }} councils compared.{% endblock %}
+{% block og_title %}What a tight school catchment costs{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/tightest-catchments">&larr; England's tightest school catchments</a>
+
+<span class="kicker">Admissions data</span>
+<h1>What a tight school catchment costs</h1>
+<p class="dek">
+    Two official figures, put side by side for the first time. A council publishes how far away the last
+    child admitted to each oversubscribed school lived. The Land Registry publishes what homes sell for
+    in every postcode district. For {{ "{:,}".format(data.school_count) }} schools across {{ data.council_count }}
+    councils, this page prices the districts within reach of each school's distance, and finds the tight
+    gates a family can still afford.
+</p>
+
+{% if not data.bands %}
+<p class="notice">The area guides that hold the district prices have not been built yet, so there is nothing to price. Try again later.</p>
+{% else %}
+
+<div class="scorecard-row">
+    {% for b in data.bands[:2] %}
+    <div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(b.median) }}</span><span class="score-tile-label">median district price within reach, schools admitting from {{ b.label | lower }}</span></div>
+    {% endfor %}
+    {% if data.national_median %}
+    <div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(data.national_median) }}</span><span class="score-tile-label">the middle district, nationally</span></div>
+    {% endif %}
+    <div class="score-tile"><span class="score-tile-value">{{ data.affordable_count }}</span><span class="score-tile-label">of {{ data.tight_count }} tight gates priced below the national middle</span></div>
+</div>
+
+<section class="report-section">
+    <h2>Distance against price</h2>
+    <p class="section-sub">
+        Schools grouped by how far they admitted from, and the median price of the districts within reach of
+        each group. Within reach means a district whose centre falls inside the school's distance, or the
+        district the school stands in when the distance is smaller than that.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Admitted from</th><th class="num">Schools</th><th class="num">Median district price within reach</th></tr></thead>
+            <tbody>
+                {% for b in data.bands %}
+                <tr><td>{{ b.label }}</td><td class="num">{{ "{:,}".format(b.count) }}</td><td class="num">&pound;{{ "{:,.0f}".format(b.median) }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>Tight gates you can still afford</h2>
+    <p class="section-sub">
+        Schools that admitted from under half a mile, where the cheapest district within reach sells below
+        the national middle district. The thirty cheapest of {{ data.affordable_count }}; the district link opens its area guide.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">School</th>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num">Admitted from</th>
+                    <th data-sort="text">Cheapest district in reach</th>
+                    <th class="num" data-sort="num" aria-sort="ascending">Median price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in data.affordable %}
+                <tr>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
+                    <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
+                    <td data-value="{{ s.cheapest.outcode }}"><a href="/area/{{ s.cheapest.outcode }}">{{ s.cheapest.outcode }}</a>{% if s.cheapest.district %} <span class="school-table-type">{{ s.cheapest.district }}</span>{% endif %}</td>
+                    <td class="num" data-value="{{ s.cheapest.median }}">&pound;{{ "{:,.0f}".format(s.cheapest.median) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>Where the tightest gates cost most</h2>
+    <p class="section-sub">
+        Schools admitting from under half a mile, ranked by the median price of the districts within reach.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">School</th>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num">Admitted from</th>
+                    <th class="num" data-sort="num" aria-sort="descending">Median price within reach</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in data.dearest %}
+                <tr>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
+                    <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
+                    <td class="num" data-value="{{ s.reach_median }}">&pound;{{ "{:,.0f}".format(s.reach_median) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>{{ data.council_count }} councils compared</h2>
+    <p class="section-sub">
+        The median price within reach of each council's oversubscribed schools, dearest first, and what its
+        tightest gate costs. Click a heading to re-sort.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num">Schools priced</th>
+                    <th class="num" data-sort="num" aria-sort="descending">Median price within reach</th>
+                    <th data-sort="text">Tightest school</th>
+                    <th class="num" data-sort="num">Its price within reach</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in data.councils %}
+                <tr>
+                    <td data-value="{{ c.name }}"><a href="/schools/admissions/{{ c.slug }}">{{ c.name }}</a></td>
+                    <td class="num" data-value="{{ c.count }}">{{ c.count }}</td>
+                    <td class="num" data-value="{{ c.median }}">&pound;{{ "{:,.0f}".format(c.median) }}</td>
+                    <td data-value="{{ c.tightest.name }}"><a href="/school/{{ c.tightest.urn }}/{{ c.tightest.slug }}">{{ c.tightest.name }}</a> <span class="school-table-type">{{ c.tightest.miles }} mi</span></td>
+                    <td class="num" data-value="{{ c.tightest.reach_median }}">&pound;{{ "{:,.0f}".format(c.tightest.reach_median) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="report-section">
+    <h2>How this is worked out, and what it cannot tell you</h2>
+    <p class="section-sub">
+        Distances are the ones each council published after offer day, for the last child admitted under
+        the distance criterion; their sources are named on each council's page. Prices are the median of
+        the last twelve months of Land Registry sales in each postcode district, the same figures as the
+        area guides, and only districts with enough sales to give a fair median are used. A district counts
+        as within reach when its centre falls inside the school's distance. When a distance is shorter than
+        the gap to any district centre, the district the school stands in is used instead.
+    </p>
+    <p class="section-sub">
+        A district median is not the price of a house near the gate: a district can be a mile across, and
+        the streets closest to a popular school usually sell above its median. The distance moves every
+        year. And only oversubscribed schools carry a figure, so a school missing from these tables had room
+        for everyone who applied. <a href="/schools/how-admissions-work">How admissions actually work</a>
+        covers the rest; every school's own page has a postcode checker and its priced districts.
+    </p>
+</section>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

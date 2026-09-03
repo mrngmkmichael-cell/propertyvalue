@@ -701,6 +701,7 @@ def tightest_catchments() -> dict:
             "town": det.town if det else "",
             "authority": r.source_authority, "authority_slug": _slugify(r.source_authority),
             "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year or "",
+            "lat": s.latitude, "lon": s.longitude,
         })
     schools.sort(key=lambda x: (x["miles"], x["name"]))
     by_council: dict[str, list] = {}

@@ -1137,3 +1137,49 @@ def test_admissions_index_shows_each_council_figure(client):
     assert "Middle distance" in body and "Filled from under a mile" in body
     assert 'href="/school/990011/harbour-lane-primary"' in body
     assert 'href="/schools/tightest-catchments"' in client.get("/methodology").text  # footer
+
+
+def test_catchment_house_prices_pairs_distances_with_land_registry(client, monkeypatch):
+    """A tight gate you can still afford: the school's district priced
+    below the national district median. Two districts priced, one school
+    at the cheaper one; the affordable table names it."""
+    from app import db, main as app_main
+    from app.models import School, SchoolAdmissionRadius
+    m1 = next(o for o in app_main.ALL_OUTCODES if o["outcode"] == "M1")
+    with db.get_session() as session:
+        if session.get(School, 990051) is None:
+            session.add(School(urn=990051, name="Ancoats Gate Primary", phase="Primary", type_name="Academy converter",
+                               postcode="M1 2BB", latitude=m1["lat"], longitude=m1["lon"],
+                               ofsted_rating=2, ofsted_rating_label="Good"))
+            session.add(SchoolAdmissionRadius(urn=990051, last_distance_miles=0.3,
+                                              academic_year="2025", source_authority="Manchester"))
+            session.commit()
+    monkeypatch.setattr(app_main, "_district_price_rows_by_outcode", lambda: {
+        "M1": {"outcode": "M1", "median": 250000, "count": 40, "district": "Manchester"},
+        "SW3": {"outcode": "SW3", "median": 1500000, "count": 40, "district": "Kensington and Chelsea"},
+    })
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get("/schools/catchment-house-prices")
+    assert r.status_code == 200
+    body = r.text
+    assert "within reach" in body
+    assert "Ancoats Gate Primary" in body and "&pound;250,000" in body
+    assert 'href="/area/M1"' in body
+    assert "/schools/catchment-house-prices" in client.get("/sitemap.xml").text
+    assert 'href="/schools/catchment-house-prices"' in client.get("/schools/tightest-catchments").text
+
+
+def test_council_hub_invites_the_signed_out_to_sign_up(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/schools/admissions/manchester").text
+    assert 'href="/signup?next=/schools/admissions/manchester"' in body
+
+
+def test_sitemap_is_cached_and_dated_by_deploy(client):
+    from app import main as app_main
+    first = client.get("/sitemap.xml").text
+    assert f"<lastmod>{app_main._STARTED_ON}</lastmod>" in first
+    assert client.get("/sitemap.xml").text == first

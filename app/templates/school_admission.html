@@ -58,7 +58,7 @@
     </div>
     <div class="score-tile">
         <span class="score-tile-value">{{ school.miles }} mi</span>
-        <span class="score-tile-label">Admitted from, {{ school.academic_year }}</span>
+        <span class="score-tile-label">Admitted from, {{ school.academic_year }}{% if school.miles < 0.25 %}, about {{ (school.miles * 1609.34) | round | int }} metres{% endif %}</span>
     </div>
     {% if school.occupancy_pct %}
     <div class="score-tile">

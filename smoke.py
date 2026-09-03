@@ -60,6 +60,7 @@ CHECKS = [
     ("/schools/admissions/hertfordshire", {200}, ["Hertfordshire", "Admitted from"]),
     ("/schools/how-admissions-work", {200}, ["31 October", "15 January"]),
     ("/schools/tightest-catchments", {200}, ["tightest gates in England", "councils compared"]),
+    ("/schools/catchment-house-prices", {200}, ["within reach"]),
     ("/schools/independent", {200}, ["Private schools, council by council"]),
     ("/schools/independent/surrey", {200}, ["Private schools in Surrey"]),
     ("/schools/admission-distances.csv", {200}, ["urn,school,phase,council"]),

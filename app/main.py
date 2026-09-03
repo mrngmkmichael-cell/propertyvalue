@@ -1,4 +1,5 @@
 import asyncio
+import bisect
 import collections
 import contextvars
 import hashlib
@@ -25,6 +26,7 @@ from fastapi.exception_handlers import http_exception_handler as default_http_ex
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
@@ -139,7 +141,7 @@ _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
 _ANON_HTML_TTL_S = 600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
-    "/schools/tightest-catchments", "/schools/independent",
+    "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
     "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
@@ -342,12 +344,28 @@ async def capture_pageview(request: Request, call_next):
             user = auth.current_user(request) if "session" in request.scope else None
             if _is_admin(user):
                 return response
-            with db.get_session() as session:
-                session.add(PageView(path=path, user_id=user["id"] if user else None))
-                session.commit()
-        except Exception as exc:  # noqa: BLE001 - a counter must never break a page
-            logging.getLogger(__name__).warning("pageview not recorded for %s: %s", path, exc)
+        except Exception:  # noqa: BLE001 - a counter must never break a page
+            user = None
+        # The INSERT goes to Neon in Ohio, 100 to 200 ms from Frankfurt,
+        # and used to run before the first byte left. It now runs after
+        # the response has been sent, so a cached page really is instant.
+        user_id = user["id"] if user else None
+        if response.background is None:
+            response.background = BackgroundTask(_record_pageview, path, user_id)
+        elif isinstance(response.background, BackgroundTasks):
+            response.background.add_task(_record_pageview, path, user_id)
+        else:
+            response.background = BackgroundTasks([response.background, BackgroundTask(_record_pageview, path, user_id)])
     return response
+
+
+def _record_pageview(path: str, user_id: int | None) -> None:
+    try:
+        with db.get_session() as session:
+            session.add(PageView(path=path, user_id=user_id))
+            session.commit()
+    except Exception as exc:  # noqa: BLE001 - a counter must never break a page
+        logging.getLogger(__name__).warning("pageview not recorded for %s: %s", path, exc)
 
 
 class _CachedStaticFiles(StaticFiles):
@@ -1493,6 +1511,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/admissions", "0.7"))
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
+    entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     # "private schools in {council}" is the query Search Console shows
     # us being surfaced for at position 46 with the per-postcode pages;
     # one page per council is the shape of the query.
@@ -1536,13 +1555,22 @@ def _sitemap_school_pages(outcodes: set[str]) -> list[dict]:
         return []
 
 
+SITEMAP_TTL_S = 3600
+# The date this process started, which on Render is the deploy date.
+_STARTED_ON = datetime.date.today().isoformat()
+
+
 @app.get("/sitemap.xml")
 def sitemap(request: Request):
     base = _public_base_url(request)
-    # lastmod is the deploy's own timestamp: a guide's data changes on
-    # the cadence of the imports behind it, and every deploy re-reads
-    # those, so this is honest without tracking per-page dates.
-    lastmod = datetime.date.today().isoformat()
+    cached = _cache.get(("sitemap", base), SITEMAP_TTL_S)
+    if cached is not None:
+        return Response(content=cached, media_type="application/xml")
+    # lastmod is the deploy's own date: a guide's data changes on the
+    # cadence of the imports behind it, and every deploy re-reads those,
+    # so this is honest without tracking per-page dates. It used to be
+    # "today" on every request, which Google learns to ignore.
+    lastmod = _STARTED_ON
     entries = _sitemap_entries(base)
     # Every URL in the sitemap now carries a query string, and a bare "&"
     # in <loc> is malformed XML that makes Google reject the whole file.
@@ -1555,6 +1583,7 @@ def sitemap(request: Request):
                   for u, pr in entries)
         + "</urlset>"
     )
+    _cache.set(("sitemap", base), body)
     return Response(content=body, media_type="application/xml")
 
 
@@ -2107,12 +2136,28 @@ _background_tasks: set = set()
 # this is that, for the path that actually gets the traffic. Queued
 # gathers still run, just not all at once, and the polling page is
 # already built to wait.
-_GATHER_CONCURRENCY = asyncio.Semaphore(4)
+# Two, not four, since 2 Sep 2026: the instance is killed at 512 MB and
+# the peak of a report build is what takes it there. A cold report waits
+# a second longer behind another; a dead instance waits for a restart.
+_GATHER_CONCURRENCY = asyncio.Semaphore(2)
+
+
+def _release_memory() -> None:
+    """Hand a report build's peak back to the operating system. glibc
+    keeps freed memory in its arenas by default, so the process sat at
+    the largest report it had ever built (450 MB on a 512 MB instance)
+    long after the objects were gone. A no-op anywhere without glibc."""
+    try:
+        import ctypes
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
 
 
 async def _gather_with_cap(location: dict, house_number: str) -> None:
     async with _GATHER_CONCURRENCY:
         await _full_property_gather(location, house_number, premium_unlocked=False)
+    _release_memory()
 
 
 def _spawn_gather(location: dict, house_number: str) -> None:
@@ -7270,6 +7315,101 @@ async def admissions_council(request: Request, council_slug: str):
          "lived, which the council publishes after each round. That is the figure on this page."),
     ])
     return templates.TemplateResponse(request, "schools_admissions_council.html", context)
+
+
+CATCHMENT_PRICES_TTL_S = 24 * 3600
+
+
+def _catchment_house_prices() -> dict:
+    """What it costs to live within reach of a school, for every school
+    with a published admission distance. The postcode districts whose
+    centre falls inside the distance (or the nearest district, when the
+    distance is smaller than the gap to any centre) are priced from the
+    area guides' Land Registry medians. A council's figure and the Land
+    Registry's, nothing modelled. Built once a day."""
+    cached = _cache.get(("catchment_house_prices",), CATCHMENT_PRICES_TTL_S)
+    if cached is not None:
+        return cached
+    story = schools_db.tightest_catchments()
+    prices = _district_price_rows_by_outcode()
+    priced = sorted((o["lat"], o["lon"], o["outcode"]) for o in ALL_OUTCODES if o["outcode"] in prices)
+    lats = [p[0] for p in priced]
+    national = sorted(r["median"] for r in prices.values())
+    national_median = national[len(national) // 2] if national else None
+
+    def _districts(lat, lon, km):
+        # Latitude-sorted centres and a bisect keep this to a handful of
+        # distance checks per school instead of 2,900.
+        dlat = max(km, 0.5) / 111.0
+        lo, hi = bisect.bisect_left(lats, lat - dlat), bisect.bisect_right(lats, lat + dlat)
+        near = sorted((_haversine_km(lat, lon, la, lo_), oc) for la, lo_, oc in priced[lo:hi])
+        inside = [(d, oc) for d, oc in near if d <= km]
+        if inside:
+            return inside[:12], "within"
+        if near:
+            return near[:1], "nearest"
+        wide_lo, wide_hi = bisect.bisect_left(lats, lat - 0.5), bisect.bisect_right(lats, lat + 0.5)
+        near = sorted((_haversine_km(lat, lon, la, lo_), oc) for la, lo_, oc in priced[wide_lo:wide_hi])
+        return (near[:1], "nearest") if near else ([], "none")
+
+    schools = []
+    for s in story["schools"]:
+        if s.get("lat") is None or s.get("lon") is None:
+            continue
+        found, basis = _districts(s["lat"], s["lon"], s["miles"] * 1.60934)
+        if not found:
+            continue
+        rows = [prices[oc] for _, oc in found]
+        meds = sorted(r["median"] for r in rows)
+        cheapest = min(rows, key=lambda r: r["median"])
+        schools.append({
+            **s, "reach_median": meds[len(meds) // 2], "districts": len(rows), "basis": basis,
+            "cheapest": {"outcode": cheapest["outcode"], "district": cheapest["district"], "median": cheapest["median"]},
+        })
+    bands = [("Under half a mile", 0, 0.5), ("Half a mile to a mile", 0.5, 1), ("1 to 2 miles", 1, 2),
+             ("2 to 5 miles", 2, 5), ("5 miles and over", 5, 10 ** 9)]
+    band_rows = []
+    for label, lo_m, hi_m in bands:
+        vals = sorted(x["reach_median"] for x in schools if lo_m <= x["miles"] < hi_m)
+        if vals:
+            band_rows.append({"label": label, "count": len(vals), "median": vals[len(vals) // 2]})
+    tight = [x for x in schools if x["miles"] < 0.5]
+    affordable_all = sorted(
+        (x for x in tight if national_median and x["cheapest"]["median"] < national_median),
+        key=lambda x: x["cheapest"]["median"],
+    )
+    affordable = affordable_all[:30]
+    dearest = sorted(tight, key=lambda x: -x["reach_median"])[:20]
+    by_council: dict[str, list] = {}
+    for x in schools:
+        by_council.setdefault(x["authority"], []).append(x)
+    councils = []
+    for name, items in by_council.items():
+        vals = sorted(i["reach_median"] for i in items)
+        councils.append({
+            "name": name, "slug": items[0]["authority_slug"], "count": len(items),
+            "median": vals[len(vals) // 2], "tightest": min(items, key=lambda i: i["miles"]),
+        })
+    councils.sort(key=lambda c: -c["median"])
+    result = {
+        "school_count": len(schools), "council_count": len(councils), "tight_count": len(tight),
+        "national_median": national_median, "bands": band_rows, "affordable": affordable,
+        "affordable_count": len(affordable_all),
+        "dearest": dearest, "councils": councils,
+    }
+    _cache.set(("catchment_house_prices",), result)
+    return result
+
+
+@app.get("/schools/catchment-house-prices")
+async def catchment_house_prices_page(request: Request):
+    """The second data story: what a tight gate costs. The councils'
+    admission distances against the Land Registry's district medians,
+    the pairing no school site and no portal makes."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/catchment-house-prices"
+    context["data"] = await asyncio.to_thread(_catchment_house_prices)
+    return templates.TemplateResponse(request, "schools_catchment_prices.html", context)
 
 
 @app.get("/schools/tightest-catchments")

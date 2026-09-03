@@ -52,7 +52,7 @@ def _no_leaked_session(request):
     # under one test's environment (say, Stripe unconfigured) would be
     # served verbatim to the next test that expects the other.
     from app.services import _cache
-    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] == "anon_html"]:
+    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] in ("anon_html", "sitemap")]:
         _cache._evict(key)
     yield
 
