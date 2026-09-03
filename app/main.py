@@ -7518,6 +7518,7 @@ async def llms_txt(request: Request):
 
 - [School admission distances by council]({base}/schools/admissions): 85 English councils, 3,400+ schools, how far the last child offered a place lived, from each council's published statistics.
 - [England's tightest school catchments]({base}/schools/tightest-catchments): the national ranking, the widest gates, and the councils compared.
+- [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
 - [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.
 - [Private schools by council]({base}/schools/independent): every fee-paying school on the Department for Education register, by council.
@@ -7601,7 +7602,7 @@ async def indexnow_resubmit(request: Request):
     if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
         return JSONResponse({"error": "not_found"}, status_code=404)
     base = _public_base_url(request)
-    urls = [f"{base}{p}" for p in ("/", "/schools/tightest-catchments", "/schools/admissions",
+    urls = [f"{base}{p}" for p in ("/", "/schools/tightest-catchments", "/schools/catchment-house-prices", "/schools/admissions",
                                    "/schools/how-admissions-work", "/schools/independent", "/schools/guide")]
     urls += [f"{base}/schools/admissions/{c['slug']}" for c in await asyncio.to_thread(schools_db.admission_councils)]
     urls += [f"{base}/schools/independent/{d['slug']}" for d in await asyncio.to_thread(schools_db.independent_districts)]
