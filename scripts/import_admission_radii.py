@@ -4094,7 +4094,134 @@ def fetch_manchester() -> list[dict]:
             records.append({"school_name": name, "phase_hint": "secondary", "last_distance_miles": float(miles.group(1))})
     return records
 
+
+def _devon_breakdown(url: str, phase_hint: str) -> list[dict]:
+    """Devon's allocation breakdowns: one row per school with the places,
+    the offers by category, whether the school was oversubscribed and,
+    when the distance tiebreaker was reached, "Distance (Metres) of Last
+    Offered Place". Straight line, as the council measures. A blank
+    distance means every applicant in the last category got in, so no
+    figure is recorded and the row is skipped."""
+    print(f"  Downloading {url}")
+    resp = httpx.get(url, timeout=90, follow_redirects=True, headers=HEADERS)
+    resp.raise_for_status()
+    wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True, read_only=True)
+    rows = list(wb.worksheets[0].iter_rows(values_only=True))
+    header = [str(c or "").strip().lower() for c in rows[0]]
+    dist_col = next(i for i, h in enumerate(header) if h.startswith("distance (metres)"))
+    name_col = next(i for i, h in enumerate(header) if h.startswith("school"))
+    records = []
+    for row in rows[1:]:
+        name = row[name_col] if len(row) > name_col else None
+        dist = row[dist_col] if len(row) > dist_col else None
+        if not isinstance(name, str) or dist in (None, "", 0):
+            continue
+        try:
+            metres = float(dist)
+        except (TypeError, ValueError):
+            continue
+        name = name.replace("\xa0", " ").replace("(see notes)", "").strip()
+        records.append({"school_name": name, "phase_hint": phase_hint, "last_distance_miles": metres / _METRES_PER_MILE})
+    return records
+
+
+def fetch_devon_secondary() -> list[dict]:
+    """Devon County Council, "Allocation Breakdown for each Secondary
+    School" (Excel on the council's public SharePoint, linked from its
+    apply-for-a-secondary-school-place page). The sheet's notes date it
+    to National Offer Day 1 March 2024, so the September 2024 intake.
+    Ten of the county's secondaries reached the distance tiebreaker."""
+    return _devon_breakdown(
+        "https://devoncc.sharepoint.com/:x:/s/PublicDocs/Education/IQBZyx4kiUt9TaSlpuswF_HMAeweeiSpomSujcuDfw4GCoU?e=fyTTxE&download=1",
+        "secondary",
+    )
+
+
+def fetch_devon_primary() -> list[dict]:
+    """Devon County Council, "2026 primary allocation breakdown" (Excel on
+    the council's public SharePoint, linked from its apply-for-a-primary-
+    school-place page): reception, September 2026 intake, 43 schools with
+    a last-offered distance."""
+    return _devon_breakdown(
+        "https://devoncc.sharepoint.com/:x:/s/PublicDocs/Education/IQAZGIaqfE6QR5cX3ROIlHBfARZCcys1O1yNYsjKocw0CGo?e=uU8aHH&download=1",
+        "reception",
+    )
+
+
+_NOTTS_PDFS = [
+    ("https://www.nottinghamshire.gov.uk/media/uwzdg5rb/ashfield-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/mqwkbpre/bassetlaw-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/oxtfwjap/broxtowe-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/j2igrimw/gedling-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/05ncou5q/mansfield-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/tqlpiam5/newark-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/u2yfcd5y/rushcliffe-primary.pdf", "primary"),
+    ("https://www.nottinghamshire.gov.uk/media/45wdtzga/secondary.pdf", "secondary"),
+]
+_NOTTS_AREAS = ("Ashfield", "Bassetlaw", "Broxtowe", "Gedling", "Mansfield", "Newark", "Rushcliffe")
+
+
+def fetch_nottinghamshire() -> list[dict]:
+    """Nottinghamshire County Council, "Schools information" PDFs, one per
+    district for primary plus one for secondary, on the council's
+    admissions pages (the media URLs rotate with each year's edition, so
+    check the schools-information page before re-running). The last
+    pages of each carry the "allocation summary" for the previous
+    round: one row per school with preferences, places, offers by
+    criterion and "distance of last preference offered (miles)", based
+    on national offer day (16 April 2025 for reception and year 3,
+    March 2025 for year 7). Nottinghamshire measures walking distance
+    for most schools and a straight line for some, as each school's
+    criteria say; the figure here is the one the council published.
+    The council prints a distance for every school, full or not, and
+    for a school with places to spare it is merely the furthest
+    applicant (Sacred Heart in Mansfield shows 103 miles), so only rows
+    where the places allocated reached the published admission number
+    are kept. The text layout is a flattened table: the school name is
+    everything between the district name and the first count; the first
+    three counts are preferences, PAN and allocated; the distance is the
+    row's only decimal number. The secondary PDF's summary table is not
+    extractable as text, so Nottinghamshire is primary only.
+    """
+    records = []
+    seen = set()
+    row_re = re.compile(
+        r"^(?:%s)\s+(.+?)\s+(\d+)\s+(\d+)\s+(\d+)(?:\s+\S+)*?\s+(\d+\.\d{1,3})(?:\s|$)" % "|".join(_NOTTS_AREAS)
+    )
+    for url, phase_hint in _NOTTS_PDFS:
+        print(f"  Downloading {url}")
+        resp = httpx.get(url, timeout=90, follow_redirects=True, headers=HEADERS)
+        resp.raise_for_status()
+        with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                if "allocation summary" not in text.lower() or "(miles)" not in text:
+                    continue
+                for line in text.splitlines():
+                    m = row_re.match(line.strip())
+                    if not m:
+                        continue
+                    name, pan, allocated, miles = m.group(1).strip(), int(m.group(3)), int(m.group(4)), float(m.group(5))
+                    # A name that swallowed a count means the row wrapped;
+                    # keep names that end in a word. A school that did not
+                    # fill has no cut-off, whatever the column says.
+                    # Two full primaries show 98 and 101 miles: the last offer
+                    # went under a criterion that ignores distance, so the
+                    # column is not a cut-off. No primary admits on distance
+                    # from twenty miles.
+                    if not re.search(r"[A-Za-z)]$", name) or miles <= 0 or allocated < pan or miles > 20:
+                        continue
+                    key = (name.lower(), phase_hint)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    records.append({"school_name": name, "phase_hint": phase_hint, "last_distance_miles": miles})
+    return records
+
 _AUTHORITIES = [
+    ("Nottinghamshire", "2025/26", fetch_nottinghamshire),
+    ("Devon", "2024/25", fetch_devon_secondary),
+    ("Devon", "2026/27", fetch_devon_primary),
     ("Manchester", "2026/27", fetch_manchester),
     ("Sheffield", "2025/26", fetch_sheffield),
     ("Essex", "2025/26", fetch_essex),
