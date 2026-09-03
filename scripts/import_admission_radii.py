@@ -61,6 +61,8 @@ _ABBREVIATIONS = {
     r"\bJnr\b": "Junior",
     r"\bJMI\b": "Junior Mixed Infant",
     r"\bC of E\b": "Church of England",
+    r"\bCofE\b": "Church of England",
+    r"\bCoE\b": "Church of England",
     r"\bCEVCP\b": "Church of England Voluntary Controlled Primary",
     r"\bCE\b": "Church of England",
     r"\bVC\b": "Voluntary Controlled",

@@ -6,6 +6,20 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Three more councils (4 Sep 2026): Devon (52 schools, its two
+  allocation-breakdown spreadsheets, metres of last offered place),
+  Nottinghamshire (75, the allocation summaries at the back of its seven
+  district PDFs, keeping only schools that filled and dropping two
+  hundred-mile rows that were not distance decisions; the secondary
+  table is not extractable as text) and Croydon (21, its oversubscribed-
+  primaries spreadsheet). 88 councils, 3,626 schools. Looked at and
+  left: Norfolk (no figures published), Derbyshire, Lincolnshire,
+  Leicestershire, Cornwall, Wiltshire, Liverpool, Wakefield (nothing
+  found), Bradford (guide link rotted, arrangements only), Barnet (guides
+  page carries no documents), Enfield (403 to scripts), Medway (figures
+  sit in a JS-rendered per-school directory), Lancashire (booklets
+  rotate). Kent and Hampshire remain the two largest gaps.
+
 - What a tight gate costs (3 Sep 2026): /schools/catchment-house-prices
   pairs every published admission distance with the Land Registry median
   of the districts within reach (bisect on latitude-sorted centres, so

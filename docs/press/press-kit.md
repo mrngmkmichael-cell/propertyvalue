@@ -1,6 +1,6 @@
 # Press kit: England's tightest school catchments
 
-Generated 3 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
+Generated 4 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
 
 ## What you can say, and what you cannot
 
@@ -12,9 +12,9 @@ Generated 3 September 2026 from the live data. Every figure below is on https://
 
 ## Press release (national)
 
-**Headline:** 578 English schools filled every place from within half a mile of the gate, new analysis of council admissions data shows
+**Headline:** 603 English schools filled every place from within half a mile of the gate, new analysis of council admissions data shows
 
-**Standfirst:** Parents' talk of "living on the doorstep" to get a school place is borne out by the councils' own figures. Of 3,478 oversubscribed schools across 85 councils that publish how far the last child offered a place lived, 110 admitted nobody from beyond a quarter of a mile and 578 nobody from beyond half a mile. The middle school's figure was 1.28 miles.
+**Standfirst:** Parents' talk of "living on the doorstep" to get a school place is borne out by the councils' own figures. Of 3,626 oversubscribed schools across 88 councils that publish how far the last child offered a place lived, 113 admitted nobody from beyond a quarter of a mile and 603 nobody from beyond half a mile. The middle school's figure was 1.28 miles.
 
 **The tightest ten:**
 
@@ -26,8 +26,8 @@ Generated 3 September 2026 from the live data. Every figure below is on https://
 6. [New Invention Learning Academy](https://ukpropertyinsight.co.uk/school/151019/new-invention-learning-academy), Walsall: 0.06 miles (2025/26)
 7. [Ashfield Junior School](https://ukpropertyinsight.co.uk/school/117391/ashfield-junior-school), Hertfordshire: 0.07 miles (varies)
 8. [Chepping View Primary Academy](https://ukpropertyinsight.co.uk/school/137979/chepping-view-primary-academy), Buckinghamshire: 0.07 miles (2026/27)
-9. [Corpus Christi RC Primary School, a Voluntary Academy](https://ukpropertyinsight.co.uk/school/152016/corpus-christi-rc-primary-school-a-voluntary-academy), Oldham: 0.08 miles (2025/26)
-10. [Bearbrook Combined School](https://ukpropertyinsight.co.uk/school/147242/bearbrook-combined-school), Buckinghamshire: 0.09 miles (2026/27)
+9. [The Duchy School Bradninch](https://ukpropertyinsight.co.uk/school/140078/the-duchy-school-bradninch), Devon: 0.07 miles (2026/27)
+10. [Corpus Christi RC Primary School, a Voluntary Academy](https://ukpropertyinsight.co.uk/school/152016/corpus-christi-rc-primary-school-a-voluntary-academy), Oldham: 0.08 miles (2025/26)
 
 **The councils where places went to the nearest doors** (middle school's distance):
 
@@ -78,11 +78,11 @@ Michael, UKPropertyInsight, support@ukpropertyinsight.co.uk
 
 ## Pitch 2: education press (Schools Week, Tes, the Guardian education desk)
 
-Subject: 578 English schools admitted nobody from beyond half a mile
+Subject: 603 English schools admitted nobody from beyond half a mile
 
 Hi [name],
 
-We have collated the last-distance-offered figures that 85 councils publish after offer day, 3,478 oversubscribed schools in all, into one ranked table. 110 schools filled from under a quarter of a mile; the middle school's figure nationally is 1.28 miles; the councils vary from 0.23 miles (Southwark) to 8.52 miles (Gloucestershire). It is the closest thing to a national map of where the doorstep matters, and as far as we know nobody has assembled it before.
+We have collated the last-distance-offered figures that 88 councils publish after offer day, 3,626 oversubscribed schools in all, into one ranked table. 113 schools filled from under a quarter of a mile; the middle school's figure nationally is 1.28 miles; the councils vary from 0.23 miles (Southwark) to 8.52 miles (Gloucestershire). It is the closest thing to a national map of where the doorstep matters, and as far as we know nobody has assembled it before.
 
 The page: https://ukpropertyinsight.co.uk/schools/tightest-catchments. I can send the underlying spreadsheet and the per-council method notes. No modelling: every figure is a council's own, linked.
 
@@ -98,17 +98,17 @@ Every year the council publishes how far away the last child offered a place at 
 
 Page: https://ukpropertyinsight.co.uk/schools/catchment-house-prices
 
-**Headline:** Living within reach of a school that fills from under half a mile costs 26% more than the middle English district, but 207 of those schools still sit in districts priced below it
+**Headline:** Living within reach of a school that fills from under half a mile costs 24% more than the middle English district, but 220 of those schools still sit in districts priced below it
 
-**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the 578 schools that admitted from under half a mile sells for £350,000, against £278,000 for the middle district nationally. The tightest gates are not only in expensive places: 207 of them stand in districts below the national middle.
+**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the 603 schools that admitted from under half a mile sells for £345,000, against £278,000 for the middle district nationally. The tightest gates are not only in expensive places: 220 of them stand in districts below the national middle.
 
 **Distance against price:**
 
-- Admitted from under half a mile: 578 schools, median district within reach £350,000
-- Admitted from half a mile to a mile: 858 schools, median district within reach £325,000
-- Admitted from 1 to 2 miles: 851 schools, median district within reach £320,000
-- Admitted from 2 to 5 miles: 807 schools, median district within reach £343,000
-- Admitted from 5 miles and over: 384 schools, median district within reach £341,000
+- Admitted from under half a mile: 603 schools, median district within reach £345,000
+- Admitted from half a mile to a mile: 895 schools, median district within reach £320,000
+- Admitted from 1 to 2 miles: 884 schools, median district within reach £317,000
+- Admitted from 2 to 5 miles: 846 schools, median district within reach £335,000
+- Admitted from 5 miles and over: 398 schools, median district within reach £337,500
 
 **Tight gates you can still afford (cheapest five):**
 
@@ -120,10 +120,10 @@ Page: https://ukpropertyinsight.co.uk/schools/catchment-house-prices
 
 **Where the tightest gates cost most (top five):**
 
-- [Holy Trinity CofE Primary School](https://ukpropertyinsight.co.uk/school/100490/holy-trinity-cofe-primary-school), Kensington and Chelsea: admitted from 0.39 miles; median within reach £3,289,000
+- [Holy Trinity CofE Primary School](https://ukpropertyinsight.co.uk/school/100490/holy-trinity-cofe-primary-school), Kensington and Chelsea: admitted from 0.39 miles; median within reach £2,900,000
 - [Christ Church Bentinck CofE Primary School](https://ukpropertyinsight.co.uk/school/101147/christ-church-bentinck-cofe-primary-school), Westminster: admitted from 0.49 miles; median within reach £1,750,000
 - [Christ Church CofE Primary School](https://ukpropertyinsight.co.uk/school/100489/christ-church-cofe-primary-school), Kensington and Chelsea: admitted from 0.44 miles; median within reach £1,630,000
-- [Southfield Primary School](https://ukpropertyinsight.co.uk/school/101890/southfield-primary-school), Ealing: admitted from 0.26 miles; median within reach £1,550,000
+- [Southfield Primary School](https://ukpropertyinsight.co.uk/school/101890/southfield-primary-school), Ealing: admitted from 0.26 miles; median within reach £1,494,750
 - [Brockswood Primary School](https://ukpropertyinsight.co.uk/school/117349/brockswood-primary-school), Hertfordshire: admitted from 0.31 miles; median within reach £1,240,000
 
 **Method:** A district counts as within reach when its centre falls inside the school's published distance; when the distance is shorter than the gap to any centre, the district the school stands in is used. Prices are the median of the last twelve months of Land Registry sales in each district, only where there are enough sales for a fair median. A district median is not the price of a house by the gate. Full method on the page.
@@ -170,7 +170,11 @@ Copy the paragraph for the council you are pitching. Each links to the hub page 
 
 **Coventry** (34 schools with a figure): the tightest gate is [Sacred Heart Catholic Primary School](https://ukpropertyinsight.co.uk/school/142205/sacred-heart-catholic-primary-school) at 0.25 miles (varies); the middle school's distance is 0.76 miles; 19 of 34 oversubscribed schools (56%) filled from under a mile; places went furthest at [Alderman's Green Primary School](https://ukpropertyinsight.co.uk/school/148603/alderman-s-green-primary-school), 5.89 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/coventry
 
+**Croydon** (21 schools with a figure): the tightest gate is [Rockmount Primary School](https://ukpropertyinsight.co.uk/school/101783/rockmount-primary-school) at 0.31 miles (2026/27); the middle school's distance is 0.6 miles; 15 of 21 oversubscribed schools (71%) filled from under a mile; places went furthest at [Harris Primary Academy Haling Park](https://ukpropertyinsight.co.uk/school/140208/harris-primary-academy-haling-park), 3.02 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/croydon
+
 **Derby** (67 schools with a figure): the tightest gate is [Becket Primary School](https://ukpropertyinsight.co.uk/school/112717/becket-primary-school) at 0.31 miles (2026/27); the middle school's distance is 2.12 miles; 14 of 67 oversubscribed schools (21%) filled from under a mile; places went furthest at [Roe Farm Primary School](https://ukpropertyinsight.co.uk/school/131401/roe-farm-primary-school), 11.2 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/derby
+
+**Devon** (52 schools with a figure): the tightest gate is [The Duchy School Bradninch](https://ukpropertyinsight.co.uk/school/140078/the-duchy-school-bradninch) at 0.07 miles (2026/27); the middle school's distance is 1.79 miles; 15 of 52 oversubscribed schools (29%) filled from under a mile; places went furthest at [Cheriton Bishop Community Primary School](https://ukpropertyinsight.co.uk/school/145397/cheriton-bishop-community-primary-school), 10.76 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/devon
 
 **Dorset** (34 schools with a figure): the tightest gate is [St Mary's Catholic First School, Dorchester](https://ukpropertyinsight.co.uk/school/140771/st-mary-s-catholic-first-school-dorchester) at 0.39 miles (2025/26); the middle school's distance is 2.65 miles; 6 of 34 oversubscribed schools (18%) filled from under a mile; places went furthest at [Broadwindsor Church of England Voluntary Controlled Primary School](https://ukpropertyinsight.co.uk/school/113777/broadwindsor-church-of-england-voluntary-controlled-primary-school), 12.28 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/dorset
 
@@ -235,6 +239,8 @@ Copy the paragraph for the council you are pitching. Each links to the hub page 
 **North Somerset** (8 schools with a figure): the tightest gate is [All Saints Church of England Primary School](https://ukpropertyinsight.co.uk/school/146912/all-saints-church-of-england-primary-school) at 0.43 miles (2024/25); the middle school's distance is 1.0 miles; 4 of 8 oversubscribed schools (50%) filled from under a mile; places went furthest at [Hannah More Infant School](https://ukpropertyinsight.co.uk/school/145262/hannah-more-infant-school), 8.27 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/north-somerset
 
 **North Yorkshire** (49 schools with a figure): the tightest gate is [Skipton, Water Street Community Primary School](https://ukpropertyinsight.co.uk/school/121417/skipton-water-street-community-primary-school) at 0.61 miles (2025/26); the middle school's distance is 3.37 miles; 4 of 49 oversubscribed schools (8%) filled from under a mile; places went furthest at [St Peter's Church of England Primary School](https://ukpropertyinsight.co.uk/school/142148/st-peter-s-church-of-england-primary-school), 533.56 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/north-yorkshire
+
+**Nottinghamshire** (75 schools with a figure): the tightest gate is [Hucknall Flying High Academy](https://ukpropertyinsight.co.uk/school/147075/hucknall-flying-high-academy) at 0.18 miles (2025/26); the middle school's distance is 1.28 miles; 32 of 75 oversubscribed schools (43%) filled from under a mile; places went furthest at [Orston Primary School](https://ukpropertyinsight.co.uk/school/152386/orston-primary-school), 7.97 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/nottinghamshire
 
 **Oldham** (19 schools with a figure): the tightest gate is [Corpus Christi RC Primary School, a Voluntary Academy](https://ukpropertyinsight.co.uk/school/152016/corpus-christi-rc-primary-school-a-voluntary-academy) at 0.08 miles (2025/26); the middle school's distance is 0.56 miles; 14 of 19 oversubscribed schools (74%) filled from under a mile; places went furthest at [St Thomas CofE Primary School](https://ukpropertyinsight.co.uk/school/150014/st-thomas-cofe-primary-school), 3.69 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/oldham
 
