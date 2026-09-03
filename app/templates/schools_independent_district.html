@@ -52,7 +52,7 @@
                 <tr>
                     <td data-value="{{ s.name }}">
                         {% if s.website %}<a href="{{ s.website }}" rel="noopener nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}
-                        {% if s.town %}<span class="school-table-type">{{ s.town }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</span>{% endif %}
+                        {% if s.town and s.town not in s.name %}<span class="school-table-type">{{ s.town }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</span>{% elif s.postcode %}<span class="school-table-type">{{ s.postcode }}</span>{% endif %}
                     </td>
                     <td data-value="{{ s.age_low or 0 }}">{% if s.age_low is not none and s.age_high is not none %}{{ s.age_low }} to {{ s.age_high }}{% else %}Not stated{% endif %}</td>
                     <td data-value="{{ s.gender }}">{{ s.gender or "Not stated" }}</td>

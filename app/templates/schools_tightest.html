@@ -51,7 +51,7 @@
                 {% for s in data.tightest %}
                 <tr>
                     <td data-value="{{ loop.index }}">{{ loop.index }}</td>
-                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town and s.town != s.authority and s.town not in s.name %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
                     <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
                     <td data-value="{{ s.phase }}">{{ s.phase }}</td>
                     <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
@@ -115,7 +115,7 @@
             <tbody>
                 {% for s in data.widest %}
                 <tr>
-                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town and s.town != s.authority and s.town not in s.name %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
                     <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
                     <td data-value="{{ s.phase }}">{{ s.phase }}</td>
                     <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>

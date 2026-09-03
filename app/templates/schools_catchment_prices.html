@@ -85,7 +85,7 @@
             <tbody>
                 {% for s in data.affordable %}
                 <tr>
-                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town and s.town != s.authority and s.town not in s.name %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
                     <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
                     <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
                     <td data-value="{{ s.cheapest.outcode }}"><a href="/area/{{ s.cheapest.outcode }}">{{ s.cheapest.outcode }}</a>{% if s.cheapest.district %} <span class="school-table-type">{{ s.cheapest.district }}</span>{% endif %}</td>
@@ -115,7 +115,7 @@
             <tbody>
                 {% for s in data.dearest %}
                 <tr>
-                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
+                    <td data-value="{{ s.name }}"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.town and s.town != s.authority and s.town not in s.name %} <span class="school-table-type">{{ s.town }}</span>{% endif %}</td>
                     <td data-value="{{ s.authority }}"><a href="/schools/admissions/{{ s.authority_slug }}">{{ s.authority }}</a></td>
                     <td class="num" data-value="{{ s.miles }}">{{ s.miles }} mi</td>
                     <td class="num" data-value="{{ s.reach_median }}">&pound;{{ "{:,.0f}".format(s.reach_median) }}</td>
