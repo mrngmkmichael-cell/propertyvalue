@@ -6,6 +6,27 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- What a tight gate costs (3 Sep 2026): /schools/catchment-house-prices
+  pairs every published admission distance with the Land Registry median
+  of the districts within reach (bisect on latitude-sorted centres, so
+  3,478 schools price in under a second, cached a day). Headline: within
+  reach of schools admitting from under half a mile the middle district is
+  £350,000 against £278,000 nationally; 30 tight gates sit below the
+  national middle. Linked from the first story and the admissions index,
+  in the sitemap and smoke.
+
+- Six smaller fixes the same evening: the homepage demo strip sat between
+  the eyebrow and the headline on phones, pushing headline and search
+  below the first screen (flex order); the pageview INSERT now runs after
+  the response is sent (Starlette BackgroundTask), so a cached page no
+  longer pays a Neon round trip before its first byte; report builds call
+  malloc_trim and run two at a time, the code half of the 450 MB memory
+  fix (the env half, MALLOC_ARENA_MAX=2, is Michael's); the sitemap is
+  cached an hour and dated by deploy instead of "today" on every request;
+  distances under a quarter of a mile show metres; council hubs invite
+  the signed-out to sign up for republish alerts; the signup page said
+  "three reports" when the free allowance is one.
+
 - Ten exposure moves (3 Sep 2026), after the first Search Console
   look (8 clicks, 2,830 impressions, position 46, surfaced for "private
   school [town]"): /schools/independent and one page per council (151,

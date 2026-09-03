@@ -122,6 +122,40 @@ def main() -> None:
     w("")
     w("Every year the council publishes how far away the last child offered a place at each oversubscribed school lived, and every year it is buried in a PDF. I put them in one place, per council, tightest first, with a postcode checker on each school page so you can see whether an address is inside last year's distance: [council hub link]. It is free and there is no sign-up. Two caveats: the figure moves every year, and a school that is not listed took everyone who applied. Happy to look up any school that is missing.")
     w("")
+    # ---- Story two: what a tight gate costs ----
+    from app.main import _catchment_house_prices  # noqa: E402 - imports the app; fine for a one-off script
+    cp = _catchment_house_prices()
+    if cp.get("bands"):
+        by_label = {b["label"]: b for b in cp["bands"]}
+        tight_band = by_label.get("Under half a mile")
+        w("## Story two: what a tight gate costs")
+        w("")
+        w(f"Page: {SITE}/schools/catchment-house-prices")
+        w("")
+        if tight_band and cp.get("national_median"):
+            premium = round(100 * (tight_band["median"] / cp["national_median"] - 1))
+            w(f"**Headline:** Living within reach of a school that fills from under half a mile costs {premium}% more than the middle English district, but {cp['affordable_count']} of those schools still sit in districts priced below it")
+            w("")
+            w(f"**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the {tight_band['count']} schools that admitted from under half a mile sells for £{tight_band['median']:,.0f}, against £{cp['national_median']:,.0f} for the middle district nationally. The tightest gates are not only in expensive places: {cp['affordable_count']} of them stand in districts below the national middle.")
+            w("")
+        w("**Distance against price:**")
+        w("")
+        for b in cp["bands"]:
+            w(f"- Admitted from {b['label'].lower()}: {b['count']:,} schools, median district within reach £{b['median']:,.0f}")
+        w("")
+        w("**Tight gates you can still afford (cheapest five):**")
+        w("")
+        for s in cp["affordable"][:5]:
+            w(f"- {school_link(s)}, {s['authority']}: admitted from {s['miles']} miles; {s['cheapest']['outcode']} ({s['cheapest']['district']}) median £{s['cheapest']['median']:,.0f}")
+        w("")
+        w("**Where the tightest gates cost most (top five):**")
+        w("")
+        for s in cp["dearest"][:5]:
+            w(f"- {school_link(s)}, {s['authority']}: admitted from {s['miles']} miles; median within reach £{s['reach_median']:,.0f}")
+        w("")
+        w("**Method:** A district counts as within reach when its centre falls inside the school's published distance; when the distance is shorter than the gap to any centre, the district the school stands in is used. Prices are the median of the last twelve months of Land Registry sales in each district, only where there are enough sales for a fair median. A district median is not the price of a house by the gate. Full method on the page.")
+        w("")
+
     w("## One paragraph per council")
     w("")
     w("Copy the paragraph for the council you are pitching. Each links to the hub page that carries the whole table.")

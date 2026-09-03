@@ -5,6 +5,21 @@
 {% block og_title %}What a tight school catchment costs{% endblock %}
 
 {% block content %}
+{% if data.bands and data.national_median %}
+{# The three questions a parent or a journalist asks, answered with the page's own numbers. #}
+<script type="application/ld+json">{{ {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "Do houses near oversubscribed schools cost more?",
+         "acceptedAnswer": {"@type": "Answer", "text": "On the councils' own figures, yes. The median postcode district within reach of a school that admitted from under half a mile sells for £" ~ "{:,.0f}".format(data.bands[0].median) ~ ", against £" ~ "{:,.0f}".format(data.national_median) ~ " for the middle district in England. Prices are Land Registry medians for the last twelve months; distances are the councils' published last-distance-offered figures."}},
+        {"@type": "Question", "name": "Are there tight school catchments in affordable areas?",
+         "acceptedAnswer": {"@type": "Answer", "text": data.affordable_count ~ " of the " ~ data.tight_count ~ " schools that admitted from under half a mile stand in districts whose median sale price is below the national middle district. This page lists the thirty cheapest, each linking to the school and to its district's area guide."}},
+        {"@type": "Question", "name": "What does within reach mean on this page?",
+         "acceptedAnswer": {"@type": "Answer", "text": "A postcode district counts as within reach of a school when the district's centre falls inside the distance the school admitted from in its last published round. When that distance is shorter than the gap to any district centre, the district the school stands in is used. A district median is not the price of a house by the gate: the streets nearest a popular school usually sell above it."}}
+    ]
+} | tojson }}</script>
+{% endif %}
 <a class="back-link" href="/schools/tightest-catchments">&larr; England's tightest school catchments</a>
 
 <span class="kicker">Admissions data</span>

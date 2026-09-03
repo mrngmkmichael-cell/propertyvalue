@@ -1,6 +1,6 @@
 # Press kit: England's tightest school catchments
 
-Generated 2 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
+Generated 3 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
 
 ## What you can say, and what you cannot
 
@@ -93,6 +93,40 @@ Michael, UKPropertyInsight, support@ukpropertyinsight.co.uk
 Title: How far from the gate did the last child admitted live? Your council's figures, school by school
 
 Every year the council publishes how far away the last child offered a place at each oversubscribed school lived, and every year it is buried in a PDF. I put them in one place, per council, tightest first, with a postcode checker on each school page so you can see whether an address is inside last year's distance: [council hub link]. It is free and there is no sign-up. Two caveats: the figure moves every year, and a school that is not listed took everyone who applied. Happy to look up any school that is missing.
+
+## Story two: what a tight gate costs
+
+Page: https://ukpropertyinsight.co.uk/schools/catchment-house-prices
+
+**Headline:** Living within reach of a school that fills from under half a mile costs 26% more than the middle English district, but 207 of those schools still sit in districts priced below it
+
+**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the 578 schools that admitted from under half a mile sells for £350,000, against £278,000 for the middle district nationally. The tightest gates are not only in expensive places: 207 of them stand in districts below the national middle.
+
+**Distance against price:**
+
+- Admitted from under half a mile: 578 schools, median district within reach £350,000
+- Admitted from half a mile to a mile: 858 schools, median district within reach £325,000
+- Admitted from 1 to 2 miles: 851 schools, median district within reach £320,000
+- Admitted from 2 to 5 miles: 807 schools, median district within reach £343,000
+- Admitted from 5 miles and over: 384 schools, median district within reach £341,000
+
+**Tight gates you can still afford (cheapest five):**
+
+- [Warley Road Primary Academy](https://ukpropertyinsight.co.uk/school/146677/warley-road-primary-academy), Calderdale: admitted from 0.42 miles; HX1 (Calderdale) median £65,000
+- [Ayresome Primary School](https://ukpropertyinsight.co.uk/school/146770/ayresome-primary-school), Middlesbrough: admitted from 0.04 miles; TS1 (Middlesbrough) median £70,000
+- [Breckon Hill Primary School](https://ukpropertyinsight.co.uk/school/150090/breckon-hill-primary-school), Middlesbrough: admitted from 0.19 miles; TS1 (Middlesbrough) median £70,000
+- [Newport Primary School](https://ukpropertyinsight.co.uk/school/111580/newport-primary-school), Middlesbrough: admitted from 0.31 miles; TS1 (Middlesbrough) median £70,000
+- [Sacred Heart Primary School](https://ukpropertyinsight.co.uk/school/142365/sacred-heart-primary-school), Middlesbrough: admitted from 0.1 miles; TS18 (Stockton-on-Tees) median £72,500
+
+**Where the tightest gates cost most (top five):**
+
+- [Holy Trinity CofE Primary School](https://ukpropertyinsight.co.uk/school/100490/holy-trinity-cofe-primary-school), Kensington and Chelsea: admitted from 0.39 miles; median within reach £3,289,000
+- [Christ Church Bentinck CofE Primary School](https://ukpropertyinsight.co.uk/school/101147/christ-church-bentinck-cofe-primary-school), Westminster: admitted from 0.49 miles; median within reach £1,750,000
+- [Christ Church CofE Primary School](https://ukpropertyinsight.co.uk/school/100489/christ-church-cofe-primary-school), Kensington and Chelsea: admitted from 0.44 miles; median within reach £1,630,000
+- [Southfield Primary School](https://ukpropertyinsight.co.uk/school/101890/southfield-primary-school), Ealing: admitted from 0.26 miles; median within reach £1,550,000
+- [Brockswood Primary School](https://ukpropertyinsight.co.uk/school/117349/brockswood-primary-school), Hertfordshire: admitted from 0.31 miles; median within reach £1,240,000
+
+**Method:** A district counts as within reach when its centre falls inside the school's published distance; when the distance is shorter than the gap to any centre, the district the school stands in is used. Prices are the median of the last twelve months of Land Registry sales in each district, only where there are enough sales for a fair median. A district median is not the price of a house by the gate. Full method on the page.
 
 ## One paragraph per council
 
