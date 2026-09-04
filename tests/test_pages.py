@@ -1249,3 +1249,25 @@ def test_school_page_shows_the_ofsted_note_instead_of_a_blank(client):
     assert "No current grade" not in body.split("<h1>")[1][:1500]
     hub = client.get("/schools/admissions/manchester").text
     assert "improved significantly" in hub
+
+
+def test_school_guide_shows_the_ofsted_note_for_an_unrated_school(client, monkeypatch):
+    """The 4 Sep 2026 hotfix: a school with no grade rendered the guide
+    through a variable the loop did not have, and every seeded school in
+    the suite had a grade, so nothing caught it. This one has none."""
+    from app import db
+    from app.models import School
+    with db.get_session() as session:
+        if session.get(School, 990081) is None:
+            session.add(School(urn=990081, name="Ungraded Lane Primary", phase="Primary", type_name="Academy sponsor led",
+                               postcode="M1 1AE", latitude=53.483, longitude=-2.243, ofsted_rating=None, ofsted_rating_label="",
+                               ofsted_note="Ungraded inspection, May 2025: standards maintained"))
+            session.commit()
+    _resolve_to(monkeypatch, 53.48, -2.24, "M1")
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get("/schools/guide?q=M1")
+    assert r.status_code == 200
+    assert "Ungraded Lane Primary" in r.text
+    assert "standards maintained" in r.text
+
