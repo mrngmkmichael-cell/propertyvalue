@@ -483,3 +483,19 @@ def test_the_report_offers_a_free_save_under_the_score(client, fake_report):
     body = client.get("/property?postcode=M14%205TG").text
     assert "Save it free" in body and 'href="/signup?next=' in body
 
+
+def test_report_shows_what_it_costs_to_live_here(client, fake_report):
+    """The third pillar on the report: council tax, the EPC's energy
+    estimate and tenure, read from what the gather already holds."""
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather(
+        council_tax={"authority": "Manchester", "year": "2026-27", "band_d": 2107.5, "bands": {"D": 2107.5}},
+        property_detail={"heating_cost_current": 900, "lighting_cost_current": 120, "hot_water_cost_current": 180, "year_built": 1990},
+        transactions=[{"address": "1 Test St", "date": "2021-05-01", "amount": 250000, "tenure": "freehold"}],
+    ))
+    body = client.get("/property?postcode=M14%205TG").text
+    assert "What it costs to live here" in body
+    assert "2,108" in body or "2,107" in body
+    assert "1,200" in body and "Freehold" in body
+    assert 'href="/running-costs"' in body
+
