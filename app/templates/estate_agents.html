@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Who Manages Your Estate? {{ "{:,}".format(data.total) }} Residents' Management Companies and the Offices They Are Registered To{% endblock %}
+{% block meta_description %}Every active residents' and estate management company on the Companies House register, {{ "{:,}".format(data.total) }} of them, and the managing agents whose offices {{ "{:,}".format(data.attributed) }} are registered to. Search your estate's company; see who sits behind it.{% endblock %}
+{% block og_title %}Who manages your estate?{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/estate-charges">&larr; Estate charges, explained</a>
+
+<span class="kicker">Running costs</span>
+<h1>Who manages your estate?</h1>
+<p class="dek">
+    Every managed estate has a company behind it, registered at Companies House, and where that company
+    is registered tells you a lot: {{ "{:,}".format(data.attributed) }} of the {{ "{:,}".format(data.total) }}
+    active residents' and estate management companies in England, Wales, Scotland and Northern Ireland are
+    registered to the office of a managing agent. This is the register read for that, monthly, under the
+    Open Government Licence. It says who sits behind an estate; it does not say what residents pay, because
+    no official source does.
+</p>
+
+<form class="search-form" action="/estate-charges/search" method="get" role="search" style="max-width: 36rem;">
+    <label for="ec-q">Search your estate's company by name</label>
+    <input id="ec-q" type="text" name="q" placeholder="e.g. Kings Hill or Meadow Park Management" minlength="3" required>
+    <button type="submit">Find it</button>
+</form>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(data.total) }}</span><span class="score-tile-label">active residents' and estate management companies on the register</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(data.attributed) }}</span><span class="score-tile-label">registered to a named managing agent's office</span></div>
+    {% if data.agents %}<div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(data.agents[0].count) }}</span><span class="score-tile-label">at the largest single office, {{ data.agents[0].name }}</span></div>{% endif %}
+</div>
+
+<section class="report-section">
+    <h2>The offices most residents' companies are registered to</h2>
+    <p class="section-sub">
+        A company registered to an agent's office is almost always one that agent administers, which is why
+        this is the nearest thing to a league table of estate management that exists. The register records
+        the address, not the contract, so the wording throughout is "registered to", never "managed by".
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">Office</th>
+                    <th class="num" data-sort="num" aria-sort="descending">Companies registered to it</th>
+                    <th class="num" data-sort="num">Share of all</th>
+                    <th data-sort="text">Earliest to latest incorporation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in data.agents %}
+                <tr>
+                    <td data-value="{{ a.name }}">{% if a.count >= 5 %}<a href="/estate-charges/company/{{ a.slug }}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}{% if a.kind == "developer" %} <span class="school-table-type">developer</span>{% endif %}</td>
+                    <td class="num" data-value="{{ a.count }}">{{ "{:,}".format(a.count) }}</td>
+                    <td class="num" data-value="{{ a.share_pct }}">{{ a.share_pct }}%</td>
+                    <td data-value="{{ a.first }}">{{ a.first[:4] }} to {{ a.last[:4] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Source: Companies House, basic company data snapshot, active companies with the SIC code
+        "Residents property management" or a property-management code and a name that says residents,
+        management company, estate management, freeholders or homeowners. Attribution of an office to an
+        agent was checked against the agent's own published contact details. Registered-office services
+        and formation agents, whose clusters say nothing about management, are counted in the total but
+        never attributed. An agent that believes an attribution is wrong can write to
+        <a href="mailto:support@ukpropertyinsight.co.uk">support@ukpropertyinsight.co.uk</a> and the
+        correction is published on the <a href="/accuracy">accuracy log</a>.
+    </p>
+</section>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}

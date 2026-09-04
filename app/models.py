@@ -254,6 +254,28 @@ class SchoolShortlistItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class EstateCompany(Base):
+    """An active residents' or estate management company on the
+    Companies House register, and the office it is registered to.
+    Populated by scripts/import_estate_companies.py from the monthly
+    basic company data snapshot (Open Government Licence). agent_slug
+    keys app/data/managing_agents.json; empty when the registered
+    office is not a known agent's. The site says "registered to X's
+    office", never "managed by X": the register records the address,
+    not the contract."""
+    __tablename__ = "estate_companies"
+
+    company_number: Mapped[str] = mapped_column(String(12), primary_key=True)
+    name: Mapped[str] = mapped_column(String(255), index=True)
+    incorporated: Mapped[date | None] = mapped_column(Date, nullable=True)
+    address: Mapped[str] = mapped_column(String(300), default="")
+    post_town: Mapped[str] = mapped_column(String(120), default="")
+    postcode: Mapped[str] = mapped_column(String(12), default="", index=True)
+    agent_slug: Mapped[str] = mapped_column(String(80), default="", index=True)
+    category: Mapped[str] = mapped_column(String(80), default="")
+    sic: Mapped[str] = mapped_column(String(80), default="")
+
+
 class SchoolAlertOptIn(Base):
     """Whether a user wants an email when a shortlisted school's
     published admission distance is republished. Its own table rather

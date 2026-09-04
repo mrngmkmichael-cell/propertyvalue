@@ -47,7 +47,7 @@ PAGES = [
     "/schools/outstanding",
     # Added 1 Sep 2026 with the admissions pages.
     "/schools/admissions", "/schools/admissions/hertfordshire", "/schools/how-admissions-work",
-    "/schools/tightest-catchments", "/schools/catchment-house-prices", "/running-costs", "/estate-charges", "/schools/independent", "/schools/independent/surrey",
+    "/schools/tightest-catchments", "/schools/catchment-house-prices", "/running-costs", "/estate-charges", "/estate-charges/managing-agents", "/estate-charges/company/firstport", "/schools/independent", "/schools/independent/surrey",
 ]
 
 client = httpx.Client(timeout=25.0, headers=UA, follow_redirects=True)

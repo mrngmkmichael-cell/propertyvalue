@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ agent.name }}: {{ "{:,}".format(agent.count) }} Residents' Management Companies Registered to Its Office{% endblock %}
+{% block meta_description %}{{ "{:,}".format(agent.count) }} active residents' and estate management companies are registered to {{ agent.name }}'s office, according to the Companies House register. The list, by year of incorporation, each linked to its own register entry.{% endblock %}
+{% block og_title %}{{ agent.name }}: {{ "{:,}".format(agent.count) }} companies registered to its office{% endblock %}
+{% if not agent.indexable %}{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}{% endif %}
+
+{% block content %}
+<a class="back-link" href="/estate-charges/managing-agents">&larr; All offices</a>
+
+<span class="kicker">Running costs</span>
+<h1>{{ agent.name }}</h1>
+<p class="dek">
+    {{ "{:,}".format(agent.count) }} active residents' and estate management companies are registered to
+    {{ agent.name }}'s office{% if agent.kind == "developer" %}, which as a developer sets up a company for each
+    estate it builds and hands over later{% endif %}. A company registered to an agent's office is almost
+    always one it administers; the register records the address, not the contract.
+    {% if agent.website %}<a href="{{ agent.website }}" rel="noopener nofollow" target="_blank">{{ agent.name }}'s own site →</a>{% endif %}
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(agent.count) }}</span><span class="score-tile-label">companies registered to this office</span></div>
+    {% set last_five = agent.years[-5:] | map(attribute=1) | sum %}
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(last_five) }}</span><span class="score-tile-label">of them incorporated in the last five years</span></div>
+</div>
+
+<section class="report-section">
+    <h2>New companies by year</h2>
+    <p class="section-sub">Incorporations of companies now registered to this office, the last ten years. A residents' company is usually formed when its estate is built, so this is roughly the office's share of new estates.</p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr>{% for y, n in agent.years %}<th class="num">{{ y }}</th>{% endfor %}</tr></thead>
+            <tbody><tr>{% for y, n in agent.years %}<td class="num">{{ n }}</td>{% endfor %}</tr></tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>The most recent {{ agent.recent | length }} companies</h2>
+    <p class="section-sub">Newest first. Each name opens the company's own entry on the Companies House register, where its officers, accounts and filing history are public.</p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>Company</th><th>Incorporated</th><th>Register</th></tr></thead>
+            <tbody>
+                {% for c in agent.recent %}
+                <tr>
+                    <td>{{ c.name }}</td>
+                    <td>{{ c.incorporated }}</td>
+                    <td><a href="{{ c.url }}" rel="noopener" target="_blank">{{ c.number }}</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Source: Companies House basic company data, Open Government Licence v3. Names are the register's,
+        and often carry the estate's own name in brackets. Nothing here is a figure for what residents
+        pay; see <a href="/estate-charges">estate charges, explained</a> for what to ask.
+    </p>
+</section>
+{% endblock %}

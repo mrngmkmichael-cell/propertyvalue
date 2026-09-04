@@ -1298,3 +1298,52 @@ def test_estate_charges_page_is_sourced_and_honest(client):
     assert '"FAQPage"' in body
     assert "/estate-charges" in client.get("/sitemap.xml").text
 
+
+# ---- who manages your estate, 4 Sep 2026 night ------------------------------
+
+def _seed_estate_companies():
+    import datetime as dt
+    from app import db
+    from app.models import EstateCompany
+    with db.get_session() as session:
+        if session.get(EstateCompany, "09999901") is None:
+            for i, (num, name, slug, year) in enumerate((
+                ("09999901", "MEADOW PARK (TESTFORD) MANAGEMENT COMPANY LIMITED", "firstport", 2019),
+                ("09999902", "KINGS HILL RESIDENTS ASSOCIATION LIMITED", "firstport", 2021),
+                ("09999903", "ORCHARD GATE MANAGEMENT LIMITED", "firstport", 2023),
+                ("09999904", "OLD MILL ESTATE MANAGEMENT LIMITED", "firstport", 2024),
+                ("09999905", "RIVERSIDE WALK RMC LIMITED", "firstport", 2025),
+                ("09999906", "LONE TREE MANAGEMENT COMPANY LIMITED", "", 2020),
+            )):
+                session.add(EstateCompany(company_number=num, name=name, incorporated=dt.date(year, 3, 1),
+                                          address="QUEENSWAY HOUSE, 11 QUEENSWAY, NEW MILTON" if slug else "1 HIGH STREET, TESTFORD",
+                                          post_town="NEW MILTON" if slug else "TESTFORD", postcode="BH25 5NR" if slug else "TF1 1AA",
+                                          agent_slug=slug, category="Private Limited Company", sic="98000 - Residents property management"))
+        session.commit()
+
+
+def test_estate_directory_names_offices_not_managers(client):
+    _seed_estate_companies()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/estate-charges/managing-agents").text
+    # "managed by" appears once, inside the sentence that forbids it.
+    assert "registered to" in body and body.lower().count("managed by") == 1
+    assert 'href="/estate-charges/company/firstport"' in body and "FirstPort" in body
+    page = client.get("/estate-charges/company/firstport")
+    assert page.status_code == 200
+    assert "KINGS HILL RESIDENTS ASSOCIATION LIMITED" in page.text
+    assert "find-and-update.company-information.service.gov.uk/company/09999902" in page.text
+    assert client.get("/estate-charges/company/no-such-agent").status_code == 404
+    # A registered-office service is never an agent page.
+    assert client.get("/estate-charges/company/registered-office-service").status_code == 404
+
+
+def test_estate_search_finds_a_company_and_its_office(client):
+    _seed_estate_companies()
+    body = client.get("/estate-charges/search?q=kings+hill").text
+    assert "KINGS HILL RESIDENTS ASSOCIATION LIMITED" in body and "FirstPort" in body
+    assert 'name="robots" content="noindex' in body
+    assert "No company matches" in client.get("/estate-charges/search?q=zzzzqqq").text
+    assert "/estate-charges/managing-agents" in client.get("/sitemap.xml").text
+

@@ -63,6 +63,8 @@ CHECKS = [
     ("/schools/catchment-house-prices", {200}, ["within reach"]),
     ("/running-costs", {200}, ["Band D", "Estate charges"]),
     ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
+    ("/estate-charges/managing-agents", {200}, ["registered to"]),
+    ("/estate-charges/company/firstport", {200}, ["FirstPort"]),
     ("/schools/independent", {200}, ["Private schools, council by council"]),
     ("/schools/independent/surrey", {200}, ["Private schools in Surrey"]),
     ("/schools/admission-distances.csv", {200}, ["urn,school,phase,council"]),

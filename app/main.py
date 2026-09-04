@@ -32,7 +32,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from app import auth, db, school_shortlist, watchlist
-from app.services import _cache, council_tax
+from app.services import _cache, council_tax, estate_companies
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
@@ -142,7 +142,7 @@ _ANON_HTML_TTL_S = 600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
     "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
-    "/running-costs", "/estate-charges",
+    "/running-costs", "/estate-charges", "/estate-charges/managing-agents", "/estate-charges/company/",
     "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
@@ -1346,6 +1346,36 @@ def running_costs_page(request: Request):
     return templates.TemplateResponse(request, "running_costs.html", context)
 
 
+@app.get("/estate-charges/managing-agents")
+async def estate_agents_page(request: Request):
+    """Who manages your estate: every residents' management company on
+    the Companies House register and the agents' offices they are
+    registered to. A league table nobody has published."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/estate-charges/managing-agents"
+    context["data"] = await asyncio.to_thread(estate_companies.agents_table)
+    return templates.TemplateResponse(request, "estate_agents.html", context)
+
+
+@app.get("/estate-charges/company/{slug}")
+async def estate_agent_page(request: Request, slug: str):
+    data = await asyncio.to_thread(estate_companies.agent_page, slug)
+    if data is None:
+        raise StarletteHTTPException(status_code=404)
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/estate-charges/company/{slug}"
+    context["agent"] = data
+    return templates.TemplateResponse(request, "estate_agent.html", context)
+
+
+@app.get("/estate-charges/search")
+async def estate_search_page(request: Request, q: str = ""):
+    context = base_context(request)
+    context["q"] = q.strip()[:80]
+    context["results"] = await asyncio.to_thread(estate_companies.search, context["q"]) if context["q"] else []
+    return templates.TemplateResponse(request, "estate_search.html", context)
+
+
 @app.get("/estate-charges")
 def estate_charges_page(request: Request):
     """Estate charges (fleecehold), explained from official and
@@ -1593,6 +1623,11 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     entries.append((f"{base}/running-costs", "0.7"))
     entries.append((f"{base}/estate-charges", "0.7"))
+    entries.append((f"{base}/estate-charges/managing-agents", "0.7"))
+    try:
+        entries += [(f"{base}/estate-charges/company/{slug}", "0.6") for slug in estate_companies.indexable_agent_slugs()]
+    except Exception:  # noqa: BLE001 - the sitemap must render without the DB
+        pass
     # "private schools in {council}" is the query Search Console shows
     # us being surfaced for at position 46 with the per-postcode pages;
     # one page per council is the shape of the query.
@@ -7653,6 +7688,7 @@ async def llms_txt(request: Request):
 - [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
 - [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
 - [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
+- [Who manages your estate?]({base}/estate-charges/managing-agents): every active residents' management company on the Companies House register and the managing agents' offices they are registered to; searchable by name.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
 - [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.
 - [Private schools by council]({base}/schools/independent): every fee-paying school on the Department for Education register, by council.

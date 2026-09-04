@@ -63,13 +63,14 @@ def _no_leaked_session(request):
         with db.get_session() as session:
             for row in session.query(PageCache).filter(
                 PageCache.cache_key.like("%tightest_catchments%") | PageCache.cache_key.like("%district_price_rows%")
+                | PageCache.cache_key.like("%estate_agent%")
             ).all():
                 session.delete(row)
             session.commit()
     except Exception:  # noqa: BLE001 - before the tables exist there is nothing to clear
         pass
     from app.services import _cache as _c
-    for key in [k for k in _c._store if isinstance(k, (str, tuple)) and "tightest_catchments" in str(k) or "district_price_rows" in str(k)]:
+    for key in [k for k in _c._store if isinstance(k, (str, tuple)) and ("tightest_catchments" in str(k) or "district_price_rows" in str(k) or "estate_agent" in str(k))]:
         _c._evict(key)
     yield
 
