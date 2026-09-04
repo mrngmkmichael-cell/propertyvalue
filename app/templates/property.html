@@ -204,6 +204,14 @@
                     +{{ overview.premium_extra_checks }} more check{{ 's' if overview.premium_extra_checks != 1 }} factored in with Premium →
                 </a>
                 {% endif %}
+                {% if not current_user %}
+                {# The one return hook on the page that is not "unlock
+                   premium": a saved property emails when a sale lands, a
+                   flood zone changes or a school republishes its distance. #}
+                <p class="section-sub" style="margin: 0.6rem 0 0;">
+                    Coming back to this one? <a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when anything on it changes.
+                </p>
+                {% endif %}
             </div>
         </div>
         {% endif %}

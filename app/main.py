@@ -1926,6 +1926,24 @@ async def property_search(request: Request, postcode: str = "", house_number: st
                 ctx["building_postcode"] = b_canonical
                 ctx["building_house_number"] = b_hn
                 ctx["build_sources"] = GATHER_SOURCE_ORDER
+                # What the area guide already holds for this district,
+                # straight from the tier-2 cache: instant, true, and worth
+                # reading while the property's own checks come in. On 2
+                # Sep 2026 half the people who started a report left
+                # during the 13-second wait. Nothing is fetched for this;
+                # a district with no built guide shows nothing extra. A
+                # guide past its refresh window is still a fact about the
+                # district, so the window here is generous.
+                b_outcode = b_canonical.split(" ")[0].upper()
+                ctx["outcode"] = b_outcode
+                ctx["known"] = await asyncio.to_thread(
+                    _cache.get_persistent, ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, b_outcode),
+                    AREA_GUIDE_CACHE_TTL_S * 4,
+                )
+                ctx["known_schools"] = (
+                    await asyncio.to_thread(schools_db.admission_rows_in_outcodes, {b_outcode})
+                    if ctx["known"] else []
+                )
                 # The pageview middleware records only status 200, so
                 # until 30 Aug 2026 anyone who abandoned during the
                 # cold-report wait was invisible: their search left no

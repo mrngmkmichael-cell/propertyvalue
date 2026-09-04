@@ -452,3 +452,34 @@ def test_the_report_loads_no_third_party_scripts_or_styles(client, fake_report):
     for href in re.findall(r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"', body) + \
                 re.findall(r'<link[^>]+href="([^"]+)"[^>]+rel="stylesheet"', body):
         assert href.startswith("/"), f"off-site stylesheet: {href}"
+
+
+def test_the_wait_page_shows_what_the_district_already_knows(client, fake_report):
+    """Half of the people who started a report on 2 Sep 2026 left during
+    the wait. The page now carries the district's cached facts, from the
+    area guide in tier 2, so there is something true to read."""
+    from app import main as app_main
+    from app.services import _cache
+
+    fake_report()
+    _cache.set(("area_guide", app_main.AREA_GUIDE_PAYLOAD_VERSION, "M14"), {
+        "local_sales": {"enough_for_median": True, "median": 250000, "count": 40, "years": 2},
+        "hpi": {"local_authority": {"name": "Manchester", "annual_change_pct": 2.9}},
+        "landscape": {"good_or_better_pct": 76},
+        "crime": {"total": 120, "month": "June 2026", "by_category": [{"category": "Violence and sexual offences"}]},
+        "flood_zone": {"label": "Flood zone 1"},
+    })
+    browser = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"}
+    r = client.get("/property?postcode=M14%205TG", headers=browser)
+    assert r.status_code == 202
+    body = r.text
+    assert "M14 at a glance" in body
+    assert "250,000" in body and "+2.9%" in body and "76%" in body and "Flood zone 1" in body
+    assert 'href="/area/M14"' in body
+
+
+def test_the_report_offers_a_free_save_under_the_score(client, fake_report):
+    fake_report()
+    body = client.get("/property?postcode=M14%205TG").text
+    assert "Save it free" in body and 'href="/signup?next=' in body
+

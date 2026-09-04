@@ -6,6 +6,18 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Ofsted read in full (4 Sep 2026): the import used one column, the
+  overall grade from the last graded inspection, blank for 54% of primary
+  and secondary schools. Now the ungraded-inspection outcome ("school
+  remains Good" becomes a Good grade dated to that visit; "improved
+  significantly" and the rest become a one-line note where the blank
+  was) and the November-2025 report card (nine areas on a five-point
+  scale, shown on the school page, badge "Report card") are read too.
+  Schools with nothing to show: 54% to 16%; 1,986 report cards; 8,243
+  ungraded outcomes. scripts/import_ofsted_outcomes.py refreshes in
+  place monthly (update the URL in import_schools.py first). Prompted by
+  Michael asking why Harris Primary Academy Orpington showed "Not rated".
+
 - Daily ten, 4 Sep 2026 (one deploy): area guides carry an admitted-from
   column and a table of the district's schools with a published distance,
   each linked (appears as each guide's weekly cache refreshes); the 404

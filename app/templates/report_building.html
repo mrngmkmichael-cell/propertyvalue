@@ -9,6 +9,39 @@
     <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
     <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
 
+    {% if known %}
+    {# The district's facts are already on file; the visitor reads them
+       while the property's own checks arrive, instead of a progress
+       bar alone. Every figure names its source, as on the guide. #}
+    <section class="building-known">
+        <h2>Meanwhile, {{ outcode }} at a glance</h2>
+        <p class="section-sub">Already on file for this district, from its area guide. The address's own checks are coming in below.</p>
+        <div class="scorecard-row">
+            {% if known.local_sales and known.local_sales.enough_for_median %}
+            <div class="score-tile"><span class="score-tile-value">{{ known.local_sales.median | gbp }}</span><span class="score-tile-label">median of {{ known.local_sales.count }} sales around {{ outcode }}{% if known.local_sales.years %}, last {{ known.local_sales.years }} years{% endif %} (HM Land Registry)</span></div>
+            {% endif %}
+            {% if known.hpi and known.hpi.local_authority and known.hpi.local_authority.annual_change_pct is not none %}
+            <div class="score-tile"><span class="score-tile-value">{{ "%+.1f"|format(known.hpi.local_authority.annual_change_pct) }}%</span><span class="score-tile-label">{{ known.hpi.local_authority.name }} prices on a year ago (UK House Price Index)</span></div>
+            {% endif %}
+            {% if known.landscape and known.landscape.good_or_better_pct is not none %}
+            <div class="score-tile"><span class="score-tile-value">{{ known.landscape.good_or_better_pct }}%</span><span class="score-tile-label">of nearby schools rated Good or Outstanding (Ofsted)</span></div>
+            {% endif %}
+            {% if known.crime and known.crime.total is not none %}
+            <div class="score-tile"><span class="score-tile-value">{{ known.crime.total }}</span><span class="score-tile-label">crimes within about a mile{% if known.crime.month %} in {{ known.crime.month }}{% endif %}{% if known.crime.by_category %}, mostly {{ known.crime.by_category[0].category | lower }}{% endif %} (Police.uk)</span></div>
+            {% endif %}
+            {% if known.flood_zone and known.flood_zone.label %}
+            <div class="score-tile"><span class="score-tile-value" style="font-size:1.1rem">{{ known.flood_zone.label }}</span><span class="score-tile-label">flood zone at the district centre (Environment Agency)</span></div>
+            {% endif %}
+        </div>
+        {% if known_schools %}
+        <p class="section-sub">Schools in {{ outcode }} with a published admission distance:
+            {% for s in known_schools[:4] %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a> ({{ s.miles }} mi){% if not loop.last %}, {% endif %}{% endfor %}.
+            The report measures this address against each of them.</p>
+        {% endif %}
+        <p class="section-sub"><a href="/area/{{ outcode }}">The full {{ outcode }} area guide →</a></p>
+    </section>
+    {% endif %}
+
     {# The list is the real gather's source list, and each row ticks
        when that source actually comes back (see /api/report-ready).
        The old version ran a timer and looped when the gather was slow,
