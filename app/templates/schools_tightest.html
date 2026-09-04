@@ -17,6 +17,7 @@
     away; {{ data.under_quarter }} filled from under a quarter. At the other end, {{ data.over_five }} schools reached five
     miles or more. Every number below links to the school or council it came from.
 </p>
+{% with share_url=canonical_url, share_text="England's tightest school catchments, ranked from the councils' own figures" %}{% include "_share_row.html" %}{% endwith %}
 
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ data.under_quarter }}</span><span class="score-tile-label">schools that filled from under a quarter of a mile</span></div>

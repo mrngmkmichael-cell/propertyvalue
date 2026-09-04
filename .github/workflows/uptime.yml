@@ -1,0 +1,41 @@
+name: Uptime check
+
+# Every ten minutes, from outside: a data-backed page and the homepage.
+# On 31 Aug 2026 the site was down for 17 hours before anyone looked, and
+# on 4 Sep the database was cut off for most of a working day. This is
+# the alarm. It needs two repository secrets, TELEGRAM_BOT_TOKEN and
+# TELEGRAM_CHAT_ID (the same values as Render's), and says nothing while
+# the site is up. X-Internal-Check keeps the probe out of the pageviews.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe the site
+        id: probe
+        run: |
+          down=""
+          for path in "/area/M1" "/"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 \
+              -A "UKPropertyInsightUptime/1.0 (+bot)" -H "X-Internal-Check: 1" \
+              "https://ukpropertyinsight.co.uk$path")
+            if [ "$code" != "200" ]; then down="$down $path=$code"; fi
+          done
+          echo "down=$down" >> "$GITHUB_OUTPUT"
+      - name: Alert on Telegram
+        if: steps.probe.outputs.down != ''
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DOWN: ${{ steps.probe.outputs.down }}
+        run: |
+          if [ -z "$TOKEN" ] || [ -z "$CHAT" ]; then echo "Telegram secrets not set; would have said:$DOWN"; exit 1; fi
+          curl -s -X POST "https://api.telegram.org/bot$TOKEN/sendMessage" \
+            --data-urlencode "chat_id=$CHAT" \
+            --data-urlencode "text=UKPropertyInsight uptime check failed:$DOWN (probed at $(date -u +%H:%M) UTC). Homepage or a data page is not returning 200. Check Render and Neon."
+          exit 1

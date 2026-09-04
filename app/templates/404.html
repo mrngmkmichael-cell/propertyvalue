@@ -6,6 +6,22 @@
 {% block content %}
 <span class="kicker">404</span>
 <h1>Page not found</h1>
-<p class="dek">That page doesn't exist. It may have moved, or the link might be wrong.</p>
-<p class="section-sub"><a href="/">Back to search</a></p>
+<p class="dek">That page doesn't exist. It may have moved, or the link might be wrong. Most people arrive here looking for one of these.</p>
+
+<form action="/property" method="get" role="search" class="search-form" style="max-width: 36rem;">
+    <label for="nf-postcode">Check a postcode</label>
+    <input id="nf-postcode" type="text" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+    <button type="submit">Search</button>
+</form>
+
+<section class="report-section">
+    <h2>Or start from the data</h2>
+    <ul>
+        <li><a href="/areas">Area guides</a> for every postcode district: prices, schools, flood risk, crime.</li>
+        <li><a href="/schools/admissions">School admission distances by council</a>: how far each school admitted from last time.</li>
+        <li><a href="/schools/tightest-catchments">England's tightest school catchments</a> and <a href="/schools/catchment-house-prices">what living within reach of them costs</a>.</li>
+        <li><a href="/schools/independent">Private schools by council</a>.</li>
+        <li><a href="/schools/how-admissions-work">How school admissions actually work</a>.</li>
+    </ul>
+</section>
 {% endblock %}

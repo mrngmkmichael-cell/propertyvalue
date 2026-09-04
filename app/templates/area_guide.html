@@ -190,7 +190,7 @@
     {# A count is the same sentence on every district in the city. The
        names are what a parent is actually searching for. #}
     <table class="tx-table">
-        <thead><tr><th>Nearest well-rated schools</th><th>Stage</th><th>Ofsted</th><th class="num">Distance</th></tr></thead>
+        <thead><tr><th>Nearest well-rated schools</th><th>Stage</th><th>Ofsted</th><th class="num">Distance</th><th class="num">Admitted from</th></tr></thead>
         <tbody>
             {% for s in named_schools %}
             <tr>
@@ -198,6 +198,24 @@
                 <td>{{ s.phase or "" }}</td>
                 <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
                 <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} mi{% endif %}</td>
+                <td class="num">{% if s.admitted_miles %}{{ s.admitted_miles }} mi{% if s.admitted_year %} <span class="school-table-type">{{ s.admitted_year }}</span>{% endif %}{% else %}<span class="ofsted-none">no figure</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    {% if admission_schools_here %}
+    <h3>Schools in {{ outcode }} with a published admission distance</h3>
+    <p class="section-sub">How far away the last child offered a place lived, as the council published it. Tightest first; each name opens the school's page and its postcode checker.</p>
+    <table class="tx-table">
+        <thead><tr><th>School</th><th>Stage</th><th class="num">Admitted from</th><th>Round</th></tr></thead>
+        <tbody>
+            {% for s in admission_schools_here %}
+            <tr>
+                <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a></td>
+                <td>{{ s.phase }}</td>
+                <td class="num">{{ s.miles }} mi</td>
+                <td>{{ s.academic_year }}</td>
             </tr>
             {% endfor %}
         </tbody>

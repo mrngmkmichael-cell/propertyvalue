@@ -181,7 +181,14 @@ async def anon_html_cache(request: Request, call_next):
     hit = _cache.get(key, _ANON_HTML_TTL_S)
     if hit is not None:
         status, body = hit
-        return HTMLResponse(body, status_code=status, headers={"X-Anon-Cache": "hit"})
+        # A page we are willing to serve from memory for ten minutes can
+        # be reused by the browser for two, which makes back-navigation
+        # between school pages instant; stale-while-revalidate lets it
+        # show the old copy while fetching a fresh one.
+        return HTMLResponse(body, status_code=status, headers={
+            "X-Anon-Cache": "hit",
+            "Cache-Control": "public, max-age=120, stale-while-revalidate=600",
+        })
     response = await call_next(request)
     if (
         response.status_code in (200, 404)
@@ -1302,11 +1309,27 @@ TRUSTPILOT = {
 }
 
 
+def _admission_stats() -> dict:
+    """How many schools and councils carry a published admission
+    distance, for the homepage. One small group-by an hour; the number
+    only moves when an import runs."""
+    cached = _cache.get(("admission_stats",), 3600)
+    if cached is None:
+        try:
+            councils = schools_db.admission_councils()
+            cached = {"schools": sum(c["count"] for c in councils), "councils": len(councils)}
+        except Exception:  # noqa: BLE001 - the homepage must render without the DB
+            cached = {"schools": 0, "councils": 0}
+        _cache.set(("admission_stats",), cached)
+    return cached
+
+
 @app.get("/")
 def index(request: Request):
     context = base_context(request)
     context["accuracy_counts"] = _landing_accuracy_counts()
     context["trustpilot"] = TRUSTPILOT
+    context["admission_stats"] = _admission_stats()
 
     # Hand the hero strip whatever is already cached, so it paints with
     # real figures immediately instead of waiting on round trips.
@@ -4224,6 +4247,9 @@ def _named_schools(landscape: dict | None) -> list[dict]:
             "rating_code": s.get("ofsted_rating"),
             "phase": phase_by_urn.get(s.get("urn")),
             "distance_m": s.get("distance_m"),
+            # How far it admitted from last time, where the council says.
+            "admitted_miles": (s.get("admission_radius") or {}).get("last_distance_miles"),
+            "admitted_year": (s.get("admission_radius") or {}).get("academic_year"),
         }
         for s in picked
     ]
@@ -4630,6 +4656,10 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
     landscape_full = ok(landscape_result)
     page_data = {
         "named_schools": _named_schools(landscape_full),
+        # Every school in this district with a published distance, each
+        # linking to its page: the guide is where "schools near M14"
+        # lands, and the school page is where the answer is.
+        "admission_schools_here": await asyncio.to_thread(schools_db.admission_rows_in_outcodes, {outcode.upper()}),
         # Both already collected and never shown on this page. An
         # investor browsing area guides had no way to know the site
         # held either.

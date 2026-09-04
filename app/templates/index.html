@@ -30,6 +30,7 @@
         {"@type": "Question", "name": "What happens after the free report?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good. Opening a new one needs a subscription, and postcode search stays free either way."}},
         {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
         {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
+        {"@type": "Question", "name": "Will my child get into the school near a house I am looking at?", "acceptedAnswer": {"@type": "Answer", "text": "Every report and every school page measures an address against how far the school admitted from in its last published round, using the council's own figure, and says Likely, Borderline or Unlikely. Published distances are held for more than 3,600 English schools across 88 councils; where a council publishes none, the page says so rather than guessing."}},
         {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
     ]
 }
@@ -384,7 +385,9 @@
                 and <a href="/schools/independent">private schools by council</a>.
             </p>
             <div class="lx-about-stats">
-                {% for n, label in [('40', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                {% set stat_rows = [('40', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                {% if admission_stats and admission_stats.schools %}{% set stat_rows = stat_rows + [("{:,}".format(admission_stats.schools), 'Published school admission distances')] %}{% endif %}
+                {% for n, label in stat_rows %}
                 <div>
                     <p class="lx-about-stat-n"><span class="stat-count" data-target="{{ n | replace(',', '') }}"{% if ',' in n %} data-locale="1"{% endif %}>{{ n }}</span></p>
                     <p class="lx-about-stat-l">{{ label }}</p>
@@ -499,6 +502,7 @@
             ('What happens after the free report?', 'Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good, so you can go back to them any time. Opening a new one needs a subscription, and postcode search stays free either way.'),
             ('How is this different from Rightmove or Zoopla?', 'Those are listings portals. They show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
             ('Where does the data come from?', 'Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every figure traces back to a source.'),
+            ('Will my child get into the school near a house I am looking at?', 'Every report and every school page measures an address against how far the school admitted from in its last published round, using the figure the council itself published, and says Likely, Borderline or Unlikely. Published distances are held for more than 3,600 English schools across 88 councils; where a council publishes none, the page says so rather than guessing.'),
             ('Which parts of the UK are covered?', 'Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where a council has published that data openly. Where something isn\'t covered for an address, the report says so rather than leaving a gap unexplained.'),
         ] %}
         <details class="faq-item" data-animate>

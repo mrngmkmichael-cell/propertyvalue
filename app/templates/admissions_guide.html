@@ -5,6 +5,15 @@
 {% block og_title %}How school admissions actually work{% endblock %}
 
 {% block content %}
+<script type="application/ld+json">{{ {
+    "@context": "https://schema.org", "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "When is the deadline to apply for a school place in England?", "acceptedAnswer": {"@type": "Answer", "text": "Secondary applications (Year 7) close on 31 October and offers are made on 1 March. Primary applications (Reception) close on 15 January and offers are made on 16 April. You apply through the council you live in, whichever council the school is in."}},
+        {"@type": "Question", "name": "What does a school's admission distance mean?", "acceptedAnswer": {"@type": "Answer", "text": "After offer day a council publishes how far away the last child offered a place at each oversubscribed school lived. It is the closest thing most English schools have to a catchment: live inside that distance and, on last year's numbers, you would have got a place under the distance rule. It moves every year."}},
+        {"@type": "Question", "name": "Why do most schools have no catchment area?", "acceptedAnswer": {"@type": "Answer", "text": "Most English schools rank applicants by criteria in order (looked-after children, siblings, sometimes faith, then distance) rather than by a drawn boundary. The distance the last place went to is set by how many applied that year, so it is a result, not a rule, and no line on a map fixes it."}},
+        {"@type": "Question", "name": "Is the distance measured in a straight line?", "acceptedAnswer": {"@type": "Answer", "text": "Usually, from the home address point to the school's gate or centre, but each council's arrangements say which. A few measure the shortest walking route. The council's own figure and method are what this site publishes for each school."}}
+    ]
+} | tojson }}</script>
 <a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
 
 <span class="kicker">Schools guide</span>

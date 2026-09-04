@@ -966,6 +966,29 @@ def admission_slugs_by_urn(urns: list[int]) -> dict[int, str]:
     return {urn: _slugify(name) for urn, name in rows}
 
 
+def admission_rows_in_outcodes(outcodes: set[str]) -> list[dict]:
+    """Schools standing in these postcode districts that carry a
+    published admission distance, tightest first, for the area guide's
+    own table. Postcode district is the school's own postcode's outward
+    code, so a school on the district boundary sits in one guide only."""
+    if not outcodes or not is_configured():
+        return []
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name, School.postcode, School.phase,
+                   SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+        ).all()
+    out = []
+    for urn, name, postcode, phase, miles, year in rows:
+        outcode = (postcode or "").split(" ")[0].upper()
+        if outcode in outcodes and miles:
+            out.append({"urn": urn, "name": name, "slug": _slugify(name), "phase": _phase_group(phase) or "",
+                        "miles": round(miles, 2), "academic_year": year or ""})
+    out.sort(key=lambda r: (r["miles"], r["name"]))
+    return out
+
+
 def admission_pages_in_outcodes(outcodes: set[str]) -> list[dict]:
     """Schools with a real admission distance whose postcode falls in
     one of the given districts. Feeds the sitemap, which deliberately

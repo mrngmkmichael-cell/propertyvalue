@@ -209,5 +209,32 @@
     </div>
 </div>
 
+
 {% endif %}
+
+<section class="report-section">
+    <h2>Before you pay</h2>
+    <dl class="faq-list">
+        <dt>Do I need a card for the free report?</dt>
+        <dd>No. An account is free, and the first property you open gets every check in full, with no card and no clock running.</dd>
+        <dt>What is the difference between the pass and the subscription?</dt>
+        <dd>The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking.</dd>
+        <dt>Can I cancel?</dt>
+        <dd>Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked.</dd>
+        <dt>What do I get that the free report does not show?</dt>
+        <dd>Every check on every property rather than one: flood and subsidence detail, school admission verdicts for every nearby school, the questions for your solicitor and surveyor, the full PDF, and change alerts on saved properties.</dd>
+        <dt>Where does the data come from?</dt>
+        <dd>Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so.</dd>
+    </dl>
+</section>
+<script type="application/ld+json">{{ {
+    "@context": "https://schema.org", "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "Do I need a card for the free report?", "acceptedAnswer": {"@type": "Answer", "text": "No. An account is free, and the first property you open gets every check in full, with no card and no clock running."}},
+        {"@type": "Question", "name": "What is the difference between the pass and the subscription?", "acceptedAnswer": {"@type": "Answer", "text": "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."}},
+        {"@type": "Question", "name": "Can I cancel?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked."}},
+        {"@type": "Question", "name": "What do I get that the free report does not show?", "acceptedAnswer": {"@type": "Answer", "text": "Every check on every property rather than one: flood and subsidence detail, school admission verdicts for every nearby school, the questions for your solicitor and surveyor, the full PDF, and change alerts on saved properties."}},
+        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk."}}
+    ]
+} | tojson }}</script>
 {% endblock %}

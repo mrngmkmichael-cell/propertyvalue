@@ -4506,6 +4506,18 @@ def main():
         records = build_records(session)
     load_into_db(records, only=only)
     print("Done.")
+    # New school pages and changed hubs go to IndexNow straight away,
+    # instead of waiting for someone to remember the resubmit endpoint.
+    secret = os.environ.get("ALERTS_CRON_SECRET")
+    if secret:
+        try:
+            resp = httpx.post("https://ukpropertyinsight.co.uk/internal/indexnow-resubmit",
+                              headers={"x-alerts-secret": secret, "X-Internal-Check": "1"}, timeout=300)
+            print(f"IndexNow resubmit: {resp.status_code} {resp.text[:80]}")
+        except httpx.HTTPError as exc:
+            print(f"IndexNow resubmit skipped: {exc}")
+    else:
+        print("IndexNow resubmit skipped: ALERTS_CRON_SECRET not set")
 
 
 if __name__ == "__main__":

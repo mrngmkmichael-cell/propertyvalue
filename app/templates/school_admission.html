@@ -38,6 +38,7 @@
 <p class="section-sub" style="margin: -0.5rem 0 1rem;">
     <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> to save this school and be told when {{ school.authority }} republishes its distance.
 </p>
+{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles ~ " miles in " ~ school.academic_year ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
 {% endif %}
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured

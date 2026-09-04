@@ -21,6 +21,7 @@
     <a href="/signup?next=/schools/admissions/{{ council.slug }}">Sign up</a> to save the schools you care about and be told when {{ council.name }} republishes a distance.
 </p>
 {% endif %}
+{% with share_url=canonical_url, share_text="How far " ~ council.name ~ " schools admitted from, school by school" %}{% include "_share_row.html" %}{% endwith %}
 
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ council.count }}</span><span class="score-tile-label">schools with a published figure</span></div>

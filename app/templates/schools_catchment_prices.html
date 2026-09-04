@@ -31,6 +31,7 @@
     councils, this page prices the districts within reach of each school's distance, and finds the tight
     gates a family can still afford.
 </p>
+{% with share_url=canonical_url, share_text="What a tight school catchment costs: council admission distances against Land Registry prices" %}{% include "_share_row.html" %}{% endwith %}
 
 {% if not data.bands %}
 <p class="notice">The area guides that hold the district prices have not been built yet, so there is nothing to price. Try again later.</p>

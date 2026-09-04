@@ -1183,3 +1183,50 @@ def test_sitemap_is_cached_and_dated_by_deploy(client):
     first = client.get("/sitemap.xml").text
     assert f"<lastmod>{app_main._STARTED_ON}</lastmod>" in first
     assert client.get("/sitemap.xml").text == first
+
+
+# ---- daily ten, 4 Sep 2026 -------------------------------------------------
+
+def test_404_page_offers_the_search_and_the_data_pages(client):
+    body = client.get("/no-such-page-at-all").text
+    assert 'action="/property"' in body
+    for href in ("/schools/admissions", "/schools/tightest-catchments", "/schools/independent", "/areas"):
+        assert f'href="{href}"' in body
+
+
+def test_premium_and_guide_carry_faq_markup(client):
+    assert '"FAQPage"' in client.get("/premium").text
+    assert "Can I cancel?" in client.get("/premium").text
+    assert '"FAQPage"' in client.get("/schools/how-admissions-work").text
+    assert "Will my child get into the school" in client.get("/").text
+
+
+def test_share_row_on_the_pages_parents_forward(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    for path in ("/schools/tightest-catchments", "/schools/admissions/manchester", "/school/990002/riverside-academy"):
+        body = client.get(path).text
+        assert "https://wa.me/?text=" in body and "data-copy-link" in body, path
+
+
+def test_anonymous_cache_hit_carries_cache_control(client):
+    client.get("/methodology", headers={"User-Agent": "Mozilla/5.0"})
+    second = client.get("/methodology", headers={"User-Agent": "Mozilla/5.0"})
+    assert second.headers.get("x-anon-cache") == "hit"
+    assert "max-age=120" in second.headers.get("cache-control", "")
+
+
+def test_area_guide_lists_schools_with_a_published_distance():
+    from app.services import schools_db
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        if session.get(School, 990061) is None:
+            session.add(School(urn=990061, name="Piccadilly Gate Primary", phase="Primary", type_name="Academy converter",
+                               postcode="M1 3AA", latitude=53.47, longitude=-2.23, ofsted_rating=2, ofsted_rating_label="Good"))
+            session.add(SchoolAdmissionRadius(urn=990061, last_distance_miles=0.6, academic_year="2025", source_authority="Manchester"))
+            session.commit()
+    rows = schools_db.admission_rows_in_outcodes({"M1"})
+    assert any(r["name"] == "Piccadilly Gate Primary" and r["miles"] == 0.6 for r in rows)
+    assert not any(r["name"] == "Piccadilly Gate Primary" for r in schools_db.admission_rows_in_outcodes({"M2"}))

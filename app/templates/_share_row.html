@@ -1,0 +1,20 @@
+{# Share a data page into the places parents actually talk: a WhatsApp
+   group, an email, a forum post. No third-party script, no tracking,
+   just links. Callers pass share_url and share_text. #}
+<div class="share-send-row" style="margin: 1rem 0 0.5rem;">
+    <span class="share-note">Share:</span>
+    <a class="share-send" href="https://wa.me/?text={{ (share_text ~ ' ' ~ share_url) | urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+    <a class="share-send" href="mailto:?subject={{ share_text | urlencode }}&body={{ (share_text ~ ' ' ~ share_url) | urlencode }}">Email</a>
+    <button type="button" class="share-send" data-copy-link="{{ share_url }}">Copy link</button>
+</div>
+<script>
+    (function () {
+        document.querySelectorAll('[data-copy-link]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var url = b.getAttribute('data-copy-link');
+                var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy link'; }, 1500); };
+                if (navigator.clipboard) { navigator.clipboard.writeText(url).then(done); } else { window.prompt('Copy this link', url); }
+            });
+        });
+    })();
+</script>
