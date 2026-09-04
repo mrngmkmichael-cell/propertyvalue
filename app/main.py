@@ -7773,9 +7773,11 @@ async def indexnow_resubmit(request: Request):
         return JSONResponse({"error": "not_found"}, status_code=404)
     base = _public_base_url(request)
     urls = [f"{base}{p}" for p in ("/", "/schools/tightest-catchments", "/schools/catchment-house-prices", "/schools/admissions",
+                                    "/running-costs", "/estate-charges", "/estate-charges/managing-agents",
                                    "/schools/how-admissions-work", "/schools/independent", "/schools/guide")]
     urls += [f"{base}/schools/admissions/{c['slug']}" for c in await asyncio.to_thread(schools_db.admission_councils)]
     urls += [f"{base}/schools/independent/{d['slug']}" for d in await asyncio.to_thread(schools_db.independent_districts)]
+    urls += [f"{base}/estate-charges/company/{slug}" for slug in await asyncio.to_thread(estate_companies.indexable_agent_slugs)]
     urls += [f"{base}/school/{s['urn']}/{s['slug']}" for s in await asyncio.to_thread(schools_db.admission_page_schools)]
     urls = urls[:10000]
     accepted = await indexnow.submit(request.url.hostname or "ukpropertyinsight.co.uk", urls)

@@ -6,6 +6,37 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The night of 4 to 5 Sep 2026, on Michael's "business partner, decide
+  on your own" instruction. Backup first (E:\Claude\PropertyValue-backups6-09-04:
+  every table as CSV, schema, git bundle, .env). Then: the landing page
+  names three pillars (prices, schools, running costs) with live counts,
+  headline "Prices, schools, and the running costs no listing shows you";
+  /running-costs (council tax Band D for 300+ English councils ranked,
+  EPC energy, tenure); /estate-charges (fleecehold explained from the CMA,
+  HOA, Hansard, Commons Library and the 2024 Act, twelve questions for a
+  conveyancer, FAQ markup); and "Who manages your estate?": 168,580
+  active residents' and estate management companies from the Companies
+  House snapshot, 12,002 registered to twenty named agents' offices
+  (attributed by registered office, each checked), a league table, a
+  page per agent, and a name search. Wording is "registered to X's
+  office", never "managed by". No charge figures: no official source.
+  The £19 pass leads the pricing page, but is not on sale because
+  STRIPE_PRICE_ID_PASS is unset on Render (Michael's to create).
+  Press kit gained story three. Estate charge *records* (community data,
+  moderation, PDF extraction) deliberately not built: no traffic to feed
+  the funnel yet, and it changes what the site is; Michael's call.
+
+- The wait made worth watching (4 Sep 2026): the 202 "building your
+  report" page now shows the district's facts from its area guide in
+  tier 2 (median sale price and count, price trend, share of schools
+  Good or better, crime, flood zone, the schools with a published
+  distance), each naming its source, instantly, while the address's own
+  checks arrive. Cause: on 2 Sep 26 people started a report and 12 saw
+  one finish; a cold build takes 13 s. Under the score, signed-out
+  readers get one return hook that is not "unlock premium": save the
+  property free and be told when it changes. Also the sitemap widened to
+  all 3,627 school pages, and the guide's rating cell hotfix.
+
 - Ofsted read in full (4 Sep 2026): the import used one column, the
   overall grade from the last graded inspection, blank for 54% of primary
   and secondary schools. Now the ungraded-inspection outcome ("school

@@ -1,6 +1,6 @@
 # Press kit: England's tightest school catchments
 
-Generated 4 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
+Generated 5 September 2026 from the live data. Every figure below is on https://ukpropertyinsight.co.uk/schools/tightest-catchments, and each school and council name links to the page that shows where it came from. Re-run `scripts/press_kit.py` after an admissions import.
 
 ## What you can say, and what you cannot
 
@@ -14,7 +14,7 @@ Generated 4 September 2026 from the live data. Every figure below is on https://
 
 **Headline:** 603 English schools filled every place from within half a mile of the gate, new analysis of council admissions data shows
 
-**Standfirst:** Parents' talk of "living on the doorstep" to get a school place is borne out by the councils' own figures. Of 3,626 oversubscribed schools across 88 councils that publish how far the last child offered a place lived, 113 admitted nobody from beyond a quarter of a mile and 603 nobody from beyond half a mile. The middle school's figure was 1.28 miles.
+**Standfirst:** Parents' talk of "living on the doorstep" to get a school place is borne out by the councils' own figures. Of 3,627 oversubscribed schools across 88 councils that publish how far the last child offered a place lived, 113 admitted nobody from beyond a quarter of a mile and 603 nobody from beyond half a mile. The middle school's figure was 1.28 miles.
 
 **The tightest ten:**
 
@@ -82,7 +82,7 @@ Subject: 603 English schools admitted nobody from beyond half a mile
 
 Hi [name],
 
-We have collated the last-distance-offered figures that 88 councils publish after offer day, 3,626 oversubscribed schools in all, into one ranked table. 113 schools filled from under a quarter of a mile; the middle school's figure nationally is 1.28 miles; the councils vary from 0.23 miles (Southwark) to 8.52 miles (Gloucestershire). It is the closest thing to a national map of where the doorstep matters, and as far as we know nobody has assembled it before.
+We have collated the last-distance-offered figures that 88 councils publish after offer day, 3,627 oversubscribed schools in all, into one ranked table. 113 schools filled from under a quarter of a mile; the middle school's figure nationally is 1.28 miles; the councils vary from 0.23 miles (Southwark) to 8.52 miles (Gloucestershire). It is the closest thing to a national map of where the doorstep matters, and as far as we know nobody has assembled it before.
 
 The page: https://ukpropertyinsight.co.uk/schools/tightest-catchments. I can send the underlying spreadsheet and the per-council method notes. No modelling: every figure is a council's own, linked.
 
@@ -98,17 +98,17 @@ Every year the council publishes how far away the last child offered a place at 
 
 Page: https://ukpropertyinsight.co.uk/schools/catchment-house-prices
 
-**Headline:** Living within reach of a school that fills from under half a mile costs 24% more than the middle English district, but 220 of those schools still sit in districts priced below it
+**Headline:** Living within reach of a school that fills from under half a mile costs 23% more than the middle English district, but 220 of those schools still sit in districts priced below it
 
-**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the 603 schools that admitted from under half a mile sells for £345,000, against £278,000 for the middle district nationally. The tightest gates are not only in expensive places: 220 of them stand in districts below the national middle.
+**Standfirst:** Pairing councils' published admission distances with Land Registry sales for the first time, the median district within reach of the 603 schools that admitted from under half a mile sells for £345,000, against £280,000 for the middle district nationally. The tightest gates are not only in expensive places: 220 of them stand in districts below the national middle.
 
 **Distance against price:**
 
 - Admitted from under half a mile: 603 schools, median district within reach £345,000
 - Admitted from half a mile to a mile: 895 schools, median district within reach £320,000
-- Admitted from 1 to 2 miles: 884 schools, median district within reach £317,000
+- Admitted from 1 to 2 miles: 884 schools, median district within reach £316,500
 - Admitted from 2 to 5 miles: 846 schools, median district within reach £335,000
-- Admitted from 5 miles and over: 398 schools, median district within reach £337,500
+- Admitted from 5 miles and over: 399 schools, median district within reach £325,000
 
 **Tight gates you can still afford (cheapest five):**
 
@@ -127,6 +127,31 @@ Page: https://ukpropertyinsight.co.uk/schools/catchment-house-prices
 - [Brockswood Primary School](https://ukpropertyinsight.co.uk/school/117349/brockswood-primary-school), Hertfordshire: admitted from 0.31 miles; median within reach £1,240,000
 
 **Method:** A district counts as within reach when its centre falls inside the school's published distance; when the distance is shorter than the gap to any centre, the district the school stands in is used. Prices are the median of the last twelve months of Land Registry sales in each district, only where there are enough sales for a fair median. A district median is not the price of a house by the gate. Full method on the page.
+
+## Story three: who manages your estate
+
+Page: https://ukpropertyinsight.co.uk/estate-charges/managing-agents
+
+**Headline:** 168,580 residents' management companies are on the Companies House register, and 12,002 of them are registered to the offices of twenty managing agents; HML's office alone is the registered address of 2,511
+
+**Standfirst:** Every managed estate has a company behind it, and where that company is registered is the nearest thing to a public record of who manages what. Reading the Companies House register for every active residents' and estate management company, UKPropertyInsight finds 168,580 of them, 12,002 registered to a named managing agent's office. No official source records what the residents pay.
+
+**The offices most residents' companies are registered to:**
+
+- [HML](https://ukpropertyinsight.co.uk/estate-charges/company/hml): 2,511 companies (1.5% of all)
+- [FirstPort](https://ukpropertyinsight.co.uk/estate-charges/company/firstport): 1,313 companies (0.8% of all)
+- [RMG (Residential Management Group)](https://ukpropertyinsight.co.uk/estate-charges/company/rmg): 863 companies (0.5% of all)
+- [Warwick Estates](https://ukpropertyinsight.co.uk/estate-charges/company/warwick-estates): 839 companies (0.5% of all)
+- [Inspired Property Management](https://ukpropertyinsight.co.uk/estate-charges/company/inspired-property-management): 741 companies (0.4% of all)
+- [LSH Residential (Lambert Smith Hampton)](https://ukpropertyinsight.co.uk/estate-charges/company/lsh-residential): 738 companies (0.4% of all)
+- [Encore Estate Management](https://ukpropertyinsight.co.uk/estate-charges/company/encore-estate-management): 650 companies (0.4% of all)
+- [Trinity Estates](https://ukpropertyinsight.co.uk/estate-charges/company/trinity-estates): 631 companies (0.4% of all)
+- [Persimmon (developer)](https://ukpropertyinsight.co.uk/estate-charges/company/persimmon): 456 companies (0.3% of all)
+- [Kingston Property Services (Kingston Open Spaces)](https://ukpropertyinsight.co.uk/estate-charges/company/kingston-property-services): 364 companies (0.2% of all)
+- [Prime Property Management](https://ukpropertyinsight.co.uk/estate-charges/company/prime-property-management): 360 companies (0.2% of all)
+- [Urang Property Management](https://ukpropertyinsight.co.uk/estate-charges/company/urang): 330 companies (0.2% of all)
+
+**Method:** Companies House basic company data snapshot, active companies with SIC 98000 (Residents property management) or a property-management SIC and a name that says residents, management company, estate management, freeholders or homeowners. An office is attributed to an agent where the registered address is the agent's own published address. The wording is 'registered to the office of', not 'managed by': the register records the address, not the contract. Registered-office services are counted in the total and never attributed.
 
 ## One paragraph per council
 
@@ -174,7 +199,7 @@ Copy the paragraph for the council you are pitching. Each links to the hub page 
 
 **Derby** (67 schools with a figure): the tightest gate is [Becket Primary School](https://ukpropertyinsight.co.uk/school/112717/becket-primary-school) at 0.31 miles (2026/27); the middle school's distance is 2.12 miles; 14 of 67 oversubscribed schools (21%) filled from under a mile; places went furthest at [Roe Farm Primary School](https://ukpropertyinsight.co.uk/school/131401/roe-farm-primary-school), 11.2 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/derby
 
-**Devon** (52 schools with a figure): the tightest gate is [The Duchy School Bradninch](https://ukpropertyinsight.co.uk/school/140078/the-duchy-school-bradninch) at 0.07 miles (2026/27); the middle school's distance is 1.79 miles; 15 of 52 oversubscribed schools (29%) filled from under a mile; places went furthest at [Cheriton Bishop Community Primary School](https://ukpropertyinsight.co.uk/school/145397/cheriton-bishop-community-primary-school), 10.76 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/devon
+**Devon** (53 schools with a figure): the tightest gate is [The Duchy School Bradninch](https://ukpropertyinsight.co.uk/school/140078/the-duchy-school-bradninch) at 0.07 miles (2026/27); the middle school's distance is 1.79 miles; 15 of 53 oversubscribed schools (28%) filled from under a mile; places went furthest at [Cheriton Bishop Community Primary School](https://ukpropertyinsight.co.uk/school/145397/cheriton-bishop-community-primary-school), 10.76 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/devon
 
 **Dorset** (34 schools with a figure): the tightest gate is [St Mary's Catholic First School, Dorchester](https://ukpropertyinsight.co.uk/school/140771/st-mary-s-catholic-first-school-dorchester) at 0.39 miles (2025/26); the middle school's distance is 2.65 miles; 6 of 34 oversubscribed schools (18%) filled from under a mile; places went furthest at [Broadwindsor Church of England Voluntary Controlled Primary School](https://ukpropertyinsight.co.uk/school/113777/broadwindsor-church-of-england-voluntary-controlled-primary-school), 12.28 miles. Full table: https://ukpropertyinsight.co.uk/schools/admissions/dorset
 

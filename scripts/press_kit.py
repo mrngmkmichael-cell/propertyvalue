@@ -156,6 +156,30 @@ def main() -> None:
         w("**Method:** A district counts as within reach when its centre falls inside the school's published distance; when the distance is shorter than the gap to any centre, the district the school stands in is used. Prices are the median of the last twelve months of Land Registry sales in each district, only where there are enough sales for a fair median. A district median is not the price of a house by the gate. Full method on the page.")
         w("")
 
+    # ---- Story three: who manages your estate ----
+    try:
+        from app.services import estate_companies as _ec
+        table = _ec.agents_table()
+    except Exception:  # noqa: BLE001 - the kit still writes without the directory
+        table = {"agents": [], "total": 0, "attributed": 0}
+    if table["agents"]:
+        top = table["agents"][0]
+        w("## Story three: who manages your estate")
+        w("")
+        w(f"Page: {SITE}/estate-charges/managing-agents")
+        w("")
+        w(f"**Headline:** {table['total']:,} residents' management companies are on the Companies House register, and {table['attributed']:,} of them are registered to the offices of twenty managing agents; {top['name']}'s office alone is the registered address of {top['count']:,}")
+        w("")
+        w(f"**Standfirst:** Every managed estate has a company behind it, and where that company is registered is the nearest thing to a public record of who manages what. Reading the Companies House register for every active residents' and estate management company, UKPropertyInsight finds {table['total']:,} of them, {table['attributed']:,} registered to a named managing agent's office. No official source records what the residents pay.")
+        w("")
+        w("**The offices most residents' companies are registered to:**")
+        w("")
+        for a in table["agents"][:12]:
+            w(f"- [{a['name']}]({SITE}/estate-charges/company/{a['slug']}): {a['count']:,} companies ({a['share_pct']}% of all)")
+        w("")
+        w("**Method:** Companies House basic company data snapshot, active companies with SIC 98000 (Residents property management) or a property-management SIC and a name that says residents, management company, estate management, freeholders or homeowners. An office is attributed to an agent where the registered address is the agent's own published address. The wording is 'registered to the office of', not 'managed by': the register records the address, not the contract. Registered-office services are counted in the total and never attributed.")
+        w("")
+
     w("## One paragraph per council")
     w("")
     w("Copy the paragraph for the council you are pitching. Each links to the hub page that carries the whole table.")
