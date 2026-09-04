@@ -7257,6 +7257,7 @@ def _guide_rows(landscape: dict | None) -> list[dict]:
             "independent": bool(s.get("independent")),
             "rating": s.get("ofsted_rating_label"),
             "rating_code": s.get("ofsted_rating"),
+            "ofsted_note": s.get("ofsted_note", ""),
             "distance_m": s["distance_m"],
             "admission_miles": adm, "admission_kind": kind, "admission_year": year,
             "result_label": ex.get("headline_label"),
