@@ -1347,3 +1347,17 @@ def test_estate_search_finds_a_company_and_its_office(client):
     assert "No company matches" in client.get("/estate-charges/search?q=zzzzqqq").text
     assert "/estate-charges/managing-agents" in client.get("/sitemap.xml").text
 
+
+def test_council_tax_table_lists_every_authority(client):
+    body = client.get("/running-costs/council-tax").text
+    assert "Adur" in body and "billing authorities" in body
+    assert "Band A" in body and "Band H" in body
+    assert "/running-costs/council-tax" in client.get("/sitemap.xml").text
+
+
+def test_council_tax_finds_an_english_council_by_name():
+    from app.services import council_tax
+    by_name = council_tax.for_district(None, "Adur")
+    assert by_name and by_name["authority"] == "Adur" and by_name["band_d"] > 1000
+    assert council_tax.for_district(None, "No Such Council") is None
+

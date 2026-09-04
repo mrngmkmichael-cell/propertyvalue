@@ -26,12 +26,52 @@ def _norm(name: str) -> str:
     return " ".join(name.replace("&", "and").split()).lower()
 
 
+def all_authorities() -> dict:
+    """Every billing authority in the three datasets with its Band D and
+    the lowest and highest bands, for the council-by-council page."""
+    year = _RAW.get("year", "")
+    eng = _RAW.get("england", {}) or {}
+    wal = _RAW.get("wales", {}) or {}
+    sco = _RAW.get("scotland", {}) or {}
+    england = sorted(
+        ({"authority": v["authority"], "band_d": v["band_d"],
+          "band_a": round(v["band_d"] * 6 / 9, 2), "band_h": round(v["band_d"] * 18 / 9, 2)}
+         for v in (eng.get("authorities") or {}).values() if isinstance(v, dict) and v.get("band_d")),
+        key=lambda r: r["authority"],
+    )
+    wales = sorted(
+        ({"authority": v["authority"], "band_d": v["band_d"],
+          "band_a": round(v["band_d"] * 6 / 9, 2), "band_i": round(v["band_d"] * 21 / 9, 2)}
+         for v in (wal.get("authorities") or {}).values() if isinstance(v, dict) and v.get("band_d")),
+        key=lambda r: r["authority"],
+    )
+    scotland = sorted(
+        ({"authority": v["authority"], "band_d": v["bands"].get("D"),
+          "band_a": v["bands"].get("A"), "band_h": v["bands"].get("H")}
+         for v in (sco.get("authorities") or {}).values() if isinstance(v, dict) and v.get("bands", {}).get("D")),
+        key=lambda r: r["authority"],
+    )
+    return {"year": year, "england": england, "wales": wales, "scotland": scotland,
+            "source_england": eng.get("source", ""), "source_wales": wal.get("source", ""), "source_scotland": sco.get("source", "")}
+
+
+_ENGLAND_BY_NAME = {
+    _norm(v["authority"]): code
+    for code, v in ((_RAW.get("england", {}) or {}).get("authorities") or {}).items()
+    if isinstance(v, dict) and v.get("authority")
+}
+
+
 def for_district(ons_code: str | None, district_name: str | None = None) -> dict | None:
     """Council tax for a billing authority: England by ONS code,
     Scotland and Wales by the district name postcodes.io reports.
     None when the area is not in any of the three datasets."""
     year = _RAW.get("year", "")
     entry = (_RAW.get("england", {}).get("authorities", {}) or {}).get(ons_code or "")
+    if not entry and district_name:
+        # An English council named without its code (the area guides
+        # pass the name postcodes.io gives) still finds its figure.
+        entry = (_RAW.get("england", {}).get("authorities", {}) or {}).get(_ENGLAND_BY_NAME.get(_norm(district_name), ""))
     if entry:
         band_d = entry["band_d"]
         return {

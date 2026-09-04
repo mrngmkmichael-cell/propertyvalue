@@ -128,6 +128,13 @@
         <br><a href="/market/house-prices/{{ region_slug }}">See where {{ outcode }} ranks across {{ region_name }} →</a>
         {% endif %}
     </p>
+    {% if council_tax %}
+    {# What it costs to live here, the part a price page never says. #}
+    <p class="section-sub">
+        Council tax at Band D in {{ council_tax.authority }}: <strong>{{ council_tax.band_d | gbp }}</strong> a year
+        ({{ council_tax.year }}). <a href="/running-costs">Running costs by postcode: council tax, energy, tenure, and the estate charge no listing shows →</a>
+    </p>
+    {% endif %}
 </section>
 
 {% if local_sales %}

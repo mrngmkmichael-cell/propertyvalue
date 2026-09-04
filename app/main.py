@@ -1346,6 +1346,20 @@ def running_costs_page(request: Request):
     return templates.TemplateResponse(request, "running_costs.html", context)
 
 
+@app.get("/running-costs/council-tax")
+def council_tax_table_page(request: Request):
+    """Every billing authority's Band D for the year, three nations, from
+    the same file the report reads."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/running-costs/council-tax"
+    cached = _cache.get(("council_tax_all",), 3600)
+    if cached is None:
+        cached = council_tax.all_authorities()
+        _cache.set(("council_tax_all",), cached)
+    context["ct"] = cached
+    return templates.TemplateResponse(request, "council_tax_table.html", context)
+
+
 @app.get("/estate-charges/managing-agents")
 async def estate_agents_page(request: Request):
     """Who manages your estate: every residents' management company on
@@ -1622,6 +1636,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     entries.append((f"{base}/running-costs", "0.7"))
+    entries.append((f"{base}/running-costs/council-tax", "0.7"))
     entries.append((f"{base}/estate-charges", "0.7"))
     entries.append((f"{base}/estate-charges/managing-agents", "0.7"))
     try:
@@ -4837,6 +4852,10 @@ async def area_guide(request: Request, outcode: str):
     context["admin_district"] = location["admin_district"]
     context["council_hub"] = await asyncio.to_thread(_council_hub_for, location.get("admin_district"))
     context["region"] = location["region"]
+    # Council tax for the district's council, looked up at render time
+    # from the local file, so the guide carries it without a payload
+    # rebuild. The same call the report makes.
+    context["council_tax"] = council_tax.for_district(codes.get("admin_district"), location.get("admin_district"))
     # House prices (UK HPI) are a genuine 4-nations dataset and work
     # fine here - it's crime (data.police.uk: British Transport Police
     # only in Scotland) and flood zone (Environment Agency: England
@@ -7687,6 +7706,7 @@ async def llms_txt(request: Request):
 - [England's tightest school catchments]({base}/schools/tightest-catchments): the national ranking, the widest gates, and the councils compared.
 - [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
 - [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
+- [Council tax by council]({base}/running-costs/council-tax): Band D, A and H for every billing authority in England, Wales and Scotland, sortable.
 - [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
 - [Who manages your estate?]({base}/estate-charges/managing-agents): every active residents' management company on the Companies House register and the managing agents' offices they are registered to; searchable by name.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.

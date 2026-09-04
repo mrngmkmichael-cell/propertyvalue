@@ -62,6 +62,7 @@ CHECKS = [
     ("/schools/tightest-catchments", {200}, ["tightest gates in England", "councils compared"]),
     ("/schools/catchment-house-prices", {200}, ["within reach"]),
     ("/running-costs", {200}, ["Band D", "Estate charges"]),
+    ("/running-costs/council-tax", {200}, ["billing authorities"]),
     ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
     ("/estate-charges/managing-agents", {200}, ["registered to"]),
     ("/estate-charges/company/firstport", {200}, ["FirstPort"]),

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Council Tax {{ ct.year }} by Council: Band D for Every Authority in England, Wales and Scotland{% endblock %}
+{% block meta_description %}Band D council tax for {{ ct.year }} in every billing authority: {{ ct.england | length }} in England (MHCLG), {{ ct.wales | length }} in Wales (Welsh Government) and {{ ct.scotland | length }} in Scotland (Scottish Government), with Band A and Band H alongside. Sortable.{% endblock %}
+{% block og_title %}Council tax {{ ct.year }}, every council{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/running-costs">&larr; Running costs</a>
+
+<span class="kicker">Running costs</span>
+<h1>Council tax {{ ct.year }}, council by council</h1>
+<p class="dek">
+    The same home pays a different bill depending on which council it sits in. Every billing authority
+    in Great Britain is here with its {{ ct.year }} Band D charge, the band most homes are compared on, and
+    the lowest and highest bands beside it. Click a heading to sort. The report shows the full set of
+    bands for the council of any address you check.
+</p>
+
+<form class="search-form" action="/property" method="get" role="search" style="max-width: 36rem;">
+    <label for="ctt-postcode">Check an address</label>
+    <input id="ctt-postcode" type="text" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+    <button type="submit">See its council tax</button>
+</form>
+
+<section class="report-section">
+    <h2>England: {{ ct.england | length }} billing authorities</h2>
+    <p class="section-sub">
+        Band D is the authority's published average area charge for {{ ct.year }}, including precepts, from the Ministry of
+        Housing, Communities and Local Government{% if ct.source_england %} (<a href="{{ ct.source_england }}" rel="noopener" target="_blank">Table 10</a>){% endif %}.
+        Band A is six ninths of it and Band H eighteen ninths, the statutory ratios.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead><tr><th data-sort="text" aria-sort="ascending">Council</th><th class="num" data-sort="num">Band A</th><th class="num" data-sort="num">Band D</th><th class="num" data-sort="num">Band H</th></tr></thead>
+            <tbody>
+                {% for r in ct.england %}
+                <tr>
+                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
+                    <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
+                    <td class="num" data-value="{{ r.band_h }}">&pound;{{ "{:,.0f}".format(r.band_h) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{% if ct.wales %}
+<section class="report-section">
+    <h2>Wales: {{ ct.wales | length }} councils</h2>
+    <p class="section-sub">Band D is the Welsh Government's published average for {{ ct.year }}{% if ct.source_wales %} (<a href="{{ ct.source_wales }}" rel="noopener" target="_blank">source</a>){% endif %}; Wales has nine bands, A to I, and Band I is twenty-one ninths of Band D.</p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead><tr><th data-sort="text" aria-sort="ascending">Council</th><th class="num" data-sort="num">Band A</th><th class="num" data-sort="num">Band D</th><th class="num" data-sort="num">Band I</th></tr></thead>
+            <tbody>
+                {% for r in ct.wales %}
+                <tr>
+                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
+                    <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
+                    <td class="num" data-value="{{ r.band_i }}">&pound;{{ "{:,.0f}".format(r.band_i) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+{% if ct.scotland %}
+<section class="report-section">
+    <h2>Scotland: {{ ct.scotland | length }} councils</h2>
+    <p class="section-sub">Every band as published by the Scottish Government for {{ ct.year }}{% if ct.source_scotland %} (<a href="{{ ct.source_scotland }}" rel="noopener" target="_blank">source</a>){% endif %}; Scotland sets its own multipliers for the upper bands, so these are the councils' own figures rather than ratios.</p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead><tr><th data-sort="text" aria-sort="ascending">Council</th><th class="num" data-sort="num">Band A</th><th class="num" data-sort="num">Band D</th><th class="num" data-sort="num">Band H</th></tr></thead>
+            <tbody>
+                {% for r in ct.scotland %}
+                <tr>
+                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
+                    <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
+                    <td class="num" data-value="{{ r.band_h }}">&pound;{{ "{:,.0f}".format(r.band_h) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+
+<section class="report-section">
+    <h2>What the bill depends on</h2>
+    <p class="section-sub">
+        The band is fixed to the home by the Valuation Office Agency from its value in 1991 (2003 in Wales)
+        and does not change when the house changes hands. The charge for the band is set each spring by the
+        billing authority, and includes the precepts of the county, the police and fire authorities, and any
+        parish. Discounts (single occupancy, students, some disabilities) come off the figure shown. None of
+        this is the whole cost of living somewhere: <a href="/running-costs">running costs by postcode</a>
+        covers the energy estimate on the EPC, tenure, and the estate charge no council collects.
+    </p>
+</section>
+
+<script>
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}
