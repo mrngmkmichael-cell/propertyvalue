@@ -54,6 +54,23 @@ def _no_leaked_session(request):
     from app.services import _cache
     for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] in ("anon_html", "sitemap")]:
         _cache._evict(key)
+    # The two school-data summaries persist to tier 2 (the page_cache
+    # table) since 4 Sep 2026, so a test that seeds a school would
+    # otherwise read the previous test's summary back from SQLite.
+    try:
+        from app import db
+        from app.models import PageCache
+        with db.get_session() as session:
+            for row in session.query(PageCache).filter(
+                PageCache.cache_key.like("%tightest_catchments%") | PageCache.cache_key.like("%district_price_rows%")
+            ).all():
+                session.delete(row)
+            session.commit()
+    except Exception:  # noqa: BLE001 - before the tables exist there is nothing to clear
+        pass
+    from app.services import _cache as _c
+    for key in [k for k in _c._store if isinstance(k, (str, tuple)) and "tightest_catchments" in str(k) or "district_price_rows" in str(k)]:
+        _c._evict(key)
     yield
 
 
