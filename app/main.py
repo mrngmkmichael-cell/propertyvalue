@@ -1576,8 +1576,15 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
 
 
 def _sitemap_school_pages(outcodes: set[str]) -> list[dict]:
+    """Every school with a published distance, not only those in the
+    curated districts. The curation (26 Aug 2026) answered a duplicate-
+    content problem among area guides; school pages are each their own
+    school and figure, Search Console had 4,055 pages indexed by 2 Sep,
+    and since 3 Sep every school page is titled for the query parents
+    type. Advertising all of them is the point. `outcodes` is kept for
+    the callers' signature; it no longer narrows the list."""
     try:
-        return [s for s in schools_db.admission_pages_in_outcodes(outcodes)]
+        return [s for s in schools_db.admission_page_schools()]
     except Exception:  # noqa: BLE001 - the sitemap must render without the DB
         return []
 

@@ -6,6 +6,18 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Daily ten, 4 Sep 2026 (one deploy): area guides carry an admitted-from
+  column and a table of the district's schools with a published distance,
+  each linked (appears as each guide's weekly cache refreshes); the 404
+  page offers the search and the data pages; premium and the admissions
+  guide carry FAQ markup with their honest answers; the homepage FAQ
+  answers "will my child get into the school" and shows the live count
+  of published distances; a share row (WhatsApp, email, copy) on the two
+  stories, every council hub and every school page; Cache-Control on
+  anonymous cache hits; the importer resubmits to IndexNow itself; and
+  .github/workflows/uptime.yml probes /area/M1 and / every ten minutes
+  and alerts Telegram (needs the two TELEGRAM secrets in GitHub).
+
 - Three more councils (4 Sep 2026): Devon (52 schools, its two
   allocation-breakdown spreadsheets, metres of last offered place),
   Nottinghamshire (75, the allocation summaries at the back of its seven
