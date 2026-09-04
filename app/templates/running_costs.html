@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Running Costs by Postcode: Council Tax, Energy and Tenure for Any UK Address{% endblock %}
+{% block meta_description %}What it costs to live at an address, from official sources: the council tax bill for every band in {{ ct.count }} English councils ({{ ct.year }}), the EPC's estimated energy costs, and whether a home is freehold or leasehold. Plus the estate charge no listing shows.{% endblock %}
+{% block og_title %}Running costs by postcode{% endblock %}
+
+{% block content %}
+<script type="application/ld+json">{{ {
+    "@context": "https://schema.org", "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "How is my council tax bill worked out?", "acceptedAnswer": {"@type": "Answer", "text": "Every home sits in a band (A to H in England and Scotland, A to I in Wales) set by the Valuation Office Agency from its value in 1991 (2003 in Wales). Each billing authority sets a Band D charge for the year; the other bands are fixed fractions of it, from six ninths for Band A to eighteen ninths for Band H. The report shows the bill for every band at the address's own council, from MHCLG's published figures for " ~ ct.year ~ "."}},
+        {"@type": "Question", "name": "What are the estimated energy costs on an EPC?", "acceptedAnswer": {"@type": "Answer", "text": "An Energy Performance Certificate carries the assessor's estimate of the home's yearly heating, hot water and lighting costs, and what they would be after the recommended improvements. They are standardised estimates from the home's fabric and heating, not a household's actual bills, and the report shows them as the EPC Register publishes them."}},
+        {"@type": "Question", "name": "Do I pay an estate charge as well as council tax?", "acceptedAnswer": {"@type": "Answer", "text": "On many newer developments, yes. Where the council has not adopted the roads, lighting or open space, homeowners pay a private management company for their upkeep on top of full council tax. The Competition and Markets Authority found four in five new homes sold by the largest builders carried such a charge. No official source publishes what each estate pays; the estate charges page explains what to ask before buying."}}
+    ]
+} | tojson }}</script>
+
+<span class="kicker">Running costs</span>
+<h1>What it costs to live there</h1>
+<p class="dek">
+    A listing shows the price. It rarely shows the bills that come with the keys. For any UK address the
+    report puts three of them next to the price, each from the body that publishes it: the council tax
+    bill for every band at that council, the energy costs estimated on the home's EPC, and whether the
+    home is freehold or leasehold. The fourth, the estate charge on a managed development, has no
+    official source at all, and this page says what to do about that.
+</p>
+
+<form class="search-form" action="/property" method="get" role="search" style="max-width: 36rem;">
+    <label for="rc-postcode">Check an address</label>
+    <input id="rc-postcode" type="text" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+    <button type="submit">See its running costs</button>
+</form>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ ct.count }}</span><span class="score-tile-label">English councils with every band's bill for {{ ct.year }}</span></div>
+    {% if ct.median %}<div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(ct.median) }}</span><span class="score-tile-label">the middle council's Band D bill</span></div>{% endif %}
+    {% if ct.cheapest and ct.dearest %}<div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(ct.dearest[0].band_d - ct.cheapest[0].band_d) }}</span><span class="score-tile-label">a year between the cheapest and dearest council, same band</span></div>{% endif %}
+</div>
+
+<section class="report-section">
+    <h2>Council tax: the same Band D home, council by council</h2>
+    <p class="section-sub">
+        Band D for {{ ct.year }} as published by the Ministry of Housing, Communities and Local Government{% if ct.source %}
+        (<a href="{{ ct.source }}" rel="noopener" target="_blank">Table 10, {{ ct.year }}</a>){% endif %}, including precepts. Wales ({{ ct.wales }} councils) and Scotland ({{ ct.scotland }} councils) are
+        held too and appear on their own reports; the ranking below is England.
+    </p>
+    <div class="tablewrap" style="display:grid; gap:1.5rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));">
+        <table class="tx-table">
+            <thead><tr><th>Cheapest twenty</th><th class="num">Band D, {{ ct.year }}</th></tr></thead>
+            <tbody>
+                {% for r in ct.cheapest %}<tr><td>{{ r.authority }}</td><td class="num">&pound;{{ "{:,.0f}".format(r.band_d) }}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+        <table class="tx-table">
+            <thead><tr><th>Dearest twenty</th><th class="num">Band D, {{ ct.year }}</th></tr></thead>
+            <tbody>
+                {% for r in ct.dearest %}<tr><td>{{ r.authority }}</td><td class="num">&pound;{{ "{:,.0f}".format(r.band_d) }}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        The band is the home's, not the council's: the report shows all eight (nine in Wales) at the
+        address's council, and the EPC card gives the band where the register records it. Bands are fixed
+        fractions of Band D, from six ninths for Band A to eighteen ninths for Band H.
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Energy: what the EPC says the home costs to run</h2>
+    <p class="section-sub">
+        Every EPC carries the assessor's estimate of yearly heating, hot water and lighting costs, and what
+        they would fall to after the recommended improvements. The report shows both figures for the
+        address's most recent certificate, as the EPC Register publishes them. They are standardised
+        estimates from the building, not a household's bills, and they are the only like-for-like energy
+        figure that exists for every home in England and Wales.
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Tenure: freehold, leasehold, and what comes with it</h2>
+    <p class="section-sub">
+        HM Land Registry records whether each sale was freehold or leasehold, and the report says which.
+        A leasehold home carries ground rent and a service charge set by the freeholder or its agent;
+        those figures are in the lease and the seller's information form, not in any public register, so
+        the report tells you to ask for them rather than guessing.
+    </p>
+</section>
+
+<section class="report-section">
+    <h2>Estate charges: the running cost no official source publishes</h2>
+    <p class="section-sub">
+        On a development where the council has not adopted the roads, lighting or open space, homeowners
+        pay a private management company for their upkeep on top of full council tax, often for ever, with
+        no cap and, until the 2024 Act takes effect, no right to challenge it. There is no register of
+        what each estate pays. <a href="/estate-charges">Estate charges explained: how common they are,
+        what they cover, your rights in 2026, and the twelve questions to ask before you buy →</a>
+    </p>
+</section>
+{% endblock %}

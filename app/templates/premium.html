@@ -64,8 +64,8 @@
 {% endif %}
 <div class="pricing-grid">
     {% if pass_available %}
-    <div class="pricing-card">
-        <span class="pricing-card-badge">No subscription</span>
+    <div class="pricing-card pricing-card-featured">
+        <span class="pricing-card-badge">One payment, made for one house hunt</span>
         <h2 class="pricing-card-price">&pound;19 once</h2>
         <p class="section-sub">{{ pass_months }} months of everything, one payment. Nothing renews, nothing to cancel. Made for one house hunt.</p>
         {% if current_user %}
@@ -79,7 +79,7 @@
     </div>
     {% endif %}
     {% for plan in plans %}
-    <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' else '' }}">
+    <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' and not pass_available else '' }}">
         {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}

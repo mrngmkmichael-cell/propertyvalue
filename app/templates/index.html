@@ -95,7 +95,7 @@
     {% endif %}
 
     <div class="lx-hero-inner">
-        <p class="lx-eyebrow">Due diligence, made simple</p>
+        <p class="lx-eyebrow">Prices, schools, running costs</p>
 
         {# Live report strip. Every figure is fetched from this site's own
            /api/lookup at page load, never hardcoded: the prototype's
@@ -128,14 +128,14 @@
         </div>
 
         <h1 class="lx-hero-h1">
-            <span class="lx-w">Any UK postcode.</span>
-            <span class="lx-w">Know <em class="hl-accent">before you commit</em>.</span>
+            <span class="lx-w">Prices, schools, and the</span>
+            <span class="lx-w">running costs <em class="hl-accent">no listing shows you</em>.</span>
         </h1>
 
         <p class="lx-hero-dek">
-            Forty checks on any UK address, each one traced back to the
-            government body that published it. Every UK postcode, free, and
-            no account needed.
+            Forty checks on any UK address, each from the body that published
+            it. Whether the house gets a child into the school. What it costs
+            to live there. Free, and no account needed.
         </p>
 
         <form class="lx-hero-form search-form" action="/property" method="get">
@@ -149,6 +149,26 @@
             </div>
             <button type="submit">Search</button>
         </form>
+
+        {# The three things the site does, as three doors. Live counts,
+           never typed in: the same numbers the data pages carry. #}
+        <div class="lx-pillars" aria-label="What the site covers">
+            <a class="lx-pillar" href="/areas">
+                <span class="lx-pillar-k">Property</span>
+                <span class="lx-pillar-v">{{ pillars.checks }} checks, {{ "{:,}".format(pillars.areas) }} area guides</span>
+                <span class="lx-pillar-s">Sold prices, flood, subsidence, crime, noise, planning risk: every check from its official source.</span>
+            </a>
+            <a class="lx-pillar" href="/schools/admissions">
+                <span class="lx-pillar-k">Schools</span>
+                <span class="lx-pillar-v">{{ "{:,}".format(pillars.schools) }} published admission distances</span>
+                <span class="lx-pillar-s">Will your child get in? Each school's distance to the address, against how far it admitted from last time.</span>
+            </a>
+            <a class="lx-pillar" href="/running-costs">
+                <span class="lx-pillar-k">Running costs</span>
+                <span class="lx-pillar-v">Council tax for {{ pillars.councils }} councils, EPC energy, tenure</span>
+                <span class="lx-pillar-s">The bills that come with the keys, and the estate charge no listing mentions.</span>
+            </a>
+        </div>
 
         {# The funnel loses 96% of visitors before their first search
            (measured 31 Aug 2026: 12,247 visits, 489 searches), and the

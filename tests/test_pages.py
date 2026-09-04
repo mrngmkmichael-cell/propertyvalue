@@ -1271,3 +1271,30 @@ def test_school_guide_shows_the_ofsted_note_for_an_unrated_school(client, monkey
     assert "Ungraded Lane Primary" in r.text
     assert "standards maintained" in r.text
 
+
+# ---- three pillars, 4 Sep 2026 night ---------------------------------------
+
+def test_homepage_offers_the_three_pillars(client):
+    body = client.get("/").text
+    assert "running costs" in body.lower()
+    for href in ("/areas", "/schools/admissions", "/running-costs"):
+        assert f'class="lx-pillar" href="{href}"' in body
+    assert 'href="/running-costs">Running costs</a>' in body  # navigation
+
+
+def test_running_costs_page_ranks_councils_from_the_official_file(client):
+    body = client.get("/running-costs").text
+    assert "Cheapest twenty" in body and "Dearest twenty" in body
+    assert '"FAQPage"' in body
+    assert 'href="/estate-charges"' in body
+    assert "/running-costs" in client.get("/sitemap.xml").text
+
+
+def test_estate_charges_page_is_sourced_and_honest(client):
+    body = client.get("/estate-charges").text
+    assert "Twelve questions" in body and "fleecehold" in body.lower()
+    assert "cma-cases/housebuilding-market-study" in body
+    assert "no official source" in body.lower()
+    assert '"FAQPage"' in body
+    assert "/estate-charges" in client.get("/sitemap.xml").text
+

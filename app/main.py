@@ -32,7 +32,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import OperationalError
 
 from app import auth, db, school_shortlist, watchlist
-from app.services import _cache
+from app.services import _cache, council_tax
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
@@ -142,6 +142,7 @@ _ANON_HTML_TTL_S = 600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
     "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
+    "/running-costs", "/estate-charges",
     "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
@@ -1309,6 +1310,51 @@ TRUSTPILOT = {
 }
 
 
+def _council_tax_summary() -> dict:
+    """Band D by English billing authority for the running-costs page and
+    the homepage pillar, from the same file the report reads. Cheapest
+    and dearest twenty, the middle council, and how many councils each
+    nation holds. A file read and a sort, cached an hour."""
+    cached = _cache.get(("council_tax_summary",), 3600)
+    if cached is not None:
+        return cached
+    raw = council_tax._RAW or {}
+    nation = lambda key: ((raw.get(key) or {}).get("authorities") or {})  # noqa: E731
+    england = [
+        {"authority": v.get("authority", ""), "band_d": v.get("band_d")}
+        for v in nation("england").values() if isinstance(v, dict) and v.get("band_d") and v.get("authority")
+    ]
+    england.sort(key=lambda r: r["band_d"])
+    cached = {
+        "year": raw.get("year", ""), "count": len(england),
+        "cheapest": england[:20], "dearest": england[-20:][::-1],
+        "median": england[len(england) // 2]["band_d"] if england else None,
+        "wales": len(nation("wales")), "scotland": len(nation("scotland")),
+        "source": (raw.get("england") or {}).get("source", ""),
+    }
+    _cache.set(("council_tax_summary",), cached)
+    return cached
+
+
+@app.get("/running-costs")
+def running_costs_page(request: Request):
+    """The third pillar: what it costs to live at an address, from the
+    bodies that publish it, and the one cost nobody publishes."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/running-costs"
+    context["ct"] = _council_tax_summary()
+    return templates.TemplateResponse(request, "running_costs.html", context)
+
+
+@app.get("/estate-charges")
+def estate_charges_page(request: Request):
+    """Estate charges (fleecehold), explained from official and
+    parliamentary sources, with the questions to ask before buying."""
+    context = base_context(request)
+    context["canonical_url"] = f"{_public_base_url(request)}/estate-charges"
+    return templates.TemplateResponse(request, "estate_charges.html", context)
+
+
 def _admission_stats() -> dict:
     """How many schools and councils carry a published admission
     distance, for the homepage. One small group-by an hour; the number
@@ -1330,6 +1376,12 @@ def index(request: Request):
     context["accuracy_counts"] = _landing_accuracy_counts()
     context["trustpilot"] = TRUSTPILOT
     context["admission_stats"] = _admission_stats()
+    ct = _council_tax_summary()
+    context["pillars"] = {
+        "checks": 40, "areas": len(ALL_OUTCODES),
+        "schools": context["admission_stats"]["schools"],
+        "councils": ct["count"] + ct["wales"] + ct["scotland"],
+    }
 
     # Hand the hero strip whatever is already cached, so it paints with
     # real figures immediately instead of waiting on round trips.
@@ -1539,6 +1591,8 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
+    entries.append((f"{base}/running-costs", "0.7"))
+    entries.append((f"{base}/estate-charges", "0.7"))
     # "private schools in {council}" is the query Search Console shows
     # us being surfaced for at position 46 with the per-postcode pages;
     # one page per council is the shape of the query.
@@ -7597,6 +7651,8 @@ async def llms_txt(request: Request):
 - [School admission distances by council]({base}/schools/admissions): 85 English councils, 3,400+ schools, how far the last child offered a place lived, from each council's published statistics.
 - [England's tightest school catchments]({base}/schools/tightest-catchments): the national ranking, the widest gates, and the councils compared.
 - [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
+- [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
+- [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
 - [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.
 - [Private schools by council]({base}/schools/independent): every fee-paying school on the Department for Education register, by council.

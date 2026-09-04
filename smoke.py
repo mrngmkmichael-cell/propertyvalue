@@ -61,6 +61,8 @@ CHECKS = [
     ("/schools/how-admissions-work", {200}, ["31 October", "15 January"]),
     ("/schools/tightest-catchments", {200}, ["tightest gates in England", "councils compared"]),
     ("/schools/catchment-house-prices", {200}, ["within reach"]),
+    ("/running-costs", {200}, ["Band D", "Estate charges"]),
+    ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
     ("/schools/independent", {200}, ["Private schools, council by council"]),
     ("/schools/independent/surrey", {200}, ["Private schools in Surrey"]),
     ("/schools/admission-distances.csv", {200}, ["urn,school,phase,council"]),

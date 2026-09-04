@@ -6246,6 +6246,18 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 /* The zero-typing route into the product, under the search form. Quiet
    prose with one link, not a button: the button on this screen is
    Search, and two competing buttons would cost more than this earns. */
+/* Three doors under the search: what the site does, with live counts. */
+.lx-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1.25rem 0 0; }
+.lx-pillar {
+    display: flex; flex-direction: column; gap: 0.25rem; padding: 0.9rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.35); border-radius: var(--radius-lg, 12px);
+    background: rgba(255, 255, 255, 0.72); backdrop-filter: blur(6px); text-decoration: none; color: var(--ink);
+}
+.lx-pillar:hover { border-color: var(--accent); }
+.lx-pillar-k { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.lx-pillar-v { font-weight: var(--weight-semibold, 600); font-size: var(--text-sm); }
+.lx-pillar-s { font-size: var(--text-xs); color: var(--ink-soft); line-height: 1.45; }
+@media (max-width: 860px) { .lx-pillars { grid-template-columns: 1fr; } }
 .lx-hero-sample {
     margin: 1rem 0 0;
     font-size: var(--text-sm);
