@@ -22,6 +22,8 @@ the local Claude session as things ship. Newest first.
   office", never "managed by". No charge figures: no official source.
   The £19 pass leads the pricing page, but is not on sale because
   STRIPE_PRICE_ID_PASS is unset on Render (Michael's to create).
+  The report itself now says "what it costs to live here" under the
+  score: council tax at Band D, the EPC's yearly energy estimate, tenure.
   Press kit gained story three. Estate charge *records* (community data,
   moderation, PDF extraction) deliberately not built: no traffic to feed
   the funnel yet, and it changes what the site is; Michael's call.
