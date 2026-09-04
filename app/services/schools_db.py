@@ -681,27 +681,32 @@ def tightest_catchments() -> dict:
     written to be quoted: the tightest gates in England, the widest, and
     how the councils compare. Cached a day; the underlying table changes
     only when an import runs."""
-    cached = _cache.get(TIGHTEST_CACHE_KEY, TIGHTEST_TTL_S)
+    # Tier 2 as well as tier 1: the result is shared across process
+    # restarts, so a deploy does not re-read three tables (4 Sep 2026,
+    # after the transfer allowance ran out). Only the columns used.
+    cached = _cache.get_persistent(TIGHTEST_CACHE_KEY, TIGHTEST_TTL_S)
     if cached is not None:
         return cached
     with get_session() as session:
         rows = session.execute(
-            select(School, SchoolAdmissionRadius, SchoolDetail)
+            select(School.urn, School.name, School.phase, School.latitude, School.longitude,
+                   SchoolAdmissionRadius.source_authority, SchoolAdmissionRadius.last_distance_miles,
+                   SchoolAdmissionRadius.academic_year, SchoolDetail.town)
             .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
             .outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
             .where(SchoolAdmissionRadius.source_authority != "")
         ).all()
     schools = []
-    for s, r, det in rows:
-        if not r.source_authority or r.last_distance_miles is None:
+    for urn, name, phase, lat, lon, authority, miles, year, town in rows:
+        if not authority or miles is None:
             continue
         schools.append({
-            "urn": s.urn, "name": s.name, "slug": _slugify(s.name),
-            "phase": _phase_group(s.phase) or "Other",
-            "town": det.town if det else "",
-            "authority": r.source_authority, "authority_slug": _slugify(r.source_authority),
-            "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year or "",
-            "lat": s.latitude, "lon": s.longitude,
+            "urn": urn, "name": name, "slug": _slugify(name),
+            "phase": _phase_group(phase) or "Other",
+            "town": town or "",
+            "authority": authority, "authority_slug": _slugify(authority),
+            "miles": round(miles, 2), "academic_year": year or "",
+            "lat": lat, "lon": lon,
         })
     schools.sort(key=lambda x: (x["miles"], x["name"]))
     by_council: dict[str, list] = {}
@@ -733,7 +738,7 @@ def tightest_catchments() -> dict:
         "median_miles": all_miles[len(all_miles) // 2] if all_miles else None,
         "years": sorted({x["academic_year"] for x in schools if x["academic_year"]}),
     }
-    _cache.set(TIGHTEST_CACHE_KEY, result)
+    _cache.set_persistent(TIGHTEST_CACHE_KEY, result)
     return result
 
 

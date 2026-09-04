@@ -1106,7 +1106,11 @@ async def on_startup():
         logging.error("database unavailable at startup, running degraded: %s", exc)
     if IS_PRODUCTION:
         asyncio.create_task(_indexnow_ping_if_changed())
-        asyncio.create_task(_prewarm_reports())
+        # The four-report prewarm on every deploy is gone (4 Sep 2026): it
+        # was built for launch-day cold starts, the tier-2 cache now
+        # survives deploys, and each run read the reference tables four
+        # times over at the exact moment the transfer allowance was the
+        # scarce resource. _prewarm_reports stays for a manual call.
 
 
 def base_context(request: Request) -> dict:
@@ -6415,18 +6419,34 @@ async def region_prices(request: Request, region_slug: str):
     return templates.TemplateResponse(request, "region_prices.html", context)
 
 
+DISTRICT_PRICE_ROWS_PERSIST_KEY = ("district_price_rows", 1)
+
+
 def _district_price_table_rows() -> list[dict]:
     """The raw ranked rows behind _district_price_table, shared with the
-    per-region pages so the two can never disagree on a median."""
+    per-region pages so the two can never disagree on a median.
+
+    This used to load every row of the page cache (every area guide and
+    every report payload, hundreds of megabytes) on each process start,
+    and a run of deploys on 2 and 3 Sep 2026 spent Neon's whole monthly
+    transfer allowance in four days. The compact result (a few hundred
+    kilobytes) is now kept in the tier-2 cache for a day and shared by
+    every process; the scan itself reads only the area-guide rows."""
+    cached = _cache.get_persistent(DISTRICT_PRICE_ROWS_PERSIST_KEY, DISTRICT_PRICE_ROWS_TTL_S)
+    if cached is not None:
+        return cached
     prefix = f"area_guide:{AREA_GUIDE_PAYLOAD_VERSION}:"
     rows = []
     with db.get_session() as session:
-        for entry in session.scalars(select(PageCache)).all():
-            key = entry.cache_key or ""
+        pairs = session.execute(
+            select(PageCache.cache_key, PageCache.value).where(PageCache.cache_key.like(prefix + "%"))
+        ).all()
+        for key, value in pairs:
+            key = key or ""
             if not key.startswith(prefix):
                 continue
             try:
-                payload = json.loads(entry.value)
+                payload = json.loads(value)
             except (TypeError, ValueError):
                 continue
             sales = payload.get("local_sales") or {}
@@ -6442,6 +6462,8 @@ def _district_price_table_rows() -> list[dict]:
                 "district": hpi_local.get("name") or "",
             })
     rows.sort(key=lambda r: r["median"])
+    if rows:
+        _cache.set_persistent(DISTRICT_PRICE_ROWS_PERSIST_KEY, rows)
     return rows
 
 
