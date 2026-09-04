@@ -2815,6 +2815,16 @@ button:not([class]):hover { background: var(--accent-hover); }
 .ofsted-2 { background: #10b981; }
 .ofsted-3 { background: #ca8a04; }
 .ofsted-4 { background: #dc2626; }
+/* Ofsted's report card (November 2025 onwards): not a quality level,
+   so a neutral blue rather than a place on the green-to-red scale. */
+.ofsted-5 { background: #4f6fbf; }
+.rating-card { background: #4f6fbf; }
+.ofsted-card { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.25rem; }
+.ofsted-card li { display: flex; justify-content: space-between; gap: 1rem; font-size: var(--text-sm); }
+.ofsted-card-grade { font-weight: var(--weight-medium); white-space: nowrap; }
+.ofsted-card-exceptional, .ofsted-card-strong-standard, .ofsted-card-met { color: #2f6b4f; }
+.ofsted-card-needs-attention { color: #8a5a12; }
+.ofsted-card-urgent-improvement, .ofsted-card-not-met { color: #a83a32; }
 
 .shortlist-btn {
     display: inline-block;

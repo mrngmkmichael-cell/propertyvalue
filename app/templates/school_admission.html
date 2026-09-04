@@ -53,9 +53,10 @@
     <div class="score-tile">
         <span class="score-tile-value">
             {% if school.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ school.ofsted_rating }}" style="font-size:1rem">{{ school.ofsted_rating_label }}</span>
+            {% elif school.ofsted_note %}<span class="ofsted-badge ofsted-none" style="font-size:1rem">Ungraded</span>
             {% else %}<span class="section-sub">No current grade</span>{% endif %}
         </span>
-        <span class="score-tile-label">Ofsted{% if school.ofsted_inspection_date %}, {{ school.ofsted_inspection_date.strftime("%b %Y") }}{% endif %}</span>
+        <span class="score-tile-label">{% if school.ofsted_note and not school.ofsted_rating_label %}{{ school.ofsted_note }}{% else %}Ofsted{% if school.ofsted_inspection_date %}, {{ school.ofsted_inspection_date.strftime("%b %Y") }}{% endif %}{% endif %}</span>
     </div>
     <div class="score-tile">
         <span class="score-tile-value">{{ school.miles }} mi</span>
@@ -183,10 +184,24 @@
     <div class="tablewrap">
         <table class="tx-table">
             <tbody>
-                {% if school.ofsted_rating_label %}
+                {% if school.ofsted_rating_label or school.ofsted_note %}
                 <tr>
                     <td><strong>Ofsted</strong></td>
-                    <td>{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}, inspected {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}</td>
+                    <td>{% if school.ofsted_rating_label and school.ofsted_rating_label != "Report card" %}{{ school.ofsted_rating_label }}{% if school.ofsted_inspection_date %}, inspected {{ school.ofsted_inspection_date.strftime("%d %B %Y") }}{% endif %}{% if school.ofsted_note %}. {{ school.ofsted_note }}{% endif %}{% else %}{{ school.ofsted_note }}{% endif %}</td>
+                </tr>
+                {% endif %}
+                {% if school.ofsted_card %}
+                <tr>
+                    <td><strong>Report card</strong></td>
+                    <td>
+                        {# Ofsted's post-2025 format: nine areas, no overall grade. #}
+                        <ul class="ofsted-card">
+                        {% for label, grade in school.ofsted_card %}
+                            <li><span class="ofsted-card-area">{{ label }}</span> <span class="ofsted-card-grade ofsted-card-{{ grade | lower | replace(' ', '-') }}">{{ grade }}</span></li>
+                        {% endfor %}
+                        </ul>
+                        <span class="section-sub">Ofsted stopped giving schools a single overall grade in 2024; from November 2025 each area is judged on this five-point scale.</span>
+                    </td>
                 </tr>
                 {% endif %}
                 {% if school.ks4 and school.ks4.progress8 is not none %}

@@ -1230,3 +1230,22 @@ def test_area_guide_lists_schools_with_a_published_distance():
     rows = schools_db.admission_rows_in_outcodes({"M1"})
     assert any(r["name"] == "Piccadilly Gate Primary" and r["miles"] == 0.6 for r in rows)
     assert not any(r["name"] == "Piccadilly Gate Primary" for r in schools_db.admission_rows_in_outcodes({"M2"}))
+
+
+def test_school_page_shows_the_ofsted_note_instead_of_a_blank(client):
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        if session.get(School, 990071) is None:
+            session.add(School(urn=990071, name="Orchard Gate Primary", phase="Primary", type_name="Academy sponsor led",
+                               postcode="M1 4AA", latitude=53.47, longitude=-2.23, ofsted_rating=None, ofsted_rating_label="",
+                               ofsted_note="Ungraded inspection, June 2025: improved significantly"))
+            session.add(SchoolAdmissionRadius(urn=990071, last_distance_miles=0.9, academic_year="2025", source_authority="Manchester"))
+            session.commit()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/990071/orchard-gate-primary").text
+    assert "Ungraded inspection, June 2025: improved significantly" in body
+    assert "No current grade" not in body.split("<h1>")[1][:1500]
+    hub = client.get("/schools/admissions/manchester").text
+    assert "improved significantly" in hub

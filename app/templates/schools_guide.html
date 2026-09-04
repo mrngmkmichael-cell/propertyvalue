@@ -93,6 +93,7 @@
                 <span class="key-dot" style="background:#3f7d5c"></span> Good
                 <span class="key-dot" style="background:#8a5a12"></span> Requires improvement
                 <span class="key-dot" style="background:#a83a32"></span> Inadequate
+                <span class="key-dot" style="background:#4f6fbf"></span> Report card
                 <span class="key-dot" style="background:#8a8378"></span> No current grade
                 <span class="key-ring key-ring-real"></span> published admission distance
                 <span class="key-ring key-ring-est"></span> estimated
@@ -123,7 +124,7 @@
                             <td data-value="{{ r.rating_code or 9 }}">
                                 {% if r.rating %}<span class="ofsted-badge ofsted-{{ r.rating_code }}">{{ r.rating }}</span>
                                 {% elif r.independent %}<span class="section-sub">Not Ofsted-rated</span>
-                                {% else %}<span class="section-sub">No current grade</span>{% endif %}
+                                {% else %}<span class="section-sub">{{ s.ofsted_note or "No current grade" }}</span>{% endif %}
                             </td>
                             <td class="num" data-value="{{ r.distance_m }}">{{ r.distance_m | distance }}</td>
                             <td class="num" data-value="{{ r.admission_miles if r.admission_miles is not none else 999 }}">

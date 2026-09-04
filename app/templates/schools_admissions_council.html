@@ -65,7 +65,7 @@
                     </td>
                     <td data-value="{{ s.ofsted_rating or 9 }}">
                         {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
-                        {% else %}<span class="section-sub">No current grade</span>{% endif %}
+                        {% else %}<span class="section-sub">{{ s.ofsted_note or "No current grade" }}</span>{% endif %}
                     </td>
                     <td class="num" data-value="{{ s.miles }}"><strong>{{ s.miles }} mi</strong></td>
                     <td data-value="{{ s.academic_year }}">{{ s.academic_year }}</td>

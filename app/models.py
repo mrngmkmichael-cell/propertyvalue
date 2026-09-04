@@ -302,6 +302,10 @@ class School(Base):
     ofsted_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     ofsted_rating_label: Mapped[str] = mapped_column(String(50), default="")
     ofsted_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # One honest line where the grade column is blank: "Ungraded
+    # inspection, June 2025: improved significantly", or the report-card
+    # summary. See app/services/ofsted_outcomes.py.
+    ofsted_note: Mapped[str] = mapped_column(String(160), default="")
 
 
 class SchoolDetail(Base):
@@ -356,6 +360,19 @@ class SchoolDetail(Base):
     # current grade" into "last inspected on this date" rather than
     # implying Ofsted has never visited.
     ofsted_ungraded_inspection_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Ofsted's report card (from November 2025): nine areas on a
+    # five-point scale, no overall grade. Empty strings where the
+    # school has not had one yet.
+    ofsted_card_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ofsted_card_safeguarding: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_inclusion: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_curriculum: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_achievement: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_attendance: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_personal: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_early_years: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_post16: Mapped[str] = mapped_column(String(24), default="")
+    ofsted_card_leadership: Mapped[str] = mapped_column(String(24), default="")
 
     # Income Deprivation Affecting Children Index quintile (1 = most
     # deprived fifth of areas nationally, 5 = least) for the school's

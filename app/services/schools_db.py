@@ -14,7 +14,7 @@ from app.models import (
     Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCatchmentEstimate, SchoolCharacteristics,
     SchoolDemographics, SchoolDestinations, SchoolDetail,
 )
-from app.services import _cache, overview_score, reviews
+from app.services import _cache, ofsted_outcomes, overview_score, reviews
 
 # What counts as "nearby", and it is our choice rather than a measured
 # fact, so it may as well be a number a reader recognises. It was 5 km,
@@ -138,6 +138,7 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
                 "ofsted_rating": row.ofsted_rating,
                 "ofsted_rating_label": row.ofsted_rating_label,
                 "ofsted_inspection_date": row.ofsted_inspection_date,
+                "ofsted_note": row.ofsted_note,
             })
 
         candidates.sort(key=lambda s: s["distance_m"])
@@ -192,7 +193,7 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
     return {name: schools for name, schools in grouped.items() if schools}
 
 
-RATING_ORDER = ["Outstanding", "Good", "Requires improvement", "Inadequate", "No current grade"]
+RATING_ORDER = ["Outstanding", "Good", "Requires improvement", "Inadequate", "Report card", "No current grade"]
 
 
 def school_landscape(lat: float, lon: float) -> dict | None:
@@ -262,7 +263,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             "urn": row.urn, "name": row.name, "type": row.type_name,
             "distance_m": round(distance_km * 1000), "phase_group": None,
             "ofsted_rating": row.ofsted_rating, "ofsted_rating_label": row.ofsted_rating_label,
-            "ofsted_inspection_date": row.ofsted_inspection_date,
+            "ofsted_inspection_date": row.ofsted_inspection_date, "ofsted_note": row.ofsted_note,
             "latitude": row.latitude, "longitude": row.longitude,
         }
 
@@ -375,7 +376,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     rating_css = {
         "Outstanding": "rating-outstanding", "Good": "rating-good",
         "Requires improvement": "rating-reqimprovement", "Inadequate": "rating-inadequate",
-        "No current grade": "rating-none",
+        "Report card": "rating-card", "No current grade": "rating-none",
     }
     graded = total_schools - by_rating["No current grade"]
     good_or_better_pct = (
@@ -524,7 +525,7 @@ def school_entry(urn: int, lat: float, lon: float) -> dict | None:
         "urn": row.urn, "name": row.name, "type": row.type_name,
         "distance_m": round(distance_km * 1000), "phase_group": None,
         "ofsted_rating": row.ofsted_rating, "ofsted_rating_label": row.ofsted_rating_label,
-        "ofsted_inspection_date": row.ofsted_inspection_date,
+        "ofsted_inspection_date": row.ofsted_inspection_date, "ofsted_note": row.ofsted_note,
         "latitude": row.latitude, "longitude": row.longitude,
         "independent": _is_independent(row.type_name),
     }
@@ -646,7 +647,7 @@ def admission_council(slug: str) -> dict | None:
             "urn": s.urn, "name": s.name, "slug": _slugify(s.name),
             "phase": _phase_group(s.phase) or ("Special" if "special" in (s.type_name or "").lower() else "Other"),
             "type": s.type_name, "town": det.town if det else "",
-            "ofsted_rating": s.ofsted_rating, "ofsted_rating_label": s.ofsted_rating_label,
+            "ofsted_rating": s.ofsted_rating, "ofsted_rating_label": s.ofsted_rating_label, "ofsted_note": s.ofsted_note,
             "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year,
             "occupancy_pct": (
                 round(det.number_on_roll / det.school_capacity * 100)
@@ -901,7 +902,12 @@ def admission_profile(urn: int) -> dict | None:
             "ofsted_rating": school.ofsted_rating,
             "ofsted_rating_label": school.ofsted_rating_label,
             "ofsted_inspection_date": school.ofsted_inspection_date,
-            "miles": radius.last_distance_miles,
+            "ofsted_note": school.ofsted_note,
+            "ofsted_card": ofsted_outcomes.card_rows(detail),
+            "ofsted_card_date": detail.ofsted_card_date if detail else None,
+            # Three decimals at most: a council that measured to the metre
+            # published 2.948705680589559, and that is what the title said.
+            "miles": round(radius.last_distance_miles, 3),
             "academic_year": radius.academic_year,
             "authority": radius.source_authority,
             "fsm_eligible_pct": chars.fsm_eligible_pct if chars else None,

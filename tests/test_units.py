@@ -798,3 +798,45 @@ def test_extension_manifest_version_moved_with_the_feature():
     assert manifest["version"] == "2.3.0"
     js = pathlib.Path("browser-extension/content.js").read_text(encoding="utf-8")
     assert "pv-verdict-likely" in js and "Will this address get in?" in js
+
+
+# ---- Ofsted outcomes read in full -----------------------------------------
+
+def test_ofsted_ungraded_outcome_becomes_a_note_not_a_blank():
+    from app.services.ofsted_outcomes import derive
+    row = {"Latest OEIF overall effectiveness": "NULL",
+           "Ungraded inspection overall outcome": "Improved significantly",
+           "Ungraded inspection publication date": "12/06/2025"}
+    d = derive(row)
+    assert d["rating"] is None and d["rating_label"] == ""
+    assert d["note"] == "Ungraded inspection, June 2025: improved significantly"
+
+
+def test_ofsted_school_remains_good_is_a_good_grade():
+    from app.services.ofsted_outcomes import derive
+    row = {"Latest OEIF overall effectiveness": "2",
+           "Publication date of latest OEIF graded inspection": "01/03/2019",
+           "Ungraded inspection overall outcome": "School remains Good (Concerns) - S5 Next",
+           "Ungraded inspection publication date": "20/01/2024"}
+    d = derive(row)
+    assert (d["rating"], d["rating_label"]) == (2, "Good")
+    assert d["inspection_date"].isoformat() == "2024-01-20"
+    assert d["note"] == "Ungraded inspection, January 2024: school remains Good, with concerns raised"
+
+
+def test_ofsted_report_card_is_read_area_by_area():
+    from app.services.ofsted_outcomes import derive
+    row = {"Latest OEIF overall effectiveness": "Not judged",
+           "Safeguarding standards": "Met", "Safeguarding standards - date of grade": "05/02/2026",
+           "Inclusion": "Strong standard", "Curriculum and teaching": "Expected standard",
+           "Achievement": "Needs attention", "Leadership and governance": "Expected standard"}
+    d = derive(row)
+    assert d["rating"] == 5 and d["rating_label"] == "Report card"
+    assert d["card"]["inclusion"] == "Strong standard" and d["card"]["safeguarding"] == "Met"
+    assert d["note"] == "Report card, February 2026: 1 area strong or exceptional, 2 at the expected standard, 1 needing attention or urgent improvement"
+
+
+def test_ofsted_plain_graded_inspection_unchanged():
+    from app.services.ofsted_outcomes import derive
+    d = derive({"Latest OEIF overall effectiveness": "1", "Publication date of latest OEIF graded inspection": "10/10/2022"})
+    assert (d["rating"], d["rating_label"], d["note"]) == (1, "Outstanding", "")

@@ -49,6 +49,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.db import Base, _get_engine  # noqa: E402
+from app.services import ofsted_outcomes  # noqa: E402
 from app.models import School, SchoolDetail  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
@@ -118,10 +119,16 @@ def fetch_ofsted_ratings() -> dict[int, dict]:
             continue
         urn = int(urn_raw)
 
-        rating = _judgement(row.get("Latest OEIF overall effectiveness", ""))
+        # The full reading: graded grade, ungraded outcome or report card.
+        derived = ofsted_outcomes.derive(row)
+        rating = derived["rating"]
         ratings[urn] = {
             "rating": rating,
-            "inspection_date": _parse_date(row.get("Publication date of latest OEIF graded inspection", "")),
+            "rating_label": derived["rating_label"],
+            "inspection_date": derived["inspection_date"],
+            "note": derived["note"],
+            "card": derived["card"],
+            "card_date": derived["card_date"],
             "quality_of_education": _judgement(row.get("Latest OEIF quality of education", "")),
             "behaviour_attitudes": _judgement(row.get("Latest OEIF behaviour and attitudes", "")),
             "personal_development": _judgement(row.get("Latest OEIF personal development", "")),
@@ -210,7 +217,8 @@ def build_records(gias_rows: list[dict], ratings: dict[int, dict]) -> tuple[list
             "latitude": lat,
             "longitude": lon,
             "ofsted_rating": r.get("rating"),
-            "ofsted_rating_label": RATING_LABELS.get(r.get("rating"), ""),
+            "ofsted_rating_label": r.get("rating_label", ""),
+            "ofsted_note": r.get("note", ""),
             "ofsted_inspection_date": r.get("inspection_date"),
         })
 
@@ -244,6 +252,8 @@ def build_records(gias_rows: list[dict], ratings: dict[int, dict]) -> tuple[list
             "ofsted_early_years_provision": r.get("early_years_provision"),
             "ofsted_sixth_form_provision": r.get("sixth_form_provision"),
             "ofsted_ungraded_inspection_date": r.get("ungraded_inspection_date"),
+            "ofsted_card_date": r.get("card_date"),
+            **{f"ofsted_card_{key}": (r.get("card") or {}).get(key, "") for key, _c, _l in ofsted_outcomes.CARD_AREAS},
             "idaci_quintile": r.get("idaci_quintile"),
         })
 

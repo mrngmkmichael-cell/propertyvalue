@@ -2216,7 +2216,7 @@
                                 {% if s.ofsted_rating_label %}
                                     <span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
                                 {% else %}
-                                    <span class="ofsted-none">Not rated</span>
+                                    <span class="ofsted-none">{{ s.ofsted_note or "No current grade" }}</span>
                                 {% endif %}
                             </td>
                             <td class="num">
