@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Who Manages Your Estate? {{ "{:,}".format(data.total) }} Residents' Management Companies and the Offices They Are Registered To{% endblock %}
-{% block meta_description %}Every active residents' and estate management company on the Companies House register, {{ "{:,}".format(data.total) }} of them, and the managing agents whose offices {{ "{:,}".format(data.attributed) }} are registered to. Search your estate's company; see who sits behind it.{% endblock %}
+{% block title %}Who Manages Your Estate? {{ "{:,}".format(data.total) }} Residents' Management Companies, Searchable{% endblock %}
+{% block meta_description %}Search {{ "{:,}".format(data.total) }} active residents' and estate management companies from the Companies House register, and the managing agents whose offices {{ "{:,}".format(data.attributed) }} of them are registered to.{% endblock %}
 {% block og_title %}Who manages your estate?{% endblock %}
 
 {% block content %}

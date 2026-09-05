@@ -7,7 +7,7 @@ against DfE's separate school-establishment data by hand.
 import math
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import func, null, select
 
 from app.db import get_session, is_configured
 from app.models import (
@@ -305,11 +305,14 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         with get_session() as session:
             details = {
                 d.urn: d
-                for d in session.scalars(
-                    select(SchoolDetail).where(
-                        SchoolDetail.urn.in_([e["urn"] for e in pending_independent])
-                    )
-                )
+                for d in session.execute(
+                    # Five columns of a 37-column table: everything the
+                    # phase classification below reads.
+                    select(
+                        SchoolDetail.urn, SchoolDetail.age_low, SchoolDetail.age_high, SchoolDetail.gender,
+                        SchoolDetail.admissions_policy, SchoolDetail.religious_character,
+                    ).where(SchoolDetail.urn.in_([e["urn"] for e in pending_independent]))
+                ).all()
             }
             ages = {urn: (d.age_low, d.age_high) for urn, d in details.items()}
         for entry in pending_independent:
@@ -365,7 +368,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     # that's the complete set to enrich - one batched IN-query each
     # rather than a query per school, same pattern as nearby_schools().
     all_entries = [e for bucket in schools_by_rating.values() for e in bucket]
-    _enrich_entries(all_entries)
+    _enrich_entries(all_entries, with_detail=False)
 
     higher_education_names.sort()
     # Deliberately not "ofsted-1"/"ofsted-2" etc - those bare class
@@ -420,7 +423,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     }
 
 
-def _enrich_entries(all_entries: list[dict]) -> None:
+def _enrich_entries(all_entries: list[dict], with_detail: bool = True) -> None:
     """Attach everything the profile popup shows to each bare entry:
     exam results and trend, free school meals, GIAS detail,
     destinations, admission distance (published, else modelled),
@@ -430,6 +433,10 @@ def _enrich_entries(all_entries: list[dict]) -> None:
     per school. Pulled out of school_landscape() on 1 Sep 2026 so a
     single school can be built the same way for the popup that now
     loads on click instead of being rendered 99 times into the page.
+
+    with_detail=False skips the 37-column GIAS detail row, which only
+    that popup reads: the landscape behind a guide page or a report
+    never shows it, and it was the widest thing the build fetched.
     """
     all_urns = [e["urn"] for e in all_entries]
     if all_urns:
@@ -440,34 +447,45 @@ def _enrich_entries(all_entries: list[dict]) -> None:
             ks2_by_urn, ks2_trend_by_urn = _latest_and_trend(
                 session.scalars(select(Ks2Result).where(Ks2Result.urn.in_(all_urns)))
             )
-            fsm_by_urn = {
-                r.urn: r.fsm_eligible_pct
-                for r in session.scalars(select(SchoolCharacteristics).where(SchoolCharacteristics.urn.in_(all_urns)))
+            # The six one-row-per-school tables come back in a single
+            # round trip, outer-joined from the school list, rather than
+            # six queries in a row. On a cold guide page the six were
+            # 0.6 s of the build against 0.2 s joined (33 schools,
+            # measured 5 Sep 2026), and every visitor whose page is not
+            # in the ten-minute cache pays the build.
+            stmt = (
+                select(School.urn, SchoolCharacteristics, SchoolDetail if with_detail else null(),
+                       SchoolDestinations, SchoolAdmissionRadius, SchoolCatchmentEstimate, SchoolDemographics)
+                .select_from(School)
+                .outerjoin(SchoolCharacteristics, SchoolCharacteristics.urn == School.urn)
+            )
+            if with_detail:
+                stmt = stmt.outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
+            joined = session.execute(
+                stmt.outerjoin(SchoolDestinations, SchoolDestinations.urn == School.urn)
+                .outerjoin(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+                .outerjoin(SchoolCatchmentEstimate, SchoolCatchmentEstimate.urn == School.urn)
+                .outerjoin(SchoolDemographics, SchoolDemographics.urn == School.urn)
+                .where(School.urn.in_(all_urns))
+            ).all()
+        fsm_by_urn = {urn: c.fsm_eligible_pct for urn, c, _d, _dest, _r, _est, _demo in joined if c is not None}
+        detail_by_urn = {urn: d for urn, _c, d, _dest, _r, _est, _demo in joined if d is not None}
+        destinations_by_urn = {urn: dest for urn, _c, _d, dest, _r, _est, _demo in joined if dest is not None}
+        admission_radius_by_urn = {
+            # round() here, not at each display site - some authorities'
+            # fetchers store an unrounded metres/miles conversion
+            # (e.g. Hertfordshire), which otherwise displays as
+            # "3.4260877129755056 mi" instead of "3.43 mi".
+            urn: {
+                "last_distance_miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year,
+                "source_authority": r.source_authority,
             }
-            detail_by_urn = {
-                r.urn: r for r in session.scalars(select(SchoolDetail).where(SchoolDetail.urn.in_(all_urns)))
-            }
-            destinations_by_urn = {
-                r.urn: r for r in session.scalars(select(SchoolDestinations).where(SchoolDestinations.urn.in_(all_urns)))
-            }
-            admission_radius_by_urn = {
-                # round() here, not at each display site - some authorities'
-                # fetchers store an unrounded metres/miles conversion
-                # (e.g. Hertfordshire), which otherwise displays as
-                # "3.4260877129755056 mi" instead of "3.43 mi".
-                r.urn: {
-                    "last_distance_miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year,
-                    "source_authority": r.source_authority,
-                }
-                for r in session.scalars(select(SchoolAdmissionRadius).where(SchoolAdmissionRadius.urn.in_(all_urns)))
-            }
-            catchment_estimate_by_urn = {
-                r.urn: {"radius_miles": r.radius_miles}
-                for r in session.scalars(select(SchoolCatchmentEstimate).where(SchoolCatchmentEstimate.urn.in_(all_urns)))
-            }
-            demographics_by_urn = {
-                r.urn: r for r in session.scalars(select(SchoolDemographics).where(SchoolDemographics.urn.in_(all_urns)))
-            }
+            for urn, _c, _d, _dest, r, _est, _demo in joined if r is not None
+        }
+        catchment_estimate_by_urn = {
+            urn: {"radius_miles": est.radius_miles} for urn, _c, _d, _dest, _r, est, _demo in joined if est is not None
+        }
+        demographics_by_urn = {urn: demo for urn, _c, _d, _dest, _r, _est, demo in joined if demo is not None}
         review_summaries = reviews.summaries_for_many("school", [str(urn) for urn in all_urns])
         for e in all_entries:
             e["fsm_eligible_pct"] = fsm_by_urn.get(e["urn"])

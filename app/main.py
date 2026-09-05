@@ -6980,7 +6980,7 @@ async def area_versus(request: Request, left: str, right: str):
     # comparison and would compete with each other in search.
     if left > right:
         return RedirectResponse(f"/compare/{right}/vs/{left}", status_code=301)
-    if right not in _neighbour_outcodes(left):
+    if not _are_neighbours(left, right):
         return templates.TemplateResponse(request, "404.html", context, status_code=404)
 
     cache_key = ("area_vs", AREA_GUIDE_PAYLOAD_VERSION, left, right)
@@ -7084,6 +7084,15 @@ def _neighbour_outcodes(outcode: str, limit: int = 8) -> list[str]:
         key=lambda pair: pair[1],
     )
     return [o["outcode"] for o, _ in ranked[:limit]]
+
+
+def _are_neighbours(left: str, right: str) -> bool:
+    """Neighbourhood is not symmetric: a district ringed by close
+    neighbours can sit among a farther district's nearest eight without
+    the reverse holding. The sitemap builds a pair from either side's
+    list, so the page exists when either side counts the other (5 Sep
+    2026: /compare/M43/vs/SK16 was advertised and answered 404)."""
+    return right in _neighbour_outcodes(left) or left in _neighbour_outcodes(right)
 
 
 def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:

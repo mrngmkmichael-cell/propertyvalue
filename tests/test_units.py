@@ -840,3 +840,39 @@ def test_ofsted_plain_graded_inspection_unchanged():
     from app.services.ofsted_outcomes import derive
     d = derive({"Latest OEIF overall effectiveness": "1", "Publication date of latest OEIF graded inspection": "10/10/2022"})
     assert (d["rating"], d["rating_label"], d["note"]) == (1, "Outstanding", "")
+
+
+def test_compare_pairs_exist_when_either_side_counts_the_other(monkeypatch):
+    """The sitemap builds a pair from either district's neighbour list,
+    so the page must answer when either side counts the other."""
+    from app import main as app_main
+    lists = {"M43": ["M34", "M35"], "SK16": ["M43", "SK14"]}
+    monkeypatch.setattr(app_main, "_neighbour_outcodes", lambda oc, limit=8: lists.get(oc, []))
+    assert app_main._are_neighbours("M43", "SK16")
+    assert app_main._are_neighbours("SK16", "M43")
+    assert not app_main._are_neighbours("M43", "SK14")
+
+
+def test_a_postcode_district_resolves_from_the_local_table(monkeypatch):
+    """A district such as M1 never leaves the process: the outcode table
+    on disk answers it, so a cold guide page does not start with two
+    calls to postcodes.io. A full postcode still goes to the lookup."""
+    import asyncio
+    from app.services import place_search
+
+    async def _never(_q):
+        raise AssertionError("postcodes.io was called for a district")
+
+    monkeypatch.setattr(place_search, "lookup_postcode", _never)
+    monkeypatch.setattr(place_search, "outcode_centroid", _never)
+    got = asyncio.run(place_search.resolve(" m1 "))
+    assert got["label"] == "M1" and 53.4 < got["latitude"] < 53.6 and -2.3 < got["longitude"] < -2.1
+
+    calls = []
+
+    async def _lookup(q):
+        calls.append(q)
+        return {"postcode": "M1 2AA", "latitude": 53.48, "longitude": -2.24}
+
+    monkeypatch.setattr(place_search, "lookup_postcode", _lookup)
+    assert asyncio.run(place_search.resolve("M1 2AA"))["label"] == "M1 2AA" and calls == ["M1 2AA"]

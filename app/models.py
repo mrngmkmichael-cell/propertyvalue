@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -313,6 +313,10 @@ class School(Base):
     see that script for source URLs and field mapping.
     """
     __tablename__ = "schools"
+    # Every "schools near here" query is a bounding box on these two
+    # columns; without the index it was a sequential scan of the whole
+    # table on each cold guide page and report (0.4 s, 5 Sep 2026).
+    __table_args__ = (Index("ix_schools_lat_lon", "latitude", "longitude"),)
 
     urn: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String(255))

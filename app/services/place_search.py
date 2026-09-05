@@ -10,6 +10,8 @@ elsewhere in this app (Overpass, Leaflet tiles), no API key needed.
 """
 from urllib.parse import quote
 
+import json
+
 import httpx
 
 from app.services.postcodes import lookup_postcode, outcode_centroid
@@ -20,12 +22,36 @@ NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 HEADERS = {"User-Agent": "UKPropertyInsight/1.0 (UK property research tool)"}
 
 
+_OUTCODES: dict[str, tuple[float, float]] | None = None
+
+
+def _outcode_table() -> dict[str, tuple[float, float]]:
+    global _OUTCODES
+    if _OUTCODES is None:
+        try:
+            with open("app/data/outcodes.json", encoding="utf-8") as fh:
+                _OUTCODES = {o["outcode"]: (o["lat"], o["lon"]) for o in json.load(fh)}
+        except (OSError, ValueError, KeyError, TypeError):
+            _OUTCODES = {}
+    return _OUTCODES
+
+
 async def resolve(query: str) -> dict | None:
     """Returns {"latitude", "longitude", "label"} for the best match,
     or None if nothing was found by either source."""
     query = query.strip()
     if not query:
         return None
+
+    # A postcode district is answered from the outcode table on disk,
+    # the same 2,943 centroids the area guides and sitemap use, with no
+    # call to postcodes.io. It was two network round trips (0.37 s on
+    # 5 Sep 2026) at the top of every cold guide page for the most
+    # common query shape there is.
+    if len(query) <= 4 and " " not in query and any(c.isdigit() for c in query):
+        here = _outcode_table().get(query.upper())
+        if here:
+            return {"latitude": here[0], "longitude": here[1], "label": query.upper()}
 
     postcode_result = await lookup_postcode(query)
     if postcode_result:
