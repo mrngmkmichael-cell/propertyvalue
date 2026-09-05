@@ -1500,3 +1500,11 @@ def test_school_page_offers_the_checker_near_the_top(client):
     assert top < body.index('class="scorecard-row"')
     assert 'action="/school/990002/riverside-academy#verdict"' in body
 
+
+def test_council_hub_offers_an_address_check(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/schools/admissions/manchester").text
+    assert 'id="hub-check-postcode"' in body and "against every Manchester school" in body
+

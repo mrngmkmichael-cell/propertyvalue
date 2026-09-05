@@ -88,6 +88,7 @@
     {% else %}
     <h2>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h2>
     <p class="section-sub">Every figure is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
+    {% with share_url=canonical_url ~ "?postcode=" ~ (checked.postcode | urlencode) ~ (("&house_number=" ~ (checked.house_number | urlencode)) if checked.house_number else ""), share_text="What it costs to live in " ~ checked.postcode ~ ": council tax, energy, prices, rent, stamp duty, from the official sources" %}{% include "_share_row.html" %}{% endwith %}
     {% if checked.house_number and not checked.home %}
     <p class="notice">No EPC or recorded sale matched "{{ checked.house_number }}" in {{ checked.postcode }}, so the rows below are for the postcode. Try the number as it appears on the address, for example "Flat 2" or "37".</p>
     {% endif %}
