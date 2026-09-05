@@ -290,7 +290,12 @@ the local Claude session as things ship. Newest first.
 
 ## On hold by the owner (suggest only if new evidence)
 
-- Press pitch outreach (drafted, held).
+- Press pitch outreach (three stories drafted in docs/press/press-kit.md).
+  Held again by Michael on 5 Sep 2026 ("hold off"): do not send, do not
+  re-raise.
+- The £19 one-off pass. Built and leading the pricing page when on sale,
+  but STRIPE_PRICE_ID_PASS stays unset by Michael's decision on 5 Sep 2026
+  ("hold off"): do not ask again; subscriptions are the only product.
 - Weekly GSC export loop (tooling ready, held).
 - Trustpilot email invites (held).
 
