@@ -59,7 +59,7 @@
                 {% if h.energy_now %}
                 <tr>
                     <td><strong>This home's energy</strong><span class="school-table-type">heating, hot water and lighting, the assessor's yearly estimate for this certificate</span></td>
-                    <td><strong>{{ h.energy_now | gbp }}</strong> a year now{% if h.energy_potential %}, {{ h.energy_potential | gbp }} after the certificate's recommended improvements{% endif %}</td>
+                    <td><strong>{{ h.energy_now | gbp }}</strong> a year{% if h.energy_potential and h.energy_potential < h.energy_now %}, falling to {{ h.energy_potential | gbp }} after the certificate's recommended improvements{% elif h.energy_potential %}; the certificate recommends no improvements that would lower it{% endif %}</td>
                     <td>EPC Register</td>
                 </tr>
                 {% endif %}
