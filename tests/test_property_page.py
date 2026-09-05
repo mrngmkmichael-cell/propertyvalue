@@ -501,3 +501,27 @@ def test_report_shows_what_it_costs_to_live_here(client, fake_report):
     assert 'href="/running-costs"' in body
     assert 'href="/estate-charges/managing-agents"' in body
 
+
+
+def test_a_welsh_report_names_the_country_and_the_missing_school_data(client, monkeypatch):
+    """A Welsh postcode printed "Vale of Glamorgan, None" in the byline
+    (postcodes.io fills region for English regions only) and told the
+    reader "No schools found nearby", which reads as an absence of
+    schools rather than an absence of data. Found on 5 Sep 2026 in a
+    report a real sign-up had just unlocked."""
+    from app import main as app_main
+
+    async def _lookup(_pc):
+        return {
+            "postcode": "CF63 4PT", "outcode": "CF63", "country": "Wales", "region": None,
+            "admin_district": "Vale of Glamorgan", "latitude": 51.4, "longitude": -3.27,
+            "codes": {"admin_district": "W06000014"}, "lsoa": "Vale of Glamorgan 010A",
+            "msoa": "Vale of Glamorgan 010", "admin_ward": "Court",
+        }
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    body = client.get("/property?postcode=CF63+4PT").text
+    assert "Vale of Glamorgan, None" not in body
+    assert "Vale of Glamorgan, Wales" in body
+    assert "No schools found nearby." not in body
+    assert "covers England only" in body and "Estyn" in body

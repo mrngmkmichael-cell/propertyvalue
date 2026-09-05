@@ -136,7 +136,7 @@
                 {% endif %}
                 <span class="kicker">Property report</span>
                 <h1>{{ location.postcode }}</h1>
-                <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+                <span class="byline">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% elif location.get("country") %}, {{ location.country }}{% endif %}</span>
             </div>
             <div class="report-head-actions">
                 {% if premium_unlocked and not shared and current_user %}
@@ -2283,7 +2283,23 @@
                 {% endif %}
             {% endfor %}
         {% else %}
+            {% set _country = location.get("country", "England") %}
+            {% if _country != "England" %}
+            <p class="notice">
+                The school data here covers England only: it is the Department for
+                Education's register of schools with Ofsted's inspection outcomes, and
+                neither covers {{ _country }}.
+                {% if _country == "Wales" %}Estyn inspects schools in Wales, and the Welsh
+                Government publishes school-level data on My Local School.
+                {% elif _country == "Scotland" %}Education Scotland inspects schools there,
+                and the Scottish Government publishes school data on Parentzone Scotland.
+                {% else %}The Education and Training Inspectorate inspects schools there,
+                and the Department of Education publishes school data.{% endif %}
+                Rather than show a blank, this says what is missing.
+            </p>
+            {% else %}
             <p class="notice">No schools found nearby.</p>
+            {% endif %}
         {% endif %}
             </section>
         </div>

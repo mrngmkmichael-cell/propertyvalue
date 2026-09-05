@@ -32,7 +32,7 @@
     <div class="report-head">
         <span class="kicker">Comparables</span>
         <h1>{{ location.postcode }}</h1>
-        <span class="byline">{{ location.admin_district }}, {{ location.region }}</span>
+        <span class="byline">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% elif location.get("country") %}, {{ location.country }}{% endif %}</span>
     </div>
 
     <section class="report-section" id="comparables" data-animate>

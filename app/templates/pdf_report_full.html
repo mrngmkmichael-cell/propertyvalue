@@ -119,7 +119,7 @@
 </tr></table>
 
 <h1>{{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}</h1>
-<p class="meta-row">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% endif %} &middot; Full due-diligence report &middot; every figure from a named official source</p>
+<p class="meta-row">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% elif location.get("country") %}, {{ location.country }}{% endif %} &middot; Full due-diligence report &middot; every figure from a named official source</p>
 <p class="subtitle2">&nbsp;</p>
 
 {% if overview %}
