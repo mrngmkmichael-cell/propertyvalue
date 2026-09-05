@@ -6249,6 +6249,7 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 .running-costs-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1.25rem; margin: 0.75rem 0 1rem; font-size: var(--text-sm); color: var(--ink-soft); }
 .running-costs-line strong { color: var(--ink); }
 .running-costs-k { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.cost-group { margin: 1.5rem 0 0.5rem; font-size: var(--text-base); font-family: var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
 /* Typeahead under the admissions search box. */
 .typeahead { list-style: none; margin: 0; padding: 0.25rem 0; position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); max-height: 22rem; overflow: auto; }
 .typeahead li a { display: block; padding: 0.55rem 0.9rem; color: var(--ink); text-decoration: none; font-size: var(--text-sm); }

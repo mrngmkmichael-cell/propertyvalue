@@ -1422,10 +1422,18 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
                 "hot_water_cost_potential": 100, "lighting_cost_potential": 80}
     monkeypatch.setattr(app_main.epc, "certificate_detail", _detail_full)
     body = client.get("/running-costs?postcode=BN15+8AA&house_number=2+Sea").text
-    assert "This home" in body and "2 Sea Lane" in body and "92 m" in body and "EPC band D" in body
-    assert "This home's energy" in body and "1,220" in body and "680" in body   # now, and after improvements
-    assert "This home's last sale" in body and "250,000" in body and "2019" in body and "leasehold" in body
+    assert "2 Sea Lane" in body and "92 m" in body and "EPC band D" in body
+    assert "Energy, this home" in body and "1,220" in body and "680" in body   # now, and after improvements
+    assert "This home's last sale" in body and "250,000" in body and "2019" in body and "Leasehold" in body
     assert "this home's own energy estimate" in body
+    # The three groups, and stamp duty on the home's own last sale (250,000):
+    # 2% of the 125,000 above the nil band = 2,500; nil for a first-time buyer; 15,000 with the surcharge.
+    assert "Every year" in body and "Once, when you buy" in body and "Worth knowing" in body
+    assert "Stamp duty" in body and "2,500" in body and "15,000" in body
+    from app.main import _stamp_duty
+    assert _stamp_duty(250000) == 2500 and _stamp_duty(250000, first_time=True) == 0
+    assert _stamp_duty(400000, first_time=True) == 5000 and _stamp_duty(600000, first_time=True) is None
+    assert _stamp_duty(1_000_000) == 2500 + 33750 + 7500
     assert 'name="house_number"' in body
     missing = client.get("/running-costs?postcode=BN15+8AA&house_number=99").text
     assert "No EPC or recorded sale matched" in missing

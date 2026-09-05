@@ -1339,6 +1339,37 @@ def _council_tax_summary() -> dict:
 RUNNING_COSTS_EPC_DETAILS = 8  # certificate detail calls per postcode, one per address, newest first
 
 
+# Stamp Duty Land Tax, residential, England and Northern Ireland, as
+# published on gov.uk (rates in force from April 2025; checked 5 Sep
+# 2026). Wales (Land Transaction Tax) and Scotland (LBTT) have their own
+# bands, so the page names those bodies instead of a number there.
+SDLT_BANDS = [(125_000, 0.0), (250_000, 0.02), (925_000, 0.05), (1_500_000, 0.10), (float("inf"), 0.12)]
+SDLT_FIRST_TIME_BANDS = [(300_000, 0.0), (500_000, 0.05)]
+SDLT_FIRST_TIME_CEILING = 500_000
+SDLT_ADDITIONAL_SURCHARGE = 0.05
+
+
+def _stamp_duty(price: float, first_time: bool = False, additional: bool = False) -> int | None:
+    """SDLT on a price, from the published bands. None where first-time
+    relief does not apply (price above its ceiling)."""
+    if price is None or price <= 0:
+        return None
+    if first_time:
+        if price > SDLT_FIRST_TIME_CEILING:
+            return None
+        bands = SDLT_FIRST_TIME_BANDS
+    else:
+        bands = SDLT_BANDS
+    tax, lower = 0.0, 0.0
+    for upper, rate in bands:
+        if price > lower:
+            tax += (min(price, upper) - lower) * rate
+        lower = upper
+    if additional:
+        tax += price * SDLT_ADDITIONAL_SURCHARGE
+    return int(round(tax))
+
+
 def _median(values: list) -> float | None:
     vals = sorted(v for v in values if isinstance(v, (int, float)))
     return vals[len(vals) // 2] if vals else None
@@ -1452,6 +1483,22 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     out["district_prices"] = (out.pop("district_rows") or {}).get(outcode) if isinstance(out.get("district_rows"), dict) else None
     out.pop("district_rows", None)
     out["home"] = home or None
+    # Stamp duty on the price that best stands for this home: its own
+    # last sale where there is one, otherwise the middle of the
+    # postcode's recent sales. England and Northern Ireland only.
+    country = (where.get("country") or "England").strip()
+    basis_price = (home.get("sale_amount") if home else None) or ((out.get("sales") or {}).get("median_recent"))
+    if basis_price and country in ("England", "Northern Ireland"):
+        out["stamp_duty"] = {
+            "price": basis_price,
+            "basis": "this home's last sale" if home and home.get("sale_amount") else "the middle of the postcode's recent sales",
+            "standard": _stamp_duty(basis_price), "first_time": _stamp_duty(basis_price, first_time=True),
+            "additional": _stamp_duty(basis_price, additional=True),
+        }
+    elif basis_price:
+        out["stamp_duty"] = {"price": basis_price, "basis": "", "devolved": country}
+    else:
+        out["stamp_duty"] = None
     ct, energy = out["council_tax"], out["energy"]
     # A typical year uses the home's own energy figure when there is one.
     energy_figure = (home.get("energy_now") if home else None) or (energy.get("median") if energy else None)
