@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_map_style.html" as mapstyle %}
 
 {% block title %}Running Costs by Postcode: Council Tax, Energy and Tenure for Any UK Address{% endblock %}
 {% block meta_description %}What it costs to live at an address, from official sources: the council tax bill for every band in {{ ct.count }} English councils ({{ ct.year }}), the EPC's estimated energy costs, and whether a home is freehold or leasehold. Plus the estate charge no listing shows.{% endblock %}
@@ -24,7 +25,8 @@
     official source at all, and this page says what to do about that.
 </p>
 
-<form class="search-form" action="/running-costs" method="get" role="search" style="max-width: 36rem;">
+<div class="rc-grid">
+<form class="search-form" action="/running-costs" method="get" role="search">
     <label for="rc-postcode">Postcode</label>
     <input id="rc-postcode" type="text" name="postcode" value="{{ check_query }}" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
     <label for="rc-house">House or flat number (optional)</label>
@@ -32,6 +34,51 @@
     <p class="section-sub" style="margin: 0.25rem 0 0.75rem;">With the number, the table leads with that home's own EPC (its size, type and energy costs) and its own sales. Without it, the figures are for the postcode.</p>
     <button type="submit">See its running costs</button>
 </form>
+{% if checked and not checked.unknown and checked.latitude is not none %}
+{# The place on a map, beside the box: the postcode's centre, which is
+   a few doors' worth of ground, and the caption says so. #}
+<div class="rc-map-wrap">
+    <div class="school-page-map rc-map" id="rc-map" role="img" aria-label="Map of {{ checked.postcode }}"></div>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">{{ checked.postcode }}{% if checked.home and checked.home.address %}, {{ checked.home.address }}{% endif %}. The pin is the postcode's centre, not a front door.</p>
+</div>
+<script>
+    window.RC_MAP = { lat: {{ checked.latitude | tojson }}, lng: {{ checked.longitude | tojson }}, label: {{ checked.postcode | tojson }} };
+</script>
+{% if google_maps_api_key %}
+{{ mapstyle.dark_map_style() }}
+<script>
+    function initRunningCostsMap() {
+        const M = window.RC_MAP;
+        const el = document.getElementById('rc-map');
+        if (!el || !M) return;
+        const centre = { lat: M.lat, lng: M.lng };
+        const map = new google.maps.Map(el, {
+            center: centre, zoom: 16, scrollwheel: false,
+            streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
+            styles: window.mapStyles(),
+        });
+        new google.maps.Marker({ position: centre, map: map, title: M.label });
+    }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initRunningCostsMap&loading=async" async defer></script>
+{% else %}
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script>
+    (function () {
+        const M = window.RC_MAP;
+        const el = document.getElementById('rc-map');
+        if (!el || !M) return;
+        const map = L.map(el, { scrollWheelZoom: false }).setView([M.lat, M.lng], 16);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19,
+        }).addTo(map);
+        L.marker([M.lat, M.lng]).addTo(map).bindPopup(M.label);
+    })();
+</script>
+{% endif %}
+{% endif %}
+</div>
 
 {% if checked %}
 <section class="report-section" id="checked">

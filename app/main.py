@@ -1390,6 +1390,7 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     outcode = canonical.split(" ")[0].upper()
     out = {"postcode": canonical, "district": where.get("admin_district") or "", "outcode": outcode,
            "house_number": house_number.strip(), "home": None,
+           "latitude": lat, "longitude": lon,
            "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district"))}
 
     home: dict = {}

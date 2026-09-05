@@ -1429,6 +1429,9 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     # The three groups, and stamp duty on the home's own last sale (250,000):
     # 2% of the 125,000 above the nil band = 2,500; nil for a first-time buyer; 15,000 with the surcharge.
     assert "Every year" in body and "Once, when you buy" in body and "Worth knowing" in body
+    # The map beside the box, pinned at the postcode centre (Leaflet branch in tests: no Google key).
+    assert 'id="rc-map"' in body and "window.RC_MAP = { lat: 50.83" in body and "leaflet.js" in body
+    assert 'id="rc-map"' not in client.get("/running-costs").text
     assert "Stamp duty" in body and "2,500" in body and "15,000" in body
     from app.main import _stamp_duty
     assert _stamp_duty(250000) == 2500 and _stamp_duty(250000, first_time=True) == 0
