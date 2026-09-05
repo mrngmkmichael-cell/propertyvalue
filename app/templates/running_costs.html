@@ -93,7 +93,7 @@
                 {% if checked.income_value %}
                 <tr>
                     <td><strong>Household income</strong><span class="school-table-type">typical total annual income for households in this small area</span></td>
-                    <td><strong>{{ checked.income_value | gbp }}</strong> a year</td>
+                    <td><strong>{{ checked.income_value | gbp }}</strong> a year{% if checked.income_la %}, against {{ checked.income_la | gbp }} across {{ checked.income_la_name or "the council" }}{% endif %}</td>
                     <td>ONS small area income estimates</td>
                 </tr>
                 {% endif %}

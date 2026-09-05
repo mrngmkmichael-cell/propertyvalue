@@ -1426,8 +1426,10 @@ async def _running_costs_for_postcode(where: dict) -> dict:
     ct, energy = out["council_tax"], out["energy"]
     out["typical_year"] = int(round(ct["band_d"] + energy["median"])) if ct and energy and energy.get("median") else None
     income = out.get("income") or {}
-    income_value = income.get("total_annual_income") if isinstance(income, dict) else None
+    income_value = income.get("here") if isinstance(income, dict) else None
     out["income_value"] = income_value
+    out["income_la"] = income.get("la_average") if isinstance(income, dict) else None
+    out["income_la_name"] = income.get("la_name") if isinstance(income, dict) else ""
     out["typical_share_pct"] = round(100 * out["typical_year"] / income_value, 1) if out["typical_year"] and income_value else None
     return out
 

@@ -1395,7 +1395,7 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     monkeypatch.setattr(app_main.hpi, "area_comparison", _hpi)
     monkeypatch.setattr(app_main.flood_zones, "zone_for", _zone)
     monkeypatch.setattr(app_main.rental, "rental_for_laua", lambda _c: {"la_name": "Adur", "period": "2026-07", "price_all": 1250, "change_all_pct": 3.0, "by_bedroom": [{"label": "2 bed", "price": 1300, "change_pct": 2.0}]})
-    monkeypatch.setattr(app_main.area_stats, "income_for_msoa", lambda _c: {"total_annual_income": 42000})
+    monkeypatch.setattr(app_main.area_stats, "income_for_msoa", lambda _c: {"here": 42000, "la_name": "Adur", "la_average": 45000, "region_name": "South East", "region_average": 47000})
     monkeypatch.setattr(app_main.broadband, "coverage_for_postcode", lambda _pc: {"label": "Gigabit", "gigabit_pct": 97.0, "ultrafast_pct": 98.0, "superfast_pct": 99.0, "below_uso_pct": 0.0})
     monkeypatch.setattr(app_main, "_district_price_rows_by_outcode", lambda: {"BN15": {"outcode": "BN15", "median": 320000, "count": 55, "low": 150000, "high": 900000, "district": "Adur"}})
     body = client.get("/running-costs?postcode=BN15+8AA").text
