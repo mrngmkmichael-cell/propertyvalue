@@ -1386,12 +1386,33 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     monkeypatch.setattr(app_main.epc, "certificates_for_postcode", _certs)
     monkeypatch.setattr(app_main.epc, "certificate_detail", _detail)
     monkeypatch.setattr(app_main, "sold_prices_for_postcode", _sales)
+
+    async def _hpi(*_a):
+        return {"local_authority": {"name": "Adur", "average_price": 350000.0, "annual_change_pct": 2.5, "period": "2026-06-01"}}
+
+    async def _zone(_lat, _lon):
+        return {"zone": 1, "label": "Flood zone 1: low risk"}
+    monkeypatch.setattr(app_main.hpi, "area_comparison", _hpi)
+    monkeypatch.setattr(app_main.flood_zones, "zone_for", _zone)
+    monkeypatch.setattr(app_main.rental, "rental_for_laua", lambda _c: {"la_name": "Adur", "period": "2026-07", "price_all": 1250, "change_all_pct": 3.0, "by_bedroom": [{"label": "2 bed", "price": 1300, "change_pct": 2.0}]})
+    monkeypatch.setattr(app_main.area_stats, "income_for_msoa", lambda _c: {"total_annual_income": 42000})
+    monkeypatch.setattr(app_main.broadband, "coverage_for_postcode", lambda _pc: {"label": "Gigabit", "gigabit_pct": 97.0, "ultrafast_pct": 98.0, "superfast_pct": 99.0, "below_uso_pct": 0.0})
+    monkeypatch.setattr(app_main, "_district_price_rows_by_outcode", lambda: {"BN15": {"outcode": "BN15", "median": 320000, "count": 55, "low": 150000, "high": 900000, "district": "Adur"}})
     body = client.get("/running-costs?postcode=BN15+8AA").text
     assert "What it costs to live in BN15 8AA" in body
     assert "Band A" in body and "Band H" in body and "Adur" in body
     assert "1,220" in body and "2 homes with a certificate" in body   # median of 950 and 1,220
-    assert "1</strong> freehold" in body and "1</strong> leasehold" in body and "latest 2025" in body
-    assert "A typical year" in body
+    assert "1</strong> freehold" in body and "1</strong> leasehold" in body
+    assert "Prices paid here" in body and "300,000" in body and "in 2025" in body
+    assert "Prices in BN15" in body and "320,000" in body
+    assert "Prices across Adur" in body and "350,000" in body and "up 2.5%" in body
+    assert "Rent" in body and "1,250" in body and "2 bed" in body
+    assert "Household income" in body and "42,000" in body
+    assert "A typical year" in body and "% of the typical household income" in body
+    assert "Flood zone 1" in body and "Gigabit" in body
+    # National context stays off the page once a postcode is answered.
+    assert "Cheapest twenty" not in body
+    assert "Cheapest twenty" in client.get("/running-costs").text
     assert 'href="/property?postcode=BN15%208AA#running-costs"' in body
     assert 'action="/running-costs"' in body
 

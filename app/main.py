@@ -1339,17 +1339,26 @@ def _council_tax_summary() -> dict:
 RUNNING_COSTS_EPC_DETAILS = 8  # certificate detail calls per postcode, one per address, newest first
 
 
+def _median(values: list) -> float | None:
+    vals = sorted(v for v in values if isinstance(v, (int, float)))
+    return vals[len(vals) // 2] if vals else None
+
+
 async def _running_costs_for_postcode(where: dict) -> dict:
-    """Everything official about what it costs to live in one postcode,
-    for the running-costs page's table. Council tax from the file, the
-    energy estimates on the postcode's own EPCs (the newest certificate
-    per address, up to eight, each a detail call), and tenure from its
-    recorded sales. Each part degrades to "not held" on its own."""
+    """Everything official the site can say about what it costs to live
+    in one postcode, for the running-costs page's table: council tax,
+    the energy estimates on the postcode's own EPCs (now and after the
+    recommended improvements), tenure and prices from its recorded
+    sales, the district's median, the council's average price and
+    trend, rents and household income for the area, the flood zone,
+    broadband. Every part is fetched independently and degrades to "not
+    held" on its own; nothing here is modelled."""
     canonical = where["postcode"]
     codes = where.get("codes", {}) or {}
-    out = {"postcode": canonical, "district": where.get("admin_district") or "",
-           "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district")),
-           "energy": None, "tenure": None}
+    lat, lon = where.get("latitude"), where.get("longitude")
+    outcode = canonical.split(" ")[0].upper()
+    out = {"postcode": canonical, "district": where.get("admin_district") or "", "outcode": outcode,
+           "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district"))}
 
     async def _energy():
         certs = await epc.certificates_for_postcode(canonical)
@@ -1362,40 +1371,64 @@ async def _running_costs_for_postcode(where: dict) -> dict:
             if len(chosen) >= RUNNING_COSTS_EPC_DETAILS:
                 break
         details = await asyncio.gather(*(epc.certificate_detail(c["certificate_number"]) for c in chosen), return_exceptions=True)
-        totals, bands = [], {}
+        now, later, bands = [], [], {}
         for d in details:
             if not isinstance(d, dict):
                 continue
-            parts = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
-            if any(isinstance(v, (int, float)) for v in parts):
-                totals.append(int(sum(v for v in parts if isinstance(v, (int, float)))))
+            cur = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
+            pot = [d.get("heating_cost_potential"), d.get("hot_water_cost_potential"), d.get("lighting_cost_potential")]
+            if any(isinstance(v, (int, float)) for v in cur):
+                now.append(int(sum(v for v in cur if isinstance(v, (int, float)))))
+            if any(isinstance(v, (int, float)) for v in pot):
+                later.append(int(sum(v for v in pot if isinstance(v, (int, float)))))
             if d.get("current_band"):
                 bands[d["current_band"]] = bands.get(d["current_band"], 0) + 1
-        if not totals:
+        if not now:
             return {"certificates": len(certs), "priced": 0}
-        totals.sort()
-        return {"certificates": len(certs), "priced": len(totals), "low": totals[0], "high": totals[-1],
-                "median": totals[len(totals) // 2],
+        return {"certificates": len(certs), "priced": len(now), "low": min(now), "high": max(now),
+                "median": _median(now), "median_potential": _median(later),
                 "bands": ", ".join(f"{b} x{n}" for b, n in sorted(bands.items()))}
 
-    async def _tenure():
+    async def _sales():
         sales = await sold_prices_for_postcode(canonical)
         counts = {}
         for t in sales:
             k = (t.get("tenure") or "").strip().lower()
             if k:
                 counts[k] = counts.get(k, 0) + 1
-        latest = max((str(t.get("date") or "") for t in sales), default="")
-        return {"sales": len(sales), "counts": counts, "latest_year": latest[:4]}
+        dated = sorted((t for t in sales if t.get("date")), key=lambda t: str(t["date"]), reverse=True)
+        amounts = [float(t["amount"]) for t in dated[:10] if t.get("amount")]
+        latest = dated[0] if dated else None
+        return {"sales": len(sales), "counts": counts,
+                "latest_year": str(latest["date"])[:4] if latest else "",
+                "latest_amount": float(latest["amount"]) if latest and latest.get("amount") else None,
+                "median_recent": _median(amounts), "recent_n": len(amounts)}
 
-    energy, tenure = await asyncio.gather(_energy(), _tenure(), return_exceptions=True)
-    out["energy"] = energy if isinstance(energy, dict) else None
-    out["tenure"] = tenure if isinstance(tenure, dict) else None
-    ct = out["council_tax"]
-    if ct and out["energy"] and out["energy"].get("median"):
-        out["typical_year"] = int(round(ct["band_d"] + out["energy"]["median"]))
-    else:
-        out["typical_year"] = None
+    async def _area_prices():
+        return await hpi.area_comparison(where.get("admin_district") or "", where.get("region") or "", where.get("country") or "")
+
+    async def _flood():
+        return await flood_zones.zone_for(lat, lon) if lat is not None and lon is not None else None
+
+    results = await asyncio.gather(
+        _energy(), _sales(), _area_prices(), _flood(),
+        asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
+        asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
+        asyncio.to_thread(broadband.coverage_for_postcode, canonical),
+        asyncio.to_thread(_district_price_rows_by_outcode),
+        return_exceptions=True,
+    )
+    keys = ("energy", "sales", "area_prices", "flood", "rent", "income", "broadband", "district_rows")
+    for key, value in zip(keys, results):
+        out[key] = value if not isinstance(value, BaseException) else None
+    out["district_prices"] = (out.pop("district_rows") or {}).get(outcode) if isinstance(out.get("district_rows"), dict) else None
+    out.pop("district_rows", None)
+    ct, energy = out["council_tax"], out["energy"]
+    out["typical_year"] = int(round(ct["band_d"] + energy["median"])) if ct and energy and energy.get("median") else None
+    income = out.get("income") or {}
+    income_value = income.get("total_annual_income") if isinstance(income, dict) else None
+    out["income_value"] = income_value
+    out["typical_share_pct"] = round(100 * out["typical_year"] / income_value, 1) if out["typical_year"] and income_value else None
     return out
 
 

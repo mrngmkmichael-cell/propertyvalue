@@ -37,13 +37,13 @@
     <p class="section-sub">Check the spelling, or try the full report search at the top of the page.</p>
     {% else %}
     <h2>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h2>
-    <p class="section-sub">Every figure is the publishing body's own, for this postcode or its council. Where a figure is not held, the row says so.</p>
+    <p class="section-sub">Every figure is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
     <div class="tablewrap">
         <table class="tx-table">
             <thead><tr><th>Cost</th><th>Figure</th><th>Source</th></tr></thead>
             <tbody>
                 <tr>
-                    <td><strong>Council tax</strong>{% if checked.council_tax %}<span class="school-table-type">every band below; the home's band is on its bill</span>{% endif %}</td>
+                    <td><strong>Council tax</strong><span class="school-table-type">the home's own band is on its bill; every band is in the row beneath this table</span></td>
                     <td>{% if checked.council_tax %}<strong>{{ checked.council_tax.band_d | gbp }}</strong> a year at Band D{% else %}Not held for this council{% endif %}</td>
                     <td>{% if checked.council_tax %}{{ checked.council_tax.authority }}, {{ checked.council_tax.year }} (MHCLG){% else %}MHCLG{% endif %}</td>
                 </tr>
@@ -52,16 +52,70 @@
                     <td>{% if checked.energy and checked.energy.priced %}<strong>{{ checked.energy.median | gbp }}</strong> a year is the middle of {{ checked.energy.priced }} home{{ "s" if checked.energy.priced != 1 else "" }} with a certificate here{% if checked.energy.priced > 1 %}, from {{ checked.energy.low | gbp }} to {{ checked.energy.high | gbp }}{% endif %}{% if checked.energy.bands %}<span class="school-table-type">EPC bands: {{ checked.energy.bands }}</span>{% endif %}{% elif checked.energy %}No EPC with costs found for this postcode{% else %}EPC Register not reached{% endif %}</td>
                     <td>EPC Register</td>
                 </tr>
+                {% if checked.energy and checked.energy.median_potential %}
+                <tr>
+                    <td><strong>Energy after improvements</strong><span class="school-table-type">what the assessor says the bills would fall to if the certificate's recommendations were done</span></td>
+                    <td><strong>{{ checked.energy.median_potential | gbp }}</strong> a year, the middle of the same homes</td>
+                    <td>EPC Register</td>
+                </tr>
+                {% endif %}
                 <tr>
                     <td><strong>Tenure</strong><span class="school-table-type">leasehold homes carry ground rent and a service charge on top</span></td>
-                    <td>{% if checked.tenure and checked.tenure.sales %}{% for k, n in checked.tenure.counts.items() %}<strong>{{ n }}</strong> {{ k }}{% if not loop.last %}, {% endif %}{% endfor %} of {{ checked.tenure.sales }} recorded sale{{ "s" if checked.tenure.sales != 1 else "" }}{% if checked.tenure.latest_year %}, latest {{ checked.tenure.latest_year }}{% endif %}{% elif checked.tenure %}No recorded sale in this postcode{% else %}HM Land Registry not reached{% endif %}</td>
+                    <td>{% if checked.sales and checked.sales.sales %}{% for k, n in checked.sales.counts.items() %}<strong>{{ n }}</strong> {{ k }}{% if not loop.last %}, {% endif %}{% endfor %} of {{ checked.sales.sales }} recorded sale{{ "s" if checked.sales.sales != 1 else "" }}{% elif checked.sales %}No recorded sale in this postcode{% else %}HM Land Registry not reached{% endif %}</td>
                     <td>HM Land Registry</td>
                 </tr>
+                <tr>
+                    <td><strong>Prices paid here</strong><span class="school-table-type">recorded sales in this postcode</span></td>
+                    <td>{% if checked.sales and checked.sales.recent_n %}<strong>{{ checked.sales.median_recent | gbp }}</strong> is the middle of the last {{ checked.sales.recent_n }} sale{{ "s" if checked.sales.recent_n != 1 else "" }}{% if checked.sales.latest_amount %}; the latest was {{ checked.sales.latest_amount | gbp }} in {{ checked.sales.latest_year }}{% endif %}{% elif checked.sales %}No recorded sale in this postcode{% else %}HM Land Registry not reached{% endif %}</td>
+                    <td>HM Land Registry</td>
+                </tr>
+                {% if checked.district_prices %}
+                <tr>
+                    <td><strong>Prices in {{ checked.outcode }}</strong><span class="school-table-type">the postcode district around it</span></td>
+                    <td><strong>{{ checked.district_prices.median | gbp }}</strong> is the middle of {{ checked.district_prices.count }} sales in {{ checked.outcode }}{% if checked.district_prices.low and checked.district_prices.high %}, from {{ checked.district_prices.low | gbp }} to {{ checked.district_prices.high | gbp }}{% endif %}</td>
+                    <td>HM Land Registry, via the <a href="/area/{{ checked.outcode }}">{{ checked.outcode }} area guide</a></td>
+                </tr>
+                {% endif %}
+                {% if checked.area_prices and checked.area_prices.local_authority %}
+                <tr>
+                    <td><strong>Prices across {{ checked.area_prices.local_authority.name }}</strong><span class="school-table-type">the council's average and its year-on-year move</span></td>
+                    <td><strong>{{ checked.area_prices.local_authority.average_price | gbp }}</strong>, {{ "up" if checked.area_prices.local_authority.annual_change_pct >= 0 else "down" }} {{ "%.1f"|format(checked.area_prices.local_authority.annual_change_pct|abs) }}% on a year ago ({{ checked.area_prices.local_authority.period[:7] }})</td>
+                    <td>UK House Price Index</td>
+                </tr>
+                {% endif %}
+                {% if checked.rent and checked.rent.price_all %}
+                <tr>
+                    <td><strong>Rent</strong><span class="school-table-type">private rents across {{ checked.rent.la_name }}, all sizes</span></td>
+                    <td><strong>{{ checked.rent.price_all | gbp }}</strong> a month{% if checked.rent.change_all_pct is not none %}, {{ "up" if checked.rent.change_all_pct >= 0 else "down" }} {{ "%.1f"|format(checked.rent.change_all_pct|abs) }}% on a year ago{% endif %}{% if checked.rent.by_bedroom %}<span class="school-table-type">{% for b in checked.rent.by_bedroom %}{{ b.label }} {{ b.price | gbp }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</span>{% endif %}</td>
+                    <td>ONS private rental prices, {{ checked.rent.period }}</td>
+                </tr>
+                {% endif %}
+                {% if checked.income_value %}
+                <tr>
+                    <td><strong>Household income</strong><span class="school-table-type">typical total annual income for households in this small area</span></td>
+                    <td><strong>{{ checked.income_value | gbp }}</strong> a year</td>
+                    <td>ONS small area income estimates</td>
+                </tr>
+                {% endif %}
                 {% if checked.typical_year %}
                 <tr>
-                    <td><strong>A typical year</strong><span class="school-table-type">Band D council tax plus the middle energy estimate; no water, insurance or charges</span></td>
-                    <td><strong>{{ checked.typical_year | gbp }}</strong> a year</td>
-                    <td>the two rows above</td>
+                    <td><strong>A typical year</strong><span class="school-table-type">Band D council tax plus the middle energy estimate; no water, insurance, rent or charges</span></td>
+                    <td><strong>{{ checked.typical_year | gbp }}</strong> a year{% if checked.typical_share_pct %}, {{ checked.typical_share_pct }}% of the typical household income here{% endif %}</td>
+                    <td>the rows above</td>
+                </tr>
+                {% endif %}
+                {% if checked.flood %}
+                <tr>
+                    <td><strong>Flood zone</strong><span class="school-table-type">what an insurer will ask about first</span></td>
+                    <td><strong>{{ checked.flood.label }}</strong></td>
+                    <td>Environment Agency</td>
+                </tr>
+                {% endif %}
+                {% if checked.broadband %}
+                <tr>
+                    <td><strong>Broadband</strong><span class="school-table-type">what can be ordered at this postcode</span></td>
+                    <td><strong>{{ checked.broadband.label }}</strong>{% if checked.broadband.gigabit_pct is not none %}: gigabit available to {{ checked.broadband.gigabit_pct | round | int }}% of premises{% endif %}</td>
+                    <td>Ofcom Connected Nations</td>
                 </tr>
                 {% endif %}
                 <tr>
@@ -83,11 +137,13 @@
     {% endif %}
     <p class="section-sub">
         For one address rather than the postcode, the <a href="/property?postcode={{ checked.postcode | urlencode }}#running-costs">full report</a> shows that home's own EPC figures and tenure alongside its forty other checks.
+        To compare councils, <a href="/running-costs/council-tax">every council's council tax →</a>
     </p>
     {% endif %}
 </section>
 {% endif %}
 
+{% if not checked %}
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ ct.count }}</span><span class="score-tile-label">English councils with every band's bill for {{ ct.year }}</span></div>
     {% if ct.median %}<div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(ct.median) }}</span><span class="score-tile-label">the middle council's Band D bill</span></div>{% endif %}
@@ -155,4 +211,5 @@
         Or find the company behind your estate: <a href="/estate-charges/managing-agents">who manages your estate →</a>
     </p>
 </section>
+{% endif %}
 {% endblock %}
