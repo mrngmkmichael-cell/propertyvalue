@@ -53,6 +53,23 @@
    the site that gives them a reason to come back while they are still
    deciding. Rendered per request, not from the cached payload, so one
    person's state never reaches another's page. #}
+{# The first action on the page: an address in this district, checked.
+   Area guides are where search sends most visitors, and until 5 Sep
+   2026 the first thing they were offered was "Follow", which needs an
+   account. #}
+<form action="/property" method="get" class="search-form area-check" role="search">
+    <div class="search-form-field">
+        <label for="area-check-postcode">Check an address in {{ outcode }}</label>
+        <input type="text" id="area-check-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="postal-code" required>
+    </div>
+    <div class="search-form-field">
+        <label for="area-check-house">House or flat number (optional)</label>
+        <input type="text" id="area-check-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+    </div>
+    <button type="submit">Run the 40 checks</button>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
+</form>
+
 {% if following_district %}
 <div class="follow-row">
     <span class="follow-state">You are following {{ outcode }}</span>

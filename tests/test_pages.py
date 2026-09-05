@@ -1479,3 +1479,14 @@ def test_admissions_index_has_a_school_search_that_finds_schools(client):
     guide = client.get("/schools/guide").text
     assert 'id="sa-suggest"' in guide and "Find a school by name" in guide
 
+
+def test_area_guide_leads_with_an_address_check(client, monkeypatch):
+    """Search lands most visitors on area guides; the first thing offered
+    is now the report for an address there, not an account-only Follow."""
+    from app import main as app_main
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/area/AB12").text
+    assert 'id="area-check-postcode"' in body and 'placeholder="e.g. AB12 1AA"' in body
+    assert body.index('id="area-check-postcode"') < body.index('class="follow-row"')
+
