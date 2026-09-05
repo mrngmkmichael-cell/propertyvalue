@@ -31,9 +31,12 @@ the local Claude session as things ship. Newest first.
   disk, the six one-row-per-school tables come back in one joined query,
   the guide path skips the 37-column detail row it never shows, and
   schools(latitude, longitude) is indexed (created on Neon by hand, and
-  in the model for fresh databases). Locally 2.6 s became 1.85 s; the
-  production before/after on twelve cold districts is in the 5 Sep
-  Notion page. The estate directory gained FAQ markup for "who manages
+  in the model for fresh databases). Twelve cold districts on
+  production: mean 1.75 s before, 1.45 s after. The school page had the
+  same shape, eight one-row lookups in a row; now one statement, and
+  twelve cold school pages went from a mean of 1.44 s to 1.01 s. The
+  market report is in tier 2, so the first visitor after a deploy no
+  longer waits 4 to 5 s for it. The estate directory gained FAQ markup for "who manages
   my estate", and the report and school pages link to the running-costs
   table for their own postcode. Titles across the site run long by
   design (school names, council names); left alone.
