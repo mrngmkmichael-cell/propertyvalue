@@ -48,6 +48,19 @@
     {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}, taking ages {{ school.age_low }} to {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} on roll{% endif %}.
 </p>
 
+{# The page's one action, within reach of the headline: a postcode
+   against this school's distance. The full checker with the map and
+   the verdict sits further down; this form submits to it. #}
+{% if not check %}
+<form class="search-form admission-check admission-check-top" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search" style="max-width: 36rem; margin: 0 0 1.25rem;">
+    <div class="search-form-field">
+        <label for="check-postcode-top">Will an address get in? Check a postcode against {{ school.miles }} miles</label>
+        <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
+    </div>
+    <button type="submit">Check this postcode</button>
+</form>
+{% endif %}
+
 {# The grade strip: the four things a parent scans for, as tiles. #}
 <div class="scorecard-row">
     <div class="score-tile">

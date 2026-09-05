@@ -1490,3 +1490,13 @@ def test_area_guide_leads_with_an_address_check(client, monkeypatch):
     assert 'id="area-check-postcode"' in body and 'placeholder="e.g. AB12 1AA"' in body
     assert body.index('id="area-check-postcode"') < body.index('class="follow-row"')
 
+
+def test_school_page_offers_the_checker_near_the_top(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/990002/riverside-academy").text
+    top = body.index('id="check-postcode-top"')
+    assert top < body.index('class="scorecard-row"')
+    assert 'action="/school/990002/riverside-academy#verdict"' in body
+
