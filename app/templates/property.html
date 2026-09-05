@@ -228,7 +228,7 @@
             {% if council_tax %}<span class="running-costs-item"><strong>{{ council_tax.band_d | gbp }}</strong> a year council tax at Band D, {{ council_tax.authority }}</span>{% endif %}
             {% if rc_energy %}<span class="running-costs-item"><strong>&pound;{{ "{:,}".format(rc_energy | int) }}</strong> a year energy, the EPC's estimate</span>{% endif %}
             {% if rc_tenure %}<span class="running-costs-item"><strong>{{ rc_tenure | capitalize }}</strong> at the last recorded sale{% if transactions[0].date %} ({{ transactions[0].date | string | truncate(4, true, "") }}){% endif %}</span>{% endif %}
-            <a href="/running-costs">How these are worked out →</a>
+            <a href="/running-costs?postcode={{ postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}">The full running-costs table for {{ postcode }}: every year, and once when you buy →</a>
             <a href="/estate-charges/managing-agents">On a managed estate? Find the company behind it →</a>
         </div>
         {% endif %}

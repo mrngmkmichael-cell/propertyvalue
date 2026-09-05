@@ -366,6 +366,7 @@
     <p class="section-sub">
         Weighing {{ school.name }} against the independent sector?
         <a href="/area/{{ school_outcode }}/private-schools">Every fee-paying school around {{ school_outcode }}: ages, selection, and how full each one is →</a>
+        {% if school.postcode %}<a href="/running-costs?postcode={{ school.postcode | urlencode }}">What it costs to live at {{ school.postcode }}, by the school: council tax, energy, prices, rent, stamp duty →</a>{% endif %}
     </p>
 </section>
 {% endif %}

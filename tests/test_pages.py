@@ -704,6 +704,8 @@ def test_school_page_has_map_checker_and_share_card(client, monkeypatch):
     assert 'property="og:image" content="https://testserver/og/school/990002.png"' in body
     # The grade strip carries the admission figure.
     assert "Admitted from, 2025" in body
+    # The school's own postcode leads to the running-costs table for it.
+    assert 'href="/running-costs?postcode=' in body
 
     # Checking a postcode: the geocoder is stubbed to a point 1 mile away.
     from app import main as app_main
