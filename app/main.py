@@ -7471,6 +7471,28 @@ async def admissions_index(request: Request):
     return templates.TemplateResponse(request, "schools_admissions_index.html", context)
 
 
+@app.get("/schools/admissions/search")
+async def admissions_search_page(request: Request, q: str = ""):
+    """Enter on the admissions index's search box: every school with a
+    published distance whose name matches, linking to its page."""
+    context = base_context(request)
+    context["q"] = q.strip()[:80]
+    context["results"] = await asyncio.to_thread(schools_db.search_admission_schools, context["q"], 50) if context["q"] else []
+    return templates.TemplateResponse(request, "schools_admissions_search.html", context)
+
+
+@app.get("/api/school-search")
+async def api_school_search(q: str = ""):
+    """The typeahead behind the admissions index's search box: up to ten
+    matching schools with a published distance."""
+    q = q.strip()[:80]
+    rows = await asyncio.to_thread(schools_db.search_admission_schools, q, 10) if len(q) >= 2 else []
+    return JSONResponse({"results": [
+        {"name": r["name"], "url": f"/school/{r['urn']}/{r['slug']}", "authority": r["authority"],
+         "miles": r["miles"], "year": r["academic_year"]} for r in rows
+    ]}, headers={"Cache-Control": "public, max-age=300"})
+
+
 @app.get("/schools/admissions/{council_slug}")
 async def admissions_council(request: Request, council_slug: str):
     """One council's schools, each with how far it admitted from.

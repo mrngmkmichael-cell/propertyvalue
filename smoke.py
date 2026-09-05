@@ -59,6 +59,8 @@ CHECKS = [
     ("/schools/admissions", {200}, ["council by council"]),
     ("/schools/admissions/hertfordshire", {200}, ["Hertfordshire", "Admitted from"]),
     ("/schools/how-admissions-work", {200}, ["31 October", "15 January"]),
+    ("/schools/admissions/search?q=primary", {200}, ["match"]),
+    ("/api/school-search?q=primary", {200}, ["results"]),
     ("/schools/tightest-catchments", {200}, ["tightest gates in England", "councils compared"]),
     ("/schools/catchment-house-prices", {200}, ["within reach"]),
     ("/running-costs", {200}, ["Band D", "Estate charges"]),

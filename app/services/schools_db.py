@@ -589,6 +589,29 @@ def _slugify(name: str) -> str:
     return slug[:80] or "school"
 
 
+def search_admission_schools(q: str, limit: int = 25) -> list[dict]:
+    """Schools with a published admission distance whose name contains
+    the words typed. Case-insensitive, whole phrase, capped. Backs the
+    admissions index's search box and its typeahead."""
+    q = " ".join(q.split())
+    if len(q) < 2 or not is_configured():
+        return []
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name, School.phase, SchoolAdmissionRadius.source_authority,
+                   SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year)
+            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .where(School.name.ilike(f"%{q}%"))
+            .order_by(School.name)
+            .limit(limit)
+        ).all()
+    return [
+        {"urn": urn, "name": name, "slug": _slugify(name), "phase": _phase_group(phase) or "",
+         "authority": authority or "", "miles": round(miles, 2) if miles else None, "academic_year": year or ""}
+        for urn, name, phase, authority, miles, year in rows
+    ]
+
+
 def admission_page_schools() -> list[dict]:
     """Every school with a REAL published admission distance behind it.
 

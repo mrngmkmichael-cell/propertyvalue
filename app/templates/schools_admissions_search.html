@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}{% if q %}"{{ q }}": schools with a published admission distance{% else %}Find a school{% endif %} | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
+
+<span class="kicker">Admissions</span>
+<h1>{% if q %}Schools matching "{{ q }}"{% else %}Find a school{% endif %}</h1>
+<p class="dek">Every school here has a published admission distance, and its page has a postcode checker. A school that is not here either took everyone who applied, or is in a council that publishes no figures.</p>
+
+<form class="search-form" action="/schools/admissions/search" method="get" role="search" style="max-width: 36rem;">
+    <label for="sa-q2">School name</label>
+    <input id="sa-q2" type="text" name="q" value="{{ q }}" placeholder="e.g. Harris Academy Orpington" minlength="2" required>
+    <button type="submit">Search</button>
+</form>
+
+{% if q %}
+<section class="report-section">
+    {% if results %}
+    <h2>{{ results | length }}{% if results | length == 50 %}+{% endif %} match{{ "es" if results | length != 1 else "" }}</h2>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>School</th><th>Council</th><th>Phase</th><th class="num">Admitted from</th><th>Round</th></tr></thead>
+            <tbody>
+                {% for s in results %}
+                <tr>
+                    <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a></td>
+                    <td>{{ s.authority }}</td>
+                    <td>{{ s.phase }}</td>
+                    <td class="num">{% if s.miles %}{{ s.miles }} mi{% endif %}</td>
+                    <td>{{ s.academic_year }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if results | length == 50 %}<p class="section-sub">Only the first fifty are shown; add a word to narrow it.</p>{% endif %}
+    {% else %}
+    <h2>No school with a published distance matches "{{ q }}"</h2>
+    <p class="section-sub">Try a shorter part of the name. The <a href="/schools/guide?q={{ q | urlencode }}">schools guide</a> searches every school by area, rated or not, and the <a href="/schools/admissions">council list</a> shows which councils publish figures at all.</p>
+    {% endif %}
+</section>
+{% endif %}
+{% endblock %}

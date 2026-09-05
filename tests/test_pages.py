@@ -1377,3 +1377,24 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     assert 'href="/property?postcode=BN15%208AA#running-costs"' in body
     assert 'action="/running-costs"' in body
 
+
+# ---- school search on the admissions index, 5 Sep 2026 -------------------
+
+def test_admissions_index_has_a_school_search_that_finds_schools(client):
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    index = client.get("/schools/admissions").text
+    assert 'action="/schools/admissions/search"' in index and 'id="sa-suggest"' in index
+    assert "prefers-reduced-motion" in index  # the typing placeholder respects it
+    page = client.get("/schools/admissions/search?q=riverside")
+    assert page.status_code == 200
+    assert 'href="/school/990002/riverside-academy"' in page.text and "Manchester" in page.text
+    assert 'name="robots" content="noindex' in page.text
+    assert "No school with a published distance matches" in client.get("/schools/admissions/search?q=zzzqqq").text
+    api = client.get("/api/school-search?q=river").json()
+    assert api["results"][0]["url"] == "/school/990002/riverside-academy"
+    assert client.get("/api/school-search?q=r").json() == {"results": []}
+    # The literal path wins over the council catch-all.
+    assert client.get("/schools/admissions/search").status_code == 200
+
