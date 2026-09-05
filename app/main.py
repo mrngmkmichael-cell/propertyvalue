@@ -1337,12 +1337,31 @@ def _council_tax_summary() -> dict:
 
 
 @app.get("/running-costs")
-def running_costs_page(request: Request):
+async def running_costs_page(request: Request, postcode: str = ""):
     """The third pillar: what it costs to live at an address, from the
-    bodies that publish it, and the one cost nobody publishes."""
+    bodies that publish it, and the one cost nobody publishes. With a
+    postcode, the page answers on the spot with the council's bands, and
+    points at the report's running-costs line for the EPC and tenure,
+    which need the address's own records."""
     context = base_context(request)
     context["canonical_url"] = f"{_public_base_url(request)}/running-costs"
     context["ct"] = _council_tax_summary()
+    context["checked"] = None
+    context["check_query"] = postcode.strip()
+    if postcode.strip():
+        try:
+            where = await lookup_postcode(postcode.strip())
+        except httpx.HTTPError:
+            where = None
+        if where:
+            codes = where.get("codes", {}) or {}
+            context["checked"] = {
+                "postcode": where["postcode"],
+                "district": where.get("admin_district") or "",
+                "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district")),
+            }
+        else:
+            context["checked"] = {"postcode": postcode.strip(), "district": "", "council_tax": None, "unknown": True}
     return templates.TemplateResponse(request, "running_costs.html", context)
 
 

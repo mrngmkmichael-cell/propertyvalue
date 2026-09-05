@@ -24,11 +24,39 @@
     official source at all, and this page says what to do about that.
 </p>
 
-<form class="search-form" action="/property" method="get" role="search" style="max-width: 36rem;">
-    <label for="rc-postcode">Check an address</label>
-    <input id="rc-postcode" type="text" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+<form class="search-form" action="/running-costs" method="get" role="search" style="max-width: 36rem;">
+    <label for="rc-postcode">Check a postcode</label>
+    <input id="rc-postcode" type="text" name="postcode" value="{{ check_query }}" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
     <button type="submit">See its running costs</button>
 </form>
+
+{% if checked %}
+<section class="report-section" id="checked">
+    {% if checked.unknown %}
+    <h2>{{ checked.postcode }} is not a postcode we can place</h2>
+    <p class="section-sub">Check the spelling, or try the full report search at the top of the page.</p>
+    {% elif checked.council_tax %}
+    <h2>{{ checked.postcode }}: council tax in {{ checked.council_tax.authority }}, {{ checked.council_tax.year }}</h2>
+    <p class="section-sub">
+        Every band at this council, {{ checked.council_tax.basis }} The home's own band is on its council tax bill
+        or the Valuation Office Agency's list; the report shows it where the EPC records it.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr>{% for band in checked.council_tax.bands %}<th class="num">Band {{ band }}</th>{% endfor %}</tr></thead>
+            <tbody><tr>{% for band, amount in checked.council_tax.bands.items() %}<td class="num">&pound;{{ "{:,.0f}".format(amount) }}</td>{% endfor %}</tr></tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        The energy estimate and the tenure come from the address's own EPC and its last recorded sale, so they
+        are on the report: <a href="/property?postcode={{ checked.postcode | urlencode }}#running-costs">the full running-costs line for {{ checked.postcode }} →</a>
+    </p>
+    {% else %}
+    <h2>{{ checked.postcode }}: no council tax figure held for {{ checked.district or "this council" }}</h2>
+    <p class="section-sub">The three datasets cover England, Wales and Scotland by billing authority; this council is not in them under the name we were given. <a href="/property?postcode={{ checked.postcode | urlencode }}#running-costs">The report's running-costs line for {{ checked.postcode }} →</a></p>
+    {% endif %}
+</section>
+{% endif %}
 
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ ct.count }}</span><span class="score-tile-label">English councils with every band's bill for {{ ct.year }}</span></div>

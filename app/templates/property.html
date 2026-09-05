@@ -223,7 +223,7 @@
         {% set rc_energy = (rc_pd.heating_cost_current or 0) + (rc_pd.lighting_cost_current or 0) + (rc_pd.hot_water_cost_current or 0) %}
         {% set rc_tenure = transactions[0].tenure if transactions and transactions[0].tenure else "" %}
         {% if council_tax or rc_energy or rc_tenure %}
-        <div class="running-costs-line" data-animate>
+        <div class="running-costs-line" id="running-costs" data-animate>
             <span class="running-costs-k">What it costs to live here</span>
             {% if council_tax %}<span class="running-costs-item"><strong>{{ council_tax.band_d | gbp }}</strong> a year council tax at Band D, {{ council_tax.authority }}</span>{% endif %}
             {% if rc_energy %}<span class="running-costs-item"><strong>&pound;{{ "{:,}".format(rc_energy | int) }}</strong> a year energy, the EPC's estimate</span>{% endif %}

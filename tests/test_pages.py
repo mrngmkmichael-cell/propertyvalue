@@ -1361,3 +1361,19 @@ def test_council_tax_finds_an_english_council_by_name():
     assert by_name and by_name["authority"] == "Adur" and by_name["band_d"] > 1000
     assert council_tax.for_district(None, "No Such Council") is None
 
+
+def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
+    """Michael typed a postcode on /running-costs and was sent to the
+    report. The page now answers with the council's bands itself and
+    links to the report's own running-costs line for the rest."""
+    from app import main as app_main
+
+    async def _lookup(_pc):
+        return {"postcode": "BN15 8AA", "admin_district": "Adur", "codes": {"admin_district": "E07000223"},
+                "latitude": 50.83, "longitude": -0.33}
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    body = client.get("/running-costs?postcode=BN15+8AA").text
+    assert "council tax in Adur" in body and "Band A" in body and "Band H" in body
+    assert 'href="/property?postcode=BN15%208AA#running-costs"' in body
+    assert 'action="/running-costs"' in body
+
