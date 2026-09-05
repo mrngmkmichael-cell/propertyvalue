@@ -1511,3 +1511,22 @@ def test_council_hub_offers_an_address_check(client):
     body = client.get("/schools/admissions/manchester").text
     assert 'id="hub-check-postcode"' in body and "against every Manchester school" in body
 
+
+
+def test_a_sixth_form_college_is_not_counted_as_a_secondary_school():
+    """A reader reported on 23 Aug 2026 that Worcester Sixth Form College
+    was listed under the secondary schools near WR4 0EW. GIAS gives it
+    PhaseOfEducation "16 plus", which the phase grouping folded into
+    Secondary, so 82 sixth form colleges nationally appeared as secondary
+    schools. They take nobody under 16."""
+    from app.services import schools_db
+
+    assert schools_db._phase_group("16 plus") is None
+    assert schools_db._phase_group("Secondary") == "Secondary"
+    assert schools_db._phase_group("All-through") == "Secondary"
+    assert schools_db._is_sixteen_plus("16 plus", "Academy 16-19 converter")
+    assert schools_db._is_sixteen_plus("16 plus", "Free schools 16 to 19")
+    assert schools_db._is_sixteen_plus("Not applicable", "Sixth form centres")
+    assert schools_db._is_sixteen_plus("16 plus", "Further education")
+    assert not schools_db._is_sixteen_plus("Secondary", "Academy converter")
+    assert not schools_db._is_sixteen_plus("Primary", "Community school")

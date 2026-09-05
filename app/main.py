@@ -4429,7 +4429,9 @@ AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day:
 # area match (see hpi._pick_area), which had been showing Greater
 # Manchester's average price under Manchester's name. Run
 # scripts/prune_stale_area_cache.py afterwards to drop the orphans.
-AREA_GUIDE_PAYLOAD_VERSION = 18
+# 19: sixth form colleges left the school counts on 6 Sep 2026, so every
+# cached total_schools and further_education figure is one version stale.
+AREA_GUIDE_PAYLOAD_VERSION = 19
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5

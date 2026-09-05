@@ -2118,7 +2118,7 @@
                     No universities within {{ school_landscape.radius_miles }} miles of this address.
                     {% if school_landscape.further_education %}
                     There {{ 'is' if school_landscape.further_education == 1 else 'are' }}
-                    {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }} in range, which is a different thing.
+                    {{ school_landscape.further_education }} sixth form or further education college{{ 's' if school_landscape.further_education != 1 }} in range, which is a different thing: they take students from 16.
                     {% endif %}
                 </p>
                 {% else %}
@@ -2144,7 +2144,7 @@
             <h3 class="subsection-heading">Local school landscape</h3>
             <p class="section-sub" style="margin-top: 0;">
                 Within {{ school_landscape.radius_miles }} miles: {{ school_landscape.total_schools }} school{{ 's' if school_landscape.total_schools != 1 }}
-                {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} further education college{{ 's' if school_landscape.further_education != 1 }}{% endif %}
+                {%- if school_landscape.further_education %}, {{ school_landscape.further_education }} sixth form or further education college{{ 's' if school_landscape.further_education != 1 }} (16 plus, counted separately){% endif %}
                 {%- if school_landscape.higher_education_count %}, {{ school_landscape.higher_education_count }} universit{{ 'y' if school_landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
             <p class="section-sub" style="margin-top: 0;">

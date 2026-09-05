@@ -32,18 +32,40 @@ DEG_PER_KM = 1 / 111
 GROUP_ORDER = ["Nursery", "Primary", "Secondary"]
 
 
+def _is_sixteen_plus(phase: str, type_name: str) -> bool:
+    """A place that only takes students from 16: a sixth form college,
+    a 16-19 free school or academy, an FE college.
+
+    GIAS spells these several ways. PhaseOfEducation "16 plus" covers
+    291 of them, but "Sixth form centres" carries no phase at all, so
+    the establishment type is tested too.
+    """
+    t = (type_name or "").lower()
+    return "16 plus" in (phase or "").lower() or "further education" in t or "sixth form centre" in t
+
+
 def _phase_group(phase: str) -> str | None:
     """Collapses GIAS's ~8 PhaseOfEducation values down to the three
-    groups parents actually think in terms of. 'All-through' and
-    '16 plus' schools get folded into Secondary rather than added as
-    a fourth group, since the ask was specifically Nursery/Primary/
-    Secondary."""
+    groups parents actually think in terms of. 'All-through' folds into
+    Secondary, since it teaches those years.
+
+    '16 plus' used to fold into Secondary as well, which put 82 sixth
+    form colleges into the secondary list on every report and area guide
+    near one. A reader reported it on 23 Aug 2026 ("Worcester Sixth Form
+    isn't a secondary school"), and they were right: it takes nobody
+    under 16, so no family choosing a secondary school can apply to it.
+    Those establishments are counted with further education instead,
+    which is where the docstring for school_landscape always said they
+    belonged.
+    """
     p = (phase or "").lower()
     if "nursery" in p:
         return "Nursery"
     if "primary" in p:
         return "Primary"
-    if "secondary" in p or "16 plus" in p or "all-through" in p or "all through" in p:
+    if "16 plus" in p:
+        return None
+    if "secondary" in p or "all-through" in p or "all through" in p:
         return "Secondary"
     return None
 
@@ -230,6 +252,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
     special_count = 0
     special_schools = []
     further_education = 0
+    further_education_schools: list[dict] = []
     higher_education_names = []
     higher_education = []
     # State and fee-paying, split by phase. Kept apart from by_phase
@@ -255,8 +278,15 @@ def school_landscape(lat: float, lon: float) -> dict | None:
             higher_education_names.append(row.name)
             higher_education.append({"name": row.name, "distance_m": round(distance_km * 1000)})
             continue  # not Ofsted-rated, not part of the school counts below
-        if type_lower == "further education":
+        if _is_sixteen_plus(row.phase, row.type_name):
+            # Sixth form colleges, 16-19 academies and free schools, and
+            # FE colleges. Counted and named on the page as a separate
+            # thing, never inside the school totals or the Ofsted
+            # percentage: a family picking a primary or secondary school
+            # cannot apply to any of them.
             further_education += 1
+            further_education_schools.append({"name": row.name, "type": row.type_name,
+                                              "distance_m": round(distance_km * 1000)})
             continue
 
         entry = {
@@ -407,6 +437,7 @@ def school_landscape(lat: float, lon: float) -> dict | None:
         "special_count": special_count,
         "special_schools": special_schools,
         "further_education": further_education,
+        "further_education_schools": sorted(further_education_schools, key=lambda e: e["distance_m"]),
         "higher_education_count": len(higher_education_names),
         "higher_education_names": higher_education_names,
         "by_sector": by_sector,

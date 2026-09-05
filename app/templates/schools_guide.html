@@ -72,7 +72,7 @@
             {% endif %}
             <p class="section-sub" style="margin-top: 0;">
                 Within {{ area.landscape.radius_miles }} miles: {{ area.landscape.total_schools }} school{{ 's' if area.landscape.total_schools != 1 }}
-                {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} FE college{{ 's' if area.landscape.further_education != 1 }}{% endif %}
+                {%- if area.landscape.further_education %}, {{ area.landscape.further_education }} sixth form or FE college{{ 's' if area.landscape.further_education != 1 }} (16 plus){% endif %}
                 {%- if area.landscape.higher_education_count %}, {{ area.landscape.higher_education_count }} universit{{ 'y' if area.landscape.higher_education_count == 1 else 'ies' }}{% endif %}.
             </p>
 
