@@ -1328,7 +1328,8 @@ def test_estate_directory_names_offices_not_managers(client):
     _cache._store.clear(); _cache._bytes = 0
     body = client.get("/estate-charges/managing-agents").text
     # "managed by" appears once, inside the sentence that forbids it.
-    assert "registered to" in body and body.lower().count("managed by") == 1
+    assert "registered to" in body and '"FAQPage"' in body
+    assert "who manages my estate" in body.lower()
     assert 'href="/estate-charges/company/firstport"' in body and "FirstPort" in body
     page = client.get("/estate-charges/company/firstport")
     assert page.status_code == 200

@@ -5,6 +5,15 @@
 {% block og_title %}Who manages your estate?{% endblock %}
 
 {% block content %}
+<script type="application/ld+json">{{ {
+    "@context": "https://schema.org", "@type": "FAQPage",
+    "mainEntity": [
+        {"@type": "Question", "name": "How do I find out who manages my estate?", "acceptedAnswer": {"@type": "Answer", "text": "Every managed estate has a residents' or estate management company registered at Companies House, usually named after the estate. Search the company by name on this page: its register entry shows its officers, accounts and filings, and the office it is registered to is very often its managing agent's. The agent's name is also on your charge demand."}},
+        {"@type": "Question", "name": "What does registered to an agent's office mean?", "acceptedAnswer": {"@type": "Answer", "text": "A company's registered office is the address on the Companies House register. When hundreds of residents' companies share one address, that address is a managing agent's office, and a company registered there is almost always one the agent administers. The register records the address, not the management contract, so this site says registered to, never managed by."}},
+        {"@type": "Question", "name": "Which managing agents have the most estates?", "acceptedAnswer": {"@type": "Answer", "text": "By companies registered to their offices on the " ~ "Companies House register, the largest are listed in the table on this page, with the count for each and its share of all " ~ ("{:,}".format(data.total)) ~ " active residents' and estate management companies. HML, FirstPort, RMG, Warwick Estates and Inspired Property Management lead."}},
+        {"@type": "Question", "name": "Does this page say what an estate charge costs?", "acceptedAnswer": {"@type": "Answer", "text": "No. No official source publishes what each estate pays, and this site does not model it. The estate charges page explains what the charge covers, what the law is changing, and the twelve questions to ask before buying on a managed estate."}}
+    ]
+} | tojson }}</script>
 <a class="back-link" href="/estate-charges">&larr; Estate charges, explained</a>
 
 <span class="kicker">Running costs</span>
