@@ -25,8 +25,11 @@
 </p>
 
 <form class="search-form" action="/running-costs" method="get" role="search" style="max-width: 36rem;">
-    <label for="rc-postcode">Check a postcode</label>
+    <label for="rc-postcode">Postcode</label>
     <input id="rc-postcode" type="text" name="postcode" value="{{ check_query }}" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+    <label for="rc-house">House or flat number (optional)</label>
+    <input id="rc-house" type="text" name="house_number" value="{{ check_house }}" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+    <p class="section-sub" style="margin: 0.25rem 0 0.75rem;">With the number, the table leads with that home's own EPC (its size, type and energy costs) and its own sales. Without it, the figures are for the postcode.</p>
     <button type="submit">See its running costs</button>
 </form>
 
@@ -38,12 +41,39 @@
     {% else %}
     <h2>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h2>
     <p class="section-sub">Every figure is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
+    {% if checked.house_number and not checked.home %}
+    <p class="notice">No EPC or recorded sale matched "{{ checked.house_number }}" in {{ checked.postcode }}, so the rows below are for the postcode. Try the number as it appears on the address, for example "Flat 2" or "37".</p>
+    {% endif %}
     <div class="tablewrap">
         <table class="tx-table">
             <thead><tr><th>Cost</th><th>Figure</th><th>Source</th></tr></thead>
             <tbody>
+                {% if checked.home %}
+                {% set h = checked.home %}
+                {% if h.address %}
                 <tr>
-                    <td><strong>Council tax</strong><span class="school-table-type">the home's own band is on its bill; every band is in the row beneath this table</span></td>
+                    <td><strong>This home</strong><span class="school-table-type">{{ h.address }}</span></td>
+                    <td>{% if h.dwelling_type %}{{ h.dwelling_type | capitalize }}{% endif %}{% if h.floor_area %}{% if h.dwelling_type %}, {% endif %}{{ h.floor_area | int }} m&sup2;{% endif %}{% if h.rooms %}, {{ h.rooms }} habitable room{{ "s" if h.rooms != 1 else "" }}{% endif %}{% if h.year_built %}, built {{ h.year_built }}{% endif %}{% if h.band %}<span class="school-table-type">EPC band {{ h.band }}{% if h.potential_band and h.potential_band != h.band %}, could reach {{ h.potential_band }}{% endif %}{% if h.epc_date %}, certificate {{ h.epc_date[:4] }}{% endif %}</span>{% endif %}</td>
+                    <td>EPC Register</td>
+                </tr>
+                {% if h.energy_now %}
+                <tr>
+                    <td><strong>This home's energy</strong><span class="school-table-type">heating, hot water and lighting, the assessor's yearly estimate for this certificate</span></td>
+                    <td><strong>{{ h.energy_now | gbp }}</strong> a year now{% if h.energy_potential %}, {{ h.energy_potential | gbp }} after the certificate's recommended improvements{% endif %}</td>
+                    <td>EPC Register</td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                {% if h.sale_year %}
+                <tr>
+                    <td><strong>This home's last sale</strong><span class="school-table-type">{{ h.sale_address }}</span></td>
+                    <td>{% if h.sale_amount %}<strong>{{ h.sale_amount | gbp }}</strong> in {{ h.sale_year }}{% else %}Sold in {{ h.sale_year }}{% endif %}{% if h.tenure %}, {{ h.tenure }}{% endif %}{% if h.sales_here > 1 %}; {{ h.sales_here }} recorded sales in all{% endif %}</td>
+                    <td>HM Land Registry</td>
+                </tr>
+                {% endif %}
+                {% endif %}
+                <tr>
+                    <td><strong>Council tax</strong><span class="school-table-type">the home's own band is on its bill (not open data); every band is in the row beneath this table</span></td>
                     <td>{% if checked.council_tax %}<strong>{{ checked.council_tax.band_d | gbp }}</strong> a year at Band D{% else %}Not held for this council{% endif %}</td>
                     <td>{% if checked.council_tax %}{{ checked.council_tax.authority }}, {{ checked.council_tax.year }} (MHCLG){% else %}MHCLG{% endif %}</td>
                 </tr>
@@ -99,7 +129,7 @@
                 {% endif %}
                 {% if checked.typical_year %}
                 <tr>
-                    <td><strong>A typical year</strong><span class="school-table-type">Band D council tax plus the middle energy estimate; no water, insurance, rent or charges</span></td>
+                    <td><strong>A typical year</strong><span class="school-table-type">Band D council tax plus {% if checked.home and checked.home.energy_now %}this home's own energy estimate{% else %}the middle energy estimate{% endif %}; no water, insurance, rent or charges</span></td>
                     <td><strong>{{ checked.typical_year | gbp }}</strong> a year{% if checked.typical_share_pct %}, {{ checked.typical_share_pct }}% of the typical household income here{% endif %}</td>
                     <td>the rows above</td>
                 </tr>

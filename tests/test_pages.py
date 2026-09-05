@@ -1413,6 +1413,22 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     # National context stays off the page once a postcode is answered.
     assert "Cheapest twenty" not in body
     assert "Cheapest twenty" in client.get("/running-costs").text
+
+    # With a house number the table leads with that home's own EPC and sale.
+    async def _detail_full(number):
+        base = await _detail(number)
+        return {**base, "dwelling_type": "semi-detached house", "total_floor_area": 92, "habitable_room_count": 4,
+                "year_built": "1950-1966", "potential_band": "B", "heating_cost_potential": 500,
+                "hot_water_cost_potential": 100, "lighting_cost_potential": 80}
+    monkeypatch.setattr(app_main.epc, "certificate_detail", _detail_full)
+    body = client.get("/running-costs?postcode=BN15+8AA&house_number=2+Sea").text
+    assert "This home" in body and "2 Sea Lane" in body and "92 m" in body and "EPC band D" in body
+    assert "This home's energy" in body and "1,220" in body and "680" in body   # now, and after improvements
+    assert "This home's last sale" in body and "250,000" in body and "2019" in body and "leasehold" in body
+    assert "this home's own energy estimate" in body
+    assert 'name="house_number"' in body
+    missing = client.get("/running-costs?postcode=BN15+8AA&house_number=99").text
+    assert "No EPC or recorded sale matched" in missing
     assert 'href="/property?postcode=BN15%208AA#running-costs"' in body
     assert 'action="/running-costs"' in body
 

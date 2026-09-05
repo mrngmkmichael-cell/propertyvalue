@@ -1344,7 +1344,7 @@ def _median(values: list) -> float | None:
     return vals[len(vals) // 2] if vals else None
 
 
-async def _running_costs_for_postcode(where: dict) -> dict:
+async def _running_costs_for_postcode(where: dict, house_number: str = "") -> dict:
     """Everything official the site can say about what it costs to live
     in one postcode, for the running-costs page's table: council tax,
     the energy estimates on the postcode's own EPCs (now and after the
@@ -1358,10 +1358,30 @@ async def _running_costs_for_postcode(where: dict) -> dict:
     lat, lon = where.get("latitude"), where.get("longitude")
     outcode = canonical.split(" ")[0].upper()
     out = {"postcode": canonical, "district": where.get("admin_district") or "", "outcode": outcode,
+           "house_number": house_number.strip(), "home": None,
            "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district"))}
+
+    home: dict = {}
 
     async def _energy():
         certs = await epc.certificates_for_postcode(canonical)
+        # With a house or flat number, the home's own newest certificate
+        # comes first and its detail is kept for the "this home" rows.
+        if house_number.strip():
+            mine = _filter_by_address(certs, house_number)
+            if mine:
+                d = await epc.certificate_detail(mine[0]["certificate_number"])
+                if isinstance(d, dict):
+                    cur = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
+                    pot = [d.get("heating_cost_potential"), d.get("hot_water_cost_potential"), d.get("lighting_cost_potential")]
+                    home.update({
+                        "address": mine[0].get("address", ""), "epc_date": mine[0].get("date", ""),
+                        "band": d.get("current_band") or mine[0].get("rating"), "potential_band": d.get("potential_band"),
+                        "dwelling_type": d.get("dwelling_type"), "floor_area": d.get("total_floor_area"),
+                        "rooms": d.get("habitable_room_count"), "year_built": d.get("year_built"),
+                        "energy_now": int(sum(v for v in cur if isinstance(v, (int, float)))) if any(isinstance(v, (int, float)) for v in cur) else None,
+                        "energy_potential": int(sum(v for v in pot if isinstance(v, (int, float)))) if any(isinstance(v, (int, float)) for v in pot) else None,
+                    })
         seen, chosen = set(), []
         for c in certs:  # newest first; one certificate per address
             if c.get("address") in seen or not c.get("certificate_number"):
@@ -1391,6 +1411,14 @@ async def _running_costs_for_postcode(where: dict) -> dict:
 
     async def _sales():
         sales = await sold_prices_for_postcode(canonical)
+        if house_number.strip():
+            mine = sorted((t for t in _filter_by_address(sales, house_number) if t.get("date")), key=lambda t: str(t["date"]), reverse=True)
+            if mine:
+                home.update({
+                    "sale_address": mine[0].get("address", ""), "sale_year": str(mine[0]["date"])[:4],
+                    "sale_amount": float(mine[0]["amount"]) if mine[0].get("amount") else None,
+                    "tenure": (mine[0].get("tenure") or "").strip().lower(), "sales_here": len(mine),
+                })
         counts = {}
         for t in sales:
             k = (t.get("tenure") or "").strip().lower()
@@ -1423,8 +1451,11 @@ async def _running_costs_for_postcode(where: dict) -> dict:
         out[key] = value if not isinstance(value, BaseException) else None
     out["district_prices"] = (out.pop("district_rows") or {}).get(outcode) if isinstance(out.get("district_rows"), dict) else None
     out.pop("district_rows", None)
+    out["home"] = home or None
     ct, energy = out["council_tax"], out["energy"]
-    out["typical_year"] = int(round(ct["band_d"] + energy["median"])) if ct and energy and energy.get("median") else None
+    # A typical year uses the home's own energy figure when there is one.
+    energy_figure = (home.get("energy_now") if home else None) or (energy.get("median") if energy else None)
+    out["typical_year"] = int(round(ct["band_d"] + energy_figure)) if ct and energy_figure else None
     income = out.get("income") or {}
     income_value = income.get("here") if isinstance(income, dict) else None
     out["income_value"] = income_value
@@ -1435,7 +1466,7 @@ async def _running_costs_for_postcode(where: dict) -> dict:
 
 
 @app.get("/running-costs")
-async def running_costs_page(request: Request, postcode: str = ""):
+async def running_costs_page(request: Request, postcode: str = "", house_number: str = ""):
     """The third pillar: what it costs to live at an address, from the
     bodies that publish it, and the one cost nobody publishes. With a
     postcode, the page answers on the spot with the council's bands, and
@@ -1446,13 +1477,14 @@ async def running_costs_page(request: Request, postcode: str = ""):
     context["ct"] = _council_tax_summary()
     context["checked"] = None
     context["check_query"] = postcode.strip()
+    context["check_house"] = house_number.strip()[:20]
     if postcode.strip():
         try:
             where = await lookup_postcode(postcode.strip())
         except httpx.HTTPError:
             where = None
         if where:
-            context["checked"] = await _running_costs_for_postcode(where)
+            context["checked"] = await _running_costs_for_postcode(where, context["check_house"])
         else:
             context["checked"] = {"postcode": postcode.strip(), "district": "", "council_tax": None, "unknown": True}
     return templates.TemplateResponse(request, "running_costs.html", context)
