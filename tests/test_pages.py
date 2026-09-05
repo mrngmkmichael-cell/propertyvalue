@@ -1372,8 +1372,26 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
         return {"postcode": "BN15 8AA", "admin_district": "Adur", "codes": {"admin_district": "E07000223"},
                 "latitude": 50.83, "longitude": -0.33}
     monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    async def _certs(_pc):
+        return [{"address": "1 Sea Lane", "rating": "C", "date": "2024-01-01", "certificate_number": "AAA"},
+                {"address": "2 Sea Lane", "rating": "D", "date": "2023-01-01", "certificate_number": "BBB"}]
+
+    async def _detail(number):
+        return {"AAA": {"heating_cost_current": 700, "hot_water_cost_current": 150, "lighting_cost_current": 100, "current_band": "C"},
+                "BBB": {"heating_cost_current": 900, "hot_water_cost_current": 200, "lighting_cost_current": 120, "current_band": "D"}}[number]
+
+    async def _sales(_pc):
+        return [{"address": "1 Sea Lane", "date": "2025-03-01", "amount": 300000, "tenure": "freehold"},
+                {"address": "2 Sea Lane", "date": "2019-06-01", "amount": 250000, "tenure": "leasehold"}]
+    monkeypatch.setattr(app_main.epc, "certificates_for_postcode", _certs)
+    monkeypatch.setattr(app_main.epc, "certificate_detail", _detail)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcode", _sales)
     body = client.get("/running-costs?postcode=BN15+8AA").text
-    assert "council tax in Adur" in body and "Band A" in body and "Band H" in body
+    assert "What it costs to live in BN15 8AA" in body
+    assert "Band A" in body and "Band H" in body and "Adur" in body
+    assert "1,220" in body and "2 homes with a certificate" in body   # median of 950 and 1,220
+    assert "1</strong> freehold" in body and "1</strong> leasehold" in body and "latest 2025" in body
+    assert "A typical year" in body
     assert 'href="/property?postcode=BN15%208AA#running-costs"' in body
     assert 'action="/running-costs"' in body
 

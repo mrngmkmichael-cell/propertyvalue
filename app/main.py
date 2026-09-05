@@ -1336,6 +1336,69 @@ def _council_tax_summary() -> dict:
     return cached
 
 
+RUNNING_COSTS_EPC_DETAILS = 8  # certificate detail calls per postcode, one per address, newest first
+
+
+async def _running_costs_for_postcode(where: dict) -> dict:
+    """Everything official about what it costs to live in one postcode,
+    for the running-costs page's table. Council tax from the file, the
+    energy estimates on the postcode's own EPCs (the newest certificate
+    per address, up to eight, each a detail call), and tenure from its
+    recorded sales. Each part degrades to "not held" on its own."""
+    canonical = where["postcode"]
+    codes = where.get("codes", {}) or {}
+    out = {"postcode": canonical, "district": where.get("admin_district") or "",
+           "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district")),
+           "energy": None, "tenure": None}
+
+    async def _energy():
+        certs = await epc.certificates_for_postcode(canonical)
+        seen, chosen = set(), []
+        for c in certs:  # newest first; one certificate per address
+            if c.get("address") in seen or not c.get("certificate_number"):
+                continue
+            seen.add(c.get("address"))
+            chosen.append(c)
+            if len(chosen) >= RUNNING_COSTS_EPC_DETAILS:
+                break
+        details = await asyncio.gather(*(epc.certificate_detail(c["certificate_number"]) for c in chosen), return_exceptions=True)
+        totals, bands = [], {}
+        for d in details:
+            if not isinstance(d, dict):
+                continue
+            parts = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
+            if any(isinstance(v, (int, float)) for v in parts):
+                totals.append(int(sum(v for v in parts if isinstance(v, (int, float)))))
+            if d.get("current_band"):
+                bands[d["current_band"]] = bands.get(d["current_band"], 0) + 1
+        if not totals:
+            return {"certificates": len(certs), "priced": 0}
+        totals.sort()
+        return {"certificates": len(certs), "priced": len(totals), "low": totals[0], "high": totals[-1],
+                "median": totals[len(totals) // 2],
+                "bands": ", ".join(f"{b} x{n}" for b, n in sorted(bands.items()))}
+
+    async def _tenure():
+        sales = await sold_prices_for_postcode(canonical)
+        counts = {}
+        for t in sales:
+            k = (t.get("tenure") or "").strip().lower()
+            if k:
+                counts[k] = counts.get(k, 0) + 1
+        latest = max((str(t.get("date") or "") for t in sales), default="")
+        return {"sales": len(sales), "counts": counts, "latest_year": latest[:4]}
+
+    energy, tenure = await asyncio.gather(_energy(), _tenure(), return_exceptions=True)
+    out["energy"] = energy if isinstance(energy, dict) else None
+    out["tenure"] = tenure if isinstance(tenure, dict) else None
+    ct = out["council_tax"]
+    if ct and out["energy"] and out["energy"].get("median"):
+        out["typical_year"] = int(round(ct["band_d"] + out["energy"]["median"]))
+    else:
+        out["typical_year"] = None
+    return out
+
+
 @app.get("/running-costs")
 async def running_costs_page(request: Request, postcode: str = ""):
     """The third pillar: what it costs to live at an address, from the
@@ -1354,12 +1417,7 @@ async def running_costs_page(request: Request, postcode: str = ""):
         except httpx.HTTPError:
             where = None
         if where:
-            codes = where.get("codes", {}) or {}
-            context["checked"] = {
-                "postcode": where["postcode"],
-                "district": where.get("admin_district") or "",
-                "council_tax": council_tax.for_district(codes.get("admin_district"), where.get("admin_district")),
-            }
+            context["checked"] = await _running_costs_for_postcode(where)
         else:
             context["checked"] = {"postcode": postcode.strip(), "district": "", "council_tax": None, "unknown": True}
     return templates.TemplateResponse(request, "running_costs.html", context)
