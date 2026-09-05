@@ -6,6 +6,38 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The afternoon of 5 Sep 2026, on "analyse the whole website and improve
+  it" with Michael away for three hours. Measured first: the funnel is
+  15 to 50 homepage views a day, 0 to 26 report starts, no account in
+  five days, and most visitors land on an area guide or a school page,
+  not the homepage. So the forms moved to where people arrive: an
+  address check opens every area guide, a compact checker sits under
+  every school page headline, council hubs offer one too, and the
+  running-costs answer can be shared. Earlier the same day, at
+  Michael's direction: /running-costs answers a postcode on the page
+  (one table per year, one for the one-off costs, one worth knowing;
+  house number for the home's own EPC; map beside the box, Google in
+  production and Leaflet in dev); a school search box with a typing
+  placeholder on the admissions index and the schools guide, backed by
+  /api/school-search over every open school. Then two crawls of every
+  page family on production (about 1,200 pages): no broken page except
+  /compare/M43/vs/SK16, advertised by the sitemap and answering 404
+  because neighbourhood is not symmetric (fixed: a pair exists when
+  either side counts the other); guide titles were 63 to 66 characters
+  with the brand suffix (dropped on single-district pages) and
+  descriptions 168 to 170 (trimmed). The cold schools-guide build was
+  profiled statement by statement: seven database round trips plus two
+  postcodes.io calls. Now districts resolve from the outcode table on
+  disk, the six one-row-per-school tables come back in one joined query,
+  the guide path skips the 37-column detail row it never shows, and
+  schools(latitude, longitude) is indexed (created on Neon by hand, and
+  in the model for fresh databases). Locally 2.6 s became 1.85 s; the
+  production before/after on twelve cold districts is in the 5 Sep
+  Notion page. The estate directory gained FAQ markup for "who manages
+  my estate", and the report and school pages link to the running-costs
+  table for their own postcode. Titles across the site run long by
+  design (school names, council names); left alone.
+
 - The night of 4 to 5 Sep 2026, on Michael's "business partner, decide
   on your own" instruction. Backup first (E:\Claude\PropertyValue-backups6-09-04:
   every table as CSV, schema, git bundle, .env). Then: the landing page

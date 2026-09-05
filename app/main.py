@@ -2045,7 +2045,10 @@ async def market_report(request: Request):
     however many areas resolved, not a promise that all N will."""
     context = base_context(request)
 
-    cached = _cache.get(("market_report",), MARKET_REPORT_CACHE_TTL_S)
+    # Tier 2 as well as memory: the page is 20-odd HPI lookups (4 to
+    # 5 s cold) and the process restarts on every deploy, so with a
+    # memory-only cache the first visitor after each deploy paid it.
+    cached = await asyncio.to_thread(_cache.get_persistent, ("market_report", 1), MARKET_REPORT_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
         return templates.TemplateResponse(request, "market_report.html", context)
@@ -2064,7 +2067,7 @@ async def market_report(request: Request):
         "areas": areas,
         "generated_date": datetime.date.today().strftime("%d %B %Y"),
     }
-    _cache.set(("market_report",), page_data)
+    await asyncio.to_thread(_cache.set_persistent, ("market_report", 1), page_data)
     context.update(page_data)
     return templates.TemplateResponse(request, "market_report.html", context)
 
