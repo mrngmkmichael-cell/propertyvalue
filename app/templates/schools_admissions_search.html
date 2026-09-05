@@ -8,7 +8,7 @@
 
 <span class="kicker">Admissions</span>
 <h1>{% if q %}Schools matching "{{ q }}"{% else %}Find a school{% endif %}</h1>
-<p class="dek">Every school here has a published admission distance, and its page has a postcode checker. A school that is not here either took everyone who applied, or is in a council that publishes no figures.</p>
+<p class="dek">Every open school whose name matches. Those with a published admission distance come first and open their own page, with a postcode checker; the rest open their area on the schools guide, because their council publishes no distance or the school took everyone who applied.</p>
 
 <form class="search-form" action="/schools/admissions/search" method="get" role="search" style="max-width: 36rem;">
     <label for="sa-q2">School name</label>
@@ -26,10 +26,10 @@
             <tbody>
                 {% for s in results %}
                 <tr>
-                    <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a></td>
+                    <td><a href="{{ s.url }}">{{ s.name }}</a>{% if not s.has_page %} <span class="school-table-type">opens its area on the guide</span>{% endif %}</td>
                     <td>{{ s.authority }}</td>
                     <td>{{ s.phase }}</td>
-                    <td class="num">{% if s.miles %}{{ s.miles }} mi{% endif %}</td>
+                    <td class="num">{% if s.miles %}{{ s.miles }} mi{% else %}<span class="section-sub">none published</span>{% endif %}</td>
                     <td>{{ s.academic_year }}</td>
                 </tr>
                 {% endfor %}
@@ -38,7 +38,7 @@
     </div>
     {% if results | length == 50 %}<p class="section-sub">Only the first fifty are shown; add a word to narrow it.</p>{% endif %}
     {% else %}
-    <h2>No school with a published distance matches "{{ q }}"</h2>
+    <h2>No school matches "{{ q }}"</h2>
     <p class="section-sub">Try a shorter part of the name. The <a href="/schools/guide?q={{ q | urlencode }}">schools guide</a> searches every school by area, rated or not, and the <a href="/schools/admissions">council list</a> shows which councils publish figures at all.</p>
     {% endif %}
 </section>

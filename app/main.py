@@ -7661,8 +7661,8 @@ async def api_school_search(q: str = ""):
     q = q.strip()[:80]
     rows = await asyncio.to_thread(schools_db.search_admission_schools, q, 10) if len(q) >= 2 else []
     return JSONResponse({"results": [
-        {"name": r["name"], "url": f"/school/{r['urn']}/{r['slug']}", "authority": r["authority"],
-         "miles": r["miles"], "year": r["academic_year"]} for r in rows
+        {"name": r["name"], "url": r["url"], "authority": r["authority"], "has_page": r["has_page"],
+         "phase": r["phase"], "miles": r["miles"], "year": r["academic_year"]} for r in rows
     ]}, headers={"Cache-Control": "public, max-age=300"})
 
 

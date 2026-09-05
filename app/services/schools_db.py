@@ -590,26 +590,35 @@ def _slugify(name: str) -> str:
 
 
 def search_admission_schools(q: str, limit: int = 25) -> list[dict]:
-    """Schools with a published admission distance whose name contains
-    the words typed. Case-insensitive, whole phrase, capped. Backs the
-    admissions index's search box and its typeahead."""
+    """Every open school whose name contains the words typed, those with
+    a published admission distance first. A school with a distance has
+    its own page; one without opens its area on the schools guide, by
+    its own postcode. Case-insensitive, whole phrase, capped. Backs the
+    search box on the admissions index and the schools guide."""
     q = " ".join(q.split())
     if len(q) < 2 or not is_configured():
         return []
     with get_session() as session:
         rows = session.execute(
-            select(School.urn, School.name, School.phase, SchoolAdmissionRadius.source_authority,
-                   SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year)
-            .join(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            select(School.urn, School.name, School.phase, School.postcode, SchoolDetail.local_authority,
+                   SchoolAdmissionRadius.source_authority, SchoolAdmissionRadius.last_distance_miles,
+                   SchoolAdmissionRadius.academic_year)
+            .outerjoin(SchoolAdmissionRadius, School.urn == SchoolAdmissionRadius.urn)
+            .outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
             .where(School.name.ilike(f"%{q}%"))
-            .order_by(School.name)
+            .order_by(SchoolAdmissionRadius.last_distance_miles.is_(None), School.name)
             .limit(limit)
         ).all()
-    return [
-        {"urn": urn, "name": name, "slug": _slugify(name), "phase": _phase_group(phase) or "",
-         "authority": authority or "", "miles": round(miles, 2) if miles else None, "academic_year": year or ""}
-        for urn, name, phase, authority, miles, year in rows
-    ]
+    out = []
+    for urn, name, phase, postcode, la, authority, miles, year in rows:
+        has_page = bool(miles)
+        out.append({
+            "urn": urn, "name": name, "slug": _slugify(name), "phase": _phase_group(phase) or "",
+            "authority": (authority or la or ""), "miles": round(miles, 2) if miles else None,
+            "academic_year": year or "", "has_page": has_page, "postcode": postcode or "",
+            "url": f"/school/{urn}/{_slugify(name)}" if has_page else (f"/schools/guide?q={(postcode or '').replace(' ', '+')}" if postcode else "/schools/guide"),
+        })
+    return out
 
 
 def admission_page_schools() -> list[dict]:

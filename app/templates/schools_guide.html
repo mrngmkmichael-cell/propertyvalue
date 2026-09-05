@@ -25,6 +25,8 @@
 {% if not areas %}
 <p class="section-sub" style="margin-bottom: 0.25rem;">Type an exact postcode for the most accurate result, or pick a district from the list below.</p>
 {% endif %}
+{% include "_school_search.html" %}
+
 <form action="/schools/guide" method="get" class="search-form" style="margin: 1.5rem 0;">
     <input type="hidden" name="areas" value="{{ areas_param }}">
     <div class="search-form-field">

@@ -1457,10 +1457,25 @@ def test_admissions_index_has_a_school_search_that_finds_schools(client):
     assert page.status_code == 200
     assert 'href="/school/990002/riverside-academy"' in page.text and "Manchester" in page.text
     assert 'name="robots" content="noindex' in page.text
-    assert "No school with a published distance matches" in client.get("/schools/admissions/search?q=zzzqqq").text
+    assert "No school matches" in client.get("/schools/admissions/search?q=zzzqqq").text
     api = client.get("/api/school-search?q=river").json()
-    assert api["results"][0]["url"] == "/school/990002/riverside-academy"
+    assert api["results"][0]["url"] == "/school/990002/riverside-academy" and api["results"][0]["has_page"]
     assert client.get("/api/school-search?q=r").json() == {"results": []}
     # The literal path wins over the council catch-all.
     assert client.get("/schools/admissions/search").status_code == 200
+    # A school with no published distance is found too, and opens its area on the guide.
+    from app import db
+    from app.models import School
+    with db.get_session() as session:
+        if session.get(School, 990091) is None:
+            session.add(School(urn=990091, name="Willow Bank Primary School", phase="Primary", type_name="Community school",
+                               postcode="LS6 2AB", latitude=53.82, longitude=-1.57, ofsted_rating=2, ofsted_rating_label="Good"))
+            session.commit()
+    api = client.get("/api/school-search?q=willow+bank").json()
+    assert api["results"][0]["url"] == "/schools/guide?q=LS6+2AB" and api["results"][0]["has_page"] is False
+    page = client.get("/schools/admissions/search?q=willow+bank").text
+    assert 'href="/schools/guide?q=LS6+2AB"' in page and "opens its area on the guide" in page
+    # The same box sits on the schools guide.
+    guide = client.get("/schools/guide").text
+    assert 'id="sa-suggest"' in guide and "Find a school by name" in guide
 
