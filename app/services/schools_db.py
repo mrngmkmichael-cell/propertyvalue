@@ -911,16 +911,24 @@ def nearby_admission_pages(urn: int, limit: int = 6, radius_miles: float = 3.0) 
 def admission_profile(urn: int) -> dict | None:
     """Everything one school's admission page renders."""
     with get_session() as session:
-        school = session.get(School, urn)
-        if school is None:
-            return None
-        radius = session.get(SchoolAdmissionRadius, urn)
-        if radius is None:
-            return None
-        detail = session.get(SchoolDetail, urn)
-        chars = session.get(SchoolCharacteristics, urn)
-        demo = session.get(SchoolDemographics, urn)
-        dest = session.get(SchoolDestinations, urn)
+        # One statement for the six one-row-per-school tables instead of
+        # six lookups in a row: each is a database round trip, and a
+        # cold school page (3,627 of them, most cold for a crawler) paid
+        # eight of those before it read anything else (5 Sep 2026).
+        row = session.execute(
+            select(School, SchoolAdmissionRadius, SchoolDetail, SchoolCharacteristics,
+                   SchoolDemographics, SchoolDestinations)
+            .select_from(School)
+            .join(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+            .outerjoin(SchoolDetail, SchoolDetail.urn == School.urn)
+            .outerjoin(SchoolCharacteristics, SchoolCharacteristics.urn == School.urn)
+            .outerjoin(SchoolDemographics, SchoolDemographics.urn == School.urn)
+            .outerjoin(SchoolDestinations, SchoolDestinations.urn == School.urn)
+            .where(School.urn == urn)
+        ).first()
+        if row is None:
+            return None  # no such school, or no published admission distance for it
+        school, radius, detail, chars, demo, dest = row
         # Every published year, newest first, so the page can show how a
         # result has moved rather than one number floating alone.
         ks4_years = session.scalars(
