@@ -102,3 +102,28 @@ def test_admin_lists_premium_accounts_with_days_to_convert(client, monkeypatch):
     assert row["days_to_convert"] == 4
     assert row["value"] == "£8.33/month"
     assert row["first_search"] == "KT3 4HX no. 36"
+
+
+def test_revenue_table_lists_active_and_cancelled_and_ignores_test_purchases(client, monkeypatch):
+    """Three of the owner's own test purchases carried a Stripe
+    subscription ID but never a status, and the revenue table showed
+    them as "Unknown 3", which read as three lost customers. They are
+    excluded with the rest of the test accounts; Active and Cancelled
+    are always listed, even at zero."""
+    _stub_telegram(monkeypatch)
+    with db.get_session() as session:
+        for email, sub, status in (
+            ("tester@ukpropertyinsight.co.uk", "sub_sitetest", None),      # site-domain test account, no status
+            ("refunded@example.test", "sub_refunded", None),
+            ("paying@customer.test", "sub_live_1", "active"),
+            ("left@customer.test", "sub_live_2", "canceled"),
+        ):
+            session.add(User(email=email, password_hash=auth.hash_password("password123"),
+                             stripe_customer_id="cus_" + sub, stripe_subscription_id=sub, subscription_status=status,
+                             is_premium=status == "active", plan="monthly" if status else None))
+        session.commit()
+        m = app_main._admin_metrics(session, datetime.datetime.now(datetime.timezone.utc))
+    rows = {r["label"]: r["count"] for r in m["subscription_status_breakdown"]}
+    assert rows["Active"] >= 1 and rows["Cancelled"] == 1
+    assert "Unknown" not in rows and "None" not in rows
+    assert m["subscriptions_without_status"] == 0

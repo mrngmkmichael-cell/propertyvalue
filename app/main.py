@@ -5426,12 +5426,27 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         select(func.count()).select_from(User).where(User.subscription_status == "trialing")
     ) or 0
 
-    status_rows = session.execute(
-        select(User.subscription_status, func.count())
-        .where(User.stripe_subscription_id.is_not(None))
-        .group_by(User.subscription_status)
-    ).all()
-    m["subscription_status_breakdown"] = [{"status": s or "unknown", "count": c} for s, c in status_rows]
+    # Real customers only, by the status Stripe last reported. Active and
+    # Cancelled are always listed, even at zero, because those are the
+    # two numbers the owner reads this table for. Accounts with a Stripe
+    # subscription but no status were the owner's own test purchases
+    # from before the webhook was wired; they are excluded with the rest
+    # of the test accounts rather than shown as "Unknown", which read as
+    # three lost customers. If a real account ever lands in that state
+    # the footnote says so.
+    status_q = select(User.subscription_status, func.count()).where(User.stripe_subscription_id.is_not(None))
+    if test_ids:
+        status_q = status_q.where(User.id.notin_(test_ids))
+    counts = {s: c for s, c in session.execute(status_q.group_by(User.subscription_status)).all()}
+    labels = {"active": "Active", "canceled": "Cancelled", "trialing": "On a free trial", "past_due": "Payment overdue",
+              "unpaid": "Unpaid", "paused": "Paused", "incomplete": "Checkout not finished", "pass": "One-off pass"}
+    breakdown = [{"status": "active", "label": "Active", "count": counts.get("active", 0)},
+                 {"status": "canceled", "label": "Cancelled", "count": counts.get("canceled", 0)}]
+    for status, count in sorted(counts.items(), key=lambda kv: -kv[1]):
+        if status and status not in ("active", "canceled") and count:
+            breakdown.append({"status": status, "label": labels.get(status, status.replace("_", " ").capitalize()), "count": count})
+    m["subscription_status_breakdown"] = breakdown
+    m["subscriptions_without_status"] = counts.get(None, 0)
 
     referral_rows = session.execute(
         select(User.referred_by, func.count())

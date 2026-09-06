@@ -195,10 +195,13 @@
         <thead><tr><th>Subscription status</th><th class="num">Accounts</th></tr></thead>
         <tbody>
             {% for s in subscription_status_breakdown %}
-            <tr><td>{{ s.status|capitalize }}</td><td class="num">{{ s.count }}</td></tr>
+            <tr><td>{{ s.label }}</td><td class="num">{{ s.count }}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    {% if subscriptions_without_status %}
+    <p class="section-sub">{{ subscriptions_without_status }} real account{{ "s have" if subscriptions_without_status != 1 else " has" }} a Stripe subscription but no status from the webhook yet. Check Stripe if this is not a checkout in progress.</p>
+    {% endif %}
     {% endif %}
 </section>
 
