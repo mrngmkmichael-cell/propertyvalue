@@ -208,14 +208,14 @@
 {{ sp("14pt") }}
 <p style="font-family: ISS; font-size: 12.5pt; color: #1c1714; margin: 16pt 0 4pt">Every check, at a glance</p>
 {% for group, rows in checklist_groups %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <table class="check">
     <tr class="ck-group"><td colspan="3">{{ group }}</td></tr>
     {% for r in rows %}
     <tr><td class="ck-name" style="width: 27%">{{ r.check }}</td><td class="ck-res" style="width: 60%">{{ r.result }}{% if r.source %} &nbsp;<span class="src">{{ r.source }}</span>{% endif %}</td><td class="ck-dot" style="width: 13%">{{ status_word(r.status) }}</td></tr>
     {% endfor %}
 </table>
-</pdf:keeptogether>
+</td></tr></table>
 {% endfor %}
 <p class="tiny faint" style="margin-top: 6pt">Fine, Check and Act are this report's reading of each figure; Noted is a fact with no judgement attached.</p>
 
@@ -275,7 +275,7 @@
 {% endif %}
 
 {% if rental %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Private rents nearby</h2>
 <p class="why">What the area rents for: the yield if you let it, or the cost of renting instead while you wait.</p>
 <table class="data">
@@ -284,7 +284,7 @@
     {% for b in rental.by_bedroom %}<tr><td>{{ b.label }}</td><td class="num">{{ b.price | gbp }}</td><td class="num">{% if b.change_pct is not none %}{{ "%+.1f" | format(b.change_pct) }}%{% endif %}</td></tr>{% endfor %}
 </table>
 <p class="tiny faint">ONS Price Index of Private Rents{% if rental.period %}, {{ rental.period }}{% endif %}.</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 {% if new_build_stat and new_build_stat.total %}
 <table class="callout"><tr><td>{{ new_build_stat.pct }}% of the {{ new_build_stat.total }} sales around here in the last {{ new_build_stat.years }} years were new builds. A high share means the second-hand market is still finding its level.</td></tr></table>
@@ -326,7 +326,7 @@
 <p class="tiny faint">{{ council_tax.basis }}</p>
 {% endif %}
 
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Once, when you buy</h2>
 {% if stamp_duty_valuation %}
 <p class="why">Stamp Duty Land Tax on the valuation estimate of {{ stamp_duty_valuation.price | gbp }}. HMRC rates from April 2025; England and Northern Ireland only.</p>
@@ -347,9 +347,9 @@
 {% else %}
 <p class="soft">No price to calculate stamp duty on: no recent sale here and no valuation estimate.</p>
 {% endif %}
-</pdf:keeptogether>
+</td></tr></table>
 {{ sp("10pt") }}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Worth knowing</h2>
 <table class="kv">
     {% if rc and rc.typical_year %}{{ kv("A typical year here: council tax at Band D plus the energy estimate", rc.typical_year | gbp, (rc.typical_share_pct ~ "% of the area's median household income of " ~ (rc.income_value | gbp)) if rc.typical_share_pct and rc.income_value else "") }}{% endif %}
@@ -358,7 +358,7 @@
     {% if flood_zone %}{{ kv("Flood zone, what an insurer asks first", flood_zone.label, "Environment Agency", "good" if flood_zone.zone == 1 else "warn") }}{% endif %}
     {% if broadband %}{{ kv("Broadband that can be ordered", broadband.label ~ (", gigabit at " ~ ("%.0f" | format(broadband.gigabit_pct)) ~ "% of premises" if broadband.gigabit_pct is not none else ""), "Ofcom Connected Nations") }}{% endif %}
 </table>
-</pdf:keeptogether>
+</td></tr></table>
 
 {# ================= PART 4: THE PROPERTY ================= #}
 {{ part("04", "The property", "What the certificate and the register say about this home itself.") }}
@@ -371,7 +371,7 @@
 </tr></table>
 {{ sp("4pt") }}
 {% if property_detail.heating_cost_current is not none %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Energy costs on the certificate</h2>
 <table class="data">
     <tr><th style="width: 34%">Cost, a year</th><th class="num" style="width: 18%">Now</th><th class="num" style="width: 18%">After improvements</th><th style="width: 30%"></th></tr>
@@ -383,7 +383,7 @@
     <tr><td class="b">Total</td><td class="num b">{{ ((property_detail.heating_cost_current or 0) + (property_detail.hot_water_cost_current or 0) + (property_detail.lighting_cost_current or 0)) | gbp }}</td><td class="num b">{{ ((property_detail.heating_cost_potential or 0) + (property_detail.hot_water_cost_potential or 0) + (property_detail.lighting_cost_potential or 0)) | gbp }}</td><td>&nbsp;</td></tr>
 </table>
 <p class="tiny faint">The assessor's modelled figures at the certificate's date, not a bill. Actual use and tariffs differ.</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 <table class="kv">
     {{ kv("Dwelling type", property_detail.dwelling_type or "Not recorded", "EPC Register") }}
@@ -415,19 +415,19 @@
     {% if surface_water %}{{ kv("Surface water flooding", surface_water.label ~ (", " ~ surface_water.probability if surface_water.probability else ""), "Environment Agency risk of flooding from surface water", "good" if "low" in surface_water.label | lower else "warn") }}{% else %}{{ kv("Surface water flooding", "No mapped risk band at this point", "Environment Agency") }}{% endif %}
 </table>
 {% if sewage_outfalls %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h3>Storm overflows within range</h3>
 <table class="data">
     <tr><th style="width: 30%">Overflow</th><th style="width: 18%">Operator</th><th style="width: 20%">Receiving water</th><th class="num" style="width: 10%">Spills</th><th class="num" style="width: 10%">Hours</th><th class="num" style="width: 12%">Distance</th></tr>
     {% for o in sewage_outfalls[:8] %}<tr><td class="b">{{ o.name }}</td><td>{{ o.water_company }}</td><td>{{ o.receiving_water or "" }}</td><td class="num">{{ o.spill_count }}</td><td class="num">{{ o.duration_hrs }}</td><td class="num">{{ o.distance_m | distance }}</td></tr>{% endfor %}
 </table>
 <p class="tiny faint">Environment Agency event duration monitoring{% if sewage_outfalls[0].year %}, {{ sewage_outfalls[0].year }}{% endif %}. A spill is a discharge of untreated sewage into the named watercourse.</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% else %}
 <p class="soft small">No monitored storm overflow within range.</p>
 {% endif %}
 
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Noise</h2>
 {% if noise and (noise.road_db is not none or noise.rail_db is not none or noise.airport_db is not none) %}
 <table class="data">
@@ -440,7 +440,7 @@
 {% else %}
 <p class="soft small">Outside Defra's mapped area for road, rail and aircraft noise. That is not a zero reading.</p>
 {% endif %}
-</pdf:keeptogether>
+</td></tr></table>
 
 <h2>Crime</h2>
 {% if crime and crime.total is not none %}
@@ -451,21 +451,21 @@
 </tr></table>
 {% if crime.by_category %}
 {{ sp("6pt") }}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <table class="data">
     <tr><th style="width: 40%">Category</th><th class="num" style="width: 16%">Count</th><th style="width: 44%"></th></tr>
     {% set topc = crime.by_category[0].count %}
     {% for cat in crime.by_category[:9] %}<tr><td class="b">{{ cat.category | capitalize }}</td><td class="num">{{ cat.count }}</td><td>{{ bar(cat.count / (topc or 1) * 100, "bar-fill" if loop.first else "bar-fill-soft") }}</td></tr>{% endfor %}
 </table>
+</td></tr></table>
 {% endif %}
 <p class="tiny faint">Police.uk street-level crime, one month. Scotland carries British Transport Police records only.</p>
-</pdf:keeptogether>
 {% else %}
 <p class="soft small">Crime figures are not available for this point.</p>
 {% endif %}
 
 
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Ground and air</h2>
 <table class="kv">
     {% if radon %}{{ kv("Radon", radon.label if radon.label is defined else radon, "UK Health Security Agency and British Geological Survey indicative atlas", "good" if "low" in (radon.label if radon.label is defined else radon) | lower else "warn") }}{% endif %}
@@ -473,16 +473,16 @@
     {% if coal_mining and coal_mining.present %}{{ kv("Coal mining reporting area", "Yes" ~ (", " ~ coal_mining.area_name if coal_mining.area_name else "") ~ ": a coal mining search is advisable", "Coal Authority", "warn") }}{% elif coal_mining_error %}{{ kv("Coal mining reporting area", "The Coal Authority service did not answer; not a clear result", "Coal Authority") }}{% else %}{{ kv("Coal mining reporting area", "Not in a reporting area", "Coal Authority", "good") }}{% endif %}
     {% if historic_landfill and historic_landfill.status == "on_site" %}{{ kv("Historic landfill", "On the site itself: " ~ historic_landfill.site_name, "Environment Agency", "bad") }}{% elif historic_landfill and historic_landfill.status and historic_landfill.status != "clear" %}{{ kv("Historic landfill", historic_landfill.distance_m ~ " m away: " ~ historic_landfill.site_name, "Environment Agency", "warn") }}{% else %}{{ kv("Historic landfill", "None nearby", "Environment Agency", "good") }}{% endif %}
 </table>
-</pdf:keeptogether>
+</td></tr></table>
 {% if air_quality and air_quality.pollutants %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h3>Air quality, {{ air_quality.year }}</h3>
 <table class="data">
     <tr><th style="width: 14%">Pollutant</th><th class="num" style="width: 20%">Annual mean</th><th class="num" style="width: 18%">WHO guideline</th><th class="num" style="width: 18%">Times the guideline</th><th style="width: 30%"></th></tr>
     {% for p in air_quality.pollutants %}<tr><td class="b">{{ p.label }}</td><td class="num">{{ p.value }}</td><td class="num">{{ p.who_guideline }}</td><td class="num {{ 'bad' if p.times_guideline >= 3 else ('warn' if p.times_guideline >= 1.5 else 'good') }}">{{ "%.1f" | format(p.times_guideline) }}×</td><td>{{ bar(p.times_guideline / 4 * 100, "bar-fill-rust" if p.times_guideline >= 1.5 else "bar-fill-soft") }}</td></tr>{% endfor %}
     <tr><td colspan="5" class="tiny faint" style="border-bottom: none; padding-top: 4pt">Defra modelled background concentrations for the 1 km square, in micrograms per cubic metre. The WHO 2021 guidelines are stricter than the UK legal limits.</td></tr>
 </table>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 
 {# ================= PART 6: PLANNING AND HERITAGE ================= #}
@@ -493,7 +493,7 @@
     {% set present = [] %}{% for key, d in (designations or {}).items() %}{% if d.present %}{% set _ = present.append(d.label) %}{% endif %}{% endfor %}
     {% if present %}{{ kv("Other designations present", present | join(", "), "Natural England, ONS") }}{% endif %}
 </table>
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Listed buildings nearby</h2>
 {% if heritage %}
 <table class="data">
@@ -504,7 +504,7 @@
 {% else %}
 <p class="soft small">No listed building within range.</p>
 {% endif %}
-</pdf:keeptogether>
+</td></tr></table>
 
 {# ================= PART 7: SCHOOLS ================= #}
 {{ part("07", "Schools", "Every state school within three miles, the distance each admitted from last year, and where this address stands against it.") }}
@@ -524,7 +524,7 @@
 <p class="tiny faint">Report card: inspected under Ofsted's 2025 framework, which grades areas rather than the whole school. No current grade: not yet inspected under either framework, or a school Ofsted does not grade.</p>
 {% endif %}
 {% for group, list in (schools or {}).items() %}{% if list %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h3>{{ group }}, nearest first</h3>
 <table class="data">
     <tr><th style="width: 26%">School</th><th style="width: 16%">Type</th><th class="num" style="width: 10%">Distance</th><th style="width: 14%">Ofsted</th><th class="num" style="width: 10%">Free school meals</th><th style="width: 24%">Results</th></tr>
@@ -532,8 +532,8 @@
     <tr><td class="b">{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td class="{{ 'good' if s.ofsted_rating_label in ('Outstanding', 'Good') else '' }}">{% if s.ofsted_rating_label %}{{ s.ofsted_rating_label }}{% elif "ngraded" in (s.ofsted_note or "") %}Ungraded{% else %}No grade{% endif %}</td><td class="num">{% if s.fsm_eligible_pct is not none %}{{ s.fsm_eligible_pct }}%{% else %}&nbsp;{% endif %}</td><td>{% if s.exam_results and s.exam_results.headline_value is not none %}{% if group == "Primary" %}{{ s.exam_results.headline_value | round | int }}% met the standard{% else %}Progress 8 {{ s.exam_results.headline_value }}{% endif %} ({{ s.exam_results.academic_year }}){% else %}&nbsp;{% endif %}</td></tr>
     {% endfor %}
 </table>
+</td></tr></table>
 {% endif %}{% endfor %}
-</pdf:keeptogether>
 {% set real_cds = (catchment_distance_schools or []) | selectattr("is_real") | list %}
 <h2>Admission distances: will this address get in?</h2>
 {% if real_cds %}
@@ -549,15 +549,15 @@
 <p class="soft small">No school near here has a published last-admitted distance in this site's data. Councils publish them unevenly; ask the school's admissions team for last year's cut-off.</p>
 {% endif %}
 {% if school_landscape and school_landscape.independent_schools %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h3>Fee-paying schools within range</h3>
 <table class="data">
     <tr><th style="width: 40%">School</th><th style="width: 14%">Ages</th><th style="width: 32%">Intake</th><th class="num" style="width: 14%">Distance</th></tr>
     {% for s in school_landscape.independent_schools[:10] %}<tr><td class="b">{{ s.name }}</td><td>{% if s.age_low is not none %}{{ s.age_low }} to {{ s.age_high }}{% endif %}</td><td>{{ s.gender or "" }}{% if s.selective %}, selective{% endif %}{% if s.religious_character and s.religious_character not in ("None", "Does not apply") %}, {{ s.religious_character }}{% endif %}</td><td class="num">{{ s.distance_m | distance }}</td></tr>{% endfor %}
 </table>
+</td></tr></table>
 {% endif %}
 {% if school_landscape and school_landscape.higher_education %}
-</pdf:keeptogether>
 <p class="small soft">Universities within range: {{ school_landscape.higher_education | map(attribute="name") | join(", ") }}.</p>
 {% endif %}
 <p class="tiny faint">Department for Education, Get Information About Schools; Ofsted; local authority admissions publications. School data covers England.</p>
@@ -576,7 +576,7 @@
 {% else %}
 <p class="soft small">No rail, tube or tram station within range.</p>
 {% endif %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Connectivity</h2>
 <table class="kv">
     {% if broadband %}
@@ -591,9 +591,9 @@
     {% if mobile.coverage_5g_outdoor_pct is not none %}{{ kv("5G outdoors", ("%.0f" | format(mobile.coverage_5g_outdoor_pct)) ~ "%") }}{% endif %}
     {% endif %}
 </table>
+</td></tr></table>
 {% if amenities %}
-</pdf:keeptogether>
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Daily essentials</h2>
 <table class="data">
     <tr><th style="width: 30%">What</th><th class="num" style="width: 16%">Within range</th><th style="width: 38%">Nearest</th><th class="num" style="width: 16%">Distance</th></tr>
@@ -603,13 +603,13 @@
     {% endfor %}
 </table>
 <p class="tiny faint">OpenStreetMap, within about a mile. Counts depend on how completely the area is mapped.</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 
 {# ================= PART 9: AREA AND COMMUNITY ================= #}
 {{ part("09", "Area and community", "Who lives around here, from the 2021 Census and ONS estimates for the surrounding small area, not this one house.") }}
 {% if household_income %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Household income</h2>
 <table class="data">
     <tr><th style="width: 32%">Area</th><th class="num" style="width: 18%">Median, a year</th><th style="width: 50%"></th></tr>
@@ -619,10 +619,10 @@
     {% if household_income.region_average %}<tr><td>{{ household_income.region_name }}</td><td class="num">{{ household_income.region_average | gbp }}</td><td>{{ bar(household_income.region_average / (topi or 1) * 100, "bar-fill-soft") }}</td></tr>{% endif %}
 </table>
 <p class="tiny faint">ONS small area income estimates, net equivalised household income after housing costs.</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 {% if deprivation %}
-<pdf:keeptogether>
+<table class="keep"><tr><td style="padding: 0pt">
 <h2>Deprivation</h2>
 <p class="why">Decile {{ deprivation.imd_decile }} of 10{% if imd_label %}, {{ imd_label | lower }}{% endif %}. 10 is the least deprived tenth of neighbourhoods in England.</p>
 <table class="data">
@@ -630,7 +630,7 @@
     {% for d in deprivation.domains %}<tr><td class="b">{{ d.label }}</td><td class="num">{{ d.decile }}</td><td>{{ bar(d.decile * 10, "bar-fill" if d.decile >= 6 else "bar-fill-rust") }}</td></tr>{% endfor %}
 </table>
 <p class="tiny faint">MHCLG English Indices of Deprivation 2019, for the neighbourhood (LSOA).</p>
-</pdf:keeptogether>
+</td></tr></table>
 {% endif %}
 {% macro breakdown(title, rows) %}<h3>{{ title }}</h3>
 <table class="data">{% for b in rows %}<tr><td style="width: 76%">{{ b.label }}</td><td class="num" style="width: 24%">{{ b.pct }}%</td></tr>{% endfor %}</table>{% endmacro %}

@@ -6,6 +6,29 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The premium PDF, rebuilt (6 Sep 2026). Michael found the old seven-page
+  export "not premium enough" and asked for a document with all forty
+  checks and the running costs, something a buyer feels is worth paying
+  for. It is now 25 pages in the site's own type (Instrument Sans and
+  JetBrains Mono, instanced to static weights for reportlab): a cover
+  with the postcode, address, score, verdict and six figures a buyer asks
+  first; a contents page; Part 1 with every check on a page (44 rows, each
+  with its result, a Fine/Check/Act/Noted reading and its source); then
+  value and market, running costs (council tax at every band, the home's
+  own EPC energy estimate, stamp duty on the valuation for movers,
+  first-time buyers and additional properties, tenure, estate charge,
+  renting instead), the property, risk and safety, planning and heritage,
+  schools with the published admission distances measured against the
+  address, getting around, area and community, the questions to ask, and
+  a sources-and-method appendix. Every figure names its source and every
+  gap is written in words. Built from the same gather as the live report
+  plus the running-costs answer, so the three cannot disagree. The engine
+  (xhtml2pdf) fought back for hours; its rules are in memory
+  (project_pdf_engine_quirks). Also that day: a reader's figure report
+  that Worcester Sixth Form is not a secondary school was right, and 82
+  sixth form colleges left the school counts; Welsh reports stopped
+  printing "None" for the region and say the school data covers England.
+
 - The afternoon of 5 Sep 2026, on "analyse the whole website and improve
   it" with Michael away for three hours. Measured first: the funnel is
   15 to 50 homepage views a day, 0 to 26 report starts, no account in

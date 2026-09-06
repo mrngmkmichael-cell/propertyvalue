@@ -100,8 +100,32 @@ def test_the_pdf_renders_every_part_with_the_running_costs_in_it():
     assert "£36,550" in html and "the valuation estimate" in html
     assert "Every check, at a glance" in html and "Storm overflows nearby" in html
     assert ctx["generated_date"] == f"{datetime.date.today().day} {datetime.date.today():%B %Y}"
-    pdf = pdf_export.html_to_pdf(html)
+    pdf = _render_in_a_fresh_process(html)
     assert pdf and pdf[:4] == b"%PDF" and len(pdf) > 40_000
+
+
+def _render_in_a_fresh_process(html: str) -> bytes:
+    """The engine runs in its own interpreter here. Inside the full suite
+    on Windows the same call hit an access violation about one run in
+    three, inside xhtml2pdf's CSS matching, never on its own; on the
+    server it runs on a worker thread of a long-lived process, which
+    this mirrors more honestly than sharing pytest's."""
+    import pathlib
+    import subprocess
+    import sys
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        src = pathlib.Path(tmp) / "report.html"
+        out = pathlib.Path(tmp) / "report.pdf"
+        src.write_text(html, encoding="utf-8")
+        code = (
+            "import pathlib, sys; sys.path.insert(0, '.'); from app.services import pdf_export; "
+            "pdf = pdf_export.html_to_pdf(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8')); "
+            "pathlib.Path(sys.argv[2]).write_bytes(pdf or b'')"
+        )
+        subprocess.run([sys.executable, "-c", code, str(src), str(out)], check=True, timeout=120)
+        return out.read_bytes()
 
 
 def test_the_checklist_says_what_is_missing_in_words():
