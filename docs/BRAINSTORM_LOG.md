@@ -6,6 +6,24 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Conversions made visible (6 Sep 2026). Michael asked who the "Unknown"
+  subscription statuses on /admin were (his three Stripe test purchases
+  from 19 and 21 Aug, which never received a webhook status) and then for
+  two things: a section listing every Premium account with the date it
+  joined and the date it converted, and a Telegram message for every new
+  subscription. `users.premium_since` records the first moment an account
+  became Premium by any route (subscription active, pass bought, comp)
+  and never moves; db.init_db adds the column on Postgres at startup so
+  the deploy needs no hand migration. The Stripe webhook now detects the
+  not-Premium to Premium transition, dates it, and sends one Telegram
+  line (who, what plan and its monthly value, joined when, days to
+  convert, the first property they looked at, link to /admin#premium);
+  renewals arrive as the same event with the account already Premium and
+  send nothing. The two real subscribers were backdated from Stripe's own
+  subscription-created timestamps. Evidence that mattered: the newest
+  subscriber came from the Xiaohongshu post, hit the paywall six times
+  over 18 hours, and paid for the monthly plan the next afternoon.
+
 - The premium PDF, rebuilt (6 Sep 2026). Michael found the old seven-page
   export "not premium enough" and asked for a document with all forty
   checks and the running costs, something a buyer feels is worth paying
