@@ -249,6 +249,33 @@
 </section>
 {% endif %}
 
+<section class="landing-section" id="premium">
+    <h2 class="landing-heading">Premium accounts</h2>
+    <p class="landing-subheading">Everyone who is Premium today, newest conversion first. "Converted" is the first moment the account became Premium by any route and never moves; the days column is the time from joining to that moment.</p>
+    <table class="tx-table">
+        <thead>
+            <tr><th>Email</th><th>Joined</th><th>Converted</th><th>Days</th><th>Plan</th><th>Status</th><th>Worth</th><th>First looked at</th></tr>
+        </thead>
+        <tbody>
+            {% for u in premium_accounts %}
+            <tr>
+                <td>{{ u.email }}{% if u.is_owner %} <span class="school-table-type">you</span>{% endif %}</td>
+                <td>{{ u.created_at.strftime("%d %b %Y") if u.created_at else " — " }}</td>
+                <td>{% if u.premium_since %}{{ u.premium_since.strftime("%d %b %Y %H:%M") }}{% else %}<span style="color: var(--ink-faint);">before this was recorded</span>{% endif %}</td>
+                <td>{% if u.days_to_convert is not none %}{{ u.days_to_convert }}{% else %} — {% endif %}</td>
+                <td>{{ u.plan or " — " }}</td>
+                <td>{{ u.subscription_status or " — " }}</td>
+                <td>{{ u.value }}</td>
+                <td>{{ u.first_search or " — " }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">No Premium accounts yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="section-sub">A new subscription or pass purchase also arrives as a Telegram message the moment Stripe confirms it.</p>
+</section>
+
 <section class="landing-section">
     <h2 class="landing-heading">Recent signups</h2>
     <table class="tx-table">

@@ -45,6 +45,14 @@ def init_db():
         return
     engine = _get_engine()
     Base.metadata.create_all(engine)
+    # create_all only creates missing tables. Columns added to a table
+    # that already exists in production are listed here, each idempotent,
+    # so a deploy never depends on a hand-run migration. Postgres only:
+    # SQLite (the test database) is created fresh from the models.
+    if engine.dialect.name == "postgresql":
+        from sqlalchemy import text
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS premium_since TIMESTAMPTZ"))
 
 
 @contextmanager

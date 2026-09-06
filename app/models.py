@@ -34,6 +34,12 @@ class User(Base):
     # One-off buying pass: paid once, premium until this moment, no
     # subscription behind it. NULL for everyone else.
     pass_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The first moment this account became Premium by any route: a
+    # subscription going active, a pass purchase, or a comp. Never moved
+    # afterwards, so "days from joining to paying" survives cancellations
+    # and returns. Added 6 Sep 2026; db.init_db adds the column to the
+    # existing Postgres table on startup.
+    premium_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Whatever ?ref= code was present when this person first landed
     # (see main.py's _REFERRAL_COOKIE handling) - a partner/agent code,
     # or None for organic signups. Free text, not a foreign key to a

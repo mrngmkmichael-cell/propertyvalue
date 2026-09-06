@@ -8,6 +8,7 @@ import hmac
 import json
 import logging
 import math
+import markupsafe
 import os
 import re
 import secrets
@@ -5448,7 +5449,85 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         }
         for u in recent
     ]
+    m["premium_accounts"] = _premium_accounts(session, now)
     return m
+
+
+PLAN_MONTHLY_VALUE_GBP = {"monthly": 9.99, "quarterly": round(24.99 / 3, 2)}
+
+
+def _as_utc(value: datetime.datetime | None) -> datetime.datetime | None:
+    """Postgres hands timezone-aware datetimes back; SQLite (the test
+    database) hands back naive ones for the same column. Both mean UTC."""
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=datetime.timezone.utc)
+    return value
+
+
+def _first_search(session, user_id: int) -> str:
+    """The first property this account unlocked: the postcode and house
+    number a customer joined for, which says more about them than the
+    email does."""
+    first = session.scalars(
+        select(PremiumUnlock).where(PremiumUnlock.user_id == user_id).order_by(PremiumUnlock.created_at).limit(1)
+    ).first()
+    if first is None:
+        return ""
+    return f"{first.postcode}{' no. ' + first.house_number if first.house_number else ''}"
+
+
+def _premium_accounts(session, now: datetime.datetime) -> list[dict]:
+    """Everyone who is Premium today, newest conversion first: who they
+    are, when they joined, when they converted, how long that took, and
+    what the plan is worth a month. Comps and passes are listed with
+    their real value (nothing, or a one-off) rather than counted as
+    recurring revenue."""
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    rows = session.scalars(
+        select(User).where(User.is_premium.is_(True)).order_by(User.premium_since.desc().nulls_last(), User.created_at.desc())
+    ).all()
+    out = []
+    for u in rows:
+        converted = _as_utc(u.premium_since)
+        joined = _as_utc(u.created_at)
+        days = None
+        if converted and joined:
+            days = max(0, int((converted - joined).total_seconds() // 86400))
+        if u.plan in PLAN_MONTHLY_VALUE_GBP:
+            value = f"£{PLAN_MONTHLY_VALUE_GBP[u.plan]:.2f}/month"
+        elif u.plan == "pass":
+            value = "one-off pass"
+        elif u.plan == "comped":
+            value = "comped, £0"
+        else:
+            value = "owner" if u.email.lower() == admin_email else "no plan recorded"
+        out.append({
+            "email": u.email, "created_at": u.created_at, "premium_since": converted, "days_to_convert": days,
+            "plan": u.plan, "subscription_status": u.subscription_status, "value": value,
+            "first_search": _first_search(session, u.id), "is_owner": u.email.lower() == admin_email,
+        })
+    return out
+
+
+def _new_customer_alert(session, db_user, what: str) -> str:
+    """The Telegram line for a conversion: who, what they bought, when
+    they joined and how long the decision took, and the first property
+    they looked at. Built while the session is open, sent after."""
+    joined = _as_utc(db_user.created_at)
+    since = _as_utc(db_user.premium_since) or datetime.datetime.now(datetime.timezone.utc)
+    days = max(0, int((since - joined).total_seconds() // 86400)) if joined else None
+    took = "the same day" if days == 0 else (f"{days} day{'s' if days != 1 else ''} after joining" if days is not None else "")
+    first = _first_search(session, db_user.id)
+    value = PLAN_MONTHLY_VALUE_GBP.get(db_user.plan)
+    site = os.environ.get("SITE_URL", "https://ukpropertyinsight.co.uk").rstrip("/")
+    lines = [
+        f"\U0001F4B3 New customer: <b>{markupsafe.escape(db_user.email)}</b> {markupsafe.escape(what)}"
+        + (f" (£{value:.2f}/month)" if value else ""),
+        f"Joined {joined:%d %b %Y}" + (f", {took}" if took else "") if joined else "",
+        f"First looked at {markupsafe.escape(first)}" if first else "",
+        f"{site}/admin#premium",
+    ]
+    return "\n".join(line for line in lines if line)
 
 
 def _process_memory() -> dict:
@@ -5660,6 +5739,7 @@ async def stripe_webhook(request: Request):
     event = json.loads(payload)
     event_type = event.get("type", "")
     data = event.get("data", {}).get("object", {})
+    alert = None
 
     if event_type == "checkout.session.completed":
         user_id, customer_id = data.get("client_reference_id"), data.get("customer")
@@ -5677,7 +5757,12 @@ async def stripe_webhook(request: Request):
                     )
                     if customer_id:
                         db_user.stripe_customer_id = customer_id
+                    if db_user.premium_since is None:
+                        db_user.premium_since = datetime.datetime.now(datetime.timezone.utc)
                     session.commit()
+                    alert = _new_customer_alert(session, db_user, "bought the pass")
+            if alert:
+                await telegram.send_message(alert)
         elif user_id and customer_id:
             with db.get_session() as session:
                 db_user = session.get(User, int(user_id))
@@ -5700,6 +5785,7 @@ async def stripe_webhook(request: Request):
                 # rather than silently losing the update the way
                 # returning 200 with nothing done would.
                 return JSONResponse({"error": "customer_not_linked_yet"}, status_code=409)
+            was_premium = bool(db_user.is_premium)
             db_user.subscription_status = status
             db_user.is_premium = stripe_billing.grants_access(status)
             db_user.stripe_subscription_id = data.get("id")
@@ -5710,7 +5796,16 @@ async def stripe_webhook(request: Request):
             db_user.trial_ends_at = (
                 datetime.datetime.fromtimestamp(trial_end, tz=datetime.timezone.utc) if trial_end else None
             )
+            # The moment of conversion, once. Renewals arrive as the same
+            # "updated" event with the account already Premium, so they
+            # neither move the date nor send the alert again.
+            newly_premium = db_user.is_premium and not was_premium
+            if newly_premium and db_user.premium_since is None:
+                db_user.premium_since = datetime.datetime.now(datetime.timezone.utc)
             session.commit()
+            alert = _new_customer_alert(session, db_user, f"subscribed, {db_user.plan or status}") if newly_premium else None
+        if alert:
+            await telegram.send_message(alert)
 
     elif event_type == "customer.subscription.deleted":
         customer_id = data.get("customer")
@@ -5879,6 +5974,8 @@ def admin_grant_premium(request: Request, email: str = Form(...), action: str = 
             target.is_premium = True
             target.plan = "comped"
             target.subscription_status = "comped"
+            if target.premium_since is None:
+                target.premium_since = datetime.datetime.now(datetime.timezone.utc)
         session.commit()
     return RedirectResponse("/admin?comp=done", status_code=303)
 
