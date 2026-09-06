@@ -6,6 +6,22 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Email confirmation, after the report rather than before it (7 Sep
+  2026). Michael asked to prevent random addresses taking the free
+  report. The evidence argued against a gate: 11 of 12 launch-night
+  sign-ups opened a report within minutes, the one duplicate was a real
+  buyer comparing two houses via a Gmail plus-alias, and the one typo
+  fixed itself in 55 seconds. So the free report never waits. What waits
+  is mail: change alerts, the weekly digest and admission updates go
+  only to confirmed addresses; a banner asks signed-in accounts to
+  confirm, with a resend limited to one every ten minutes; Google
+  arrivals count as confirmed. Sign-up now catches mistyped domains
+  (gmail.con and twenty others, offering the likely address) and treats
+  one Gmail mailbox as one account. The whole thing is dark until
+  ALERTS_FROM_EMAIL names a domain verified in Resend, because the
+  shared resend.dev sender cannot reach a customer; Michael's step is the
+  DNS records. Tests 196.
+
 - Conversions made visible (6 Sep 2026). Michael asked who the "Unknown"
   subscription statuses on /admin were (his three Stripe test purchases
   from 19 and 21 Aug, which never received a webhook status) and then for

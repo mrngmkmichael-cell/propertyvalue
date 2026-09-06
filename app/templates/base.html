@@ -219,6 +219,30 @@
     </div>
     {% endif %}
 
+    {# Email confirmation. Shown only once a sending domain exists
+       (verification_available) and only to signed-in accounts that have
+       not confirmed. Nothing is locked behind it: the ask is for the
+       alerts they may want, which cannot go to an address that bounces. #}
+    {% if current_user and not current_user.email_verified and verification_available() %}
+    <div class="trial-banner" id="verify-banner">
+        <span class="trial-banner-text verify-banner-text">
+            {% if request.query_params.get("verify") == "sent" %}
+                Sent. Check your inbox, and the spam folder, for the confirmation link.
+            {% elif request.query_params.get("verify") == "wait" %}
+                A link went out a few minutes ago. Give it ten minutes before asking for another.
+            {% elif request.query_params.get("verify") == "failed" %}
+                We could not send the link just now. Try again in a few minutes.
+            {% else %}
+                Confirm {{ current_user.email }} to receive change alerts on the properties and schools you save.
+            {% endif %}
+        </span>
+        <form action="/verify-email/resend" method="post" style="display: inline;">
+            <input type="hidden" name="next" value="{{ request.url.path }}">
+            <button type="submit" class="link-button">Send the link again</button>
+        </form>
+    </div>
+    {% endif %}
+
     <main class="site-main" id="main" tabindex="-1">
         {% if request.query_params.get("reset") == "done" %}
         <p class="notice" style="background: var(--good-bg); color: var(--good);"><strong>Password changed.</strong> You're signed in.</p>

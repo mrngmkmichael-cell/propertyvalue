@@ -283,13 +283,14 @@
     <h2 class="landing-heading">Recent signups</h2>
     <table class="tx-table">
         <thead>
-            <tr><th>Email</th><th>Joined</th><th>Premium</th><th>Plan</th><th>Status</th><th>Referred by</th></tr>
+            <tr><th>Email</th><th>Joined</th><th>Confirmed</th><th>Premium</th><th>Plan</th><th>Status</th><th>Referred by</th></tr>
         </thead>
         <tbody>
             {% for u in recent_signups %}
             <tr>
                 <td>{{ u.email }}</td>
                 <td>{{ u.created_at.strftime("%d %b %Y") }}</td>
+                <td>{% if u.verified %}Yes{% elif verification_live %}Not yet{% else %}<span style="color: var(--ink-faint);">n/a</span>{% endif %}</td>
                 <td>{{ "Yes" if u.is_premium else "No" }}</td>
                 <td>{{ u.plan or " — " }}</td>
                 <td>{{ u.subscription_status or " — " }}</td>

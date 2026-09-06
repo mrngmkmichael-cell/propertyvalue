@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}{% if verified %}Email confirmed{% else %}That link has expired{% endif %} | UKPropertyInsight{% endblock %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+
+{% block content %}
+<section class="landing-section" style="max-width: 36rem;">
+    {% if verified %}
+    <span class="kicker">Email confirmed</span>
+    <h1>Thank you, that address is confirmed.</h1>
+    <p class="dek">Change alerts for the properties and schools you save will reach {{ verified_email }}. Nothing else changes: your free report was never waiting on this.</p>
+    <p><a class="hero-signup-btn" href="{{ '/watchlist' if current_user else '/login?next=/watchlist' }}">{{ 'Your saved properties' if current_user else 'Log in' }}</a></p>
+    {% else %}
+    <span class="kicker">Not confirmed</span>
+    <h1>That confirmation link has expired or was already used.</h1>
+    <p class="dek">Links work for three days. {% if current_user %}Send yourself a fresh one below.{% else %}Log in and use the "send it again" link at the top of any page.{% endif %}</p>
+    {% if current_user and not current_user.email_verified %}
+    <form action="/verify-email/resend" method="post">
+        <input type="hidden" name="next" value="/watchlist">
+        <button type="submit" class="hero-signup-btn">Send a new link to {{ current_user.email }}</button>
+    </form>
+    {% elif not current_user %}
+    <p><a class="hero-signup-btn" href="/login?next=/watchlist">Log in</a></p>
+    {% endif %}
+    {% endif %}
+</section>
+{% endblock %}

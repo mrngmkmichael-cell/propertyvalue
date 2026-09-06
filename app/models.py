@@ -40,6 +40,13 @@ class User(Base):
     # and returns. Added 6 Sep 2026; db.init_db adds the column to the
     # existing Postgres table on startup.
     premium_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When the person proved they can read mail at this address: by
+    # opening the confirmation link, or by arriving through Google, which
+    # has already checked. NULL means never confirmed. Alerts are only
+    # sent to confirmed addresses once a sending domain exists
+    # (email.can_verify); the free report never waits on it.
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Whatever ?ref= code was present when this person first landed
     # (see main.py's _REFERRAL_COOKIE handling) - a partner/agent code,
     # or None for organic signups. Free text, not a foreign key to a

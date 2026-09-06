@@ -1051,6 +1051,9 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
     return f"{head}{tail}"
 
 
+# Looked up on each call, not bound once, so a change of configuration
+# (or a test's patch) is seen without a restart.
+templates.env.globals["verification_available"] = lambda: email_service.can_verify()
 templates.env.filters["gbp"] = _format_gbp
 templates.env.filters["distance"] = _format_distance
 templates.env.globals["seo_title"] = seo_title
@@ -5461,10 +5464,13 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         {
             "email": u.email, "created_at": u.created_at, "is_premium": u.is_premium,
             "plan": u.plan, "subscription_status": u.subscription_status, "referred_by": u.referred_by,
+            "verified": u.email_verified_at is not None,
         }
         for u in recent
     ]
     m["premium_accounts"] = _premium_accounts(session, now)
+    m["verified_accounts"] = session.scalar(_real_users().where(User.email_verified_at.is_not(None))) or 0
+    m["verification_live"] = email_service.can_verify()
     return m
 
 
@@ -5864,14 +5870,27 @@ def signup_submit(
     context = base_context(request)
     context["next"] = next
     email = email.strip().lower()
+    context["email_value"] = email
 
     if len(password) < 8:
         context["error"] = "Password must be at least 8 characters."
         return templates.TemplateResponse(request, "signup.html", context)
 
+    suggested = _suggested_email(email)
+    if suggested and email != suggested:
+        # A mistyped domain is an account nobody can reset the password
+        # for and alerts nobody receives. Offer the likely address and
+        # let them confirm it, rather than silently changing what they
+        # typed or letting it through.
+        context["email_value"] = suggested
+        context["error"] = f"That looks like a typo: {email} is not a mail domain we know. We have changed it to {suggested}. Edit it if that is wrong, then sign up again."
+        return templates.TemplateResponse(request, "signup.html", context)
+
     with db.get_session() as session:
-        if auth.find_user_by_email(session, email):
-            context["error"] = "An account with that email already exists."
+        existing = _existing_account_for(session, email)
+        if existing is not None:
+            context["error"] = ("An account with that email already exists." if existing.email == email
+                                else f"That is the same mailbox as {existing.email}: Gmail ignores dots and anything after a plus sign. Log in with that address.")
             return templates.TemplateResponse(request, "signup.html", context)
 
         user = User(
@@ -5882,8 +5901,48 @@ def signup_submit(
         session.commit()
         session.refresh(user)
         request.session["user_id"] = user.id
+        user_id = user.id
 
-    return RedirectResponse(_safe_next(next), status_code=303)
+    return RedirectResponse(
+        _safe_next(next), status_code=303,
+        background=BackgroundTask(send_verification_email, _public_base_url(request), user_id),
+    )
+
+
+@app.get("/verify-email")
+def verify_email(request: Request, token: str = ""):
+    context = base_context(request)
+    with db.get_session() as session:
+        user = _user_for_verify_token(session, token) if token else None
+        if user is None:
+            context["verified"] = False
+        else:
+            if user.email_verified_at is None:
+                user.email_verified_at = datetime.datetime.now(datetime.timezone.utc)
+                session.commit()
+            context["verified"] = True
+            context["verified_email"] = user.email
+    return templates.TemplateResponse(request, "verify_email.html", context, status_code=200 if context["verified"] else 400)
+
+
+@app.post("/verify-email/resend")
+async def verify_email_resend(request: Request, next: str = Form("/watchlist")):
+    current = auth.current_user(request)
+    if not current:
+        return RedirectResponse("/login?next=" + quote(next), status_code=303)
+    with db.get_session() as session:
+        user = session.get(User, current["id"])
+        if user is None or user.email_verified_at is not None:
+            return RedirectResponse(_safe_next(next), status_code=303)
+        sent_at = _as_utc(user.verification_sent_at)
+        if sent_at and (datetime.datetime.now(datetime.timezone.utc) - sent_at).total_seconds() < VERIFY_RESEND_MIN_GAP_S:
+            return RedirectResponse(_with_query(_safe_next(next), "verify", "wait"), status_code=303)
+    ok = await send_verification_email(_public_base_url(request), current["id"])
+    return RedirectResponse(_with_query(_safe_next(next), "verify", "sent" if ok else "failed"), status_code=303)
+
+
+def _with_query(url: str, key: str, value: str) -> str:
+    return f"{url}{'&' if '?' in url else '?'}{key}={quote(value)}"
 
 
 @app.get("/login")
@@ -6218,6 +6277,118 @@ def _user_for_reset_token(session, token: str) -> User | None:
     return user
 
 
+# ---- Email confirmation --------------------------------------------------
+# Verify after, not before: the free report never waits on a confirmation
+# (92% of sign-ups on 5 Sep 2026 opened a report within minutes, and a
+# gate there is where they would be lost). What waits is anything that
+# depends on the address working: change alerts, the weekly digest and
+# admission updates go only to confirmed addresses. The whole feature is
+# dark until email.can_verify() is true, which needs a sending domain the
+# site owns; Resend's shared test sender cannot reach a customer.
+VERIFY_TOKEN_MAX_AGE_S = 3 * 86400
+VERIFY_RESEND_MIN_GAP_S = 10 * 60
+
+# Domains people type when they mean another. Only the common near-misses:
+# a guess about an unusual domain would block real addresses.
+EMAIL_DOMAIN_FIXES = {
+    "gmail.con": "gmail.com", "gmail.cmo": "gmail.com", "gmail.co": "gmail.com", "gmial.com": "gmail.com",
+    "gamil.com": "gmail.com", "gnail.com": "gmail.com", "gmali.com": "gmail.com", "gmaill.com": "gmail.com",
+    "hotmail.con": "hotmail.com", "hotmial.com": "hotmail.com", "hotmal.com": "hotmail.com", "hotmai.com": "hotmail.com",
+    "outlook.con": "outlook.com", "outlok.com": "outlook.com", "yahoo.con": "yahoo.com", "yaho.com": "yahoo.com",
+    "icloud.con": "icloud.com", "iclould.com": "icloud.com", "qq.con": "qq.com", "163.con": "163.com",
+}
+
+
+def _suggested_email(email: str) -> str | None:
+    """The address they probably meant, or None when it looks fine."""
+    name, _, domain = email.partition("@")
+    fixed = EMAIL_DOMAIN_FIXES.get(domain)
+    return f"{name}@{fixed}" if fixed and name else None
+
+
+def _normalised_email(email: str) -> str:
+    """One mailbox, one account. Gmail delivers a.b+tag@gmail.com to
+    ab@gmail.com, which is how one person took two free reports on
+    5 Sep 2026. Other providers are compared as typed."""
+    name, _, domain = email.lower().partition("@")
+    if domain in ("gmail.com", "googlemail.com"):
+        name = name.split("+", 1)[0].replace(".", "")
+        domain = "gmail.com"
+    return f"{name}@{domain}"
+
+
+def _existing_account_for(session, email: str) -> User | None:
+    exact = auth.find_user_by_email(session, email)
+    if exact is not None:
+        return exact
+    wanted = _normalised_email(email)
+    if not wanted.endswith("@gmail.com"):
+        return None
+    for candidate in session.scalars(
+        select(User).where(User.email.like("%@gmail.com") | User.email.like("%@googlemail.com"))
+    ).all():
+        if _normalised_email(candidate.email) == wanted:
+            return candidate
+    return None
+
+
+def _verify_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(SESSION_SECRET, salt="email-verify")
+
+
+def _verify_token_for(user: User) -> str:
+    return _verify_serializer().dumps({"uid": user.id, "e": user.email})
+
+
+def _user_for_verify_token(session, token: str) -> User | None:
+    try:
+        data = _verify_serializer().loads(token, max_age=VERIFY_TOKEN_MAX_AGE_S)
+    except (BadSignature, SignatureExpired):
+        return None
+    user = session.get(User, data.get("uid"))
+    if user is None or user.email != data.get("e"):
+        return None
+    return user
+
+
+def _verification_email_html(link: str) -> str:
+    return (
+        "<p>Hello,</p>"
+        "<p>Confirm this is your address and UKPropertyInsight can tell you when something changes on a property "
+        "or school you follow.</p>"
+        f'<p><a href="{link}">Confirm my email</a></p>'
+        "<p>The link works for three days. If you did not create an account, ignore this and nothing happens.</p>"
+        "<p>UKPropertyInsight<br>ukpropertyinsight.co.uk</p>"
+    )
+
+
+async def send_verification_email(base_url: str, user_id: int) -> bool:
+    """Sends the confirmation link to one account and records when. Safe
+    to call when verification is dark: it just returns False."""
+    if not email_service.can_verify():
+        return False
+    with db.get_session() as session:
+        user = session.get(User, user_id)
+        if user is None or user.email_verified_at is not None:
+            return False
+        link = f"{base_url}/verify-email?token={_verify_token_for(user)}"
+        ok = await email_service.send_email(user.email, "Confirm your email for UKPropertyInsight", _verification_email_html(link))
+        if ok:
+            user.verification_sent_at = datetime.datetime.now(datetime.timezone.utc)
+            session.commit()
+    return ok
+
+
+def _email_can_receive(email: str) -> bool:
+    """Whether an alert may go to this address: always, until a sending
+    domain exists; after that, only once the address is confirmed."""
+    if not email_service.can_verify():
+        return True
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        return bool(user and user.email_verified_at is not None)
+
+
 _RESET_ERRORS = {
     "invalid": "That reset link has expired or already been used. Request a new one below.",
     "short": "Password must be at least 8 characters.",
@@ -6375,6 +6546,9 @@ async def oauth_callback(
                 email=email,
                 password_hash=auth.GOOGLE_ACCOUNT_PLACEHOLDER,
                 referred_by=request.cookies.get(REFERRAL_COOKIE),
+                # The provider has already checked the person can read
+                # this mailbox, which is all a confirmation link proves.
+                email_verified_at=datetime.datetime.now(datetime.timezone.utc),
             )
             session.add(user)
             session.commit()
@@ -6688,6 +6862,8 @@ async def send_weekly_digest(request: Request):
             f"Your week: {moved} propert{'y' if moved == 1 else 'ies'} changed"
             if moved else "Your week: nothing changed on your saved properties"
         )
+        if not _email_can_receive(sub["email"]):
+            continue
         ok = await email_service.send_email(
             sub["email"], subject,
             _weekly_digest_email_html(rows, watchlist_url, watchlist_url),
@@ -6770,6 +6946,8 @@ async def run_watchlist_alerts(request: Request):
         n_props = len(entries)
         subject = (f"{entries[0]['label']}: {entries[0]['changes'][0]}" if n_props == 1 and len(entries[0]["changes"]) == 1
                    else f"Changes on {n_props} propert{'y' if n_props == 1 else 'ies'} you follow")
+        if not _email_can_receive(to_email):
+            continue
         sent = await email_service.send_email(
             to_email, subject, _watchlist_alert_email_html(entries, watchlist_url)
         )
@@ -8353,7 +8531,7 @@ async def send_admission_updates(request: Request):
                 recorded += 1
         if rows:
             changed += len(rows)
-            if email_service.is_configured() and await email_service.send_email(
+            if email_service.is_configured() and _email_can_receive(sub["email"]) and await email_service.send_email(
                 sub["email"],
                 f"{rows[0]['name']} now admits from {rows[0]['miles']} miles" if len(rows) == 1
                 else f"{len(rows)} of your saved schools have new admission distances",
