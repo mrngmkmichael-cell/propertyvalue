@@ -33,6 +33,7 @@ from sqlalchemy.exc import OperationalError
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache, council_tax, estate_companies
+from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
@@ -4365,6 +4366,45 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
     return templates.TemplateResponse(request, "comparables.html", context)
 
 
+def _pdf_context(report: dict, running_costs: dict | None, location: dict, house_number: str) -> dict:
+    """Everything pdf_report_full.html renders, from the same gathered
+    dataset the live report shows plus the running-costs answer. Kept
+    apart from the route so a test can render the document from a
+    fixture without a network."""
+    rc = running_costs or {}
+    report = dict(report)
+    report["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(report))
+    valuation = report.get("valuation") or {}
+    stamp_duty_valuation = None
+    if valuation.get("estimate") and (location.get("country") or "England") in ("England", "Northern Ireland"):
+        price = float(valuation["estimate"])
+        stamp_duty_valuation = {
+            "price": price, "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
+            "additional": _stamp_duty(price, additional=True),
+        }
+    checklist = pdf_checklist.build(report, rc, stamp_duty=stamp_duty_valuation)
+    home = rc.get("home") or {}
+    address = ""
+    if home.get("address"):
+        address = home["address"]
+    elif house_number and report.get("certificates"):
+        address = report["certificates"][0].get("address", "")
+    elif house_number and report.get("transactions"):
+        address = str(report["transactions"][0].get("address", "")).title()
+    return {
+        **report,
+        "running_costs": rc,
+        "stamp_duty_valuation": stamp_duty_valuation,
+        "checklist": checklist,
+        "checklist_groups": pdf_checklist.grouped(checklist),
+        "address": address,
+        "house_number": house_number,
+        "generated_date": f"{datetime.date.today().day} {datetime.date.today():%B %Y}",
+        "postcode_url": quote(location["postcode"]),
+        "house_number_url": quote(house_number),
+    }
+
+
 @app.get("/property/pdf")
 async def property_pdf(request: Request, postcode: str = "", house_number: str = ""):
     """A full, printable due-diligence document - the thing a buyer can
@@ -4399,17 +4439,20 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     if location is None:
         return RedirectResponse("/", status_code=303)
 
-    report = await _full_property_gather(location, house_number, premium_unlocked=True, wait_for_amenities=True)
+    report, running_costs = await asyncio.gather(
+        _full_property_gather(location, house_number, premium_unlocked=True, wait_for_amenities=True),
+        _running_costs_for_postcode(location, house_number),
+        return_exceptions=True,
+    )
+    if isinstance(report, Exception):
+        raise report
+    if isinstance(running_costs, Exception):
+        # The running-costs part says what is missing rather than the
+        # whole document failing for it.
+        running_costs = {}
 
-    report["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(report))
-    html = templates.get_template("pdf_report_full.html").render({
-        **report,
-        "house_number": house_number,
-        "generated_date": datetime.date.today().strftime("%d %B %Y"),
-        "postcode_url": quote(location["postcode"]),
-        "house_number_url": quote(house_number),
-    })
-    pdf_bytes = pdf_export.html_to_pdf(html)
+    html = templates.get_template("pdf_report_full.html").render(_pdf_context(report, running_costs, location, house_number))
+    pdf_bytes = await asyncio.to_thread(pdf_export.html_to_pdf, html)
     if pdf_bytes is None:
         return RedirectResponse(f"/property?postcode={quote(postcode)}", status_code=303)
 
