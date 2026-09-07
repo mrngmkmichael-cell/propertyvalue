@@ -17,11 +17,13 @@ Stops with no departure on either day are not stored.
 
 Two corrections the raw feed needs. Only buses and coaches count (GTFS
 route_type 3 and 200): the feed also carries tube, tram, DLR, ferry and
-cable car lines. And the same journey is often published twice, by the
-operator and by a transport authority or in two overlapping dataset
-versions, so on 7 Sep 2026 a Redbridge stop showed 106 buses an hour;
-journeys with the same line, first departure, stop count and last stop
-on the same day are counted once.
+cable car lines. And the same journey is often published more than once,
+by the operator and by a transport authority, or twice inside one
+dataset (on 7 Sep 2026 route 150 at Redbridge Central Library appeared
+three times, with identical times, and the stop showed 90 buses an
+hour). So a departure is counted once per stop, route and minute: two
+copies of the 07:04 on the 150 are one bus. The stops are processed in
+PARTS passes over the file so the sets of departures stay in memory.
 
     python scripts/import_bus_frequency.py                 # downloads "all"
     python scripts/import_bus_frequency.py path/to/gtfs.zip
@@ -54,6 +56,8 @@ from app.services import gtfs  # noqa: E402
 
 ALL_URL = "https://data.bus-data.dft.gov.uk/timetable/download/gtfs-file/all/"
 BUS_ROUTE_TYPES = {"3", "200"}  # bus, coach
+PARTS = 8  # passes over stop_times.txt; each keeps one eighth of the stops in memory
+MAX_MINUTES = 1 << 12  # departures are encoded as route << 12 | minute; GTFS goes past 24:00 but not past 68:00
 
 
 def _rows(z: zipfile.ZipFile, name: str):
@@ -82,81 +86,59 @@ def tally(path: str, today: datetime.date | None = None) -> tuple[dict, dict]:
         r["route_id"]: (r.get("route_short_name") or r.get("route_long_name") or r["route_id"]).strip()
         for r in _rows(z, "routes.txt") if (r.get("route_type") or "3") in BUS_ROUTE_TYPES
     }
-    # trip_id -> (route name, runs Tuesday, runs Sunday); only bus trips that run.
+    # Route names get small indexes so a departure packs into one int.
+    names = sorted(set(routes.values()))
+    index = {name: i for i, name in enumerate(names)}
+    # trip_id -> (route index, runs Tuesday, runs Sunday); only bus trips that run.
     trips: dict[str, tuple] = {}
     for r in _rows(z, "trips.txt"):
         if r["route_id"] not in routes:
             continue
         tue, sun = r["service_id"] in on_tuesday, r["service_id"] in on_sunday
         if tue or sun:
-            trips[r["trip_id"]] = (routes[r["route_id"]], tue, sun)
+            trips[r["trip_id"]] = (index[routes[r["route_id"]]], tue, sun)
     print(f"{len(trips):,} bus and coach trips run on the reference days")
-
-    def stop_times():
-        with z.open("stop_times.txt") as raw:
-            reader = csv.reader(io.TextIOWrapper(raw, encoding="utf-8-sig", newline=""))
-            header = next(reader)
-            col = {name: i for i, name in enumerate(header)}
-            yield col
-            yield from reader
-
-    # Pass one: a signature per journey, so a journey published twice is
-    # counted once (see the module docstring).
-    t0 = time.perf_counter()
-    signature: dict[str, list] = {}
-    rows = stop_times()
-    col = next(rows)
-    i_trip, i_dep, i_stop = col["trip_id"], col["departure_time"], col["stop_id"]
-    i_pickup = col.get("pickup_type")
-    for row in rows:
-        trip_id = row[i_trip]
-        if trip_id not in trips:
-            continue
-        minutes = gtfs.parse_gtfs_time(row[i_dep])
-        if minutes is None:
-            continue
-        sig = signature.get(trip_id)
-        if sig is None:
-            signature[trip_id] = [minutes, 1, row[i_stop]]
-        else:
-            if minutes < sig[0]:
-                sig[0] = minutes
-            sig[1] += 1
-            sig[2] = row[i_stop]
-    kept: dict[tuple, str] = {}
-    duplicates: set[str] = set()
-    for trip_id, sig in signature.items():
-        name, tue, sun = trips[trip_id]
-        key = (name, sig[0], sig[1], sig[2], tue, sun)
-        if key in kept:
-            duplicates.add(trip_id)
-        else:
-            kept[key] = trip_id
-    del signature
-    print(f"{len(duplicates):,} duplicate journeys dropped, {time.perf_counter() - t0:.0f}s")
 
     tallies: dict[str, gtfs.StopTally] = {}
     t0 = time.perf_counter()
     seen = 0
-    rows = stop_times()
-    next(rows)
-    if True:
-        for row in rows:
-            seen += 1
-            trip = trips.get(row[i_trip])
-            if trip is None or row[i_trip] in duplicates:
-                continue
-            if i_pickup is not None and row[i_pickup] == "1":
-                continue  # set-down only: nobody boards here
-            minutes = gtfs.parse_gtfs_time(row[i_dep])
-            if minutes is None:
-                continue
-            t = tallies.get(row[i_stop])
-            if t is None:
-                t = tallies[row[i_stop]] = gtfs.StopTally()
-            t.add(minutes, trip[0], trip[1], trip[2])
-            if seen % 5_000_000 == 0:
-                print(f"  {seen:,} stop times read, {len(tallies):,} stops, {time.perf_counter() - t0:.0f}s")
+    for part in range(PARTS):
+        departures: dict[str, set[int]] = {}
+        with z.open("stop_times.txt") as raw:
+            reader = csv.reader(io.TextIOWrapper(raw, encoding="utf-8-sig", newline=""))
+            header = next(reader)
+            col = {name: i for i, name in enumerate(header)}
+            i_trip, i_dep, i_stop = col["trip_id"], col["departure_time"], col["stop_id"]
+            i_pickup = col.get("pickup_type")
+            for row in reader:
+                stop_id = row[i_stop]
+                if hash(stop_id) % PARTS != part:
+                    continue
+                seen += 1
+                trip = trips.get(row[i_trip])
+                if trip is None:
+                    continue
+                if i_pickup is not None and row[i_pickup] == "1":
+                    continue  # set-down only: nobody boards here
+                minutes = gtfs.parse_gtfs_time(row[i_dep])
+                if minutes is None or minutes >= MAX_MINUTES:
+                    continue
+                key = (trip[0] << 12) | minutes
+                bucket = departures.get(stop_id)
+                if bucket is None:
+                    bucket = departures[stop_id] = set()
+                if trip[1]:
+                    bucket.add(key << 1)        # Tuesday
+                if trip[2]:
+                    bucket.add((key << 1) | 1)  # Sunday
+        for stop_id, bucket in departures.items():
+            t = tallies[stop_id] = gtfs.StopTally()
+            for packed in bucket:
+                is_sunday = bool(packed & 1)
+                key = packed >> 1
+                t.add(key & (MAX_MINUTES - 1), names[key >> 12], not is_sunday, is_sunday)
+        print(f"  pass {part + 1}/{PARTS}: {len(departures):,} stops, {time.perf_counter() - t0:.0f}s")
+        del departures
     print(f"{seen:,} stop times; {len(tallies):,} stops with a departure")
 
     records = {}
