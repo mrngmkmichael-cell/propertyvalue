@@ -381,6 +381,16 @@ the local Claude session as things ship. Newest first.
   and the spend happens only on a yes, via POST /property/unlock. The
   browser extension no longer claims the report on a listing view; it
   honours an unlock already made on the site.
+- "In the News?" card (7 Sep 2026): Michael asked whether a home's past
+  (a murder, a suicide, a haunting) could be shown. No source holds it
+  (Police.uk blurs to a street segment; no address-level register from
+  coroners or the ONS; a news search cannot tell one house on a street
+  from another), so the card is the honest version: says what is
+  missing, links a street-level news search for the reader to judge,
+  and gives the step that binds a seller (the question in writing;
+  Sykes v Taylor-Rose 2004). Free, in Risk & Safety, not one of the 40
+  counted checks. Do not turn it into a data feature: matching news to
+  a house number would mislabel homes and is a defamation risk.
 
 ## In progress or queued (do not re-suggest as new)
 
