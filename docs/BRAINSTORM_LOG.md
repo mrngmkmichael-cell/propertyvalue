@@ -6,6 +6,17 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Idea 5 of nine, Since 2011 (7 Sep 2026, commit a33913a). Six ONS
+  Census 2011 Key Statistics tables (tenure, age, qualifications, country
+  of birth, health, ethnic group; column meanings checked against the
+  England totals in each file) re-keyed to 2021 LSOA codes with the ONS
+  best-fit lookup (34,753 areas into 34,633; merges summed, the other
+  half of a split says it has no comparable figure), in table
+  census_2011 via scripts/import_census_2011.py. A free card in Area &
+  Community leads with the biggest mover in percentage points; the modal
+  sets nine shares for 2011 and 2021 beside England's change over the
+  decade (private renting 16.8% to 20.5%), computed from the same tables
+  so the comparison is like for like. 44 checks quoted. Tests 225.
 - Ideas 3, 4, 6 and 7 of nine (7 Sep 2026, commits 325afc1 to eea247d,
   178bec6, 041c531, 6959f5f). Bus Service (Premium): the DfT Bus Open
   Data Service publishes every operator's timetable as GTFS with no key;
