@@ -579,3 +579,14 @@ def test_since_2011_card_names_the_biggest_mover(client, fake_report):
     body = _report(client, fake_report, gather=fake_gather(census_change=dict(data, biggest=None, has_2011=False, rows=[])))
     assert "No comparable 2011 figure" in body
 
+
+def test_grammar_schools_within_reach_sit_in_the_schools_modal(client, fake_report):
+    """Idea 8 of 7 Sep 2026: selective state secondaries near the home,
+    with the published distance that applies after the pass mark."""
+    rows = [{"urn": 900001, "name": "Testshire Grammar School", "slug": "testshire-grammar-school", "council": "Testshire", "town": "Manchester",
+             "gender": "Girls", "ofsted_rating_label": "Outstanding", "ofsted_note": "", "website": "", "latitude": 53.452, "longitude": -2.222,
+             "last_distance_miles": 2.4, "distance_year": "2025/26", "distance_source": "Testshire", "distance_m": 2100, "type": "Academy converter", "postcode": "M14 5TG"}]
+    body = _report(client, fake_report, gather=fake_gather(grammar_schools=rows))
+    assert "Grammar schools within reach" in body and "Testshire Grammar School" in body and "2.4 mi (2025/26)" in body
+    assert 'href="/schools/grammar"' in body
+

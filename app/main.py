@@ -37,7 +37,7 @@ from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
-    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_change, census_stats, clay_risk, coal_mining, council_finance, flood_re, health_services,
+    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_change, census_stats, clay_risk, coal_mining, council_finance, flood_re, grammar, health_services,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
@@ -145,7 +145,7 @@ _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
     "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
     "/running-costs", "/estate-charges", "/estate-charges/managing-agents", "/estate-charges/company/",
-    "/schools/outstanding", "/school/", "/market/", "/areas", "/compare/",
+    "/schools/outstanding", "/schools/grammar", "/school/", "/market/", "/areas", "/compare/",
     "/buying-guide", "/methodology", "/browser-extension", "/premium",
 )
 # Query parameters that change nothing a cache should care about are
@@ -1790,7 +1790,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     from /areas and fully crawlable - they are just not queue-jumped to
     the front. Grow this list as districts earn traffic.
     """
-    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/schools/outstanding", "/privacy", "/terms",
+    static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/schools/outstanding", "/schools/grammar", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
                     "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
                     "/market/district-prices"]
@@ -2776,6 +2776,7 @@ async def _full_property_gather(
             _timed("bus-service-stops-near", asyncio.to_thread(bus_service.stops_near, lat, lon)),
             _timed("health-services-near", asyncio.to_thread(health_services.near, lat, lon)),
             _timed("census-change-for-lsoa, codes-get", asyncio.to_thread(census_change.for_lsoa, codes.get("lsoa", ""))),
+            _timed("grammar-schools-near", asyncio.to_thread(grammar.schools_near, lat, lon)),
             return_exceptions=True,
         )
         return gather_results_inner
@@ -2793,6 +2794,7 @@ async def _full_property_gather(
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
         school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
         coal_mining_result, surface_water_result, cqc_result, brownfield_result, bus_service_result, health_result, census_change_result,
+        grammar_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -2945,6 +2947,9 @@ async def _full_property_gather(
         context["census_change_error"] = True
     else:
         context["census_change"] = census_change_result
+
+    context["grammar_schools"] = [] if isinstance(grammar_result, Exception) else (grammar_result or [])
+    context["grammar_sources"] = grammar.SOURCES
 
     if isinstance(sewage_result, Exception):
         context["sewage_error"] = True
@@ -7975,6 +7980,21 @@ def _outstanding_stats() -> dict:
             for oc, n in top_districts
         ],
     }
+
+
+@app.get("/schools/grammar")
+async def grammar_schools_page(request: Request):
+    """Every state grammar school in England by council, with the
+    published admission distance where we hold one and the official
+    familiarisation papers (idea 8 of 7 Sep 2026)."""
+    rows = await asyncio.to_thread(grammar.all_grammar_schools)
+    context = base_context(request)
+    context["schools"] = rows
+    context["councils"] = grammar.by_council(rows)
+    context["with_distance"] = sum(1 for r in rows if r["last_distance_miles"] is not None)
+    context["sources"] = grammar.SOURCES
+    context["canonical_url"] = f"{_public_base_url(request)}/schools/grammar"
+    return templates.TemplateResponse(request, "grammar_schools.html", context)
 
 
 @app.get("/schools/outstanding")

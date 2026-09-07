@@ -2561,6 +2561,29 @@
             <p class="notice">No schools found nearby.</p>
             {% endif %}
         {% endif %}
+        {# Grammar schools within about ten miles (idea 8 of 7 Sep 2026):
+           selective state secondaries from the DfE register, with the
+           published distance where the council gives one. #}
+        {% if grammar_schools is defined and grammar_schools %}
+        <h3 class="subsection-heading">Grammar schools within reach</h3>
+        <p class="section-sub">State grammar schools within about ten miles. They admit by test first; where the council publishes how far the last place went, that distance applies after the pass mark. <a href="/schools/grammar">All 163 grammar schools, by council, with the official familiarisation papers</a>.</p>
+        <div class="tablewrap">
+        <table class="tx-table grammar-table">
+            <thead><tr><th>School</th><th class="num">Distance</th><th>Ofsted</th><th class="num">Last distance offered</th></tr></thead>
+            <tbody>
+            {% for g in grammar_schools %}
+            <tr>
+                <td><a href="/school/{{ g.urn }}/{{ g.slug }}">{{ g.name }}</a>{% if g.gender and g.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ g.gender }})</span>{% endif %}</td>
+                <td class="num">{{ g.distance_m | distance }}</td>
+                <td>{{ g.ofsted_rating_label or g.ofsted_note or "Not rated" }}</td>
+                <td class="num">{% if g.last_distance_miles is not none %}{{ g.last_distance_miles }} mi{% if g.distance_year %} ({{ g.distance_year }}){% endif %}{% else %}Not published{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <p class="property-detail-note">Tests: {% for src in grammar_sources %}<a href="{{ src.url }}" rel="noopener" target="_blank">{{ src.name }}</a>{% if not loop.last %}; {% endif %}{% endfor %}. Registration windows and test dates are set each year by the council or school. Source: DfE Get Information About Schools; the council's published admission distances.</p>
+        {% endif %}
             </section>
         </div>
     </dialog>

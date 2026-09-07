@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Grammar Schools in England: All {{ schools | length }}, by Council{% endblock %}
+{% block meta_description %}Every state grammar school in England, {{ schools | length }} of them across {{ councils | length }} councils, with Ofsted outcomes, the council's published admission distance where one exists, and the official 11-plus familiarisation papers.{% endblock %}
+{% block og_title %}Grammar schools in England, by council{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/schools/guide">&larr; School guide</a>
+
+<span class="kicker">Schools</span>
+<h1>Grammar schools in England: all {{ schools | length }}, by council</h1>
+<p class="dek">
+    The state-funded secondary schools whose admissions policy on the Department for Education's
+    register is selective. A grammar school admits by its entrance test first and by its
+    oversubscription criteria second, so where a council publishes how far the last place went,
+    that distance applies after the pass mark. The tests come from a handful of bodies, and their
+    own free familiarisation papers are linked below; we set no tests of our own.
+</p>
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ schools | length }}</span><span class="score-tile-label">Grammar schools</span><span class="score-tile-note">State-funded, selective, on the DfE register.</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ councils | length }}</span><span class="score-tile-label">Councils with one</span><span class="score-tile-note">Kent has {{ councils[0][1] | length }}; most councils have none.</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ with_distance }}</span><span class="score-tile-label">With a published distance</span><span class="score-tile-note">The last place offered, from the council's own admissions data.</span></div>
+</div>
+
+<section class="report-section">
+    <h2>How selection works, and what the address decides</h2>
+    <p class="section-sub">
+        In most areas a child sits the test in September of Year 6, after registering in the summer term
+        before; results arrive in October and the secondary application closes on 31 October. A pass
+        makes a child eligible, not admitted: schools with more eligible applicants than places rank
+        them by their published criteria, which range from test score alone to priority areas and
+        distance. Where a school here shows a last distance offered, that is the figure the council
+        published for the most recent round, and it tells you whether a house closer to the school
+        mattered. Registration windows and test dates are set each year by the council or the
+        school, so check the school's own admissions page before relying on a date.
+    </p>
+    <h3 class="subsection-heading">The official familiarisation papers</h3>
+    <ul class="plain-list">
+        {% for s in sources %}
+        <li><a href="{{ s.url }}" rel="noopener" target="_blank">{{ s.name }}</a>: {{ s.note }}</li>
+        {% endfor %}
+    </ul>
+    <p class="section-sub">Ofsted stopped giving single-word grades in late 2024; a school inspected since then carries a report card instead, and an older grade shown here is its last graded inspection.</p>
+</section>
+
+{% for council, rows in councils %}
+<section class="report-section" id="{{ council | lower | replace(' ', '-') | replace(',', '') }}">
+    <h2>{{ council }} <span class="section-sub">{{ rows | length }} school{{ 's' if rows | length != 1 }}</span></h2>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>School</th><th>Town</th><th>Ofsted</th><th class="num">Last distance offered</th><th>Website</th></tr></thead>
+        <tbody>
+        {% for s in rows %}
+        <tr>
+            <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.gender and s.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ s.gender }})</span>{% endif %}</td>
+            <td>{{ s.town }}</td>
+            <td>{{ s.ofsted_rating_label or s.ofsted_note or "Not rated" }}</td>
+            <td class="num">{% if s.last_distance_miles is not none %}{{ s.last_distance_miles }} mi{% if s.distance_year %} ({{ s.distance_year }}){% endif %}{% else %}Not published{% endif %}</td>
+            <td>{% if s.website %}<a href="{{ s.website }}" rel="noopener" target="_blank">School site</a>{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% endfor %}
+
+<p class="section-sub">Sources: Department for Education, Get Information About Schools (admissions policy, type, phase); Ofsted inspection outcomes; each council's published admission distances as collected on this site. A school missing here is not on the register as selective; tell us if you know otherwise.</p>
+{% endblock %}
