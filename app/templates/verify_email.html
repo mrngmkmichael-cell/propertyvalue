@@ -8,8 +8,12 @@
     {% if verified %}
     <span class="kicker">Email confirmed</span>
     <h1>Thank you, that address is confirmed.</h1>
-    <p class="dek">Change alerts for the properties and schools you save will reach {{ verified_email }}. Nothing else changes: your free report was never waiting on this.</p>
-    <p><a class="hero-signup-btn" href="{{ '/watchlist' if current_user else '/login?next=/watchlist' }}">{{ 'Your saved properties' if current_user else 'Log in' }}</a></p>
+    <p class="dek">{% if free_report_waiting %}Your free full report is unlocked: open the property and every card is yours. {% endif %}Change alerts for the properties and schools you save will reach {{ verified_email }}.</p>
+    {% if next_url %}
+    <p><a class="hero-signup-btn" href="{{ next_url }}">{{ 'Open your report' if free_report_waiting else 'Back to where you were' }}</a></p>
+    {% else %}
+    <p><a class="hero-signup-btn" href="{{ '/' if free_report_waiting else ('/watchlist' if current_user else '/login?next=/watchlist') }}">{{ 'Search a postcode' if free_report_waiting else ('Your saved properties' if current_user else 'Log in') }}</a></p>
+    {% endif %}
     {% else %}
     <span class="kicker">Not confirmed</span>
     <h1>That confirmation link has expired or was already used.</h1>

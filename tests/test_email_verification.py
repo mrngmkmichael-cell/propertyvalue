@@ -114,6 +114,33 @@ def test_alerts_wait_for_a_confirmed_address_once_live(client, monkeypatch):
     assert app_main._email_can_receive("nobody@customer.test") is False
 
 
+def test_the_free_full_report_waits_for_a_confirmed_address(client, monkeypatch):
+    """Michael's rule of 7 Sep 2026: the basic report is free to anyone,
+    the one free full report is the reward for confirming. Until then the
+    cards say so, no unlock is spent and no paywall hit is recorded."""
+    from app.models import PageView, PremiumUnlock
+
+    sent = _live(monkeypatch)
+    r = client.post("/signup", data={"email": "gated@customer.test", "password": "password123",
+                                     "next": "/property?postcode=M1+2AA"}, follow_redirects=False)
+    assert r.status_code == 303
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, "gated@customer.test").id
+    assert auth.needs_confirmation(db.get_session().__enter__(), uid) is True
+    with db.get_session() as session:
+        assert auth.claim_unlock(session, uid, "M1 2AA", "") is False
+        assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 0
+        assert session.query(PageView).filter_by(user_id=uid, path="/paywall").count() == 0
+    # The link carries the report they signed up for; confirming unlocks it.
+    link = re.search(r'href="([^"]+/verify-email\?token=[^"]+)"', sent[0]["html"]).group(1)
+    r = client.get(link)
+    assert r.status_code == 200 and "free full report is unlocked" in r.text
+    assert 'href="/property?postcode=M1+2AA"' in r.text or 'href="/property?postcode=M1%202AA"' in r.text or "Open your report" in r.text
+    with db.get_session() as session:
+        assert auth.claim_unlock(session, uid, "M1 2AA", "") is True
+        assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 1
+
+
 def test_can_verify_needs_a_domain_of_our_own(monkeypatch):
     monkeypatch.setenv("RESEND_API_KEY", "re_test")
     monkeypatch.delenv("ALERTS_FROM_EMAIL", raising=False)

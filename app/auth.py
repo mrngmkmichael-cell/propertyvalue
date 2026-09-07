@@ -99,6 +99,8 @@ def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> boo
     pc, hn = property_key(postcode, house_number)
     if has_unlocked(db, user_id, pc, hn):
         return True
+    if needs_confirmation(db, user_id):
+        return False
     if unlocks_used(db, user_id) >= FREE_PREMIUM_UNLOCKS:
         return False
 
@@ -108,6 +110,24 @@ def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> boo
     except IntegrityError:
         db.rollback()
     return True
+
+
+def needs_confirmation(db, user_id: int) -> bool:
+    """Whether the free full report is waiting on a confirmed address.
+
+    Michael's rule of 7 Sep 2026: the basic report is free to anyone, but
+    the one free full report is the reward for confirming an email
+    address, so a made-up address cannot collect it. Google arrivals are
+    confirmed on creation and accounts from before that day were marked
+    confirmed once, so neither ever sees this. Nothing is asked until a
+    sending domain exists (email.can_verify), because a confirmation
+    that cannot be delivered would lock everyone out."""
+    from app.services import email as email_service  # local: keeps auth importable without the mail layer
+
+    if not email_service.can_verify():
+        return False
+    user = db.get(User, user_id)
+    return user is not None and user.email_verified_at is None
 
 
 def has_active_premium(user) -> bool:

@@ -2339,10 +2339,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             already = auth.has_unlocked(unlock_session, current["id"], canonical, house_number)
             premium_unlocked = auth.claim_unlock(unlock_session, current["id"], canonical, house_number)
             context["spent_unlock_now"] = premium_unlocked and not already
+            # Refused because the address is not confirmed yet: the free
+            # report is still theirs, one click away. Not a paywall.
+            context["needs_confirmation"] = (not premium_unlocked) and auth.needs_confirmation(unlock_session, current["id"])
             state = auth.premium_state(
                 unlock_session.get(User, current["id"]), unlock_session
             )
-            if not premium_unlocked and not _is_excluded_viewer(request):
+            if not premium_unlocked and not context["needs_confirmation"] and not _is_excluded_viewer(request):
                 # The paywall moment: an account with no free reports
                 # left opened a property it has not unlocked. Stored as
                 # a pageview with a synthetic path so the funnel can
@@ -5949,7 +5952,7 @@ def signup_submit(
 
     return RedirectResponse(
         _safe_next(next), status_code=303,
-        background=BackgroundTask(send_verification_email, _public_base_url(request), user_id),
+        background=BackgroundTask(send_verification_email, _public_base_url(request), user_id, _safe_next(next)),
     )
 
 
@@ -5957,7 +5960,7 @@ def signup_submit(
 def verify_email(request: Request, token: str = ""):
     context = base_context(request)
     with db.get_session() as session:
-        user = _user_for_verify_token(session, token) if token else None
+        user, next_path = _user_for_verify_token(session, token) if token else (None, "")
         if user is None:
             context["verified"] = False
         else:
@@ -5966,6 +5969,8 @@ def verify_email(request: Request, token: str = ""):
                 session.commit()
             context["verified"] = True
             context["verified_email"] = user.email
+            context["next_url"] = next_path if next_path and next_path != "/" else ""
+            context["free_report_waiting"] = auth.unlocks_used(session, user.id) < auth.FREE_PREMIUM_UNLOCKS and not user.is_premium
     return templates.TemplateResponse(request, "verify_email.html", context, status_code=200 if context["verified"] else 400)
 
 
@@ -5981,7 +5986,7 @@ async def verify_email_resend(request: Request, next: str = Form("/watchlist")):
         sent_at = _as_utc(user.verification_sent_at)
         if sent_at and (datetime.datetime.now(datetime.timezone.utc) - sent_at).total_seconds() < VERIFY_RESEND_MIN_GAP_S:
             return RedirectResponse(_with_query(_safe_next(next), "verify", "wait"), status_code=303)
-    ok = await send_verification_email(_public_base_url(request), current["id"])
+    ok = await send_verification_email(_public_base_url(request), current["id"], _safe_next(next))
     return RedirectResponse(_with_query(_safe_next(next), "verify", "sent" if ok else "failed"), status_code=303)
 
 
@@ -6380,33 +6385,35 @@ def _verify_serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(SESSION_SECRET, salt="email-verify")
 
 
-def _verify_token_for(user: User) -> str:
-    return _verify_serializer().dumps({"uid": user.id, "e": user.email})
+def _verify_token_for(user: User, next_path: str = "") -> str:
+    """next_path: where to send them after confirming, normally the
+    report they signed up for, so the reward is one click away."""
+    return _verify_serializer().dumps({"uid": user.id, "e": user.email, "n": _safe_next(next_path) if next_path else ""})
 
 
-def _user_for_verify_token(session, token: str) -> User | None:
+def _user_for_verify_token(session, token: str) -> tuple[User | None, str]:
     try:
         data = _verify_serializer().loads(token, max_age=VERIFY_TOKEN_MAX_AGE_S)
     except (BadSignature, SignatureExpired):
-        return None
+        return None, ""
     user = session.get(User, data.get("uid"))
     if user is None or user.email != data.get("e"):
-        return None
-    return user
+        return None, ""
+    return user, data.get("n") or ""
 
 
 def _verification_email_html(link: str) -> str:
     return (
         "<p>Hello,</p>"
-        "<p>Confirm this is your address and UKPropertyInsight can tell you when something changes on a property "
-        "or school you follow.</p>"
+        "<p>Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can tell "
+        "you when something changes on a property or school you follow.</p>"
         f'<p><a href="{link}">Confirm my email</a></p>'
         "<p>The link works for three days. If you did not create an account, ignore this and nothing happens.</p>"
         "<p>UKPropertyInsight<br>ukpropertyinsight.co.uk</p>"
     )
 
 
-async def send_verification_email(base_url: str, user_id: int) -> bool:
+async def send_verification_email(base_url: str, user_id: int, next_path: str = "") -> bool:
     """Sends the confirmation link to one account and records when. Safe
     to call when verification is dark: it just returns False."""
     if not email_service.can_verify():
@@ -6415,7 +6422,7 @@ async def send_verification_email(base_url: str, user_id: int) -> bool:
         user = session.get(User, user_id)
         if user is None or user.email_verified_at is not None:
             return False
-        link = f"{base_url}/verify-email?token={_verify_token_for(user)}"
+        link = f"{base_url}/verify-email?token={_verify_token_for(user, next_path)}"
         ok = await email_service.send_email(user.email, "Confirm your email for UKPropertyInsight", _verification_email_html(link))
         if ok:
             user.verification_sent_at = datetime.datetime.now(datetime.timezone.utc)
