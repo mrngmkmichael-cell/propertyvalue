@@ -343,6 +343,13 @@ the local Claude session as things ship. Newest first.
   failure; store page linked from /browser-extension.
 - District following (watch an outcode) with visit-time diffs.
 - Printable viewing checklist; share-a-report with a sender note.
+- Free full report offered, not spent (7 Sep 2026): a signed-in free
+  account used to spend its one free full report on the first postcode
+  it opened, stray or not. Now the report asks ("Use your free full
+  report on X?", a pop-up plus the same offer inline above the cards)
+  and the spend happens only on a yes, via POST /property/unlock. The
+  browser extension no longer claims the report on a listing view; it
+  honours an unlock already made on the site.
 
 ## In progress or queued (do not re-suggest as new)
 
