@@ -51,7 +51,10 @@ BREAKAGE = [
 CHECKS = [
     ("/", {200}, ["checks"]),
     ("/areas", {200}, ["Area guides"]),
-    ("/area/M14", {200}, ["Living in M14", "House prices", "Follow M14"]),
+    # "Follow M14" was here until 7 Sep 2026, when district following was
+    # removed. The address check that replaced it as the guide's first
+    # offer is what matters now.
+    ("/area/M14", {200}, ["Living in M14", "House prices", "area-check-postcode"]),
     ("/area/EH1", {200}, ["Living in EH1"]),
     ("/area/M14/private-schools", {200}, ["Fee-paying schools in M14"]),
     ("/compare/M20/vs/M21", {200}, ["M20", "M21"]),
