@@ -37,7 +37,7 @@ from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
-    air_quality, amenities, area_stats, boe_rate, broadband, catchment, census_stats, clay_risk, coal_mining,
+    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, catchment, census_stats, clay_risk, coal_mining,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
@@ -2468,6 +2468,7 @@ GATHER_SOURCE_LABELS = {
     "sewage-discharge-nearby-outfalls": "Sewage discharge records",
     "broadband-coverage-for-postcode, canonical)": "Ofcom broadband & mobile",
     "designations-check-all": "Planning designations",
+    "brownfield-sites-near": "Brownfield land registers",
 }
 # In the order the building page lists them.
 GATHER_SOURCE_ORDER = list(GATHER_SOURCE_LABELS.values())
@@ -2766,6 +2767,7 @@ async def _full_property_gather(
             _timed("coal-mining-check-near", coal_mining.check_near(lat, lon)),
             _timed("surface-water-risk-risk-for", surface_water_risk.risk_for(lat, lon)),
             _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
+            _timed("brownfield-sites-near", brownfield.sites_near(lat, lon, codes.get("admin_district", ""), location.get("country", ""))),
             return_exceptions=True,
         )
         return gather_results_inner
@@ -2782,7 +2784,7 @@ async def _full_property_gather(
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
         school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
-        coal_mining_result, surface_water_result, cqc_result,
+        coal_mining_result, surface_water_result, cqc_result, brownfield_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -2915,6 +2917,11 @@ async def _full_property_gather(
         context["clay_risk_error"] = True
     elif clay_risk_result:
         context["clay_risk"] = clay_risk_result
+
+    if isinstance(brownfield_result, Exception):
+        context["brownfield_error"] = True
+    else:
+        context["brownfield"] = brownfield_result
 
     if isinstance(sewage_result, Exception):
         context["sewage_error"] = True

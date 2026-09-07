@@ -281,17 +281,20 @@ def test_oauth_callback_rejects_a_forged_state(client, monkeypatch):
     assert "error=oauth_state" in r.headers["location"]
 
 
-def test_pricing_page_lists_all_40_checks(client, monkeypatch):
-    """The pricing page's two tiers mirror the report card-for-card:
-    25 free + 15 Premium = the 40 the hero claims. The tier block only
-    renders when billing is configured, as it is in production."""
+def test_pricing_page_lists_every_check_the_landing_page_claims(client, monkeypatch):
+    """The pricing page's two tiers mirror the report card-for-card: free
+    plus Premium equals the number the landing page commits to (41 on
+    7 Sep 2026: 25 free, 16 Premium). The tier block only renders when
+    billing is configured, as it is in production."""
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_x")
     monkeypatch.setenv("STRIPE_PRICE_ID_MONTHLY", "price_m")
     monkeypatch.setenv("STRIPE_PRICE_ID_QUARTERLY", "price_q")
+    home = client.get("/").text
+    claimed = int(re.search(r'data-target="(\d+)"[^>]*>[\d,]+</span></p>\s*<p class="lx-about-stat-l">Checks per property', home).group(1))
     body = client.get("/premium").text
-    assert body.count('class="lx-check"') == 40
+    assert body.count('class="lx-check"') == claimed
     assert "25 free on every report" in body
-    assert "15 more with Premium" in body
+    assert "16 more with Premium" in body
 
 
 def test_anonymous_compare_builds_a_column_per_postcode(client, monkeypatch):

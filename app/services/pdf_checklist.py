@@ -254,6 +254,25 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     add("Planning and heritage", "Planning constraints", ", ".join(d.get("label", "") for d in pf) if pf else "None found at this point", "warn" if pf else "good", "planning.data.gov.uk")
     ef = report.get("environmental_flags") or []
     add("Planning and heritage", "Environmental designations", ", ".join(d.get("label", "") for d in ef) if ef else "None found at this point", "warn" if ef else "good", "Natural England")
+    bf = report.get("brownfield")
+    bf_source = "planning.data.gov.uk, brownfield land registers"
+    if report.get("brownfield_error"):
+        add("Planning and heritage", "Development sites nearby", "The planning data platform did not respond", "neutral", bf_source)
+    elif bf and bf.get("covered"):
+        if bf.get("count"):
+            homes = f", up to {bf['dwellings']} homes where stated" if bf.get("dwellings") else ""
+            perm = f", {bf['permissioned']} with permission" if bf.get("permissioned") else ""
+            nearest = bf["sites"][0]
+            flagged = (bf.get("dwellings") or 0) >= 10 or (bf.get("hectares") or 0) >= 0.5 or bf.get("permissioned")
+            add("Planning and heritage", "Development sites nearby",
+                f"{bf['count']} brownfield register site{'s' if bf['count'] != 1 else ''} within half a mile{homes}{perm}; nearest {nearest['address']}, {nearest['distance_m']} m",
+                "warn" if flagged else "neutral", bf_source)
+        elif bf.get("council") and not bf["council"].get("published"):
+            add("Planning and heritage", "Development sites nearby", f"{bf['council']['name']} has not published its register to the national platform", "neutral", bf_source)
+        else:
+            add("Planning and heritage", "Development sites nearby", "None on the register within half a mile", "good", bf_source)
+    elif bf is not None:
+        add("Planning and heritage", "Development sites nearby", "Registers cover England only", "neutral", bf_source)
     her = report.get("heritage") or []
     if her:
         nearest = min(her, key=lambda h: h.get("distance_m") or 0)

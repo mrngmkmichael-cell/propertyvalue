@@ -7788,3 +7788,9 @@ body:not(.theme-dark) .lx-hero-scrim {
     .epc-plan td:nth-child(2) { min-width: 9rem; }
     .epc-plan th, .epc-plan td { padding-left: 0.4rem; padding-right: 0.4rem; }
 }
+
+/* The brownfield register table: seven columns; on a phone the owner column goes, the rest scrolls. */
+@media (max-width: 480px) {
+    .brownfield-table th:nth-child(6), .brownfield-table td:nth-child(6) { display: none; }
+    .brownfield-table td:nth-child(2) { min-width: 9rem; }
+}

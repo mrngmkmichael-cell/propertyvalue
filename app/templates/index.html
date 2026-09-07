@@ -133,7 +133,7 @@
         </h1>
 
         <p class="lx-hero-dek">
-            Forty checks on any UK address, each from the body that published
+            Forty-one checks on any UK address, each from the body that published
             it. Whether the house gets a child into the school. What it costs
             to live there. Free, and no account needed.
         </p>
@@ -256,7 +256,7 @@
                 <div class="lx-build-grid">
                     <div class="lx-build-dial-wrap">
                         <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
-                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 40 checks</p>
+                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 41 checks</p>
                     </div>
                     <div class="lx-build-chips" id="lx-build-chips"></div>
                 </div>
@@ -265,7 +265,7 @@
                    frame shows the breadth of the report rather than
                    four findings. Populated by script from CHECKS. #}
                 <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
-                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>40 checks</strong> &middot; one search</p>
+                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>41 checks</strong> &middot; one search</p>
                     <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
                 </div>
                 <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
@@ -293,22 +293,22 @@
            for whom the ring never starts and the list stays. #}
         <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
             <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Forty<br>checks</h2>
+            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Forty-one<br>checks</h2>
             <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
         </div>
 
         <p class="lx-lede lx-lede-centre">
             Every one on a single address, every one traced to the body that
             published it. Twelve of them in orbit here; the full report runs
-            all forty.
+            all forty-one.
         </p>
         <p class="lx-orbit-tiers">
             <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} 22 free on every report</span>
             <span class="lx-orbit-tiers-sep">&middot;</span>
-            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 15 more with Premium, free on your first property</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} 16 more with Premium, free on your first property</span>
         </p>
         <p class="lx-orbit-more">
-            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 40 &rsaquo;</a>
+            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 41 &rsaquo;</a>
         </p>
 
         <ul class="lx-orbit-cards" id="lx-orbit-cards">
@@ -405,7 +405,7 @@
                 and <a href="/schools/independent">private schools by council</a>.
             </p>
             <div class="lx-about-stats">
-                {% set stat_rows = [('40', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                {% set stat_rows = [('41', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
                 {% if admission_stats and admission_stats.schools %}{% set stat_rows = stat_rows + [("{:,}".format(admission_stats.schools), 'Published school admission distances')] %}{% endif %}
                 {% for n, label in stat_rows %}
                 <div>
@@ -599,7 +599,7 @@
                 <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
             </div>
             <button type="submit">Run the checks</button>
-            <p class="lx-contact-note">40 checks &middot; 13 official sources &middot; no card needed</p>
+            <p class="lx-contact-note">41 checks &middot; 13 official sources &middot; no card needed</p>
         </form>
     </div>
 </section>
@@ -1229,7 +1229,7 @@
         'Mining', 'Planning', 'Designations', 'Listed Buildings', 'Schools', 'Catchments',
         'Essentials', 'Getting Around', 'Broadband', 'Mobile Signal', 'Income', 'Deprivation',
         'Occupation', 'Qualifications', 'Age Profile', 'Housing', 'Ethnicity', 'Health',
-        'Council Tax', 'State Schools', 'Private Schools', 'Universities'
+        'Council Tax', 'State Schools', 'Private Schools', 'Universities', 'Development Nearby'
     ];
     if (seed) {
         document.getElementById('lx-build-pc').textContent = seed.postcode;

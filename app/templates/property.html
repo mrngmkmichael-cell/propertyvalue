@@ -367,6 +367,7 @@
     {% set aq_status = 'muted' if not air_quality else ('attn' if aq_worst >= 3 else 'ok') %}
     {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
     {% set coal_mining_status = 'muted' if coal_mining_error else ('attn' if coal_mining and coal_mining.present else 'ok') %}
+    {% set brownfield_status = 'muted' if (brownfield_error or brownfield is not defined or not brownfield or not brownfield.covered or (not brownfield.count and brownfield.council and not brownfield.council.published)) else ('attn' if (brownfield.count and (brownfield.dwellings >= 10 or brownfield.hectares >= 0.5 or brownfield.permissioned)) else 'ok') %}
     {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
     {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
     {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
@@ -387,6 +388,7 @@
         {% set aq_status = 'ok' if aq_status == 'attn' else aq_status %}
         {% set landfill_status = 'ok' if landfill_status == 'attn' else landfill_status %}
         {% set coal_mining_status = 'ok' if coal_mining_status == 'attn' else coal_mining_status %}
+        {% set brownfield_status = 'ok' if brownfield_status == 'attn' else brownfield_status %}
     {% endif %}
     {% set attention_items = [] %}
     {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
@@ -398,6 +400,7 @@
     {% if clay_risk_status == 'attn' %}{% set _ = attention_items.append(('modal-clay-risk', 'Rising subsidence risk from climate change')) %}{% endif %}
     {% if sewage_status == 'attn' %}{% set _ = attention_items.append(('modal-sewage', 'Frequent sewage discharges nearby')) %}{% endif %}
     {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
+    {% if brownfield_status == 'attn' %}{% set _ = attention_items.append(('modal-brownfield', 'Development site on the brownfield register nearby')) %}{% endif %}
     {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
     {% if coal_mining_status == 'attn' %}{% set _ = attention_items.append(('modal-coal-mining', 'In a Coal Mining Reporting Area')) %}{% endif %}
     {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
@@ -818,6 +821,25 @@
                 {% elif environmental_count %}{{ environmental_count }} found
                 {% else %}None found{% endif %}
             </span>
+        </button>
+
+        {# Brownfield register sites within half a mile, from the planning
+           data platform (England only). Premium: the address-level signal
+           a listing never carries. #}
+        <button type="button" class="dashboard-card status-{{ brownfield_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-brownfield" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            {% if brownfield_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
+            <span class="dashboard-card-title">Development Nearby</span>
+            <span class="dashboard-card-status">
+                {% if brownfield_error %}Data unavailable
+                {% elif brownfield is not defined or not brownfield %}No data available
+                {% elif not brownfield.covered %}England only
+                {% elif brownfield.count %}{{ brownfield.count }} register site{{ 's' if brownfield.count != 1 }} within half a mile
+                {% elif brownfield.council and not brownfield.council.published %}Register not on the national platform
+                {% else %}None within half a mile{% endif %}
+            </span>
+            {% if brownfield is defined and brownfield and brownfield.covered and brownfield.count and brownfield.dwellings %}<span class="dashboard-card-substat">Up to {{ brownfield.dwellings }} homes where the register gives a figure</span>{% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
@@ -3013,6 +3035,52 @@
             <p class="notice">Not within a Coal Mining Reporting Area.</p>
         {% else %}
             <p class="notice">No data available for this location.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-brownfield">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Development nearby: the brownfield land register</h2>
+        {% if brownfield_error %}
+            <p class="notice notice-error">The planning data platform didn't respond. Try again in a moment.</p>
+        {% elif brownfield is not defined or not brownfield %}
+            <p class="notice">No register data came back for this address.</p>
+        {% elif not brownfield.covered %}
+            <p class="notice">Brownfield land registers are an English requirement, under the 2017 regulations, so there is nothing to check here for {{ brownfield.country or "this address" }}.</p>
+        {% else %}
+            <p class="section-sub">Every council in England must keep a register of previously developed land it considers suitable for housing, and the government's planning data platform collects them. This is what that register holds within about half a mile ({{ brownfield.radius_m }} m) of this address. An entry is the council's view that a site could take homes, not a permission; the register says whether permission exists.</p>
+            {% if brownfield.count %}
+            <p class="section-sub"><strong>{{ brownfield.count }} site{{ 's' if brownfield.count != 1 }}</strong>{% if brownfield.hectares %}, {{ brownfield.hectares }} hectares in all{% endif %}{% if brownfield.dwellings %}, up to {{ brownfield.dwellings }} homes where the register gives a figure ({{ brownfield.dwellings_stated }} of {{ brownfield.count }} do){% endif %}{% if brownfield.permissioned %}; {{ brownfield.permissioned }} with planning permission{% endif %}.</p>
+            <div class="tablewrap">
+            <table class="tx-table brownfield-table">
+                <thead><tr><th class="num">Distance</th><th>Site</th><th class="num">Size</th><th class="num">Homes</th><th>Permission</th><th>Owner</th><th class="num">Listed since</th></tr></thead>
+                <tbody>
+                {% for s in brownfield.sites %}
+                <tr>
+                    <td class="num">{{ s.distance_m | distance }}</td>
+                    <td>{{ s.address }}{% if s.plan_url %} <a href="{{ s.plan_url }}" target="_blank" rel="noopener noreferrer">plan</a>{% endif %}</td>
+                    <td class="num">{% if s.hectares is not none %}{{ s.hectares }} ha{% else %}Not stated{% endif %}</td>
+                    <td class="num">{% if s.max_dwellings and s.min_dwellings and s.min_dwellings != s.max_dwellings %}{{ s.min_dwellings }} to {{ s.max_dwellings }}{% elif s.max_dwellings or s.min_dwellings %}{{ s.max_dwellings or s.min_dwellings }}{% else %}Not stated{% endif %}</td>
+                    <td>{{ s.permission }}{% if s.permission_type %} ({{ s.permission_type }}){% endif %}</td>
+                    <td>{{ s.ownership }}</td>
+                    <td class="num">{{ s.entry_date[:4] if s.entry_date else "Not stated" }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            {% elif brownfield.council and not brownfield.council.published %}
+            <p class="notice">{{ brownfield.council.name }} has not published its brownfield land register to the national platform, so nothing can be checked here. The register may still exist on the council's own website; ask its planning department.</p>
+            {% else %}
+            <p class="section-sub">No register site within half a mile of this address{% if brownfield.council and brownfield.council.register_count %}, out of the {{ brownfield.council.register_count }} on {{ brownfield.council.name }}'s register{% endif %}.</p>
+            {% endif %}
+            {% if brownfield.council and brownfield.council.register_count %}
+            <p class="property-detail-note">{{ brownfield.council.name }}'s register holds {{ brownfield.council.register_count }} sites on the platform{% if brownfield.newest_entry %}; the newest entry near here is dated {{ brownfield.newest_entry }}{% endif %}. Registers are meant to be reviewed yearly and some are older than that, so treat the dates as part of the answer. What the register cannot tell you: live planning applications, which sit on the council's planning portal. Source: MHCLG planning data platform, brownfield-land dataset, Open Government Licence.</p>
+            {% endif %}
         {% endif %}
             </section>
         </div>

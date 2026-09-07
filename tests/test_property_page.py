@@ -478,3 +478,26 @@ def test_the_energy_card_prices_the_way_to_band_c(client, fake_report):
     detail = dict(fake_gather()["property_detail"], improvements=epc.improvement_plan([], 82), current_score=82, current_band="B")
     body = _report(client, fake_report, gather=fake_gather(property_detail=detail))
     assert "lists no recommended measures" in body and "Band B, at or above C" in body
+
+
+def test_development_nearby_is_a_premium_card_that_says_what_the_register_holds(client, fake_report):
+    """Idea 2 of 7 Sep 2026: brownfield register sites within half a mile.
+    Locked for a free reader (the flag waits behind the lock), the modal
+    names each site, and a council with nothing on the platform is said."""
+    from app.services import brownfield
+    from tests.test_brownfield import _entities, LAT, LON
+    sites = brownfield.parse_sites(_entities(), LAT, LON)
+    data = brownfield.summarise(sites, {"entity": 65, "name": "London Borough of Bromley"}, 88)
+    body = _report(client, fake_report, gather=fake_gather(brownfield=data))
+    assert "Development Nearby" in body and 'id="modal-brownfield"' in body
+    assert "2 register sites within half a mile" in body
+    assert "Ontario Centre, Helegan Close" in body and "Has planning permission (outline planning permission)" in body
+    assert "register holds 88 sites on the platform" in body
+    # Locked: no Check-this tag or attention line leaks the finding to a free reader.
+    assert "Development site on the brownfield register nearby" not in body
+    quiet = brownfield.summarise([], {"entity": 1, "name": "Quiet Council"}, None)
+    body = _report(client, fake_report, gather=fake_gather(brownfield=quiet))
+    assert "Register not on the national platform" in body and "Quiet Council has not published" in body
+    body = _report(client, fake_report, gather=fake_gather(brownfield={"covered": False, "country": "Wales"}))
+    assert "England only" in body
+
