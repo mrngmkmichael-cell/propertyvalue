@@ -20,7 +20,14 @@ the local Claude session as things ship. Newest first.
   one Gmail mailbox as one account. The whole thing is dark until
   ALERTS_FROM_EMAIL names a domain verified in Resend, because the
   shared resend.dev sender cannot reach a customer; Michael's step is the
-  DNS records. Tests 196.
+  DNS records. Tests 196. Later that night, live: Resend verified the
+  domain at 01:30 (DNS is at GoDaddy, Microsoft 365 receives the
+  domain's mail), the first confirmation completed end to end, and
+  Michael set the rule: the basic report stays free, the one free full
+  report is the reward for confirming, Google arrivals need nothing,
+  and the 44 accounts from before that day were marked confirmed once.
+  Two secret-gated internal routes show the mail switch and resend a
+  link. Tests 197.
 
 - Conversions made visible (6 Sep 2026). Michael asked who the "Unknown"
   subscription statuses on /admin were (his three Stripe test purchases
