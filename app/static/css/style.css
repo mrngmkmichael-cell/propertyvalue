@@ -7778,3 +7778,13 @@ body:not(.theme-dark) .lx-hero-scrim {
 .unlock-offer form { display: contents; }
 .unlock-choice { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; margin-top: 1rem; }
 .unlock-choice .link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* The EPC recommendation table: the row where the rating first reaches
+   Band C carries the tint, so the cost above it reads against a step. */
+.epc-plan .epc-plan-c td { background: var(--accent-soft); font-weight: var(--weight-medium); }
+.epc-plan td:nth-child(2) { min-width: 12rem; }
+@media (max-width: 480px) {
+    .epc-plan th:first-child, .epc-plan td:first-child { display: none; }
+    .epc-plan td:nth-child(2) { min-width: 9rem; }
+    .epc-plan th, .epc-plan td { padding-left: 0.4rem; padding-right: 0.4rem; }
+}

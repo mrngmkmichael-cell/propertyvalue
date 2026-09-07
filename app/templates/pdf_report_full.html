@@ -370,6 +370,10 @@
     <td style="width: 25%"><span class="fig-v" style="font-size: 20pt">{{ property_detail.habitable_room_count or "" }}</span><br/><span class="fig-l">Habitable rooms</span></td>
 </tr></table>
 {{ sp("4pt") }}
+{% set plan = property_detail.improvements if property_detail.improvements is defined else none %}
+{% if plan and plan.steps %}
+<p class="why">{% if plan.already_c %}Already Band {{ property_detail.current_band }}. The assessor's remaining suggestions would reach Band {{ plan.all.band_after }}{% if plan.all.cost_low is not none %} for {{ plan.all.cost_low | gbp }} to {{ plan.all.cost_high | gbp }}{% endif %}.{% elif plan.to_c %}To reach Band C: {% if plan.to_c.cost_low is not none %}{{ plan.to_c.cost_low | gbp }} to {{ plan.to_c.cost_high | gbp }}{% else %}no cost given{% endif %} for {{ plan.to_c.count }} of the certificate's {{ plan.steps | length }} recommended measures ({% for s in plan.steps[:plan.to_c.count] %}{{ s.name | lower }}{% if not loop.last %}; {% endif %}{% endfor %}){% if plan.to_c.saving %}, saving about {{ plan.to_c.saving | gbp }} a year at the assessor's prices{% endif %}. Indicative national ranges from the certificate's own recommendation report, not quotes.{% else %}Every measure on the certificate reaches only Band {{ plan.all.band_after }}{% if plan.all.cost_low is not none %}, for {{ plan.all.cost_low | gbp }} to {{ plan.all.cost_high | gbp }}{% endif %}.{% endif %}</p>
+{% endif %}
 {% if property_detail.heating_cost_current is not none %}
 <table class="keep"><tr><td style="padding: 0pt">
 <h2>Energy costs on the certificate</h2>

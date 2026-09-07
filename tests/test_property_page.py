@@ -460,3 +460,21 @@ def test_the_news_card_says_what_is_missing_and_how_to_check(client, fake_report
     body = _report(client, fake_report, gather=gather)
     assert "q=M14+5TG+Manchester&amp;tbm=nws" in body
 
+
+
+
+def test_the_energy_card_prices_the_way_to_band_c(client, fake_report):
+    """Idea 1 of 7 Sep 2026: the certificate's own recommendation report,
+    summed to the first step that reaches C, on the card and in the modal."""
+    from app.services import epc
+    from tests.test_epc_plan import _suggested
+    detail = dict(fake_gather()["property_detail"], current_score=62, current_band="D", potential_score=74, potential_band="C",
+                  improvements=epc.improvement_plan(_suggested(), 62))
+    body = _report(client, fake_report, gather=fake_gather(property_detail=detail))
+    assert "£12,000 to £24,000 to reach Band C" in body            # the card
+    assert "reaches C after 2 of its 3 measures" in body            # the modal
+    assert "50 mm internal or external wall insulation" in body and 'class="epc-plan-c"' in body
+    # A new build with nothing recommended says so instead of showing a blank.
+    detail = dict(fake_gather()["property_detail"], improvements=epc.improvement_plan([], 82), current_score=82, current_band="B")
+    body = _report(client, fake_report, gather=fake_gather(property_detail=detail))
+    assert "lists no recommended measures" in body and "Band B, at or above C" in body

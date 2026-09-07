@@ -158,6 +158,21 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
             (f"{pd['dwelling_type']}, " if pd.get("dwelling_type") else "") + (f"{pd['total_floor_area']} sq m, " if pd.get("total_floor_area") else "") + (f"{pd['habitable_room_count']} habitable rooms" if pd.get("habitable_room_count") else ""),
             "neutral", "EPC Register")
         add("The property", "Year built", pd.get("year_built") or "Not recorded on the certificate", "neutral", "EPC Register")
+        plan = pd.get("improvements") or {}
+        to_c = plan.get("to_c")
+        if plan.get("already_c"):
+            add("The property", "Cost to reach EPC Band C", f"Already Band {pd['current_band']}", "good", "EPC Register, the certificate's recommendations")
+        elif to_c and to_c.get("cost_low") is not None:
+            saving = f", saving about {_fmt_gbp(to_c['saving'])} a year" if to_c.get("saving") else ""
+            add("The property", "Cost to reach EPC Band C",
+                f"{_fmt_gbp(to_c['cost_low'])} to {_fmt_gbp(to_c['cost_high'])} for {to_c['count']} of the certificate's {len(plan['steps'])} measures{saving}",
+                "warn" if pd["current_band"] in "DEFG" else "neutral", "EPC Register, the certificate's recommendations")
+        elif plan.get("steps"):
+            whole = plan["all"]
+            cost = f" for {_fmt_gbp(whole['cost_low'])} to {_fmt_gbp(whole['cost_high'])}" if whole.get("cost_low") is not None else ""
+            add("The property", "Cost to reach EPC Band C", f"Not reached: every measure on the certificate gets to Band {whole['band_after']}{cost}", "warn", "EPC Register, the certificate's recommendations")
+        elif "improvements" in pd:
+            add("The property", "Cost to reach EPC Band C", "The certificate lists no recommended measures", "neutral", "EPC Register")
     else:
         add("The property", "Energy performance certificate", "No certificate found for this address; add a house number if you have one", "neutral", "EPC Register")
 

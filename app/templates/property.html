@@ -621,6 +621,12 @@
                 {% elif house_number and postcode_has_certificates %}None for "{{ house_number }}"
                 {% else %}No certificates found{% endif %}
             </span>
+            {% set _plan = property_detail.improvements if (property_detail and property_detail.improvements is defined) else none %}
+            {% if _plan and _plan.to_c and _plan.to_c.cost_low is not none %}
+            <span class="dashboard-card-substat">{{ _plan.to_c.cost_low | gbp }} to {{ _plan.to_c.cost_high | gbp }} to reach Band C</span>
+            {% elif _plan and _plan.already_c %}
+            <span class="dashboard-card-substat">Band {{ property_detail.current_band }}, at or above C</span>
+            {% endif %}
         </button>
         {% endif %}
 
@@ -1550,6 +1556,41 @@
         </div>
         {% if property_detail.valid_until %}
         <p class="property-detail-note">Certificate for the most recent match at this postcode, valid until {{ property_detail.valid_until }}.</p>
+        {% endif %}
+        {# The certificate's own recommendation report: measures in the
+           assessor's order, each with the rating after it, so the cost of
+           reaching Band C is the certificate's figure, not ours. #}
+        {% set plan = property_detail.improvements if property_detail.improvements is defined else none %}
+        {% if plan is not none %}
+        <h3 class="subsection-heading">What it would cost to reach Band C</h3>
+        {% if not plan.steps %}
+        <p class="section-sub">This certificate lists no recommended measures{% if property_detail.current_band in "ABC" %}, and the home is already Band {{ property_detail.current_band }}{% else %}, which is usual for a home assessed as a new build{% endif %}.</p>
+        {% elif plan.already_c %}
+        <p class="section-sub">Already Band {{ property_detail.current_band }} ({{ property_detail.current_score }}). The assessor's remaining suggestions would take it to Band {{ plan.all.band_after }} ({{ plan.all.rating_after }}){% if plan.all.cost_low is not none %} for {{ plan.all.cost_low | gbp }} to {{ plan.all.cost_high | gbp }}{% endif %}{% if plan.all.saving %}, saving about {{ plan.all.saving | gbp }} a year at the assessor's prices{% endif %}.</p>
+        {% elif plan.to_c %}
+        <p class="section-sub">Band {{ property_detail.current_band }} ({{ property_detail.current_score }}) today. The certificate's own plan reaches C after {{ plan.to_c.count }} of its {{ plan.steps | length }} measures: <strong>{% if plan.to_c.cost_low is not none %}{{ plan.to_c.cost_low | gbp }} to {{ plan.to_c.cost_high | gbp }}{% else %}no cost given{% endif %}</strong>{% if plan.to_c.priced < plan.to_c.count %} for the measures the certificate prices{% endif %}{% if plan.to_c.saving %}, saving about {{ plan.to_c.saving | gbp }} a year at the assessor's prices{% endif %}.</p>
+        {% else %}
+        <p class="section-sub">Band {{ property_detail.current_band }} ({{ property_detail.current_score }}) today. Even with every measure on the certificate, the assessor's model reaches Band {{ plan.all.band_after }} ({{ plan.all.rating_after }}){% if plan.all.cost_low is not none %}, for {{ plan.all.cost_low | gbp }} to {{ plan.all.cost_high | gbp }}{% endif %}.</p>
+        {% endif %}
+        {% if plan.steps %}
+        <div class="tablewrap">
+        <table class="tx-table epc-plan">
+            <thead><tr><th>Step</th><th>Measure</th><th class="num">Indicative cost</th><th class="num">Typical saving a year</th><th class="num">Rating after</th></tr></thead>
+            <tbody>
+            {% for s in plan.steps %}
+            <tr{% if plan.to_c and loop.index == plan.to_c.count %} class="epc-plan-c"{% endif %}>
+                <td>{{ loop.index }}</td>
+                <td>{{ s.name }}</td>
+                <td class="num">{{ s.cost_text or "Not priced" }}</td>
+                <td class="num">{% if s.saving is not none %}{{ s.saving | gbp }}{% else %}Not given{% endif %}</td>
+                <td class="num">{% if s.rating_after is not none %}<span class="epc-badge epc-{{ s.band_after | lower }}">{{ s.band_after }}</span> {{ s.rating_after }}{% else %}Not given{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <p class="property-detail-note">The measures, costs and savings are the assessor's, from this certificate's recommendation report, in the order the certificate lists them; each rating is after that step and the ones before it. Indicative costs are national ranges, not quotes. The government's February 2025 consultation proposed that privately rented homes in England and Wales reach Band C by 2030, new tenancies from 2028; check the current rules before relying on it. Source: EPC Register, the certificate's suggested improvements.</p>
+        {% endif %}
         {% endif %}
         {% if property_detail.heating_cost_current or property_detail.lighting_cost_current or property_detail.hot_water_cost_current %}
         <h3 class="subsection-heading">Estimated annual running costs</h3>
