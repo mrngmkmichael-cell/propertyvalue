@@ -989,6 +989,37 @@ def _month_label(value) -> str:
 
 
 templates.env.filters["month_label"] = _month_label
+
+
+def _news_search(transactions, location) -> dict:
+    """Terms for the "in the news" self-check on the report. Local papers
+    name the street and rarely the house number, so the search is the
+    street from the sold-price records at this postcode plus the town;
+    with no street on file it falls back to the postcode and district."""
+    def tidy(value: str) -> str:  # Land Registry writes in capitals
+        return " ".join(w.capitalize() for w in (value or "").split())
+
+    street = town = ""
+    for t in transactions or []:
+        street = street or (t.get("street") or "")
+        town = town or (t.get("town") or "")
+        if street and town:
+            break
+    location = location or {}
+    street, town = tidy(street), tidy(town) or (location.get("admin_district") or "")
+    if street:
+        query = f'"{street}" {town}'.strip()
+        plain = ", ".join(part for part in (street, town) if part)
+    else:
+        query = plain = " ".join(part for part in (location.get("postcode") or "", town) if part)
+    return {
+        "street": street, "town": town, "plain": plain,
+        "google": "https://www.google.com/search?" + urlencode({"q": query, "tbm": "nws"}),
+        "bbc": "https://www.bbc.co.uk/search?" + urlencode({"q": query.replace('"', ""), "filter": "news"}),
+    }
+
+
+templates.env.globals["news_search"] = _news_search
 templates.env.globals["seo_title"] = seo_title
 
 

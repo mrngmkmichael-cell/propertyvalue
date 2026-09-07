@@ -719,6 +719,15 @@
             </span>
         </button>
 
+        {# Free, and never a figure: no source records deaths, crimes or
+           hauntings at an address, so the card says so and shows how to
+           check. See the modal for why a news search is not a data feature. #}
+        <button type="button" class="dashboard-card status-muted" data-modal-target="modal-news" data-animate>
+            <span class="dashboard-card-icon icon-crime">{{ icons.icon('news') }}</span>
+            <span class="dashboard-card-title">In the News?</span>
+            <span class="dashboard-card-status">No register exists. Ask in writing.</span>
+        </button>
+
         <button type="button" class="dashboard-card status-{{ radon_status }}" data-modal-target="modal-radon" data-animate>
             {% if radon_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-radon">{{ icons.icon('radon') }}</span>
@@ -2762,6 +2771,36 @@
         {% else %}
             <p class="notice">No mobile coverage data available for this area.</p>
         {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    {# "Was this home in the news?" Asked for on 7 Sep 2026 (a murder, a
+       suicide, a haunting). There is no source for it: Police.uk blurs
+       every incident to a street segment, coroners and the ONS publish no
+       address-level register, and a news search cannot tell one house on
+       a street from another. So the card says what is missing, hands over
+       the search for the reader to judge, and gives the one step that
+       binds a seller: the question in writing. #}
+    <dialog class="report-modal" id="modal-news">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Was this home in the news?</h2>
+        {% set news = news_search(transactions, location) %}
+        <p class="section-sub">There is no official record of deaths, crimes or incidents at individual addresses in the UK. Coroners, the police and the Office for National Statistics publish no address-level register, and a seller does not have to volunteer a death or a crime in the property. Rather than guess, this card says what is missing and how to check.</p>
+
+        <h3 class="subsection-heading">What the report can and cannot show</h3>
+        <p>The Crime &amp; Safety card counts offences within about a mile, from Police.uk. Police.uk moves every incident to a point on or near a street segment on purpose, so that no home can be identified. It can show what the street sees; it cannot say whether anything happened inside this property. Nothing official records a haunting, so the report says nothing about those.</p>
+
+        <h3 class="subsection-heading">Check the news yourself</h3>
+        <p>Local papers report incidents by street and rarely by house number, so search the street and read each story for the number and the year before drawing a conclusion.</p>
+        <p><a href="{{ news.google }}" target="_blank" rel="noopener noreferrer">Search the news for {{ news.plain }} &rarr;</a></p>
+        <p><a href="{{ news.bbc }}" target="_blank" rel="noopener noreferrer">The same search on BBC News &rarr;</a></p>
+
+        <h3 class="subsection-heading">The step that protects you</h3>
+        <p>Ask the seller's solicitor, in writing, in the pre-contract enquiries: "Has anyone died in the property, and has it been the scene of any crime or police investigation?" A false written answer is a misrepresentation you can act on; silence is not. In England and Wales, Sykes v Taylor-Rose (Court of Appeal, 2004) held that a seller who answered the standard form honestly had no duty to volunteer that a murder had taken place in the house. Put the same question to the estate agent in writing: agents must not withhold information that would change an average buyer's decision, a duty carried into the Digital Markets, Competition and Consumers Act 2024.</p>
+        <p class="section-sub">Sources: Police.uk, on how incident locations are anonymised; Sykes v Taylor-Rose [2004] EWCA Civ 299; Digital Markets, Competition and Consumers Act 2024, Part 4.</p>
             </section>
         </div>
     </dialog>

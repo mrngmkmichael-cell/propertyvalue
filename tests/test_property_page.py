@@ -153,7 +153,7 @@ def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
 # body, so these are excluded from the count the landing page quotes.
 # Undercounting is never a credibility risk; counting an arguable card
 # is.
-NOT_AN_OFFICIAL_SOURCE_CHECK = {"Resident Reviews"}
+NOT_AN_OFFICIAL_SOURCE_CHECK = {"Resident Reviews", "In the News?"}
 
 
 def test_landing_page_check_count_matches_the_report(client, fake_report):
@@ -435,3 +435,23 @@ def test_a_welsh_report_names_the_country_and_the_missing_school_data(client, mo
     assert "Vale of Glamorgan, Wales" in body
     assert "No schools found nearby." not in body
     assert "covers England only" in body and "Estyn" in body
+
+
+def test_the_news_card_says_what_is_missing_and_how_to_check(client, fake_report):
+    """Michael's ask of 7 Sep 2026: was this house in the news (a murder,
+    a suicide, a haunting)? No source exists, so the card says so, links
+    a street-level news search the reader judges for themselves, and
+    gives the one step that binds a seller: the question in writing."""
+    body = _report(client, fake_report)
+    assert "In the News?" in body and 'id="modal-news"' in body
+    assert 'data-modal-target="modal-news" data-animate>' in body  # free: no lock redirect
+    assert "Sykes v Taylor-Rose" in body and "tbm=nws" in body
+    # No street on file: the search falls back to the postcode and district.
+    assert "q=M14+5TG+Manchester&amp;tbm=nws" in body
+    # With a street from the sold-price records the search names it, never the house number.
+    gather = fake_gather(transactions=[{"address": "1 Test Street", "street": "TEST STREET", "town": "MANCHESTER",
+                                        "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01"}])
+    body = _report(client, fake_report, gather=gather)
+    assert "%22Test+Street%22+Manchester" in body and "Search the news for Test Street, Manchester" in body
+    assert "%221+Test" not in body
+
