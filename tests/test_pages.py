@@ -293,8 +293,8 @@ def test_pricing_page_lists_every_check_the_landing_page_claims(client, monkeypa
     claimed = int(re.search(r'data-target="(\d+)"[^>]*>[\d,]+</span></p>\s*<p class="lx-about-stat-l">Checks per property', home).group(1))
     body = client.get("/premium").text
     assert body.count('class="lx-check"') == claimed
-    assert "25 free on every report" in body
-    assert f"{claimed - 25} more with Premium" in body
+    free = int(re.search(r"(\d+) free on every report", body).group(1))
+    assert f"{claimed - free} more with Premium" in body
 
 
 def test_anonymous_compare_builds_a_column_per_postcode(client, monkeypatch):

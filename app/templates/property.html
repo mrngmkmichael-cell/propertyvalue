@@ -1007,6 +1007,30 @@
             </span>
         </button>
 
+        {# How the census neighbourhood changed, 2011 to 2021 (idea 5 of
+
+           7 Sep 2026): free, from the ONS Key Statistics and topic summaries. #}
+
+        <button type="button" class="dashboard-card status-{{ 'ok' if (census_change is defined and census_change and census_change.has_2011 and census_change.has_2021) else 'muted' }}" data-modal-target="modal-census-change" data-animate>
+
+            <span class="dashboard-card-icon icon-statistics">{{ icons.icon('statistics') }}</span>
+
+            <span class="dashboard-card-title">Since 2011</span>
+
+            <span class="dashboard-card-status">
+
+                {% if census_change_error %}Data unavailable
+
+                {% elif census_change is not defined or not census_change or not census_change.biggest %}No comparable 2011 figure
+
+                {% else %}{{ census_change.biggest.short }} {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} points{% endif %}
+
+            </span>
+
+            {% if census_change is defined and census_change and census_change.residents_change_pct is not none %}<span class="dashboard-card-substat">{{ "{:,}".format(census_change.residents_2021) }} residents in 2021, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011</span>{% endif %}
+
+        </button>
+
         <button type="button" class="dashboard-card status-{{ deprivation_status }}" data-modal-target="modal-deprivation" data-animate>
             {% if deprivation_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-deprivation">{{ icons.icon('deprivation') }}</span>
@@ -3276,6 +3300,44 @@
             {% if brownfield.council and brownfield.council.register_count %}
             <p class="property-detail-note">{{ brownfield.council.name }}'s register holds {{ brownfield.council.register_count }} sites on the platform{% if brownfield.newest_entry %}; the newest entry near here is dated {{ brownfield.newest_entry }}{% endif %}. Registers are meant to be reviewed yearly and some are older than that, so treat the dates as part of the answer. What the register cannot tell you: live planning applications, which sit on the council's planning portal. Source: MHCLG planning data platform, brownfield-land dataset, Open Government Licence.</p>
             {% endif %}
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-census-change">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>How the area changed, 2011 to 2021</h2>
+        {% if census_change_error %}
+            <p class="notice notice-error">The census tables didn't load. Try again in a moment.</p>
+        {% elif census_change is not defined or not census_change %}
+            <p class="notice">No census figures for this address's small area.</p>
+        {% else %}
+            <p class="section-sub">The census neighbourhood this address sits in ({{ census_change.lsoa }}, {% if census_change.residents_2021 %}{{ "{:,}".format(census_change.residents_2021) }} residents in 2021{% endif %}{% if census_change.residents_change_pct is not none %}, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011{% endif %}), on the 2011 and 2021 censuses, with England's own change over the same decade for scale. Each line is a share of the area's own households or residents, so a growing area and a shrinking one compare fairly.</p>
+            {% if not census_change.has_2011 %}
+            <p class="notice">This 2021 area was created by splitting a 2011 area, and the 2011 figures went with the other part, so there is no comparable 2011 figure here.</p>
+            {% elif census_change.merged_from > 1 %}
+            <p class="section-sub">The 2011 figures are the sum of the {{ census_change.merged_from }} areas that were merged into this one.</p>
+            {% endif %}
+            <div class="tablewrap">
+            <table class="tx-table census-change-table">
+                <thead><tr><th>Measure</th><th class="num">2011</th><th class="num">2021</th><th class="num">Change</th><th class="num">England</th></tr></thead>
+                <tbody>
+                {% for r in census_change.rows %}
+                <tr{% if census_change.biggest and r.key == census_change.biggest.key %} class="census-change-biggest"{% endif %}>
+                    <td>{{ r.label }}</td>
+                    <td class="num">{% if r.in_2011 is not none %}{{ r.in_2011 }}%{% else %}Not given{% endif %}</td>
+                    <td class="num">{% if r.in_2021 is not none %}{{ r.in_2021 }}%{% else %}Not given{% endif %}</td>
+                    <td class="num">{% if r.change is not none %}{{ "+" if r.change > 0 else "" }}{{ r.change }} pts{% else %}Not given{% endif %}</td>
+                    <td class="num">{% if r.england_change is not none %}{{ "+" if r.england_change > 0 else "" }}{{ r.england_change }} pts{% else %}Not given{% endif %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <p class="property-detail-note">Sources: ONS Census 2011 Key Statistics (tenure, age, qualifications, country of birth, health, ethnic group), re-keyed to 2021 areas with the ONS best-fit lookup; ONS Census 2021 topic summaries. Open Government Licence. "Points" are percentage points: a share moving from 30% to 35% is up 5 points.</p>
         {% endif %}
             </section>
         </div>

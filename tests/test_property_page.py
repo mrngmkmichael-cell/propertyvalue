@@ -564,3 +564,18 @@ def test_the_council_tax_card_carries_the_councils_finances(client, fake_report)
     assert "Exceptional Financial Support" in body and "Section 114 notices" in body
     assert "Council under exceptional financial support or a section 114 notice" in body  # free card: the flag shows
 
+
+def test_since_2011_card_names_the_biggest_mover(client, fake_report):
+    """Idea 5 of 7 Sep 2026: the census neighbourhood's change since 2011,
+    free, with England's change for scale."""
+    rows = [{"key": "owned", "label": "Households that own their home", "short": "Owner-occupiers", "in_2011": 56.4, "in_2021": 44.4, "change": -12.0, "england_2011": 63.3, "england_2021": 61.3, "england_change": -2.0},
+            {"key": "private_rented", "label": "Households renting privately", "short": "Private renting", "in_2011": 35.5, "in_2021": 45.2, "change": 9.7, "england_2011": 16.8, "england_2021": 20.5, "england_change": 3.7}]
+    data = {"lsoa": "E01001000", "rows": rows, "biggest": rows[0], "residents_2011": 1267, "residents_2021": 1336, "residents_change_pct": 5.4,
+            "has_2011": True, "has_2021": True, "merged_from": 1}
+    body = _report(client, fake_report, gather=fake_gather(census_change=data))
+    assert "Since 2011" in body and 'id="modal-census-change"' in body
+    assert "Owner-occupiers down 12.0 points" in body and "1,336 residents in 2021, up 5.4% on 2011" in body
+    assert "How the area changed, 2011 to 2021" in body and "+9.7 pts" in body and "+3.7 pts" in body
+    body = _report(client, fake_report, gather=fake_gather(census_change=dict(data, biggest=None, has_2011=False, rows=[])))
+    assert "No comparable 2011 figure" in body
+

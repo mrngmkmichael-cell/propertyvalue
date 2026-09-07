@@ -7808,3 +7808,10 @@ body:not(.theme-dark) .lx-hero-scrim {
     .health-table th:nth-child(5), .health-table td:nth-child(5) { display: none; }
     .health-table td:first-child { min-width: 9rem; }
 }
+
+/* The census change table: the biggest mover carries the tint. */
+.census-change-table .census-change-biggest td { background: var(--accent-soft); font-weight: var(--weight-medium); }
+@media (max-width: 480px) {
+    .census-change-table th:nth-child(5), .census-change-table td:nth-child(5) { display: none; }
+    .census-change-table td:first-child { min-width: 9rem; }
+}

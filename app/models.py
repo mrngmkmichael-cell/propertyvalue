@@ -1043,3 +1043,28 @@ class AeTrust(Base):
     type1_over_4h: Mapped[int] = mapped_column(Integer, default=0)
     all_attendances: Mapped[int] = mapped_column(Integer, default=0)
     all_over_4h: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Census2011(Base):
+    """Census 2011 key statistics re-keyed to 2021 LSOA codes, the counts
+    behind the "since 2011" comparison (scripts/import_census_2011.py).
+    lsoa11_count says how many 2011 areas were summed into the row."""
+    __tablename__ = "census_2011"
+
+    lsoa_code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    lsoa11_count: Mapped[int] = mapped_column(Integer, default=1)
+    households: Mapped[int] = mapped_column(Integer, default=0)
+    owned: Mapped[int] = mapped_column(Integer, default=0)
+    private_rented: Mapped[int] = mapped_column(Integer, default=0)
+    social_rented: Mapped[int] = mapped_column(Integer, default=0)
+    residents: Mapped[int] = mapped_column(Integer, default=0)
+    under_15: Mapped[int] = mapped_column(Integer, default=0)
+    over_65: Mapped[int] = mapped_column(Integer, default=0)
+    adults: Mapped[int] = mapped_column(Integer, default=0)
+    level_4_plus: Mapped[int] = mapped_column(Integer, default=0)
+    cob_total: Mapped[int] = mapped_column(Integer, default=0)
+    born_uk: Mapped[int] = mapped_column(Integer, default=0)
+    health_total: Mapped[int] = mapped_column(Integer, default=0)
+    health_good: Mapped[int] = mapped_column(Integer, default=0)
+    eth_total: Mapped[int] = mapped_column(Integer, default=0)
+    white: Mapped[int] = mapped_column(Integer, default=0)

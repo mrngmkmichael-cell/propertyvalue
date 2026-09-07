@@ -357,6 +357,14 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     add("Getting around", "Daily essentials", f"Supermarket: {nearest('supermarket')}; pharmacy: {nearest('pharmacy')}; GP: {nearest('gp')}", "neutral", "OpenStreetMap")
 
     # ---- Area and community ---------------------------------------------
+    cc = report.get("census_change")
+    if report.get("census_change_error"):
+        add("Area and community", "Since 2011", "The census tables did not load", "neutral", "ONS Census 2011 and 2021")
+    elif cc and cc.get("biggest"):
+        movers = sorted([r for r in cc["rows"] if r.get("change") is not None], key=lambda r: -abs(r["change"]))[:3]
+        add("Area and community", "Since 2011", "; ".join(f"{r['short']} {'up' if r['change'] > 0 else 'down'} {abs(r['change'])} points (England {'up' if (r['england_change'] or 0) > 0 else 'down'} {abs(r['england_change'] or 0)})" for r in movers), "neutral", "ONS Census 2011 and 2021")
+    elif cc is not None:
+        add("Area and community", "Since 2011", "No comparable 2011 figure for this small area", "neutral", "ONS Census 2011 and 2021")
     health = report.get("health")
     health_source = "NHS England Digital practice statistics; NHS England A&E statistics"
     if report.get("health_error"):

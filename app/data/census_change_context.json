@@ -1,0 +1,38 @@
+{
+ "england_2011": {
+  "households": 22063368,
+  "owned": 13975024,
+  "private_rented": 3715924,
+  "social_rented": 3903550,
+  "residents": 53012456,
+  "under_15": 9372010,
+  "over_65": 8660529,
+  "adults": 42989620,
+  "level_4_plus": 11769361,
+  "cob_total": 53012456,
+  "born_uk": 45675317,
+  "health_total": 53012456,
+  "health_good": 43147169,
+  "eth_total": 53012456,
+  "white": 45281142
+ },
+ "england_2021": {
+  "households": 23436382,
+  "owned": 14369153,
+  "private_rented": 4795157,
+  "social_rented": 4005505,
+  "residents": 56490091,
+  "under_15": 9838892,
+  "over_65": 10401242,
+  "adults": 46007025,
+  "level_4_plus": 15606297,
+  "cob_total": 56489589,
+  "born_uk": 46687444,
+  "health_total": 56489964,
+  "health_good": 46431516,
+  "eth_total": 56490108,
+  "white": 45783622
+ },
+ "rows": 34633,
+ "imported": "2026-09-07"
+}
