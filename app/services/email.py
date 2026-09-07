@@ -40,7 +40,14 @@ def can_verify() -> bool:
     return is_configured() and bool(os.environ.get("ALERTS_FROM_EMAIL")) and "resend.dev" not in from_address()
 
 
+# The last refusal from Resend, for the internal status view. A send that
+# fails returns False to the caller, which is right for the caller, but
+# left nobody able to see why on 7 Sep 2026.
+last_error: str | None = None
+
+
 async def send_email(to: str, subject: str, html: str) -> bool:
+    global last_error
     if not is_configured():
         return False
     from_address_value = from_address()
@@ -51,7 +58,11 @@ async def send_email(to: str, subject: str, html: str) -> bool:
                 headers={"Authorization": f"Bearer {os.environ['RESEND_API_KEY']}"},
                 json={"from": from_address_value, "to": [to], "subject": subject, "html": html},
             )
-        response.raise_for_status()
+        if response.status_code >= 400:
+            last_error = f"{response.status_code} {response.text[:200]}"
+            return False
+        last_error = None
         return True
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        last_error = f"{type(exc).__name__}: {str(exc)[:200]}"
         return False

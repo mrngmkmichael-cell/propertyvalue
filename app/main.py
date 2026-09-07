@@ -5625,6 +5625,7 @@ def email_status(request: Request):
         "resend_key_present": email_service.is_configured(),
         "from_address": email_service.from_address(),
         "confirmation_live": email_service.can_verify(),
+        "last_send_error": email_service.last_error,
         "site_url": os.environ.get("SITE_URL", ""),
     })
 
