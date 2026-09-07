@@ -37,7 +37,7 @@ from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
-    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_stats, clay_risk, coal_mining, health_services,
+    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_stats, clay_risk, coal_mining, flood_re, health_services,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
@@ -1032,6 +1032,7 @@ def _news_search(transactions, location) -> dict:
 
 
 templates.env.globals["news_search"] = _news_search
+templates.env.globals["flood_re"] = flood_re.assess
 templates.env.globals["seo_title"] = seo_title
 
 

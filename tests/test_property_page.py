@@ -538,3 +538,16 @@ def test_health_services_card_shows_list_pressure_and_a_and_e(client, fake_repor
     assert "A&amp;E four-hour performance, July 2026" in body
     assert "Nearest GP practice well above the national list size per GP" not in body  # locked: no leak
 
+
+def test_flood_re_is_flagged_for_a_post_2009_home_at_risk(client, fake_report):
+    """Idea 7 of 7 Sep 2026: a home built in 2009 or later in Flood Zone 2
+    or 3 cannot lean on Flood Re, and the free flood card says so."""
+    detail = dict(fake_gather()["property_detail"], year_built="2012 onwards", dwelling_type="Semi-detached house")
+    body = _report(client, fake_report, gather=fake_gather(property_detail=detail, flood_zone={"zone": 2, "label": "Zone 2 (medium probability)", "source": "river"}))
+    assert "Flood Re not available: built 2012 onwards" in body
+    assert "Not available: built in 2009 or later" in body and "get a buildings insurance quote in writing before making an offer" in body
+    assert "Flood Re insurance not available for this home" in body   # free card: the attention line shows
+    detail = dict(fake_gather()["property_detail"], year_built="1930–1949", dwelling_type="Detached house")
+    body = _report(client, fake_report, gather=fake_gather(property_detail=detail, flood_zone={"zone": 1, "label": "Zone 1 (low probability)"}))
+    assert "Available: built before 2009" in body and "Flood Re not available" not in body
+

@@ -190,6 +190,12 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
             "good" if orient["rear_facing"] in ("South", "South-West", "South-East", "West") else "neutral", "OpenStreetMap building footprint")
 
     # ---- Risk and safety -------------------------------------------------
+    from app.services import flood_re as _flood_re
+    pd_ = report.get("property_detail") or {}
+    note = _flood_re.assess(pd_.get("year_built"), pd_.get("dwelling_type") or "", report.get("flood_zone"), report.get("surface_water"))
+    if note:
+        add("Risk and safety", "Flood insurance (Flood Re)", note["headline"] + (". Get a quote before an offer" if note["action_needed"] else ""),
+            "warn" if note["action_needed"] else ("good" if note["standing"] == "eligible" else "neutral"), "Flood Re eligibility criteria; EPC Register")
     fz = report.get("flood_zone")
     fz_label = fz.get("label") if fz else "Zone 1 (low probability)"
     add("Risk and safety", "Flood zone, rivers and sea", fz_label + ("; " + f"{len(report['flood_warnings'])} active warning(s)" if report.get("flood_warnings") else ""),

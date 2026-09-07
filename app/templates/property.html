@@ -356,7 +356,8 @@
     {% set prosperity_area = (hpi.local_authority if hpi and hpi.local_authority else (hpi.region if hpi else none)) %}
     {% set prosperity_status = 'muted' if not prosperity_area else ('ok' if prosperity_area.annual_change_pct >= 0 else 'attn') %}
     {% set ext_status = 'attn' if (extension_signal and (extension_signal.likely_extended or extension_signal.change_pct <= -15)) else ('ok' if extension_signal else 'muted') %}
-    {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3)) else 'ok') %}
+    {% set flood_re_note = flood_re(property_detail.year_built if property_detail else none, property_detail.dwelling_type if property_detail else '', flood_zone if flood_zone else none, surface_water if surface_water else none) %}
+    {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3) or (flood_re_note and flood_re_note.action_needed)) else 'ok') %}
     {% set surface_water_status = 'muted' if surface_water_error else ('attn' if surface_water and surface_water.label == 'High risk' else 'ok') %}
     {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
     {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
@@ -397,7 +398,7 @@
     {% set attention_items = [] %}
     {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
     {% if ext_status == 'attn' %}{% set _ = attention_items.append(('modal-extension', 'Possible unrecorded extension/change')) %}{% endif %}
-    {% if flood_status == 'attn' %}{% set _ = attention_items.append(('modal-flood', 'Flood risk')) %}{% endif %}
+    {% if flood_status == 'attn' %}{% set _ = attention_items.append(('modal-flood', 'Flood Re insurance not available for this home' if (flood_re_note and flood_re_note.action_needed and not (flood_warnings or (flood_zone and flood_zone.zone >= 3))) else 'Flood risk')) %}{% endif %}
     {% if surface_water_status == 'attn' %}{% set _ = attention_items.append(('modal-surface-water', 'High surface water flood risk')) %}{% endif %}
     {% if noise_status == 'attn' %}{% set _ = attention_items.append(('modal-noise', 'High noise levels')) %}{% endif %}
     {% if radon_status == 'attn' %}{% set _ = attention_items.append(('modal-radon', 'Elevated radon risk')) %}{% endif %}
@@ -678,6 +679,8 @@
             </span>
             {% if flood_warnings %}
             <span class="dashboard-card-substat">{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}</span>
+            {% elif flood_re_note and flood_re_note.action_needed %}
+            <span class="dashboard-card-substat">Flood Re {{ 'not available' if flood_re_note.standing == 'excluded' else 'uncertain' }}: built {{ flood_re_note.year_built }}</span>
             {% elif not flood_error %}
             <span class="dashboard-card-substat">No active warnings</span>
             {% endif %}
@@ -1844,6 +1847,20 @@
             </p>
         {% else %}
             <p class="notice">No flood zone data available for this location.</p>
+        {% endif %}
+
+        {# Flood Re: the government-backed scheme's fixed rules, checked
+           against the EPC's build date and dwelling type. #}
+        {% if flood_re_note %}
+        <h3 class="subsection-heading">Insurance: Flood Re</h3>
+        <p class="{{ 'notice' if flood_re_note.action_needed else 'section-sub' }}"><strong>{{ flood_re_note.headline }}.</strong>
+            {% if flood_re_note.standing == 'excluded' %}Insurers cannot pass this home's flood risk to the scheme, so a quote prices the risk in full or declines it.{% if flood_re_note.at_risk %} With the risk shown above, get a buildings insurance quote in writing before making an offer, and ask the seller for their current insurer and premium.{% else %}The risk shown above is low, so this usually matters little; still check that any quote includes flood cover.{% endif %}
+            {% elif flood_re_note.standing == 'uncertain' %}The certificate's age band ({{ flood_re_note.year_built }}) runs across 1 January 2009. The completion certificate or the seller's solicitor gives the exact date; if it is 2009 or later, the scheme does not apply.{% if flood_re_note.at_risk %} With the risk shown above, settle this before an offer.{% endif %}
+            {% elif flood_re_note.standing == 'block' %}A flat is covered by the building's insurance, arranged by the freeholder or managing agent, and the scheme backs buildings of three homes or fewer. Ask the managing agent whether the block policy includes flood cover and what the excess is.
+            {% elif flood_re_note.standing == 'eligible' %}Built before 2009, so an insurer can pass the flood risk to the scheme, which caps the flood part of the premium and excess. That does not make cover automatic: ask the seller what they pay.
+            {% else %}The certificate does not record a build date. Ask the seller's solicitor; homes built on or after 1 January 2009 are outside the scheme.{% endif %}
+        </p>
+        <p class="property-detail-note">Flood Re is the government-backed reinsurance scheme, set up under the Water Act 2014, that lets insurers offer flood cover at a capped price on homes at risk. It excludes homes built on or after 1 January 2009, buildings of four or more residential units, company-owned homes and commercial premises. Build date and dwelling type are from the EPC. Source: Flood Re eligibility criteria.</p>
         {% endif %}
 
         <h3 class="subsection-heading">Active warnings</h3>
