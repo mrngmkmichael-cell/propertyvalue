@@ -111,6 +111,22 @@
 {% if not query %}
     <p>Enter a postcode to get started.</p>
 
+{% elif error == "not_found" and retired %}
+    {# The spelling is right and the postcode is gone. Royal Mail retires
+       one when the addresses under it change, so this is the ordinary
+       case for an old deed or a probate letter, not a mistake. #}
+    <span class="kicker">Retired postcode</span>
+    <h1>{{ retired.postcode }}</h1>
+    <p class="notice notice-error">
+        {{ retired.postcode }} is a real postcode, but it was retired in
+        {{ retired.retired_on }}. Royal Mail withdraws a postcode when the addresses
+        under it change, so the spelling is not the problem. Check a recent letter or
+        the deeds for the current postcode, or read the
+        <a href="/area/{{ retired_outcode }}">{{ retired_outcode }} area guide</a>,
+        which covers the same ground.
+    </p>
+    <p class="section-sub">Retirement date from postcodes.io, which publishes the Office for National Statistics Postcode Directory.</p>
+
 {% elif error == "not_found" %}
     <span class="kicker">Not found</span>
     <h1>{{ query }}</h1>
@@ -235,7 +251,7 @@
                 {% elif not shared %}
                 <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                    PDF report . Premium
+                    PDF report &middot; Premium
                 </a>
                 {% endif %}
             </div>

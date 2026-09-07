@@ -6,7 +6,15 @@ on:
     # means roughly 420 need refreshing a day; 4 x 120 keeps pace while
     # each run stays short enough not to sit on the single worker for
     # long. Batches used to be 250 and measurably slowed live requests.
-    - cron: "20 1,7,13,19 * * *"
+    #
+    # All four runs moved into 11:00-15:00 UTC on 7 Sep 2026. Hourly
+    # views over the two days before that peaked at 06:00 (163), 22:00
+    # (157), 20:00 (142) and 23:00 (127), and fell to 30, 45, 52, 31 and
+    # 24 across 11:00 to 15:00: the audience reads late at night and
+    # first thing, and this job used to run at 07:20 and 19:20, inside
+    # two of the four peaks. Render gives us one worker and 512 MB, so
+    # the batch and the live request compete directly.
+    - cron: "20 11,12,13,14 * * *"
   workflow_dispatch: {}
 
 jobs:

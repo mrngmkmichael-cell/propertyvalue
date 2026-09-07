@@ -221,8 +221,17 @@
 
     {# Email confirmation. Shown only once a sending domain exists
        (verification_available) and only to signed-in accounts that have
-       not confirmed. Nothing is locked behind it: the ask is for the
-       alerts they may want, which cannot go to an address that bounces. #}
+       not confirmed. Two things wait on it: the change alerts, which
+       cannot go to an address that bounces, and the one free full
+       report, which auth.claim_unlock holds back so a made-up address
+       cannot collect it. The basic report is never gated.
+
+       Worth knowing before this switches on: every one of the twelve
+       most recent unlocks happened between 1 and 33 seconds after the
+       account was created (measured 7 Sep 2026), so for almost everyone
+       this banner will appear at the exact moment they were about to
+       read their report. The link in the confirmation mail carries the
+       property they were on, so the round trip returns them there. #}
     {% if current_user and not current_user.email_verified and verification_available() %}
     <div class="trial-banner" id="verify-banner">
         <span class="trial-banner-text verify-banner-text">

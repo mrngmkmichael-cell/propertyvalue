@@ -43,6 +43,73 @@ def test_unknown_page_is_a_real_404(client):
     assert "text/html" in r.headers["content-type"]
 
 
+def test_a_retired_postcode_is_not_called_a_spelling_mistake(client, monkeypatch):
+    """LS6 2AA and B29 6AA are real postcodes that Royal Mail withdrew in
+    2018 and 2010. Both reached "Double-check the spelling" on 7 Sep 2026,
+    which sends someone holding an old deed away from a search we can
+    still half answer. postcodes.io puts the retirement date in the body
+    of its own 404, so the date is sourced, not inferred."""
+    from app import main as app_main
+    from app.services import postcodes as postcodes_service
+
+    async def _no_such_postcode(_pc):
+        return None
+
+    async def _retired(_pc):
+        return {
+            "postcode": "LS6 2AA", "year": 2018, "month_name": "May",
+            "retired_on": "May 2018", "latitude": 53.820363, "longitude": -1.576503,
+        }
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _no_such_postcode)
+    monkeypatch.setattr(postcodes_service, "retired_postcode", _retired)
+
+    r = client.get("/property?postcode=LS6+2AA")
+    # Still a 404: the address cannot be reported on, and crawlers read
+    # the status rather than the prose.
+    assert r.status_code == 404
+    body = r.text
+    # Collapsed, because the sentence wraps across template lines.
+    assert "retired in May 2018" in re.sub(r"\s+", " ", body)
+    assert "Double-check the spelling" not in body
+    # The district guide covers the same ground, so the search is not a
+    # dead end.
+    assert 'href="/area/LS6"' in body
+    assert "postcodes.io" in body
+
+
+def test_a_postcode_that_never_existed_still_gets_the_spelling_advice(client, monkeypatch):
+    """The typo case is the common one and must not lose its message."""
+    from app import main as app_main
+    from app.services import postcodes as postcodes_service
+
+    async def _no_such_postcode(_pc):
+        return None
+
+    async def _never_existed(_pc):
+        return None
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _no_such_postcode)
+    monkeypatch.setattr(postcodes_service, "retired_postcode", _never_existed)
+
+    r = client.get("/property?postcode=ZZ99+9ZZ")
+    assert r.status_code == 404
+    assert "Double-check the spelling" in r.text
+
+
+def test_the_postcode_headline_is_mono_and_keeps_its_space():
+    """The h1 inherits letter-spacing -0.02em from the global heading
+    rule, which closed the gap in "M1 1AE" until the headline read as
+    "M11AE" at 375px and at desktop (7 Sep 2026). The postcode is data,
+    so it takes the mono face and normal tracking."""
+    import pathlib
+    css = (pathlib.Path(__file__).resolve().parents[1] / "app/static/css/style.css").read_text(encoding="utf-8")
+    block = css[css.index(".report-head h1 {"):]
+    block = block[:block.index("}")]
+    assert "var(--font-mono)" in block
+    assert "letter-spacing: normal" in block
+
+
 def test_robots_allows_crawling_and_points_at_sitemap(client):
     body = client.get("/robots.txt").text
     assert "Allow: /" in body
@@ -1485,13 +1552,16 @@ def test_admissions_index_has_a_school_search_that_finds_schools(client):
 
 def test_area_guide_leads_with_an_address_check(client, monkeypatch):
     """Search lands most visitors on area guides; the first thing offered
-    is now the report for an address there, not an account-only Follow."""
+    is the report for an address there. It used to have to beat an
+    account-only Follow button to that spot; the Follow row was removed
+    on 7 Sep 2026 after zero accounts ever used it, so the check is now
+    simply the only offer on the page."""
     from app import main as app_main
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
     body = client.get("/area/AB12").text
     assert 'id="area-check-postcode"' in body and 'placeholder="e.g. AB12 1AA"' in body
-    assert body.index('id="area-check-postcode"') < body.index('class="follow-row"')
+    assert "follow-row" not in body and "/districts/follow" not in body
 
 
 def test_school_page_offers_the_checker_near_the_top(client):
@@ -1530,3 +1600,64 @@ def test_a_sixth_form_college_is_not_counted_as_a_secondary_school():
     assert schools_db._is_sixteen_plus("16 plus", "Further education")
     assert not schools_db._is_sixteen_plus("Secondary", "Academy converter")
     assert not schools_db._is_sixteen_plus("Primary", "Community school")
+
+
+def test_admin_dashboard_renders_for_the_owner_and_404s_for_everyone_else(client, monkeypatch):
+    """/admin had no test at all, so a Jinja slip or a bad query on it
+    would only be found by opening it. It is one page, gated on one
+    email, and it is the page the whole business is read from."""
+    from app import auth
+    from app.db import get_session
+
+    # A stranger is not told the route exists.
+    client.cookies.clear()
+    assert client.get("/admin").status_code == 404
+
+    monkeypatch.setenv("ADMIN_EMAIL", "boss@example.test")
+    client.post("/signup", data={"email": "boss@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+    r = client.get("/admin")
+    assert r.status_code == 200
+    body = r.text
+    assert "Daily overview" in body
+    # The 7 Sep 2026 addition: the two tables that say whether one free
+    # report per account is holding.
+    assert "Is one free report enough?" in body
+    assert "Same address, more than one account, same day" in body
+    assert "Free reports by mailbox provider" in body
+
+
+def test_admin_counts_one_address_unlocked_by_two_accounts(client, monkeypatch):
+    """The pattern that prompted this: three accounts, one address, 45
+    minutes (OX3 0SG number 7, 6 Sep 2026). With no rows the section says
+    so in words rather than showing an empty table."""
+    from sqlalchemy import select
+
+    from app import auth
+    from app.db import get_session
+    from app.models import PremiumUnlock, User
+
+    monkeypatch.setenv("ADMIN_EMAIL", "boss2@example.test")
+    client.cookies.clear()
+    client.post("/signup", data={"email": "boss2@example.test",
+                                 "password": "correct horse battery staple"},
+                follow_redirects=False)
+
+    empty = client.get("/admin").text
+    assert "No address has been unlocked by more than one account" in empty
+
+    with get_session() as session:
+        for addr in ("one@example.test", "two@example.test"):
+            session.add(User(email=addr, password_hash="x"))
+        session.commit()
+        ids = [u.id for u in session.scalars(
+            select(User).where(User.email.in_(("one@example.test", "two@example.test")))
+        )]
+        for uid in ids:
+            session.add(PremiumUnlock(user_id=uid, postcode="OX3 0SG", house_number="7"))
+        session.commit()
+
+    body = client.get("/admin").text
+    assert "OX3 0SG, 7" in body
+    assert "example.test" in body  # the domain table counted them too

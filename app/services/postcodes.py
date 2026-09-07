@@ -21,6 +21,50 @@ async def lookup_postcode(raw_postcode: str) -> dict | None:
     return response.json()["result"]
 
 
+_MONTHS = ("January", "February", "March", "April", "May", "June",
+           "July", "August", "September", "October", "November", "December")
+
+
+async def retired_postcode(raw_postcode: str) -> dict | None:
+    """The retirement record postcodes.io returns inside its own 404.
+
+    Royal Mail withdraws a postcode when the addresses under it change,
+    and postcodes.io answers one with a 404 whose body still carries the
+    postcode, the year and month it was terminated, and its old
+    coordinates. "We couldn't find that postcode, check the spelling" is
+    the wrong answer for these: the spelling is right and the postcode is
+    simply gone. Old deeds, probate letters and inherited addresses carry
+    them (LS6 2AA, retired May 2018, and B29 6AA, August 2010, both
+    reached the typo message on 7 Sep 2026).
+
+    Returns None for a postcode that never existed, which is the real
+    typo case, and None on any transport failure: the caller already has
+    a correct, if blunt, message to fall back on.
+    """
+    encoded = quote(raw_postcode.strip())
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(f"{API_BASE}/postcodes/{encoded}")
+        if response.status_code != 404:
+            return None
+        terminated = (response.json() or {}).get("terminated")
+    except (httpx.HTTPError, ValueError):
+        return None
+    if not terminated or not terminated.get("year_terminated"):
+        return None
+
+    month = terminated.get("month_terminated")
+    month_name = _MONTHS[month - 1] if isinstance(month, int) and 1 <= month <= 12 else ""
+    return {
+        "postcode": terminated.get("postcode") or raw_postcode.strip().upper(),
+        "year": terminated["year_terminated"],
+        "month_name": month_name,
+        "retired_on": f"{month_name} {terminated['year_terminated']}".strip(),
+        "latitude": terminated.get("latitude"),
+        "longitude": terminated.get("longitude"),
+    }
+
+
 async def nearby_postcodes(lat: float, lon: float, radius_m: int = 1000, limit: int = 100) -> list[dict]:
     """Postcodes within a radius of a point, nearest first - used to
     build a Land Registry VALUES batch for "sold nearby" comparables,

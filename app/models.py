@@ -91,19 +91,21 @@ class WatchlistItem(Base):
 
 
 class SavedDistrict(Base):
-    """A postcode district someone follows, as opposed to a single
-    address on the watchlist.
+    """A postcode district someone followed, as opposed to a single
+    address on the watchlist. Retired on 7 Sep 2026.
 
-    Most people looking to move are deciding on an area long before
-    they have an address, and the watchlist had nothing for them: they
-    read one area guide and never came back. A district changes on a
-    real, monthly cadence - Land Registry lodges new sales, the police
-    publish another month - so there is something honest to tell them
-    when they return, without inventing a reason to email.
+    The reasoning was sound: most people looking to move are deciding on
+    an area long before they have an address, and a district changes on
+    a real monthly cadence, so there was something honest to tell them
+    on their next visit without inventing a reason to email. Nobody
+    used it. The table held zero rows across every account from launch
+    to 7 Sep 2026, so the routes, the UI on the area guide and the
+    watchlist, the diff and this model's helpers all came out.
 
-    last_snapshot holds the last-seen _district_summary as JSON, the
-    same trick WatchlistItem uses: the diff is computed on the visit,
-    so following a district needs no cron of its own.
+    The model and the empty table are kept deliberately. Dropping a
+    table in production cannot be undone, an empty one costs nothing,
+    and leaving it means the decision can be revisited with evidence
+    rather than reconstructed from git history.
     """
     __tablename__ = "saved_districts"
     __table_args__ = (

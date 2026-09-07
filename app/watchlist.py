@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.db import get_session
-from app.models import SavedDistrict, User, WatchlistItem
+from app.models import User, WatchlistItem
 
 
 def get_item(user_id: int, postcode: str, house_number: str = "") -> dict | None:
@@ -153,72 +153,8 @@ def mark_digest_sent(user_id: int) -> None:
 
 
 # --- Followed districts -------------------------------------------------
-# Same shape as the property watchlist above, one level up: a district
-# rather than a door. Kept in this module because a person thinks of
-# both as "things I am keeping an eye on", and the watchlist page shows
-# them together.
-
-
-def list_districts(user_id: int) -> list[dict]:
-    with get_session() as session:
-        rows = session.scalars(
-            select(SavedDistrict)
-            .where(SavedDistrict.user_id == user_id)
-            .order_by(SavedDistrict.created_at.desc())
-        )
-        return [
-            {
-                "id": d.id,
-                "outcode": d.outcode,
-                "created_at": d.created_at,
-                "last_snapshot": d.last_snapshot,
-            }
-            for d in rows
-        ]
-
-
-def is_following(user_id: int, outcode: str) -> bool:
-    with get_session() as session:
-        return session.scalar(
-            select(SavedDistrict.id).where(
-                SavedDistrict.user_id == user_id,
-                SavedDistrict.outcode == outcode,
-            )
-        ) is not None
-
-
-def follow_district(user_id: int, outcode: str) -> None:
-    """Idempotent: the button is a plain form post, and a double
-    submit or a back-and-resubmit must not raise on the unique
-    constraint."""
-    with get_session() as session:
-        existing = session.scalar(
-            select(SavedDistrict).where(
-                SavedDistrict.user_id == user_id,
-                SavedDistrict.outcode == outcode,
-            )
-        )
-        if existing is None:
-            session.add(SavedDistrict(user_id=user_id, outcode=outcode))
-            session.commit()
-
-
-def unfollow_district(user_id: int, outcode: str) -> None:
-    with get_session() as session:
-        existing = session.scalar(
-            select(SavedDistrict).where(
-                SavedDistrict.user_id == user_id,
-                SavedDistrict.outcode == outcode,
-            )
-        )
-        if existing is not None:
-            session.delete(existing)
-            session.commit()
-
-
-def update_district_snapshot(user_id: int, district_id: int, snapshot_json: str) -> None:
-    with get_session() as session:
-        row = session.get(SavedDistrict, district_id)
-        if row and row.user_id == user_id:
-            row.last_snapshot = snapshot_json
-            session.commit()
+# Removed on 7 Sep 2026. saved_districts held zero rows across every
+# account since launch, so the whole feature (list, follow, unfollow,
+# snapshot) came out with the routes and the two UI surfaces. The
+# model and the empty table are left alone: dropping a production
+# table cannot be undone, and an empty one costs nothing.

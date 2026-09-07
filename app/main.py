@@ -803,92 +803,9 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
     return changes
 
 
-DISTRICT_SUMMARY_CACHE_TTL_S = 60 * 60 * 6
-
-# A month's worth of recorded crime in a district swings by a few
-# offences for no reason a reader would care about. Only a move past
-# this counts as something worth telling them.
-DISTRICT_CRIME_DEADBAND = 15
-
-
-async def _district_summary(outcode: str) -> dict:
-    """The handful of district-level figures a followed district is
-    diffed on. Deliberately only the ones that actually move on a
-    monthly cadence and come from a named source: Land Registry lodges
-    new sales, the police publish another month. Everything else on an
-    area guide (schools, broadband, deprivation) changes annually at
-    best, and flagging it would manufacture news out of a refresh."""
-    cache_key = ("district_summary", outcode)
-    cached = _cache.get(cache_key, DISTRICT_SUMMARY_CACHE_TTL_S)
-    if cached is not None:
-        return cached
-
-    summary: dict = {"outcode": outcode}
-    try:
-        centroid = await postcodes.outcode_centroid(outcode)
-    except httpx.HTTPError:
-        centroid = None
-    # A district that straddles a boundary can come back with null
-    # coordinates, the same way a terminated postcode does; everything
-    # below needs a real point to measure from.
-    if not centroid or centroid.get("latitude") is None or centroid.get("longitude") is None:
-        return summary
-
-    summary["admin_district"] = centroid.get("admin_district")
-    sales_result, crime_result = await asyncio.gather(
-        _outcode_sales(centroid["latitude"], centroid["longitude"]),
-        crime.summary_for_outcode(outcode),
-        return_exceptions=True,
-    )
-
-    if not isinstance(sales_result, Exception) and sales_result:
-        summary["sales_count"] = sales_result.get("count")
-        # Only carried when there were enough sales to make a median
-        # mean anything; below that the area guide itself declines to
-        # show one, and a diff must not be braver than the page.
-        if sales_result.get("enough_for_median"):
-            summary["median_price"] = sales_result.get("median")
-        latest = (sales_result.get("latest") or [])
-        if latest:
-            summary["latest_sale_date"] = latest[0].get("date")
-
-    if not isinstance(crime_result, Exception) and crime_result:
-        summary["crime_total"] = crime_result.get("total")
-        summary["crime_month"] = crime_result.get("month")
-
-    _cache.set(cache_key, summary)
-    return summary
-
-
-def _district_changes(old: dict, new: dict) -> list[str]:
-    """What actually moved in a district since this person last looked.
-    Same contract as _snapshot_changes: a sentence a reader can act on,
-    or nothing at all. Silence is a valid and common answer."""
-    changes = []
-
-    old_median, new_median = old.get("median_price"), new.get("median_price")
-    if old_median and new_median and old_median != new_median:
-        direction = "up" if new_median > old_median else "down"
-        changes.append(
-            f"Median sold price {direction} from {_format_gbp(old_median)} to {_format_gbp(new_median)}"
-        )
-
-    old_count, new_count = old.get("sales_count"), new.get("sales_count")
-    if old_count is not None and new_count is not None and new_count > old_count:
-        added = new_count - old_count
-        changes.append(
-            f"{added} new sale{'s' if added != 1 else ''} lodged with Land Registry around here"
-        )
-
-    old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
-    if old_crime is not None and new_crime is not None:
-        diff = new_crime - old_crime
-        if abs(diff) >= DISTRICT_CRIME_DEADBAND:
-            changes.append(
-                f"Recorded crime {'up' if diff > 0 else 'down'} by {abs(diff)} in the latest published month"
-            )
-
-    return changes
+# _district_summary and _district_changes, and the two constants they
+# used, were removed on 7 Sep 2026 with district following. They existed
+# only to diff a followed district on the visit, and nothing followed one.
 
 
 def _imd_label(decile: int | None) -> str | None:
@@ -1092,9 +1009,18 @@ async def _indexnow_ping_if_changed():
 # deploy costs upstreams no more than five ordinary page views.
 _PREWARM_POSTCODES = ["SW1A 1AA", "M1 1AE", "LS1 4DY", "B1 1BD"]
 
+# The one the homepage actually advertises. "See a real report for M1 1AE"
+# is the zero-typing route into the product, and on 7 Sep 2026 it was
+# measured cold on production twice at 6.15 s and 5.80 s against 0.87 s
+# warm. Warming all four on every deploy was dropped on 4 Sep because
+# each run read the reference tables four times over while Neon transfer
+# was the scarce resource; one postcode is a quarter of that, and it is
+# the only one a first-time visitor is invited to click.
+_HERO_SAMPLE_POSTCODE = "M1 1AE"
 
-async def _prewarm_reports():
-    for pc in _PREWARM_POSTCODES:
+
+async def _prewarm_reports(postcodes_to_warm=None):
+    for pc in (postcodes_to_warm or _PREWARM_POSTCODES):
         try:
             location = await lookup_postcode(pc)
             if location:
@@ -1124,6 +1050,13 @@ async def on_startup():
         # survives deploys, and each run read the reference tables four
         # times over at the exact moment the transfer allowance was the
         # scarce resource. _prewarm_reports stays for a manual call.
+        #
+        # One of the four came back on 7 Sep: the homepage links M1 1AE
+        # five times as "See a real report", and that link was measured
+        # cold at 6.15 s and 5.80 s against 0.87 s warm. It is the only
+        # report a first-time visitor is invited to open by name, so it
+        # is worth a quarter of the cost the old prewarm carried.
+        asyncio.create_task(_prewarm_reports([_HERO_SAMPLE_POSTCODE]))
 
 
 def base_context(request: Request) -> dict:
@@ -2297,6 +2230,12 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
 
     if location is None:
         context["error"] = "not_found"
+        # A retired postcode is not a typo, and telling its owner to check
+        # their spelling sends them away from a search we can still
+        # answer: the district guide covers the same ground.
+        context["retired"] = await postcodes.retired_postcode(postcode)
+        if context["retired"]:
+            context["retired_outcode"] = context["retired"]["postcode"].split(" ")[0]
         # A postcode that does not exist is a 404, not a 200 with an
         # apology on it - crawlers and uptime checks read the status.
         return templates.TemplateResponse(request, "property.html", context, status_code=404)
@@ -4640,17 +4579,6 @@ def _named_schools(landscape: dict | None) -> list[dict]:
     ]
 
 
-def _following_district(context: dict, outcode: str) -> None:
-    """Whether this reader follows this district. Set on the context
-    outside the cached payload on purpose: the payload is shared by
-    every visitor to the guide, so a per-user flag inside it would show
-    one person's follow state to everyone."""
-    user = context.get("current_user")
-    context["following_district"] = bool(
-        user and db.is_configured() and watchlist.is_following(user["id"], outcode)
-    )
-
-
 def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> None:
     """FAQs and neighbouring-district links for an area guide. Every
     answer is the guide's own real data rephrased as a sentence, and a
@@ -5131,7 +5059,6 @@ async def area_guide(request: Request, outcode: str):
     if cached is not None:
         context.update(cached)
         _area_guide_extras(context, outcode, lat, lon)
-        _following_district(context, outcode)
         response = templates.TemplateResponse(request, "area_guide.html", context)
         response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
         return response
@@ -5139,7 +5066,6 @@ async def area_guide(request: Request, outcode: str):
     page_data = await _build_area_payload(outcode, location, cache_key)
     context.update(page_data)
     _area_guide_extras(context, outcode, lat, lon)
-    _following_district(context, outcode)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     timing = _server_timing_header()
     response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{_cache.last_outcome}"'
@@ -5331,6 +5257,55 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             .subquery()
         )
     ) or 0
+
+    # One free report per account is the whole free tier, so the question
+    # that matters is whether people are simply making another account.
+    # On 6 Sep 2026 three separate accounts, on qq.com, hotmail.com and
+    # gmail.com, unlocked the identical address (OX3 0SG, number 7) in
+    # 45 minutes. That was found by hand; this makes it a number.
+    #
+    # Same address, more than one account, within a day of each other.
+    # Two people can of course check the same house, so this is a signal
+    # to read, not a verdict: a shared address in a city centre will
+    # show up here honestly.
+    shared = session.execute(
+        select(
+            PremiumUnlock.postcode,
+            PremiumUnlock.house_number,
+            func.date(PremiumUnlock.created_at).label("day"),
+            func.count(func.distinct(PremiumUnlock.user_id)).label("accounts"),
+        )
+        .group_by(PremiumUnlock.postcode, PremiumUnlock.house_number, "day")
+        .having(func.count(func.distinct(PremiumUnlock.user_id)) > 1)
+        .order_by(func.count(func.distinct(PremiumUnlock.user_id)).desc())
+        .limit(10)
+    ).all()
+    m["shared_unlock_addresses"] = [
+        {
+            "address": f"{pc}{', ' + hn if hn else ''}",
+            "day": str(day),
+            "accounts": n,
+        }
+        for pc, hn, day, n in shared
+    ]
+
+    # Which mailbox providers the free reports are going to. A domain
+    # nobody has heard of appearing near the top is the disposable-mail
+    # signal; one turned up on 6 Sep 2026 (vtmpj.com).
+    domain_rows = session.execute(
+        select(User.email, func.count(PremiumUnlock.id))
+        .join(PremiumUnlock, PremiumUnlock.user_id == User.id)
+        .group_by(User.email)
+    ).all()
+    by_domain: dict[str, int] = {}
+    for email, count in domain_rows:
+        domain = (email or "").rsplit("@", 1)[-1].lower()
+        if domain:
+            by_domain[domain] = by_domain.get(domain, 0) + count
+    m["unlocks_by_domain"] = [
+        {"domain": d, "count": c}
+        for d, c in sorted(by_domain.items(), key=lambda kv: (-kv[1], kv[0]))[:12]
+    ]
 
     plan_q = select(User.plan, func.count()).where(User.is_premium.is_(True))
     if test_ids:
@@ -6679,29 +6654,13 @@ async def watchlist_view(request: Request):
             watchlist.update_snapshot(context["current_user"]["id"], item["id"], json.dumps(fresh, default=str))
     context["items"] = items
 
-    # Followed districts, diffed the same way and on the same visit.
-    districts = watchlist.list_districts(context["current_user"]["id"])
-    if districts:
-        fresh_districts = await asyncio.gather(
-            *(_district_summary(d["outcode"]) for d in districts),
-            return_exceptions=True,
-        )
-        for district, fresh in zip(districts, fresh_districts):
-            if isinstance(fresh, Exception):
-                district["changes"] = []
-                continue
-            old_snapshot = json.loads(district["last_snapshot"]) if district["last_snapshot"] else None
-            district["changes"] = _district_changes(old_snapshot, fresh) if old_snapshot else []
-            district["summary"] = fresh
-            watchlist.update_district_snapshot(
-                context["current_user"]["id"], district["id"], json.dumps(fresh, default=str)
-            )
-    context["districts"] = districts
-
-    context["changed_item_count"] = (
-        sum(1 for item in items if item["changes"])
-        + sum(1 for d in districts if d.get("changes"))
-    )
+    # District following was removed on 7 Sep 2026. saved_districts held
+    # zero rows across 43 real accounts and six weeks, while the same
+    # page carried two other return hooks, so the feature was costing a
+    # gather, a diff and a block of the page to serve nobody. The table
+    # is left in place rather than dropped: it is empty, it costs
+    # nothing, and dropping it cannot be undone.
+    context["changed_item_count"] = sum(1 for item in items if item["changes"])
     context["alerts_configured"] = email_service.is_configured()
     return templates.TemplateResponse(request, "watchlist.html", context)
 
@@ -7063,30 +7022,10 @@ def watchlist_remove(request: Request, item_id: int = Form(...)):
     return RedirectResponse("/watchlist", status_code=303)
 
 
-@app.post("/districts/follow")
-def district_follow(request: Request, outcode: str = Form(...)):
-    """Follow a district from its area guide. Signing in is required,
-    so an anonymous click goes to /login with next set back to the
-    guide rather than losing the intent."""
-    outcode = outcode.strip().upper()
-    user = auth.current_user(request)
-    if not user:
-        return RedirectResponse(f"/login?next=/area/{quote(outcode)}", status_code=303)
-    watchlist.follow_district(user["id"], outcode)
-    return RedirectResponse(f"/area/{quote(outcode)}?followed=1", status_code=303)
-
-
-@app.post("/districts/unfollow")
-def district_unfollow(request: Request, outcode: str = Form(...), back: str = Form("")):
-    outcode = outcode.strip().upper()
-    user = auth.current_user(request)
-    if not user:
-        return RedirectResponse("/login?next=/watchlist", status_code=303)
-    watchlist.unfollow_district(user["id"], outcode)
-    # Unfollowing happens from two places and each should stay put.
-    if back == "area":
-        return RedirectResponse(f"/area/{quote(outcode)}", status_code=303)
-    return RedirectResponse("/watchlist", status_code=303)
+# /districts/follow and /districts/unfollow were removed on 7 Sep 2026
+# along with the rest of district following. Both were POST-only and
+# reachable from one button each, so nothing links to them and no
+# redirect is owed to anyone. See the note in the watchlist route.
 
 
 # --- School Guide ---

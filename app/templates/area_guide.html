@@ -70,28 +70,8 @@
     <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
 </form>
 
-{% if following_district %}
-<div class="follow-row">
-    <span class="follow-state">You are following {{ outcode }}</span>
-    <form action="/districts/unfollow" method="post">
-        <input type="hidden" name="outcode" value="{{ outcode }}">
-        <input type="hidden" name="back" value="area">
-        <button type="submit" class="follow-btn follow-btn-off">Stop following</button>
-    </form>
-    <a class="follow-link" href="/watchlist">See what has changed &rarr;</a>
-</div>
-{% else %}
-<div class="follow-row">
-    <form action="/districts/follow" method="post">
-        <input type="hidden" name="outcode" value="{{ outcode }}">
-        <button type="submit" class="follow-btn">Follow {{ outcode }}</button>
-    </form>
-    <span class="follow-state">
-        New sales and the latest crime figures for this district, waiting on My properties next time
-        you visit. No email unless you ask for one.
-    </span>
-</div>
-{% endif %}
+{# The "Follow this district" row was removed on 7 Sep 2026: zero
+   accounts had ever used it. #}
 
 {% if is_scotland %}
 <dialog class="report-modal" id="modal-scotland-notice">

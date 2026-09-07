@@ -101,6 +101,48 @@
 </section>
 
 <section class="landing-section">
+    <h2 class="landing-heading">Is one free report enough?</h2>
+    <p class="landing-subheading">
+        The free tier is one full report per account, so the way round it is a second account. These
+        two tables say how often that is happening, instead of leaving it to be noticed by hand.
+    </p>
+
+    <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 1.5rem;">Same address, more than one account, same day</h3>
+    {% if shared_unlock_addresses %}
+    <table class="tx-table">
+        <thead><tr><th>Address</th><th>Day</th><th class="num">Accounts</th></tr></thead>
+        <tbody>
+            {% for row in shared_unlock_addresses %}
+            <tr>
+                <td>{{ row.address }}</td>
+                <td>{{ row.day }}</td>
+                <td class="num">{{ row.accounts }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="section-sub">Two people can genuinely check the same house, so read this as a signal rather than a verdict. Three accounts on one address inside an hour is the pattern worth looking at.</p>
+    {% else %}
+    <p class="notice">No address has been unlocked by more than one account on the same day.</p>
+    {% endif %}
+
+    <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 1.5rem;">Free reports by mailbox provider</h3>
+    {% if unlocks_by_domain %}
+    <table class="tx-table">
+        <thead><tr><th>Domain</th><th class="num">Free reports</th></tr></thead>
+        <tbody>
+            {% for row in unlocks_by_domain %}
+            <tr><td>{{ row.domain }}</td><td class="num">{{ row.count }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="section-sub">A domain nobody recognises near the top is the disposable-mailbox signal.</p>
+    {% else %}
+    <p class="notice">No free reports have been taken yet.</p>
+    {% endif %}
+</section>
+
+<section class="landing-section">
     <h2 class="landing-heading">Pageviews</h2>
     <div class="feature-grid">
         <div class="feature-card">
