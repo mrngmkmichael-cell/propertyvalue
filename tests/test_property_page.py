@@ -590,3 +590,15 @@ def test_grammar_schools_within_reach_sit_in_the_schools_modal(client, fake_repo
     assert "Grammar schools within reach" in body and "Testshire Grammar School" in body and "2.4 mi (2025/26)" in body
     assert 'href="/schools/grammar"' in body
 
+
+def test_price_per_square_metre_sits_in_the_valuation_modal(client, fake_report):
+    """Idea 9 of 7 Sep 2026: sold prices over EPC floor areas, for recent
+    sales nearby and this home, inside the Premium valuation modal."""
+    data = {"sample_size": 3, "median": 4400, "low": 4200, "high": 4800, "years_window": 1,
+            "rows": [{"address": "1 Test Street", "date": "2026-06-01", "amount": 400000.0, "floor_area": 100, "per_sqm": 4050, "sold_per_sqm": 4000, "distance_m": 120}],
+            "subject": {"amount": 352000.0, "date": "2023-08-10", "year": "2023", "per_sqm": 4400, "floor_area": 80},
+            "subject_floor_area": 80, "implied_value": 352000, "subject_vs_median_pct": 0}
+    body = _report(client, fake_report, gather=fake_gather(price_per_sqm=data, valuation={"estimate": 350000, "low": 330000, "high": 370000, "sample_size": 2, "years_window": 1, "floor_area_variance_pct": 5}))
+    assert "Price per square metre" in body and "£4,400 per m²" in body and "would be worth about <strong>£352,000</strong>" in body
+    assert "This home last sold at <strong>£4,400 per m²</strong>" in body and "£4,400/m² locally" in body
+

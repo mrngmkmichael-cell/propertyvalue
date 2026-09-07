@@ -53,6 +53,16 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         rows.append({"group": group, "check": check, "result": result, "status": status, "source": source})
 
     # ---- Value and market ------------------------------------------------
+    psqm = report.get("price_per_sqm")
+    if psqm and (psqm.get("median") or psqm.get("subject")):
+        bits = []
+        if psqm.get("median"):
+            bits.append(f"{_fmt_gbp(psqm['median'])} per sq m at the median of {psqm['sample_size']} recent sales nearby with a known floor area")
+        if psqm.get("implied_value"):
+            bits.append(f"about {_fmt_gbp(psqm['implied_value'])} for this home's {psqm['subject_floor_area']} sq m at that rate")
+        if psqm.get("subject"):
+            bits.append(f"this home last sold at {_fmt_gbp(psqm['subject']['per_sqm'])} per sq m in {psqm['subject']['year']}")
+        add("Value and market", "Price per square metre", "; ".join(bits), "neutral", "HM Land Registry sold prices over EPC floor areas")
     sales = rc.get("sales") or {}
     tx = report.get("transactions") or []
     if sales.get("latest_year") and sales.get("latest_amount"):

@@ -2983,6 +2983,10 @@ async def _full_property_gather(
         context["valuation"] = valuation.estimate_value(
             comparables_result, subject_floor_area, growth_area["annual_change_pct"] if growth_area else None
         )
+        context["price_per_sqm"] = valuation.price_per_sqm(
+            comparables_result, subject_floor_area, context.get("transactions") or [],
+            growth_area["annual_change_pct"] if growth_area else None,
+        )
         context["new_build_stat"] = _new_build_stat(comparables_result)
         # For the "Keep exploring" tile at the foot of the report. The
         # Comparables tab is free and lists every one of these sales, so
