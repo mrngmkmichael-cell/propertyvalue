@@ -6,6 +6,69 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Ideas 3, 4, 6 and 7 of nine (7 Sep 2026, commits 325afc1 to eea247d,
+  178bec6, 041c531, 6959f5f). Bus Service (Premium): the DfT Bus Open
+  Data Service publishes every operator's timetable as GTFS with no key;
+  scripts/import_bus_frequency.py reads the 1.3 GB national feed and
+  keeps, for 302,987 stops, the boardable departures on a reference
+  Tuesday (daytime, evening) and Sunday, first and last bus and the
+  routes; the card leads with the best stop within 500 m in buses an
+  hour. Two corrections the raw feed needed: buses and coaches only
+  (route types 3 and 200; the feed carries tube, tram, DLR, ferries), and
+  the same journey published up to three times (operator plus authority
+  datasets, or twice in one), so a departure counts once per stop, route
+  and minute (eight passes over the file to fit in memory). Verified:
+  Redbridge Central Library takes 1,078 daytime departures from 18 routes,
+  90 an hour, and that is real; the 150 and 364 were the copies.
+  Health Services (Premium): NHS England Digital list sizes (6,129
+  practices, 1 Aug 2026) and fully qualified GP full-time equivalents
+  (July 2026), geocoded by postcode, give patients per GP at the three
+  nearest practices against the England median of 2,186; NHS England's
+  monthly A&E file (121 Type 1 providers, July 2026) with its ICB mapping
+  gives the four-hour performance of the trusts in the same integrated
+  care board against 61.5% nationally. The council's finances on the
+  free Council Tax card: MHCLG's Band D live table (all precepts, every
+  billing authority since 1993-94), the exceptional financial support
+  list for every year from 2020-21 (51 councils; counties such as East
+  Sussex and Norfolk matched by name so their districts see it) and the
+  councils' section 114 notices since 2018, flagged when current. Flood
+  Re on the free Flood Risk card: homes built in 2009 or later cannot lean
+  on the scheme, read from the EPC build date and dwelling type against
+  the zone and surface water risk, with the pre-offer step spelled out.
+  Postcode lookups now carry the county. 43 checks quoted everywhere. Tests
+  223.
+- Idea 2 of nine, Development Nearby (7 Sep 2026). Brownfield land
+  register sites within 800 m of the address, from MHCLG's planning data
+  platform (planning.data.gov.uk, dataset brownfield-land, 37,670 sites),
+  which retires the 2025 objection in designations.py that only
+  third-party mirrors existed. A Premium card in Planning & Heritage:
+  distance, site, hectares, homes where the register states them,
+  permission status, ownership, year listed, the council's count on the
+  platform and the newest entry nearby; "Register not on the national
+  platform" when a council has nothing there (339 authorities mapped by
+  GSS code, scripts/import_planning_organisations.py); England only
+  elsewhere. Flagged (Check this) when a site has permission, ten or
+  more homes or half a hectare; the flag waits behind the lock. PDF:
+  Part 6 line and a checklist row. The site now says 41 checks
+  everywhere (scripts/bump_check_count.py moves the figure; the
+  free/Premium split on the landing and pricing pages is by hand). Real
+  check: Bromley holds 88 sites on the platform, Manchester 616; BR6 9AX
+  has 13 in a 2 km box. Tests 208.
+- Idea 1 of nine, the cost of reaching EPC Band C (7 Sep 2026, commit
+  9aea3c7). The new EPC data service (the old epc.opendatacommunities.org
+  redirected to it on 30 May 2026) returns a domestic certificate with
+  its recommendation report inline: suggested_improvements, each with an
+  indicative cost range, a typical yearly saving and the rating after
+  that step, cumulative, in the assessor's order. The report sums the
+  shortest prefix that reaches 69 (Band C) and shows it on the energy
+  card and as a table in the modal, with the crossing step tinted;
+  already-C homes get the cost of the remaining suggestions, new builds
+  with no measures say so. Measure names come from the codes-info
+  endpoint (scripts/import_epc_codes.py, 69 codes in
+  app/data/epc_improvement_codes.json). The premium PDF carries the same
+  line in Part 4 and a checklist row. Real check: 6 Avalon Road BR6 9AX,
+  Band D 57, reaches C after four measures for £12,100 to £26,350. Tests
+  204.
 - The morning brainstorm, built the same afternoon (7 Sep 2026). Seven of
   the eight ideas shipped in one deploy. The report h1 rendered "M1 1AE"
   as "M11AE" (the -0.02em inherited from the global heading rule closed
@@ -394,6 +457,17 @@ the local Claude session as things ship. Newest first.
 
 ## In progress or queued (do not re-suggest as new)
 
+- The nine content ideas Michael approved on 7 Sep 2026 ("do 1-9 in
+  sequence, carefully"), each data-checked, tested, deployed and verified
+  live before the next: (1) EPC recommendations and the cost to reach
+  Band C; (2) brownfield register sites near the home; (3) buses per hour
+  from the nearest stop (BODS); (4) GP list pressure and nearest A&E
+  performance; (5) census 2011 to 2021 change on area guides; (6) council
+  financial health, council tax rise history and section 114 notices;
+  (7) Flood Re eligibility flag; (8) grammar school layer with the
+  official familiarisation papers; (9) price per square metre. Progress is
+  recorded in this file under Shipped as each lands.
+
 - Report page DOM reduction (21k nodes) - separate session, approved.
 - Crime months as "May 2026" not "2026-05" - separate session.
 - B2B agency tier: owner emailing the comped agency power user.
@@ -417,6 +491,12 @@ the local Claude session as things ship. Newest first.
 
 ## On hold by the owner (suggest only if new evidence)
 
+- SchoolAppealHQ, a school admission appeals and EHCP venture (Michael's
+  business model v1, August 2026). Assessed 7 Sep 2026: the admissions
+  half could sit on our school pages, the EHCP half could not. Michael:
+  "hold fire on this first, keep improving on our website first". Do not
+  re-raise; the free admissions layer on school pages is also on hold.
+
 - Press pitch outreach (three stories drafted in docs/press/press-kit.md).
   Held again by Michael on 5 Sep 2026 ("hold off"): do not send, do not
   re-raise.
@@ -427,6 +507,12 @@ the local Claude session as things ship. Newest first.
 - Trustpilot email invites (held).
 
 ## Rejected on principle (never suggest)
+
+- School admission mock exams (11-plus practice papers written by us).
+  Raised by Michael 7 Sep 2026, declined: content creation with an
+  examiner's error risk, a crowded specialist market, and no fit with a
+  due-diligence brand. The grammar school layer links the consortia's
+  official familiarisation papers instead.
 
 - Interface languages / translations. Built in full on 31 Aug 2026
   (nine languages, landing pages, header picker with flags, ~640
