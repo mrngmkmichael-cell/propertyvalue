@@ -5630,6 +5630,29 @@ def email_status(request: Request):
     })
 
 
+@app.post("/internal/resend-confirmation")
+async def internal_resend_confirmation(request: Request, email: str = Form(...)):
+    """Send the confirmation link to one account from the outside, for the
+    support case "I never got the email". Secret-gated like the other
+    internal routes; respects the same ten-minute gap as the banner."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email.strip().lower())
+        if user is None:
+            return JSONResponse({"error": "no_such_account"}, status_code=404)
+        if user.email_verified_at is not None:
+            return JSONResponse({"sent": False, "reason": "already_confirmed"})
+        sent_at = _as_utc(user.verification_sent_at)
+        if sent_at and (datetime.datetime.now(datetime.timezone.utc) - sent_at).total_seconds() < VERIFY_RESEND_MIN_GAP_S:
+            return JSONResponse({"sent": False, "reason": "sent_recently"})
+        user_id = user.id
+    ok = await send_verification_email(_public_base_url(request), user_id)
+    return JSONResponse({"sent": ok, "confirmation_live": email_service.can_verify(), "last_send_error": email_service.last_error})
+
+
 @app.post("/internal/send-daily-summary")
 async def send_daily_summary(request: Request):
     """Scheduled job (see .github/workflows/daily-summary.yml) - posts a
