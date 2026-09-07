@@ -8,7 +8,7 @@
     {% if verified %}
     <span class="kicker">Email confirmed</span>
     <h1>Thank you, that address is confirmed.</h1>
-    <p class="dek">{% if free_report_waiting %}Your free full report is unlocked: open the property and every card is yours. {% endif %}Change alerts for the properties and schools you save will reach {{ verified_email }}.</p>
+    <p class="dek">{% if free_report_waiting %}Your free full report is ready: open the property and it will ask whether to use it there. {% endif %}Change alerts for the properties and schools you save will reach {{ verified_email }}.</p>
     {% if next_url %}
     <p><a class="hero-signup-btn" href="{{ next_url }}">{{ 'Open your report' if free_report_waiting else 'Back to where you were' }}</a></p>
     {% else %}

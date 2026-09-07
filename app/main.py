@@ -2333,19 +2333,26 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # must run before the gather so the gather knows what to fetch.
     current = context["current_user"]
     premium_unlocked = bool(current and current.get("subscribed")) or _share is not None
-    context["spent_unlock_now"] = False
+    context["spent_unlock_now"] = request.query_params.get("unlocked") == "1"
+    context["can_unlock_now"] = False
     if current and not premium_unlocked:
         with db.get_session() as unlock_session:
-            already = auth.has_unlocked(unlock_session, current["id"], canonical, house_number)
-            premium_unlocked = auth.claim_unlock(unlock_session, current["id"], canonical, house_number)
-            context["spent_unlock_now"] = premium_unlocked and not already
+            # A property already unlocked stays unlocked. A new one is
+            # never unlocked silently: until 7 Sep 2026 the first property
+            # a signed-in person opened spent their free full report,
+            # stray postcode or not. Now the page offers it, and the spend
+            # happens only when they say yes (POST /property/unlock).
+            premium_unlocked = auth.has_unlocked(unlock_session, current["id"], canonical, house_number)
             # Refused because the address is not confirmed yet: the free
             # report is still theirs, one click away. Not a paywall.
             context["needs_confirmation"] = (not premium_unlocked) and auth.needs_confirmation(unlock_session, current["id"])
             state = auth.premium_state(
                 unlock_session.get(User, current["id"]), unlock_session
             )
-            if not premium_unlocked and not context["needs_confirmation"] and not _is_excluded_viewer(request):
+            context["can_unlock_now"] = (not premium_unlocked and not context["needs_confirmation"]
+                                         and state["free_unlocks_left"] > 0)
+            if (not premium_unlocked and not context["needs_confirmation"] and not context["can_unlock_now"]
+                    and not _is_excluded_viewer(request)):
                 # The paywall moment: an account with no free reports
                 # left opened a property it has not unlocked. Stored as
                 # a pageview with a synthetic path so the funnel can
@@ -3409,7 +3416,9 @@ async def api_extension_report(request: Request, postcode: str = ""):
         token_user = _user_from_extension_token(auth_header[7:])
         if token_user:
             with db.get_session() as unlock_session:
-                premium_unlocked = bool(token_user.is_premium) or auth.claim_unlock(
+                # An unlock already made on the site counts; the extension
+                # never spends the free report on a listing by itself.
+                premium_unlocked = bool(token_user.is_premium) or auth.has_unlocked(
                     unlock_session, token_user.id, postcode, ""
                 )
 
@@ -3639,7 +3648,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         return JSONResponse({"error": "login_required"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
     if not token_user.is_premium:
         with db.get_session() as unlock_session:
-            if not auth.claim_unlock(unlock_session, token_user.id, postcode, ""):
+            if not auth.has_unlocked(unlock_session, token_user.id, postcode, ""):
                 return JSONResponse({"error": "premium_required"}, status_code=403,
                                     headers=_EXTENSION_CORS_HEADERS)
 
@@ -5954,6 +5963,23 @@ def signup_submit(
         _safe_next(next), status_code=303,
         background=BackgroundTask(send_verification_email, _public_base_url(request), user_id, _safe_next(next)),
     )
+
+
+@app.post("/property/unlock")
+def property_unlock(request: Request, postcode: str = Form(...), house_number: str = Form("")):
+    """The yes in "use your free full report on this property?". Spends
+    the unlock and returns to the report, now open. Anything that stops
+    the spend (not signed in, address not confirmed, nothing left) just
+    returns to the report, whose own state explains why."""
+    postcode, house_number = postcode.strip(), house_number.strip()
+    back = "/property?" + (urlencode({"postcode": postcode, "house_number": house_number}) if house_number else urlencode({"postcode": postcode}))
+    current = auth.current_user(request)
+    if not current:
+        return RedirectResponse("/login?next=" + quote(back), status_code=303)
+    canonical, house_number = auth.property_key(postcode, house_number)
+    with db.get_session() as session:
+        granted = auth.claim_unlock(session, current["id"], canonical, house_number)
+    return RedirectResponse(back + ("&unlocked=1" if granted else ""), status_code=303)
 
 
 @app.get("/verify-email")

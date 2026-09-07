@@ -67,6 +67,43 @@
         </section>
     </div>
 </dialog>
+
+{# "Use your free full report here?" Shown once per property to a signed-in
+   free account that still has its report, instead of spending it silently
+   on whatever they opened first. The inline notice below the score is the
+   same offer for anyone who closed this or has scripts off. #}
+{% if can_unlock_now %}
+<dialog class="report-modal no-figure-report" id="use-free-report-dialog">
+    <div class="report-modal-inner">
+        <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+        <section class="report-section">
+            <h2>Use your free full report on {{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}?</h2>
+            <p class="section-sub">You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Using it here opens every card on this property, for good. Keep it if this is not the house you are weighing up.</p>
+            <form action="/property/unlock" method="post" class="unlock-choice">
+                <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                <input type="hidden" name="house_number" value="{{ house_number or '' }}">
+                <button type="submit">Yes, unlock this property</button>
+                <button type="button" class="link-button unlock-keep">Not this one, keep it</button>
+            </form>
+        </section>
+    </div>
+</dialog>
+<script>
+    (function () {
+        var dialog = document.getElementById('use-free-report-dialog');
+        if (!dialog || typeof dialog.showModal !== 'function') return;
+        var key = 'ukpi-keep-' + {{ (location.postcode ~ '|' ~ (house_number or '')) | tojson }};
+        var kept = false;
+        try { kept = sessionStorage.getItem(key) === '1'; } catch (e) {}
+        if (!kept) dialog.showModal();
+        // Closing it any way (keep, the cross, the backdrop, Escape) means
+        // "not now": the inline offer stays, the pop-up rests for this visit.
+        dialog.addEventListener('close', function () { try { sessionStorage.setItem(key, '1'); } catch (e) {} });
+        var keep = dialog.querySelector('.unlock-keep');
+        if (keep) keep.addEventListener('click', function () { dialog.close(); });
+    })();
+</script>
+{% endif %}
 {% endif %}
 
 {% if location %}{{ tabnav.tabs(location, house_number, active_tab) }}{% endif %}
@@ -116,7 +153,21 @@
     </dialog>
     {% endif %}
     <div class="report-head">
-        {# premium_unlocked comes from the route: per-property, not per-account. #}
+        {% if can_unlock_now %}
+    <div class="notice unlock-offer" id="use-free-report">
+        <form action="/property/unlock" method="post" class="unlock-choice">
+            <input type="hidden" name="postcode" value="{{ location.postcode }}">
+            <input type="hidden" name="house_number" value="{{ house_number or '' }}">
+            <span>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Use it on this property?</span>
+            <button type="submit">Yes, unlock every card</button>
+        </form>
+    </div>
+    {% elif spent_unlock_now %}
+    <div class="notice unlock-offer" id="use-free-report">
+        <span>Unlocked. Every card on this property is yours, for good.</span>
+    </div>
+    {% endif %}
+    {# premium_unlocked comes from the route: per-property, not per-account. #}
         {# Back to THIS property after signing up, not to the pricing page.
        Four of the twelve accounts that never opened a report have a
        logged-in history consisting entirely of /premium: they clicked a
@@ -124,7 +175,7 @@
        full report, and landed on a page asking them to pay. They never
        saw the thing they signed up for. #}
     {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else "/premium") %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else "/premium")) %}
         <div class="report-head-top">
             <div class="report-head-main">
                 {% set breadcrumb_parts = [] %}
@@ -429,7 +480,7 @@
     {# Logged-out visitors have a free trial waiting, so say that rather
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
-    {% set lock_label = "Sign up: 1 free full report" if not current_user else ("Confirm your email to unlock your free full report" if needs_confirmation else "Upgrade to Premium to unlock") %}
+    {% set lock_label = "Sign up: 1 free full report" if not current_user else ("Confirm your email to unlock your free full report" if needs_confirmation else ("Use your free full report here" if can_unlock_now else "Upgrade to Premium to unlock")) %}
     {# Back to THIS property after signing up, not to the pricing page.
        Four of the twelve accounts that never opened a report have a
        logged-in history consisting entirely of /premium: they clicked a
@@ -437,7 +488,7 @@
        full report, and landed on a page asking them to pay. They never
        saw the thing they signed up for. #}
     {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else "/premium") %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else "/premium")) %}
 
     {% if not premium_unlocked %}
     <div class="paywall-banner" data-animate>

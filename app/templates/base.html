@@ -500,6 +500,9 @@
             document.querySelectorAll('[data-modal-target]').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                     if (btn.dataset.lockRedirect) {
+                        // A locked card with a free report still to spend reopens the offer.
+                        const offer = btn.dataset.lockRedirect === '#use-free-report' && document.getElementById('use-free-report-dialog');
+                        if (offer && typeof offer.showModal === 'function') { offer.showModal(); return; }
                         window.location.href = btn.dataset.lockRedirect;
                         return;
                     }
@@ -513,7 +516,7 @@
                figure it was about. */
             const reportDialog = document.getElementById('figure-report-dialog');
             if (reportDialog) {
-                document.querySelectorAll('dialog.report-modal:not(.figure-report-dialog)').forEach(function (dialog) {
+                document.querySelectorAll('dialog.report-modal:not(.figure-report-dialog):not(.no-figure-report)').forEach(function (dialog) {
                     const section = dialog.querySelector('.report-modal-inner > section') || dialog.querySelector('.report-modal-inner');
                     if (!section) return;
                     const heading = dialog.querySelector('h2');

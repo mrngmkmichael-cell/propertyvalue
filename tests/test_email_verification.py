@@ -134,11 +134,47 @@ def test_the_free_full_report_waits_for_a_confirmed_address(client, monkeypatch)
     # The link carries the report they signed up for; confirming unlocks it.
     link = re.search(r'href="([^"]+/verify-email\?token=[^"]+)"', sent[0]["html"]).group(1)
     r = client.get(link)
-    assert r.status_code == 200 and "free full report is unlocked" in r.text
+    assert r.status_code == 200 and "free full report is ready" in r.text
     assert 'href="/property?postcode=M1+2AA"' in r.text or 'href="/property?postcode=M1%202AA"' in r.text or "Open your report" in r.text
     with db.get_session() as session:
         assert auth.claim_unlock(session, uid, "M1 2AA", "") is True
         assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 1
+
+
+def test_the_free_report_is_offered_not_spent_silently(client, fake_report, monkeypatch):
+    """Until 7 Sep 2026 the first property a signed-in person opened spent
+    their free full report, stray postcode or not. Now the page asks, and
+    the spend happens only on a yes."""
+    from app.models import PremiumUnlock
+
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)  # confirmation not in play here
+    fake_report()
+    assert _signup(client, "chooser@customer.test").status_code == 303
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, "chooser@customer.test").id
+
+    body = client.get("/property?postcode=M14+5TG").text
+    assert 'class="dashboard-card-lock-overlay"' in body     # still locked (the class name alone is in the inlined CSS)
+    assert "Use your free full report here" in body            # the cards say why
+    assert 'id="use-free-report-dialog"' in body                # the pop-up asks
+    assert "Yes, unlock this property" in body
+    with db.get_session() as session:
+        assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 0
+
+    r = client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": ""}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
+    with db.get_session() as session:
+        assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 1
+    body = client.get(r.headers["location"]).text
+    assert 'class="dashboard-card-lock-overlay"' not in body
+    assert "Every card on this property is yours" in body
+    assert 'id="use-free-report-dialog"' not in body
+
+    # A second property: nothing left, so the paywall wording, no offer.
+    from tests.conftest import fake_location
+    fake_report(location=fake_location(postcode="M1 2AA", outcode="M1"))  # the fake lookup ignores the query
+    body = client.get("/property?postcode=M1+2AA").text
+    assert "Upgrade to Premium to unlock" in body and 'id="use-free-report-dialog"' not in body
 
 
 def test_can_verify_needs_a_domain_of_our_own(monkeypatch):

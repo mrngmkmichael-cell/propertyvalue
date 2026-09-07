@@ -7798,3 +7798,11 @@ body:not(.theme-dark) .lx-hero-scrim {
     text-transform: none;
     letter-spacing: 0;
 }
+
+
+/* The free-report offer: a form that reads as one line, on the page and
+   in the dialog. */
+.unlock-offer { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; justify-content: space-between; }
+.unlock-offer form { display: contents; }
+.unlock-choice { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; margin-top: 1rem; }
+.unlock-choice .link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
