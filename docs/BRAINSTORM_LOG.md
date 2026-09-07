@@ -6,6 +6,16 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Idea 9 of nine, price per square metre (7 Sep 2026). The valuation
+  already fetched the EPC floor area for up to twenty recent nearby
+  sales; the Premium valuation modal now shows pounds per square metre
+  at the median and middle half of those sales (each scaled for the
+  area's growth like the estimate), this home's own last sale per square
+  metre against today's local median, and what its floor area would
+  fetch at that rate; the card carries the local figure; the PDF a
+  checklist row. HM Land Registry prices over EPC Register areas,
+  matched by house number. All nine of the 7 Sep 2026 ideas are now
+  shipped and verified live; 44 checks quoted. Tests 230.
 - Idea 8 of nine, the grammar school layer (7 Sep 2026, commit
   3ce21db), built instead of the mock exams Michael floated. The DfE
   register marks 163 state secondary schools as selective (GIAS
@@ -482,16 +492,8 @@ the local Claude session as things ship. Newest first.
 
 ## In progress or queued (do not re-suggest as new)
 
-- The nine content ideas Michael approved on 7 Sep 2026 ("do 1-9 in
-  sequence, carefully"), each data-checked, tested, deployed and verified
-  live before the next: (1) EPC recommendations and the cost to reach
-  Band C; (2) brownfield register sites near the home; (3) buses per hour
-  from the nearest stop (BODS); (4) GP list pressure and nearest A&E
-  performance; (5) census 2011 to 2021 change on area guides; (6) council
-  financial health, council tax rise history and section 114 notices;
-  (7) Flood Re eligibility flag; (8) grammar school layer with the
-  official familiarisation papers; (9) price per square metre. Progress is
-  recorded in this file under Shipped as each lands.
+- The nine content ideas of 7 Sep 2026 all shipped the same day; see
+  Shipped for each.
 
 - Report page DOM reduction (21k nodes) - separate session, approved.
 - Crime months as "May 2026" not "2026-05" - separate session.
