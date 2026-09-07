@@ -973,6 +973,22 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
 templates.env.globals["verification_available"] = lambda: email_service.can_verify()
 templates.env.filters["gbp"] = _format_gbp
 templates.env.filters["distance"] = _format_distance
+
+
+_MONTH_NAMES = ("January", "February", "March", "April", "May", "June", "July",
+                "August", "September", "October", "November", "December")
+
+
+def _month_label(value) -> str:
+    """"2026-07" as "July 2026"; anything else passes through unchanged."""
+    try:
+        year, month = str(value)[:7].split("-")
+        return f"{_MONTH_NAMES[int(month) - 1]} {int(year)}"
+    except (ValueError, IndexError):
+        return str(value or "")
+
+
+templates.env.filters["month_label"] = _month_label
 templates.env.globals["seo_title"] = seo_title
 
 
