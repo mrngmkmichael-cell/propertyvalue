@@ -6,6 +6,20 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Idea 8 of nine, the grammar school layer (7 Sep 2026, commit
+  3ce21db), built instead of the mock exams Michael floated. The DfE
+  register marks 163 state secondary schools as selective (GIAS
+  AdmissionsPolicy, independents excluded); /schools/grammar lists them
+  by council (Kent 32, Lincolnshire 15, Buckinghamshire 13) with Ofsted,
+  the council's published last distance offered where we hold one (25
+  schools), an account of how selection works and what the address
+  decides, and the free familiarisation papers from the three bodies
+  that set the tests (GL Assessment, CSSE, Kent County Council). The
+  report's State Schools modal shows the grammar schools within about
+  ten miles with distance and the published figure; grammar school pages
+  link the papers. No dates are stored: registration windows and test
+  dates change yearly, so the page sends people to the school's own
+  admissions page for them. Tests 228.
 - Idea 5 of nine, Since 2011 (7 Sep 2026, commit a33913a). Six ONS
   Census 2011 Key Statistics tables (tenure, age, qualifications, country
   of birth, health, ethnic group; column meanings checked against the
