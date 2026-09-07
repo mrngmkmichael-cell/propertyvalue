@@ -35,7 +35,9 @@ UK property due-diligence site. FastAPI + Jinja2 + SQLAlchemy on Postgres
 - `uvicorn --reload` **wedges silently**. Restart via the preview tools
   rather than trusting a reload.
 - Bash heredocs break on this repo's CRLF line endings when the content
-  has apostrophes. Write a Python script into the scratchpad instead.
+  has apostrophes, and mangle backslashes and `\\n` regardless. Write a
+  Python script into the scratchpad with the Write tool instead, with an
+  assert on every anchor so a partial run is visible.
 - Any script or poll that hits production sends the header
   `X-Internal-Check: 1`, or it counts as visitors on /admin. smoke.py and
   audit_site.py already do. The Browser pane is excluded by its user agent.
