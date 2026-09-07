@@ -5609,6 +5609,26 @@ def admin_dashboard(request: Request):
     return templates.TemplateResponse(request, "admin.html", context)
 
 
+@app.get("/internal/email-status")
+def email_status(request: Request):
+    """What the running process believes about outbound mail: whether a
+    Resend key is present, which sender it would use, and whether
+    confirmation is switched on. Read-only, secret-gated, no secret in
+    the answer. Exists because on 7 Sep 2026 "no confirmation arrived"
+    could not be told apart from "the switch is still off" from the
+    database alone."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    return JSONResponse({
+        "resend_key_present": email_service.is_configured(),
+        "from_address": email_service.from_address(),
+        "confirmation_live": email_service.can_verify(),
+        "site_url": os.environ.get("SITE_URL", ""),
+    })
+
+
 @app.post("/internal/send-daily-summary")
 async def send_daily_summary(request: Request):
     """Scheduled job (see .github/workflows/daily-summary.yml) - posts a
