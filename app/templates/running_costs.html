@@ -126,7 +126,7 @@
                 </tr>
                 <tr>
                     <td><strong>Estate charge</strong><span class="school-table-type">on a managed development only</span></td>
-                    <td>No official source publishes it. <a href="/estate-charges/managing-agents">Find the company behind an estate →</a></td>
+                    <td>No official source publishes it.{% if estate_directory_enabled %} <a href="/estate-charges/managing-agents">Find the company behind an estate →</a>{% endif %}</td>
                     <td><a href="/estate-charges">what to ask</a></td>
                 </tr>
                 {% if checked.rent and checked.rent.price_all %}
@@ -300,7 +300,7 @@
         no cap and, until the 2024 Act takes effect, no right to challenge it. There is no register of
         what each estate pays. <a href="/estate-charges">Estate charges explained: how common they are,
         what they cover, your rights in 2026, and the twelve questions to ask before you buy →</a>
-        Or find the company behind your estate: <a href="/estate-charges/managing-agents">who manages your estate →</a>
+        {% if estate_directory_enabled %}Or find the company behind your estate: <a href="/estate-charges/managing-agents">who manages your estate →</a>{% endif %}
     </p>
 </section>
 {% endif %}

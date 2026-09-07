@@ -409,7 +409,7 @@ def test_report_shows_what_it_costs_to_live_here(client, fake_report):
     assert "2,108" in body or "2,107" in body
     assert "1,200" in body and "Freehold" in body
     assert 'href="/running-costs"' in body
-    assert 'href="/estate-charges/managing-agents"' in body
+    assert 'href="/estate-charges/managing-agents"' not in body  # directory withdrawn 7 Sep 2026
 
 
 

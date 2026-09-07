@@ -1551,11 +1551,23 @@ def council_tax_table_page(request: Request):
     return templates.TemplateResponse(request, "council_tax_table.html", context)
 
 
+# The "who manages your estate" directory (league table of agents' offices,
+# a page per agent, a name search) is withdrawn: on 7 Sep 2026 Michael judged
+# the office attribution inaccurate and asked for it to come down for now.
+# The routes answer 404, nothing links to them and they leave the sitemap;
+# the table, the importer and the templates stay so the directory can come
+# back once the attribution has been checked against a sample he approves.
+ESTATE_DIRECTORY_ENABLED = False
+templates.env.globals["estate_directory_enabled"] = ESTATE_DIRECTORY_ENABLED
+
+
 @app.get("/estate-charges/managing-agents")
 async def estate_agents_page(request: Request):
     """Who manages your estate: every residents' management company on
     the Companies House register and the agents' offices they are
     registered to. A league table nobody has published."""
+    if not ESTATE_DIRECTORY_ENABLED:
+        raise StarletteHTTPException(status_code=404)
     context = base_context(request)
     context["canonical_url"] = f"{_public_base_url(request)}/estate-charges/managing-agents"
     context["data"] = await asyncio.to_thread(estate_companies.agents_table)
@@ -1564,6 +1576,8 @@ async def estate_agents_page(request: Request):
 
 @app.get("/estate-charges/company/{slug}")
 async def estate_agent_page(request: Request, slug: str):
+    if not ESTATE_DIRECTORY_ENABLED:
+        raise StarletteHTTPException(status_code=404)
     data = await asyncio.to_thread(estate_companies.agent_page, slug)
     if data is None:
         raise StarletteHTTPException(status_code=404)
@@ -1575,6 +1589,8 @@ async def estate_agent_page(request: Request, slug: str):
 
 @app.get("/estate-charges/search")
 async def estate_search_page(request: Request, q: str = ""):
+    if not ESTATE_DIRECTORY_ENABLED:
+        raise StarletteHTTPException(status_code=404)
     context = base_context(request)
     context["q"] = q.strip()[:80]
     context["results"] = await asyncio.to_thread(estate_companies.search, context["q"]) if context["q"] else []
@@ -1829,11 +1845,12 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/running-costs", "0.7"))
     entries.append((f"{base}/running-costs/council-tax", "0.7"))
     entries.append((f"{base}/estate-charges", "0.7"))
-    entries.append((f"{base}/estate-charges/managing-agents", "0.7"))
-    try:
-        entries += [(f"{base}/estate-charges/company/{slug}", "0.6") for slug in estate_companies.indexable_agent_slugs()]
-    except Exception:  # noqa: BLE001 - the sitemap must render without the DB
-        pass
+    if ESTATE_DIRECTORY_ENABLED:
+        entries.append((f"{base}/estate-charges/managing-agents", "0.7"))
+        try:
+            entries += [(f"{base}/estate-charges/company/{slug}", "0.6") for slug in estate_companies.indexable_agent_slugs()]
+        except Exception:  # noqa: BLE001 - the sitemap must render without the DB
+            pass
     # "private schools in {council}" is the query Search Console shows
     # us being surfaced for at position 46 with the per-postcode pages;
     # one page per council is the shape of the query.
@@ -8398,7 +8415,6 @@ async def llms_txt(request: Request):
 - [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
 - [Council tax by council]({base}/running-costs/council-tax): Band D, A and H for every billing authority in England, Wales and Scotland, sortable.
 - [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
-- [Who manages your estate?]({base}/estate-charges/managing-agents): every active residents' management company on the Companies House register and the managing agents' offices they are registered to; searchable by name.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
 - [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.
 - [Private schools by council]({base}/schools/independent): every fee-paying school on the Department for Education register, by council.
@@ -8483,11 +8499,12 @@ async def indexnow_resubmit(request: Request):
         return JSONResponse({"error": "not_found"}, status_code=404)
     base = _public_base_url(request)
     urls = [f"{base}{p}" for p in ("/", "/schools/tightest-catchments", "/schools/catchment-house-prices", "/schools/admissions",
-                                    "/running-costs", "/estate-charges", "/estate-charges/managing-agents",
+                                    "/running-costs", "/estate-charges",
                                    "/schools/how-admissions-work", "/schools/independent", "/schools/guide")]
     urls += [f"{base}/schools/admissions/{c['slug']}" for c in await asyncio.to_thread(schools_db.admission_councils)]
     urls += [f"{base}/schools/independent/{d['slug']}" for d in await asyncio.to_thread(schools_db.independent_districts)]
-    urls += [f"{base}/estate-charges/company/{slug}" for slug in await asyncio.to_thread(estate_companies.indexable_agent_slugs)]
+    if ESTATE_DIRECTORY_ENABLED:
+        urls += [f"{base}/estate-charges/company/{slug}" for slug in await asyncio.to_thread(estate_companies.indexable_agent_slugs)]
     urls += [f"{base}/school/{s['urn']}/{s['slug']}" for s in await asyncio.to_thread(schools_db.admission_page_schools)]
     urls = urls[:10000]
     accepted = await indexnow.submit(request.url.hostname or "ukpropertyinsight.co.uk", urls)

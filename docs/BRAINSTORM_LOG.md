@@ -518,6 +518,16 @@ the local Claude session as things ship. Newest first.
 
 ## On hold by the owner (suggest only if new evidence)
 
+- The "who manages your estate" directory (league table of agents
+  offices, a page per agent, the name search), withdrawn 7 Sep 2026 at
+  Michael's word: "the data here seems inaccurate, please remove it for
+  now". ESTATE_DIRECTORY_ENABLED = False in main.py: the three routes
+  answer 404, nothing links to them, they are out of the sitemap and
+  llms.txt; the estate_companies table, the importer and the templates
+  are kept. The /estate-charges explainer stays live. Do not switch it
+  back on until the registered-office attribution has been checked
+  against a sample of companies he approves.
+
 - SchoolAppealHQ, a school admission appeals and EHCP venture (Michael's
   business model v1, August 2026). Assessed 7 Sep 2026: the admissions
   half could sit on our school pages, the EHCP half could not. Michael:

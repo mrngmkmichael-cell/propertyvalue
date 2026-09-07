@@ -1394,31 +1394,23 @@ def _seed_estate_companies():
         session.commit()
 
 
-def test_estate_directory_names_offices_not_managers(client):
+def test_the_estate_directory_is_withdrawn_until_its_data_is_checked(client):
+    """Michael, 7 Sep 2026: the office attribution looked inaccurate, so
+    the directory is down for now. Its routes answer 404, nothing links
+    to them and they are out of the sitemap; the explainer page stays, and
+    the table and importer are kept for when the data has been checked."""
     _seed_estate_companies()
+    from app import main as app_main
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
-    body = client.get("/estate-charges/managing-agents").text
-    # "managed by" appears once, inside the sentence that forbids it.
-    assert "registered to" in body and '"FAQPage"' in body
-    assert "who manages my estate" in body.lower()
-    assert 'href="/estate-charges/company/firstport"' in body and "FirstPort" in body
-    page = client.get("/estate-charges/company/firstport")
-    assert page.status_code == 200
-    assert "KINGS HILL RESIDENTS ASSOCIATION LIMITED" in page.text
-    assert "find-and-update.company-information.service.gov.uk/company/09999902" in page.text
-    assert client.get("/estate-charges/company/no-such-agent").status_code == 404
-    # A registered-office service is never an agent page.
-    assert client.get("/estate-charges/company/registered-office-service").status_code == 404
-
-
-def test_estate_search_finds_a_company_and_its_office(client):
-    _seed_estate_companies()
-    body = client.get("/estate-charges/search?q=kings+hill").text
-    assert "KINGS HILL RESIDENTS ASSOCIATION LIMITED" in body and "FirstPort" in body
-    assert 'name="robots" content="noindex' in body
-    assert "No company matches" in client.get("/estate-charges/search?q=zzzzqqq").text
-    assert "/estate-charges/managing-agents" in client.get("/sitemap.xml").text
+    assert app_main.ESTATE_DIRECTORY_ENABLED is False
+    for path in ("/estate-charges/managing-agents", "/estate-charges/company/firstport", "/estate-charges/search?q=kings+hill"):
+        assert client.get(path).status_code == 404, path
+    assert "/estate-charges/managing-agents" not in client.get("/sitemap.xml").text
+    assert "/estate-charges/managing-agents" not in client.get("/running-costs").text
+    explainer = client.get("/estate-charges")
+    assert explainer.status_code == 200 and "/estate-charges/managing-agents" not in explainer.text
+    assert "/estate-charges/managing-agents" not in client.get("/llms.txt").text
 
 
 def test_council_tax_table_lists_every_authority(client):

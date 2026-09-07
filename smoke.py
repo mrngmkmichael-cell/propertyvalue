@@ -70,8 +70,9 @@ CHECKS = [
     ("/running-costs", {200}, ["Band D", "Estate charges"]),
     ("/running-costs/council-tax", {200}, ["billing authorities"]),
     ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
-    ("/estate-charges/managing-agents", {200}, ["registered to"]),
-    ("/estate-charges/company/firstport", {200}, ["FirstPort"]),
+    # The directory is withdrawn (7 Sep 2026): these must stay 404 until it is switched back on.
+    ("/estate-charges/managing-agents", {404}, []),
+    ("/estate-charges/company/firstport", {404}, []),
     ("/schools/independent", {200}, ["Private schools, council by council"]),
     ("/schools/independent/surrey", {200}, ["Private schools in Surrey"]),
     ("/schools/admission-distances.csv", {200}, ["urn,school,phase,council"]),
