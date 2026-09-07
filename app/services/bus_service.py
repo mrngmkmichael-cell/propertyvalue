@@ -34,11 +34,23 @@ def per_hour(departures: int, band: str) -> float:
     return round(departures / BAND_HOURS[band], 1)
 
 
-def _row_to_stop(row: BusStop, distance: float) -> dict:
+def route_names(raw: str | None) -> list[str]:
+    """The stored routes as names. Rows written before 7 Sep 2026 held
+    [name, count] pairs; both shapes read the same way."""
     try:
-        routes = json.loads(row.routes or "[]")
+        items = json.loads(raw or "[]")
     except ValueError:
-        routes = []
+        return []
+    names: list[str] = []
+    for item in items:
+        name = item[0] if isinstance(item, (list, tuple)) and item else item
+        if isinstance(name, str) and name and name not in names:
+            names.append(name)
+    return names
+
+
+def _row_to_stop(row: BusStop, distance: float) -> dict:
+    routes = route_names(row.routes)
     return {
         "atco_code": row.atco_code,
         "name": row.name,
@@ -91,17 +103,18 @@ def stops_near(lat: float, lon: float, radius_m: int = RADIUS_M) -> dict | None:
     stops.sort(key=lambda s: s["distance_m"])
     stops = stops[:MAX_STOPS]
     best = max(stops, key=lambda s: (s["weekday_day"], -s["distance_m"]), default=None)
-    routes: dict[str, int] = {}
-    for s in stops:
-        for name, count in s["routes"]:
-            routes[name] = max(routes.get(name, 0), count)
+    routes: list[str] = []
+    for s in sorted(stops, key=lambda s: (-s["weekday_day"], s["distance_m"])):
+        for name in s["routes"]:
+            if name not in routes:
+                routes.append(name)
     return {
         "radius_m": radius_m,
         "stops": stops,
         "count": len(stops),
         "nearest": stops[0] if stops else None,
         "best": best,
-        "routes": [name for name, _ in sorted(routes.items(), key=lambda kv: (-kv[1], kv[0]))][:8],
+        "routes": routes[:8],
         "feed_date": feed[0].isoformat() if feed[0] else None,
         "ref_weekday": feed[1].isoformat() if feed[1] else None,
         "ref_sunday": feed[2].isoformat() if feed[2] else None,

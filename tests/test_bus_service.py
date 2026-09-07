@@ -19,7 +19,7 @@ def test_time_parsing_and_bands():
     t.add(25 * 60, "10", True, True)      # after midnight: no band
     assert (t.weekday_day, t.weekday_eve, t.sunday_day) == (2, 1, 1)
     assert gtfs.format_minutes(t.first) == "07:00" and gtfs.format_minutes(t.last) == "01:00"
-    assert t.top_routes() == [["10", 2]]
+    assert t.top_routes() == ["10"]
 
 
 def test_active_services_follow_the_calendar_and_its_exceptions():
@@ -41,10 +41,10 @@ def test_stops_near_returns_the_nearest_and_the_best(client):
         session.query(BusStop).delete()
         session.add_all([
             BusStop(atco_code="A1", name="High Street", latitude=53.4501, longitude=-2.2200, weekday_day=96, weekday_eve=16, sunday_day=36,
-                    weekday_first="05:30", weekday_last="23:45", routes='[["43", 48], ["X47", 24]]',
+                    weekday_first="05:30", weekday_last="23:45", routes='["43", "X47"]',
                     feed_date=datetime.date(2026, 9, 7), ref_weekday=datetime.date(2026, 9, 8), ref_sunday=datetime.date(2026, 9, 13)),
             BusStop(atco_code="A2", name="Church Lane", latitude=53.4530, longitude=-2.2200, weekday_day=12, weekday_eve=0, sunday_day=0,
-                    weekday_first="07:10", weekday_last="18:40", routes='[["7", 12]]'),
+                    weekday_first="07:10", weekday_last="18:40", routes='[["7", 12]]'),  # the older stored shape
             BusStop(atco_code="FAR", name="Elsewhere", latitude=53.5, longitude=-2.3, weekday_day=200),
         ])
         session.commit()
@@ -57,3 +57,10 @@ def test_stops_near_returns_the_nearest_and_the_best(client):
     assert out["stops"][0]["distance_m"] < 20 and 300 < out["stops"][1]["distance_m"] < 400
     empty = bus_service.stops_near(51.5, 0.5)
     assert empty["count"] == 0 and empty["best"] is None
+
+
+def test_route_names_read_both_stored_shapes():
+    assert bus_service.route_names('["43", "X47"]') == ["43", "X47"]
+    assert bus_service.route_names('[["43", 48], ["X47", 24], ["43", 2]]') == ["43", "X47"]
+    assert bus_service.route_names("") == [] and bus_service.route_names("not json") == []
+

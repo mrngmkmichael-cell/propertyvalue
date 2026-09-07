@@ -99,5 +99,6 @@ class StopTally:
     def any(self) -> bool:
         return bool(self.weekday_day or self.weekday_eve or self.sunday_day)
 
-    def top_routes(self, limit: int = MAX_ROUTES) -> list[list]:
-        return [[name, count] for name, count in sorted(self.routes.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]]
+    def top_routes(self, limit: int = MAX_ROUTES) -> list[str]:
+        """Route names, the most frequent first."""
+        return [name for name, _ in sorted(self.routes.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]]

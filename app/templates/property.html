@@ -2791,7 +2791,7 @@
                     <td class="num">{{ s.sunday_day_per_hour }}</td>
                     <td class="num">{{ s.weekday_first or "" }}</td>
                     <td class="num">{{ s.weekday_last or "" }}</td>
-                    <td>{% for name, count in s.routes %}{{ name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+                    <td>{{ s.routes | join(", ") }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>

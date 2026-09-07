@@ -506,7 +506,7 @@ def test_bus_service_card_leads_with_the_best_stop(client, fake_report):
     """Idea 3 of 7 Sep 2026: buses an hour at the nearest stops, Premium."""
     stop = {"atco_code": "A1", "name": "High Street", "distance_m": 120, "latitude": 53.45, "longitude": -2.22,
             "weekday_day": 96, "weekday_eve": 16, "sunday_day": 36, "weekday_day_per_hour": 8.0, "weekday_eve_per_hour": 4.0,
-            "sunday_day_per_hour": 4.0, "weekday_first": "05:30", "weekday_last": "23:45", "routes": [["43", 48], ["X47", 24]]}
+            "sunday_day_per_hour": 4.0, "weekday_first": "05:30", "weekday_last": "23:45", "routes": ["43", "X47"]}
     data = {"radius_m": 500, "stops": [stop], "count": 1, "nearest": stop, "best": stop, "routes": ["43", "X47"],
             "feed_date": "2026-09-07", "ref_weekday": "2026-09-08", "ref_sunday": "2026-09-13"}
     body = _report(client, fake_report, gather=fake_gather(bus_service=data))
