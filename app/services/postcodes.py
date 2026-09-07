@@ -128,6 +128,7 @@ async def outcode_centroid(outcode: str) -> dict | None:
         "latitude": result["latitude"],
         "longitude": result["longitude"],
         "admin_district": _first(result.get("admin_district")),
+        "admin_county": _first(result.get("admin_county")),
         "region": _first(result.get("region")),
         "country": _first(result.get("country")),
     }

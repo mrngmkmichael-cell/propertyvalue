@@ -551,3 +551,16 @@ def test_flood_re_is_flagged_for_a_post_2009_home_at_risk(client, fake_report):
     body = _report(client, fake_report, gather=fake_gather(property_detail=detail, flood_zone={"zone": 1, "label": "Zone 1 (low probability)"}))
     assert "Available: built before 2009" in body and "Flood Re not available" not in body
 
+
+def test_the_council_tax_card_carries_the_councils_finances(client, fake_report):
+    """Idea 6 of 7 Sep 2026: Band D bill history, exceptional financial
+    support and section 114 notices on the free council tax card."""
+    body = _report(client, fake_report)   # Manchester: history, no support
+    assert "The council's finances" in body and "No exceptional financial support from government since 2020-21" in body
+    loc = fake_location(postcode="CR0 1AA", outcode="CR0")
+    loc.update(admin_district="Croydon", region="London", codes={"admin_district": "E09000008", "lsoa": "E01001000"})
+    fake_report(location=loc)
+    body = client.get("/property?postcode=CR0%201AA").text
+    assert "Exceptional Financial Support" in body and "Section 114 notices" in body
+    assert "Council under exceptional financial support or a section 114 notice" in body  # free card: the flag shows
+

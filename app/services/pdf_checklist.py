@@ -103,6 +103,23 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
             f"{nb['pct']}% of {nb['total']} sales in the last {nb.get('years', 3)} years were new builds", "neutral", "HM Land Registry")
 
     # ---- Running costs ---------------------------------------------------
+    from app.services import council_finance as _council_finance
+    loc_ = report.get("location") or {}
+    fin = _council_finance.for_council((loc_.get("codes") or {}).get("admin_district", ""), loc_.get("admin_district", ""), loc_.get("admin_county", ""))
+    if fin:
+        parts = []
+        if fin["rise_latest"] is not None:
+            parts.append(f"Band D bill up {fin['rise_latest']}% in {fin['latest_label']} (England median {fin['median_rise_latest']}%)")
+        if fin["efs"]:
+            parts.append("exceptional financial support from government for " + ", ".join(e["year"] for e in fin["efs"]))
+        if fin["county_efs"]:
+            parts.append(f"county council ({fin['county_name']}) supported for " + ", ".join(e["year"] for e in fin["county_efs"]))
+        if fin["s114"]:
+            parts.append("section 114 notice " + ", ".join(n["date"] for n in fin["s114"]))
+        if not fin["efs"] and not fin["county_efs"] and not fin["s114"]:
+            parts.append("no exceptional financial support and no section 114 notice on record")
+        add("Running costs", "The council's finances", "; ".join(parts) if parts else "No history on file",
+            "warn" if fin["flag"] else "neutral", "MHCLG live council tax tables and exceptional financial support lists")
     ct = rc.get("council_tax") or report.get("council_tax")
     if ct and ct.get("band_d"):
         add("Running costs", f"Council tax, {ct.get('authority', '')} {ct.get('year', '')}".strip(),
