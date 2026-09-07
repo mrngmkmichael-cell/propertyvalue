@@ -123,6 +123,7 @@ async def sold_prices_for_postcode(canonical_postcode: str) -> list[dict]:
         address_parts = [p for p in (saon, paon, street) if p]
         transactions.append({
             "address": " ".join(address_parts) or "Address not available",
+            "street": street,
             "town": _binding_value(row, "town"),
             "county": _binding_value(row, "county"),
             "amount": _binding_value(row, "amount"),

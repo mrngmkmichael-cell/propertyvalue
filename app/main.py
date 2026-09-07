@@ -991,6 +991,18 @@ def _month_label(value) -> str:
 templates.env.filters["month_label"] = _month_label
 
 
+_ADDRESS_STREET = re.compile(r"^(?:(?:flat|apartment|unit)\s+\S+\s+)?\d+\S*\s+(.+)$", re.I)
+
+
+def _street_from_address(address: str) -> str:
+    """"37 AVALON ROAD" gives "AVALON ROAD": the street from a sold-price
+    address line when the record carries no street of its own (results
+    cached before 7 Sep 2026). A named house with no number gives nothing,
+    so the search falls back to the postcode rather than guess."""
+    m = _ADDRESS_STREET.match((address or "").strip())
+    return m.group(1) if m else ""
+
+
 def _news_search(transactions, location) -> dict:
     """Terms for the "in the news" self-check on the report. Local papers
     name the street and rarely the house number, so the search is the
@@ -1001,7 +1013,7 @@ def _news_search(transactions, location) -> dict:
 
     street = town = ""
     for t in transactions or []:
-        street = street or (t.get("street") or "")
+        street = street or (t.get("street") or "") or _street_from_address(t.get("address") or "")
         town = town or (t.get("town") or "")
         if street and town:
             break

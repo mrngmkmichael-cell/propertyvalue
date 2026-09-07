@@ -446,12 +446,17 @@ def test_the_news_card_says_what_is_missing_and_how_to_check(client, fake_report
     assert "In the News?" in body and 'id="modal-news"' in body
     assert 'data-modal-target="modal-news" data-animate>' in body  # free: no lock redirect
     assert "Sykes v Taylor-Rose" in body and "tbm=nws" in body
-    # No street on file: the search falls back to the postcode and district.
-    assert "q=M14+5TG+Manchester&amp;tbm=nws" in body
-    # With a street from the sold-price records the search names it, never the house number.
-    gather = fake_gather(transactions=[{"address": "1 Test Street", "street": "TEST STREET", "town": "MANCHESTER",
-                                        "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01"}])
-    body = _report(client, fake_report, gather=gather)
+    # The fake record has only an address line ("1 Test Street"): the street is
+    # read off it, the house number never reaches the search.
     assert "%22Test+Street%22+Manchester" in body and "Search the news for Test Street, Manchester" in body
     assert "%221+Test" not in body
+    # A record with its own street and town (Land Registry writes in capitals).
+    gather = fake_gather(transactions=[{"address": "FLAT 2 37 AVALON ROAD", "street": "AVALON ROAD", "town": "ORPINGTON",
+                                        "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01"}])
+    body = _report(client, fake_report, gather=gather)
+    assert "%22Avalon+Road%22+Orpington" in body and "Search the news for Avalon Road, Orpington" in body
+    # A named house with no number and no street field: postcode and district, not a guess.
+    gather = fake_gather(transactions=[{"address": "Rose Cottage", "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01"}])
+    body = _report(client, fake_report, gather=gather)
+    assert "q=M14+5TG+Manchester&amp;tbm=nws" in body
 
