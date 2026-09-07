@@ -569,6 +569,7 @@
 
 {# ================= PART 8: GETTING AROUND ================= #}
 {{ part("08", "Getting around and staying connected", "Stations, the walk to them, and whether the house can hold a video call.") }}
+{% if bus_service is defined and bus_service and bus_service.count %}{% set b = bus_service.best %}<p class="why">Buses: {{ b.weekday_day_per_hour }} an hour in the weekday daytime, {{ b.weekday_eve_per_hour }} in the evening and {{ b.sunday_day_per_hour }} on Sunday daytime at {{ b.name }}, {{ b.distance_m }} m away; first bus {{ b.weekday_first }}, last {{ b.weekday_last }}{% if bus_service.routes %}; routes {{ bus_service.routes | join(", ") }}{% endif %}. Scheduled departures a passenger can board, from the timetables operators publish to the Bus Open Data Service (Department for Transport), for the week of {{ bus_service.ref_weekday }}.</p>{% elif bus_service is defined and bus_service %}<p class="why">Buses: no stop with a scheduled departure within {{ bus_service.radius_m }} m, in the timetables published to the Bus Open Data Service.</p>{% endif %}
 {% set rail = (stations_list.rail if stations_list else []) or [] %}
 {% if rail %}
 <table class="data">

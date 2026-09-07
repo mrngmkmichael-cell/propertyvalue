@@ -501,3 +501,20 @@ def test_development_nearby_is_a_premium_card_that_says_what_the_register_holds(
     body = _report(client, fake_report, gather=fake_gather(brownfield={"covered": False, "country": "Wales"}))
     assert "England only" in body
 
+
+def test_bus_service_card_leads_with_the_best_stop(client, fake_report):
+    """Idea 3 of 7 Sep 2026: buses an hour at the nearest stops, Premium."""
+    stop = {"atco_code": "A1", "name": "High Street", "distance_m": 120, "latitude": 53.45, "longitude": -2.22,
+            "weekday_day": 96, "weekday_eve": 16, "sunday_day": 36, "weekday_day_per_hour": 8.0, "weekday_eve_per_hour": 4.0,
+            "sunday_day_per_hour": 4.0, "weekday_first": "05:30", "weekday_last": "23:45", "routes": [["43", 48], ["X47", 24]]}
+    data = {"radius_m": 500, "stops": [stop], "count": 1, "nearest": stop, "best": stop, "routes": ["43", "X47"],
+            "feed_date": "2026-09-07", "ref_weekday": "2026-09-08", "ref_sunday": "2026-09-13"}
+    body = _report(client, fake_report, gather=fake_gather(bus_service=data))
+    assert "Bus Service" in body and 'id="modal-bus"' in body
+    assert "8.0 an hour, weekday daytime" in body and "8.0 buses an hour" in body
+    assert "first bus 05:30, last 23:45" in body and "Routes at these stops: 43, X47" in body
+    none = dict(data, stops=[], count=0, nearest=None, best=None, routes=[])
+    body = _report(client, fake_report, gather=fake_gather(bus_service=none))
+    assert "No stop within 500 m" in body
+    assert "Few or no scheduled buses nearby" not in body  # locked: the flag waits
+

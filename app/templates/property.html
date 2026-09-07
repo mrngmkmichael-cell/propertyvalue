@@ -368,6 +368,7 @@
     {% set landfill_status = 'muted' if historic_landfill_error else ('attn' if historic_landfill and historic_landfill.status != 'clear' else 'ok') %}
     {% set coal_mining_status = 'muted' if coal_mining_error else ('attn' if coal_mining and coal_mining.present else 'ok') %}
     {% set brownfield_status = 'muted' if (brownfield_error or brownfield is not defined or not brownfield or not brownfield.covered or (not brownfield.count and brownfield.council and not brownfield.council.published)) else ('attn' if (brownfield.count and (brownfield.dwellings >= 10 or brownfield.hectares >= 0.5 or brownfield.permissioned)) else 'ok') %}
+    {% set bus_status = 'muted' if (bus_service_error or bus_service is not defined or not bus_service) else ('attn' if (not bus_service.count or bus_service.best.weekday_day < 12) else 'ok') %}
     {% set planning_count = planning_flags | length if planning_flags is defined else 0 %}
     {% set environmental_count = environmental_flags | length if environmental_flags is defined else 0 %}
     {% set broadband_status = 'muted' if not broadband else ('attn' if broadband.below_uso_pct and broadband.below_uso_pct >= 5 else 'ok') %}
@@ -389,6 +390,7 @@
         {% set landfill_status = 'ok' if landfill_status == 'attn' else landfill_status %}
         {% set coal_mining_status = 'ok' if coal_mining_status == 'attn' else coal_mining_status %}
         {% set brownfield_status = 'ok' if brownfield_status == 'attn' else brownfield_status %}
+        {% set bus_status = 'ok' if bus_status == 'attn' else bus_status %}
     {% endif %}
     {% set attention_items = [] %}
     {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
@@ -401,6 +403,7 @@
     {% if sewage_status == 'attn' %}{% set _ = attention_items.append(('modal-sewage', 'Frequent sewage discharges nearby')) %}{% endif %}
     {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
     {% if brownfield_status == 'attn' %}{% set _ = attention_items.append(('modal-brownfield', 'Development site on the brownfield register nearby')) %}{% endif %}
+    {% if bus_status == 'attn' %}{% set _ = attention_items.append(('modal-bus', 'Few or no scheduled buses nearby')) %}{% endif %}
     {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
     {% if coal_mining_status == 'attn' %}{% set _ = attention_items.append(('modal-coal-mining', 'In a Coal Mining Reporting Area')) %}{% endif %}
     {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
@@ -925,6 +928,22 @@
         {{ amen.essentials_card(amenities, amenities_error, amenities_pending) }}
 
         {{ amen.transport_card(stations, nearest_transport, amenities_error, amenities_pending, premium_unlocked, lock_label, lock_redirect) }}
+
+        {# Scheduled buses at the stops within 500 m, from the Bus Open Data
+           Service timetables. Premium: the figure no listing carries. #}
+        <button type="button" class="dashboard-card status-{{ bus_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-bus" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            {% if bus_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
+            <span class="dashboard-card-icon icon-broadband">{{ icons.icon('bus') }}</span>
+            <span class="dashboard-card-title">Bus Service</span>
+            <span class="dashboard-card-status">
+                {% if bus_service_error %}Data unavailable
+                {% elif bus_service is not defined or not bus_service %}No timetable data
+                {% elif not bus_service.count %}No stop within 500 m
+                {% else %}{{ bus_service.best.weekday_day_per_hour }} an hour, weekday daytime{% endif %}
+            </span>
+            {% if bus_service is defined and bus_service and bus_service.count %}<span class="dashboard-card-substat">{{ bus_service.best.name }}, {{ bus_service.best.distance_m | distance }}{% if bus_service.best.sunday_day_per_hour %}; {{ bus_service.best.sunday_day_per_hour }} an hour on Sunday{% endif %}</span>{% endif %}
+        </button>
 
         <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
             {% if broadband_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
@@ -2739,6 +2758,46 @@
             </table>
         {% else %}
             <p class="notice">No qualification data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-bus">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Bus service at the nearest stops</h2>
+        {% if bus_service_error %}
+            <p class="notice notice-error">The bus timetable data didn't load. Try again in a moment.</p>
+        {% elif bus_service is not defined or not bus_service %}
+            <p class="notice">No timetable data is loaded for this address yet.</p>
+        {% elif not bus_service.count %}
+            <p class="notice">No bus stop with a scheduled departure within {{ bus_service.radius_m }} m of this address, in the timetables operators have published to the Bus Open Data Service{% if bus_service.ref_weekday %} for the week of {{ bus_service.ref_weekday }}{% endif %}. Some Welsh and Scottish operators do not publish there, so absence is not always proof.</p>
+        {% else %}
+            {% set best = bus_service.best %}
+            <p class="section-sub">From the timetables bus operators publish to the Department for Transport's Bus Open Data Service: departures a passenger can board at each stop within {{ bus_service.radius_m }} m of this address, on {{ bus_service.ref_weekday }} (a Tuesday) and {{ bus_service.ref_sunday }} (a Sunday). Scheduled, not observed.</p>
+            <p class="section-sub"><strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away: <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> in the weekday daytime (07:00 to 19:00), {{ best.weekday_eve_per_hour }} an hour in the evening (19:00 to 23:00), {{ best.sunday_day_per_hour }} an hour on Sunday daytime (09:00 to 18:00); first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.{% if bus_service.routes %} Routes at these stops: {{ bus_service.routes | join(", ") }}.{% endif %}</p>
+            <div class="tablewrap">
+            <table class="tx-table bus-table">
+                <thead><tr><th>Stop</th><th class="num">Distance</th><th class="num">Weekday daytime, an hour</th><th class="num">Evening</th><th class="num">Sunday</th><th class="num">First</th><th class="num">Last</th><th>Routes</th></tr></thead>
+                <tbody>
+                {% for s in bus_service.stops %}
+                <tr{% if s.atco_code == best.atco_code %} class="bus-best"{% endif %}>
+                    <td>{{ s.name }}</td>
+                    <td class="num">{{ s.distance_m | distance }}</td>
+                    <td class="num">{{ s.weekday_day_per_hour }}</td>
+                    <td class="num">{{ s.weekday_eve_per_hour }}</td>
+                    <td class="num">{{ s.sunday_day_per_hour }}</td>
+                    <td class="num">{{ s.weekday_first or "" }}</td>
+                    <td class="num">{{ s.weekday_last or "" }}</td>
+                    <td>{% for name, count in s.routes %}{{ name }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <p class="property-detail-note">Two stops on opposite sides of a road are two rows, so the headline is the best single stop, not the sum. "An hour" divides the band's departures by its hours. Where no operator has published a service, the stop is absent rather than shown as empty. Source: DfT Bus Open Data Service, GTFS timetable feed dated {{ bus_service.feed_date }}, Open Government Licence.</p>
         {% endif %}
             </section>
         </div>

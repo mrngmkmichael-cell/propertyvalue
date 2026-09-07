@@ -301,6 +301,19 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     add("Schools", "Universities", ", ".join(he) if he else "None within range", "neutral", "Department for Education")
 
     # ---- Getting around --------------------------------------------------
+    bus = report.get("bus_service")
+    bus_source = "DfT Bus Open Data Service timetables"
+    if report.get("bus_service_error"):
+        add("Getting around", "Bus service", "The timetable data did not load", "neutral", bus_source)
+    elif bus is None:
+        add("Getting around", "Bus service", "No timetable data loaded for this address", "neutral", bus_source)
+    elif not bus.get("count"):
+        add("Getting around", "Bus service", f"No stop with a scheduled departure within {bus.get('radius_m', 500)} m", "warn", bus_source)
+    else:
+        b = bus["best"]
+        add("Getting around", "Bus service",
+            f"{b['weekday_day_per_hour']} an hour weekday daytime, {b['weekday_eve_per_hour']} evening, {b['sunday_day_per_hour']} Sunday, at {b['name']} ({b['distance_m']} m); first {b['weekday_first']}, last {b['weekday_last']}",
+            "warn" if b["weekday_day"] < 12 else "good", bus_source)
     stations = (report.get("stations_list") or {}).get("rail") or []
     if stations:
         s0 = stations[0]

@@ -976,3 +976,28 @@ class PageView(Base):
 # rather than a bulk import (the underlying grid/point data changes
 # rarely, but there's no practical need to mirror the whole GB radon
 # atlas or the full national heritage list into our own database).
+
+
+class BusStop(Base):
+    """Scheduled bus departures per stop, from the Bus Open Data Service
+    timetables (scripts/import_bus_frequency.py): departures a passenger
+    can board on a reference Tuesday (daytime, evening) and Sunday, the
+    first and last weekday bus, and the routes that call most often.
+    Only stops with a departure are stored; the reference dates travel
+    with each row so the page can say which week it describes."""
+    __tablename__ = "bus_stops"
+    __table_args__ = (Index("ix_bus_stops_lat_lon", "latitude", "longitude"),)
+
+    atco_code: Mapped[str] = mapped_column(String(24), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), default="")
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    weekday_day: Mapped[int] = mapped_column(Integer, default=0)
+    weekday_eve: Mapped[int] = mapped_column(Integer, default=0)
+    sunday_day: Mapped[int] = mapped_column(Integer, default=0)
+    weekday_first: Mapped[str] = mapped_column(String(5), default="")
+    weekday_last: Mapped[str] = mapped_column(String(5), default="")
+    routes: Mapped[str] = mapped_column(String(200), default="[]")
+    feed_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ref_weekday: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ref_sunday: Mapped[date | None] = mapped_column(Date, nullable=True)

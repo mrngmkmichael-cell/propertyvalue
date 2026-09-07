@@ -294,7 +294,7 @@ def test_pricing_page_lists_every_check_the_landing_page_claims(client, monkeypa
     body = client.get("/premium").text
     assert body.count('class="lx-check"') == claimed
     assert "25 free on every report" in body
-    assert "16 more with Premium" in body
+    assert f"{claimed - 25} more with Premium" in body
 
 
 def test_anonymous_compare_builds_a_column_per_postcode(client, monkeypatch):

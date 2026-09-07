@@ -7794,3 +7794,10 @@ body:not(.theme-dark) .lx-hero-scrim {
     .brownfield-table th:nth-child(6), .brownfield-table td:nth-child(6) { display: none; }
     .brownfield-table td:nth-child(2) { min-width: 9rem; }
 }
+
+/* The bus table: the best stop carries the tint; on a phone the first and last columns go. */
+.bus-table .bus-best td { background: var(--accent-soft); font-weight: var(--weight-medium); }
+@media (max-width: 480px) {
+    .bus-table th:nth-child(6), .bus-table td:nth-child(6), .bus-table th:nth-child(7), .bus-table td:nth-child(7) { display: none; }
+    .bus-table td:first-child { min-width: 8rem; }
+}
