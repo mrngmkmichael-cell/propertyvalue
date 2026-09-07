@@ -6,6 +6,36 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The morning brainstorm, built the same afternoon (7 Sep 2026). Seven of
+  the eight ideas shipped in one deploy. The report h1 rendered "M1 1AE"
+  as "M11AE" (the -0.02em inherited from the global heading rule closed
+  the space, and two adjacent 1s finished it); the postcode now takes the
+  mono face and normal tracking, which is what the design brief says data
+  gets. The locked PDF button said "PDF report . Premium"; that stray
+  full stop is the middot used everywhere else. A retired postcode is no
+  longer called a spelling mistake: LS6 2AA and B29 6AA are real
+  postcodes Royal Mail withdrew in 2018 and 2010, postcodes.io puts the
+  retirement date in the body of its own 404, so the page names the month
+  and year and offers the district guide. Still a 404; a postcode that
+  never existed keeps the spelling message. M1 1AE is warmed on deploy
+  again (one postcode, not the four dropped on 4 Sep): the homepage links
+  it five times and it was measured cold at 6.15 s and 5.80 s against
+  0.87 s warm, then 1.11 s on the first hit after the deploy. District
+  following is gone: saved_districts held zero rows across 43 real
+  accounts and six weeks, so two routes, a diff, two UI surfaces, nine
+  CSS rules, four tests and a per-user query on every cached area guide
+  came out; the model and the empty table stay, because dropping a
+  production table cannot be undone. /admin gained two tables that say
+  whether one free report per account is holding (addresses unlocked by
+  more than one account on a day, free reports by mailbox provider),
+  prompted by three accounts on qq.com, hotmail.com and gmail.com
+  unlocking OX3 0SG number 7 within 45 minutes on 6 Sep; the page had no
+  test at all and now has two. The area-guide prewarm moved to 11:00 to
+  15:00 UTC: hourly views peak at 06:00 (163), 22:00 (157), 20:00 (142)
+  and 23:00 (127) and fall to 30, 45, 52, 31 and 24 across the UK working
+  day, and the job used to run at 07:20 and 19:20 on one worker. Tests
+  198.
+
 - Email confirmation, after the report rather than before it (7 Sep
   2026). Michael asked to prevent random addresses taking the free
   report. The evidence argued against a gate: 11 of 12 launch-night
@@ -341,7 +371,8 @@ the local Claude session as things ship. Newest first.
   prohibit scores, stars, counts outside their widgets; enforced).
 - Extension 2.2.0: OnTheMarket detection, miles not km, no silent
   failure; store page linked from /browser-extension.
-- District following (watch an outcode) with visit-time diffs.
+- District following (watch an outcode) with visit-time diffs. Removed
+  7 Sep 2026, unused by every account. Do not rebuild it.
 - Printable viewing checklist; share-a-report with a sender note.
 - Free full report offered, not spent (7 Sep 2026): a signed-in free
   account used to spend its one free full report on the first postcode
@@ -358,6 +389,21 @@ the local Claude session as things ship. Newest first.
 - B2B agency tier: owner emailing the comped agency power user.
 - Extension Reddit post: waiting for 2.2.0 store review.
 - Google Ads £30-50 experiment: awaiting owner decision.
+
+## Looked at and rejected on the evidence (do not re-raise)
+
+- Letting the first free full report through without email confirmation
+  (raised 7 Sep 2026, not built). The finding behind it is real and
+  stands: all twelve of the most recent unlocks happened between 1 and 33
+  seconds after the account was created, so the confirmation gate will
+  land on the exact moment people convert, and it is one DNS record away
+  from switching on. But FREE_PREMIUM_UNLOCKS is 1, so "gate from the
+  second report onward" means the gate never fires at all, which deletes
+  Michael's rule of 7 Sep rather than tuning it. The mitigation already
+  exists: the confirmation link carries the property they were on, so the
+  round trip returns them there. The measurement is recorded in a comment
+  above the banner in base.html. Revisit only if the free allowance
+  changes, or with data on how many confirmations actually complete.
 
 ## On hold by the owner (suggest only if new evidence)
 
