@@ -334,6 +334,25 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     add("Getting around", "Daily essentials", f"Supermarket: {nearest('supermarket')}; pharmacy: {nearest('pharmacy')}; GP: {nearest('gp')}", "neutral", "OpenStreetMap")
 
     # ---- Area and community ---------------------------------------------
+    health = report.get("health")
+    health_source = "NHS England Digital practice statistics; NHS England A&E statistics"
+    if report.get("health_error"):
+        add("Area and community", "GP practices and A&E", "The NHS practice data did not load", "neutral", health_source)
+    elif health is None:
+        add("Area and community", "GP practices and A&E", "No practice data loaded for this address", "neutral", health_source)
+    elif not health.get("count"):
+        add("Area and community", "GP practices and A&E", f"No GP practice with a patient list within {health.get('radius_m', 3000)} m", "warn", health_source)
+    else:
+        g = health["nearest"]
+        line = f"{g['name']}, {g['distance_m']} m: {g['patients']:,} patients"
+        if g.get("patients_per_qualified_gp"):
+            line += f", {g['patients_per_qualified_gp']:,} per fully qualified GP"
+            if health.get("median_patients_per_qualified_gp"):
+                line += f" (England median {health['median_patients_per_qualified_gp']:,})"
+        if health.get("trusts"):
+            t = health["trusts"][0]
+            line += f"; A&E at {t['name']}: {t['type1_within_4h_pct']}% within four hours in {t['period']}"
+        add("Area and community", "GP practices and A&E", line, "warn" if (g.get("vs_median") or 0) >= 1.3 else "neutral", health_source)
     inc = report.get("household_income")
     if inc and inc.get("here"):
         add("Area and community", "Household income", f"{_fmt_gbp(inc['here'])} a year here, against {_fmt_gbp(inc.get('la_average'))} across {inc.get('la_name', '')}", "neutral", "ONS small area income estimates")

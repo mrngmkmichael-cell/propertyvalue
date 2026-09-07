@@ -1001,3 +1001,45 @@ class BusStop(Base):
     feed_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     ref_weekday: Mapped[date | None] = mapped_column(Date, nullable=True)
     ref_sunday: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class GpPractice(Base):
+    """GP practices in England with a patient list, from NHS England
+    Digital (scripts/import_health_services.py): list size on the first
+    of the month, GP full-time equivalents from the workforce release,
+    the integrated care board, and coordinates from the practice
+    postcode. patients_date and workforce_date say which releases."""
+    __tablename__ = "gp_practices"
+    __table_args__ = (Index("ix_gp_practices_lat_lon", "latitude", "longitude"),)
+
+    code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    postcode: Mapped[str] = mapped_column(String(10), default="")
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    icb_code: Mapped[str] = mapped_column(String(10), default="")
+    icb_name: Mapped[str] = mapped_column(String(120), default="")
+    pcn_name: Mapped[str] = mapped_column(String(120), default="")
+    patients: Mapped[int] = mapped_column(Integer, default=0)
+    gp_fte: Mapped[float | None] = mapped_column(Float, nullable=True)
+    qualified_gp_fte: Mapped[float | None] = mapped_column(Float, nullable=True)
+    gp_source: Mapped[str] = mapped_column(String(60), default="")
+    patients_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    workforce_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
+class AeTrust(Base):
+    """Providers with Type 1 (consultant-led, 24-hour) A&E attendances in
+    the latest monthly NHS England release, with their four-hour breaches
+    and the integrated care board NHS England maps them to."""
+    __tablename__ = "ae_trusts"
+
+    org_code: Mapped[str] = mapped_column(String(10), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), default="")
+    icb_code: Mapped[str] = mapped_column(String(10), default="")
+    icb_name: Mapped[str] = mapped_column(String(120), default="")
+    period: Mapped[str] = mapped_column(String(20), default="")
+    type1_attendances: Mapped[int] = mapped_column(Integer, default=0)
+    type1_over_4h: Mapped[int] = mapped_column(Integer, default=0)
+    all_attendances: Mapped[int] = mapped_column(Integer, default=0)
+    all_over_4h: Mapped[int] = mapped_column(Integer, default=0)

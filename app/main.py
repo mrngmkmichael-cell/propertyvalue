@@ -37,7 +37,7 @@ from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
-    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_stats, clay_risk, coal_mining,
+    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_stats, clay_risk, coal_mining, health_services,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
@@ -2470,6 +2470,7 @@ GATHER_SOURCE_LABELS = {
     "designations-check-all": "Planning designations",
     "brownfield-sites-near": "Brownfield land registers",
     "bus-service-stops-near": "Bus Open Data Service timetables",
+    "health-services-near": "NHS practice and A&E statistics",
 }
 # In the order the building page lists them.
 GATHER_SOURCE_ORDER = list(GATHER_SOURCE_LABELS.values())
@@ -2770,6 +2771,7 @@ async def _full_property_gather(
             _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
             _timed("brownfield-sites-near", brownfield.sites_near(lat, lon, codes.get("admin_district", ""), location.get("country", ""))),
             _timed("bus-service-stops-near", asyncio.to_thread(bus_service.stops_near, lat, lon)),
+            _timed("health-services-near", asyncio.to_thread(health_services.near, lat, lon)),
             return_exceptions=True,
         )
         return gather_results_inner
@@ -2786,7 +2788,7 @@ async def _full_property_gather(
         designations_result, food_hygiene_result, flood_zone_result, google_ratings_result,
         orientation_result, air_quality_result, historic_landfill_result, catchment_result,
         school_landscape_result, price_trend_result, clay_risk_result, sewage_result,
-        coal_mining_result, surface_water_result, cqc_result, brownfield_result, bus_service_result,
+        coal_mining_result, surface_water_result, cqc_result, brownfield_result, bus_service_result, health_result,
     ) = gather_results
 
     if isinstance(tx_result, Exception):
@@ -2929,6 +2931,11 @@ async def _full_property_gather(
         context["bus_service_error"] = True
     else:
         context["bus_service"] = bus_service_result
+
+    if isinstance(health_result, Exception):
+        context["health_error"] = True
+    else:
+        context["health"] = health_result
 
     if isinstance(sewage_result, Exception):
         context["sewage_error"] = True

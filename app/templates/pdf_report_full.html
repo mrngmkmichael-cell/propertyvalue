@@ -614,7 +614,8 @@
 
 {# ================= PART 9: AREA AND COMMUNITY ================= #}
 {{ part("09", "Area and community", "Who lives around here, from the 2021 Census and ONS estimates for the surrounding small area, not this one house.") }}
-{% if household_income %}
+{% if health is defined and health and health.count %}{% set g = health.nearest %}<p class="why">Health services: the nearest GP practice is {{ g.name }}, {{ g.distance_m }} m away, with {{ "{:,}".format(g.patients) }} patients{% if g.patients_per_qualified_gp %}, {{ "{:,}".format(g.patients_per_qualified_gp) }} per fully qualified GP against an England median of {{ "{:,}".format(health.median_patients_per_qualified_gp) }}{% endif %} (NHS England Digital, {{ health.patients_date }}).{% if health.trusts %} A&amp;E: {% for t in health.trusts[:3] %}{{ t.name }} {{ t.type1_within_4h_pct }}%{% if not loop.last %}, {% endif %}{% endfor %} of Type 1 patients seen within four hours in {{ health.ae_period }}, against {{ health.national_type1_within_4h_pct }}% for England.{% endif %}</p>
+{% endif %}{% if household_income %}
 <table class="keep"><tr><td style="padding: 0pt">
 <h2>Household income</h2>
 <table class="data">

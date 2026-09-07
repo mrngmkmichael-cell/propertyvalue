@@ -518,3 +518,23 @@ def test_bus_service_card_leads_with_the_best_stop(client, fake_report):
     assert "No stop within 500 m" in body
     assert "Few or no scheduled buses nearby" not in body  # locked: the flag waits
 
+
+def test_health_services_card_shows_list_pressure_and_a_and_e(client, fake_report):
+    """Idea 4 of 7 Sep 2026: patients per fully qualified GP at the nearest
+    practices against the England median, and the board's A&E four-hour
+    performance. Premium; the flag waits behind the lock."""
+    g = {"code": "A1", "name": "High Street Surgery", "postcode": "M14 5TG", "distance_m": 220, "patients": 8744, "gp_fte": 5.2,
+         "qualified_gp_fte": 3.1, "patients_per_qualified_gp": 2821, "vs_median": 1.35, "gp_source": "Fully provided", "estimated": False,
+         "pcn_name": "Central PCN", "icb_code": "QOP", "icb_name": "NHS Greater Manchester Integrated Care Board"}
+    t = {"org_code": "R0A", "name": "Manchester University Nhs Foundation Trust", "period": "July 2026", "type1_attendances": 30000,
+         "type1_within_4h_pct": 60.0, "all_within_4h_pct": 67.5}
+    data = {"radius_m": 3000, "practices": [g], "count": 1, "nearest": g, "median_patients_per_qualified_gp": 2186,
+            "patients_date": "2026-08-01", "workforce_date": "2026-07-01", "icb_code": "QOP", "icb_name": g["icb_name"],
+            "trusts": [t], "ae_period": "July 2026", "national_type1_within_4h_pct": 61.5, "pressure": 1.35}
+    body = _report(client, fake_report, gather=fake_gather(health=data))
+    assert "Health Services" in body and 'id="modal-health"' in body
+    assert "2,821 patients per GP at the nearest practice" in body and "England median 2,186" in body
+    assert "A&amp;E 60.0% within four hours" in body and "+35%" in body
+    assert "A&amp;E four-hour performance, July 2026" in body
+    assert "Nearest GP practice well above the national list size per GP" not in body  # locked: no leak
+

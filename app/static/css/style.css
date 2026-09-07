@@ -7801,3 +7801,10 @@ body:not(.theme-dark) .lx-hero-scrim {
     .bus-table th:nth-child(6), .bus-table td:nth-child(6), .bus-table th:nth-child(7), .bus-table td:nth-child(7) { display: none; }
     .bus-table td:first-child { min-width: 8rem; }
 }
+
+/* The health tables: a practice well above the national list per GP carries the warm tint. */
+.health-table .health-high td { background: var(--warn-soft, #fbf3e6); }
+@media (max-width: 480px) {
+    .health-table th:nth-child(5), .health-table td:nth-child(5) { display: none; }
+    .health-table td:first-child { min-width: 9rem; }
+}

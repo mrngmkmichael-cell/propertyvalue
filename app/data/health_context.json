@@ -1,0 +1,9 @@
+{
+ "patients_date": "2026-08-01",
+ "workforce_date": "2026-07-01",
+ "ae_period": "MSitAE-JULY-2026",
+ "practices": 6129,
+ "median_patients_per_qualified_gp": 2186,
+ "national_type1_within_4h_pct": 61.5,
+ "imported": "2026-09-07"
+}
