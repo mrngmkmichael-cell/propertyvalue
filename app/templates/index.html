@@ -1230,7 +1230,7 @@
     let pin = null, motes = [], tallyEl = null, donePills = [], doneHead = null;
     const SCORE = seed ? seed.overview.score : 0;
 
-    /* The 40 checks by name, matching the report's own card titles
+    /* The checks by name, matching the report's own card titles
        (Resident Reviews and In the News are the two cards that aren't
        official checks, and they are the ones left out). Names, not figures, so nothing here
        can drift the way a baked-in number would. */
@@ -1295,7 +1295,7 @@
             });
             measureSwarm();
 
-            /* The receipt pills: same 40 names, ticked, each with its
+            /* The receipt pills: the same names, ticked, each with its
                own slot in the closing phase of the scrub. */
             const doneGrid = document.getElementById('lx-build-done-grid');
             CHECKS.forEach(function (name, i) {
