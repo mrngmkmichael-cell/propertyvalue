@@ -6,6 +6,61 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All eight ideas of the 8 Sep 2026 brainstorm, built the same night
+  (commits 3c3e2b4 and 8719923). Michael read the eight and said "DO
+  all 1-8", which is the approval the three decision-flagged ones
+  needed.
+  1. The valuation is off the critical path of a cold report. Server-
+  Timing on production named the cost: nearby-comparables took 4,910,
+  4,822 and 4,939 ms on three cold reports, the slowest source every
+  time and 1.3 to 1.5 s clear of the next, while 250 of 315 report
+  starts in three days went through the wait page. It now runs beside
+  the page, cached under its own key, warmed in the background, and
+  filled in by /api/property/valuation from the same macros the page
+  used (app/templates/_valuation.html). wait_for_amenities became
+  wait_for_slow and covers both slow sources, so the PDF still waits
+  for everything. Measured after: 5.0, 5.1 and 5.6 s against 6.0, 5.8
+  and 6.6 s, so about a second, not the quarter estimated. The gather
+  is parallel, so removing the slowest source only buys the gap to the
+  next one, and crime, noise and flood zone now set a ~3.4 s floor.
+  Those three are the next thing to look at, not this one again.
+  2. The 276 outcode private-school pages canonical to their council
+  page and left the sitemap. They were 4,860 impressions in three
+  months, 46% of the site's, for 4 clicks: seven Birmingham outcodes
+  bidding against each other and against /schools/independent/
+  birmingham for one town-shaped query. Still live, still linked from
+  the guides, school pages and schools guide.
+  3. Removal: the two calculators are noindexed and out of the sitemap.
+  1,562 impressions at an average position around 90 and no click in
+  three months. Both still work and now link the running-costs pages.
+  4. School pages lead with the figure. The published distance moved
+  from document y=732 to y=461 at 375px, above the fold, with the
+  share row below it; the page rounds to two decimals like its own
+  title (the third decimal was never the council's precision, since
+  1,072 of 3,627 figures carry six decimals from a metres conversion).
+  5. Opening a report keeps the property in My properties, said out
+  loud with the way out beside it, never overwriting an existing note.
+  5 of 46 accounts had ever saved one; both paying accounts had come
+  back on another day.
+  6. Area guides open with a lead paragraph: figures already further
+  down the page, each naming its source, no verdict. Computed outside
+  the cached payload so the warm guides picked it up without a re-warm.
+  7. /admin lists what is 404ing (path and count, in memory), because
+  Search Console reports 1,161 missing pages and will not say which.
+  The withdrawn estate directory URLs 301 to the explainer instead of
+  dying; that is not the directory coming back, and smoke pins the 301
+  so a 200 there would be caught.
+  8. /premium shows four real pages of the 25-page PDF above the price,
+  for M1 1AE, the sample the homepage already links. Building it found
+  two defects in the document itself: the cover printed "M11AE" for
+  M1 1AE at -1.6pt of tracking, the same bug fixed on the web report on
+  7 Sep, and it printed the postcode twice when there was no house
+  number. Brownfield dwelling counts gained their thousands separator.
+  Tests 252, smoke 53. Two things noted and not acted on: the PDF says
+  "51 checks" where the site says 44, because it counts its own
+  checklist rows, and MHCLG spells one council "Bristol UA" in the
+  lead, which is the source's own name for it.
+
 - Search Console, second round, 8 Sep 2026 evening (320fefa, c91326c).
   The 404 drill-down was four shapes: 809 outcode-only report URLs the
   area guides themselves linked to (now /#postcode=<outcode>, and the
