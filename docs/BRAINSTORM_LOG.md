@@ -6,6 +6,23 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Search Console, second round, 8 Sep 2026 evening (320fefa, c91326c).
+  The 404 drill-down was four shapes: 809 outcode-only report URLs the
+  area guides themselves linked to (now /#postcode=<outcode>, and the
+  route sends a known outcode to its guide with a 301); about 40
+  /schools/<website> from 14,180 school websites stored without a
+  scheme (an external_url filter on every such link, and a /schools/
+  {host} 301 only for a recorded school website); 9 from the withdrawn
+  /set-language switcher (301 to the wrapped page); 6 compare pages
+  that answer 200. The 149 5xx URLs match the 4 Sep Neon cut-off and
+  all answer 200. Michael set Render's Health Check Path to /healthz.
+  School pages: 832 profiles carry "varies" as the year, so a quarter
+  of the family said "in varies" in title, description, share card,
+  FAQ and badge; one helper now gives a year or nothing and a distance
+  to two decimals, titles lead with the distance. The admissions hub
+  links the twenty school pages at positions 5 to 13 (the near-miss
+  list lives in NEAR_MISS_SCHOOL_URNS; refresh it from the weekly
+  export). Weekly Monday 9:00 calendar alarm created for the export.
 - Search Console follow-up, 8 Sep 2026 (three deploys, d368169,
   caea5b8, 11059e4). The second GSC export showed 557 districts earning
   impressions; the 179 not yet promoted joined GSC_EARNED_OUTCODES, so
