@@ -1656,3 +1656,57 @@ def test_admin_counts_one_address_unlocked_by_two_accounts(client, monkeypatch):
     body = client.get("/admin").text
     assert "OX3 0SG, 7" in body
     assert "example.test" in body  # the domain table counted them too
+
+
+# ---- Payload v20 on the area guide (8 Sep 2026) ----------------------------
+V20_STUBS = {
+    "census_change": {"lsoa": "E01005200", "has_2011": True, "has_2021": True, "merged_from": 1, "residents_2021": 1834,
+                      "residents_change_pct": 6.1, "biggest": {"key": "private_rented", "short": "Private renting", "change": 9.4},
+                      "rows": [{"key": "private_rented", "label": "Households renting privately", "in_2011": 21.0, "in_2021": 30.4, "change": 9.4, "england_change": 3.6}]},
+    "bus": {"count": 3, "radius_m": 800, "ref_weekday": "2026-09-08", "ref_sunday": "2026-09-13", "feed_date": "2026-09-07",
+            "best": {"name": "Wilmslow Road", "distance_m": 140, "weekday_day_per_hour": 22.5, "weekday_eve_per_hour": 9.0,
+                     "sunday_day_per_hour": 12.0, "weekday_first": "05:12", "weekday_last": "23:58", "routes": ["42", "43", "142"]},
+            "stops": []},
+    "health": {"count": 5, "radius_m": 2000, "median_patients_per_qualified_gp": 2186,
+               "nearest": {"name": "Rusholme Health Centre", "distance_m": 310, "patients": 12450, "patients_per_qualified_gp": 2610,
+                           "patients_date": "1 August 2026", "workforce_date": "31 July 2026"},
+               "practices": [{"name": "Rusholme Health Centre", "distance_m": 310, "patients": 12450, "patients_per_qualified_gp": 2610}],
+               "trusts": [{"name": "Manchester University NHS Foundation Trust", "type1_within_4h_pct": 58.2, "all_within_4h_pct": 71.0, "period": "July 2026"}]},
+    "finance": {"name": "Manchester", "latest_label": "2026-27", "rise_latest": 4.99, "median_rise_latest": 4.99, "as_of": "8 September 2026",
+                "history": [{"label": "2025-26", "band_d": 2145.7, "rise": 4.99}, {"label": "2026-27", "band_d": 2252.8, "rise": 4.99}],
+                "efs": [], "county_efs": [], "county_name": "", "s114": []},
+}
+
+
+def _fresh_guide(client, monkeypatch, outcode: str, stubs: dict) -> str:
+    """Render a guide with the four v20 services stubbed, from a cold cache
+    so the builder runs rather than an earlier test's payload."""
+    from app import db, main as app_main
+    from app.models import PageCache
+    from app.services import _cache
+    monkeypatch.setattr(app_main.census_change, "for_lsoa", lambda lsoa: stubs["census_change"])
+    monkeypatch.setattr(app_main.bus_service, "stops_near", lambda lat, lon, radius_m=500: stubs["bus"])
+    monkeypatch.setattr(app_main.health_services, "near", lambda lat, lon, radius_m=2000: stubs["health"])
+    monkeypatch.setattr(app_main.council_finance, "for_council", lambda code, name="", county="": stubs["finance"])
+    with db.get_session() as session:
+        for row in session.query(PageCache).filter(PageCache.cache_key.like(f"area_guide:%:{outcode}")).all():
+            session.delete(row)
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get(f"/area/{outcode}")
+    assert r.status_code == 200
+    return r.text
+
+
+def test_the_guide_carries_the_v20_sections(client, monkeypatch):
+    body = _fresh_guide(client, monkeypatch, "AB12", V20_STUBS)
+    assert "How AB12 has changed since 2011" in body and "Households renting privately" in body and "+9.4 pts" in body
+    assert "Buses from the centre of AB12" in body and "22.5 buses an hour" in body and "42, 43, 142" in body
+    assert "GP practices and A&amp;E" in body and "2,610 patients per fully qualified GP" in body and "58.2%" in body
+    assert "Council tax and the council" in body and "2,252" in body and "No exceptional financial support" in body
+
+
+def test_the_guide_stays_quiet_without_the_v20_sources(client, monkeypatch):
+    body = _fresh_guide(client, monkeypatch, "AB12", {"census_change": None, "bus": None, "health": None, "finance": None})
+    assert "since 2011" not in body and "Buses from the centre" not in body
+    assert "GP practices and A&amp;E" not in body and "the council's finances" not in body

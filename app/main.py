@@ -4567,7 +4567,7 @@ AREA_GUIDE_CACHE_TTL_S = 86400 * 7  # public, crawler-facing. A week, not a day:
 # scripts/prune_stale_area_cache.py afterwards to drop the orphans.
 # 19: sixth form colleges left the school counts on 6 Sep 2026, so every
 # cached total_schools and further_education figure is one version stale.
-AREA_GUIDE_PAYLOAD_VERSION = 19
+AREA_GUIDE_PAYLOAD_VERSION = 20  # 20: census change, buses, GP pressure, council finances (8 Sep 2026)
 AREA_SALES_RECENT_YEARS = 2
 AREA_SALES_SHOWN = 6
 AREA_SALES_MIN_FOR_MEDIAN = 5
@@ -5105,6 +5105,16 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         landscape = {k: landscape.get(k) for k in AREA_GUIDE_LANDSCAPE_FIELDS}
 
     landscape_full = ok(landscape_result)
+    census_change_result, bus_result, health_result = await asyncio.gather(
+        _timed("census-change", asyncio.to_thread(census_change.for_lsoa, codes.get("lsoa", ""))),
+        _timed("bus-service", asyncio.to_thread(bus_service.stops_near, lat, lon, 800)),
+        _timed("health-services", asyncio.to_thread(health_services.near, lat, lon)),
+        return_exceptions=True,
+    )
+    try:
+        finance_result = council_finance.for_council(codes.get("admin_district", ""), location.get("admin_district", ""), location.get("admin_county", ""))
+    except Exception:  # noqa: BLE001 - a guide stands without it
+        finance_result = None
     page_data = {
         "named_schools": _named_schools(landscape_full),
         # Every school in this district with a published distance, each
@@ -5120,6 +5130,14 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         "private_school_count": (landscape_full or {}).get("independent_count", 0),
         "by_sector": (landscape_full or {}).get("by_sector"),
         "occupation_mix": _occupation_mix(codes.get("lsoa", "")),
+        # The 7 Sep 2026 data on the pages Google indexes (payload v20): how
+        # the district centre's census neighbourhood changed since 2011, the
+        # busiest stop near the centre, GP pressure and A&E waits, and the
+        # council's finances. Each is None when its source has nothing here.
+        "census_change": ok(census_change_result),
+        "bus": ok(bus_result),
+        "health": ok(health_result),
+        "finance": finance_result,
         "hpi": ok(hpi_result),
         "crime": ok(crime_result),
         "landscape": landscape,

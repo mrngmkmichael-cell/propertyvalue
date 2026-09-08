@@ -372,7 +372,7 @@
         The best-served stop within 600 m of the school is <strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away:
         <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
         and {{ best.sunday_day_per_hour }} on Sunday daytime; first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.
-        {% if bus.routes %}Routes at the stops nearby: {{ bus.routes | join(", ") }}.{% endif %}
+        {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
     </p>
     <div class="tablewrap">
     <table class="tx-table">

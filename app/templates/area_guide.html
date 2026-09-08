@@ -300,6 +300,37 @@
 </section>
 {% endif %}
 
+{# Payload v20 (8 Sep 2026): the district centre's census neighbourhood on
+   the 2011 and 2021 censuses. ONS, re-keyed to 2021 areas with the ONS lookup. #}
+{% if census_change is defined and census_change and census_change.has_2011 and census_change.has_2021 and census_change.rows %}
+<section class="report-section">
+    <h2>How {{ outcode }} has changed since 2011</h2>
+    <p class="section-sub">
+        The census neighbourhood at the centre of {{ outcode }} ({{ census_change.lsoa }}{% if census_change.residents_2021 %}, {{ "{:,}".format(census_change.residents_2021) }} residents in 2021{% endif %}{% if census_change.residents_change_pct is not none %}, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011{% endif %})
+        on the 2011 and 2021 censuses, with England's own change over the same decade for scale. Each line is a share of the
+        neighbourhood's households or residents, so a growing area and a shrinking one compare fairly.{% if census_change.biggest %}
+        The biggest move here: <strong>{{ census_change.biggest.short | lower }}</strong>, {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} points.{% endif %}
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table census-change-table">
+        <thead><tr><th>Measure</th><th class="num">2011</th><th class="num">2021</th><th class="num">Change</th><th class="num">England</th></tr></thead>
+        <tbody>
+        {% for r in census_change.rows %}
+        <tr{% if census_change.biggest and r.key == census_change.biggest.key %} class="census-change-biggest"{% endif %}>
+            <td>{{ r.label }}</td>
+            <td class="num">{% if r.in_2011 is not none %}{{ r.in_2011 }}%{% else %}Not given{% endif %}</td>
+            <td class="num">{% if r.in_2021 is not none %}{{ r.in_2021 }}%{% else %}Not given{% endif %}</td>
+            <td class="num">{% if r.change is not none %}{{ "+" if r.change > 0 else "" }}{{ r.change }} pts{% else %}Not given{% endif %}</td>
+            <td class="num">{% if r.england_change is not none %}{{ "+" if r.england_change > 0 else "" }}{{ r.england_change }} pts{% else %}Not given{% endif %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">Office for National Statistics, Census 2011 and Census 2021, Open Government Licence. A district holds many neighbourhoods; the full report for an address shows the one it sits in.</p>
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>Crime</h2>
     {% if crime and crime.total is not none %}
@@ -345,6 +376,88 @@
         {% for a in amenity_summary %}{{ a.count }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
         within range of central {{ outcode }}.
     </p>
+</section>
+{% endif %}
+
+{# Payload v20: the busiest stop near the district centre, GP pressure and
+   A&E waits, and the council's finances. Sources named in each section. #}
+{% if bus is defined and bus and bus.count and bus.best %}
+{% set best = bus.best %}
+<section class="report-section">
+    <h2>Buses from the centre of {{ outcode }}</h2>
+    <p>
+        The best-served stop within {{ bus.radius_m }} m of the centre of {{ outcode }} is <strong>{{ best.name }}</strong>:
+        <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
+        and {{ best.sunday_day_per_hour }} on Sunday daytime; first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.
+        {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
+        {{ bus.count }} stop{{ 's' if bus.count != 1 }} with a scheduled service within that distance.
+    </p>
+    <p class="section-sub">Departures a passenger can board, from the timetables operators publish to the Department for Transport's Bus Open Data Service, for {{ bus.ref_weekday }} (a Tuesday) and {{ bus.ref_sunday }} (a Sunday). Scheduled, not observed. Two stops on opposite sides of a road are two stops. The full report does this for the stops within 500 m of an address.</p>
+</section>
+{% endif %}
+
+{% if health is defined and health and health.count and health.nearest %}
+<section class="report-section">
+    <h2>GP practices and A&amp;E</h2>
+    <p>
+        {{ health.count }} GP practice{{ 's' if health.count != 1 }} within {{ (health.radius_m / 1000) | round(1) }} km of the centre of {{ outcode }}.
+        The nearest, <strong>{{ health.nearest.name }}</strong>{% if health.nearest.patients %}, has {{ "{:,}".format(health.nearest.patients) }} registered patients{% endif %}{% if health.nearest.patients_per_qualified_gp and health.median_patients_per_qualified_gp %}
+        and <strong>{{ "{:,}".format(health.nearest.patients_per_qualified_gp) }} patients per fully qualified GP</strong>, against an England median of {{ "{:,}".format(health.median_patients_per_qualified_gp) }}{% endif %}.
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Practice</th><th class="num">From the centre</th><th class="num">Patients</th><th class="num">Per qualified GP</th></tr></thead>
+        <tbody>
+        {% for g in health.practices[:4] %}
+        <tr><td>{{ g.name }}</td><td class="num">{{ g.distance_m | distance }}</td><td class="num">{% if g.patients %}{{ "{:,}".format(g.patients) }}{% else %}Not given{% endif %}</td><td class="num">{% if g.patients_per_qualified_gp %}{{ "{:,}".format(g.patients_per_qualified_gp) }}{% else %}Not given{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if health.trusts %}
+    <p>Nearest A&amp;E: <strong>{{ health.trusts[0].name }}</strong>, where {{ health.trusts[0].type1_within_4h_pct }}% of type 1 attendances were seen within four hours in {{ health.trusts[0].period }}{% if health.trusts | length > 1 %}; then {{ health.trusts[1].name }} at {{ health.trusts[1].type1_within_4h_pct }}%{% endif %}.</p>
+    {% endif %}
+    <p class="section-sub">NHS England: patients registered at a GP practice ({{ health.nearest.patients_date }}), the general practice workforce ({{ health.nearest.workforce_date }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
+</section>
+{% endif %}
+
+{% if finance is defined and finance and finance.history %}
+<section class="report-section">
+    <h2>Council tax and the council's finances</h2>
+    <p>
+        A Band D household in <strong>{{ finance.name }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
+        a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
+        Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>; the full report gives the band of a specific address.
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table finance-table">
+        <thead><tr><th>Year</th><th class="num">Band D bill</th><th class="num">Rise</th></tr></thead>
+        <tbody>
+        {% for h in finance.history %}
+        <tr><td>{{ h.label }}</td><td class="num">{{ h.band_d | gbp }}</td><td class="num">{% if h.rise is not none %}{{ "+" if h.rise >= 0 else "" }}{{ h.rise }}%{% else %}Not given{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if finance.efs or finance.county_efs %}
+    <p class="notice">
+        <strong>Exceptional Financial Support.</strong>
+        {% if finance.efs %}{{ finance.name }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        {% if finance.county_efs %} The county council, {{ finance.county_name }}, was agreed support for {% for e in finance.county_efs | reverse %}{{ e.year }} ({{ e.amount }}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        Support is permission to borrow, or to spend capital receipts, on day-to-day services because the council could not otherwise set a balanced budget. Councils in this position tend to cut services and raise council tax by the most the rules allow.
+    </p>
+    {% endif %}
+    {% if finance.s114 %}
+    <p class="notice">
+        <strong>Section 114 notice{{ 's' if finance.s114 | length != 1 }}.</strong>
+        {% for n in finance.s114 %}{{ n.date }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        The chief finance officer's declaration that the council cannot balance its budget; it freezes new spending until a recovery plan is agreed.
+    </p>
+    {% endif %}
+    {% if not finance.efs and not finance.county_efs and not finance.s114 %}
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of }}.</p>
+    {% endif %}
+    <p class="section-sub">Ministry of Housing, Communities and Local Government, live council tax tables (Band D, area averages) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils.</p>
 </section>
 {% endif %}
 
