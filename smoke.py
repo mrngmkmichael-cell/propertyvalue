@@ -145,7 +145,7 @@ def main() -> int:
             for pattern, name in BREAKAGE:
                 if re.search(pattern, body, re.S):
                     problems.append(name)
-            if len(body) < 500 and not path.endswith(".txt"):
+            if len(body) < 500 and not path.endswith(".txt") and path != "/healthz":  # a health answer is meant to be tiny
                 problems.append(f"body only {len(body)} bytes")
 
         if problems:
