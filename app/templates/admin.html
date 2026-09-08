@@ -399,4 +399,31 @@
     <p class="notice">No reports yet.</p>
     {% endif %}
 </section>
+
+{# What Google reports as missing, from the side that knows which URLs.
+   Search Console counted 1,161 404s on 8 Sep 2026 and offers no export.
+   Path and count only, held in memory on this worker, cleared by every
+   deploy: a short-lived list to fix things from, not a log. #}
+<section class="landing-section" id="missing">
+    <h2 class="landing-heading">What is 404ing</h2>
+    {% if missing_paths %}
+    <p class="section-sub">
+        {{ missing_paths_total }} request{{ "s" if missing_paths_total != 1 }} for
+        {{ missing_paths_distinct }} path{{ "s" if missing_paths_distinct != 1 }} since this
+        worker started. In memory only, so a deploy resets it, and there are two workers.
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Path</th><th class="num">Requests</th></tr></thead>
+        <tbody>
+        {% for path, count in missing_paths %}
+        <tr><td><code>{{ path }}</code></td><td class="num">{{ count }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="notice">Nothing has 404d on this worker yet.</p>
+    {% endif %}
+</section>
 {% endblock %}

@@ -10,7 +10,7 @@
    authority is the part that can be spared when the title runs long. #}
 {% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": " ~ school.miles_label ~ " miles" ~ school.year_phrase) }}{% endblock %}
 {% block meta_description %}{{ school.name }} catchment area: last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}. Check any postcode against it on the map, free.{% endblock %}
-{% block og_title %}{{ school.name }}: admitted from {{ school.miles }} miles{% endblock %}
+{% block og_title %}{{ school.name }}: admitted from {{ school.miles_label }} miles{% endblock %}
 {# A card of this school's own figure, so a link shared into a
    parents' group says the number before anyone taps it. #}
 {% block og_image %}{{ og_school_url }}{% endblock %}
@@ -38,7 +38,6 @@
 <p class="section-sub" style="margin: -0.5rem 0 1rem;">
     <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> to save this school and be told when {{ school.authority }} republishes its distance.
 </p>
-{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles_label ~ " miles" ~ school.year_phrase ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
 {% endif %}
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured
@@ -48,20 +47,12 @@
     {{ school.type }}{% if school.town %} in {{ school.town }}{% endif %}{% if school.postcode %}, {{ school.postcode }}{% endif %}{% if school.age_low is not none and school.age_high is not none %}, taking ages {{ school.age_low }} to {{ school.age_high }}{% endif %}{% if school.gender and school.gender not in ("Mixed", "Not applicable") %}, {{ school.gender | lower }}{% endif %}{% if school.number_on_roll %}, {{ "{:,}".format(school.number_on_roll) }} on roll{% endif %}.
 </p>
 
-{# The page's one action, within reach of the headline: a postcode
-   against this school's distance. The full checker with the map and
-   the verdict sits further down; this form submits to it. #}
-{% if not check %}
-<form class="search-form admission-check admission-check-top" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search" style="max-width: 36rem; margin: 0 0 1.25rem;">
-    <div class="search-form-field">
-        <label for="check-postcode-top">Will an address get in? Check a postcode against {{ school.miles }} miles</label>
-        <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
-    </div>
-    <button type="submit">Check this postcode</button>
-</form>
-{% endif %}
-
-{# The grade strip: the four things a parent scans for, as tiles. #}
+{# The grade strip leads, ahead of the checker: on 8 Sep 2026 the tile
+   carrying the published distance sat at document y=732 on a 375px
+   screen, below the fold, behind the header, the share row and the
+   postcode box. Mobile is 27 of the site's 37 clicks and this family
+   is 14 of 38, so the figure that won the click is the first thing
+   the page should show. #}
 <div class="scorecard-row">
     <div class="score-tile">
         <span class="score-tile-value">
@@ -72,7 +63,7 @@
         <span class="score-tile-label">{% if school.ofsted_note and not school.ofsted_rating_label %}{{ school.ofsted_note }}{% else %}Ofsted{% if school.ofsted_inspection_date %}, {{ school.ofsted_inspection_date.strftime("%b %Y") }}{% endif %}{% endif %}</span>
     </div>
     <div class="score-tile">
-        <span class="score-tile-value">{{ school.miles }} mi</span>
+        <span class="score-tile-value">{{ school.miles_label }} mi</span>
         <span class="score-tile-label">Admitted from, {{ school.year_or_latest }}{% if school.miles < 0.25 %}, about {{ (school.miles * 1609.34) | round | int }} metres{% endif %}</span>
     </div>
     {% if school.occupancy_pct %}
@@ -94,11 +85,30 @@
     {% endif %}
 </div>
 
+{# The page's one action, under the figure that answered the search.
+   The full checker with the map and the verdict sits further down;
+   this form submits to it. #}
+{% if not check %}
+<form class="search-form admission-check admission-check-top" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search" style="max-width: 36rem; margin: 0 0 1.25rem;">
+    <div class="search-form-field">
+        <label for="check-postcode-top">Will an address get in? Check a postcode against {{ school.miles_label }} miles</label>
+        <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
+    </div>
+    <button type="submit">Check this postcode</button>
+</form>
+{% endif %}
+
+{# Sharing sits after the figure, not before it: a link is worth
+   passing on once the number has been read. #}
+{% if not current_user %}
+{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles_label ~ " miles" ~ school.year_phrase ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
+{% endif %}
+
 <section class="report-section">
     <h2>Will an address get in?</h2>
     <p class="section-sub">
         In the {% if school.year_label %}{{ school.year_label }} round{% else %}latest published round{% endif %}, the furthest-away child offered a place at
-        {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
+        {{ school.name }} lived <strong>{{ school.miles_label }} miles</strong> away, according to
         {{ school.authority }}. Put a postcode in and it is measured against that distance.
     </p>
     {% if deadline %}
@@ -140,9 +150,10 @@
     {# The map: the school, the distance drawn as a circle, and the
        checked address when there is one. A circle is a simplification
        and the caption says so, but it beats a number floating alone. #}
-    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }} and the {{ school.miles }} mile admission distance"></div>
+    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }} and the {{ school.miles_label }} mile admission distance"></div>
     <p class="section-sub">
-        The circle is {{ school.miles }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.
+        The circle is {{ school.miles_label }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.{% if district_labels %}
+        The labels are postcode districts whose centre falls inside it; each opens the district's guide.{% endif %}
     </p>
     {% if nearby_rings %}
     {# Step 1 of the catchment map: the nearest schools' distances, on
@@ -161,7 +172,7 @@
         <strong>This is not a catchment area.</strong>
         Most English schools do not have one. When {{ school.name }} is oversubscribed, places go
         outward from the school until they run out, so the distance moves each year with how many
-        families applied and where they lived. {{ school.miles }} miles was last year's outcome,
+        families applied and where they lived. {{ school.miles_label }} miles was last year's outcome,
         not a boundary and not a promise.
     </div>
 </section>
@@ -322,7 +333,7 @@
     <h2>What it costs to live within reach of {{ school.name }}</h2>
     <p class="section-sub">How this compares across England: <a href="/schools/catchment-house-prices">what a tight gate costs, school by school →</a></p>
     <p class="section-sub">
-        The postcode districts whose centre falls inside the {{ school.miles }} miles the school admitted
+        The postcode districts whose centre falls inside the {{ school.miles_label }} miles the school admitted
         from {{ school.in_year }}, cheapest first, by the median of real sales around each
         district's centre. The cheapest is <a href="/area/{{ reach_prices[0].outcode }}">{{ reach_prices[0].outcode }}</a>
         at {{ reach_prices[0].median | gbp }}{% if reach_prices | length > 1 %}; the dearest,
@@ -348,7 +359,7 @@
 </section>
 {% elif nearby_areas %}
 <section class="report-section">
-    <h2>Postcode districts within {{ school.miles }} miles</h2>
+    <h2>Postcode districts within {{ school.miles_label }} miles</h2>
     <p class="section-sub">
         Districts whose centre falls inside {% if school.year_label %}{{ school.year_label }}'s{% else %}the latest published{% endif %} distance. A district is
         wide, so check the address itself rather than the list.
@@ -447,14 +458,14 @@
                 {{ school.name }} does not have one in the sense most people mean. Like most
                 English schools, an oversubscribed year offers places outward from the school
                 until they run out. The nearest thing to an answer: the furthest child admitted
-                {{ school.in_year }} lived {{ school.miles }} miles away, per
+                {{ school.in_year }} lived {{ school.miles_label }} miles away, per
                 {{ school.authority }}.
             </p>
         </details>
         <details class="faq-item">
             <summary>How close do I need to live to get a place at {{ school.name }}?</summary>
             <p>
-                Nobody can say in advance, and anyone who does is guessing. {{ school.miles }}
+                Nobody can say in advance, and anyone who does is guessing. {{ school.miles_label }}
                 miles was enough {{ school.in_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %},
                 and at {{ school.occupancy_pct }}% full the school has little slack{% endif %}.
                 The distance moves every year with the number of applications, so treat last
@@ -501,7 +512,8 @@
         name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }},
         year: {{ school.academic_year | tojson }},
         check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }},
-        nearby: {{ (nearby_rings or []) | tojson }}
+        nearby: {{ (nearby_rings or []) | tojson }},
+        districts: {{ (district_labels or []) | tojson }}
     };
 </script>
 {% if google_maps_api_key %}
@@ -523,6 +535,17 @@
             strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
         });
         const bounds = circle.getBounds();
+        // Step 2: the districts inside the distance, as labels at their
+        // centres. A marker with no icon and a label is the plain way to
+        // put text on this map; each label opens the district's guide.
+        (S.districts || []).forEach(function (d) {
+            const lm = new google.maps.Marker({
+                position: { lat: d.lat, lng: d.lng }, map: map, title: d.code + ': open the area guide',
+                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 },
+                label: { text: d.code, fontSize: '12px', fontWeight: '600', color: '#1c1714', className: 'map-district-label-g' },
+            });
+            lm.addListener('click', function () { window.location.href = '/area/' + d.code; });
+        });
         if (S.check) {
             const pos = { lat: S.check.lat, lng: S.check.lng };
             new google.maps.Marker({
@@ -583,6 +606,12 @@
             radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
         }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map);
         const bounds = circle.getBounds();
+        (S.districts || []).forEach(function (d) {
+            L.marker([d.lat, d.lng], {
+                icon: L.divIcon({ className: 'map-district-label', html: d.code, iconSize: null }),
+                title: d.code + ': open the area guide', keyboard: false,
+            }).addTo(map).on('click', function () { window.location.href = '/area/' + d.code; });
+        });
         if (S.check) {
             L.circleMarker([S.check.lat, S.check.lng], { radius: 9, color: '#ffffff', weight: 2, fillColor: '#2b4c8c', fillOpacity: 1 })
                 .bindPopup(S.check.postcode + ': ' + S.check.label).addTo(map);

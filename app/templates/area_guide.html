@@ -48,6 +48,17 @@
     as every property report on this site, not opinion or marketing copy.
 </p>
 
+{# The answer, before the headings. People search "is M20 a good place
+   to live" and "M20 area reviews" and landed on a page that opened
+   with a House prices heading and a table (Search Console, three
+   months to 6 Sep 2026: /area/M20 took 134 impressions and no clicks
+   while both of those queries ranked in the twenties). Each sentence
+   is a figure from further down this page with its source named. No
+   verdict: whether it is a good place to live is the reader's call. #}
+{% if area_lead %}
+<p class="area-lead">{% for sentence in area_lead %}{{ sentence }} {% endfor %}</p>
+{% endif %}
+
 {# Following a district, not an address. Most people choose an area
    long before they have a door number, and this is the only thing on
    the site that gives them a reason to come back while they are still

@@ -95,6 +95,39 @@ def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None
         session.commit()
 
 
+def remember(user_id: int, postcode: str, house_number: str) -> bool:
+    """Put a property in My properties because the account opened its
+    report, if it is not there already. Returns True when a row was
+    created, so the page can say so.
+
+    Why automatically (8 Sep 2026): only 5 of 46 accounts had ever saved
+    anything, 12 rows in total, while 35 of the 38 accounts that spent a
+    free unlock opened exactly one property and never came back for a
+    second. The one thing both paying accounts had in common was
+    returning on another day. The old flow asked people to accept an
+    offer before there was anything to come back to; this way the page
+    exists first and the offer is to keep it.
+
+    Never touches an existing row: a note someone typed is theirs, and
+    this must not overwrite it.
+    """
+    with get_session() as session:
+        existing = session.scalar(
+            select(WatchlistItem).where(
+                WatchlistItem.user_id == user_id,
+                WatchlistItem.postcode == postcode,
+                WatchlistItem.house_number == house_number,
+            )
+        )
+        if existing:
+            return False
+        session.add(WatchlistItem(
+            user_id=user_id, postcode=postcode, house_number=house_number, note="",
+        ))
+        session.commit()
+        return True
+
+
 def update_snapshot(user_id: int, item_id: int, snapshot_json: str) -> None:
     with get_session() as session:
         item = session.get(WatchlistItem, item_id)

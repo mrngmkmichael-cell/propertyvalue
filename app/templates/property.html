@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 {% import "_amenities.html" as amen %}
+{% import "_valuation.html" as val %}
 {% import "_tabs.html" as tabnav %}
 {% import "_map_style.html" as mapstyle %}
 
@@ -316,15 +317,29 @@
 
         {% if accounts_configured %}
             {% if current_user %}
+                {# Opening the report put this address in My properties.
+                   Said out loud, with the way out next to it: a list that
+                   fills itself silently is a surprise. #}
+                {% if auto_saved %}
+                <p class="section-sub auto-saved-note">
+                    Kept in <a href="/watchlist">My properties</a>, so you can come back to it and
+                    be told if anything here changes.
+                    <form action="/watchlist/remove" method="post" class="inline-undo">
+                        <input type="hidden" name="item_id" value="{{ watchlist_item.id }}">
+                        <input type="hidden" name="next" value="/property?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
+                        <button type="submit" class="linkish">Remove it</button>
+                    </form>
+                </p>
+                {% endif %}
                 <form class="stacked-form watchlist-form" action="/watchlist/save" method="post">
                     <input type="hidden" name="postcode" value="{{ location.postcode }}">
                     <input type="hidden" name="house_number" value="{{ house_number }}">
                     <div class="search-form-field">
-                        <label for="note">{{ "Update note" if watchlist_item else "Save to My properties" }}</label>
+                        <label for="note">{{ "Your note on this property" if watchlist_item else "Save to My properties" }}</label>
                         <input type="text" id="note" name="note" placeholder="Optional note to yourself"
                                value="{{ watchlist_item.note if watchlist_item else '' }}">
                     </div>
-                    <button type="submit">{{ "Update" if watchlist_item else "Save" }}</button>
+                    <button type="submit">{{ "Save note" if watchlist_item else "Save" }}</button>
                     {% if house_number %}
                     <p class="section-sub">Saved against this specific house/flat number ({{ house_number }}), not just the postcode.</p>
                     {% else %}
@@ -568,19 +583,7 @@
             {% endif %}
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-valuation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
-            <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
-            <span class="dashboard-card-title">Valuation Estimate</span>
-            <span class="dashboard-card-status">
-                {% if valuation_error %}Data unavailable
-                {% elif valuation %}{{ valuation.estimate | gbp }}
-                {% else %}Not enough nearby sales{% endif %}
-            </span>
-            {% if valuation %}
-            <span class="dashboard-card-substat">{{ valuation.low | gbp }} – {{ valuation.high | gbp }} range{% if price_per_sqm is defined and price_per_sqm and price_per_sqm.median %}; {{ price_per_sqm.median | gbp }}/m² locally{% endif %}</span>
-            {% endif %}
-        </button>
+        {{ val.valuation_card(valuation, price_per_sqm, valuation_error, valuation_pending, premium_unlocked, lock_label, lock_redirect) }}
 
         <button type="button" class="dashboard-card status-ok{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-calculators" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
@@ -1391,80 +1394,7 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Valuation estimate</h2>
-        <p class="section-sub">
-            A rough DIY estimate from public sold price data, not a professional valuation. There's
-            no free equivalent to a lender's automated valuation model, so this is fully transparent
-            about its method instead of pretending to more precision than it has.
-        </p>
-        {% if valuation_error %}
-            <p class="notice notice-error">
-                The comparables data service didn't respond. Try again in a moment.
-            </p>
-        {% elif valuation %}
-            <p class="section-sub">
-                Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
-                within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}
-                of a similar size (floor area within {{ valuation.floor_area_variance_pct }}% of this property's),
-                each scaled up for this area's house-price growth since its sale date so older sales
-                aren't taken at face value.
-            </p>
-            <table class="tx-table">
-                <thead>
-                    <tr>
-                        <th>Estimate</th>
-                        <th class="num">Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Low (25th percentile)</td>
-                        <td class="num">{{ valuation.low | gbp }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Estimate (median)</strong></td>
-                        <td class="num"><strong>{{ valuation.estimate | gbp }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>High (75th percentile)</td>
-                        <td class="num">{{ valuation.high | gbp }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        {% elif not valuation_floor_area_known %}
-            <p class="notice">
-                We don't have a floor area for this property to compare against. Try adding a house
-                or flat number to the search above to narrow it down to one address.
-            </p>
-        {% else %}
-            <p class="notice">
-                No relevant sale record of a similar-sized property (within 5% floor area) to reference
-                within the last year.
-            </p>
-        {% endif %}
-        {# Price per square metre (idea 9 of 7 Sep 2026): sold prices over
-           EPC floor areas, for the recent sales nearby and this home. #}
-        {% if price_per_sqm is defined and price_per_sqm %}
-        <h3 class="subsection-heading">Price per square metre</h3>
-        {% if price_per_sqm.median %}
-        <p class="section-sub">Recent sales nearby with a known floor area: <strong>{{ price_per_sqm.median | gbp }} per m²</strong> at the median ({{ price_per_sqm.low | gbp }} to {{ price_per_sqm.high | gbp }} across the middle half of {{ price_per_sqm.sample_size }} sale{{ 's' if price_per_sqm.sample_size != 1 }} in the last {{ price_per_sqm.years_window }} year{{ 's' if price_per_sqm.years_window != 1 }}, each scaled for the area's growth since it sold).{% if price_per_sqm.implied_value and price_per_sqm.subject_floor_area %} At that rate this home's {{ price_per_sqm.subject_floor_area }} m² would be worth about <strong>{{ price_per_sqm.implied_value | gbp }}</strong>.{% endif %}</p>
-        {% endif %}
-        {% if price_per_sqm.subject %}
-        <p class="section-sub">This home last sold at <strong>{{ price_per_sqm.subject.per_sqm | gbp }} per m²</strong> ({{ price_per_sqm.subject.amount | gbp }} in {{ price_per_sqm.subject.year }} for {{ price_per_sqm.subject.floor_area }} m²){% if price_per_sqm.subject_vs_median_pct is not none %}, {{ price_per_sqm.subject_vs_median_pct | abs }}% {{ 'above' if price_per_sqm.subject_vs_median_pct >= 0 else 'below' }} today's local median{% endif %}.</p>
-        {% endif %}
-        {% if price_per_sqm.rows %}
-        <div class="tablewrap">
-        <table class="tx-table psqm-table">
-            <thead><tr><th>Sale</th><th class="num">Sold</th><th class="num">Price</th><th class="num">Floor area</th><th class="num">Per m² at sale</th><th class="num">Scaled to today</th></tr></thead>
-            <tbody>
-            {% for r in price_per_sqm.rows %}
-            <tr><td>{{ r.address }}</td><td class="num">{{ r.date }}</td><td class="num">{{ r.amount | gbp }}</td><td class="num">{{ r.floor_area }} m²</td><td class="num">{{ r.sold_per_sqm | gbp }}</td><td class="num">{{ r.per_sqm | gbp }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% endif %}
-        <p class="property-detail-note">Sold prices from HM Land Registry; floor areas from each sale's EPC certificate, matched by house number. Per-square-metre figures are only as good as the certificate's measurement, and a price includes land, condition and outbuildings that a floor area does not.</p>
-        {% endif %}
+        {{ val.valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, valuation_pending) }}
             </section>
         </div>
     </dialog>
@@ -3841,6 +3771,53 @@ Listed building data from Historic England's
 {% endblock %}
 
 {% block extra_scripts %}
+{% if valuation_pending %}
+<script>
+    (function () {
+        // The comparables chain is the report's slowest source (about 4.9 s
+        // cold, 1.3 s clear of the next). The page rendered without it;
+        // fetch it now and swap the card and the modal body in place. The
+        // server renders both from the same macros the page used, so this
+        // only has to move HTML around.
+        const url = '/api/property/valuation?postcode={{ location.postcode | urlencode }}&house_number={{ house_number | urlencode }}';
+
+        function bindCard(card) {
+            if (!card) return;
+            card.classList.add('in-view');
+            card.addEventListener('click', function () {
+                if (card.dataset.lockRedirect) {
+                    window.location.href = card.dataset.lockRedirect;
+                    return;
+                }
+                const dialog = document.getElementById(card.dataset.modalTarget);
+                if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+            });
+        }
+
+        function swap(id, markup) {
+            const el = document.getElementById(id);
+            if (!el || !markup) return null;
+            el.outerHTML = markup;
+            return document.getElementById(id);
+        }
+
+        fetch(url, { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function (data) {
+                bindCard(swap('card-valuation', data.card));
+                swap('valuation-body', data.body);
+            })
+            .catch(function () {
+                const card = document.getElementById('card-valuation');
+                if (card) {
+                    card.classList.remove('dashboard-card-pending');
+                    const status = card.querySelector('.dashboard-card-status');
+                    if (status) status.textContent = 'Data unavailable';
+                }
+            });
+    })();
+</script>
+{% endif %}
 {% if amenities_pending %}
 <script>
     (function () {

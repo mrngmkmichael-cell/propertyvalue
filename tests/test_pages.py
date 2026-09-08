@@ -439,6 +439,80 @@ def _digest_form(body: str) -> str:
     return body.split('action="/watchlist/weekly-digest"', 1)[1].split("</form>", 1)[0]
 
 
+def test_opening_a_report_keeps_the_property_and_says_so(client, monkeypatch):
+    """Only 5 of 46 accounts had ever saved a property, 12 rows in total,
+    while 35 of the 38 accounts that spent a free unlock opened exactly one
+    property and never returned. The one thing both paying accounts had in
+    common was coming back on another day, so the page to come back to now
+    exists without anyone having to accept an offer first. It is said out
+    loud on the report, with the way out beside it."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    r = client.post("/signup", data={
+        "email": "remembers@example.test", "password": "correct horse battery staple",
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303), r.status_code
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "remembers@example.test").id
+
+    assert watchlist.list_items(user_id) == []
+    body = client.get("/property?postcode=M1+1AE").text
+    items = watchlist.list_items(user_id)
+    assert [i["postcode"] for i in items] == ["M1 1AE"]
+    assert "Kept in" in body and 'href="/watchlist"' in body
+    assert 'action="/watchlist/remove"' in body
+
+    # Opening it again is not a second row, and does not re-announce it.
+    again = client.get("/property?postcode=M1+1AE").text
+    assert len(watchlist.list_items(user_id)) == 1
+    assert "Kept in" not in again
+
+
+def test_remembering_never_overwrites_a_note_someone_typed(client):
+    """The note is theirs. An automatic save must not touch an existing
+    row, or a second visit would wipe what they wrote."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    client.post("/signup", data={
+        "email": "keeps-notes@example.test", "password": "correct horse battery staple",
+    }, follow_redirects=False)
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "keeps-notes@example.test").id
+
+    watchlist.save_item(user_id, "M1 1AE", "", "chain free, offer in")
+    assert watchlist.remember(user_id, "M1 1AE", "") is False
+    assert watchlist.get_item(user_id, "M1 1AE", "")["note"] == "chain free, offer in"
+
+
+def test_the_undo_only_ever_returns_to_this_site(client):
+    """The remove button carries where to go back to. An open redirect is
+    one careless form field away, and "//evil.example" is a relative URL
+    to a browser."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    client.post("/signup", data={
+        "email": "undo-tester@example.test", "password": "correct horse battery staple",
+    }, follow_redirects=False)
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "undo-tester@example.test").id
+
+    for target, expected in (
+        ("/property?postcode=M1+1AE", "/property?postcode=M1+1AE"),
+        ("//evil.example/", "/watchlist"),
+        ("https://evil.example/", "/watchlist"),
+        ("", "/watchlist"),
+    ):
+        watchlist.save_item(user_id, "M1 1AE", "", "")
+        item_id = watchlist.get_item(user_id, "M1 1AE", "")["id"]
+        r = client.post("/watchlist/remove", data={"item_id": item_id, "next": target},
+                        follow_redirects=False)
+        assert r.status_code == 303
+        assert r.headers["location"] == expected, target
+
+
 def test_watchlist_shows_the_digest_optin_to_a_signed_in_user(client, monkeypatch):
     """The opt-in has to be visible and reflect the account's current
     setting, or it is not really an opt-in."""
@@ -535,14 +609,23 @@ def test_only_schools_with_real_data_get_a_page(client, monkeypatch):
     assert client.get("/school/123456/any-school").status_code == 404
 
 
-def test_calculator_pages_render_and_share_one_script(client):
-    """Both tool pages exist as their own indexable page, and both are
-    driven by the same file, so the tax bands have one home."""
+def test_calculator_pages_render_but_no_longer_compete(client):
+    """Both tool pages still work and are driven by the same file, so the
+    tax bands have one home. What changed on 8 Sep 2026 is that they are
+    noindexed and out of the sitemap: 1,562 Search Console impressions at
+    an average position around 90 and not one click in three months, for
+    two commodity pages holding none of this site's own data. They stay
+    linked and usable, and they point at the running costs pages, which
+    are the version of this question only we can answer."""
     for slug in ("stamp-duty-calculator", "mortgage-calculator"):
         body = client.get(f"/tools/{slug}").text
         assert "/static/js/calculators.js" in body, slug
         assert 'id="calc-price"' in body, slug
-        assert "noindex" not in body, slug
+        assert 'content="noindex, follow"' in body, slug
+        assert "/running-costs" in body, slug
+    sitemap = client.get("/sitemap.xml").text
+    assert "/tools/mortgage-calculator" not in sitemap
+    assert "/tools/stamp-duty-calculator" not in sitemap
     assert client.get("/tools/not-a-tool").status_code == 404
 
 
@@ -1396,16 +1479,22 @@ def _seed_estate_companies():
 
 def test_the_estate_directory_is_withdrawn_until_its_data_is_checked(client):
     """Michael, 7 Sep 2026: the office attribution looked inaccurate, so
-    the directory is down for now. Its routes answer 404, nothing links
-    to them and they are out of the sitemap; the explainer page stays, and
-    the table and importer are kept for when the data has been checked."""
+    the directory is down for now. Nothing links to its routes and they
+    are out of the sitemap; the table and importer are kept for when the
+    data has been checked. From 8 Sep 2026 the routes redirect to the
+    explainer instead of 404ing: Google holds these pages and people were
+    still arriving on them, and /estate-charges answers what they came
+    for. 301, because they only come back if the data is approved."""
     _seed_estate_companies()
     from app import main as app_main
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
     assert app_main.ESTATE_DIRECTORY_ENABLED is False
     for path in ("/estate-charges/managing-agents", "/estate-charges/company/firstport", "/estate-charges/search?q=kings+hill"):
-        assert client.get(path).status_code == 404, path
+        r = client.get(path, follow_redirects=False)
+        assert r.status_code == 301, path
+        assert r.headers["location"] == "/estate-charges", path
+        assert "firstport" not in client.get(path).text.lower(), path
     assert "/estate-charges/managing-agents" not in client.get("/sitemap.xml").text
     assert "/estate-charges/managing-agents" not in client.get("/running-costs").text
     explainer = client.get("/estate-charges")
@@ -1545,6 +1634,102 @@ def test_admissions_index_has_a_school_search_that_finds_schools(client):
     assert 'id="sa-suggest"' in guide and "Find a school by name" in guide
 
 
+def test_the_area_lead_answers_the_question_in_sentences(client):
+    """People search "is M20 a good place to live" and "M20 area reviews"
+    and landed on a page that opened with a House prices heading. The lead
+    is the same figures already further down, each naming its source, and
+    no verdict of our own."""
+    from app import main as app_main
+
+    lead = app_main._area_lead("M20", {
+        "local_sales": {"enough_for_median": True, "median": 412500, "count": 63},
+        "hpi": {"local_authority": {"name": "Manchester", "annual_change_pct": 3.4}},
+        "landscape": {"good_or_better_pct": 84, "total_schools": 61, "radius_miles": 3},
+        "flood_zone": {"label": "Flood Zone 1, low risk"},
+        "finance": {"name": "Manchester", "latest_label": "2026-27",
+                    "history": [{"band_d": 1978.0}]},
+        "crime": {"total": 214, "month": "May 2026",
+                  "by_category": [{"category": "Violence and sexual offences"}]},
+    })
+    joined = " ".join(lead)
+    assert "\u00a3412,500" in joined and "63 recorded sales" in joined
+    assert "up 3.4% on a year ago" in joined
+    assert "84%" in joined and "Ofsted" in joined
+    assert "Environment Agency" in joined and "MHCLG" in joined and "Police.uk" in joined
+    # Every sentence names where it came from, and none of them judges.
+    assert all(s.endswith(".") for s in lead)
+    for word in ("good place", "desirable", "sought-after", "leafy", "vibrant"):
+        assert word not in joined.lower(), word
+
+
+def test_the_area_lead_drops_a_sentence_rather_than_inventing_one(client):
+    """The site's rule everywhere: a source with nothing for this area
+    means one fewer sentence, never a placeholder or an estimate."""
+    from app import main as app_main
+
+    assert app_main._area_lead("ZZ9", {}) == []
+    only_crime = app_main._area_lead("ZZ9", {"crime": {"total": 1}})
+    assert len(only_crime) == 1 and "1 crime within" in only_crime[0]
+
+
+def test_the_area_guide_renders_its_lead(client):
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/area/AB12").text
+    assert 'class="area-lead"' in body
+    # Above the first heading, which is what the whole point was.
+    assert body.index('class="area-lead"') < body.index("<h2>House prices</h2>")
+
+
+def test_outcode_private_school_pages_point_at_the_council_page(client):
+    """276 of these pages took 4,860 Search Console impressions in three
+    months, 46% of the site's, for 4 clicks: seven Birmingham outcodes
+    bidding against each other and against /schools/independent/birmingham
+    for one town-shaped query. They canonical to the council page where
+    the register knows the council by the same name, and they are out of
+    the sitemap. Still live, still linked."""
+    _seed_independent_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get("/area/M14/private-schools")
+    assert r.status_code == 200
+    import re
+    canonical = re.search(r'<link rel="canonical" href="([^"]+)"', r.text).group(1)
+    assert canonical.endswith("/schools/independent/manchester"), canonical
+    assert "/area/M14/private-schools" not in client.get("/sitemap.xml").text
+    # The page says the same thing to a reader that it says to a crawler.
+    assert 'href="/schools/independent/manchester"' in r.text
+
+
+def test_a_404_is_counted_so_it_can_be_found(client):
+    """Search Console reported 1,161 missing pages on 8 Sep 2026 and will
+    not say which. Path and count, in memory, nothing that identifies a
+    visitor. Both shapes of 404 are counted: raised, and returned as a
+    template response with a 404 status."""
+    from app import main as app_main
+
+    app_main._missing_paths.clear()
+    client.get("/no-such-page-at-all")
+    client.get("/no-such-page-at-all")
+    client.get("/area/NOTAPOSTCODE")   # returns a template, does not raise
+    assert app_main._missing_paths["/no-such-page-at-all"] == 2
+    assert "/area/NOTAPOSTCODE" in app_main._missing_paths
+
+
+def test_the_missing_path_list_cannot_be_flooded_out(client):
+    """A scanner walking /wp-admin/... must not push the real 404s out of
+    a list that is read by eye."""
+    from app import main as app_main
+
+    app_main._missing_paths.clear()
+    app_main._record_missing("/the-one-that-matters")
+    for i in range(app_main._MISSING_PATHS_CAP + 50):
+        app_main._record_missing(f"/wp-admin/{i}")
+    assert len(app_main._missing_paths) == app_main._MISSING_PATHS_CAP
+    assert "/the-one-that-matters" in app_main._missing_paths
+    app_main._missing_paths.clear()
+
+
 def test_area_guide_leads_with_an_address_check(client, monkeypatch):
     """Search lands most visitors on area guides; the first thing offered
     is the report for an address there. It used to have to beat an
@@ -1559,14 +1744,42 @@ def test_area_guide_leads_with_an_address_check(client, monkeypatch):
     assert "follow-row" not in body and "/districts/follow" not in body
 
 
-def test_school_page_offers_the_checker_near_the_top(client):
+def test_school_page_leads_with_the_figure_then_the_checker(client):
+    """The published distance is the answer the search was asking for, so
+    it comes first and the postcode box comes under it. Until 8 Sep 2026
+    the order was the other way round and on a 375px screen the figure
+    sat at document y=732, below the fold behind the header, the share
+    row and the box. Mobile is 27 of the site's 37 clicks."""
     _seed_admission_school()
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
     body = client.get("/school/990002/riverside-academy").text
-    top = body.index('id="check-postcode-top"')
-    assert top < body.index('class="scorecard-row"')
+    dek = body.index('class="dek"')
+    figure = body.index('class="scorecard-row"')
+    checker = body.index('id="check-postcode-top"')
+    share = body.index('class="share-send-row"')
+    assert dek < figure < checker < share
     assert 'action="/school/990002/riverside-academy#verdict"' in body
+
+
+def test_the_school_distance_reads_the_same_everywhere_on_its_page(client):
+    """The page used to render three decimals while its own title, badge
+    and share text used two, so the tab said 2.05 miles and the tile said
+    2.048. The third decimal was never the council's precision either:
+    1,072 of the 3,627 stored figures carry six decimals because the
+    council published metres and the importer converted. One rounding for
+    every surface a reader sees; the map circle keeps the full value."""
+    _seed_admission_school()
+    from app.services import _cache
+    _cache._store.clear(); _cache._bytes = 0
+    from app.services import schools_db
+    profile = schools_db.admission_profile(990002)
+    body = client.get("/school/990002/riverside-academy").text
+    label = f"{profile['miles']:.2f}".rstrip("0").rstrip(".")
+    assert f"{label} mi<" in body
+    assert f"against {label} miles" in body
+    # The precise figure survives where it is maths, not copy.
+    assert f"miles: {profile['miles']}" in body
 
 
 def test_council_hub_offers_an_address_check(client):

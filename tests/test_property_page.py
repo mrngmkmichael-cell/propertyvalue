@@ -138,6 +138,66 @@ def test_amenities_render_pending_then_arrive_by_follow_up_fetch(client, fake_re
     assert 'id="transport-body"' in data["transport_body"] and "Test Station" in data["transport_body"]
 
 
+def test_valuation_renders_pending_then_arrives_by_follow_up_fetch(client, fake_report, monkeypatch):
+    """Cold report: the valuation card renders in a pending state and the
+    page carries the follow-up fetch. Measured on production 8 Sep 2026,
+    the comparables chain took 4,910, 4,822 and 4,939 ms on three cold
+    reports, the slowest source every time and 1.3 to 1.5 s clear of the
+    next, while 79% of report starts sat through the wait."""
+    from app import main as app_main
+
+    body = _report(client, fake_report, gather=fake_gather(
+        valuation_pending=True, valuation=None, price_per_sqm=None,
+        valuation_error=False, valuation_floor_area_known=False,
+    ))
+    assert 'id="card-valuation"' in body and "dashboard-card-pending" in body
+    assert "Reading nearby sales" in body
+    assert "/api/property/valuation?postcode=M14%205TG" in body
+
+    async def _fake_comparables(lat, lon):
+        return [
+            {"address": "2 Test Street", "postcode": "M14 5TG", "amount": "300000",
+             "date": "2025-06-01", "distance_m": 40, "floor_area": 90},
+            {"address": "4 Test Street", "postcode": "M14 5TG", "amount": "320000",
+             "date": "2025-08-01", "distance_m": 60, "floor_area": 92},
+        ]
+
+    monkeypatch.setattr(app_main, "_comparables_fetch", _fake_comparables)
+    r = client.get("/api/property/valuation?postcode=M14%205TG")
+    assert r.status_code == 200
+    data = r.json()
+    assert {"card", "body"} <= set(data)
+    assert 'id="card-valuation"' in data["card"]
+    assert "dashboard-card-pending" not in data["card"]
+    assert "Reading nearby sales" not in data["card"]
+    assert 'id="valuation-body"' in data["body"]
+
+
+def test_valuation_endpoint_rejects_bad_input(client, monkeypatch):
+    from app import main as app_main
+    assert client.get("/api/property/valuation").status_code == 400
+
+    async def _none(_pc):
+        return None
+    monkeypatch.setattr(app_main, "lookup_postcode", _none)
+    assert client.get("/api/property/valuation?postcode=ZZ99%209ZZ").status_code == 404
+
+
+def test_a_document_build_never_defers_the_valuation(client, fake_report, monkeypatch):
+    """The page can fill a card in afterwards; a PDF cannot. wait_for_slow
+    makes the gather wait for both slow sources, and it is what the PDF
+    route passes."""
+    import inspect
+    from app import main as app_main
+
+    source = inspect.getsource(app_main.property_pdf)
+    assert "wait_for_slow=True" in source
+    gather_src = inspect.getsource(app_main._full_property_gather)
+    assert "if cached is not None or wait_for_slow:" in gather_src
+    # Both slow sources honour the same flag.
+    assert gather_src.count("or wait_for_slow:") == 2
+
+
 def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
     from app import main as app_main
     assert client.get("/api/property/amenities").status_code == 400

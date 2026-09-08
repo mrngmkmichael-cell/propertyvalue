@@ -337,6 +337,11 @@ async def capture_pageview(request: Request, call_next):
     privacy policy explicitly promises not to do)."""
     response = await call_next(request)
     path = request.url.path
+    # Every 404, however it was produced: most routes here return a
+    # TemplateResponse with status_code=404 rather than raising, so the
+    # exception handler alone would miss them.
+    if response.status_code == 404 and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES):
+        _record_missing(path)
     if (
         request.method == "GET"
         and response.status_code == 200
@@ -368,6 +373,31 @@ async def capture_pageview(request: Request, call_next):
         else:
             response.background = BackgroundTasks([response.background, BackgroundTask(_record_pageview, path, user_id)])
     return response
+
+
+# What 404s, counted in memory. Search Console reported 1,161 pages as
+# "Not found (404)" on 8 Sep 2026 and gives no way to export the list, so
+# the number was a fact with nothing attached to it. 809 of them turned
+# out to be the bare-outcode /property links (fixed the same day) and
+# some are the withdrawn estate directory, but roughly 350 were
+# unaccounted for and there was no way to find out which. This keeps path
+# and count, nothing else: no IP, no user agent, no referrer, nothing
+# that could identify a visitor, in keeping with the privacy promise.
+# Per worker and lost on restart, which is all "what is being asked for
+# that we do not have" needs.
+_missing_paths: dict[str, int] = {}
+_MISSING_PATHS_CAP = 500
+
+
+def _record_missing(path: str) -> None:
+    if len(path) > 200:
+        path = path[:200]
+    if path in _missing_paths:
+        _missing_paths[path] += 1
+    elif len(_missing_paths) < _MISSING_PATHS_CAP:
+        # Capped rather than evicting: a scanner walking /wp-admin/... must
+        # not be able to push the real 404s out of a list read by eye.
+        _missing_paths[path] = 1
 
 
 def _record_pageview(path: str, user_id: int | None) -> None:
@@ -1661,13 +1691,25 @@ ESTATE_DIRECTORY_ENABLED = False
 templates.env.globals["estate_directory_enabled"] = ESTATE_DIRECTORY_ENABLED
 
 
+def _estate_withdrawn() -> RedirectResponse:
+    """While the directory is off, its URLs redirect to the explainer
+    rather than dying. Google had these pages indexed and the pageview
+    table shows people still arriving on them on 6 and 7 Sep 2026; a 404
+    tells them nothing and throws away the link. /estate-charges answers
+    the question they came with, what estate charges are and what to ask
+    a conveyancer, and is not going anywhere. 301 rather than 302: the
+    directory returns at these paths only if the office attribution is
+    checked and approved, so until then this is the permanent answer."""
+    return RedirectResponse("/estate-charges", status_code=301)
+
+
 @app.get("/estate-charges/managing-agents")
 async def estate_agents_page(request: Request):
     """Who manages your estate: every residents' management company on
     the Companies House register and the agents' offices they are
     registered to. A league table nobody has published."""
     if not ESTATE_DIRECTORY_ENABLED:
-        raise StarletteHTTPException(status_code=404)
+        return _estate_withdrawn()
     context = base_context(request)
     context["canonical_url"] = f"{_public_base_url(request)}/estate-charges/managing-agents"
     context["data"] = await asyncio.to_thread(estate_companies.agents_table)
@@ -1677,7 +1719,7 @@ async def estate_agents_page(request: Request):
 @app.get("/estate-charges/company/{slug}")
 async def estate_agent_page(request: Request, slug: str):
     if not ESTATE_DIRECTORY_ENABLED:
-        raise StarletteHTTPException(status_code=404)
+        return _estate_withdrawn()
     data = await asyncio.to_thread(estate_companies.agent_page, slug)
     if data is None:
         raise StarletteHTTPException(status_code=404)
@@ -1690,7 +1732,7 @@ async def estate_agent_page(request: Request, slug: str):
 @app.get("/estate-charges/search")
 async def estate_search_page(request: Request, q: str = ""):
     if not ESTATE_DIRECTORY_ENABLED:
-        raise StarletteHTTPException(status_code=404)
+        return _estate_withdrawn()
     context = base_context(request)
     context["q"] = q.strip()[:80]
     context["results"] = await asyncio.to_thread(estate_companies.search, context["q"]) if context["q"] else []
@@ -1930,8 +1972,18 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     """
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/schools/outstanding", "/schools/grammar", "/privacy", "/terms",
                     "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
-                    "/compare", "/tools/stamp-duty-calculator", "/tools/mortgage-calculator",
+                    "/compare",
                     "/market/district-prices"]
+    # The two calculators left the sitemap on 8 Sep 2026 and are noindexed
+    # in tool_calculator.html. Three months of Search Console:
+    # /tools/mortgage-calculator took 1,431 impressions at an average
+    # position of 94.6 and has never had a click; the stamp duty one 131 at
+    # 88.9, also none. Together that is 15% of the site's impressions,
+    # bidding for "mortgage repayment calculator" against the banks and
+    # MoneySavingExpert with a page that holds none of our own data, and
+    # dragging the site-wide average position while doing it. Both tools
+    # stay live and linked from the report and /running-costs; they are
+    # simply not what this domain should be spending its crawl on.
     outcodes = [o for o in AREA_GUIDE_SEED_OUTCODES if o in KNOWN_OUTCODES] or AREA_GUIDE_SEED_OUTCODES
     entries = [(f"{base}{p}", "0.8" if p in ("/", "/areas") else "0.5") for p in static_paths]
     entries += [(f"{base}/area/{o}", "0.7") for o in outcodes]
@@ -1940,9 +1992,16 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # site (30,000-40,000 words of Ofsted and catchment detail against
     # ~600 for an area guide), so they go in at the area guides' priority.
     entries += [(f"{base}/schools/guide?q={o}", "0.7") for o in outcodes]
-    # "private schools in X" is a query nobody serves well, and the data
-    # behind it is the site's least reproducible asset.
-    entries += [(f"{base}/area/{o}/private-schools", "0.7") for o in outcodes]
+    # The per-outcode private school pages left the sitemap on 8 Sep 2026
+    # and now canonical to their council page: see area_private_schools.
+    # They were the largest family here, 276 of them earning 4,860
+    # impressions in three months, 46% of the site's total, for 4 clicks
+    # at positions between 40 and 90. The queries behind them are named
+    # after towns ("private schools birmingham"), and seven Birmingham
+    # outcodes were bidding for that one query against each other and
+    # against /schools/independent/birmingham. One page per council is
+    # the shape of the question; the outcode pages stay live and linked
+    # from the area guides, the school pages and the schools guide.
     # One page per school with a real published admission distance,
     # limited to the same curated districts as everything else above.
     # Each is genuinely distinct (its own school, its own distance, its
@@ -2517,6 +2576,15 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     context.update(await _full_property_gather(location, house_number, premium_unlocked))
 
     if context["current_user"]:
+        # Opening a report puts the property in My properties. See
+        # watchlist.remember for the numbers behind that: the return
+        # page has to exist before anyone can be asked to come back to
+        # it. The page says it happened and offers to undo it, because
+        # a list that fills itself without telling you is a surprise,
+        # not a feature.
+        context["auto_saved"] = watchlist.remember(
+            context["current_user"]["id"], canonical, house_number
+        )
         context["watchlist_item"] = watchlist.get_item(
             context["current_user"]["id"], canonical, house_number
         )
@@ -2775,8 +2843,66 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
         "essentials_body": str(amen.essentials_body(ctx["amenities"], ctx["amenities_error"], False)),
         "transport_body": str(amen.transport_body(ctx["stations"], ctx["stations_list"], ctx["amenities_error"], False)),
         "stations_list": ctx["stations_list"],
-        "stations_list": ctx["stations_list"],
-        "stations_list": ctx["stations_list"],
+    })
+
+@app.get("/api/property/valuation")
+async def property_valuation(request: Request, postcode: str = "", house_number: str = ""):
+    """The comparables chain, fetched by the page after it has rendered.
+
+    It was the slowest source in the report by 1.3 to 1.5 seconds and it
+    feeds one card, so from 8 Sep 2026 it runs beside the page instead of
+    in front of it (see the note above _comparables_fetch). Returns the
+    card and the modal body as rendered HTML, from the same macros the
+    page itself used, so there is no second copy of the layout in
+    JavaScript."""
+    postcode = postcode.strip()
+    if not postcode:
+        return JSONResponse({"error": "postcode_required"}, status_code=400)
+    try:
+        location = await lookup_postcode(postcode)
+    except httpx.HTTPError:
+        return JSONResponse({"error": "lookup_error"}, status_code=503)
+    if location is None:
+        return JSONResponse({"error": "not_found"}, status_code=404)
+
+    house_number = house_number.strip()
+    context: dict = {"valuation": None, "price_per_sqm": None, "valuation_error": False,
+                     "valuation_floor_area_known": False, "transactions": []}
+    try:
+        comparables = await _comparables_fetch(location["latitude"], location["longitude"])
+        # The subject property's own floor area and the area growth rate
+        # both come from the main gather, which by now is cached for this
+        # address: the page that is asking has already rendered from it.
+        report = await _full_property_gather(location, house_number, premium_unlocked=False)
+        context["transactions"] = report.get("transactions") or []
+        subject_floor_area = (report.get("property_detail") or {}).get("total_floor_area")
+        growth_area = (report.get("hpi") or {}).get("local_authority") or (report.get("hpi") or {}).get("region")
+        _apply_valuation(context, comparables, subject_floor_area,
+                         growth_area["annual_change_pct"] if growth_area else None)
+    except Exception:  # noqa: BLE001 - the card says "unavailable", never a broken page
+        logging.warning("valuation fetch failed for %s", location["postcode"], exc_info=True)
+        context["valuation_error"] = True
+
+    # Same per-property lock decision as property_search, minus spending
+    # an unlock: this request only follows a page that already did.
+    current = auth.current_user(request)
+    premium_unlocked = bool(current and current.get("subscribed"))
+    if current and not premium_unlocked and db.is_configured():
+        with db.get_session() as session:
+            premium_unlocked = auth.has_unlocked(session, current["id"], location["postcode"], house_number)
+    lock_label = "Sign up: 1 free full report" if not current else "Upgrade to Premium to unlock"
+    lock_redirect = "/signup?next=" + quote("/premium") if not current else "/premium"
+
+    val = templates.get_template("_valuation.html").module
+    return JSONResponse({
+        "card": str(val.valuation_card(
+            context["valuation"], context["price_per_sqm"], context["valuation_error"], False,
+            premium_unlocked, lock_label, lock_redirect,
+        )),
+        "body": str(val.valuation_body(
+            context["valuation"], context["price_per_sqm"], context["valuation_error"],
+            context["valuation_floor_area_known"], False,
+        )),
     })
 
 
@@ -2807,8 +2933,72 @@ async def _deduped(cache_key, ttl_s: float, factory):
     return value
 
 
+# The comparables chain is the single slowest thing in the report.
+# Server-Timing on three cold production reports, 8 Sep 2026: 4,910 ms
+# for CV1 2WT, 4,822 for NE2 1AA and 4,939 for PL4 6AB, the slowest
+# source every time and 1.3 to 1.5 seconds clear of the next, out of
+# totals of 6.0, 5.8 and 6.6 seconds. It is two dependent round trips
+# (nearby postcodes, then their sales) followed by up to twenty EPC
+# certificate lookups, and everything it feeds sits behind one card.
+#
+# 250 of the 315 report starts in the three days to 8 Sep 2026 went
+# through the "building your report" wait, so four report starts in
+# five pay this. It now runs beside the page rather than in front of
+# it: cached here under its own key so the follow-up request is
+# usually a cache read, and warmed in the background the moment a
+# report renders without it.
+COMPARABLES_CACHE_TTL_S = PROPERTY_SEARCH_CACHE_TTL_S
+
+
+def _comparables_key(lat: float, lon: float) -> tuple:
+    # Six decimals is about 10 cm, which is the same point. Rounded so
+    # the page and its follow-up request agree on the key.
+    return ("nearby_comparables", round(lat, 6), round(lon, 6))
+
+
+def _comparables_cached(lat: float, lon: float):
+    return _cache.get(_comparables_key(lat, lon), COMPARABLES_CACHE_TTL_S)
+
+
+async def _comparables_fetch(lat: float, lon: float) -> list[dict]:
+    """Fetch and cache. Used by the gather when the answer is already
+    warm, by the PDF path which cannot defer anything, and by the
+    follow-up request the page makes."""
+    return await _deduped(
+        _comparables_key(lat, lon), COMPARABLES_CACHE_TTL_S,
+        lambda: _nearby_comparables(lat, lon),
+    )
+
+
+def _warm_comparables(lat: float, lon: float) -> None:
+    """Start the fetch without waiting for it, so it is usually done by
+    the time the rendered page asks."""
+    task = asyncio.create_task(_comparables_fetch(lat, lon))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct) -> None:
+    """Everything the valuation card and its modal read, from one
+    comparables list. Shared by the gather and /api/property/valuation so
+    the two cannot drift."""
+    context["valuation_floor_area_known"] = bool(subject_floor_area)
+    context["valuation"] = valuation.estimate_value(comparables, subject_floor_area, growth_pct)
+    context["price_per_sqm"] = valuation.price_per_sqm(
+        comparables, subject_floor_area, context.get("transactions") or [], growth_pct,
+    )
+    context["new_build_stat"] = _new_build_stat(comparables)
+    # For the "Keep exploring" tile at the foot of the report. The
+    # Comparables tab is free and lists every one of these sales, so
+    # a count and the most recent one give nothing away that the
+    # next click wouldn't.
+    context["nearby_sales_count"] = len(comparables)
+    dated = [t for t in comparables if t.get("date") and t.get("amount")]
+    context["nearby_latest_sale"] = max(dated, key=lambda t: t["date"]) if dated else None
+
+
 async def _full_property_gather(
-    location: dict, house_number: str, premium_unlocked: bool, wait_for_amenities: bool = False
+    location: dict, house_number: str, premium_unlocked: bool, wait_for_slow: bool = False
 ) -> dict:
     """The full ~28-service data gather behind /property and its full
     PDF export (/property/pdf) - every dashboard card's worth of data
@@ -2821,7 +3011,8 @@ async def _full_property_gather(
     2 s for everything else, so by default this only takes them from the
     cache: on a miss the page renders with the two amenities cards in a
     "finding what's nearby" state and fetches them afterwards through
-    /api/property/amenities. wait_for_amenities=True restores the old
+    /api/property/amenities, and the comparables chain behind the
+    valuation likewise via /api/property/valuation. wait_for_slow=True
     blocking behaviour for callers that need the full result in one go
     (the PDF export)."""
     context: dict = {"location": location}
@@ -2847,12 +3038,24 @@ async def _full_property_gather(
     context["council_tax"] = council_tax.for_district(codes.get("admin_district"), location.get("admin_district"))
     context["epc_configured"] = epc.is_configured()
     context["amenities_pending"] = False
+    context["valuation_pending"] = False
+    context["valuation_error"] = False
 
     async def _amenities():
         cached = amenities.cached_nearby(lat, lon)
-        if cached is not None or wait_for_amenities:
+        if cached is not None or wait_for_slow:
             return cached if cached is not None else await amenities.nearby_amenities_and_station(lat, lon)
         context["amenities_pending"] = True
+        return None
+
+    async def _comparables():
+        cached = _comparables_cached(lat, lon)
+        if cached is not None or wait_for_slow:
+            return cached if cached is not None else await _comparables_fetch(lat, lon)
+        # Not in front of the page. Start it now so the follow-up
+        # request the rendered page makes is usually a cache read.
+        context["valuation_pending"] = True
+        _warm_comparables(lat, lon)
         return None
 
     # Independent external API calls AND our own DB lookups, fetched
@@ -2898,7 +3101,7 @@ async def _full_property_gather(
             _timed("mobile-coverage-coverage-for-laua, codes-get", asyncio.to_thread(mobile_coverage.coverage_for_laua, codes.get("admin_district", ""))),
             _timed("radon-risk-near", radon.risk_near(lat, lon)),
             _timed("heritage-nearby-listed-buildings", heritage.nearby_listed_buildings(lat, lon)),
-            _timed("-nearby-comparables", _nearby_comparables(lat, lon)),
+            _timed("-nearby-comparables", _comparables()),
             _timed("demographics-age-profile-for-lsoa, codes-get", asyncio.to_thread(demographics.age_profile_for_lsoa, codes.get("lsoa", ""))),
             _timed("demographics-housing-for-lsoa, codes-get", asyncio.to_thread(demographics.housing_for_lsoa, codes.get("lsoa", ""))),
             _timed("demographics-background-for-lsoa, codes-get", asyncio.to_thread(demographics.background_for_lsoa, codes.get("lsoa", ""))),
@@ -3121,27 +3324,22 @@ async def _full_property_gather(
     else:
         context["heritage"] = heritage_result
 
+    subject_floor_area = (context.get("property_detail") or {}).get("total_floor_area")
+    growth_area = (context.get("hpi") or {}).get("local_authority") or (context.get("hpi") or {}).get("region")
+    growth_pct = growth_area["annual_change_pct"] if growth_area else None
     if isinstance(comparables_result, Exception):
         context["valuation_error"] = True
+    elif comparables_result is None:
+        # Not fetched in this gather, or a replay of one from the
+        # gather cache that was not. The background warm may have
+        # landed since, in which case use it now.
+        cached_now = _comparables_cached(lat, lon)
+        if cached_now is not None:
+            _apply_valuation(context, cached_now, subject_floor_area, growth_pct)
+        else:
+            context["valuation_pending"] = True
     else:
-        subject_floor_area = (context.get("property_detail") or {}).get("total_floor_area")
-        context["valuation_floor_area_known"] = bool(subject_floor_area)
-        growth_area = (context.get("hpi") or {}).get("local_authority") or (context.get("hpi") or {}).get("region")
-        context["valuation"] = valuation.estimate_value(
-            comparables_result, subject_floor_area, growth_area["annual_change_pct"] if growth_area else None
-        )
-        context["price_per_sqm"] = valuation.price_per_sqm(
-            comparables_result, subject_floor_area, context.get("transactions") or [],
-            growth_area["annual_change_pct"] if growth_area else None,
-        )
-        context["new_build_stat"] = _new_build_stat(comparables_result)
-        # For the "Keep exploring" tile at the foot of the report. The
-        # Comparables tab is free and lists every one of these sales, so
-        # a count and the most recent one give nothing away that the
-        # next click wouldn't.
-        context["nearby_sales_count"] = len(comparables_result)
-        dated = [t for t in comparables_result if t.get("date") and t.get("amount")]
-        context["nearby_latest_sale"] = max(dated, key=lambda t: t["date"]) if dated else None
+        _apply_valuation(context, comparables_result, subject_floor_area, growth_pct)
 
     if isinstance(age_profile_result, Exception):
         context["age_profile_error"] = True
@@ -3903,7 +4101,10 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         # for these, all keyed by lat/lon or LSOA/MSOA so none of them
         # need a house number the extension doesn't have.
         _immediate([]) if area_level else sold_prices_for_postcode(canonical),
-        _nearby_comparables(lat, lon),
+        # Through the shared cache: the browser extension and the report
+        # ask the same question of the same point, and this is the slowest
+        # answer either of them waits for.
+        _comparables_fetch(lat, lon),
         asyncio.to_thread(schools_db.nearby_schools, lat, lon),
         catchment.catchments_for(lat, lon),
         # lite=True: this endpoint only ever displays 5 of the 12
@@ -4640,7 +4841,7 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
         return RedirectResponse("/", status_code=303)
 
     report, running_costs = await asyncio.gather(
-        _full_property_gather(location, house_number, premium_unlocked=True, wait_for_amenities=True),
+        _full_property_gather(location, house_number, premium_unlocked=True, wait_for_slow=True),
         _running_costs_for_postcode(location, house_number),
         return_exceptions=True,
     )
@@ -4825,10 +5026,16 @@ def _named_schools(landscape: dict | None) -> list[dict]:
 
 
 def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> None:
-    """FAQs and neighbouring-district links for an area guide. Every
-    answer is the guide's own real data rephrased as a sentence, and a
-    question is only asked when the data behind its answer exists."""
+    """FAQs, the lead paragraph and neighbouring-district links for an
+    area guide. Every answer is the guide's own real data rephrased as a
+    sentence, and a question is only asked when the data behind its
+    answer exists."""
     import math
+
+    # Outside the cached payload on purpose: it is assembled from fields
+    # already in it, so the 2,943 warm guides pick it up without a
+    # payload version bump and a full re-warm.
+    context["area_lead"] = _area_lead(outcode, context)
 
     def _nearest():
         cached = _cache.get(("nearby_outcodes", outcode), 7 * 86400)
@@ -5256,6 +5463,99 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
     }
     await asyncio.to_thread(_cache.set_persistent, cache_key, page_data)
     return page_data
+
+
+# The national figures the lead paragraph measures a district against.
+# Both are published, both are named in the sentence that uses them, and
+# both live here rather than in the copy so there is one place to update
+# them when the source moves.
+ENGLAND_MEDIAN_SALE_PRICE = 290000    # HM Land Registry UK HPI, England
+ENGLAND_GOOD_OR_BETTER_PCT = 90       # Ofsted, state schools Good or Outstanding
+
+
+def _area_lead(outcode: str, payload: dict) -> list[str]:
+    """The first thing an area guide says, in the words the question gets
+    asked in.
+
+    Search Console, three months to 6 Sep 2026: "is m20 a good place to
+    live" earned 20 impressions at position 21.7 and "m20 6bq area
+    reviews" 19 at 13.8, both landing on /area/M20, which took 134
+    impressions and no clicks. The guide held the answer all along and
+    never said it in a sentence; it opened straight into a House prices
+    heading and a table.
+
+    Every clause below is a figure already further down the same page,
+    with its source named in the sentence. No verdict, no score, no
+    adjective the data does not carry: whether somewhere is a good place
+    to live is the reader's judgement, and this only sets out what would
+    inform it. A district whose source has nothing simply gets one fewer
+    sentence, which is the same rule the rest of the site follows.
+    """
+    out: list[str] = []
+    sales = payload.get("local_sales") or {}
+    la = (payload.get("hpi") or {}).get("local_authority") or {}
+
+    if sales.get("enough_for_median") and sales.get("median"):
+        median = int(sales["median"])
+        gap = abs(median - ENGLAND_MEDIAN_SALE_PRICE)
+        against = ("in line with" if gap < ENGLAND_MEDIAN_SALE_PRICE * 0.05
+                   else "above" if median > ENGLAND_MEDIAN_SALE_PRICE else "below")
+        out.append(
+            f"Homes on the streets around central {outcode} sold at a median of "
+            f"\u00a3{median:,} across {sales['count']} recorded sales, {against} the England "
+            f"average of \u00a3{ENGLAND_MEDIAN_SALE_PRICE:,} (HM Land Registry)."
+        )
+    elif la.get("average_price"):
+        out.append(
+            f"The average sold price in {la['name']} is \u00a3{la['average_price']:,.0f} "
+            f"(HM Land Registry UK House Price Index)."
+        )
+
+    if la.get("annual_change_pct") is not None and la.get("name"):
+        pct = la["annual_change_pct"]
+        out.append(
+            f"Prices across {la['name']} are {'up' if pct >= 0 else 'down'} "
+            f"{abs(pct):.1f}% on a year ago (UK House Price Index)."
+        )
+
+    landscape = payload.get("landscape") or {}
+    if landscape.get("good_or_better_pct") is not None and landscape.get("total_schools"):
+        out.append(
+            f"Of the {landscape['total_schools']} schools within about "
+            f"{landscape.get('radius_miles', 3)} miles, {landscape['good_or_better_pct']}% are "
+            f"rated Good or Outstanding, against {ENGLAND_GOOD_OR_BETTER_PCT}% of state schools "
+            f"in England (Ofsted)."
+        )
+
+    flood = payload.get("flood_zone") or {}
+    if flood.get("label"):
+        out.append(
+            f"The centre of {outcode} sits in {flood['label'].lower()} "
+            f"(Environment Agency flood map for planning)."
+        )
+
+    finance = payload.get("finance") or {}
+    history = finance.get("history") or []
+    if history and history[-1].get("band_d") and finance.get("name"):
+        out.append(
+            f"A Band D household in {finance['name']} pays "
+            f"\u00a3{history[-1]['band_d']:,.0f} in council tax for {finance['latest_label']}, "
+            f"every precept included (MHCLG)."
+        )
+
+    crime = payload.get("crime") or {}
+    if crime.get("total") is not None:
+        commonest = ((crime.get("by_category") or [{}])[0] or {}).get("category")
+        month = f" in {crime['month']}" if crime.get("month") else ""
+        plural = "" if crime["total"] == 1 else "s"
+        out.append(
+            f"Police recorded {crime['total']} crime{plural} within roughly a mile of the "
+            f"centre{month}"
+            + (f", most commonly {commonest.lower()}" if commonest else "")
+            + " (Police.uk)."
+        )
+
+    return out
 
 
 @app.get("/area/{outcode}")
@@ -5857,6 +6157,14 @@ def admin_dashboard(request: Request):
         ).all()
     context["figure_statuses"] = FIGURE_STATUSES
     context["process_memory"] = _process_memory()
+    # What has 404d on this worker since it started, commonest first.
+    # Search Console says 1,161 pages are missing and will not say
+    # which; this is the list, from the only place that actually knows.
+    context["missing_paths"] = sorted(
+        _missing_paths.items(), key=lambda kv: (-kv[1], kv[0])
+    )[:40]
+    context["missing_paths_total"] = sum(_missing_paths.values())
+    context["missing_paths_distinct"] = len(_missing_paths)
     return templates.TemplateResponse(request, "admin.html", context)
 
 
@@ -7278,12 +7586,16 @@ def watchlist_save(
 
 
 @app.post("/watchlist/remove")
-def watchlist_remove(request: Request, item_id: int = Form(...)):
+def watchlist_remove(request: Request, item_id: int = Form(...), next: str = Form("")):
     user = auth.current_user(request)
     if not user:
         return RedirectResponse("/login?next=/watchlist", status_code=303)
     watchlist.remove_item(user["id"], item_id)
-    return RedirectResponse("/watchlist", status_code=303)
+    # The undo on a report page comes back to that report rather than
+    # to the list. Own-site paths only: "//evil.example" is a relative
+    # URL to a browser and an open redirect to everyone else.
+    target = next if next.startswith("/") and not next.startswith("//") else "/watchlist"
+    return RedirectResponse(target, status_code=303)
 
 
 # /districts/follow and /districts/unfollow were removed on 7 Sep 2026
@@ -8012,6 +8324,9 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["nearby_areas"] = await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )
+    # Catchment map, step 2: the same districts as labels on the map, at
+    # their centres, each a link to the district's guide.
+    context["district_labels"] = [{"code": a["outcode"], "lat": a["lat"], "lng": a["lon"]} for a in context["nearby_areas"]]
     # What it costs to live within reach: the districts inside the
     # distance, each with its median sold price from the area guides.
     # The one page a school site cannot make (no prices) and a portal
@@ -8105,6 +8420,8 @@ def _outcodes_within(lat: float, lon: float, miles: float) -> list[dict]:
                 "district": entry.get("district", ""),
                 # Shown in miles, like every other distance on the site.
                 "miles": round(d / 1.60934, 1),
+                # The centre itself, for the label on the map (step 2).
+                "lat": entry["lat"], "lon": entry["lon"],
             })
     out.sort(key=lambda e: e["miles"])
     return out[:12]
@@ -8146,8 +8463,19 @@ async def area_private_schools(request: Request, outcode: str):
     context.update(payload)
     context["outcode"] = outcode
     context["admin_district"] = location.get("admin_district") or ""
-    context["canonical_url"] = f"{_public_base_url(request)}/area/{outcode}/private-schools"
     context["independent_district"] = await asyncio.to_thread(schools_db.independent_district_for, context["admin_district"])
+    # Canonical to the council page where the register knows this
+    # council by the same name (8 Sep 2026). This page lists the
+    # fee-paying schools within about three miles of the district
+    # centre, which for a city means seven outcodes returning
+    # substantially the same schools for the same town-shaped query,
+    # and none of them winning it. Where the register spells the
+    # council differently and there is no page to point at, the page
+    # stays its own canonical.
+    if context["independent_district"]:
+        context["canonical_url"] = f"{_public_base_url(request)}/schools/independent/{context['independent_district']['slug']}"
+    else:
+        context["canonical_url"] = f"{_public_base_url(request)}/area/{outcode}/private-schools"
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_public_base_url(request), [
         ("Area guides", "/areas"), (f"{outcode} area guide", f"/area/{outcode}"),
         (f"Private schools in {outcode}", f"/area/{outcode}/private-schools"),

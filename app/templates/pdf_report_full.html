@@ -47,7 +47,12 @@
     table.rule-rust td { border-top: 1.6pt solid #a8541a; height: 1pt; padding: 0; }
 
     /* Cover */
-    .cv-post { font-family: "ISB"; font-size: 50pt; color: #1c1714; letter-spacing: -1.6pt; line-height: 1.02; margin: 0; }
+    /* The cover postcode is data, so it takes the mono face at normal
+       tracking, the same rule the live report page follows. At -1.6pt of
+       tracking on the sans face "M1 1AE" closed up into "M11AE", which is
+       exactly the bug fixed on the web report on 7 Sep 2026 and was still
+       here on the document a buyer pays for. */
+    .cv-post { font-family: "MONO"; font-size: 38pt; color: #1c1714; letter-spacing: 0; line-height: 1.08; margin: 0; }
     .cv-addr { font-family: "IS"; font-size: 14pt; color: #57504a; line-height: 1.45; margin: 10pt 0 0; }
     .cv-score { font-family: "ISB"; font-size: 92pt; color: #2b4c8c; letter-spacing: -3pt; line-height: 0.95; }
     .cv-score-sub { font-family: "MONO"; font-size: 8.4pt; color: #736a61; letter-spacing: 1.2pt; text-transform: uppercase; }
@@ -134,7 +139,10 @@
 <p class="kicker">UKPropertyInsight &nbsp;&middot;&nbsp; Property due-diligence report &nbsp;&middot;&nbsp; {{ generated_date }}</p>
 {{ sp("96pt") }}
 <p class="cv-post">{{ location.postcode }}</p>
-<p class="cv-addr">{{ address_line }}<br/>{{ place }}</p>
+{# With no house number the address line was the postcode again, so the
+   cover printed it twice, the second time in the sans face where the
+   space closed up into "M11AE". Say it once. #}
+<p class="cv-addr">{% if address_line and address_line != location.postcode %}{{ address_line }}<br/>{% endif %}{{ place }}</p>
 {{ sp("18pt") }}
 {{ rust() }}
 {{ sp("14pt") }}

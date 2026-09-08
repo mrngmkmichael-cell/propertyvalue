@@ -293,7 +293,7 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Planning and heritage", "Development sites nearby", "The planning data platform did not respond", "neutral", bf_source)
     elif bf and bf.get("covered"):
         if bf.get("count"):
-            homes = f", up to {bf['dwellings']} homes where stated" if bf.get("dwellings") else ""
+            homes = f", up to {bf['dwellings']:,} homes where stated" if bf.get("dwellings") else ""
             perm = f", {bf['permissioned']} with permission" if bf.get("permissioned") else ""
             nearest = bf["sites"][0]
             flagged = (bf.get("dwellings") or 0) >= 10 or (bf.get("hectares") or 0) >= 0.5 or bf.get("permissioned")

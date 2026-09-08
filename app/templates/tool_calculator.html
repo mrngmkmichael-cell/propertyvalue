@@ -3,6 +3,11 @@
 {% block title %}{{ tool.title }} | UKPropertyInsight{% endblock %}
 {% block meta_description %}{{ tool.meta }}{% endblock %}
 {% block og_title %}{{ tool.title }}{% endblock %}
+{# Noindexed on 8 Sep 2026, and out of the sitemap: see the note in
+   _sitemap_entries. 1,562 impressions at position ~90 and no click in
+   three months, for two pages that hold nothing this site knows and
+   nobody else does. Still linked, still usable, just not competing. #}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
 <script type="application/ld+json">{{ tool.jsonld | safe }}</script>
@@ -107,6 +112,12 @@
         The tax is the easy number. Flood risk, what the neighbours' houses actually sold for,
         crime, schools and the energy bill are the ones that change your mind about a house.
         Those are free too, on any UK postcode.
+    </p>
+    <p class="section-sub">
+        For what the house costs once you are in it, <a href="/running-costs">running costs by
+        postcode</a> puts council tax at every band, the property's own EPC energy estimate and
+        the tenure side by side, and <a href="/running-costs/council-tax">council tax by
+        authority</a> ranks all 350 billing authorities.
     </p>
     <form class="search-form" action="/property" method="get">
         <div class="search-form-field">

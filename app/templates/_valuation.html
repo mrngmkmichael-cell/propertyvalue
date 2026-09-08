@@ -1,0 +1,109 @@
+{# The comparables-dependent pieces of the property report: one card and
+   one modal body. Rendered inline when the comparables chain is already
+   cached, or in a "working it out" state and then re-rendered by
+   /api/property/valuation once the page is up - see property.html's
+   extra_scripts. One template for both paths so they cannot drift, the
+   same arrangement the amenities cards have used since 4 Sep 2026. #}
+{% import "_icons.html" as icons %}
+
+{% macro valuation_card(valuation, price_per_sqm, valuation_error, pending, premium_unlocked, lock_label, lock_redirect) %}
+<button type="button" id="card-valuation" class="dashboard-card status-{{ 'muted' if (pending or valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-pending' if pending else '' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-valuation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+    {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+    <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
+    <span class="dashboard-card-title">Valuation Estimate</span>
+    <span class="dashboard-card-status">
+        {% if pending %}Reading nearby sales&hellip;
+        {% elif valuation_error %}Data unavailable
+        {% elif valuation %}{{ valuation.estimate | gbp }}
+        {% else %}Not enough nearby sales{% endif %}
+    </span>
+    {% if valuation %}
+    <span class="dashboard-card-substat">{{ valuation.low | gbp }} &ndash; {{ valuation.high | gbp }} range{% if price_per_sqm and price_per_sqm.median %}; {{ price_per_sqm.median | gbp }}/m² locally{% endif %}</span>
+    {% endif %}
+</button>
+{% endmacro %}
+
+{% macro valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, pending) %}
+<div id="valuation-body">
+    <p class="section-sub">
+        A rough DIY estimate from public sold price data, not a professional valuation. There's
+        no free equivalent to a lender's automated valuation model, so this is fully transparent
+        about its method instead of pretending to more precision than it has.
+    </p>
+    {% if pending %}
+        <p class="notice">
+            Reading the sold prices and floor areas of the homes around this one. This is the
+            slowest source on the report, so the page came up without waiting for it. It will
+            fill in here shortly.
+        </p>
+    {% elif valuation_error %}
+        <p class="notice notice-error">
+            The comparables data service didn't respond. Try again in a moment.
+        </p>
+    {% elif valuation %}
+        <p class="section-sub">
+            Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
+            within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }}
+            of a similar size (floor area within {{ valuation.floor_area_variance_pct }}% of this property's),
+            each scaled up for this area's house-price growth since its sale date so older sales
+            aren't taken at face value.
+        </p>
+        <table class="tx-table">
+            <thead>
+                <tr>
+                    <th>Estimate</th>
+                    <th class="num">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Low (25th percentile)</td>
+                    <td class="num">{{ valuation.low | gbp }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Estimate (median)</strong></td>
+                    <td class="num"><strong>{{ valuation.estimate | gbp }}</strong></td>
+                </tr>
+                <tr>
+                    <td>High (75th percentile)</td>
+                    <td class="num">{{ valuation.high | gbp }}</td>
+                </tr>
+            </tbody>
+        </table>
+    {% elif not valuation_floor_area_known %}
+        <p class="notice">
+            We don't have a floor area for this property to compare against. Try adding a house
+            or flat number to the search above to narrow it down to one address.
+        </p>
+    {% else %}
+        <p class="notice">
+            No relevant sale record of a similar-sized property (within 5% floor area) to reference
+            within the last year.
+        </p>
+    {% endif %}
+    {# Price per square metre (idea 9 of 7 Sep 2026): sold prices over
+       EPC floor areas, for the recent sales nearby and this home. #}
+    {% if price_per_sqm %}
+    <h3 class="subsection-heading">Price per square metre</h3>
+    {% if price_per_sqm.median %}
+    <p class="section-sub">Recent sales nearby with a known floor area: <strong>{{ price_per_sqm.median | gbp }} per m²</strong> at the median ({{ price_per_sqm.low | gbp }} to {{ price_per_sqm.high | gbp }} across the middle half of {{ price_per_sqm.sample_size }} sale{{ 's' if price_per_sqm.sample_size != 1 }} in the last {{ price_per_sqm.years_window }} year{{ 's' if price_per_sqm.years_window != 1 }}, each scaled for the area's growth since it sold).{% if price_per_sqm.implied_value and price_per_sqm.subject_floor_area %} At that rate this home's {{ price_per_sqm.subject_floor_area }} m² would be worth about <strong>{{ price_per_sqm.implied_value | gbp }}</strong>.{% endif %}</p>
+    {% endif %}
+    {% if price_per_sqm.subject %}
+    <p class="section-sub">This home last sold at <strong>{{ price_per_sqm.subject.per_sqm | gbp }} per m²</strong> ({{ price_per_sqm.subject.amount | gbp }} in {{ price_per_sqm.subject.year }} for {{ price_per_sqm.subject.floor_area }} m²){% if price_per_sqm.subject_vs_median_pct is not none %}, {{ price_per_sqm.subject_vs_median_pct | abs }}% {{ 'above' if price_per_sqm.subject_vs_median_pct >= 0 else 'below' }} today's local median{% endif %}.</p>
+    {% endif %}
+    {% if price_per_sqm.rows %}
+    <div class="tablewrap">
+    <table class="tx-table psqm-table">
+        <thead><tr><th>Sale</th><th class="num">Sold</th><th class="num">Price</th><th class="num">Floor area</th><th class="num">Per m² at sale</th><th class="num">Scaled to today</th></tr></thead>
+        <tbody>
+        {% for r in price_per_sqm.rows %}
+        <tr><td>{{ r.address }}</td><td class="num">{{ r.date }}</td><td class="num">{{ r.amount | gbp }}</td><td class="num">{{ r.floor_area }} m²</td><td class="num">{{ r.sold_per_sqm | gbp }}</td><td class="num">{{ r.per_sqm | gbp }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endif %}
+    <p class="property-detail-note">Sold prices from HM Land Registry; floor areas from each sale's EPC certificate, matched by house number. Per-square-metre figures are only as good as the certificate's measurement, and a price includes land, condition and outbuildings that a floor area does not.</p>
+    {% endif %}
+</div>
+{% endmacro %}

@@ -1987,6 +1987,96 @@ button:not([class]):hover { background: var(--accent-hover); }
     margin: 0.6rem 0 1rem;
 }
 
+/* "Kept in My properties", with the way out beside it. The undo is a
+   POST (it changes state), so it is a button dressed as the link it
+   reads as, rather than an anchor that lies about what it does. */
+.auto-saved-note {
+    margin: 0 0 0.75rem;
+}
+
+.inline-undo {
+    display: inline;
+}
+
+.linkish {
+    background: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.linkish:hover {
+    color: var(--accent-hover);
+}
+
+/* Four pages of the premium PDF on /premium. Paper on the warm ground:
+   one hairline border, a little lift, no drop shadow theatre. */
+.sample-report {
+    margin: 2.5rem 0 0;
+}
+
+.sample-report-pages {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 1.25rem 0 0;
+}
+
+.sample-report-pages figure {
+    margin: 0;
+}
+
+.sample-report-pages img {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+}
+
+.sample-report-pages figcaption {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+    line-height: 1.4;
+    margin: 0.5rem 0 0;
+}
+
+@media (max-width: 860px) {
+    /* Two up on a phone: four columns makes each page a thumbnail of
+       nothing. Scrolling past two rows is the lesser cost. */
+    .sample-report-pages {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+}
+
+/* The area guide lead: the page's answer in sentences, before any
+   heading. One step up from .section-sub because it is the first thing
+   read, and held to a measure so it stays a paragraph rather than a
+   wall. Existing tokens only. */
+.area-lead {
+    color: var(--ink);
+    font-size: var(--text-base);
+    line-height: 1.6;
+    max-width: 42em;
+    margin: 0 0 1.5rem;
+    padding-left: 0.9rem;
+    border-left: 2px solid var(--border);
+}
+
+@media (max-width: 860px) {
+    .area-lead {
+        font-size: var(--text-sm);
+        padding-left: 0.7rem;
+    }
+}
+
 .capitalize {
     text-transform: capitalize;
 }
@@ -7832,3 +7922,7 @@ body:not(.theme-dark) .lx-hero-scrim {
 .map-toggle input { accent-color: var(--accent); width: 1rem; height: 1rem; margin: 0; }
 .map-legend { list-style: none; margin: 0.5rem 0 0; padding: 0; font-size: var(--text-sm); color: var(--ink-soft); display: grid; gap: 0.3rem; }
 .map-legend-swatch { display: inline-block; width: 1.1rem; height: 0; border-top: 2px dashed #2b4c8c; vertical-align: middle; margin-right: 0.45rem; }
+
+/* Step 2 of the catchment map: district codes as labels at their centres. */
+.map-district-label { font: 600 12px/1 var(--font-sans); color: #1c1714; white-space: nowrap; background: transparent; border: 0; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; transform: translate(-50%, -50%); cursor: pointer; }
+.map-district-label-g { text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; cursor: pointer; }

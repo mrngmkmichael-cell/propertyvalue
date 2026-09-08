@@ -97,3 +97,26 @@ def test_the_map_offers_the_nearest_schools_distances(client):
     assert "admitted from 0.41 mi" in body
     lonely = client.get("/school/900107/lonely-academy").text
     assert 'id="nearby-rings-toggle"' not in lonely and 'nearby: []' in lonely
+
+
+def test_the_map_labels_the_districts_inside_the_distance(client):
+    """Step 2 of the catchment map: the districts whose centre falls
+    inside the distance reach the map payload with their centres, and a
+    school whose distance covers no district centre gets an empty list."""
+    from app import db, main as app_main
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    from app.services import _cache
+    with db.get_session() as session:
+        session.merge(School(urn=900108, name="City Centre Academy", phase="Secondary", type_name="Academy", postcode="M1 1AE",
+                             latitude=53.478, longitude=-2.24))
+        session.merge(SchoolDetail(urn=900108, town="Manchester", local_authority="Manchester"))
+        session.merge(SchoolAdmissionRadius(urn=900108, last_distance_miles=1.5, academic_year="2025/26", source_authority="Manchester"))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+    expected = app_main._outcodes_within(53.478, -2.24, 1.5)
+    assert expected and "lat" in expected[0] and "lon" in expected[0]
+    body = client.get("/school/900108/city-centre-academy").text
+    assert "districts: [" in body and f'"code": "{expected[0]["outcode"]}"' in body
+    assert "The labels are postcode districts whose centre falls inside it" in body
+    lonely = client.get("/school/900107/lonely-academy").text
+    assert "districts: []" in lonely and "The labels are postcode districts" not in lonely
