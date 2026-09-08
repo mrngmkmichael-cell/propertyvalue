@@ -38,7 +38,7 @@ from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
 from app.services import (
-    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, census_change, census_stats, clay_risk, coal_mining, council_finance, flood_re, grammar, health_services,
+    air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, catchment_image, census_change, census_stats, clay_risk, coal_mining, council_finance, flood_re, grammar, health_services,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
     food_hygiene, google_oauth, google_places, heritage, historic_landfill, hpi, mobile_coverage, noise, orientation,
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
@@ -8216,6 +8216,32 @@ def _school_badge_snippet(request: Request, profile: dict, slug: str) -> str:
             f'width="320" height="96" style="max-width:100%;height:auto"></a>')
 
 
+@app.get("/school/{urn}/catchment.png")
+async def school_catchment_image(request: Request, urn: int):
+    """Step 3 of the catchment map: the published distance as a real
+    image, to scale, with the districts whose centre falls inside. The
+    page's share image when the school has a figure, so the card a parent
+    forwards shows the ring, and an image a search engine can index."""
+    if not og_image.is_available():
+        return RedirectResponse("/static/img/og-default.png", status_code=302)
+    cache_key = ("school_catchment_png", urn)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        profile = await asyncio.to_thread(schools_db.admission_profile, urn)
+        if profile is None or not profile.get("miles"):
+            raise StarletteHTTPException(status_code=404)
+        _school_labels(profile)
+        districts = await asyncio.to_thread(_outcodes_within, profile["latitude"], profile["longitude"], profile["miles"])
+        cached = await asyncio.to_thread(
+            catchment_image.render,
+            name=profile["name"], authority=profile.get("authority", ""), town=profile.get("town", ""),
+            miles=profile["miles"], miles_label=profile["miles_label"], year_label=profile["year_label"],
+            lat=profile["latitude"], lon=profile["longitude"], districts=districts,
+        )
+        _cache.set(cache_key, cached)
+    return Response(content=cached, media_type="image/png", headers={"Cache-Control": "public, max-age=21600"})
+
+
 @app.get("/school/{urn}/badge.svg")
 async def school_badge(request: Request, urn: int):
     """An embeddable badge for a school's own site or a parents' group:
@@ -8280,7 +8306,10 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
 
     context["canonical_url"] = f"{base}{canonical_path}"
     context["school"] = _school_labels(profile)
-    context["og_school_url"] = f"{base}/og/school/{urn}.png"
+    # The share image: the ring to scale when there is a distance (step 3
+    # of the catchment map), the plain card when there is not.
+    context["og_school_url"] = (f"{base}/school/{urn}/catchment.png" if profile.get("miles")
+                                else f"{base}/og/school/{urn}.png")
     context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [
         ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),

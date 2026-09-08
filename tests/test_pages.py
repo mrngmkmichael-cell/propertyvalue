@@ -854,7 +854,7 @@ def test_school_page_has_map_checker_and_share_card(client, monkeypatch):
     assert 'id="school-page-map"' in body
     assert 'name="check"' in body
     assert "Will an address get in?" in body
-    assert 'property="og:image" content="https://testserver/og/school/990002.png"' in body
+    assert 'property="og:image" content="https://testserver/school/990002/catchment.png"' in body
     # The grade strip carries the admission figure.
     assert "Admitted from, 2025" in body
     # The school's own postcode leads to the running-costs table for it.

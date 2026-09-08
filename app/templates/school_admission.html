@@ -177,6 +177,23 @@
     </div>
 </section>
 
+{% if school.miles %}
+{# Step 3 of the catchment map: the same facts as a real image, drawn to
+   scale on the server, so it can be saved, forwarded, and indexed. #}
+<section class="report-section">
+    <h2>The distance as a picture</h2>
+    <figure class="catchment-figure">
+        <img src="/school/{{ school.urn }}/catchment.png" width="1200" height="630" loading="lazy"
+             alt="{{ school.name }} catchment area map: the {{ school.miles_label }} mile admission distance{{ school.year_phrase }}{% if district_labels %} and the postcode districts inside it{% endif %}">
+        <figcaption>
+            Drawn to scale from the published figure{% if district_labels %}, with the districts whose centre falls inside{% endif %}.
+            <a href="/school/{{ school.urn }}/catchment.png" download="{{ school.slug }}-admission-distance.png">Save the picture</a>,
+            or share this page and this is the card that appears.
+        </figcaption>
+    </figure>
+</section>
+{% endif %}
+
 {% set has_profile = school.admissions_policy or school.religious_character or school.has_sixth_form or school.capacity or school.trust_name %}
 {% if has_profile %}
 <section class="report-section">

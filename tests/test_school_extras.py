@@ -120,3 +120,34 @@ def test_the_map_labels_the_districts_inside_the_distance(client):
     assert "The labels are postcode districts whose centre falls inside it" in body
     lonely = client.get("/school/900107/lonely-academy").text
     assert "districts: []" in lonely and "The labels are postcode districts" not in lonely
+
+
+def test_the_distance_exists_as_a_real_image(client):
+    """Step 3 of the catchment map: a school with a published distance
+    has a PNG of the ring, drawn to scale, which is also the page's share
+    image; an unknown school has neither."""
+    from app import db
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    from app.services import _cache, og_image
+    with db.get_session() as session:
+        session.merge(School(urn=900105, name="Riverbank Primary School", phase="Primary", type_name="Community school", postcode="M14 5TG",
+                             latitude=53.4501, longitude=-2.2201))
+        session.merge(SchoolDetail(urn=900105, town="Manchester", local_authority="Manchester"))
+        session.merge(SchoolAdmissionRadius(urn=900105, last_distance_miles=0.62, academic_year="2025/26", source_authority="Manchester"))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/900105/riverbank-primary-school").text
+    assert 'content="https://testserver/school/900105/catchment.png"' in body
+    assert "catchment area map: the 0.62 mile admission distance, 2025/26" in body
+    assert 'download="riverbank-primary-school-admission-distance.png"' in body
+    r = client.get("/school/900105/catchment.png", follow_redirects=False)
+    if og_image.is_available():
+        assert r.status_code == 200 and r.headers["content-type"] == "image/png" and r.content[:8] == b"\x89PNG\r\n\x1a\n"
+        assert len(r.content) > 5000
+    else:
+        assert r.status_code == 302
+    assert client.get("/school/900105/catchment.png", follow_redirects=False).status_code in (200, 302)
+    # School pages exist only for schools with a published distance (the
+    # profile query joins the distance table), so the only "no picture"
+    # case is a school that is not on the register at all.
+    assert client.get("/school/900199/catchment.png", follow_redirects=False).status_code in (404, 302)
