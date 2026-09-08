@@ -102,6 +102,7 @@ CHECKS = [
     # check that gets ignored on the other.
     ("/sitemap.xml", {200}, ["<urlset", "<loc>"]),
     ("/robots.txt", {200}, ["Sitemap:"]),
+    ("/healthz", {200}, ["ok"]),
     # Signed out, so these must send the visitor to sign in rather than
     # rendering an empty page or erroring.
     ("/watchlist", {303}, []),

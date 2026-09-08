@@ -1552,6 +1552,16 @@ def council_tax_table_page(request: Request):
     return templates.TemplateResponse(request, "council_tax_table.html", context)
 
 
+@app.get("/healthz")
+async def healthz():
+    """Answers the moment the process can serve, touching no database and
+    no upstream. Set as the Health Check Path on Render so a deploy keeps
+    the old instance serving until the new one answers here: without it,
+    every push cost a burst of 502s, which is what a crawler mid-deploy
+    saw (the 8 Sep 2026 guide warm-up logged 18 of them across two pushes)."""
+    return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
+
+
 @app.get("/running-costs/council-tax/{slug}")
 def council_tax_council_page(request: Request, slug: str):
     """One page per billing authority: every band for the year, its rank

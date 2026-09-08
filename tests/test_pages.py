@@ -1732,3 +1732,14 @@ def test_each_council_has_a_council_tax_page(client):
     listing = client.get("/running-costs/council-tax").text
     assert 'href="/running-costs/council-tax/manchester"' in listing
     assert "/running-costs/council-tax/manchester" in client.get("/sitemap.xml").text
+
+
+def test_healthz_answers_without_touching_the_database(client, monkeypatch):
+    """Render polls this path before routing traffic to a new deploy, so
+    it must be true the instant the process is up and must never depend
+    on Neon being reachable."""
+    from app import db
+    monkeypatch.setattr(db, "get_session", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no database")))
+    r = client.get("/healthz")
+    assert r.status_code == 200 and r.json() == {"status": "ok"}
+    assert r.headers["cache-control"] == "no-store"
