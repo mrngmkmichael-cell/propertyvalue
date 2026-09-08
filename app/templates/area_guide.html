@@ -417,7 +417,7 @@
     {% if health.trusts %}
     <p>Nearest A&amp;E: <strong>{{ health.trusts[0].name }}</strong>, where {{ health.trusts[0].type1_within_4h_pct }}% of type 1 attendances were seen within four hours in {{ health.trusts[0].period }}{% if health.trusts | length > 1 %}; then {{ health.trusts[1].name }} at {{ health.trusts[1].type1_within_4h_pct }}%{% endif %}.</p>
     {% endif %}
-    <p class="section-sub">NHS England: patients registered at a GP practice ({{ health.nearest.patients_date }}), the general practice workforce ({{ health.nearest.workforce_date }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
+    <p class="section-sub">NHS England: patients registered at a GP practice ({{ health.patients_date or health.nearest.patients_date }}), the general practice workforce ({{ health.workforce_date or health.nearest.workforce_date }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
 </section>
 {% endif %}
 

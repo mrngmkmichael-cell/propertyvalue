@@ -1668,8 +1668,8 @@ V20_STUBS = {
                      "sunday_day_per_hour": 12.0, "weekday_first": "05:12", "weekday_last": "23:58", "routes": ["42", "43", "142"]},
             "stops": []},
     "health": {"count": 5, "radius_m": 2000, "median_patients_per_qualified_gp": 2186,
-               "nearest": {"name": "Rusholme Health Centre", "distance_m": 310, "patients": 12450, "patients_per_qualified_gp": 2610,
-                           "patients_date": "1 August 2026", "workforce_date": "31 July 2026"},
+               "patients_date": "1 August 2026", "workforce_date": "31 July 2026",
+               "nearest": {"name": "Rusholme Health Centre", "distance_m": 310, "patients": 12450, "patients_per_qualified_gp": 2610},
                "practices": [{"name": "Rusholme Health Centre", "distance_m": 310, "patients": 12450, "patients_per_qualified_gp": 2610}],
                "trusts": [{"name": "Manchester University NHS Foundation Trust", "type1_within_4h_pct": 58.2, "all_within_4h_pct": 71.0, "period": "July 2026"}]},
     "finance": {"name": "Manchester", "latest_label": "2026-27", "rise_latest": 4.99, "median_rise_latest": 4.99, "as_of": "8 September 2026",
@@ -1703,6 +1703,7 @@ def test_the_guide_carries_the_v20_sections(client, monkeypatch):
     assert "How AB12 has changed since 2011" in body and "Households renting privately" in body and "+9.4 pts" in body
     assert "Buses from the centre of AB12" in body and "22.5 buses an hour" in body and "42, 43, 142" in body
     assert "GP practices and A&amp;E" in body and "2,610 patients per fully qualified GP" in body and "58.2%" in body
+    assert "GP practice (1 August 2026)" in body and "workforce (31 July 2026)" in body   # the dates sit on the summary, not the practice
     assert "Council tax and the council" in body and "2,252" in body and "No exceptional financial support" in body
 
 
