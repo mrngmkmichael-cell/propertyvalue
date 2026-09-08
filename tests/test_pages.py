@@ -1106,7 +1106,7 @@ def test_school_title_answers_the_catchment_query(client):
     body = client.get("/school/990012/quayside-academy").text
     title = body.split("<title>")[1].split("</title>")[0]
     assert title.startswith("Quayside Academy catchment area")
-    assert "admitted from 1.7 miles in 2025" in title
+    assert "catchment area: 1.7 miles, 2025" in title
     assert "Quayside Academy catchment area:" in body  # meta description
 
 

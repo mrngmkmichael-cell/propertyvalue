@@ -29,6 +29,14 @@
     <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(total_schools) }}</span><span class="score-tile-label">schools with a real distance</span></div>
 </div>
 
+{% if near_miss_schools %}
+<section class="report-section">
+    <h2>Schools people are checking</h2>
+    <p class="section-sub">The school pages readers reach most often this month, each with the distance the council last admitted from.</p>
+    <p class="tag-row">{% for sc in near_miss_schools %}<a class="tag-link" href="/school/{{ sc.urn }}/{{ sc.slug }}">{{ sc.name }}{% if sc.miles %} · {{ "%.2f" | format(sc.miles) }} mi{% endif %}</a>{% endfor %}</p>
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>Councils</h2>
     <div class="tablewrap">

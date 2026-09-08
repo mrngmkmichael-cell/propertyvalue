@@ -7852,7 +7852,7 @@ async def og_school_image(request: Request, urn: int):
             facts.append(("Expected standard", f"{profile['ks2']['rwm_expected_pct']}%"))
         cached = og_image.render_school(
             name=profile["name"], authority=profile.get("authority", ""),
-            miles=profile.get("miles"), academic_year=profile.get("academic_year", ""),
+            miles=profile.get("miles"), academic_year=_school_labels(profile)["year_label"],
             rating_label=profile.get("ofsted_rating_label", ""), town=profile.get("town", ""),
             facts=facts,
         )
@@ -7861,11 +7861,41 @@ async def og_school_image(request: Request, urn: int):
                     headers={"Cache-Control": "public, max-age=21600"})
 
 
+_YEAR_LIKE = re.compile(r"^(20\d\d)([/-]\d\d)?$")
+
+
+def _school_labels(profile: dict) -> dict:
+    """Wording every surface shares: the year only when the source gives
+    a year (832 profiles say "varies", which is what the council
+    publishes, not a year), and the distance to two decimals for titles
+    and badges while the page itself keeps the published figure."""
+    year = str(profile.get("academic_year") or "").strip()
+    profile["year_label"] = year if _YEAR_LIKE.match(year) else ""
+    profile["year_phrase"] = f", {profile['year_label']}" if profile["year_label"] else ""
+    profile["year_or_latest"] = profile["year_label"] or "latest published year"
+    profile["in_year"] = f"in {profile['year_label']}" if profile["year_label"] else "in the latest published year"
+    miles = profile.get("miles")
+    profile["miles_label"] = (f"{miles:.2f}".rstrip("0").rstrip(".")) if isinstance(miles, (int, float)) else ""
+    return profile
+
+
+# The twenty school pages Search Console showed at positions 5 to 13 in
+# the three months to 6 Sep 2026, with impressions but no clicks yet. The
+# admissions hub links them so the site's own weight reaches the pages
+# closest to page one. Refresh from the weekly export; drop any that
+# reach the top five, they no longer need the help.
+NEAR_MISS_SCHOOL_URNS = [
+    139616, 136644, 152145, 145894, 137093, 102679, 100429, 102097, 130303, 102156,
+    108076, 120277, 143597, 145868, 143274, 100050, 101005, 101026, 144308, 137531,
+]
+
+
 def _school_badge_snippet(request: Request, profile: dict, slug: str) -> str:
     base = _public_base_url(request)
     page = f"{base}/school/{profile['urn']}/{slug}"
+    _school_labels(profile)
     if profile.get("miles"):
-        alt = f"{profile['name']}: admitted from {profile['miles']} miles in {profile.get('academic_year', '')}"
+        alt = f"{profile['name']}: admitted from {profile['miles_label']} miles{profile['year_phrase']}"
     else:
         alt = f"{profile['name']}: Ofsted, results and admissions on UKPropertyInsight"
     return (f'<a href="{page}"><img src="{base}/school/{profile["urn"]}/badge.svg" alt="{html.escape(alt, quote=True)}" '
@@ -7886,9 +7916,10 @@ async def school_badge(request: Request, urn: int):
         name = profile["name"]
         if len(name) > 40:
             name = name[:39].rstrip() + "…"
+        _school_labels(profile)
         if profile.get("miles"):
-            headline = f"Admitted from {profile['miles']} miles"
-            sub = f"in {profile.get('academic_year', '')}, {profile.get('authority', '')}".strip(", ")
+            headline = f"Admitted from {profile['miles_label']} miles"
+            sub = f"{profile['year_or_latest']}, {profile.get('authority', '')}".strip(", ")
         else:
             headline = "No published admission distance"
             sub = profile.get("authority", "") or "Department for Education register"
@@ -7934,7 +7965,7 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         return RedirectResponse(canonical_path, status_code=301)
 
     context["canonical_url"] = f"{base}{canonical_path}"
-    context["school"] = profile
+    context["school"] = _school_labels(profile)
     context["og_school_url"] = f"{base}/og/school/{urn}.png"
     context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [
@@ -7996,10 +8027,10 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         (f"What is the catchment area for {profile['name']}?",
          "It does not have one in the sense most people mean. Like most English schools, "
          "when it is oversubscribed it offers places outward from the school until they run "
-         f"out. The furthest child admitted in {profile['academic_year']} lived "
+         f"out. The furthest child admitted {profile['in_year']} lived "
          f"{profile['miles']} miles away, according to {profile['authority']}."),
         (f"How close do I need to live to get into {profile['name']}?",
-         f"{profile['miles']} miles was enough in {profile['academic_year']}, which makes it "
+         f"{profile['miles']} miles was enough {profile['in_year']}, which makes it "
          "the best evidence available rather than a promise about next year. The distance "
          "moves every year with the number of applications."),
         (f"Does buying a house near {profile['name']} guarantee a place?",
@@ -8011,7 +8042,7 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         faqs.append((
             f"How much does it cost to live within reach of {profile['name']}?",
             f"Of the postcode districts whose centre falls inside the {profile['miles']} miles the school "
-            f"admitted from in {profile['academic_year']}, the cheapest by median sold price is "
+            f"admitted from {profile['in_year']}, the cheapest by median sold price is "
             f"{reach[0]['outcode']} at {_format_gbp(reach[0]['median'])} and the dearest is "
             f"{reach[-1]['outcode']} at {_format_gbp(reach[-1]['median'])}, from HM Land Registry sales.",
         ))
@@ -8329,6 +8360,14 @@ async def admissions_index(request: Request):
     context["councils"] = councils
     context["total_schools"] = sum(c["count"] for c in councils)
     context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions"
+    near_miss = _cache.get(("near_miss_schools",), 6 * 3600)
+    if near_miss is None:
+        try:
+            near_miss = await asyncio.to_thread(schools_db.brief_for_urns, NEAR_MISS_SCHOOL_URNS)
+        except Exception:  # noqa: BLE001 - the hub stands without the block
+            near_miss = []
+        _cache.set(("near_miss_schools",), near_miss)
+    context["near_miss_schools"] = near_miss
     try:
         stats = await asyncio.to_thread(schools_db.tightest_catchments)
         context["council_stats"] = {c["slug"]: c for c in stats["councils"]}

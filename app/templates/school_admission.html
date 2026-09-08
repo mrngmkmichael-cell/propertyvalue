@@ -8,8 +8,8 @@
 {# "X catchment area" is the query parents type; the figure in the
    title is the answer they are after, and no other result has it. The
    authority is the part that can be spared when the title runs long. #}
-{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": admitted from " ~ school.miles ~ " miles in " ~ school.academic_year) }}{% endblock %}
-{% block meta_description %}{{ school.name }} catchment area: the school last admitted from {{ school.miles }} miles in {{ school.academic_year }}, the figure published by {{ school.authority }}. Check any postcode against it on the map, free.{% endblock %}
+{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": " ~ school.miles_label ~ " miles" ~ school.year_phrase) }}{% endblock %}
+{% block meta_description %}{{ school.name }} catchment area: last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}. Check any postcode against it on the map, free.{% endblock %}
 {% block og_title %}{{ school.name }}: admitted from {{ school.miles }} miles{% endblock %}
 {# A card of this school's own figure, so a link shared into a
    parents' group says the number before anyone taps it. #}
@@ -38,7 +38,7 @@
 <p class="section-sub" style="margin: -0.5rem 0 1rem;">
     <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> to save this school and be told when {{ school.authority }} republishes its distance.
 </p>
-{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles ~ " miles in " ~ school.academic_year ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
+{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles_label ~ " miles" ~ school.year_phrase ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
 {% endif %}
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured
@@ -73,7 +73,7 @@
     </div>
     <div class="score-tile">
         <span class="score-tile-value">{{ school.miles }} mi</span>
-        <span class="score-tile-label">Admitted from, {{ school.academic_year }}{% if school.miles < 0.25 %}, about {{ (school.miles * 1609.34) | round | int }} metres{% endif %}</span>
+        <span class="score-tile-label">Admitted from, {{ school.year_or_latest }}{% if school.miles < 0.25 %}, about {{ (school.miles * 1609.34) | round | int }} metres{% endif %}</span>
     </div>
     {% if school.occupancy_pct %}
     <div class="score-tile">
@@ -97,7 +97,7 @@
 <section class="report-section">
     <h2>Will an address get in?</h2>
     <p class="section-sub">
-        In the {{ school.academic_year }} round, the furthest-away child offered a place at
+        In the {% if school.year_label %}{{ school.year_label }} round{% else %}latest published round{% endif %}, the furthest-away child offered a place at
         {{ school.name }} lived <strong>{{ school.miles }} miles</strong> away, according to
         {{ school.authority }}. Put a postcode in and it is measured against that distance.
     </p>
@@ -124,7 +124,7 @@
         <span class="admission-verdict-label">{{ check.label }}</span>
         <span class="admission-verdict-detail">
             <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles }} miles</strong> from {{ school.name }},
-            {{ check.why }} ({{ check.radius_miles }} miles in {{ school.academic_year }}).
+            {{ check.why }} ({{ check.radius_miles }} miles {{ school.in_year }}).
             {% if check.level == 'likely' %}That is {{ check.margin_miles }} miles inside it.
             {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) }} miles outside it.{% endif %}
         </span>
@@ -142,7 +142,7 @@
        and the caption says so, but it beats a number floating alone. #}
     <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }} and the {{ school.miles }} mile admission distance"></div>
     <p class="section-sub">
-        The circle is {{ school.miles }} miles, the distance the school admitted from in {{ school.academic_year }}. Real admission areas are not circular: this is the distance, not a boundary.
+        The circle is {{ school.miles }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.
     </p>
 
     {# The honest part, and the reason this page exists. Most sites draw
@@ -313,7 +313,7 @@
     <p class="section-sub">How this compares across England: <a href="/schools/catchment-house-prices">what a tight gate costs, school by school →</a></p>
     <p class="section-sub">
         The postcode districts whose centre falls inside the {{ school.miles }} miles the school admitted
-        from in {{ school.academic_year }}, cheapest first, by the median of real sales around each
+        from {{ school.in_year }}, cheapest first, by the median of real sales around each
         district's centre. The cheapest is <a href="/area/{{ reach_prices[0].outcode }}">{{ reach_prices[0].outcode }}</a>
         at {{ reach_prices[0].median | gbp }}{% if reach_prices | length > 1 %}; the dearest,
         <a href="/area/{{ reach_prices[-1].outcode }}">{{ reach_prices[-1].outcode }}</a>, {{ reach_prices[-1].median | gbp }}{% endif %}.
@@ -340,7 +340,7 @@
 <section class="report-section">
     <h2>Postcode districts within {{ school.miles }} miles</h2>
     <p class="section-sub">
-        Districts whose centre falls inside {{ school.academic_year }}'s distance. A district is
+        Districts whose centre falls inside {% if school.year_label %}{{ school.year_label }}'s{% else %}the latest published{% endif %} distance. A district is
         wide, so check the address itself rather than the list.
     </p>
     <div class="tablewrap">
@@ -437,7 +437,7 @@
                 {{ school.name }} does not have one in the sense most people mean. Like most
                 English schools, an oversubscribed year offers places outward from the school
                 until they run out. The nearest thing to an answer: the furthest child admitted
-                in {{ school.academic_year }} lived {{ school.miles }} miles away, per
+                {{ school.in_year }} lived {{ school.miles }} miles away, per
                 {{ school.authority }}.
             </p>
         </details>
@@ -445,7 +445,7 @@
             <summary>How close do I need to live to get a place at {{ school.name }}?</summary>
             <p>
                 Nobody can say in advance, and anyone who does is guessing. {{ school.miles }}
-                miles was enough in {{ school.academic_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %},
+                miles was enough {{ school.in_year }}{% if school.occupancy_pct and school.occupancy_pct >= 98 %},
                 and at {{ school.occupancy_pct }}% full the school has little slack{% endif %}.
                 The distance moves every year with the number of applications, so treat last
                 year's figure as evidence, not a promise.

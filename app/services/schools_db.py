@@ -1117,3 +1117,24 @@ def website_host_known(host: str) -> bool:
             select(SchoolDetail.urn).where(func.lower(SchoolDetail.website).like(f"%{host}%")).limit(1)
         ).first()
     return row is not None
+
+
+def brief_for_urns(urns: list[int]) -> list[dict]:
+    """Name, slug and published distance for a list of URNs, in the order
+    given, skipping any that are not on the register. One query."""
+    if not urns:
+        return []
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name, SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year)
+            .outerjoin(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+            .where(School.urn.in_(urns))
+        ).all()
+    by_urn = {r[0]: r for r in rows}
+    out = []
+    for urn in urns:
+        r = by_urn.get(urn)
+        if r is None:
+            continue
+        out.append({"urn": urn, "name": r[1], "slug": _slugify(r[1]), "miles": r[2], "academic_year": r[3]})
+    return out

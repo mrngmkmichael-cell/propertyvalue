@@ -19,7 +19,7 @@
 
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ schools | length }}</span><span class="score-tile-label">Grammar schools</span><span class="score-tile-note">State-funded, selective, on the DfE register.</span></div>
-    <div class="score-tile"><span class="score-tile-value">{{ councils | length }}</span><span class="score-tile-label">Councils with one</span><span class="score-tile-note">Kent has {{ councils[0][1] | length }}; most councils have none.</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ councils | length }}</span><span class="score-tile-label">Councils with one</span><span class="score-tile-note">{% if councils %}{{ councils[0][0] }} has {{ councils[0][1] | length }}; most councils have none.{% else %}None on the register yet.{% endif %}</span></div>
     <div class="score-tile"><span class="score-tile-value">{{ with_distance }}</span><span class="score-tile-label">With a published distance</span><span class="score-tile-note">The last place offered, from the council's own admissions data.</span></div>
 </div>
 
