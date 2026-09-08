@@ -934,6 +934,7 @@ def nearby_admission_pages(urn: int, limit: int = 6, radius_miles: float = 3.0) 
                 "phase": _phase_group(s.phase) or "Other",
                 "miles": round(r.last_distance_miles, 2), "academic_year": r.academic_year or "",
                 "away_miles": round(away, 1),
+                "latitude": s.latitude, "longitude": s.longitude,
             })
     out.sort(key=lambda x: (x["away_miles"], x["name"]))
     return out[:limit]

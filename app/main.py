@@ -7974,6 +7974,15 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         (profile["name"], canonical_path),
     ])
     context["nearby_with_figure"] = await asyncio.to_thread(schools_db.nearby_admission_pages, urn)
+    # Catchment map, step 1 (9 Sep 2026): the nearest schools' own published
+    # distances, drawn on the same map when the reader ticks the box, so a
+    # family sees at once which schools' distances cover their home.
+    context["nearby_rings"] = [
+        {"name": n["name"], "lat": n["latitude"], "lng": n["longitude"], "miles": n["miles"],
+         "away": n["away_miles"], "url": f"/school/{n['urn']}/{n['slug']}"}
+        for n in context["nearby_with_figure"]
+        if n.get("latitude") is not None and n.get("longitude") is not None and n.get("miles")
+    ][:6]
     context["shortlisted"] = bool(context["current_user"]) and any(
         i["urn"] == urn for i in school_shortlist.list_items(context["current_user"]["id"])
     )

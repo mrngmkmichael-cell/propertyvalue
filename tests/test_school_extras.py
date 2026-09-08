@@ -67,3 +67,33 @@ def test_the_admissions_hub_links_the_near_miss_schools(client):
     _cache._store.clear(); _cache._bytes = 0
     body = client.get("/schools/admissions").text
     assert "Schools people are checking" in body and f'href="/school/{urn}/fortismere-school"' in body and "1.88 mi" in body
+
+
+def test_the_map_offers_the_nearest_schools_distances(client):
+    """Step 1 of the catchment map: a school with published-distance
+    neighbours gets a tick box, a legend and the rings' coordinates in
+    the page's map payload; a school with none gets nothing."""
+    from app import db
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    from app.services import _cache
+    with db.get_session() as session:
+        session.merge(School(urn=900105, name="Riverbank Primary School", phase="Primary", type_name="Community school", postcode="M14 5TG",
+                             latitude=53.4501, longitude=-2.2201))
+        session.merge(SchoolDetail(urn=900105, town="Manchester", local_authority="Manchester"))
+        session.merge(SchoolAdmissionRadius(urn=900105, last_distance_miles=0.62, academic_year="2025/26", source_authority="Manchester"))
+        session.merge(School(urn=900106, name="Nextdoor Junior School", phase="Primary", type_name="Community school", postcode="M14 6AA",
+                             latitude=53.4560, longitude=-2.2300))
+        session.merge(SchoolDetail(urn=900106, town="Manchester", local_authority="Manchester"))
+        session.merge(SchoolAdmissionRadius(urn=900106, last_distance_miles=0.41, academic_year="2025/26", source_authority="Manchester"))
+        session.merge(School(urn=900107, name="Lonely Academy", phase="Secondary", type_name="Academy", postcode="ZZ1 1AA",
+                             latitude=56.0, longitude=1.5))
+        session.merge(SchoolDetail(urn=900107, town="Aberdeen", local_authority="Aberdeen City"))
+        session.merge(SchoolAdmissionRadius(urn=900107, last_distance_miles=2.0, academic_year="2025/26", source_authority="Aberdeen City"))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get("/school/900105/riverbank-primary-school").text
+    assert 'id="nearby-rings-toggle"' in body and "Nextdoor Junior School" in body
+    assert '"lat": 53.456' in body and '"miles": 0.41' in body and 'href="/school/900106/nextdoor-junior-school"' in body
+    assert "admitted from 0.41 mi" in body
+    lonely = client.get("/school/900107/lonely-academy").text
+    assert 'id="nearby-rings-toggle"' not in lonely and 'nearby: []' in lonely

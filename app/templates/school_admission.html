@@ -144,6 +144,16 @@
     <p class="section-sub">
         The circle is {{ school.miles }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.
     </p>
+    {% if nearby_rings %}
+    {# Step 1 of the catchment map: the nearest schools' distances, on
+       request, so the main ring stays clear until the reader asks. #}
+    <div class="map-toggle-row">
+        <label class="map-toggle"><input type="checkbox" id="nearby-rings-toggle"> Show the published distances of the {{ nearby_rings | length }} nearest school{{ 's' if nearby_rings | length != 1 }} that have one</label>
+        <ul class="map-legend" id="nearby-rings-legend" hidden>
+            {% for n in nearby_rings %}<li><span class="map-legend-swatch" aria-hidden="true"></span><a href="{{ n.url }}">{{ n.name }}</a>: admitted from {{ n.miles }} mi, {{ n.away }} mi from {{ school.name }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 
     {# The honest part, and the reason this page exists. Most sites draw
        a circle and call it a catchment; there usually isn't one. #}
@@ -490,7 +500,8 @@
         lat: {{ school.latitude | tojson }}, lng: {{ school.longitude | tojson }},
         name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }},
         year: {{ school.academic_year | tojson }},
-        check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }}
+        check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }},
+        nearby: {{ (nearby_rings or []) | tojson }}
     };
 </script>
 {% if google_maps_api_key %}
@@ -521,6 +532,37 @@
             bounds.extend(pos);
         }
         map.fitBounds(bounds, 30);
+        // Step 1: the nearest schools' distances, drawn on request and
+        // removed again, the view following whichever set is showing.
+        const toggle = document.getElementById('nearby-rings-toggle');
+        if (toggle && S.nearby && S.nearby.length) {
+            let shapes = [];
+            toggle.addEventListener('change', function () {
+                const legend = document.getElementById('nearby-rings-legend');
+                if (toggle.checked) {
+                    const all = new google.maps.LatLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
+                    S.nearby.forEach(function (n) {
+                        const c = new google.maps.Circle({
+                            center: { lat: n.lat, lng: n.lng }, radius: n.miles * 1609.34, map: map, clickable: false,
+                            strokeColor: '#2b4c8c', strokeWeight: 1.5, strokeOpacity: 0.7, fillColor: '#2b4c8c', fillOpacity: 0.04,
+                        });
+                        const m = new google.maps.Marker({
+                            position: { lat: n.lat, lng: n.lng }, map: map, title: n.name + ': admitted from ' + n.miles + ' miles',
+                            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 5, fillColor: '#2b4c8c', fillOpacity: 1, strokeColor: '#ffffff', strokeWeight: 1.5 },
+                        });
+                        shapes.push(c, m);
+                        all.union(c.getBounds());
+                    });
+                    map.fitBounds(all, 30);
+                    if (legend) legend.hidden = false;
+                } else {
+                    shapes.forEach(function (sh) { sh.setMap(null); });
+                    shapes = [];
+                    map.fitBounds(bounds, 30);
+                    if (legend) legend.hidden = true;
+                }
+            });
+        }
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initSchoolPageMap&loading=async" async defer></script>
@@ -547,6 +589,34 @@
             bounds.extend([S.check.lat, S.check.lng]);
         }
         map.fitBounds(bounds, { padding: [30, 30] });
+        const toggle = document.getElementById('nearby-rings-toggle');
+        if (toggle && S.nearby && S.nearby.length) {
+            const group = L.layerGroup();
+            toggle.addEventListener('change', function () {
+                const legend = document.getElementById('nearby-rings-legend');
+                if (toggle.checked) {
+                    group.addTo(map);
+                    const all = L.latLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
+                    S.nearby.forEach(function (n) {
+                        const c = L.circle([n.lat, n.lng], {
+                            radius: n.miles * 1609.34, color: '#2b4c8c', weight: 1.5, opacity: 0.7, fillOpacity: 0.04, dashArray: '6 6', interactive: false,
+                        });
+                        const m = L.circleMarker([n.lat, n.lng], { radius: 5, color: '#ffffff', weight: 1.5, fillColor: '#2b4c8c', fillOpacity: 1 })
+                            .bindTooltip(n.name + ': admitted from ' + n.miles + ' miles');
+                        group.addLayer(c);
+                        group.addLayer(m);
+                        all.extend(c.getBounds());
+                    });
+                    map.fitBounds(all, { padding: [30, 30] });
+                    if (legend) legend.hidden = false;
+                } else {
+                    group.clearLayers();
+                    map.removeLayer(group);
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                    if (legend) legend.hidden = true;
+                }
+            });
+        }
     })();
 </script>
 {% endif %}
