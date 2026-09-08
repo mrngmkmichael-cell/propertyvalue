@@ -70,6 +70,8 @@ CHECKS = [
     ("/schools/catchment-house-prices", {200}, ["within reach"]),
     ("/running-costs", {200}, ["Band D", "Estate charges"]),
     ("/running-costs/council-tax", {200}, ["billing authorities"]),
+    ("/running-costs/council-tax/manchester", {200}, ["Council tax in Manchester", "Band D", "Every band in Manchester"]),
+    ("/running-costs/council-tax/aberdeen-city", {200}, ["Scottish Government", "Band H"]),
     ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
     # The directory is withdrawn (7 Sep 2026): these must stay 404 until it is switched back on.
     ("/estate-charges/managing-agents", {404}, []),

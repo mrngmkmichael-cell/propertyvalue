@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Council Tax in {{ ct.authority }} {{ ct.year }}: Band D £{{ "{:,.0f}".format(ct.band_d) }}, Every Band A to {{ ct.top_band }}{% endblock %}
+{% block meta_description %}Council tax in {{ ct.authority }} for {{ ct.year }}: Band D £{{ "{:,.2f}".format(ct.band_d) }}, every band from A to {{ ct.top_band }}, the {{ ct.rank_label }} highest of {{ ct.of }} councils in {{ ct.nation }}{% if finance and finance.history %}, six years of rises and the council's finances{% endif %}. Source: {{ ct.source_short }}.{% endblock %}
+{% block og_title %}Council tax in {{ ct.authority }}, {{ ct.year }}{% endblock %}
+
+{% block content %}
+{% if faqs_jsonld %}<script type="application/ld+json">{{ faqs_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/running-costs/council-tax">&larr; Council tax, every council</a>
+
+<span class="kicker">Running costs &middot; {{ ct.nation }}</span>
+<h1>Council tax in {{ ct.authority }}, {{ ct.year }}</h1>
+<p class="dek">
+    A Band D home in {{ ct.authority }} pays <strong>&pound;{{ "{:,.2f}".format(ct.band_d) }}</strong> this year,
+    the {{ ct.rank_label }} highest Band D of the {{ ct.of }} billing authorities in {{ ct.nation }}, where the median is
+    &pound;{{ "{:,.2f}".format(ct.nation_median) }}{% if ct.rank == 1 %} (the highest in {{ ct.nation }}){% elif ct.rank == ct.of %} (the lowest in {{ ct.nation }}){% endif %}.
+    Over the usual ten instalments from April that is &pound;{{ "{:,.2f}".format(ct.band_d / 10) }} a month; over twelve, &pound;{{ "{:,.2f}".format(ct.band_d / 12) }}.
+</p>
+
+<section class="report-section">
+    <h2>Every band in {{ ct.authority }}</h2>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Band</th><th class="num">Bill for {{ ct.year }}</th><th class="num">A month, ten instalments</th><th class="num">Ratio to Band D</th></tr></thead>
+        <tbody>
+        {% for band, bill in ct.bands.items() %}
+        <tr{% if band == "D" %} class="row-emphasis"{% endif %}><td>Band {{ band }}</td><td class="num">&pound;{{ "{:,.2f}".format(bill) }}</td><td class="num">&pound;{{ "{:,.2f}".format(bill / 10) }}</td><td class="num">{{ "{:.2f}".format(ct.ratios[band]) }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">{{ ct.basis }} Source: {{ ct.source }}, {{ ct.year }}. The band itself belongs to the property, set by the {% if ct.nation == "Scotland" %}Scottish Assessors{% else %}Valuation Office Agency{% endif %}; the highest Band D in {{ ct.nation }} this year is {{ ct.highest }}, the lowest {{ ct.lowest }}.</p>
+</section>
+
+{% if finance and finance.history %}
+<section class="report-section">
+    <h2>Six years of Band D, and the council's finances</h2>
+    <p>
+        {% if total_rise %}Band D was &pound;{{ "{:,.2f}".format(total_rise.first) }} in {{ total_rise.first_label }} and is &pound;{{ "{:,.2f}".format(ct.band_d) }} now, a rise of <strong>{{ total_rise.pct }}%</strong> over {{ total_rise.years }} years.{% endif %}
+        {% if finance.rise_latest is not none %}The latest rise, {{ finance.rise_latest }}% for {{ finance.latest_label }}, compares with an England median of {{ finance.median_rise_latest }}%.{% endif %}
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table finance-table">
+        <thead><tr><th>Year</th><th class="num">Band D bill</th><th class="num">Rise</th></tr></thead>
+        <tbody>
+        {% for h in finance.history %}
+        <tr><td>{{ h.label }}</td><td class="num">{{ h.band_d | gbp }}</td><td class="num">{% if h.rise is not none %}{{ "+" if h.rise >= 0 else "" }}{{ h.rise }}%{% else %}Not given{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% if finance.efs or finance.county_efs %}
+    <p class="notice">
+        <strong>Exceptional Financial Support.</strong>
+        {% if finance.efs %}{{ finance.name }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        {% if finance.county_efs %} The county council, {{ finance.county_name }}, was agreed support for {% for e in finance.county_efs | reverse %}{{ e.year }} ({{ e.amount }}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        Support is permission to borrow, or to spend capital receipts, on day-to-day services because the council could not otherwise set a balanced budget, usually on condition of an external review. Councils in this position tend to cut services and raise council tax by the most the rules allow; some have been allowed rises above the usual cap.
+    </p>
+    {% endif %}
+    {% if finance.s114 %}
+    <p class="notice">
+        <strong>Section 114 notice{{ 's' if finance.s114 | length != 1 }}.</strong>
+        {% for n in finance.s114 %}{{ n.date }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        A section 114 notice is the chief finance officer's declaration that the council cannot balance its budget; it freezes new spending until a recovery plan is agreed, and government commissioners may follow.
+    </p>
+    {% endif %}
+    {% if not finance.efs and not finance.county_efs and not finance.s114 %}
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}, as at {{ finance.as_of }}.</p>
+    {% endif %}
+    <p class="section-sub">Ministry of Housing, Communities and Local Government: live council tax tables (Band D area averages by year) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils. Rises are year on year on the Band D area average.</p>
+</section>
+{% elif ct.nation != "England" %}
+<section class="report-section">
+    <h2>Rises and the council's finances</h2>
+    <p class="section-sub">The year-by-year history and the exceptional financial support record on this site come from MHCLG, which covers England only. {{ ct.nation }}'s figures for earlier years are published by the {{ ct.source_short }} and are not yet on this page.</p>
+</section>
+{% endif %}
+
+{% if guides %}
+<section class="report-section">
+    <h2>Area guides in {{ ct.authority }}</h2>
+    <p class="section-sub">Postcode districts whose centre sits in {{ ct.authority }}: sold prices, schools, crime, flood risk and more for each.</p>
+    <p class="tag-row">{% for oc in guides %}<a class="tag-link" href="/area/{{ oc }}">{{ oc }}</a>{% endfor %}</p>
+</section>
+{% endif %}
+
+<section class="report-section" id="faq">
+    <h2>Common questions</h2>
+    {% for q, a in faqs %}
+    <details class="faq-item"><summary>{{ q }}</summary><p>{{ a }}</p></details>
+    {% endfor %}
+</section>
+
+<section class="report-section">
+    <h2>Check a specific address</h2>
+    <p>The council sets the bill; the band belongs to the home. <a href="/">Run a free report</a> for the band an address actually carries, the bill that follows from it, and forty-three other checks on the same page.</p>
+</section>
+{% endblock %}

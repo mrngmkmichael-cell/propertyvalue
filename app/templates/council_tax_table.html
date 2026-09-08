@@ -35,7 +35,7 @@
             <tbody>
                 {% for r in ct.england %}
                 <tr>
-                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td data-value="{{ r.authority }}"><a href="/running-costs/council-tax/{{ r.slug }}">{{ r.authority }}</a></td>
                     <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
                     <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
                     <td class="num" data-value="{{ r.band_h }}">&pound;{{ "{:,.0f}".format(r.band_h) }}</td>
@@ -56,7 +56,7 @@
             <tbody>
                 {% for r in ct.wales %}
                 <tr>
-                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td data-value="{{ r.authority }}"><a href="/running-costs/council-tax/{{ r.slug }}">{{ r.authority }}</a></td>
                     <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
                     <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
                     <td class="num" data-value="{{ r.band_i }}">&pound;{{ "{:,.0f}".format(r.band_i) }}</td>
@@ -78,7 +78,7 @@
             <tbody>
                 {% for r in ct.scotland %}
                 <tr>
-                    <td data-value="{{ r.authority }}">{{ r.authority }}</td>
+                    <td data-value="{{ r.authority }}"><a href="/running-costs/council-tax/{{ r.slug }}">{{ r.authority }}</a></td>
                     <td class="num" data-value="{{ r.band_a }}">&pound;{{ "{:,.0f}".format(r.band_a) }}</td>
                     <td class="num" data-value="{{ r.band_d }}">&pound;{{ "{:,.0f}".format(r.band_d) }}</td>
                     <td class="num" data-value="{{ r.band_h }}">&pound;{{ "{:,.0f}".format(r.band_h) }}</td>

@@ -1552,6 +1552,79 @@ def council_tax_table_page(request: Request):
     return templates.TemplateResponse(request, "council_tax_table.html", context)
 
 
+@app.get("/running-costs/council-tax/{slug}")
+def council_tax_council_page(request: Request, slug: str):
+    """One page per billing authority: every band for the year, its rank
+    in its nation, the council's finances where England publishes them,
+    and the area guides inside it. A family with plain search demand
+    ("council tax <town>") that the site already had the data for."""
+    data = council_tax.page(slug)
+    if data is None:
+        raise StarletteHTTPException(status_code=404)
+    context = base_context(request)
+    base = _public_base_url(request)
+    context["canonical_url"] = f"{base}/running-costs/council-tax/{slug}"
+    context["ct"] = data
+    finance = None
+    if data["code"]:
+        try:
+            finance = council_finance.for_council(data["code"], data["authority"])
+        except Exception:  # noqa: BLE001 - the page stands without it
+            finance = None
+    context["finance"] = finance
+    context["guides"] = _guides_in_council(data["authority"])
+    total_rise = None
+    if finance and finance.get("history") and len(finance["history"]) >= 2 and finance["history"][0].get("band_d"):
+        first, last = finance["history"][0], finance["history"][-1]
+        total_rise = {"first_label": first["label"], "first": first["band_d"], "last_label": last["label"],
+                      "pct": round((last["band_d"] / first["band_d"] - 1) * 100, 1), "years": len(finance["history"]) - 1}
+    context["total_rise"] = total_rise
+    band_d = data["band_d"]
+    faqs = [
+        (f"How much is council tax in {data['authority']} for {data['year']}?",
+         f"A Band D home pays £{band_d:,.2f} for {data['year']}, the {data['rank_label']} highest Band D of the {data['of']} billing "
+         f"authorities in {data['nation']}, where the median is £{data['nation_median']:,.2f}. Band A is £{data['bands']['A']:,.2f} "
+         f"and Band {data['top_band']} is £{data['bands'][data['top_band']]:,.2f}. Source: {data['source']}."),
+        (f"How much is council tax in {data['authority']} per month?",
+         f"Council tax is normally paid in ten monthly instalments from April, so a Band D bill of £{band_d:,.2f} is "
+         f"£{band_d / 10:,.2f} a month; a household that asks for twelve instalments pays £{band_d / 12:,.2f} a month. "
+         "The bill includes every precept: the county or unitary council, police, fire and any parish or town council."),
+    ]
+    if total_rise:
+        faqs.append((f"How much has council tax in {data['authority']} gone up?",
+                     f"Band D was £{total_rise['first']:,.2f} in {total_rise['first_label']} and £{band_d:,.2f} in {data['year']}, "
+                     f"a rise of {total_rise['pct']}% over {total_rise['years']} years. In the latest year it rose {finance['rise_latest']}% "
+                     f"against an England median rise of {finance['median_rise_latest']}%. Source: MHCLG live council tax tables."))
+    if finance:
+        if finance.get("efs") or finance.get("s114"):
+            parts = []
+            if finance.get("efs"):
+                parts.append(f"{data['authority']} was agreed Exceptional Financial Support by government for "
+                             + ", ".join(f"{e['year']} ({e['amount']})" for e in reversed(finance["efs"])) + ".")
+            if finance.get("s114"):
+                parts.append("Section 114 notice: " + "; ".join(f"{n['date']} ({n['note'].lower()})" for n in finance["s114"]) + ".")
+            faqs.append((f"Has {data['authority']} council had financial trouble?", " ".join(parts)))
+        else:
+            faqs.append((f"Has {data['authority']} council had financial trouble?",
+                         f"No exceptional financial support from government since 2020-21 and no section 114 notice on record for "
+                         f"{data['authority']}, as at {finance.get('as_of', data['year'])}. Source: the Exceptional Financial Support lists "
+                         "published by MHCLG each year, and notices published by councils."))
+    context["faqs"] = faqs
+    context["faqs_jsonld"] = _faq_jsonld(faqs)
+    return templates.TemplateResponse(request, "council_tax_council.html", context)
+
+
+def _guides_in_council(authority: str) -> list[str]:
+    """Postcode districts whose centre postcodes.io places in this
+    council, the ones already in the sitemap first, capped so the page
+    stays a page rather than a list."""
+    target = council_tax._norm(authority)
+    earned = set(GSC_EARNED_OUTCODES)
+    matched = sorted({o["outcode"] for o in ALL_OUTCODES if council_tax._norm(o.get("district") or "") == target})
+    ordered = [oc for oc in matched if oc in earned] + [oc for oc in matched if oc not in earned]
+    return ordered[:24]
+
+
 # The "who manages your estate" directory (league table of agents' offices,
 # a page per agent, a name search) is withdrawn: on 7 Sep 2026 Michael judged
 # the office attribution inaccurate and asked for it to come down for now.
@@ -1867,6 +1940,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     entries.append((f"{base}/running-costs", "0.7"))
     entries.append((f"{base}/running-costs/council-tax", "0.7"))
+    entries += [(f"{base}/running-costs/council-tax/{slug}", "0.6") for slug in council_tax.pages()]
     entries.append((f"{base}/estate-charges", "0.7"))
     if ESTATE_DIRECTORY_ENABLED:
         entries.append((f"{base}/estate-charges/managing-agents", "0.7"))
@@ -5191,6 +5265,7 @@ async def area_guide(request: Request, outcode: str):
     context["outcode"] = outcode
     context["admin_district"] = location["admin_district"]
     context["council_hub"] = await asyncio.to_thread(_council_hub_for, location.get("admin_district"))
+    context["council_tax_slug"] = council_tax.slug_for_district(codes.get("admin_district"), location.get("admin_district"))
     context["region"] = location["region"]
     # Council tax for the district's council, looked up at render time
     # from the local file, so the guide carries it without a payload
@@ -8509,6 +8584,7 @@ async def llms_txt(request: Request):
 - [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
 - [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
 - [Council tax by council]({base}/running-costs/council-tax): Band D, A and H for every billing authority in England, Wales and Scotland, sortable.
+- Council tax, one page per billing authority ({base}/running-costs/council-tax/<council-slug>, for example {base}/running-costs/council-tax/manchester): every band for the year, the council's rank in its nation, six years of Band D rises and any exceptional financial support or section 114 notice, with the area guides inside the council.
 - [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.
 - [How school admissions work in England]({base}/schools/how-admissions-work): the calendar, the criteria order, how distance is measured and why most schools have no catchment area.

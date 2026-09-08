@@ -427,7 +427,7 @@
     <p>
         A Band D household in <strong>{{ finance.name }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
         a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
-        Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>; the full report gives the band of a specific address.
+        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}; the full report gives the band of a specific address.
     </p>
     <div class="tablewrap">
     <table class="tx-table finance-table">

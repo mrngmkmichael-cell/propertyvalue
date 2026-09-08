@@ -1710,3 +1710,24 @@ def test_the_guide_stays_quiet_without_the_v20_sources(client, monkeypatch):
     body = _fresh_guide(client, monkeypatch, "AB12", {"census_change": None, "bus": None, "health": None, "finance": None})
     assert "since 2011" not in body and "Buses from the centre" not in body
     assert "GP practices and A&amp;E" not in body and "the council's finances" not in body
+
+
+# ---- One council tax page per billing authority (8 Sep 2026) -----------------
+def test_each_council_has_a_council_tax_page(client):
+    from app.services import council_tax
+    pages = council_tax.pages()
+    assert len(pages) >= 340 and "manchester" in pages and "aberdeen-city" in pages and "cardiff" in pages
+    r = client.get("/running-costs/council-tax/manchester")
+    assert r.status_code == 200
+    body = r.text
+    assert "Council tax in Manchester" in body and "Every band in Manchester" in body
+    assert "Band A" in body and "Band H" in body and "highest Band D of the" in body
+    assert "Six years of Band D" in body                       # England: the MHCLG history
+    assert "FAQPage" in body and "per month" in body
+    assert 'href="/area/M14"' in body                          # the guides inside the council
+    assert client.get("/running-costs/council-tax/no-such-council").status_code == 404
+    scot = client.get("/running-costs/council-tax/aberdeen-city").text
+    assert "Scottish Government" in scot and "Scottish Assessors" in scot and "Six years of Band D" not in scot
+    listing = client.get("/running-costs/council-tax").text
+    assert 'href="/running-costs/council-tax/manchester"' in listing
+    assert "/running-costs/council-tax/manchester" in client.get("/sitemap.xml").text

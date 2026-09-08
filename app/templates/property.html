@@ -1247,6 +1247,7 @@
                 {% if finance %}
                 <h3 class="subsection-heading">The council's finances</h3>
                 <p class="section-sub">What a Band D household in {{ finance.name }} has paid each year, all precepts included, from MHCLG's live council tax tables. The England median rise for {{ finance.latest_label }} was {{ finance.median_rise_latest }}%.</p>
+                {% if council_tax and council_tax.slug %}<p class="section-sub"><a href="/running-costs/council-tax/{{ council_tax.slug }}">Every band for {{ council_tax.authority }}, its rank among councils and the area guides inside it →</a></p>{% endif %}
                 <div class="tablewrap">
                 <table class="tx-table finance-table">
                     <thead><tr><th>Year</th><th class="num">Band D bill</th><th class="num">Rise</th></tr></thead>
