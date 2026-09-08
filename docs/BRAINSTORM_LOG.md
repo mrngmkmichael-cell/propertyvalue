@@ -6,6 +6,22 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The catchment map, three steps, 9 Sep 2026 (a11fcdc, 3c3e2b4 carried
+  step 2, 002cfb9). The school page already drew the published distance
+  as a circle with a postcode checker; Michael approved all three
+  upgrades. Step 1: a tick box adds dashed rings for up to six nearby
+  schools that publish a distance, with a legend linking each, off by
+  default. Step 2: the postcode districts whose centre falls inside are
+  labelled on the map at their centres, each opening the district's
+  guide. Step 3: /school/{urn}/catchment.png draws the same facts to
+  scale with Pillow (ring, school, districts, scale bar, the figure) in
+  the share cards' fonts; it is the page's Open Graph image and sits on
+  the page as a figure with a download link, so search engines and
+  WhatsApp previews see what the JavaScript map shows. Both map branches
+  every time (Google on production, Leaflet in dev). Verified: Leaflet
+  by screenshot at 1280 and 375, Google by the label elements Chrome
+  created on the live page (Google blocks its tiles in test browsers, so
+  a grey map there is not a fault). Tests 253.
 - All eight ideas of the 8 Sep 2026 brainstorm, built the same night
   (commits 3c3e2b4 and 8719923). Michael read the eight and said "DO
   all 1-8", which is the approval the three decision-flagged ones
