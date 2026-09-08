@@ -361,6 +361,48 @@
 {% endif %}
 
 {% if school_outcode %}
+{# Buses within a school-run walk (600 m), from the DfT Bus Open Data
+   Service timetables: scheduled departures a passenger can board. #}
+{% if bus is defined and bus %}
+<section class="report-section">
+    <h2>Getting to {{ school.name }} by bus</h2>
+    {% if bus.count %}
+    {% set best = bus.best %}
+    <p class="section-sub">
+        The best-served stop within 600 m of the school is <strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away:
+        <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
+        and {{ best.sunday_day_per_hour }} on Sunday daytime; first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.
+        {% if bus.routes %}Routes at the stops nearby: {{ bus.routes | join(", ") }}.{% endif %}
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Stop</th><th class="num">From the school</th><th class="num">Weekday daytime, an hour</th><th class="num">Evening</th><th class="num">Sunday</th><th>Routes</th></tr></thead>
+        <tbody>
+        {% for s in bus.stops[:3] %}
+        <tr><td>{{ s.name }}</td><td class="num">{{ s.distance_m | distance }}</td><td class="num">{{ s.weekday_day_per_hour }}</td><td class="num">{{ s.weekday_eve_per_hour }}</td><td class="num">{{ s.sunday_day_per_hour }}</td><td>{{ s.routes | join(", ") }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">Scheduled departures for the week of {{ bus.ref_weekday }}, from the timetables operators publish to the Department for Transport's Bus Open Data Service; not observed running. Two stops on opposite sides of a road are two rows.</p>
+    {% else %}
+    <p class="section-sub">No bus stop with a scheduled departure within 600 m of the school, in the timetables operators have published to the Bus Open Data Service.</p>
+    {% endif %}
+</section>
+{% endif %}
+
+{% if badge_snippet %}
+<section class="report-section">
+    <h2>Put {{ school.name }}'s figure on your own site</h2>
+    <p class="section-sub">
+        A small badge that shows the published admission distance and links back here, for a school
+        website, a parents' group or a local forum. Copy the code and paste it where you want it to appear.
+    </p>
+    <p><img src="/school/{{ school.urn }}/badge.svg" alt="{{ school.name }} badge" width="320" height="96" style="max-width:100%;height:auto"></p>
+    <textarea class="embed-code" rows="3" readonly onclick="this.select()">{{ badge_snippet }}</textarea>
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>The fee-paying alternative</h2>
     <p class="section-sub">

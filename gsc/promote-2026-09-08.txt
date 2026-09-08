@@ -1,0 +1,209 @@
+557 districts earned impressions in this export
+  already promoted : 378
+  NEW              : 179
+
+  LU1     36 impressions
+  GL4     24 impressions
+  BT14    20 impressions
+  IP16    20 impressions
+  BL6     19 impressions
+  B78     18 impressions
+  BB1     17 impressions
+  BD6     16 impressions
+  PE1     15 impressions
+  NR3     14 impressions
+  SR4     14 impressions
+  TW10    14 impressions
+  B99     13 impressions
+  BD3     13 impressions
+  BR7     12 impressions
+  BT7     12 impressions
+  BH11    11 impressions
+  CF31    11 impressions
+  CV23    11 impressions
+  GU21    10 impressions
+  OL12    10 impressions
+  CF5     9 impressions
+  S66     9 impressions
+  CV21    8 impressions
+  IP3     8 impressions
+  TW3     8 impressions
+  B44     7 impressions
+  DY1     7 impressions
+  FY1     7 impressions
+  OL2     7 impressions
+  RH13    7 impressions
+  SK3     7 impressions
+  SL3     7 impressions
+  SO21    7 impressions
+  TS2     7 impressions
+  TS3     7 impressions
+  BD4     6 impressions
+  BN5     6 impressions
+  CM2     6 impressions
+  CM20    6 impressions
+  CO4     6 impressions
+  CV10    6 impressions
+  DA1     6 impressions
+  DN12    6 impressions
+  EC2V    6 impressions
+  FK4     6 impressions
+  G32     6 impressions
+  LA2     6 impressions
+  LU2     6 impressions
+  MK40    6 impressions
+  NE10    6 impressions
+  NR4     6 impressions
+  PR7     6 impressions
+  RG30    6 impressions
+  RH20    6 impressions
+  SN2     6 impressions
+  SN25    6 impressions
+  SS1     6 impressions
+  ST5     6 impressions
+  WD25    6 impressions
+  WR2     6 impressions
+  AB33    5 impressions
+  AL1     5 impressions
+  BB11    5 impressions
+  BH18    5 impressions
+  DA18    5 impressions
+  EN3     5 impressions
+  FK7     5 impressions
+  L16     5 impressions
+  OL16    5 impressions
+  PR6     5 impressions
+  S35     5 impressions
+  ST18    5 impressions
+  WR4     5 impressions
+  B60     4 impressions
+  B93     4 impressions
+  BB3     4 impressions
+  BB4     4 impressions
+  DG4     4 impressions
+  EX16    4 impressions
+  FY2     4 impressions
+  HA3     4 impressions
+  L24     4 impressions
+  ME15    4 impressions
+  ME20    4 impressions
+  PA10    4 impressions
+  PO13    4 impressions
+  PO6     4 impressions
+  SM2     4 impressions
+  TS25    4 impressions
+  W1K     4 impressions
+  WA5     4 impressions
+  AL9     3 impressions
+  B92     3 impressions
+  B98     3 impressions
+  BD17    3 impressions
+  BD5     3 impressions
+  BD9     3 impressions
+  BH23    3 impressions
+  BH8     3 impressions
+  BL4     3 impressions
+  BN13    3 impressions
+  BT13    3 impressions
+  CM7     3 impressions
+  CO6     3 impressions
+  CO8     3 impressions
+  DG11    3 impressions
+  DG13    3 impressions
+  DG7     3 impressions
+  DH6     3 impressions
+  EC1R    3 impressions
+  EN5     3 impressions
+  FY8     3 impressions
+  GL2     3 impressions
+  HA1     3 impressions
+  HU8     3 impressions
+  HU9     3 impressions
+  IP2     3 impressions
+  LE87    3 impressions
+  M46     3 impressions
+  MK10    3 impressions
+  MK20    3 impressions
+  NE85    3 impressions
+  PE5     3 impressions
+  RG12    3 impressions
+  RM8     3 impressions
+  RM9     3 impressions
+  S14     3 impressions
+  SK2     3 impressions
+  SL1     3 impressions
+  SL6     3 impressions
+  TS9     3 impressions
+  TW18    3 impressions
+  WA10    3 impressions
+  WD18    3 impressions
+  WF4     3 impressions
+  WN5     3 impressions
+  YO60    3 impressions
+  AL6     2 impressions
+  B69     2 impressions
+  B97     2 impressions
+  BD21    2 impressions
+  BS11    2 impressions
+  BT79    2 impressions
+  CB7     2 impressions
+  CH43    2 impressions
+  CV12    2 impressions
+  DN15    2 impressions
+  EC3R    2 impressions
+  EH51    2 impressions
+  EX38    2 impressions
+  GL10    2 impressions
+  GL20    2 impressions
+  GU12    2 impressions
+  GU15    2 impressions
+  HU7     2 impressions
+  IP18    2 impressions
+  KT19    2 impressions
+  KW15    2 impressions
+  LL66    2 impressions
+  M61     2 impressions
+  NE11    2 impressions
+  NG80    2 impressions
+  NR99    2 impressions
+  PE33    2 impressions
+  PO2     2 impressions
+  PO7     2 impressions
+  RM20    2 impressions
+  RM7     2 impressions
+  SK6     2 impressions
+  SK8     2 impressions
+  ST1     2 impressions
+  ST19    2 impressions
+  SY2     2 impressions
+  TR1     2 impressions
+  TS18    2 impressions
+  WA1     2 impressions
+  BS34    1 impressions
+  EN10    1 impressions
+
+paste into GSC_EARNED_OUTCODES in app/main.py:
+
+    "AB33", "AL1", "AL6", "AL9", "B44", "B60", "B69", "B78", "B92", "B93",
+    "B97", "B98", "B99", "BB1", "BB11", "BB3", "BB4", "BD17", "BD21",
+    "BD3", "BD4", "BD5", "BD6", "BD9", "BH11", "BH18", "BH23", "BH8",
+    "BL4", "BL6", "BN13", "BN5", "BR7", "BS11", "BS34", "BT13", "BT14",
+    "BT7", "BT79", "CB7", "CF31", "CF5", "CH43", "CM2", "CM20", "CM7",
+    "CO4", "CO6", "CO8", "CV10", "CV12", "CV21", "CV23", "DA1", "DA18",
+    "DG11", "DG13", "DG4", "DG7", "DH6", "DN12", "DN15", "DY1", "EC1R",
+    "EC2V", "EC3R", "EH51", "EN10", "EN3", "EN5", "EX16", "EX38", "FK4",
+    "FK7", "FY1", "FY2", "FY8", "G32", "GL10", "GL2", "GL20", "GL4",
+    "GU12", "GU15", "GU21", "HA1", "HA3", "HU7", "HU8", "HU9", "IP16",
+    "IP18", "IP2", "IP3", "KT19", "KW15", "L16", "L24", "LA2", "LE87",
+    "LL66", "LU1", "LU2", "M46", "M61", "ME15", "ME20", "MK10", "MK20",
+    "MK40", "NE10", "NE11", "NE85", "NG80", "NR3", "NR4", "NR99", "OL12",
+    "OL16", "OL2", "PA10", "PE1", "PE33", "PE5", "PO13", "PO2", "PO6",
+    "PO7", "PR6", "PR7", "RG12", "RG30", "RH13", "RH20", "RM20", "RM7",
+    "RM8", "RM9", "S14", "S35", "S66", "SK2", "SK3", "SK6", "SK8", "SL1",
+    "SL3", "SL6", "SM2", "SN2", "SN25", "SO21", "SR4", "SS1", "ST1",
+    "ST18", "ST19", "ST5", "SY2", "TR1", "TS18", "TS2", "TS25", "TS3",
+    "TS9", "TW10", "TW18", "TW3", "W1K", "WA1", "WA10", "WA5", "WD18",
+    "WD25", "WF4", "WN5", "WR2", "WR4", "YO60",
+
+then run the tests and deploy; the sitemap and the comparison-page
+tranche both grow from that one list.

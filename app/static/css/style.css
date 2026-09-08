@@ -7815,3 +7815,6 @@ body:not(.theme-dark) .lx-hero-scrim {
     .census-change-table th:nth-child(5), .census-change-table td:nth-child(5) { display: none; }
     .census-change-table td:first-child { min-width: 9rem; }
 }
+
+/* The embed box on a school page. */
+.embed-code { width: 100%; font-family: var(--font-mono); font-size: var(--text-xs); padding: 0.6rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-2); color: var(--ink); resize: vertical; }

@@ -1,4 +1,5 @@
 import asyncio
+import html
 import bisect
 import collections
 import contextvars
@@ -1790,6 +1791,28 @@ GSC_EARNED_OUTCODES = [
     # 31 Aug 2026: "bn8" appeared in the live top queries (Search
     # Console screenshot) and BN8 was not yet promoted.
     "BN8",
+    # --- Promoted from Search Console, 8 Sep 2026 (three months to 6 Sep) ---
+    # 557 districts earned impressions; these are the ones not yet listed.
+    # Source: gsc/performance-2026-09-08.xlsx via scripts/promote_from_gsc.py.
+    "AB33", "AL1", "AL6", "AL9", "B44", "B60", "B69", "B78", "B92", "B93",
+    "B97", "B98", "B99", "BB1", "BB11", "BB3", "BB4", "BD17", "BD21", "BD3",
+    "BD4", "BD5", "BD6", "BD9", "BH11", "BH18", "BH23", "BH8", "BL4", "BL6",
+    "BN13", "BN5", "BR7", "BS11", "BS34", "BT13", "BT14", "BT7", "BT79",
+    "CB7", "CF31", "CF5", "CH43", "CM2", "CM20", "CM7", "CO4", "CO6", "CO8",
+    "CV10", "CV12", "CV21", "CV23", "DA1", "DA18", "DG11", "DG13", "DG4",
+    "DG7", "DH6", "DN12", "DN15", "DY1", "EC1R", "EC2V", "EC3R", "EH51",
+    "EN10", "EN3", "EN5", "EX16", "EX38", "FK4", "FK7", "FY1", "FY2", "FY8",
+    "G32", "GL10", "GL2", "GL20", "GL4", "GU12", "GU15", "GU21", "HA1", "HA3",
+    "HU7", "HU8", "HU9", "IP16", "IP18", "IP2", "IP3", "KT19", "KW15", "L16",
+    "L24", "LA2", "LE87", "LL66", "LU1", "LU2", "M46", "M61", "ME15", "ME20",
+    "MK10", "MK20", "MK40", "NE10", "NE11", "NE85", "NG80", "NR3", "NR4",
+    "NR99", "OL12", "OL16", "OL2", "PA10", "PE1", "PE33", "PE5", "PO13",
+    "PO2", "PO6", "PO7", "PR6", "PR7", "RG12", "RG30", "RH13", "RH20", "RM20",
+    "RM7", "RM8", "RM9", "S14", "S35", "S66", "SK2", "SK3", "SK6", "SK8",
+    "SL1", "SL3", "SL6", "SM2", "SN2", "SN25", "SO21", "SR4", "SS1", "ST1",
+    "ST18", "ST19", "ST5", "SY2", "TR1", "TS18", "TS2", "TS25", "TS3", "TS9",
+    "TW10", "TW18", "TW3", "W1K", "WA1", "WA10", "WA5", "WD18", "WD25", "WF4",
+    "WN5", "WR2", "WR4", "YO60",
 ]
 AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
@@ -7712,6 +7735,53 @@ async def og_school_image(request: Request, urn: int):
                     headers={"Cache-Control": "public, max-age=21600"})
 
 
+def _school_badge_snippet(request: Request, profile: dict, slug: str) -> str:
+    base = _public_base_url(request)
+    page = f"{base}/school/{profile['urn']}/{slug}"
+    if profile.get("miles"):
+        alt = f"{profile['name']}: admitted from {profile['miles']} miles in {profile.get('academic_year', '')}"
+    else:
+        alt = f"{profile['name']}: Ofsted, results and admissions on UKPropertyInsight"
+    return (f'<a href="{page}"><img src="{base}/school/{profile["urn"]}/badge.svg" alt="{html.escape(alt, quote=True)}" '
+            f'width="320" height="96" style="max-width:100%;height:auto"></a>')
+
+
+@app.get("/school/{urn}/badge.svg")
+async def school_badge(request: Request, urn: int):
+    """An embeddable badge for a school's own site or a parents' group:
+    the published admission distance, or the fact that there is none,
+    with a link back to the page. Built as plain SVG, cached six hours."""
+    cache_key = ("school_badge", urn)
+    cached = _cache.get(cache_key, OG_IMAGE_CACHE_TTL_S)
+    if cached is None:
+        profile = await asyncio.to_thread(schools_db.admission_profile, urn)
+        if profile is None:
+            raise StarletteHTTPException(status_code=404)
+        name = profile["name"]
+        if len(name) > 40:
+            name = name[:39].rstrip() + "…"
+        if profile.get("miles"):
+            headline = f"Admitted from {profile['miles']} miles"
+            sub = f"in {profile.get('academic_year', '')}, {profile.get('authority', '')}".strip(", ")
+        else:
+            headline = "No published admission distance"
+            sub = profile.get("authority", "") or "Department for Education register"
+        rating = profile.get("ofsted_rating_label") or ""
+        cached = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="96" viewBox="0 0 320 96" role="img" aria-label="'
+            + html.escape(f"{profile['name']}: {headline}", quote=True) + '">'
+            '<rect x="0.5" y="0.5" width="319" height="95" rx="10" fill="#fdfcf9" stroke="#e5e1d8"/>'
+            '<rect x="0.5" y="0.5" width="6" height="95" rx="3" fill="#2b4c8c"/>'
+            f'<text x="20" y="26" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#1c1714">{html.escape(name)}</text>'
+            f'<text x="20" y="50" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="17" font-weight="700" fill="#2b4c8c">{html.escape(headline)}</text>'
+            f'<text x="20" y="69" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="11" fill="#5c554d">{html.escape(sub)}{(" · Ofsted " + html.escape(rating)) if rating else ""}</text>'
+            '<text x="20" y="86" font-family="Consolas, Menlo, monospace" font-size="9" letter-spacing="1" fill="#8a8378">UKPROPERTYINSIGHT.CO.UK</text>'
+            '</svg>'
+        )
+        _cache.set(cache_key, cached)
+    return Response(content=cached, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=21600"})
+
+
 @app.get("/school/{urn}/{slug}")
 async def school_admission_page(request: Request, urn: int, slug: str, check: str = ""):
     """One school's real admission distance.
@@ -7834,6 +7904,13 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         },
         "geo": {"@type": "GeoCoordinates", "latitude": profile["latitude"], "longitude": profile["longitude"]},
     }, separators=(",", ":"))
+    # Buses within a school-run walk of the gate (idea 3 of 7 Sep 2026 applied
+    # to the pages that rank): the best stop within 600 m, from the BODS timetables.
+    try:
+        context["bus"] = await asyncio.to_thread(bus_service.stops_near, profile["latitude"], profile["longitude"], 600)
+    except Exception:  # noqa: BLE001 - the page stands without it
+        context["bus"] = None
+    context["badge_snippet"] = _school_badge_snippet(request, profile, slug)
     return templates.TemplateResponse(request, "school_admission.html", context)
 
 
