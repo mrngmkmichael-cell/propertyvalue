@@ -20,7 +20,7 @@
 <section class="report-section">
     <h2>Every band in {{ ct.authority }}</h2>
     <div class="tablewrap">
-    <table class="tx-table">
+    <table class="tx-table band-table">
         <thead><tr><th>Band</th><th class="num">Bill for {{ ct.year }}</th><th class="num">A month, ten instalments</th><th class="num">Ratio to Band D</th></tr></thead>
         <tbody>
         {% for band, bill in ct.bands.items() %}

@@ -7824,3 +7824,4 @@ body:not(.theme-dark) .lx-hero-scrim {
 .tag-link { display: inline-block; padding: 0.3rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: var(--text-xs); text-decoration: none; color: var(--ink); background: var(--surface-2); }
 .tag-link:hover { border-color: var(--accent); color: var(--accent); }
 .row-emphasis td { font-weight: 600; }
+.band-table td:first-child, .band-table th:first-child { white-space: nowrap; }
