@@ -973,6 +973,22 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
 # (or a test's patch) is seen without a restart.
 templates.env.globals["verification_available"] = lambda: email_service.can_verify()
 templates.env.filters["gbp"] = _format_gbp
+
+
+def _external_url(value) -> str:
+    """A school's recorded website, stored with or without a scheme, as
+    an absolute link. Rendered bare, "www.school.sch.uk" resolved
+    relative to the page and crawlers asked this site for
+    /schools/www.school.sch.uk (Search Console, 8 Sep 2026)."""
+    v = (value or "").strip()
+    if not v:
+        return ""
+    if v.lower().startswith(("http://", "https://")):
+        return v
+    return "https://" + v.lstrip("/")
+
+
+templates.env.filters["external_url"] = _external_url
 templates.env.filters["distance"] = _format_distance
 
 
@@ -2319,6 +2335,13 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # the finished HTML instead of re-rendering the 2,000-line template
     # (about 0.6s of CPU per view on one worker). Logged-in views are
     # personalised and always render fresh.
+    # An outcode on its own is not a report. The area guides used to link
+    # here that way and Search Console logged 809 of the resulting 404s
+    # (8 Sep 2026); a known district goes to its guide instead, which is
+    # also the right answer for someone who typed only "M14" in the box.
+    bare = postcode.strip().upper().replace(" ", "")
+    if bare and not house_number.strip() and _OUTCODE_RE.match(bare) and any(o["outcode"] == bare for o in ALL_OUTCODES):
+        return RedirectResponse(f"/area/{bare}", status_code=301)
     key = ("anon_property_page", *auth.property_key(postcode, house_number))
 
     cacheable = _anon_cacheable(request)
@@ -8893,3 +8916,29 @@ def reviews_submit(
         return RedirectResponse(safe_next, status_code=303)
     reviews.submit(user["id"], target_type, target_key, rating, body)
     return RedirectResponse(safe_next, status_code=303)
+
+
+# ---- Redirects for URLs Google still holds (Search Console, 8 Sep 2026) ------
+# Declared last on purpose: /schools/{host} must sit behind every literal
+# /schools/... route, and Starlette matches in registration order.
+
+@app.get("/set-language")
+async def set_language_retired(next: str = "/"):
+    """The language switcher was withdrawn (English only, 5 Sep 2026); its
+    links are still in Google's index, so each goes to the page it wrapped."""
+    target = next if (next.startswith("/") and not next.startswith("//") and next.isprintable()) else "/"
+    return RedirectResponse(target, status_code=301)
+
+
+@app.get("/schools/{host}")
+async def school_website_bounce(host: str):
+    """School websites stored without a scheme used to render as relative
+    links, so crawlers asked this site for /schools/www.example.sch.uk.
+    Only a host that is some school's own recorded website is sent on;
+    anything else is the ordinary 404."""
+    host = host.lower().strip("/")
+    if not re.match(r"^[a-z0-9][a-z0-9.-]{2,80}\.[a-z]{2,}$", host):
+        raise StarletteHTTPException(status_code=404)
+    if not await asyncio.to_thread(schools_db.website_host_known, host):
+        raise StarletteHTTPException(status_code=404)
+    return RedirectResponse(f"https://{host}/", status_code=301)

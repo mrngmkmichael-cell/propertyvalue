@@ -1102,3 +1102,18 @@ def admission_pages_in_outcodes(outcodes: set[str]) -> list[dict]:
         if district in outcodes:
             out.append({"urn": urn, "name": name, "slug": _slugify(name)})
     return out
+
+
+def website_host_known(host: str) -> bool:
+    """True when some school's recorded website is this host, with or
+    without a scheme or a trailing slash. Backs the /schools/{host}
+    redirect, so it is deliberately a lookup and not a pattern match."""
+    from sqlalchemy import func, select
+    host = host.lower().strip("/")
+    if not host:
+        return False
+    with get_session() as session:
+        row = session.execute(
+            select(SchoolDetail.urn).where(func.lower(SchoolDetail.website).like(f"%{host}%")).limit(1)
+        ).first()
+    return row is not None

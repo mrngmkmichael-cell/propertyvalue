@@ -15,7 +15,7 @@
     {{ agent.name }}'s office{% if agent.kind == "developer" %}, which as a developer sets up a company for each
     estate it builds and hands over later{% endif %}. A company registered to an agent's office is almost
     always one it administers; the register records the address, not the contract.
-    {% if agent.website %}<a href="{{ agent.website }}" rel="noopener nofollow" target="_blank">{{ agent.name }}'s own site →</a>{% endif %}
+    {% if agent.website %}<a href="{{ agent.website | external_url }}" rel="noopener nofollow" target="_blank">{{ agent.name }}'s own site →</a>{% endif %}
 </p>
 
 <div class="scorecard-row">

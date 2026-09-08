@@ -53,7 +53,7 @@
                                 {% set address = [s.detail.street, s.detail.locality, s.detail.town, s.detail.county] | select | join(', ') %}
                                 {% if address %}<tr><td>Address</td><td>{{ address }}</td></tr>{% endif %}
                                 {% if s.detail.phone %}<tr><td>Phone</td><td>{{ s.detail.phone }}</td></tr>{% endif %}
-                                {% if s.detail.website %}<tr><td>Website</td><td><a href="{{ s.detail.website }}" target="_blank" rel="noopener">{{ s.detail.website }}</a></td></tr>{% endif %}
+                                {% if s.detail.website %}<tr><td>Website</td><td><a href="{{ s.detail.website | external_url }}" target="_blank" rel="noopener">{{ s.detail.website }}</a></td></tr>{% endif %}
                                 {% if s.detail.idaci_quintile %}
                                 <tr><td>Area deprivation</td><td>Quintile {{ s.detail.idaci_quintile }} of 5 (1 = most deprived fifth nationally)</td></tr>
                                 {% endif %}

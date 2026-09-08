@@ -57,7 +57,7 @@
             <td>{{ s.town }}</td>
             <td>{{ s.ofsted_rating_label or s.ofsted_note or "Not rated" }}</td>
             <td class="num">{% if s.last_distance_miles is not none %}{{ s.last_distance_miles }} mi{% if s.distance_year %} ({{ s.distance_year }}){% endif %}{% else %}Not published{% endif %}</td>
-            <td>{% if s.website %}<a href="{{ s.website }}" rel="noopener" target="_blank">School site</a>{% endif %}</td>
+            <td>{% if s.website %}<a href="{{ s.website | external_url }}" rel="noopener" target="_blank">School site</a>{% endif %}</td>
         </tr>
         {% endfor %}
         </tbody>

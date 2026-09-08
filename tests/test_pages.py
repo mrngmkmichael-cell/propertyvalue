@@ -1743,3 +1743,37 @@ def test_healthz_answers_without_touching_the_database(client, monkeypatch):
     r = client.get("/healthz")
     assert r.status_code == 200 and r.json() == {"status": "ok"}
     assert r.headers["cache-control"] == "no-store"
+
+
+# ---- The 404 shapes Search Console listed on 8 Sep 2026 -------------------------
+def test_the_four_404_shapes_from_search_console(client, fake_place):
+    from app import db, main as app_main
+    from app.models import School, SchoolDetail
+    # 1. An outcode on its own goes to the guide; a full postcode still reports.
+    r = client.get("/property?postcode=M14", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/area/M14"
+    assert client.get("/property?postcode=m14+", follow_redirects=False).status_code == 301
+    assert client.get("/property?postcode=ZZ9", follow_redirects=False).status_code != 301
+    assert client.get("/property?postcode=M14&house_number=12", follow_redirects=False).status_code != 301
+    # 2. The withdrawn language switcher sends each link to the page it wrapped.
+    r = client.get("/set-language?lang=es&next=/area/PO16", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/area/PO16"
+    r = client.get("/set-language?lang=fr&next=//evil.example/x", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/"
+    # 3. A bare school website renders absolute now, and the crawled
+    #    relative form bounces to the school, but only for a recorded site.
+    with db.get_session() as session:
+        session.merge(School(urn=900301, name="Bare Website Primary", phase="Primary", type_name="Community school",
+                             postcode="M14 5TG", latitude=53.45, longitude=-2.22))
+        session.merge(SchoolDetail(urn=900301, town="Manchester", website="www.bare-website-primary.sch.uk", local_authority="Manchester"))
+        session.commit()
+    assert app_main._external_url("www.bare-website-primary.sch.uk") == "https://www.bare-website-primary.sch.uk"
+    assert app_main._external_url("https://x.org/") == "https://x.org/" and app_main._external_url("") == ""
+    r = client.get("/schools/www.bare-website-primary.sch.uk", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "https://www.bare-website-primary.sch.uk/"
+    assert client.get("/schools/www.not-a-school.example", follow_redirects=False).status_code == 404
+    assert client.get("/schools/grammar").status_code == 200          # the literal routes still win
+    # 4. The guide no longer links to an outcode-only report.
+    body = client.get("/area/AB12").text
+    assert "/property?postcode=AB12" not in body and 'href="/#postcode=AB12"' in body
+    assert "location.hash" in client.get("/").text
