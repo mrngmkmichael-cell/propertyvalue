@@ -6,6 +6,22 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Search Console follow-up, 8 Sep 2026 (three deploys, d368169,
+  caea5b8, 11059e4). The second GSC export showed 557 districts earning
+  impressions; the 179 not yet promoted joined GSC_EARNED_OUTCODES, so
+  the sitemap grew from 5,455 to 6,165 URLs. School pages, the one
+  family that ranks (position 12.7), gained the bus service within
+  600 m from the BODS timetables and an embeddable badge at
+  /school/{urn}/badge.svg with a copyable snippet, so a school site or
+  parents' group can link back. Area guides moved to payload v20 with
+  the 7 Sep data: the centre neighbourhood since 2011, the busiest stop
+  within 800 m, GP practices with patients per qualified GP and the
+  nearest A&E's four-hour figure, and the council's Band D history with
+  any EFS or section 114. A council tax page per billing authority
+  (/running-costs/council-tax/<slug>, 350 pages) with every band, the
+  rank in its nation, six years of rises, the finances record, the area
+  guides inside the council and FAQ structured data, linked from the
+  listing, the guides and the report modal. Tests 233; smoke 49.
 - Idea 9 of nine, price per square metre (7 Sep 2026). The valuation
   already fetched the EPC floor area for up to twenty recent nearby
   sales; the Premium valuation modal now shows pounds per square metre
