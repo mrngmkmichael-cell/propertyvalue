@@ -73,10 +73,20 @@ CHECKS = [
     ("/running-costs/council-tax/manchester", {200}, ["Council tax in Manchester", "Band D", "Every band in Manchester"]),
     ("/running-costs/council-tax/aberdeen-city", {200}, ["Scottish Government", "Band H"]),
     ("/estate-charges", {200}, ["fleecehold", "Twelve questions"]),
-    # The directory is withdrawn (7 Sep 2026): these must stay 404 until it is switched back on.
-    ("/estate-charges/managing-agents", {404}, []),
-    ("/estate-charges/company/firstport", {404}, []),
+    # The directory is withdrawn (7 Sep 2026) and must stay withdrawn until
+    # the office attribution is checked. From 8 Sep 2026 its URLs redirect to
+    # the explainer rather than 404ing: Google holds these pages and people
+    # were still arriving on them. A 200 here would mean the directory came
+    # back on without the data being approved, which is the thing to catch.
+    ("/estate-charges/managing-agents", {301}, []),
+    ("/estate-charges/company/firstport", {301}, []),
     ("/schools/independent", {200}, ["Private schools, council by council"]),
+    # The two calculators are noindexed and out of the sitemap (8 Sep 2026):
+    # 1,562 impressions at position ~90 and no click in three months.
+    ("/tools/mortgage-calculator", {200}, ["noindex", "/running-costs"]),
+    ("/tools/stamp-duty-calculator", {200}, ["noindex", "/running-costs"]),
+    # The premium page shows the document before the price.
+    ("/premium?sample=check", {200}, ["The report you get, before you pay for it", "sample-report/page-1.png"]),
     ("/schools/independent/surrey", {200}, ["Private schools in Surrey"]),
     ("/schools/admission-distances.csv", {200}, ["urn,school,phase,council"]),
     ("/llms.txt", {200}, ["# UKPropertyInsight"]),

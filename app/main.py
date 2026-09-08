@@ -5529,9 +5529,11 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
 
     flood = payload.get("flood_zone") or {}
     if flood.get("label"):
+        # The label carries its own brackets ("Zone 1 (low probability)"),
+        # so the source is named without a second pair.
         out.append(
-            f"The centre of {outcode} sits in {flood['label'].lower()} "
-            f"(Environment Agency flood map for planning)."
+            f"The centre of {outcode} is in flood {flood['label'][0].lower()}{flood['label'][1:]}, "
+            f"on the Environment Agency flood map for planning."
         )
 
     finance = payload.get("finance") or {}
@@ -5546,7 +5548,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
     crime = payload.get("crime") or {}
     if crime.get("total") is not None:
         commonest = ((crime.get("by_category") or [{}])[0] or {}).get("category")
-        month = f" in {crime['month']}" if crime.get("month") else ""
+        month = f" in {_month_label(crime['month'])}" if crime.get("month") else ""
         plural = "" if crime["total"] == 1 else "s"
         out.append(
             f"Police recorded {crime['total']} crime{plural} within roughly a mile of the "
