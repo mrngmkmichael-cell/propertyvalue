@@ -53,11 +53,12 @@ class User(Base):
     # partners table: there's no partner management UI yet, just this
     # raw attribution string to query manually until one exists.
     referred_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Opt-in weekly digest of saved properties. Off by default and it
-    # stays that way unless the person ticks the box: the change-alert
-    # email tells every reader it only ever arrives when something
-    # actually changed, never on a schedule, and quietly starting a
-    # weekly send would make that a lie.
+    # The opt-in weekly digest of saved properties, retired on 9 Sep
+    # 2026. Across 48 real accounts and six weeks not one was ever set
+    # to true and digest_sent_at was never written, so no digest was
+    # ever sent. The feature is gone (see app/watchlist.py); these two
+    # columns stay, because dropping a production column cannot be
+    # undone and an unused one costs nothing.
     weekly_digest: Mapped[bool] = mapped_column(Boolean, default=False)
     digest_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

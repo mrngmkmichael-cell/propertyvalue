@@ -69,6 +69,7 @@
    2026 the first thing they were offered was "Follow", which needs an
    account. #}
 <form action="/property" method="get" class="search-form area-check" role="search">
+    <input type="hidden" name="src" value="area-guide">
     <div class="search-form-field">
         <label for="area-check-postcode">Check an address in {{ outcode }}</label>
         <input type="text" id="area-check-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="postal-code" required>
@@ -173,7 +174,7 @@
                 {% for s in local_sales.latest %}
                 <tr>
                     <td>{{ s.address }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</td>
-                    <td>{{ s.property_type or "&mdash;" | safe }}</td>
+                    <td>{{ s.property_type or "Not recorded" }}</td>
                     <td class="num">{{ s.amount | gbp }}</td>
                     <td class="num">{{ s.date }}</td>
                 </tr>
@@ -514,6 +515,7 @@
         search its full postcode.
     </p>
     <form action="/property" method="get" class="search-form">
+        <input type="hidden" name="src" value="area-guide">
         <div class="search-form-field">
             <label for="area-guide-postcode">Full postcode</label>
             <input type="text" id="area-guide-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>

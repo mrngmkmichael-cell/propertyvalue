@@ -109,7 +109,7 @@
                             <span class="school-profile-preview">
                                 {%- if s.detail and s.detail.number_on_roll %}{{ s.detail.number_on_roll }} on roll
                                 {%- elif s.exam_results and s.exam_results.pupil_count %}{{ s.exam_results.pupil_count }} pupils
-                                {%- else %}—{% endif %}
+                                {%- else %}Roll not published{% endif %}
                             </span>
                             <span class="school-profile-toggle">+</span>
                         </summary>
@@ -248,7 +248,7 @@
                                 {% for t in s.exam_trend %}
                                 <tr>
                                     <td>{{ t.academic_year }}</td>
-                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else " — " }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
+                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else "Not published" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
                                 </tr>
                                 {% endfor %}
                             </table>

@@ -177,6 +177,60 @@ def test_the_free_report_is_offered_not_spent_silently(client, fake_report, monk
     assert "Upgrade to Premium to unlock" in body and 'id="use-free-report-dialog"' not in body
 
 
+def test_the_paywall_says_something_new_on_a_return_visit(client, fake_report, monkeypatch):
+    """Twelve accounts reached the wall in the week to 9 Sep 2026 and one
+    paid. The account that came back most, nine times, has not paid,
+    which is one more visit than the person who did, and the wall was
+    repeating one sentence at all of them. The second visit onward now
+    counts the properties they have opened, prices the searches they
+    would otherwise have bought, and points back at the free report they
+    already own."""
+    from tests.conftest import fake_location
+
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    # A postcode of its own, not the M14 5TG the other tests unlock: two
+    # accounts unlocking one address on one day is the exact pattern the
+    # /admin test asserts is absent.
+    fake_report(location=fake_location(postcode="M20 1AA", outcode="M20"))
+    assert _signup(client, "returner@customer.test").status_code == 303
+
+    # Spend the one free report, so every later property is walled.
+    client.get("/property?postcode=M20+1AA")
+    r = client.post("/property/unlock", data={"postcode": "M20 1AA", "house_number": ""},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    client.get(r.headers["location"])
+
+    fake_report(location=fake_location(postcode="M1 2AA", outcode="M1"))
+
+    # The test client names itself "testclient", which the crawler filter
+    # excludes on purpose, and an excluded viewer records no paywall
+    # event and so never sees the return wording.
+    browser = {"user-agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Safari/537.36"}
+
+    # The crawler filter and the 202 wait page share one user-agent
+    # test: a browser with a cold gather gets the wait page instead of
+    # the report, and fake_report replaces the gather without ever
+    # filling its cache. Marking the gather warm is what lets a request
+    # be both a real browser and a finished report.
+    from app.services import _cache
+    _cache.set(("property_search_gather", "M1 2AA", ""), {"warm": True})
+
+    first = client.get("/property?postcode=M1+2AA", headers=browser).text
+    assert "You've used your free report." in first          # the original wording
+    assert "time you have reached this wall" not in first
+
+    second = client.get("/property?postcode=M1+2AA", headers=browser).text
+    assert "This is the 2nd time you have reached this wall." in second
+    assert "would be about &pound;" in second
+    # The free report they already own is named, and still theirs.
+    assert "Your free report went on" in second
+    assert "M20 1AA" in second
+
+    third = client.get("/property?postcode=M1+2AA", headers=browser).text
+    assert "This is the 3rd time you have reached this wall." in third
+
+
 def test_can_verify_needs_a_domain_of_our_own(monkeypatch):
     monkeypatch.setenv("RESEND_API_KEY", "re_test")
     monkeypatch.delenv("ALERTS_FROM_EMAIL", raising=False)

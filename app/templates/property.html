@@ -543,9 +543,22 @@
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
         {% else %}
+        {# The second and later visits to this wall say something the
+           first one did not. Twelve accounts reached it in the week to
+           9 Sep 2026 and one paid; the account that came back most, nine
+           times, is still not paying. Repeating one sentence at someone
+           who has already read it eight times is not an offer. #}
         <div class="paywall-banner-copy">
+            {% if paywall_history and paywall_history.prior_walls %}
+            <strong>This is the {{ paywall_history.nth_locked }} time you have reached this wall.</strong>
+            You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each of them, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium is &pound;9.99 a month for every check on all of them, however many you end up walking away from.
+            {% else %}
             <strong>You've used your free report.</strong>
             The ones you opened stay unlocked for good. Unlocking new ones is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
+            {% endif %}
+            {% if paywall_history and paywall_history.free_report %}
+            <span class="paywall-banner-aside">Your free report went on <a href="{{ paywall_history.free_report.url }}">{{ paywall_history.free_report.label }}</a>, and it stays open for good.</span>
+            {% endif %}
         </div>
         <a class="paywall-banner-cta" href="/premium">See plans</a>
         {% endif %}
@@ -1317,7 +1330,7 @@
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.date }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.tenure or " — " }}</td>
+                        <td>{{ tx.tenure or "Not recorded" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -1541,7 +1554,7 @@
                        value="{{ rental.price_all | int if rental and rental.price_all else 0 }}">
             </div>
         </div>
-        <p class="calc-result">Gross yield: <strong id="calc-yield-result">—</strong></p>
+        <p class="calc-result">Gross yield: <strong id="calc-yield-result">Not yet calculated</strong></p>
             </section>
         </div>
     </dialog>
@@ -1577,7 +1590,7 @@
                         <td class="num">
                             {% if rental.change_all_pct is not none %}
                             <span class="hpi-change {{ 'up' if rental.change_all_pct >= 0 else 'down' }}">{{ "%+.1f"|format(rental.change_all_pct) }}%</span>
-                            {% else %}—{% endif %}
+                            {% else %}Not published{% endif %}
                         </td>
                     </tr>
                     {% for b in rental.by_bedroom %}
@@ -1587,7 +1600,7 @@
                         <td class="num">
                             {% if b.change_pct is not none %}
                             <span class="hpi-change {{ 'up' if b.change_pct >= 0 else 'down' }}">{{ "%+.1f"|format(b.change_pct) }}%</span>
-                            {% else %}—{% endif %}
+                            {% else %}Not published{% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -1977,8 +1990,8 @@
                     <tr>
                         <td>{{ o.name }}<br><span class="section-sub" style="margin:0;">{{ o.water_company }}</span></td>
                         <td>{{ o.receiving_water }}</td>
-                        <td class="num">{{ o.spill_count if o.spill_count is not none else ' — ' }}</td>
-                        <td class="num">{{ "%.1f"|format(o.duration_hrs) if o.duration_hrs is not none else ' — ' }}</td>
+                        <td class="num">{{ o.spill_count if o.spill_count is not none else "Not reported" }}</td>
+                        <td class="num">{{ "%.1f"|format(o.duration_hrs) if o.duration_hrs is not none else "Not reported" }}</td>
                         <td class="num">{{ o.distance_m | distance }}</td>
                     </tr>
                     {% endfor %}
@@ -2217,7 +2230,7 @@
                         <td>{{ g.name }}</td>
                         <td>{{ g.type }}</td>
                         <td class="num"><span class="epc-badge epc-{{ 'a' if g.rating >= 4 else ('c' if g.rating >= 3 else 'g') }}">{{ g.rating }}{% if g.rating_count %} <span class="section-sub">({{ g.rating_count }})</span>{% endif %}</span></td>
-                        <td class="num">{{ g.distance_m | distance if g.distance_m is not none else " — " }}</td>
+                        <td class="num">{{ g.distance_m | distance if g.distance_m is not none else "Not recorded" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -2461,7 +2474,7 @@
                             </td>
                             <td class="num">
                                 {% if s.fsm_eligible_pct is not none %}{{ s.fsm_eligible_pct }}%
-                                {% else %}<span class="ofsted-none">—</span>{% endif %}
+                                {% else %}<span class="ofsted-none">Not published</span>{% endif %}
                             </td>
                             {% if group_name != "Nursery" %}
                             <td>

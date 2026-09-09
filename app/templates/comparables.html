@@ -90,11 +90,11 @@
                     <tr>
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.postcode }}</td>
-                        <td class="capitalize">{{ tx.property_type or " — " }}</td>
-                        <td>{{ tx.tenure or " — " }}</td>
+                        <td class="capitalize">{{ tx.property_type or "Not recorded" }}</td>
+                        <td>{{ tx.tenure or "Not recorded" }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.date }}</td>
-                        <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else " — " }}</td>
+                        <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "Not recorded" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

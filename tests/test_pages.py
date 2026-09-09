@@ -383,60 +383,21 @@ def test_share_card_never_shows_premium_figures():
     assert len(facts) <= 3
 
 
-def test_weekly_digest_endpoint_needs_the_shared_secret(client, monkeypatch):
-    """It emails real people, so an unauthenticated caller must not be
-    able to fire it. Same gate as the daily alert job."""
+def test_the_site_has_no_scheduled_send(client, monkeypatch):
+    """Every change-alert email tells its reader it arrives only when
+    something actually changed, never on a schedule. The weekly digest
+    was the one feature that could have contradicted that, and it was
+    removed on 9 Sep 2026 after zero of 48 real accounts opted in. This
+    pins the promise rather than the feature: no route may exist that
+    mails a list of people on a timer."""
     monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
-    assert client.post("/internal/send-weekly-digest").status_code == 404
-    assert client.post("/internal/send-weekly-digest",
-                       headers={"x-alerts-secret": "wrong"}).status_code == 404
+    for path in ("/internal/send-weekly-digest", "/watchlist/weekly-digest"):
+        r = client.post(path, headers={"x-alerts-secret": "s3cret"}, follow_redirects=False)
+        assert r.status_code == 404, f"{path} still answers {r.status_code}"
 
-
-def test_weekly_digest_is_opt_in_only(client, monkeypatch):
-    """Every change-alert email already sent promises the reader they
-    only hear from us when something actually changed. A scheduled
-    email may therefore only ever go to someone who ticked the box."""
     from app import watchlist
-
-    seen = {}
-
-    def _subscribers():
-        seen["called"] = True
-        return []
-
-    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
-    monkeypatch.setattr(watchlist, "digest_subscribers", _subscribers)
-
-    async def _send(*a, **kw):
-        raise AssertionError("nobody opted in, so nothing may be sent")
-
-    from app.services import email as email_service
-    monkeypatch.setattr(email_service, "is_configured", lambda: True)
-    monkeypatch.setattr(email_service, "send_email", _send)
-
-    r = client.post("/internal/send-weekly-digest", headers={"x-alerts-secret": "s3cret"})
-    assert r.status_code == 200
-    assert r.json() == {"subscribers": 0, "sent": 0}
-    assert seen.get("called")
-
-
-def test_digest_email_covers_quiet_weeks_and_offers_an_off_switch():
-    from app import main as app_main
-
-    html = app_main._weekly_digest_email_html(
-        [{"label": "M1 1AE", "postcode": "M1 1AE", "house_number": "", "changes": []}],
-        "https://example.test/watchlist", "https://example.test/watchlist",
-    )
-    assert "No change this week." in html
-    assert "Turn it off" in html
-    assert "nothing changed" in html.lower() or "No changes" in html
-
-
-def _digest_form(body: str) -> str:
-    """Just the opt-in form. Anchored on its action, not its class: the
-    critical CSS is inlined into the page, so splitting on the class
-    name lands in the stylesheet instead."""
-    return body.split('action="/watchlist/weekly-digest"', 1)[1].split("</form>", 1)[0]
+    assert not hasattr(watchlist, "digest_subscribers")
+    assert not hasattr(watchlist, "set_weekly_digest")
 
 
 def test_opening_a_report_keeps_the_property_and_says_so(client, monkeypatch):
@@ -511,39 +472,6 @@ def test_the_undo_only_ever_returns_to_this_site(client):
                         follow_redirects=False)
         assert r.status_code == 303
         assert r.headers["location"] == expected, target
-
-
-def test_watchlist_shows_the_digest_optin_to_a_signed_in_user(client, monkeypatch):
-    """The opt-in has to be visible and reflect the account's current
-    setting, or it is not really an opt-in."""
-    monkeypatch.setenv("ALERTS_CRON_SECRET", "s3cret")
-    monkeypatch.setenv("RESEND_API_KEY", "re_test")
-
-    r = client.post("/signup", data={
-        "email": "digest-tester@example.test", "password": "correct horse battery staple",
-    }, follow_redirects=False)
-    assert r.status_code in (302, 303), r.status_code
-
-    # The opt-in only appears once there is something to digest.
-    from app import auth, watchlist
-    from app.db import get_session
-    with get_session() as db:
-        user = auth.find_user_by_email(db, "digest-tester@example.test")
-        user_id = user.id
-    watchlist.save_item(user_id, "M1 1AE", "", "")
-
-    body = client.get("/watchlist").text
-    assert "Also send me a weekly round-up" in body
-    assert 'name="enabled"' in body
-    assert "checked" not in _digest_form(body)
-
-    client.post("/watchlist/weekly-digest", data={"enabled": "on"}, follow_redirects=False)
-    body = client.get("/watchlist").text
-    assert "checked" in _digest_form(body)
-
-    client.post("/watchlist/weekly-digest", data={}, follow_redirects=False)
-    body = client.get("/watchlist").text
-    assert "checked" not in _digest_form(body)
 
 
 def test_prewarm_endpoint_needs_the_shared_secret(client, monkeypatch):
@@ -725,6 +653,28 @@ def test_no_third_party_script_runs_on_the_site(client):
         body = client.get(path).text
         for src in re.findall(r'<script[^>]+src="([^"]+)"', body):
             assert src.startswith("/"), f"{path} loads an off-site script: {src}"
+
+
+def test_no_em_dash_reaches_a_reader(client):
+    """DESIGN.md forbids the em-dash in user-facing copy, and CLAUDE.md's
+    first non-negotiable says a missing figure states the gap in words
+    rather than showing a blank. A bare dash in a table cell was both at
+    once, and on 9 Sep 2026 there were 37 of them across nine templates,
+    including the report, the homepage and the pricing table. The
+    templates and the site's own JavaScript are the two places a dash
+    can reach a reader from, so both are checked here."""
+    import pathlib
+
+    for path in ("/", "/premium", "/privacy", "/running-costs", "/schools/admissions"):
+        assert "—" not in client.get(path).text, f"{path} renders an em-dash"
+
+    root = pathlib.Path(__file__).resolve().parent.parent / "app"
+    offenders = []
+    for f in list((root / "templates").glob("*.html")) + list((root / "static" / "js").glob("*.js")):
+        text = f.read_text(encoding="utf-8")
+        if "—" in text or "&mdash;" in text:
+            offenders.append(f.name)
+    assert not offenders, f"em-dash in user-facing source: {offenders}"
 
 
 def test_the_extension_page_links_to_the_real_store_listing(client):
@@ -1834,6 +1784,115 @@ def test_admin_dashboard_renders_for_the_owner_and_404s_for_everyone_else(client
     assert "Is one free report enough?" in body
     assert "Same address, more than one account, same day" in body
     assert "Free reports by mailbox provider" in body
+
+
+def test_running_costs_leads_with_the_answer_once_there_is_one(client):
+    """It became the busiest single page on the site on 8 Sep 2026, and
+    at 375px the answer to the postcode someone had just typed sat at
+    y=1465, below the introduction, the form and a 300px map. The
+    heading is now the answer, and the checker is ordered after it."""
+    body = client.get("/running-costs", params={"postcode": "M1 1AE"}).text
+    assert "<h1>What it costs to live in M1 1AE" in body
+    # Anchored on the class attribute, not the class name: the critical
+    # CSS is inlined into every page, so the bare name matches the
+    # stylesheet on a page that does not use it.
+    assert 'class="rc-flow rc-flow-answered"' in body
+    # The long orientation paragraph belongs to someone with no answer.
+    assert "A listing shows the price." not in body
+
+    fresh = client.get("/running-costs").text
+    assert "<h1>What it costs to live there</h1>" in fresh
+    assert "A listing shows the price." in fresh
+    assert 'class="rc-flow"' in fresh
+
+
+def test_the_council_tax_pages_can_check_an_address(client):
+    """350 pages built on 8 Sep 2026, the one indexable family with no
+    postcode box, while area guides, school pages and council hubs each
+    got one on 5 Sep 2026 because that is where people land."""
+    body = client.get("/running-costs/council-tax/manchester").text
+    assert 'action="/property"' in body
+    assert 'name="src" value="council-tax"' in body
+    assert "Check an address in Manchester" in body
+
+
+def test_audience_split_separates_a_crawl_from_an_audience():
+    """8 Sep 2026: 912 recorded views, 479 of them single visits to
+    distinct school and area guide pages, while the busiest human page
+    took 74. Reading 912 as an audience turned a traffic fall into what
+    looked like a conversion fall."""
+    from app.main import _audience_split
+
+    # A crawler walking a family in order: every page once.
+    crawl = {f"/school/{i}/x": 1 for i in range(100)}
+    assert _audience_split(crawl) == (0, 100)
+
+    # People: a few pages, read repeatedly.
+    people = {"/": 40, "/running-costs": 30, "/property": 12}
+    assert _audience_split(people) == (82, 0)
+
+    # The real shape is both at once, and the split keeps them apart.
+    mixed = {**crawl, **people}
+    assert _audience_split(mixed) == (82, 100)
+    assert sum(_audience_split(mixed)) == sum(mixed.values())
+
+
+def test_a_report_search_records_where_it_started(client, monkeypatch):
+    """923 distinct school pages were crawled in three days for at most 7
+    human views each, while report starts tracked the homepage. Nothing
+    recorded which page a search came from, so whether the ranked pages
+    feed the funnel was unanswerable. The marker is a fixed list, never
+    free text, because these values become rows in page_views."""
+    from sqlalchemy import func, select
+
+    from app.db import get_session
+    from app.models import PageView
+
+    def _count(path):
+        with get_session() as db:
+            return db.scalar(select(func.count()).select_from(PageView)
+                             .where(PageView.path == path)) or 0
+
+    # The test client names itself "testclient", which the crawler
+    # filter excludes on purpose, so this has to look like a browser.
+    browser = {"user-agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Safari/537.36"}
+    # A district rather than a full postcode: it redirects to the guide
+    # without building a report, and the marker is recorded either way,
+    # because a search that started on a landing page started there
+    # whichever page it lands on.
+    search = {"postcode": "M1", "src": "council-tax"}
+
+    before = _count("/from/council-tax")
+    r = client.get("/property", params=search, headers=browser, follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/area/M1"
+    assert _count("/from/council-tax") == before + 1
+
+    # Anything not on the list writes nothing at all.
+    client.get("/property", params={"postcode": "M1", "src": "../../evil"},
+               headers=browser, follow_redirects=False)
+    with get_session() as db:
+        paths = db.scalars(select(PageView.path)
+                           .where(PageView.path.like("/from/%"))).all()
+    assert all(p == "/from/council-tax" for p in paths), paths
+
+
+def test_the_marker_does_not_break_the_anonymous_report_cache(client):
+    """Adding a query param to every landing-page search would have made
+    each one a cache miss, which is a worse trade than the measurement
+    is worth. src is allowed through the cache guard precisely because
+    it changes nothing about the HTML."""
+    from starlette.requests import Request
+
+    from app.main import _anon_cacheable
+
+    def _req(query):
+        return Request({"type": "http", "method": "GET", "path": "/property",
+                        "query_string": query.encode(), "headers": [],
+                        "session": {}})
+
+    assert _anon_cacheable(_req("postcode=M1+1AE"))
+    assert _anon_cacheable(_req("postcode=M1+1AE&src=area-guide"))
+    assert not _anon_cacheable(_req("postcode=M1+1AE&report=thanks"))
 
 
 def test_admin_counts_one_address_unlocked_by_two_accounts(client, monkeypatch):

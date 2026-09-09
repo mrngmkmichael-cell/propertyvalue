@@ -90,7 +90,7 @@
                     {%- if col.summary.local_median is defined and col.summary.local_median -%}
                     {{ col.summary.local_median | gbp }}
                     <div class="compare-note">from {{ col.summary.local_sales_count }} sales</div>
-                    {%- else %} &mdash; {% endif -%}
+                    {%- else %}No sales recorded{% endif -%}
                 </td>
                 {% endfor %}
             </tr>
@@ -98,7 +98,7 @@
             <tr>
                 <td><strong>Average sold price</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.avg_price | gbp if col.summary.avg_price else " — " }}</td>
+                <td>{{ col.summary.avg_price | gbp if col.summary.avg_price else "No sales recorded" }}</td>
                 {% endfor %}
             </tr>
             <tr>
@@ -107,38 +107,38 @@
                 <td>
                     {% if col.summary.price_growth_pct is defined and col.summary.price_growth_pct is not none %}
                         {{ "%+.1f"|format(col.summary.price_growth_pct) }}% ({{ col.summary.price_growth_area }})
-                    {% else %}—{% endif %}
+                    {% else %}Not published{% endif %}
                 </td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Dwelling type</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.dwelling_type or " — " }}</td>
+                <td>{{ col.summary.dwelling_type or "Not recorded" }}</td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Floor area</strong></td>
                 {% for col in columns %}
-                <td>{{ (col.summary.floor_area ~ " m²") if col.summary.floor_area else " — " }}</td>
+                <td>{{ (col.summary.floor_area ~ " m²") if col.summary.floor_area else "No certificate" }}</td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Built</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.year_built or " — " }}</td>
+                <td>{{ col.summary.year_built or "Not recorded" }}</td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Energy rating</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.energy_band or " — " }}</td>
+                <td>{{ col.summary.energy_band or "No certificate" }}</td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Heating cost (EPC est.)</strong></td>
                 {% for col in columns %}
-                <td>{{ ("£" ~ col.summary.heating_cost ~ "/yr") if col.summary.heating_cost else " — " }}</td>
+                <td>{{ ("£" ~ col.summary.heating_cost ~ "/yr") if col.summary.heating_cost else "No certificate" }}</td>
                 {% endfor %}
             </tr>
             <tr>
@@ -156,7 +156,7 @@
             <tr>
                 <td><strong>Flood zone</strong></td>
                 {% for col in columns %}
-                <td>{{ col.summary.flood_zone or " — " }}</td>
+                <td>{{ col.summary.flood_zone or "Not published" }}</td>
                 {% endfor %}
             </tr>
             <tr>
@@ -168,14 +168,14 @@
                        a bare "recorded" with no number in front of it. #}
                     {%- if col.summary.crime_total is defined and col.summary.crime_total is not none %}{{ col.summary.crime_total }} recorded
                     {%- elif col.summary.crime_unpublished %}Not published by the force
-                    {%- else %} &mdash; {% endif -%}
+                    {%- else %}Not published{% endif -%}
                 </td>
                 {% endfor %}
             </tr>
             <tr>
                 <td><strong>Deprivation decile</strong></td>
                 {% for col in columns %}
-                <td>{{ (col.summary.imd_decile ~ " of 10") if col.summary.imd_decile else " — " }}</td>
+                <td>{{ (col.summary.imd_decile ~ " of 10") if col.summary.imd_decile else "Not published" }}</td>
                 {% endfor %}
             </tr>
         </tbody>

@@ -99,6 +99,7 @@
         rather than from central {{ outcode }}.
     </p>
     <form class="search-form" action="/property" method="get">
+        <input type="hidden" name="src" value="school">
         <div class="search-form-field">
             <label for="ps-postcode">UK postcode</label>
             <input type="text" id="ps-postcode" name="postcode" placeholder="e.g. {{ outcode }} 1AA" autocomplete="off" required>

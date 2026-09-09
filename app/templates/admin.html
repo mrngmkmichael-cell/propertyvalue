@@ -146,12 +146,14 @@
     <h2 class="landing-heading">Pageviews</h2>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">Today</span>
-            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_today }}</span>
+            <span class="feature-card-title">Today, people</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ audience_today }}</span>
+            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_today }} views; {{ crawl_today }} crawl-shaped</span>
         </div>
         <div class="feature-card">
-            <span class="feature-card-title">Last 7 days</span>
-            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ pageviews_week }}</span>
+            <span class="feature-card-title">Last 7 days, people</span>
+            <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ audience_week }}</span>
+            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_week }} views; {{ crawl_week }} crawl-shaped</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Last 30 days</span>
@@ -173,19 +175,61 @@
         {% set max_count = daily_pageviews | map(attribute='count') | max %}
         {% for d in daily_pageviews %}
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;"
-             title="{{ d.date }}: {{ d.count }} views, {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}">
-            <div style="width:100%; background:{{ 'var(--warn)' if d.flagged else 'var(--accent)' }}; border-radius:3px 3px 0 0; height:{{ (d.count / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
+             title="{{ d.date }}: {{ d.count }} views, of which {{ d.audience }} on pages read more than once and {{ d.crawl }} on pages visited exactly once. {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}">
+            <div style="width:100%; display:flex; flex-direction:column; justify-content:flex-end; height:80px;">
+                <div style="width:100%; background:var(--surface-2); border:1px solid var(--border); border-bottom:0; border-radius:3px 3px 0 0; height:{{ (d.crawl / max_count * 80) if max_count else 0 }}px;"></div>
+                <div style="width:100%; background:{{ 'var(--warn)' if d.flagged else 'var(--accent)' }}; height:{{ (d.audience / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
+            </div>
             <span style="font-size:0.6rem; color:var(--ink-faint);">{{ d.date[5:] }}</span>
         </div>
         {% endfor %}
     </div>
     <p class="section-sub">
-        Last 14 days. Days that look like people average
+        Last 14 days. The solid part of each bar is views of pages that
+        were read more than once that day; the pale part above it is
+        views of pages visited exactly once, which is the shape a
+        crawler leaves when it walks a page family in order. On 8 Sep
+        2026, 479 of 912 views were single visits to distinct school and
+        area guide pages, and 34 school pages arrived inside one minute
+        the next morning.
+    </p>
+    <p class="section-sub">
+        Treat the solid part as a floor, not a headcount: a real visitor
+        who reads one area guide and leaves is counted as crawl here.
+        Nothing is subtracted from the raw counts above, and user agents
+        are still not stored.
+        Days that look like people average
         <strong>{{ pageviews_avg_unflagged }}</strong> views;
         {% if flagged_days_14d %}the {{ flagged_days_14d }} amber day{{ 's' if flagged_days_14d != 1 }} carr{{ 'y' if flagged_days_14d != 1 else 'ies' }} an
         automation pattern (hover a bar for the evidence) and {{ 'are' if flagged_days_14d != 1 else 'is' }} left out of that
         average, though never out of the counts.{% else %}no day in this window shows an automation pattern.{% endif %}
     </p>
+    {% endif %}
+
+    <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">Where report searches started, last 7 days</h3>
+    <p class="landing-subheading">
+        Each landing family's search box carries a hidden marker, so a
+        report start can be attributed without storing a referrer. This
+        answers whether the school and area pages, which are the pages
+        that rank, actually send anyone into a report, or whether report
+        starts only ever track the homepage.
+    </p>
+    {% if report_starts_week %}
+    <table class="tx-table">
+        <thead><tr><th>Started on</th><th class="num">Report starts</th><th class="num">Share</th></tr></thead>
+        <tbody>
+            {% for row in report_sources %}
+            <tr>
+                <td>{{ row.source }}</td>
+                <td class="num">{{ row.count }}</td>
+                <td class="num">{{ (100 * row.count / report_starts_week) | round | int }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="section-sub">Of {{ report_starts_week }} report views this week. Marking began on 9 Sep 2026, so anything before that counts as homepage or direct.</p>
+    {% else %}
+    <p class="notice">No report has been started in the last seven days.</p>
     {% endif %}
 </section>
 
@@ -305,13 +349,13 @@
             {% for u in premium_accounts %}
             <tr>
                 <td>{{ u.email }}{% if u.is_owner %} <span class="school-table-type">you</span>{% endif %}</td>
-                <td>{{ u.created_at.strftime("%d %b %Y") if u.created_at else " — " }}</td>
+                <td>{{ u.created_at.strftime("%d %b %Y") if u.created_at else "Not recorded" }}</td>
                 <td>{% if u.premium_since %}{{ u.premium_since.strftime("%d %b %Y %H:%M") }}{% else %}<span style="color: var(--ink-faint);">before this was recorded</span>{% endif %}</td>
-                <td>{% if u.days_to_convert is not none %}{{ u.days_to_convert }}{% else %} — {% endif %}</td>
-                <td>{{ u.plan or " — " }}</td>
-                <td>{{ u.subscription_status or " — " }}</td>
+                <td>{% if u.days_to_convert is not none %}{{ u.days_to_convert }}{% else %}Not recorded{% endif %}</td>
+                <td>{{ u.plan or "No plan on file" }}</td>
+                <td>{{ u.subscription_status or "No status from Stripe" }}</td>
                 <td>{{ u.value }}</td>
-                <td>{{ u.first_search or " — " }}</td>
+                <td>{{ u.first_search or "No search recorded" }}</td>
             </tr>
             {% else %}
             <tr><td colspan="8">No Premium accounts yet.</td></tr>
@@ -334,9 +378,9 @@
                 <td>{{ u.created_at.strftime("%d %b %Y") }}</td>
                 <td>{% if u.verified %}Yes{% elif verification_live %}Not yet{% else %}<span style="color: var(--ink-faint);">n/a</span>{% endif %}</td>
                 <td>{{ "Yes" if u.is_premium else "No" }}</td>
-                <td>{{ u.plan or " — " }}</td>
-                <td>{{ u.subscription_status or " — " }}</td>
-                <td>{{ u.referred_by or " — " }}</td>
+                <td>{{ u.plan or "No plan on file" }}</td>
+                <td>{{ u.subscription_status or "No status from Stripe" }}</td>
+                <td>{{ u.referred_by or "Organic" }}</td>
             </tr>
             {% endfor %}
         </tbody>

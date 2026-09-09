@@ -180,7 +180,6 @@ def current_user(request: Request) -> Optional[dict]:
                 return None
             return {
                 "id": user.id, "email": user.email,
-                "weekly_digest": bool(user.weekly_digest),
                 "email_verified": user.email_verified_at is not None,
                 **premium_state(user, db),
             }

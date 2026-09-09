@@ -30,13 +30,16 @@ from markupsafe import Markup
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.background import BackgroundTask, BackgroundTasks
 from starlette.middleware.sessions import SessionMiddleware
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.exc import OperationalError
 
 from app import auth, db, school_shortlist, watchlist
 from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
-from app.models import FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User
+from app.models import (
+    FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User,
+    WatchlistItem,
+)
 from app.services import (
     air_quality, amenities, area_stats, boe_rate, broadband, brownfield, bus_service, catchment, catchment_image, census_change, census_stats, clay_risk, coal_mining, council_finance, flood_re, grammar, health_services,
     cqc_ratings, crime, demographics, designations, email as email_service, epc, flood, flood_zones,
@@ -1137,6 +1140,42 @@ async def _prewarm_reports(postcodes_to_warm=None):
             continue
 
 
+# How often the hero sample is warmed again. The gather it fills lives
+# for PROPERTY_SEARCH_CACHE_TTL_S (an hour), so re-warming a few minutes
+# short of that keeps it permanently hot without ever doing the work
+# twice inside one cache lifetime.
+#
+# Why it needs a loop at all: warming only at startup means the sample
+# is warm for one hour after a deploy and cold for every hour after
+# that. Measured on production on 9 Sep 2026, at 09:10 UTC, hours after
+# the last deploy: /property?postcode=M1 1AE took 7.53 s, then 0.29 s
+# and 0.29 s on the two requests that followed it. Between 09:00 and
+# 17:00 UTC the site takes 5 to 26 views an hour, so the cache had long
+# since expired and the next person to click "See a real report" would
+# have paid the full 7.5 s. That link is the only report a first-time
+# visitor is invited to open by name, and the homepage carries it five
+# times.
+#
+# Cost: one gather an hour, the same work a single visitor would cause,
+# spaced so it never coincides with the deploy warm.
+_HERO_REWARM_INTERVAL_S = PROPERTY_SEARCH_CACHE_TTL_S - 300
+
+
+async def _hero_sample_rewarm_loop():
+    """Keep the advertised sample report hot for as long as the process
+    lives. Failures are swallowed and retried on the next tick: a warm
+    cache is an optimisation, and an upstream having a bad minute must
+    never take the loop down with it."""
+    while True:
+        try:
+            await asyncio.sleep(_HERO_REWARM_INTERVAL_S)
+            await _prewarm_reports([_HERO_SAMPLE_POSTCODE])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - a warm cache is optional
+            logging.warning("hero sample re-warm failed, retrying next tick: %s", exc)
+
+
 @app.on_event("startup")
 async def on_startup():
     # If the database is unreachable, boot anyway. On 31 Aug 2026 Neon
@@ -1165,6 +1204,12 @@ async def on_startup():
         # report a first-time visitor is invited to open by name, so it
         # is worth a quarter of the cost the old prewarm carried.
         asyncio.create_task(_prewarm_reports([_HERO_SAMPLE_POSTCODE]))
+        # ...and again every hour after that (9 Sep 2026). The warm at
+        # startup only covered the hour following a deploy; see
+        # _HERO_REWARM_INTERVAL_S for the 7.53 s that measured.
+        _hero_task = asyncio.create_task(_hero_sample_rewarm_loop())
+        _background_tasks.add(_hero_task)
+        _hero_task.add_done_callback(_background_tasks.discard)
 
 
 def base_context(request: Request) -> dict:
@@ -2376,20 +2421,117 @@ async def buying_guide(request: Request):
     return templates.TemplateResponse(request, "buying_guide.html", context)
 
 
+# What a buyer would pay a search provider for the same ground, per
+# property. These are the figures /premium already quotes, and they are
+# the reason the subscription is priced where it is.
+SEARCH_COST_PER_PROPERTY_GBP = 25 + 40  # a flood report and a coal mining search
+
+
+def _ordinal(n: int) -> str:
+    """1 -> "1st". The teens are the whole reason this is a function."""
+    if 11 <= (n % 100) <= 13:
+        return f"{n}th"
+    return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
+
+
+def _paywall_history(session, user_id: int, prior_walls: int) -> dict:
+    """What this account has already done, for the paywall to say back.
+
+    On 9 Sep 2026 twelve accounts reached the wall in seven days and one
+    paid. The account that hit it most, nine times over several days,
+    has not paid; that is one more visit than the person who did. The
+    wall was saying the same sentence on the ninth visit as on the
+    first, which is the one thing it certainly should not do.
+
+    Nothing here is new data collection. The free report a person spent
+    is already a PremiumUnlock row, the properties they opened are
+    already on their watchlist, and the earlier walls are already the
+    synthetic pageviews the funnel counts.
+    """
+    unlocked = session.execute(
+        select(PremiumUnlock.postcode, PremiumUnlock.house_number)
+        .where(PremiumUnlock.user_id == user_id)
+        .order_by(PremiumUnlock.created_at)
+    ).all()
+    properties_opened = session.scalar(
+        select(func.count()).select_from(WatchlistItem)
+        .where(WatchlistItem.user_id == user_id)
+    ) or 0
+    free_report = None
+    if unlocked:
+        pc, hn = unlocked[0]
+        free_report = {
+            "postcode": pc,
+            "house_number": hn,
+            "label": f"{hn} {pc}".strip(),
+            "url": "/property?" + urlencode(
+                {"postcode": pc, **({"house_number": hn} if hn else {})}
+            ),
+        }
+    return {
+        "prior_walls": prior_walls,
+        "nth_locked": _ordinal(prior_walls + 1),
+        "properties_opened": properties_opened,
+        "free_report": free_report,
+        # Their own behaviour against published prices, not a claim
+        # about what they would have bought: this many properties, at
+        # what two of the standard searches cost on each one.
+        "searches_would_cost": properties_opened * SEARCH_COST_PER_PROPERTY_GBP,
+    }
+
+
 ANON_PAGE_CACHE_TTL_S = 600
+
+
+# Where a report search was started from. A fixed list, not free text:
+# these values become rows in page_views, and a path assembled from a
+# query string an attacker controls is a path an attacker controls.
+#
+# The question this answers (9 Sep 2026): 923 distinct school pages were
+# crawled in three days and the most-visited one took 7 human views,
+# while report starts tracked the homepage almost exactly, 139 against
+# 110 on 6 Sep and 10 against 15 on 9 Sep. So the month spent building
+# school and area pages has not yet produced report starts, but nothing
+# recorded which page a search came from, and referrers are deliberately
+# not stored. Whether the next month goes on a fifteenth page family or
+# on deepening the five that exist turns on this, and a hidden field
+# costs nothing and identifies nobody.
+REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide", "running-costs", "council-hub"}
+REPORT_SOURCE_PATH_PREFIX = "/from/"
+
+
+def _record_report_source(src: str) -> None:
+    """One extra pageview row saying which page family sent a search.
+
+    Aggregate like every other row here: a path and a timestamp, no
+    visitor identifier, nothing that could re-identify anyone. Failures
+    are swallowed, because a measurement must never be the reason a
+    report does not load."""
+    if src not in REPORT_SOURCES or not db.is_configured():
+        return
+    try:
+        with db.get_session() as session:
+            session.add(PageView(path=f"{REPORT_SOURCE_PATH_PREFIX}{src}"))
+            session.commit()
+    except Exception as exc:  # noqa: BLE001 - counting is never worth a 500
+        logging.warning("could not record report source %s: %s", src, exc)
 
 
 def _anon_cacheable(request: Request) -> bool:
     """A report view whose HTML is identical for every viewer: no
     account (nothing personal on the page), no share token, and no
-    extra query params (report=thanks etc. change the notices)."""
-    if set(request.query_params.keys()) - {"postcode", "house_number"}:
+    extra query params (report=thanks etc. change the notices).
+
+    "src" is allowed through: it says which page the search started on
+    and changes nothing about the HTML, so excluding it would have
+    turned every landing-page search into a cache miss."""
+    if set(request.query_params.keys()) - {"postcode", "house_number", "src"}:
         return False
     return auth.current_user(request) is None
 
 
 @app.get("/property")
-async def property_search(request: Request, postcode: str = "", house_number: str = ""):
+async def property_search(request: Request, postcode: str = "", house_number: str = "", src: str = ""):
     # Launch-day fast path: anonymous views of the same address reuse
     # the finished HTML instead of re-rendering the 2,000-line template
     # (about 0.6s of CPU per view on one worker). Logged-in views are
@@ -2398,6 +2540,11 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # here that way and Search Console logged 809 of the resulting 404s
     # (8 Sep 2026); a known district goes to its guide instead, which is
     # also the right answer for someone who typed only "M14" in the box.
+    # Recorded before the outcode redirect below: someone who typed a
+    # district into a landing page's box still started a search there,
+    # and the guide they land on is where it went.
+    if src and not _is_excluded_viewer(request):
+        _record_report_source(src)
     bare = postcode.strip().upper().replace(" ", "")
     if bare and not house_number.strip() and _OUTCODE_RE.match(bare) and any(o["outcode"] == bare for o in ALL_OUTCODES):
         return RedirectResponse(f"/area/{bare}", status_code=301)
@@ -2563,8 +2710,15 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
                 # left opened a property it has not unlocked. Stored as
                 # a pageview with a synthetic path so the funnel can
                 # count it without a new table or any extra identifier.
+                prior_walls = unlock_session.scalar(
+                    select(func.count()).select_from(PageView)
+                    .where(PageView.path == PAYWALL_PATH, PageView.user_id == current["id"])
+                ) or 0
                 unlock_session.add(PageView(path=PAYWALL_PATH, user_id=current["id"]))
                 unlock_session.commit()
+                context["paywall_history"] = _paywall_history(
+                    unlock_session, current["id"], prior_walls
+                )
         context["current_user"] = {**current, **state}
 
     # The templates must gate on THIS, not on current_user.is_premium:
@@ -4290,7 +4444,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     # rows and this is a compact popup, not the full report page.
     sold_price_detail = table_detail(
         ["Address", "Date", "Price", "Tenure"],
-        [[t["address"], t["date"], _format_gbp(t["amount"]), t.get("tenure") or "—"] for t in transactions[:15]],
+        [[t["address"], t["date"], _format_gbp(t["amount"]), t.get("tenure") or "Not recorded"] for t in transactions[:15]],
     ) if transactions else None
     if sold_price_detail:
         # Same line-chart data the site's own "Sold price history" modal
@@ -4319,9 +4473,9 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         ["Source", "Level", "Band"],
         [
             row for row in [
-                ["Road", f"{noise_data['road_db']} dB(A)", noise_data.get("road_label") or "—"] if noise_data.get("road_db") is not None else None,
-                ["Rail", f"{noise_data['rail_db']} dB(A)", noise_data.get("rail_label") or "—"] if noise_data.get("rail_db") is not None else None,
-                ["Aircraft", f"{noise_data['airport_db']} dB(A)", noise_data.get("airport_label") or "—"] if noise_data.get("airport_db") is not None else None,
+                ["Road", f"{noise_data['road_db']} dB(A)", noise_data.get("road_label") or "Not classified"] if noise_data.get("road_db") is not None else None,
+                ["Rail", f"{noise_data['rail_db']} dB(A)", noise_data.get("rail_label") or "Not classified"] if noise_data.get("rail_db") is not None else None,
+                ["Aircraft", f"{noise_data['airport_db']} dB(A)", noise_data.get("airport_label") or "Not classified"] if noise_data.get("airport_db") is not None else None,
             ] if row
         ],
     ) if noise_data else None
@@ -4329,8 +4483,8 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     sewage_detail = table_detail(
         ["Outfall", "Into", "Spills", "Hours", "Distance"],
         [
-            [o["name"], o.get("receiving_water") or "—", o.get("spill_count") if o.get("spill_count") is not None else "—",
-             f"{o['duration_hrs']:.1f}" if o.get("duration_hrs") is not None else "—", _format_distance(o.get("distance_m"))]
+            [o["name"], o.get("receiving_water") or "Not recorded", o.get("spill_count") if o.get("spill_count") is not None else "Not reported",
+             f"{o['duration_hrs']:.1f}" if o.get("duration_hrs") is not None else "Not reported", _format_distance(o.get("distance_m"))]
             for o in sewage_outfalls
         ],
     ) if sewage_outfalls else None
@@ -4345,7 +4499,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
 
     heritage_detail = table_detail(
         ["Building", "Grade", "Distance"],
-        [[b["name"], b.get("grade") or "—", _format_distance(b.get("distance_m"))] for b in listed_buildings],
+        [[b["name"], b.get("grade") or "Not recorded", _format_distance(b.get("distance_m"))] for b in listed_buildings],
     ) if listed_buildings else None
 
     broadband_detail = table_detail(
@@ -4392,7 +4546,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     wellbeing_detail = breakdown_detail(wellbeing_data, "health_breakdown")
 
     reviews_detail = (
-        list_detail([f"{'★' * round(r['rating'])}{'☆' * (5 - round(r['rating']))} — {r['body']}" for r in area_reviews["reviews"]])
+        list_detail([f"{'★' * round(r['rating'])}{'☆' * (5 - round(r['rating']))}: {r['body']}" for r in area_reviews["reviews"]])
         if area_reviews and area_reviews.get("reviews") else None
     )
 
@@ -4401,7 +4555,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         [
             ["Garden faces", orientation_data["rear_facing"]],
             ["Front faces", orientation_data["front_facing"]],
-            ["Nearest road", orientation_data.get("nearest_road") or "—"],
+            ["Nearest road", orientation_data.get("nearest_road") or "Not recorded"],
         ],
     ) if orientation_data else None
 
@@ -5723,6 +5877,48 @@ def _traffic_day_shape(total: int, top_path: str, top_count: int,
     return False, ""
 
 
+def _real_page_views():
+    """A filter that keeps only rows a person actually loaded a page for.
+
+    Three kinds of row in page_views are events wearing a path: the
+    paywall moment, the 202 wait page, and the report-source markers
+    added on 9 Sep 2026. Each was recorded that way to avoid a second
+    table, which was the right call, but counting them as pageviews
+    makes the traffic figures say more than happened. The funnel already
+    excluded two of them in one place; this makes it the rule."""
+    return and_(
+        PageView.path.notin_((PAYWALL_PATH, BUILDING_PATH)),
+        PageView.path.notlike(f"{REPORT_SOURCE_PATH_PREFIX}%"),
+    )
+
+
+def _audience_split(paths: dict[str, int]) -> tuple[int, int]:
+    """Split one day's views into (audience, crawl-shaped tail).
+
+    The tail is every view of a path that was visited exactly once that
+    day. A crawler walks a page family in order and never comes back
+    inside the same day, so a long-tail page with a single view is its
+    signature; a person who arrives on one page reads two or three, and
+    the pages an audience actually uses are hit many times over.
+
+    Added 9 Sep 2026, because the flag above had started firing on days
+    nobody would call an incident and the headline number still counted
+    the crawl. On 8 Sep the site recorded 912 views, of which 479 were
+    single visits to distinct school and area guide pages, and 34 school
+    pages arrived inside the single minute 05:52 the next morning. The
+    busiest human page that day was viewed 74 times; the busiest school
+    page across three days was viewed 7 times, spread over 923 distinct
+    school pages. Reading 912 as an audience made a traffic fall look
+    like a conversion fall.
+
+    This is a floor, not a truth: a real visitor who reads one area
+    guide and leaves counts as crawl. The page says so, because a
+    silently adjusted number is no more trustworthy than a silently
+    wrong one."""
+    crawl = sum(c for c in paths.values() if c == 1)
+    return sum(paths.values()) - crawl, crawl
+
+
 def _admin_metrics(session, now: datetime.datetime) -> dict:
     """The query set behind /admin, factored out so the daily Telegram
     summary (see /internal/send-daily-summary below) reads the exact
@@ -5742,12 +5938,14 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         q = select(func.count()).select_from(User)
         return q.where(User.id.notin_(test_ids)) if test_ids else q
 
-    m["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start)) or 0
-    m["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start)) or 0
-    m["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start)) or 0
-    m["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView)) or 0
+    # Pageviews mean pages, not the three synthetic paths that record
+    # events (see _real_page_views).
+    m["pageviews_today"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= today_start, _real_page_views())) or 0
+    m["pageviews_week"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= week_start, _real_page_views())) or 0
+    m["pageviews_month"] = session.scalar(select(func.count()).select_from(PageView).where(PageView.created_at >= month_start, _real_page_views())) or 0
+    m["pageviews_total"] = session.scalar(select(func.count()).select_from(PageView).where(_real_page_views())) or 0
     m["pageviews_clean"] = session.scalar(
-        select(func.count()).select_from(PageView).where(PageView.created_at >= PAGEVIEW_CLEAN_FROM)
+        select(func.count()).select_from(PageView).where(PageView.created_at >= PAGEVIEW_CLEAN_FROM, _real_page_views())
     ) or 0
     m["signups_clean"] = session.scalar(
         _real_users().where(User.created_at >= PAGEVIEW_CLEAN_FROM)
@@ -5892,7 +6090,8 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # of thousands of rows, which is nothing.
     raw_rows = session.execute(
         select(PageView.created_at, PageView.path, PageView.user_id)
-        .where(PageView.created_at >= today_start - datetime.timedelta(days=13))
+        .where(PageView.created_at >= today_start - datetime.timedelta(days=13),
+               _real_page_views())
     ).all()
     by_day: dict = {}
     for created, path, user_id in raw_rows:
@@ -5913,11 +6112,44 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             top_path, top_count = max(day["paths"].items(), key=lambda kv: kv[1])
         one_hit = sum(1 for c in day["paths"].values() if c == 1)
         flagged, reason = _traffic_day_shape(total, top_path, top_count, one_hit, day["signed_in"])
+        audience, crawl = _audience_split(day["paths"])
         m["daily_pageviews"].append({
             "date": key, "count": total, "distinct": len(day["paths"]),
             "signed_in": day["signed_in"], "flagged": flagged, "reason": reason,
+            "audience": audience, "crawl": crawl,
         })
     m["flagged_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["flagged"])
+
+    # The same split rolled up. Each day is split on its own before the
+    # days are added together: a page a crawler visits once a day for a
+    # week is seven single visits, not one page read seven times.
+    by_date = {d["date"]: d for d in m["daily_pageviews"]}
+    m["audience_today"] = by_date.get(str(date_range[-1]), {}).get("audience", 0)
+    m["crawl_today"] = by_date.get(str(date_range[-1]), {}).get("crawl", 0)
+    m["audience_week"] = sum(d["audience"] for d in m["daily_pageviews"][-7:])
+    m["crawl_week"] = sum(d["crawl"] for d in m["daily_pageviews"][-7:])
+
+    # Which page family a report search started on (see REPORT_SOURCES).
+    # An unmarked search is the homepage or a direct visit; it is the
+    # baseline the marked families are read against, so it is counted
+    # here as its own row rather than left out.
+    source_rows = session.execute(
+        select(PageView.path, func.count())
+        .where(PageView.created_at >= week_start,
+               PageView.path.like(f"{REPORT_SOURCE_PATH_PREFIX}%"))
+        .group_by(PageView.path)
+    ).all()
+    marked = {p[len(REPORT_SOURCE_PATH_PREFIX):]: c for p, c in source_rows}
+    report_starts_week = session.scalar(
+        select(func.count()).select_from(PageView)
+        .where(PageView.created_at >= week_start, PageView.path == "/property")
+    ) or 0
+    m["report_sources"] = sorted(
+        [{"source": s, "count": c} for s, c in marked.items()]
+        + [{"source": "homepage or direct", "count": max(0, report_starts_week - sum(marked.values()))}],
+        key=lambda r: -r["count"],
+    )
+    m["report_starts_week"] = report_starts_week
 
     signup_rows = session.execute(
         select(func.date(User.created_at), func.count())
@@ -5936,7 +6168,8 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     prev_week_start = week_start - datetime.timedelta(days=7)
     m["pageviews_prev_week"] = session.scalar(
         select(func.count()).select_from(PageView)
-        .where(PageView.created_at >= prev_week_start, PageView.created_at < week_start)
+        .where(PageView.created_at >= prev_week_start, PageView.created_at < week_start,
+               _real_page_views())
     ) or 0
     m["pageviews_wow_change"] = _pct_change(m["pageviews_prev_week"], m["pageviews_week"])
 
@@ -6236,17 +6469,19 @@ async def send_daily_summary(request: Request):
     with db.get_session() as session:
         m = _admin_metrics(session, now)
 
-    top_page = m["top_pages"][0]["path"] if m["top_pages"] else "—"
+    top_page = m["top_pages"][0]["path"] if m["top_pages"] else "No page recorded"
     trialing_note = f", {m['trialing_count']} trialing" if m["trialing_count"] else ""
     lines = [
-        f"<b>UKPropertyInsight — {now.strftime('%A %d %B %Y')}</b>",
+        f"<b>UKPropertyInsight, {now.strftime('%A %d %B %Y')}</b>",
         "",
         f"\U0001F441 Pageviews: <b>{m['pageviews_today']}</b> today ({_fmt_change(m['pageviews_dod_change'])} vs yesterday), "
         f"{m['pageviews_week']} this week ({_fmt_change(m['pageviews_wow_change'])} vs last week)",
+        f"\U0001F464 Of those, people: <b>{m['audience_today']}</b> today, {m['audience_week']} this week. "
+        f"The rest ({m['crawl_today']} today) is pages visited exactly once, the shape a crawler leaves",
         f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week "
         f"({_fmt_change(m['signups_wow_change'])} vs last week), {m['signups_total']} total",
         f"⭐ Premium: <b>{m['premium_total']}</b> of {m['signups_total']} accounts",
-        f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month — {m['active_subscriber_count']} active{trialing_note}",
+        f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month, {m['active_subscriber_count']} active{trialing_note}",
         f"\U0001F4CA 14-day trend: avg {m['pageviews_avg_14d']}/day, typical swing ±{m['pageviews_stdev_14d']}",
         f"\U0001F51D Top page: {top_page}",
         "🚶 Funnel since clean date: " + " → ".join(str(st["count"]) for st in m["funnel_clean"])
@@ -6450,10 +6685,10 @@ async def stripe_webhook(request: Request):
 # person can act on. Never render the raw value - it comes from the query
 # string and lands straight in the page.
 _AUTH_ERRORS = {
-    "google_unavailable": "Google sign-in isn't set up right now — use your email and password.",
+    "google_unavailable": "Google sign-in isn't set up right now. Use your email and password.",
     "google_state": "That Google sign-in link had expired. Please try again.",
     "google_failed": "Couldn't finish signing in with Google. Please try again.",
-    "oauth_unavailable": "That sign-in method isn't set up right now — use your email and password.",
+    "oauth_unavailable": "That sign-in method isn't set up right now. Use your email and password.",
     "oauth_state": "That sign-in link had expired. Please try again.",
     "oauth_failed": "Couldn't finish signing in. Please try again.",
     "accounts_unavailable": "Accounts are temporarily unavailable. Please try again shortly.",
@@ -7380,109 +7615,6 @@ async def compare_postcodes(request: Request, postcode: list[str] = Query(defaul
     context["entered"] = entered
     context["max_columns"] = MAX_COMPARE_COLUMNS
     return templates.TemplateResponse(request, "compare.html", context)
-
-
-def _weekly_digest_email_html(rows: list[dict], watchlist_url: str, settings_url: str) -> str:
-    """The opt-in weekly round-up. Every property gets a line whether or
-    not anything moved, because "nothing changed this week" is a real
-    and useful answer for someone tracking an area."""
-    base = watchlist_url.rsplit("/watchlist", 1)[0]
-    blocks = []
-    for row in rows:
-        report_url = f"{base}/property?{urlencode({'postcode': row.get('postcode', ''), 'house_number': row.get('house_number', '')})}"
-        if row["changes"]:
-            body = "".join(
-                f'<li style="margin:4px 0;color:#3d3833;">{c}</li>' for c in row["changes"]
-            )
-            body = f'<ul style="margin:8px 0 0;padding-left:18px;">{body}</ul>'
-        else:
-            body = '<p style="margin:8px 0 0;color:#8a8378;font-size:14px;">No change this week.</p>'
-        blocks.append(
-            f'<div style="border:1px solid #e6e1d8;border-radius:8px;padding:14px 16px;margin-bottom:12px;">'
-            f'<a href="{report_url}" style="font-size:16px;font-weight:600;color:#1f2a5a;text-decoration:none;">{row["label"]}</a>'
-            f'{body}</div>'
-        )
-    moved = sum(1 for r in rows if r["changes"])
-    headline = (
-        f"{moved} of your {len(rows)} propert{'y' if len(rows) == 1 else 'ies'} changed this week"
-        if moved else
-        f"No changes on your {len(rows)} saved propert{'y' if len(rows) == 1 else 'ies'} this week"
-    )
-    return (
-        '<div style="font-family:Georgia,serif;max-width:540px;margin:0 auto;padding:8px;">'
-        '<p style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#8a8378;margin:0 0 4px;">UKPropertyInsight</p>'
-        f'<h2 style="margin:0 0 14px;color:#191613;">{headline}</h2>'
-        + "".join(blocks) +
-        f'<p style="margin:16px 0;"><a href="{watchlist_url}" style="color:#1f2a5a;">Open My properties</a></p>'
-        '<p style="color:#8a8378;font-size:12px;line-height:1.5;">'
-        "You asked for this weekly round-up when you ticked the box in My properties. "
-        f'<a href="{settings_url}" style="color:#8a8378;">Turn it off</a> and you will only hear from us '
-        "when something on a saved property actually changes."
-        "</p></div>"
-    )
-
-
-@app.post("/watchlist/weekly-digest")
-def watchlist_weekly_digest(request: Request, enabled: str = Form("")):
-    context = base_context(request)
-    if not context["current_user"]:
-        return RedirectResponse("/login?next=/watchlist", status_code=303)
-    watchlist.set_weekly_digest(context["current_user"]["id"], enabled == "on")
-    return RedirectResponse("/watchlist?digest=" + ("on" if enabled == "on" else "off"), status_code=303)
-
-
-@app.post("/internal/send-weekly-digest")
-async def send_weekly_digest(request: Request):
-    """Scheduled job (see .github/workflows/weekly-digest.yml). Emails
-    only the accounts that opted in, and only about properties they
-    saved. Shares the change detection with the daily alert job, but
-    deliberately does NOT consume the snapshot: the alert job owns
-    that, and a digest that silently swallowed a change would stop the
-    person being told about it promptly."""
-    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
-    provided_secret = request.headers.get("x-alerts-secret", "")
-    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
-        return JSONResponse({"error": "not_found"}, status_code=404)
-
-    if not email_service.is_configured():
-        return JSONResponse({"error": "email_not_configured"}, status_code=503)
-
-    watchlist_url = f"{_public_base_url(request)}/watchlist"
-    subscribers = watchlist.digest_subscribers()
-    sent = 0
-
-    for sub in subscribers:
-        rows = []
-        for item in sub["items"]:
-            try:
-                fresh = await _comparison_summary(item["postcode"], item["house_number"])
-            except Exception:  # noqa: BLE001 - one bad address must not sink the digest
-                continue
-            old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
-            rows.append({
-                "label": item["postcode"] + (f", {item['house_number']}" if item["house_number"] else ""),
-                "postcode": item["postcode"],
-                "house_number": item["house_number"],
-                "changes": _snapshot_changes(old, fresh) if old else [],
-            })
-        if not rows:
-            continue
-        moved = sum(1 for r in rows if r["changes"])
-        subject = (
-            f"Your week: {moved} propert{'y' if moved == 1 else 'ies'} changed"
-            if moved else "Your week: nothing changed on your saved properties"
-        )
-        if not _email_can_receive(sub["email"]):
-            continue
-        ok = await email_service.send_email(
-            sub["email"], subject,
-            _weekly_digest_email_html(rows, watchlist_url, watchlist_url),
-        )
-        if ok:
-            watchlist.mark_digest_sent(sub["user_id"])
-            sent += 1
-
-    return JSONResponse({"subscribers": len(subscribers), "sent": sent})
 
 
 def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:

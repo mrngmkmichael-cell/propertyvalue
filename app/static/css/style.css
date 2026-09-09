@@ -2559,24 +2559,8 @@ button:not([class]):hover { background: var(--accent-hover); }
     background: var(--good-bg);
 }
 
-/* Weekly digest opt-in, on My properties. A checkbox rather than a
-   button: it is a standing preference, not an action. */
-.digest-optin {
-    margin: 1rem 0 1.5rem;
-    padding: 1rem 1.1rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-}
-.digest-optin-label {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    cursor: pointer;
-}
-.digest-optin-label input { margin-top: 0.25rem; flex: none; width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
-.digest-optin-label span { display: block; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.55; }
-.digest-optin-label strong { display: block; color: var(--ink); font-size: var(--text-base); margin-bottom: 0.1rem; }
+/* The weekly digest opt-in used to sit here. Removed 9 Sep 2026 with
+   the feature; see app/watchlist.py for why. */
 
 /* Badges */
 
@@ -5633,6 +5617,11 @@ main:focus { outline: none; }
 }
 .paywall-banner-copy { max-width: 46rem; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.5; }
 .paywall-banner-copy strong { color: var(--ink); display: block; font-size: var(--text-base); margin-bottom: 0.15rem; }
+/* The line reminding a returning account which property its free
+   report went on. Quieter than the offer above it: it is reassurance,
+   not the ask. */
+.paywall-banner-aside { display: block; margin-top: 0.4rem; font-size: var(--text-xs); color: var(--ink-faint); }
+.paywall-banner-aside a { color: var(--ink-soft); }
 .paywall-banner-cta {
     flex: none; padding: 0.6rem 1.2rem; background: var(--accent); color: var(--accent-ink);
     border-radius: var(--radius-sm); font-weight: var(--weight-semi); font-size: var(--text-sm); text-decoration: none;
@@ -6351,6 +6340,12 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 .running-costs-line strong { color: var(--ink); }
 .running-costs-k { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
 /* The postcode box and, once checked, the map beside it. */
+/* Once a postcode has been answered, the answer comes before the box
+   that answered it. Ordering rather than reordered markup, so the map's
+   two provider branches exist once. */
+.rc-flow { display: flex; flex-direction: column; }
+.rc-flow-answered .rc-grid { order: 2; }
+.rc-flow-answered #checked { order: 1; }
 .rc-grid { display: grid; grid-template-columns: minmax(0, 36rem) minmax(0, 1fr); gap: 1.5rem; align-items: start; margin-bottom: 1.5rem; }
 .rc-grid .search-form { margin-bottom: 0; }
 .rc-map { height: 300px; }

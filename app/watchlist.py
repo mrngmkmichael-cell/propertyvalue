@@ -144,45 +144,24 @@ def remove_item(user_id: int, item_id: int) -> None:
             session.commit()
 
 
-def digest_subscribers() -> list[dict]:
-    """Everyone who has opted into the weekly digest, with their saved
-    items. Opt-in only: the change-alert email promises readers they
-    hear from us only when something changed, so a scheduled send may
-    never include someone who has not asked for it."""
-    with get_session() as session:
-        rows = session.execute(
-            select(WatchlistItem, User.id, User.email)
-            .join(User, WatchlistItem.user_id == User.id)
-            .where(User.weekly_digest.is_(True))
-            .order_by(WatchlistItem.created_at.desc())
-        ).all()
-
-    by_user: dict[int, dict] = {}
-    for item, user_id, email in rows:
-        entry = by_user.setdefault(user_id, {"user_id": user_id, "email": email, "items": []})
-        entry["items"].append({
-            "id": item.id,
-            "postcode": item.postcode,
-            "house_number": item.house_number,
-            "last_snapshot": item.last_snapshot,
-        })
-    return list(by_user.values())
-
-
-def set_weekly_digest(user_id: int, enabled: bool) -> None:
-    with get_session() as session:
-        user = session.get(User, user_id)
-        if user is not None:
-            user.weekly_digest = bool(enabled)
-            session.commit()
-
-
-def mark_digest_sent(user_id: int) -> None:
-    with get_session() as session:
-        user = session.get(User, user_id)
-        if user is not None:
-            user.digest_sent_at = datetime.now(timezone.utc)
-            session.commit()
+# --- The weekly digest --------------------------------------------------
+# Removed on 9 Sep 2026, for the reason district following was removed
+# two days earlier: nobody used it. Across 48 real accounts and six
+# weeks users.weekly_digest was true for none of them and
+# digest_sent_at was never set, so digest_subscribers() had never
+# returned a row and no digest had ever been sent.
+#
+# It was the site's only scheduled send, and the change-alert email
+# tells every reader that it arrives only when something actually
+# changed and never on a schedule. Keeping an unused opt-in alive
+# meant keeping a standing obligation to honour that promise around
+# it. The alert emails themselves, which are event-driven, are
+# untouched.
+#
+# users.weekly_digest and users.digest_sent_at stay in the model and
+# in Postgres. Dropping a production column cannot be undone, two
+# unused columns cost nothing, and leaving them means this can be
+# revisited with evidence rather than reconstructed from git history.
 
 
 # --- Followed districts -------------------------------------------------

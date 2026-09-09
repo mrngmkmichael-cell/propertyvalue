@@ -17,6 +17,26 @@
     Over the usual ten instalments from April that is &pound;{{ "{:,.2f}".format(ct.band_d / 10) }} a month; over twelve, &pound;{{ "{:,.2f}".format(ct.band_d / 12) }}.
 </p>
 
+{# Area guides, school pages and council hubs each got a compact checker
+   on 5 Sep 2026, because most visitors land on one of those rather than
+   the homepage. These 350 council pages were built on 8 Sep and were
+   the one indexable family left without one: someone who arrived asking
+   what this council charges is a field away from asking what their own
+   address costs. #}
+<form action="/property" method="get" class="search-form area-check" role="search">
+    <input type="hidden" name="src" value="council-tax">
+    <div class="search-form-field">
+        <label for="ct-check-postcode">Check an address in {{ ct.authority }}</label>
+        <input type="text" id="ct-check-postcode" name="postcode" placeholder="e.g. S11 8XZ" autocomplete="postal-code" required>
+    </div>
+    <div class="search-form-field">
+        <label for="ct-check-house">House or flat number (optional)</label>
+        <input type="text" id="ct-check-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+    </div>
+    <button type="submit">Run the 44 checks</button>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Its council tax band by band, the EPC's energy estimate, sold prices, flood risk and every nearby school's admission odds. Free, no account. Or see just <a href="/running-costs">what it costs to live there</a>.</p>
+</form>
+
 <section class="report-section">
     <h2>Every band in {{ ct.authority }}</h2>
     <div class="tablewrap">

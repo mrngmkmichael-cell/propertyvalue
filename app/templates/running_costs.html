@@ -15,7 +15,31 @@
     ]
 } | tojson }}</script>
 
+{% set answered = checked and not checked.unknown %}
 <span class="kicker">Running costs</span>
+{# The heading is the answer once there is one. On 9 Sep 2026 this became
+   the busiest single page on the site, 79 views in a morning against 5
+   three days earlier, and at 375px the answer to the postcode someone
+   had just typed sat at y=1465: the introduction, the form and a 300px
+   map above it, roughly two phone screens of scrolling to reach the
+   thing they asked for. School pages and area guides were both given
+   their figure first on 8 Sep; this page was left behind. #}
+{% if answered %}
+<h1>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h1>
+{% if checked.typical_year %}
+<p class="area-lead">
+    <strong>{{ checked.typical_year | gbp }} a year</strong>{% if checked.typical_share_pct %}, {{ checked.typical_share_pct }}% of the typical household income here{% endif %}.
+    That is Band D council tax{% if checked.council_tax %} at {{ checked.council_tax.authority }}{% endif %} plus
+    {% if checked.home and checked.home.energy_now %}this home's own EPC energy estimate{% else %}the middle EPC energy estimate for the postcode{% endif %},
+    and nothing else: no water, insurance, mortgage or estate charge. Every figure below is the publishing body's own.
+</p>
+{% elif checked.council_tax %}
+<p class="area-lead">
+    <strong>{{ checked.council_tax.band_d | gbp }} a year</strong> at Band D, from {{ checked.council_tax.authority }} for {{ checked.council_tax.year }} (MHCLG).
+    The energy and tenure figures for this postcode are below, each from the body that publishes it.
+</p>
+{% endif %}
+{% else %}
 <h1>What it costs to live there</h1>
 <p class="dek">
     A listing shows the price. It rarely shows the bills that come with the keys. For any UK address the
@@ -24,7 +48,12 @@
     home is freehold or leasehold. The fourth, the estate charge on a managed development, has no
     official source at all, and this page says what to do about that.
 </p>
+{% endif %}
 
+{# Answer first, checker after. Flex order rather than two copies of the
+   markup, because the map carries a hundred lines of Google and Leaflet
+   branches and a second copy of them would rot. #}
+<div class="rc-flow{{ ' rc-flow-answered' if answered else '' }}">
 <div class="rc-grid">
 <form class="search-form" action="/running-costs" method="get" role="search">
     <label for="rc-postcode">Postcode</label>
@@ -86,8 +115,10 @@
     <h2>{{ checked.postcode }} is not a postcode we can place</h2>
     <p class="section-sub">Check the spelling, or try the full report search at the top of the page.</p>
     {% else %}
-    <h2>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h2>
-    <p class="section-sub">Every figure is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
+    {# The postcode moved into the h1 above on 9 Sep 2026, so this says
+       what the tables are rather than repeating it. #}
+    <h2>Every figure, and who published it</h2>
+    <p class="section-sub">Each one is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
     {% with share_url=canonical_url ~ "?postcode=" ~ (checked.postcode | urlencode) ~ (("&house_number=" ~ (checked.house_number | urlencode)) if checked.house_number else ""), share_text="What it costs to live in " ~ checked.postcode ~ ": council tax, energy, prices, rent, stamp duty, from the official sources" %}{% include "_share_row.html" %}{% endwith %}
     {% if checked.house_number and not checked.home %}
     <p class="notice">No EPC or recorded sale matched "{{ checked.house_number }}" in {{ checked.postcode }}, so the rows below are for the postcode. Try the number as it appears on the address, for example "Flat 2" or "37".</p>
@@ -234,6 +265,7 @@
     {% endif %}
 </section>
 {% endif %}
+</div>
 
 {% if not checked %}
 <div class="scorecard-row">

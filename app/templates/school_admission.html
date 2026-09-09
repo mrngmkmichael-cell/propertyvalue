@@ -458,6 +458,7 @@
         sold prices, flood risk, crime and the other checks on the same house.
     </p>
     <form class="search-form" action="/property" method="get">
+        <input type="hidden" name="src" value="school">
         <div class="search-form-field">
             <label for="school-postcode">UK postcode</label>
             <input type="text" id="school-postcode" name="postcode" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>

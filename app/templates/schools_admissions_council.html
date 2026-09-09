@@ -26,6 +26,7 @@
 {# The one action that pays off on this page: an address, measured
    against every one of these schools at once. #}
 <form action="/property" method="get" class="search-form" role="search" style="max-width: 36rem; margin: 1rem 0 1.5rem;">
+    <input type="hidden" name="src" value="council-hub">
     <div class="search-form-field">
         <label for="hub-check-postcode">Check an address against every {{ council.name }} school</label>
         <input type="text" id="hub-check-postcode" name="postcode" placeholder="e.g. a full postcode" autocomplete="postal-code" required>

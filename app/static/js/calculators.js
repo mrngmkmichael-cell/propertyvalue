@@ -103,7 +103,10 @@
         const price = Math.max(0, Number(priceInput.value) || 0);
         const rent = Math.max(0, Number(rentInput.value) || 0);
         if (price <= 0 || rent <= 0) {
-            yieldResult.textContent = ' — ';
+            // Says what is missing rather than showing a dash: the
+            // house rule is that a gap is stated in words, and a bare
+            // em-dash was both a silent blank and a forbidden character.
+            yieldResult.textContent = 'Enter a price and a monthly rent';
             return;
         }
         const annualRent = rent * 12;
