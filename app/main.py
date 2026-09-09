@@ -6128,6 +6128,13 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["crawl_today"] = by_date.get(str(date_range[-1]), {}).get("crawl", 0)
     m["audience_week"] = sum(d["audience"] for d in m["daily_pageviews"][-7:])
     m["crawl_week"] = sum(d["crawl"] for d in m["daily_pageviews"][-7:])
+    # The split is computed over seven calendar days; pageviews_week is a
+    # rolling seven days back from this moment, so the two windows differ
+    # by part of a day. The card shows its own total rather than the
+    # rolling one, because "1,969 people of 5,486 views, 3,123 of them
+    # crawl" is three numbers that do not add up, and a dashboard that
+    # cannot be checked by adding is one nobody checks.
+    m["pageviews_week_days"] = m["audience_week"] + m["crawl_week"]
 
     # Which page family a report search started on (see REPORT_SOURCES).
     # An unmarked search is the homepage or a direct visit; it is the
@@ -6476,7 +6483,8 @@ async def send_daily_summary(request: Request):
         "",
         f"\U0001F441 Pageviews: <b>{m['pageviews_today']}</b> today ({_fmt_change(m['pageviews_dod_change'])} vs yesterday), "
         f"{m['pageviews_week']} this week ({_fmt_change(m['pageviews_wow_change'])} vs last week)",
-        f"\U0001F464 Of those, people: <b>{m['audience_today']}</b> today, {m['audience_week']} this week. "
+        f"\U0001F464 Of those, people: <b>{m['audience_today']}</b> of {m['pageviews_today']} today, "
+        f"{m['audience_week']} of {m['pageviews_week_days']} over seven days. "
         f"The rest ({m['crawl_today']} today) is pages visited exactly once, the shape a crawler leaves",
         f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week "
         f"({_fmt_change(m['signups_wow_change'])} vs last week), {m['signups_total']} total",
