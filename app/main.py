@@ -1653,6 +1653,50 @@ async def healthz():
     return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
 
 
+# How this site compares with the three services a buyer meets first
+# (9 Sep 2026). Every cell comes from the other company's own public
+# pages as read on ALTERNATIVES_CHECKED_ON; "not listed" means their
+# pages did not describe it that day, never "they do not have it".
+# The advertising code asks a comparison to be verifiable and fair, so
+# each rival's section says what it does better, and the date is on the
+# page. Re-read the three sites and move the date when anything changes.
+ALTERNATIVES_CHECKED_ON = "9 September 2026"
+
+
+@app.get("/alternatives")
+def alternatives_page(request: Request):
+    context = base_context(request)
+    base = _public_base_url(request)
+    context["canonical_url"] = f"{base}/alternatives"
+    context["checked_on"] = ALTERNATIVES_CHECKED_ON
+    faqs = [
+        ("Is there a free alternative to Propbar?",
+         "Crystal Roof is free for area statistics by postcode. UKPropertyInsight shows 26 of its 44 checks free on any "
+         "address, gives every new account one full Premium report free, and charges £9.99 a month or £24.99 a quarter after "
+         "that. Propbar's search is free and its detail is paid, on plans from £24.99 a month on a six-month term to £49.99 "
+         f"month by month, as its pricing page read on {ALTERNATIVES_CHECKED_ON}."),
+        ("What does Propbar cost?",
+         "£49.99 a month, £104.97 for three months (£34.99 a month) or £149.94 for six months (£24.99 a month), as its pricing "
+         f"page read on {ALTERNATIVES_CHECKED_ON}. Searching, property facts, EPC data, demographics and the verdict of each risk "
+         "check are free there; sale prices, comparables, the valuation and the full risk detail are on the paid plan."),
+        ("Is Crystal Roof free?",
+         "Yes. Its home page says its service is 100% free for all visitors. It describes area statistics for a postcode across "
+         f"ten categories, plus an instant valuation, as read on {ALTERNATIVES_CHECKED_ON}."),
+        ("What does Locrating do that UKPropertyInsight does not?",
+         "Locrating shows where a school's existing pupils live, its feeder and destination schools and its priority areas, and "
+         "has published school data since 2010. This site shows the council's published admission distance for 3,627 schools, "
+         "with a postcode checker and a map, and does not hold those three things."),
+        ("Which one should I use?",
+         "For area statistics at no cost, Crystal Roof. For school choice above everything else, Locrating. For planning "
+         "applications nearby and an AI assistant, Propbar. For every official check on one address on one page, each figure "
+         "naming its source, this site, at £9.99 a month the lowest monthly price of the three paid services on that day."),
+    ]
+    context["faqs"] = faqs
+    context["faqs_jsonld"] = _faq_jsonld(faqs)
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [("Pricing", "/premium"), ("How we compare", "/alternatives")])
+    return templates.TemplateResponse(request, "alternatives.html", context)
+
+
 @app.get("/running-costs/council-tax/{slug}")
 def council_tax_council_page(request: Request, slug: str):
     """One page per billing authority: every band for the year, its rank
@@ -2016,7 +2060,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     the front. Grow this list as districts earn traffic.
     """
     static_paths = ["/", "/areas", "/methodology", "/premium", "/schools/guide", "/schools/outstanding", "/schools/grammar", "/privacy", "/terms",
-                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data",
+                    "/support", "/market-report", "/buying-guide", "/browser-extension", "/embed", "/data", "/alternatives",
                     "/compare",
                     "/market/district-prices"]
     # The two calculators left the sitemap on 8 Sep 2026 and are noindexed
@@ -9269,6 +9313,7 @@ async def llms_txt(request: Request):
 - [What a tight school catchment costs]({base}/schools/catchment-house-prices): every published admission distance paired with the Land Registry median of the districts within reach; the tight gates you can still afford.
 - [Running costs by postcode]({base}/running-costs): council tax for every band at every council (MHCLG), EPC estimated energy costs, tenure; England's cheapest and dearest councils for a Band D home.
 - [Council tax by council]({base}/running-costs/council-tax): Band D, A and H for every billing authority in England, Wales and Scotland, sortable.
+- [How this site compares with Propbar, Crystal Roof and Locrating]({base}/alternatives): what each shows and costs, feature by feature, from their own pages, dated.
 - Council tax, one page per billing authority ({base}/running-costs/council-tax/<council-slug>, for example {base}/running-costs/council-tax/manchester): every band for the year, the council's rank in its nation, six years of Band D rises and any exceptional financial support or section 114 notice, with the area guides inside the council.
 - [Estate charges explained]({base}/estate-charges): how common estate management charges are on new-build estates, what they cover, the 2024 Act, and twelve questions to ask before buying.
 - [School admission distances, CSV]({base}/schools/admission-distances.csv): the whole dataset, one row per school.

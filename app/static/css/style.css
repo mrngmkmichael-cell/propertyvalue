@@ -7954,3 +7954,8 @@ body:not(.theme-dark) .lx-hero-scrim {
 .compare-full-btn { display: inline-block; background: var(--accent); color: #fff; padding: 0.6rem 1.1rem; border-radius: var(--radius-sm); font-weight: 600; text-decoration: none; }
 .compare-full-btn:hover { filter: brightness(1.08); text-decoration: none; }
 button.compare-full-secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+
+
+/* /alternatives: the four-column comparison, on the Premium page's alt-table style. */
+.alt-compare th, .alt-compare td { vertical-align: top; min-width: 10rem; }
+.alt-compare td:first-child { min-width: 9rem; }

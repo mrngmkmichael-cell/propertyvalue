@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}UKPropertyInsight vs Propbar, Crystal Roof and Locrating: What Each Shows and Costs{% endblock %}
+{% block meta_description %}How UKPropertyInsight compares with Propbar, Crystal Roof and Locrating, feature by feature: checks per address, prices, schools data, planning, coverage and what only each one shows, taken from their own pages on {{ checked_on }}.{% endblock %}
+{% block og_title %}How this site compares with Propbar, Crystal Roof and Locrating{% endblock %}
+
+{% block content %}
+{% if faqs_jsonld %}<script type="application/ld+json">{{ faqs_jsonld | safe }}</script>{% endif %}
+{% if breadcrumb_jsonld %}<script type="application/ld+json">{{ breadcrumb_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/premium">&larr; Pricing</a>
+
+<span class="kicker">Side by side</span>
+<h1>How this site compares with Propbar, Crystal Roof and Locrating</h1>
+<p class="dek">
+    Four services a buyer meets in the first week of a search, on the same table. Every cell below comes from the other
+    company's own public pages as they read on <strong>{{ checked_on }}</strong>. "Not listed" means their pages did not
+    describe it that day, not that they lack it. If something has changed, <a href="/support">tell us</a> and it will be corrected.
+</p>
+
+<section class="report-section">
+    <h2>What each shows, and what each costs</h2>
+    <div class="tablewrap">
+    <table class="tx-table alt-table alt-compare">
+        <thead>
+            <tr><th>&nbsp;</th><th class="alt-us">UKPropertyInsight</th><th>Propbar</th><th>Crystal Roof</th><th>Locrating</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>Price</strong></td><td class="alt-us">£9.99 a month or £24.99 a quarter. One full Premium report free on sign-up; 26 of 44 checks free on every address, no account needed</td><td>£49.99 a month; £104.97 for three months; £149.94 for six months. Searching and the verdict of each check free; detail paid</td><td>Free. "Our service is 100% free for all our visitors"</td><td>Free basic plan. Premium £12.99 a month recurring (first month £14.99), £14.99 for a single month, or £41.99 for three months as one payment, including VAT</td></tr>
+            <tr><td><strong>What it is</strong></td><td class="alt-us">One report per address: 44 checks from official sources, each figure naming where it came from</td><td>One record per address: "47 risk checks" from "14 official data sources", sold prices since 1995, an independent valuation</td><td>Area statistics for a postcode in ten categories: crime, demographics, affluence, schools, transport, amenities, environment, noise, an overview and reviews</td><td>A school finder and catchment checker first; neighbourhood information around it</td></tr>
+            <tr><td><strong>Sold prices and valuation</strong></td><td class="alt-us">Every recorded sale at the postcode; a valuation and price per square metre on Premium</td><td>Every sale since 1995, comparables within 250 m, a valuation with a confidence range, on the paid plan</td><td>An instant valuation, listed as new</td><td>Property prices in the neighbourhood information</td></tr>
+            <tr><td><strong>Schools</strong></td><td class="alt-us">The council's published admission distance for 3,627 schools, a postcode checker, a map with the distance drawn, Ofsted, results, a grammar school layer</td><td>Ofsted, performance and "catchment context"</td><td>Ofsted ratings, admission policies, exam results</td><td>Where existing pupils live, last distance offered, priority areas, feeder and destination schools, since 2010</td></tr>
+            <tr><td><strong>Flood and ground</strong></td><td class="alt-us">Environment Agency flood zone and live warnings, subsidence, radon, coal mining, and whether Flood Re insurance can apply</td><td>River, surface and coastal flood scoring, subsidence, radon and contaminated-land flags</td><td>Flood risk within environment</td><td>Flood risk within neighbourhood information</td></tr>
+            <tr><td><strong>Planning applications nearby</strong></td><td class="alt-us">Not offered. No reliable national source exists yet, and this site does not model what it cannot source</td><td>Yes: applications and decisions around the property</td><td>Not listed</td><td>Not listed</td></tr>
+            <tr><td><strong>Buses at the door</strong></td><td class="alt-us">Scheduled buses an hour at each stop within 500 m, from the Department for Transport's timetable feed</td><td>Not listed</td><td>Distance to stations and public transport connectivity</td><td>Not listed</td></tr>
+            <tr><td><strong>GP practices and A&amp;E</strong></td><td class="alt-us">Patients per fully qualified GP at the nearest practices, and the nearest A&amp;E's four-hour figure, from NHS England</td><td>Not listed</td><td>GP surgeries listed among amenities</td><td>Not listed</td></tr>
+            <tr><td><strong>The council's finances</strong></td><td class="alt-us">Six years of Band D council tax, exceptional financial support and section 114 notices, and every band for all 350 billing authorities</td><td>Not listed</td><td>Not listed</td><td>Not listed</td></tr>
+            <tr><td><strong>How the area has changed</strong></td><td class="alt-us">The neighbourhood on the 2011 and 2021 censuses side by side, against England</td><td>Census demographics</td><td>Demographics and affluence</td><td>Socio-economics</td></tr>
+            <tr><td><strong>A report to keep</strong></td><td class="alt-us">A PDF of the full report, on Premium</td><td>Not listed</td><td>Not listed</td><td>Not listed</td></tr>
+            <tr><td><strong>Browser extension</strong></td><td class="alt-us">Free, on the Chrome Web Store: the verdict on any listing as you browse</td><td>Free: sold prices, days on market and floor areas on listings</td><td>Not listed</td><td>Yes, for Rightmove, Zoopla and OnTheMarket</td></tr>
+            <tr><td><strong>An AI assistant</strong></td><td class="alt-us">Not offered</td><td>Yes: "Ask, an AI researcher"</td><td>Not listed</td><td>Not listed</td></tr>
+            <tr><td><strong>Coverage</strong></td><td class="alt-us">Depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a report says where an address is not covered</td><td>Every property in England and Wales with Land Registry data; Scotland partial; Northern Ireland not yet</td><td>"2.6M postcodes"</td><td>UK schools</td></tr>
+            <tr><td><strong>Sources named on the page</strong></td><td class="alt-us">Every figure, with a <a href="/methodology">methodology page</a> and an <a href="/accuracy">accuracy log</a></td><td>Says every figure in a report names its source</td><td>Not stated on its home page</td><td>Not stated on its home page</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">Read from propbar.co.uk, crystalroof.co.uk and locrating.com on {{ checked_on }}. The names belong to their owners; this site is not connected to any of them.</p>
+</section>
+
+<section class="report-section">
+    <h2>What each does better than this site</h2>
+    <ul class="notice-list">
+        <li><strong>Propbar</strong> shows planning applications and decisions around a property, offers an AI researcher over the record, and its free extension adds days on market and floor areas to listings. It also lists three more checks than this site does.</li>
+        <li><strong>Crystal Roof</strong> charges nothing at all, and its statistics for a postcode give noise sources and air pollution their own categories, with traffic, aircraft, emergency services and nightlife listed separately.</li>
+        <li><strong>Locrating</strong> has published school data since 2010 and shows where a school's existing pupils live, its feeder and destination schools and its priority areas, which this site does not hold. Its members rate it on the site itself.</li>
+    </ul>
+</section>
+
+<section class="report-section">
+    <h2>What only this site showed on {{ checked_on }}</h2>
+    <p class="section-sub">None of the three described these on their public pages that day. Each names its source on the report.</p>
+    <ul class="notice-list">
+        <li>Scheduled buses an hour at each stop within 500 m of the address, weekday, evening and Sunday, from the Department for Transport's Bus Open Data Service.</li>
+        <li>Patients per fully qualified GP at the nearest practices and the nearest A&amp;E's four-hour figure, from NHS England.</li>
+        <li>Six years of the council's Band D bill, exceptional financial support and section 114 notices, from MHCLG.</li>
+        <li>Whether Flood Re, the flood insurance scheme, can apply to the home, from the scheme's own rules.</li>
+        <li>The neighbourhood on the 2011 and 2021 censuses side by side, from the Office for National Statistics.</li>
+    </ul>
+</section>
+
+<section class="report-section">
+    <h2>Common questions</h2>
+    {% for q, a in faqs %}
+    <details class="faq-item"><summary>{{ q }}</summary><p>{{ a }}</p></details>
+    {% endfor %}
+</section>
+
+<section class="report-section">
+    <h2>See it on an address you know</h2>
+    <p>The free report shows 26 checks on any UK address with no account. <a href="/">Run one now</a>, or read <a href="/premium">what Premium adds</a>.</p>
+</section>
+{% endblock %}

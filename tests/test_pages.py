@@ -2108,3 +2108,20 @@ def test_every_check_side_by_side_is_premium(client, fake_report, monkeypatch):
     light = client.get(f"/watchlist/compare?item_ids={ids[0]}&item_ids={ids[1]}").text
     assert f'href="/watchlist/compare/full?item_ids={ids[0]}&item_ids={ids[1]}"' in light
     assert 'formaction="/watchlist/compare/full"' in client.get("/watchlist").text
+
+
+
+def test_the_comparison_page_is_dated_and_fair(client):
+    """/alternatives names three rivals, so every claim carries the date
+    it was read, "not listed" never becomes "no", each rival gets a
+    paragraph on what it does better, and the page is linked and indexed."""
+    from app import main as app_main
+    body = client.get("/alternatives").text
+    for name in ("Propbar", "Crystal Roof", "Locrating"):
+        assert name in body
+    assert app_main.ALTERNATIVES_CHECKED_ON in body and "Not listed" in body
+    assert "What each does better than this site" in body and "FAQPage" in body
+    assert 'rel="canonical" href="https://testserver/alternatives"' in body
+    assert "\u2014" not in body                                   # no em-dashes in user-facing copy
+    assert "/alternatives" in client.get("/sitemap.xml").text
+    assert 'href="/alternatives"' in client.get("/premium").text and 'href="/alternatives"' in client.get("/").text
