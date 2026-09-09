@@ -6,6 +6,21 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- /alternatives, the comparison with Propbar, Crystal Roof and Locrating
+  (9 Sep 2026, e708c5a, approved by Michael that morning). Four columns
+  on one table, every cell from the other company's own public pages as
+  read that day, the date on the page, "not listed" never turned into
+  "no", and a paragraph per rival on what it does better. What the read
+  found: Propbar £49.99 a month, £104.97 for three, £149.94 for six, "47
+  risk checks" from "14 official data sources", planning nearby and an
+  AI researcher; Crystal Roof free, ten categories of area statistics
+  (and it owns StreetCheck); Locrating free basic, Premium £12.99 a month
+  recurring, £14.99 single month, £41.99 for three, pupils' homes, feeder
+  schools and priority areas. The claim "most comprehensive on the
+  market" was declined the same morning: Propbar lists 47 checks to our
+  44 and Sprift 300 data points, so it would be false. Re-read the three
+  sites and move ALTERNATIVES_CHECKED_ON in main.py whenever anything
+  changes; a stale comparison naming rivals is worse than none.
 - Every check, side by side (9 Sep 2026). /watchlist/compare/full puts
   the PDF's at-a-glance rows for up to four saved homes next to each
   other, from the same gather the report runs, cached like the report,
