@@ -1140,40 +1140,30 @@ async def _prewarm_reports(postcodes_to_warm=None):
             continue
 
 
-# How often the hero sample is warmed again. The gather it fills lives
-# for PROPERTY_SEARCH_CACHE_TTL_S (an hour), so re-warming a few minutes
-# short of that keeps it permanently hot without ever doing the work
-# twice inside one cache lifetime.
+# Warming this report on a timer was tried on 9 Sep 2026 and removed the
+# same afternoon, because production said it does not work.
 #
-# Why it needs a loop at all: warming only at startup means the sample
-# is warm for one hour after a deploy and cold for every hour after
-# that. Measured on production on 9 Sep 2026, at 09:10 UTC, hours after
-# the last deploy: /property?postcode=M1 1AE took 7.53 s, then 0.29 s
-# and 0.29 s on the two requests that followed it. Between 09:00 and
-# 17:00 UTC the site takes 5 to 26 views an hour, so the cache had long
-# since expired and the next person to click "See a real report" would
-# have paid the full 7.5 s. That link is the only report a first-time
-# visitor is invited to open by name, and the homepage carries it five
-# times.
+#   12:41 UTC  warmed: 0.82 s, then 0.29 s on the confirming request
+#   13:01 UTC  13.18 s, twenty minutes later, still forty minutes inside
+#              the entry's one hour lifetime, with no deploy in between
 #
-# Cost: one gather an hour, the same work a single visitor would cause,
-# spaced so it never coincides with the deploy warm.
-_HERO_REWARM_INTERVAL_S = PROPERTY_SEARCH_CACHE_TTL_S - 300
-
-
-async def _hero_sample_rewarm_loop():
-    """Keep the advertised sample report hot for as long as the process
-    lives. Failures are swallowed and retried on the next tick: a warm
-    cache is an optimisation, and an upstream having a bad minute must
-    never take the loop down with it."""
-    while True:
-        try:
-            await asyncio.sleep(_HERO_REWARM_INTERVAL_S)
-            await _prewarm_reports([_HERO_SAMPLE_POSTCODE])
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:  # noqa: BLE001 - a warm cache is optional
-            logging.warning("hero sample re-warm failed, retrying next tick: %s", exc)
+# The gather is evicted long before it expires. Tier 1 is a bounded LRU
+# (1500 entries, 48 MB, see services/_cache.py) shared with every other
+# page; a full gather is hundreds of kilobytes; and the crawler measured
+# the same morning walks hundreds of distinct area guides and school
+# pages an hour, each writing entries. Nothing on a 55-minute cadence
+# survives that, and a cadence short enough to survive it would be
+# hammering ~28 upstreams for one advertised link.
+#
+# The startup warm below is kept, but read it for what it is: it covers
+# the minutes after a deploy, not the hour the TTL suggests. The same
+# caveat applies to the 7 Sep note above, which measured 1.11 s on the
+# first hit after a deploy and reasonably read that as the warm holding.
+#
+# The fix, if this is worth fixing, is tier 2: the Postgres-backed cache
+# the area guides already use, which survives both eviction and restart.
+# That is a design change with a real cost against the Neon transfer
+# quota on every miss, so it waits for Michael rather than being assumed.
 
 
 @app.on_event("startup")
@@ -1204,12 +1194,6 @@ async def on_startup():
         # report a first-time visitor is invited to open by name, so it
         # is worth a quarter of the cost the old prewarm carried.
         asyncio.create_task(_prewarm_reports([_HERO_SAMPLE_POSTCODE]))
-        # ...and again every hour after that (9 Sep 2026). The warm at
-        # startup only covered the hour following a deploy; see
-        # _HERO_REWARM_INTERVAL_S for the 7.53 s that measured.
-        _hero_task = asyncio.create_task(_hero_sample_rewarm_loop())
-        _background_tasks.add(_hero_task)
-        _hero_task.add_done_callback(_background_tasks.discard)
 
 
 def base_context(request: Request) -> dict:

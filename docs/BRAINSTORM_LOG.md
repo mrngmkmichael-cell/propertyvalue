@@ -38,14 +38,28 @@ the local Claude session as things ship. Newest first.
   (e997bd6, plus a37b714 and 2456c0c fixing two things the live page
   showed). Michael read the eight and said "do all in order", which is
   the approval the two decision-flagged ones needed.
-  1. The advertised sample report stays warm. It was warmed only at
-  startup while the gather it fills lives an hour, so M1 1AE was warm
-  for one hour after a deploy and cold every hour after: measured on
-  production at 09:10 UTC it took 7.53 s, then 0.29 s twice behind it.
-  Between 09:00 and 17:00 UTC the site takes 5 to 26 views an hour, so
-  the cache had always expired before anyone clicked the link the
-  homepage carries five times. A loop re-warms it five minutes short of
-  the cache lifetime: one gather an hour, the work one visitor causes.
+  1. Built, measured, and taken back out the same afternoon. Seven of
+  the eight stand; this one did not. The premise was right: the sample
+  report the homepage advertises five times was cold at 09:10 UTC, 7.53
+  s against 0.29 s warm, because it was warmed only at startup while its
+  gather lives an hour. An hourly re-warm loop shipped, and production
+  said it does not work. Warmed at 12:41 (0.82 s, then 0.29 s), it took
+  13.18 s at 13:01, twenty minutes later and forty minutes inside the
+  entry's own lifetime, with no deploy in between. The gather is evicted
+  long before it expires: tier 1 is a bounded LRU of 1500 entries and 48
+  MB shared with every page, a full gather is hundreds of kilobytes, and
+  the crawler idea 2 measured walks hundreds of distinct guides and
+  school pages an hour. No cadence survives that, and one short enough
+  would hammer 28 upstreams for one link. The loop is gone; the startup
+  warm stays but covers the minutes after a deploy, not the hour its TTL
+  suggests. Two false starts on the way are worth remembering: a first
+  measurement that happened to be fast was a passing visitor, and a
+  second was taken 90 seconds after another session's deploy, so any
+  timing test here has to check that no deploy landed inside its window.
+  Do not re-suggest a warming cadence, on any interval. The open option
+  is tier 2, the Postgres cache the area guides use, which survives
+  eviction and restart and costs Neon transfer on every miss. That is a
+  design change and it waits for Michael.
   2. /admin separates crawl from audience, because the flag was firing
   and the headline still counted the crawl. 8 Sep: 912 views, 494 on
   school and area pages, 479 of those single visits to a distinct page;
