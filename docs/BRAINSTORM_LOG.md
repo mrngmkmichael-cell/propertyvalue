@@ -6,6 +6,75 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All eight ideas of the 9 Sep 2026 brainstorm, built the same morning
+  (e997bd6, plus a37b714 and 2456c0c fixing two things the live page
+  showed). Michael read the eight and said "do all in order", which is
+  the approval the two decision-flagged ones needed.
+  1. The advertised sample report stays warm. It was warmed only at
+  startup while the gather it fills lives an hour, so M1 1AE was warm
+  for one hour after a deploy and cold every hour after: measured on
+  production at 09:10 UTC it took 7.53 s, then 0.29 s twice behind it.
+  Between 09:00 and 17:00 UTC the site takes 5 to 26 views an hour, so
+  the cache had always expired before anyone clicked the link the
+  homepage carries five times. A loop re-warms it five minutes short of
+  the cache lifetime: one gather an hour, the work one visitor causes.
+  2. /admin separates crawl from audience, because the flag was firing
+  and the headline still counted the crawl. 8 Sep: 912 views, 494 on
+  school and area pages, 479 of those single visits to a distinct page;
+  34 school pages inside the minute 05:52 the next morning; the busiest
+  human page 74 views against 923 distinct school pages at 7 views each
+  at most. Read against people the signup rate is about 1.4% on 5 Sep
+  and 1.0% on 8 Sep, so the fall was traffic, not conversion. Each day
+  splits into views of pages read more than once and views of pages seen
+  exactly once, on the cards, in the bars and in the Telegram line,
+  labelled a floor rather than a headcount. The three synthetic paths
+  that record events rather than pages (paywall, the 202 wait, the new
+  source markers) leave the pageview figures entirely. First live read:
+  684 raw today, 156 people, 528 crawl-shaped.
+  3. The paywall says something new on a return visit. Twelve accounts
+  reached it in seven days and one paid; the one that came back most,
+  nine times, has not, one more visit than the person who did. From the
+  second visit it counts the visits, counts the properties opened,
+  prices two standard searches on each against the £9.99 subscription,
+  and names the free report they already own with a link back. No new
+  data: unlock, watchlist and prior walls were all already recorded.
+  4. The em-dash is gone from user-facing copy: 37 across nine
+  templates plus the PDF, the Telegram summary and two sign-in errors.
+  Most were a bare dash standing for a missing figure, breaking both
+  house rules at once. On /premium the PDF row showed the strongest
+  paid difference as a blank; it says "Not included". A test pins
+  templates and site JavaScript, so it cannot come back.
+  5. Removal: the weekly digest opt-in. Zero of 48 real accounts ever
+  ticked it and digest_sent_at was never written, so none was ever
+  sent. It was the site's only scheduled send while the change-alert
+  email promises mail only when something changed. Gone: two routes,
+  the email builder, three watchlist helpers, the UI, its CSS, its
+  GitHub workflow and four tests, replaced by one test pinning the
+  promise rather than the feature. The two columns stay, as
+  saved_districts did. Do not rebuild it.
+  6. /running-costs leads with the answer. It became the busiest single
+  page on the site on 8 Sep, 79 views against 5 on 6 Sep, and at 375px
+  the answer to the postcode just typed sat at y=1465 behind a 200-word
+  introduction, the form and a 300px map. The heading is the answer, a
+  lead line gives the yearly figure and what it is made of, and on a
+  phone the checker is ordered after it: first figure y=1710 to y=810.
+  7. The 350 council tax pages can check an address, the one indexable
+  family that had no postcode box.
+  8. A report start records which page family it began on, from a fixed
+  list, through a hidden field, with /admin showing the week against an
+  unmarked homepage-or-direct baseline. 923 distinct school pages were
+  crawled in three days for at most 7 human views each while report
+  starts tracked the homepage, and referrers are deliberately not
+  stored, so the question was unanswerable. First read: 375 report
+  views this week, all of them unmarked, which is the baseline.
+  Two things the live page caught that reading the code did not: the
+  flex wrapper that ordered the answer above the checker made the body
+  scroll to 492px at a 375px viewport, because a flex item and a 1fr
+  track both size to their own content unless told otherwise; and the
+  seven-day card would have shown people, crawl and total as three
+  numbers that do not add up, the split being calendar days and the
+  total a rolling week. Tests 257, smoke 53.
+
 - The catchment map, three steps, 9 Sep 2026 (a11fcdc, 3c3e2b4 carried
   step 2, 002cfb9). The school page already drew the published distance
   as a circle with a postcode checker; Michael approved all three
@@ -668,7 +737,9 @@ the local Claude session as things ship. Newest first.
 - Any third-party script on the site (privacy page promises none run;
   this killed the Trustpilot widget and any analytics snippet).
 - Scheduled or promotional emails without a fresh opt-in (change-alert
-  emails promise "never on a schedule").
+  emails promise "never on a schedule"). Since 9 Sep 2026 the site has
+  no scheduled send at all: the weekly digest, the only one, came out
+  unused, and a test pins that no route mails a list on a timer.
 - Trustpilot scores, stars or review counts rendered by us.
 - Features without a reliable official data source (no modelling, no
   estimates): HS2 corridors, rights of way, planning applications
