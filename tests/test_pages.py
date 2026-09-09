@@ -2049,3 +2049,62 @@ def test_the_four_404_shapes_from_search_console(client, fake_place):
     body = client.get("/area/AB12").text
     assert "/property?postcode=AB12" not in body and 'href="/#postcode=AB12"' in body
     assert "location.hash" in client.get("/").text
+
+
+# ---- Every check, side by side (9 Sep 2026) ---------------------------------
+def _saved_homes(client, email: str, premium: bool) -> list[int]:
+    """A signed-in user with two saved homes; Premium when asked."""
+    from app import db
+    from app.models import User, WatchlistItem
+    _signed_in(client, email)
+    with db.get_session() as session:
+        user = session.query(User).filter(User.email == email).one()
+        user.is_premium = premium
+        ids = []
+        for postcode, hn in (("M14 5TG", "12"), ("M14 5TG", "14")):
+            item = WatchlistItem(user_id=user.id, postcode=postcode, house_number=hn, note="")
+            session.add(item)
+            session.flush()
+            ids.append(item.id)
+        session.commit()
+    return ids
+
+
+def test_every_check_side_by_side_is_premium(client, fake_report, monkeypatch):
+    """The full comparison runs the report's own gather for each saved
+    home and lays the PDF's rows side by side. Premium sees it; a free
+    account sees what it is and no gather runs for them; signed out is
+    sent to log in."""
+    from app import main as app_main
+    from app.services import _cache
+    r = client.get("/watchlist/compare/full?item_ids=1", follow_redirects=False)
+    assert r.status_code == 303 and "/login" in r.headers["location"]
+
+    # A free account: the page explains, and never gathers.
+    ids = _saved_homes(client, "free-compare@example.com", premium=False)
+    async def _never(*a, **k):
+        raise AssertionError("the gather must not run for a locked page")
+    monkeypatch.setattr(app_main, "_full_property_gather", _never)
+    body = client.get(f"/watchlist/compare/full?item_ids={ids[0]}&item_ids={ids[1]}").text
+    assert "Premium puts every check on the report next to each other" in body
+    assert 'href="/premium"' in body and f"item_ids={ids[0]}" in body and "12, M14 5TG" in body
+    client.cookies.clear()
+
+    # Premium: rows from the fake gather, side by side, with the differ count.
+    fake_report()
+    async def _rc(where, house_number=""):
+        return {"sales": {"latest_year": 2021, "latest_amount": 250000 if house_number == "12" else 310000}}
+    monkeypatch.setattr(app_main, "_running_costs_for_postcode", _rc)
+    ids = _saved_homes(client, "paid-compare@example.com", premium=True)
+    _cache._store.clear(); _cache._bytes = 0
+    body = client.get(f"/watchlist/compare/full?item_ids={ids[0]}&item_ids={ids[1]}").text
+    assert "Every check, side by side" in body and "Sold prices at this postcode" in body
+    assert "Last sale £250,000 in 2021" in body and "Last sale £310,000 in 2021" in body
+    assert 'class="compare-row compare-differs"' in body and 'id="differences-only"' in body
+    assert "12, M14 5TG" in body and "14, M14 5TG" in body
+    assert "checks for 2 homes" in body
+
+    # The light comparison and My properties both lead here.
+    light = client.get(f"/watchlist/compare?item_ids={ids[0]}&item_ids={ids[1]}").text
+    assert f'href="/watchlist/compare/full?item_ids={ids[0]}&item_ids={ids[1]}"' in light
+    assert 'formaction="/watchlist/compare/full"' in client.get("/watchlist").text

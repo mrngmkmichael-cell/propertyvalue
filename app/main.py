@@ -7503,6 +7503,111 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
     return templates.TemplateResponse(request, "compare.html", context)
 
 
+# Every check on the report, side by side, for the homes a reader has
+# saved (9 Sep 2026). The reason to keep Premium for the length of a
+# search: Propbar's own figure is that a buyer checks 28 homes, and nine
+# of our users had already saved nineteen. Four at a time keeps the cost
+# bounded: each cold home is the full gather.
+COMPARE_FULL_MAX = 4
+
+
+def _all_unlocked(user_id: int, items: list[dict]) -> bool:
+    with db.get_session() as session:
+        return all(auth.has_unlocked(session, user_id, i["postcode"], i["house_number"]) for i in items)
+
+
+async def _compare_rows(postcode: str, house_number: str) -> dict:
+    """One saved home as the rows the PDF's at-a-glance page uses, from
+    the same gather the report runs, cached for as long as the report is."""
+    location = await lookup_postcode(postcode)
+    if location is None:
+        return {"not_found": True, "postcode": postcode, "house_number": house_number}
+    canonical = location["postcode"]
+    cache_key = ("compare_rows", canonical, house_number)
+    cached = _cache.get(cache_key, PROPERTY_SEARCH_CACHE_TTL_S)
+    if cached is not None:
+        return cached
+    report, rc = await asyncio.gather(
+        _full_property_gather(location, house_number, premium_unlocked=True),
+        _running_costs_for_postcode(location, house_number),
+        return_exceptions=True,
+    )
+    if isinstance(report, Exception):
+        raise report
+    if isinstance(rc, Exception):
+        rc = {}
+    valuation = report.get("valuation") or {}
+    stamp_duty_valuation = None
+    if valuation.get("estimate") and (location.get("country") or "England") in ("England", "Northern Ireland"):
+        price = float(valuation["estimate"])
+        stamp_duty_valuation = {
+            "price": price, "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
+            "additional": _stamp_duty(price, additional=True),
+        }
+    rows = pdf_checklist.build(report, rc, stamp_duty=stamp_duty_valuation)
+    out = {
+        "postcode": canonical, "house_number": house_number, "admin_district": location.get("admin_district", ""),
+        "rows": {(r["group"], r["check"]): r for r in rows},
+        "order": [(r["group"], r["check"]) for r in rows],
+    }
+    _cache.set(cache_key, out)
+    return out
+
+
+@app.get("/watchlist/compare/full")
+async def watchlist_compare_full(request: Request, item_ids: list[int] = Query(default=[])):
+    """Premium, or every home already unlocked. Anyone else sees what it
+    is and where to get it, and no gather runs for them."""
+    context = base_context(request)
+    user = context["current_user"]
+    if not user:
+        return RedirectResponse("/login?next=/watchlist", status_code=303)
+    items = watchlist.get_items_by_ids(user["id"], item_ids)[:COMPARE_FULL_MAX]
+    context["items"] = items
+    context["max_columns"] = COMPARE_FULL_MAX
+    context["ids_query"] = "&".join(f"item_ids={i['id']}" for i in items)
+    allowed = bool(user.get("is_premium")) or (bool(items) and await asyncio.to_thread(_all_unlocked, user["id"], items))
+    context["locked"] = not allowed
+    context["columns"] = []
+    context["groups"] = []
+    context["differ_count"] = 0
+    context["check_count"] = 0
+    if allowed and items:
+        sem = asyncio.Semaphore(2)
+
+        async def one(item: dict) -> dict:
+            async with sem:
+                try:
+                    return await _compare_rows(item["postcode"], item["house_number"])
+                except Exception:  # noqa: BLE001 - one bad address must not sink the table
+                    return {"not_found": True, "postcode": item["postcode"], "house_number": item["house_number"]}
+
+        results = await asyncio.gather(*(one(i) for i in items))
+        columns = [{**item, "data": r} for item, r in zip(items, results)]
+        order: list[tuple[str, str]] = []
+        for c in columns:
+            for key in c["data"].get("order", []):
+                if key not in order:
+                    order.append(key)
+        groups: list[tuple[str, list[dict]]] = []
+        for group, check in order:
+            cells = [c["data"].get("rows", {}).get((group, check)) for c in columns]
+            entry = {
+                "check": check, "cells": cells,
+                "differs": len({(r["result"] if r else None) for r in cells}) > 1,
+                "source": next((r["source"] for r in cells if r and r.get("source")), ""),
+            }
+            if groups and groups[-1][0] == group:
+                groups[-1][1].append(entry)
+            else:
+                groups.append((group, [entry]))
+        context["columns"] = columns
+        context["groups"] = groups
+        context["differ_count"] = sum(1 for _, rows in groups for r in rows if r["differs"])
+        context["check_count"] = sum(len(rows) for _, rows in groups)
+    return templates.TemplateResponse(request, "compare_full.html", context)
+
+
 OG_IMAGE_CACHE_TTL_S = 60 * 60 * 6
 
 

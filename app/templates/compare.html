@@ -197,5 +197,17 @@
     <p class="section-sub">
         A quick side-by-side snapshot only. Open each property's full report for the complete picture.
     </p>
+    {% if not versus and not anonymous_compare %}
+    {# The full comparison: every check on the report, side by side. #}
+    {% set ids_query %}{% for col in columns %}item_ids={{ col.id }}{% if not loop.last %}&{% endif %}{% endfor %}{% endset %}
+    <div class="compare-full-cta">
+        {% if current_user and current_user.is_premium %}
+        <a class="compare-full-btn" href="/watchlist/compare/full?{{ ids_query }}">Compare every check on these homes</a>
+        {% else %}
+        <a class="compare-full-btn" href="/watchlist/compare/full?{{ ids_query }}">Every check side by side, with Premium</a>
+        <span class="section-sub">Flood, crime, schools, energy, council tax, the valuation and the rest, for the homes you save.</span>
+        {% endif %}
+    </div>
+    {% endif %}
 {% endif %}
 {% endblock %}

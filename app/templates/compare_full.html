@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Every check, side by side | UKPropertyInsight{% endblock %}
+{% block meta_description %}The homes you have saved, compared on every check the report runs, each figure from its official source.{% endblock %}
+{% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+
+{% block content %}
+<a class="back-link" href="/watchlist">&larr; Back to My properties</a>
+
+<span class="kicker">Side by side</span>
+<h1>Every check, side by side</h1>
+
+{% if locked %}
+<p class="dek">
+    Premium puts every check on the report next to each other for the homes you save, up to {{ max_columns }} at a time:
+    flood, crime, schools, energy, council tax, the valuation, all of it, each figure from its official source, with the
+    checks that differ picked out.
+</p>
+{% if items %}
+<p class="section-sub">You picked {{ items | length }} home{{ 's' if items | length != 1 }}: {% for i in items %}{{ (i.house_number ~ ', ' ~ i.postcode) if i.house_number else i.postcode }}{% if not loop.last %}; {% endif %}{% endfor %}.</p>
+{% endif %}
+<p class="compare-full-cta">
+    <a class="compare-full-btn" href="/premium">See what Premium includes</a>
+    {% if items %}<a href="/watchlist/compare?{{ ids_query }}">Or compare the headline figures, free</a>{% endif %}
+</p>
+{% elif not columns %}
+<p class="notice">No properties selected. Go back to My properties and tick up to {{ max_columns }} to compare.</p>
+{% else %}
+<p class="dek">
+    {{ check_count }} checks for {{ columns | length }} home{{ 's' if columns | length != 1 }}, from the same official sources as each full report.
+    <strong>{{ differ_count }}</strong> of them differ between these homes.
+</p>
+<label class="map-toggle"><input type="checkbox" id="differences-only"> Show only the checks that differ</label>
+
+<div class="compare-table-wrap">
+<table class="tx-table compare-table compare-full" id="compare-full">
+    <thead>
+        <tr>
+            <th>Check</th>
+            {% for col in columns %}
+            <th>
+                {% if col.data.not_found %}
+                <span class="compare-missing">{{ col.postcode }}</span>
+                <div class="compare-note">Could not be looked up just now</div>
+                {% else %}
+                <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
+                    {{ (col.house_number ~ ", " ~ col.postcode) if col.house_number else col.postcode }}
+                </a>
+                {% if col.data.admin_district %}<div class="compare-note">{{ col.data.admin_district }}</div>{% endif %}
+                {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
+                {% endif %}
+            </th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for group, rows in groups %}
+        <tr class="compare-group"><th colspan="{{ columns | length + 1 }}">{{ group }}</th></tr>
+        {% for r in rows %}
+        <tr class="compare-row{% if r.differs %} compare-differs{% endif %}" data-differs="{{ 1 if r.differs else 0 }}">
+            <td class="compare-check"><strong>{{ r.check }}</strong>{% if r.source %}<div class="compare-note">{{ r.source }}</div>{% endif %}</td>
+            {% for cell in r.cells %}
+            <td class="cmp-{{ cell.status if cell else 'none' }}">{% if cell %}{{ cell.result }}{% else %}<span class="compare-missing">Not on this report</span>{% endif %}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+<p class="section-sub">
+    Each cell is the same reading as the card on that home's report and the row on its PDF. Colour marks a reading's own
+    verdict where the source gives one; open a report for the detail behind any figure.
+</p>
+<script>
+(function () {
+    var box = document.getElementById('differences-only');
+    var table = document.getElementById('compare-full');
+    if (!box || !table) return;
+    box.addEventListener('change', function () {
+        var only = box.checked;
+        table.querySelectorAll('tr.compare-row').forEach(function (tr) {
+            tr.hidden = only && tr.getAttribute('data-differs') === '0';
+        });
+        table.querySelectorAll('tr.compare-group').forEach(function (g) {
+            var next = g.nextElementSibling, any = false;
+            while (next && !next.classList.contains('compare-group')) {
+                if (!next.hidden) { any = true; break; }
+                next = next.nextElementSibling;
+            }
+            g.hidden = only && !any;
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

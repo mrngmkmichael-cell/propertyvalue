@@ -7940,3 +7940,17 @@ body:not(.theme-dark) .lx-hero-scrim {
 .catchment-figure { margin: 0; }
 .catchment-figure img { display: block; width: 100%; max-width: 680px; height: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .catchment-figure figcaption { font-size: var(--text-sm); color: var(--ink-soft); margin-top: 0.5rem; max-width: 680px; }
+
+
+/* Every check, side by side: the full comparison of saved homes. */
+.compare-full th, .compare-full td { vertical-align: top; min-width: 11rem; }
+.compare-full td.compare-check, .compare-full thead th:first-child { position: sticky; left: 0; background: var(--surface-2); z-index: 1; min-width: 12rem; }
+.compare-full tr.compare-group th { background: var(--surface-2); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); padding-top: 1rem; }
+.compare-full td.cmp-good { box-shadow: inset 3px 0 0 var(--good); background: var(--good-bg); }
+.compare-full td.cmp-bad { box-shadow: inset 3px 0 0 var(--bad); background: var(--bad-bg); }
+.compare-full td.cmp-warn { box-shadow: inset 3px 0 0 var(--warn); background: var(--warn-bg); }
+.compare-full tr.compare-differs td.compare-check strong { color: var(--accent); }
+.compare-full-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin-top: 1rem; }
+.compare-full-btn { display: inline-block; background: var(--accent); color: #fff; padding: 0.6rem 1.1rem; border-radius: var(--radius-sm); font-weight: 600; text-decoration: none; }
+.compare-full-btn:hover { filter: brightness(1.08); text-decoration: none; }
+button.compare-full-secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }

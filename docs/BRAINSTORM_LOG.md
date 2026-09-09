@@ -6,6 +6,19 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Every check, side by side (9 Sep 2026). /watchlist/compare/full puts
+  the PDF's at-a-glance rows for up to four saved homes next to each
+  other, from the same gather the report runs, cached like the report,
+  two gathers at a time. Premium, or every home already unlocked; a
+  free account sees what it is and no gather runs. A toggle shows only
+  the checks that differ, and the count of those leads the page. Entry
+  points: a second button on My properties, a call to action under the
+  light comparison, and the Premium plan table ("Seven headline
+  figures" against "Every check on the report"). The reason to keep
+  Premium for the length of a search: nine users had saved nineteen
+  homes and only two had paid. Tests 258. Michael declined nothing here;
+  the competitor comparison page from the same morning's assessment
+  still waits on his yes.
 - All eight ideas of the 9 Sep 2026 brainstorm, built the same morning
   (e997bd6, plus a37b714 and 2456c0c fixing two things the live page
   showed). Michael read the eight and said "do all in order", which is
