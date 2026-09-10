@@ -206,6 +206,59 @@
     </p>
     {% endif %}
 
+    {% if people_chart %}
+    {# People against all views, thirty days, one axis. All views is the
+       pale area; the line is the floor the bars above call people. Text
+       wears text tokens, the line wears the accent, and identity never
+       rests on colour alone: the legend names a shape, the ends carry
+       labels, and the same days sit in a table underneath. #}
+    <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">People and all views, last 30 days</h3>
+    <p class="section-sub">The pale area is every view the middleware recorded; the line is the part on pages read more than once that day, the same floor as the solid bars above. The last point is today so far.</p>
+    {% set c = people_chart %}
+    <figure class="pv-chart" id="people-views-chart">
+        <div class="pv-scroll">
+        <svg viewBox="0 0 {{ c.w }} {{ c.h }}" role="img" aria-label="People and all views per day, last 30 days">
+            {% for t in c.ticks %}
+            <line class="pv-grid" x1="{{ c.left }}" x2="{{ c.w - c.right }}" y1="{{ t.y }}" y2="{{ t.y }}"></line>
+            <text class="pv-tick" x="{{ c.left - 6 }}" y="{{ t.y + 3 }}" text-anchor="end">{{ t.label }}</text>
+            {% endfor %}
+            <polygon class="pv-area" points="{{ c.area }}"></polygon>
+            <polyline class="pv-views" points="{{ c.views }}"></polyline>
+            <polyline class="pv-people" points="{{ c.people }}"></polyline>
+            <circle class="pv-end pv-end-views" cx="{{ c.end_views.x }}" cy="{{ c.end_views.y }}" r="4"></circle>
+            <circle class="pv-end pv-end-people" cx="{{ c.end_people.x }}" cy="{{ c.end_people.y }}" r="4"></circle>
+            <text class="pv-label" x="{{ c.end_views.x + 7 }}" y="{{ c.end_views.y + 3 }}">{{ "{:,}".format(c.end_views.v) }}</text>
+            <text class="pv-label pv-label-people" x="{{ c.end_people.x + 7 }}" y="{{ c.end_people.y + 3 }}">{{ "{:,}".format(c.end_people.v) }}</text>
+            {% for l in c.labels %}
+            <text class="pv-tick" x="{{ l.x }}" y="{{ c.h - 8 }}" text-anchor="middle">{{ l.text }}</text>
+            {% endfor %}
+            {% for col in c.columns %}
+            <rect class="pv-hit" x="{{ col.x }}" y="{{ c.top }}" width="{{ col.w }}" height="{{ c.h - c.top - c.bottom }}">
+                <title>{{ col.date }}: {{ col.count }} views, {{ col.audience }} people, {{ col.crawl }} crawl-shaped{% if col.flagged %}; automation pattern: {{ col.reason }}{% endif %}</title>
+            </rect>
+            {% endfor %}
+        </svg>
+        </div>
+        <figcaption class="pv-legend">
+            <span><i class="pv-swatch pv-swatch-people"></i> People, pages read more than once that day</span>
+            <span><i class="pv-swatch pv-swatch-views"></i> All views</span>
+        </figcaption>
+        <details class="pv-table">
+            <summary>The same 30 days as a table</summary>
+            <div class="tablewrap">
+            <table class="tx-table">
+                <thead><tr><th>Day</th><th class="num">All views</th><th class="num">People</th><th class="num">Crawl-shaped</th><th>Shape</th></tr></thead>
+                <tbody>
+                {% for d in c.days | reverse %}
+                <tr><td>{{ d.date }}</td><td class="num">{{ "{:,}".format(d.count) }}</td><td class="num">{{ "{:,}".format(d.audience) }}</td><td class="num">{{ "{:,}".format(d.crawl) }}</td><td>{{ d.reason if d.flagged else "" }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </details>
+    </figure>
+    {% endif %}
+
     <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">Where report searches started, last 7 days</h3>
     <p class="landing-subheading">
         Each landing family's search box carries a hidden marker, so a

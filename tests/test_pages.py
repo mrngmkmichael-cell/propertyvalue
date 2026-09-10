@@ -1784,6 +1784,10 @@ def test_admin_dashboard_renders_for_the_owner_and_404s_for_everyone_else(client
     assert "Is one free report enough?" in body
     assert "Same address, more than one account, same day" in body
     assert "Free reports by mailbox provider" in body
+    # 10 Sep 2026: people against all views, thirty days, one axis, with
+    # a table of the same days so the reading never rests on the drawing.
+    assert 'id="people-views-chart"' in body and "People and all views, last 30 days" in body
+    assert "The same 30 days as a table" in body and body.count('class="pv-hit"') == 30
 
 
 def test_running_costs_leads_with_the_answer_once_there_is_one(client):

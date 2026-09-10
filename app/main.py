@@ -5947,6 +5947,46 @@ def _audience_split(paths: dict[str, int]) -> tuple[int, int]:
     return sum(paths.values()) - crawl, crawl
 
 
+def _people_views_chart(days: list[dict]) -> dict:
+    """Geometry for the people-against-views chart on /admin, so the
+    template only draws. One axis, views a day; all views as an area
+    and the people floor as a line over it, thirty days, the last of
+    them the day so far. Ticks land on round numbers."""
+    width, height, left, right, top_pad, bottom = 720, 220, 46, 56, 14, 28
+    n = len(days)
+    peak = max([d["count"] for d in days] + [1])
+    tick = next((t for t in (5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000)
+                 if peak / t <= 5), 100000)
+    top = max(tick, -(-peak // tick) * tick)
+
+    def x(i: int) -> float:
+        return left + (width - left - right) * i / max(n - 1, 1)
+
+    def y(v: float) -> float:
+        return top_pad + (height - top_pad - bottom) * (1 - v / top)
+
+    views = " ".join(f"{x(i):.1f},{y(d['count']):.1f}" for i, d in enumerate(days))
+    people = " ".join(f"{x(i):.1f},{y(d['audience']):.1f}" for i, d in enumerate(days))
+    area = f"{x(0):.1f},{y(0):.1f} {views} {x(n - 1):.1f},{y(0):.1f}"
+    ticks = [{"y": round(y(v), 1), "label": f"{v:,}"} for v in range(0, top + 1, tick)]
+    label_at = {i for i in range(0, n, 5)}
+    label_at.add(n - 1)
+    if n - 1 in label_at and (n - 1) % 5 != 0 and (n - 1) - ((n - 1) // 5) * 5 < 2:
+        label_at.discard(((n - 1) // 5) * 5)
+    labels = [{"x": round(x(i), 1), "text": days[i]["date"][5:]} for i in sorted(label_at)]
+    col_w = (width - left - right) / max(n - 1, 1)
+    columns = [{"x": round(x(i) - col_w / 2, 1), "w": round(col_w, 1), **d} for i, d in enumerate(days)]
+    last = days[-1]
+    return {
+        "w": width, "h": height, "left": left, "right": right, "top": top_pad, "bottom": bottom,
+        "views": views, "people": people, "area": area, "ticks": ticks, "labels": labels, "columns": columns,
+        "baseline": round(y(0), 1), "scale_top": top,
+        "end_views": {"x": round(x(n - 1), 1), "y": round(y(last["count"]), 1), "v": last["count"]},
+        "end_people": {"x": round(x(n - 1), 1), "y": round(y(last["audience"]), 1), "v": last["audience"]},
+        "days": days,
+    }
+
+
 def _admin_metrics(session, now: datetime.datetime) -> dict:
     """The query set behind /admin, factored out so the daily Telegram
     summary (see /internal/send-daily-summary below) reads the exact
@@ -6110,7 +6150,10 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # active day among mostly-zero days renders as one bar filling the
     # whole chart width, since the bars split width evenly across
     # however many rows the query actually returned.
-    date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(13, -1, -1)]
+    # Thirty days of the split for the people-against-views chart; the
+    # bars below keep the last fourteen, and every figure derived from
+    # them (the flagged count, the unflagged average) is unchanged.
+    date_range = [(today_start - datetime.timedelta(days=i)).date() for i in range(29, -1, -1)]
 
     # Raw rows rather than a grouped count, because a count cannot say
     # whether a day was an audience or one scraper: for that, each day
@@ -6118,7 +6161,7 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # of thousands of rows, which is nothing.
     raw_rows = session.execute(
         select(PageView.created_at, PageView.path, PageView.user_id)
-        .where(PageView.created_at >= today_start - datetime.timedelta(days=13),
+        .where(PageView.created_at >= today_start - datetime.timedelta(days=29),
                _real_page_views())
     ).all()
     by_day: dict = {}
@@ -6128,7 +6171,7 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         if user_id:
             day["signed_in"] += 1
 
-    m["daily_pageviews"] = []
+    daily_all: list[dict] = []
     pageview_counts = {}
     for d in date_range:
         key = str(d)
@@ -6141,11 +6184,14 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         one_hit = sum(1 for c in day["paths"].values() if c == 1)
         flagged, reason = _traffic_day_shape(total, top_path, top_count, one_hit, day["signed_in"])
         audience, crawl = _audience_split(day["paths"])
-        m["daily_pageviews"].append({
+        daily_all.append({
             "date": key, "count": total, "distinct": len(day["paths"]),
             "signed_in": day["signed_in"], "flagged": flagged, "reason": reason,
             "audience": audience, "crawl": crawl,
         })
+    m["daily_pageviews"] = daily_all[-14:]
+    pageview_counts = {d["date"]: d["count"] for d in m["daily_pageviews"]}
+    m["people_chart"] = _people_views_chart(daily_all)
     m["flagged_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["flagged"])
 
     # The same split rolled up. Each day is split on its own before the

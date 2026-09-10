@@ -6,6 +6,17 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- /admin: people against all views, last 30 days, as one chart (10 Sep
+  2026, Michael's ask). The daily people/crawl split the 14-day bars use
+  is now computed for 30 days; the bars keep their 14 and every figure
+  derived from them is unchanged. All views is a pale area, people a
+  single accent line with end markers and end values, one axis, round
+  ticks, a hover title per day, a legend naming shapes not colours, and
+  the same 30 days as a table underneath. Tokens only: the dataviz
+  validator wanted a lighter mark and a chroma-bearing second hue, and
+  the design brief's rule that tokens are the vocabulary won, with
+  shape and labels carrying identity instead. Scrolls sideways inside
+  its own box on a phone. Tests 259.
 - /alternatives, the comparison with Propbar, Crystal Roof and Locrating
   (9 Sep 2026, e708c5a, approved by Michael that morning). Four columns
   on one table, every cell from the other company's own public pages as

@@ -7959,3 +7959,26 @@ button.compare-full-secondary { background: transparent; color: var(--accent); b
 /* /alternatives: the four-column comparison, on the Premium page's alt-table style. */
 .alt-compare th, .alt-compare td { vertical-align: top; min-width: 10rem; }
 .alt-compare td:first-child { min-width: 9rem; }
+
+
+/* /admin: people against all views, thirty days. Tokens only. */
+.pv-chart { margin: 1rem 0 0; }
+.pv-chart .pv-scroll { overflow-x: auto; }
+.pv-chart svg { width: 100%; min-width: 640px; height: auto; display: block; }
+.pv-chart .pv-grid { stroke: var(--border); stroke-width: 1; }
+.pv-chart .pv-area { fill: var(--surface-2); stroke: none; }
+.pv-chart .pv-views { fill: none; stroke: var(--ink-faint); stroke-width: 1.5; stroke-linejoin: round; }
+.pv-chart .pv-people { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pv-chart .pv-end { stroke: var(--surface); stroke-width: 2; }
+.pv-chart .pv-end-views { fill: var(--ink-faint); }
+.pv-chart .pv-end-people { fill: var(--accent); }
+.pv-chart text { font-family: var(--font-mono); font-size: 10px; fill: var(--ink-faint); }
+.pv-chart .pv-label { fill: var(--ink-soft); font-size: 11px; font-weight: 600; }
+.pv-chart .pv-label-people { fill: var(--ink); }
+.pv-chart .pv-hit { fill: transparent; }
+.pv-chart .pv-hit:hover { fill: var(--accent); fill-opacity: 0.08; }
+.pv-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; font-size: var(--text-sm); color: var(--ink-soft); margin-top: 0.5rem; }
+.pv-swatch { display: inline-block; width: 1.4rem; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 0.4rem; }
+.pv-swatch-views { height: 0.7rem; border: 1px solid var(--border); background: var(--surface-2); }
+.pv-table { margin-top: 0.75rem; }
+.pv-table summary { cursor: pointer; font-size: var(--text-sm); color: var(--ink-soft); }
