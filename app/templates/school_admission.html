@@ -8,9 +8,9 @@
 {# "X catchment area" is the query parents type; the figure in the
    title is the answer they are after, and no other result has it. The
    authority is the part that can be spared when the title runs long. #}
-{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": " ~ school.miles_label ~ " miles" ~ school.year_phrase) }}{% endblock %}
-{% block meta_description %}{{ school.name }} catchment area: last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}. Check any postcode against it on the map, free.{% endblock %}
-{% block og_title %}{{ school.name }}: admitted from {{ school.miles_label }} miles{% endblock %}
+{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": distance did not limit entry" if school.no_distance_limit else ": " ~ school.miles_label ~ " miles" ~ school.year_phrase) }}{% endblock %}
+{% block meta_description %}{{ school.name }} catchment area: {% if school.no_distance_limit %}distance did not limit entry{{ school.year_phrase }}, on the figure {{ school.authority }} published{% else %}last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}{% endif %}. Check any postcode against it on the map, free.{% endblock %}
+{% block og_title %}{{ school.name }}: {% if school.no_distance_limit %}distance did not limit entry{% else %}admitted from {{ school.miles_label }} miles{% endif %}{% endblock %}
 {# A card of this school's own figure, so a link shared into a
    parents' group says the number before anyone taps it. #}
 {% block og_image %}{{ og_school_url }}{% endblock %}
@@ -58,8 +58,13 @@
         <span class="score-tile-label">{% if school.ofsted_note and not school.ofsted_rating_label %}{{ school.ofsted_note }}{% else %}Ofsted{% if school.ofsted_inspection_date %}, {{ school.ofsted_inspection_date.strftime("%b %Y") }}{% endif %}{% endif %}</span>
     </div>
     <div class="score-tile">
+        {% if school.no_distance_limit %}
+        <span class="score-tile-value">No limit</span>
+        <span class="score-tile-label">Distance did not limit entry, {{ school.year_or_latest }}</span>
+        {% else %}
         <span class="score-tile-value">{{ school.miles_label }} mi</span>
         <span class="score-tile-label">Admitted from, {{ school.year_or_latest }}{% if school.miles < 0.25 %}, about {{ (school.miles * 1609.34) | round | int }} metres{% endif %}</span>
+        {% endif %}
     </div>
     {% if school.occupancy_pct %}
     <div class="score-tile">
@@ -86,7 +91,7 @@
 {% if not check %}
 <form class="search-form admission-check admission-check-top" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search" style="max-width: 36rem; margin: 0 0 1.25rem;">
     <div class="search-form-field">
-        <label for="check-postcode-top">Will an address get in? Check a postcode against {{ school.miles_label }} miles</label>
+        <label for="check-postcode-top">Will an address get in? {% if school.no_distance_limit %}Check how far an address is{% else %}Check a postcode against {{ school.miles_label }} miles{% endif %}</label>
         <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
     </div>
     <button type="submit">Check this postcode</button>
@@ -96,15 +101,21 @@
 {# Sharing sits after the figure, not before it: a link is worth
    passing on once the number has been read. #}
 {% if not current_user %}
-{% with share_url=canonical_url, share_text=school.name ~ " admitted from " ~ school.miles_label ~ " miles" ~ school.year_phrase ~ ": check any postcode against it" %}{% include "_share_row.html" %}{% endwith %}
+{% with share_url=canonical_url, share_text=(school.name ~ ": distance did not limit entry" ~ school.year_phrase) if school.no_distance_limit else (school.name ~ " admitted from " ~ school.miles_label ~ " miles" ~ school.year_phrase ~ ": check any postcode against it") %}{% include "_share_row.html" %}{% endwith %}
 {% endif %}
 
 <section class="report-section">
     <h2>Will an address get in?</h2>
     <p class="section-sub">
+        {% if school.no_distance_limit %}
+        {{ school.authority }} records the furthest offer at {{ school.miles_label }} miles, which is further than any school
+        run. Read plainly, that means <strong>distance did not limit entry</strong>: no nearer applicant was refused on it.
+        Put a postcode in to see how far the address is, though distance is not what will decide this one.
+        {% else %}
         In the {% if school.year_label %}{{ school.year_label }} round{% else %}latest published round{% endif %}, the furthest-away child offered a place at
         {{ school.name }} lived <strong>{{ school.miles_label }} miles</strong> away, according to
         {{ school.authority }}. Put a postcode in and it is measured against that distance.
+        {% endif %}
     </p>
     {% if deadline %}
     <p class="section-sub admission-deadline">
@@ -128,10 +139,12 @@
     <div class="admission-verdict admission-verdict-{{ check.level }}" id="verdict">
         <span class="admission-verdict-label">{{ check.label }}</span>
         <span class="admission-verdict-detail">
-            <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles }} miles</strong> from {{ school.name }},
-            {{ check.why }} ({{ check.radius_miles }} miles {{ school.in_year }}).
+            <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles }} miles</strong> from {{ school.name }}.
+            {% if check.no_limit %}Distance did not limit entry {{ school.in_year }}: the furthest offer the council recorded was
+            {{ school.miles_label }} miles away, so no nearer applicant was refused on it.
+            {% else %}{{ check.why }} ({{ check.radius_miles }} miles {{ school.in_year }}).
             {% if check.level == 'likely' %}That is {{ check.margin_miles }} miles inside it.
-            {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) }} miles outside it.{% endif %}
+            {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) }} miles outside it.{% endif %}{% endif %}
         </span>
         <span class="section-sub" style="flex-basis:100%; margin:0">
             Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
@@ -163,10 +176,15 @@
     {# The map: the school, the distance drawn as a circle, and the
        checked address when there is one. A circle is a simplification
        and the caption says so, but it beats a number floating alone. #}
-    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }} and the {{ school.miles_label }} mile admission distance"></div>
+    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }}{% if not school.no_distance_limit %} and the {{ school.miles_label }} mile admission distance{% endif %}"></div>
     <p class="section-sub">
+        {% if school.no_distance_limit %}
+        No circle to draw: {{ school.miles_label }} miles is not a distance limit, so the map shows the school and the postcode
+        you check, and claims nothing about a boundary.
+        {% else %}
         The circle is {{ school.miles_label }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.{% if district_labels %}
         The labels are postcode districts whose centre falls inside it; each opens the district's guide.{% endif %}
+        {% endif %}
     </p>
     {% if nearby_rings %}
     {# Step 1 of the catchment map: the nearest schools' distances, on
@@ -540,7 +558,7 @@
 <script>
     window.SCHOOL_PAGE = {
         lat: {{ school.latitude | tojson }}, lng: {{ school.longitude | tojson }},
-        name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }},
+        name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }}, noLimit: {{ school.no_distance_limit | tojson }},
         year: {{ school.academic_year | tojson }},
         check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }},
         nearby: {{ (nearby_rings or []) | tojson }},
@@ -561,11 +579,17 @@
             styles: window.mapStyles(),
         });
         new google.maps.Marker({ position: centre, map: map, title: S.name });
-        const circle = new google.maps.Circle({
-            center: centre, radius: S.miles * 1609.34, map: map,
-            strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
-        });
-        const bounds = circle.getBounds();
+        // A figure beyond a school run is not a distance to draw, so the
+        // map shows the school and the checked postcode and nothing else.
+        const bounds = new google.maps.LatLngBounds();
+        if (S.noLimit) {
+            bounds.extend(centre);
+        } else {
+            bounds.union(new google.maps.Circle({
+                center: centre, radius: S.miles * 1609.34, map: map,
+                strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
+            }).getBounds());
+        }
         // Step 2: the districts inside the distance, as labels at their
         // centres. A marker with no icon and a label is the plain way to
         // put text on this map; each label opens the district's guide.
@@ -586,6 +610,7 @@
             bounds.extend(pos);
         }
         map.fitBounds(bounds, 30);
+        if (S.noLimit && !S.check) { map.setZoom(14); }
         // Step 1: the nearest schools' distances, drawn on request and
         // removed again, the view following whichever set is showing.
         const toggle = document.getElementById('nearby-rings-toggle');
@@ -633,10 +658,12 @@
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19,
         }).addTo(map);
         L.marker([S.lat, S.lng]).addTo(map).bindPopup(S.name);
-        const circle = L.circle([S.lat, S.lng], {
-            radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
-        }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map);
-        const bounds = circle.getBounds();
+        let bounds = L.latLngBounds([[S.lat, S.lng]]);
+        if (!S.noLimit) {
+            bounds = L.circle([S.lat, S.lng], {
+                radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
+            }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map).getBounds();
+        }
         (S.districts || []).forEach(function (d) {
             L.marker([d.lat, d.lng], {
                 icon: L.divIcon({ className: 'map-district-label', html: d.code, iconSize: null }),
@@ -648,7 +675,8 @@
                 .bindPopup(S.check.postcode + ': ' + S.check.label).addTo(map);
             bounds.extend([S.check.lat, S.check.lng]);
         }
-        map.fitBounds(bounds, { padding: [30, 30] });
+        if (S.noLimit && !S.check) { map.setView([S.lat, S.lng], 14); }
+        else { map.fitBounds(bounds, { padding: [30, 30] }); }
         const toggle = document.getElementById('nearby-rings-toggle');
         if (toggle && S.nearby && S.nearby.length) {
             const group = L.layerGroup();
@@ -692,7 +720,7 @@
                 <tr>
                     <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a></td>
                     <td>{{ n.phase }}</td>
-                    <td class="num">{{ n.miles }} mi{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
+                    <td class="num">{% if n.miles > 20 %}No limit{% else %}{{ n.miles }} mi{% endif %}{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
                     <td class="num">{{ n.away_miles }} mi</td>
                 </tr>
                 {% endfor %}

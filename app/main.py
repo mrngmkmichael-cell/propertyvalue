@@ -8729,11 +8729,19 @@ def _school_verdict_summary(landscape: dict | None, limit: int = 8) -> dict | No
             "any_published": any(r["kind"] == "published" for r in rows)}
 
 
-def _admission_verdict(distance_miles: float, radius_miles: float) -> dict:
+def _admission_verdict(distance_miles: float, radius_miles: float, no_limit: bool = False) -> dict:
     """Compare an address's distance from a school with how far the
     school admitted from last time. Three honest bands rather than a
     yes/no: the distance moves every year, so anything within about a
     tenth of it either way is genuinely uncertain and says so."""
+    if no_limit:
+        # Nothing to be inside or outside of: the council's own figure
+        # puts the furthest offer beyond any commute.
+        return {
+            "level": "likely", "label": "Very likely", "no_limit": True,
+            "why": "distance did not limit entry",
+            "distance_miles": round(distance_miles, 2), "radius_miles": radius_miles, "margin_miles": None,
+        }
     ratio = distance_miles / radius_miles if radius_miles else 99
     if ratio <= 0.85:
         level, label = "likely", "Likely"
@@ -8773,7 +8781,8 @@ async def og_school_image(request: Request, urn: int):
             facts.append(("Expected standard", f"{profile['ks2']['rwm_expected_pct']}%"))
         cached = og_image.render_school(
             name=profile["name"], authority=profile.get("authority", ""),
-            miles=profile.get("miles"), academic_year=_school_labels(profile)["year_label"],
+            miles=None if _school_labels(profile)["no_distance_limit"] else profile.get("miles"),
+            academic_year=profile["year_label"],
             rating_label=profile.get("ofsted_rating_label", ""), town=profile.get("town", ""),
             facts=facts,
         )
@@ -8783,6 +8792,17 @@ async def og_school_image(request: Request, urn: int):
 
 
 _YEAR_LIKE = re.compile(r"^(20\d\d)([/-]\d\d)?$")
+
+# A published "last distance offered" beyond this is not a catchment, and
+# 91 schools carry one (read 12 Sep 2026). Brent publishes 621.37 miles
+# for four schools, which is exactly 1000 km and so plainly a "no limit"
+# sentinel; Gloucestershire publishes round county-wide numbers for 55 of
+# them; the widest is 868.30. Whatever each council meant, one thing
+# follows either way, and it is the only thing the page can honestly say:
+# if the furthest offer was that far away, no nearer applicant was
+# refused on distance. Twenty miles is well beyond a school run, so a
+# figure above it cannot answer "will my address get in" either way.
+NO_DISTANCE_LIMIT_MILES = 20
 
 
 def _school_labels(profile: dict) -> dict:
@@ -8797,6 +8817,7 @@ def _school_labels(profile: dict) -> dict:
     profile["in_year"] = f"in {profile['year_label']}" if profile["year_label"] else "in the latest published year"
     miles = profile.get("miles")
     profile["miles_label"] = (f"{miles:.2f}".rstrip("0").rstrip(".")) if isinstance(miles, (int, float)) else ""
+    profile["no_distance_limit"] = isinstance(miles, (int, float)) and miles > NO_DISTANCE_LIMIT_MILES
     return profile
 
 
@@ -8815,7 +8836,9 @@ def _school_badge_snippet(request: Request, profile: dict, slug: str) -> str:
     base = _public_base_url(request)
     page = f"{base}/school/{profile['urn']}/{slug}"
     _school_labels(profile)
-    if profile.get("miles"):
+    if profile.get("no_distance_limit"):
+        alt = f"{profile['name']}: distance did not limit entry{profile['year_phrase']}"
+    elif profile.get("miles"):
         alt = f"{profile['name']}: admitted from {profile['miles_label']} miles{profile['year_phrase']}"
     else:
         alt = f"{profile['name']}: Ofsted, results and admissions on UKPropertyInsight"
@@ -8838,6 +8861,9 @@ async def school_catchment_image(request: Request, urn: int):
         if profile is None or not profile.get("miles"):
             raise StarletteHTTPException(status_code=404)
         _school_labels(profile)
+        if profile["no_distance_limit"]:
+            # A ring drawn to scale at 868 miles is worse than no picture.
+            raise StarletteHTTPException(status_code=404)
         districts = await asyncio.to_thread(_outcodes_within, profile["latitude"], profile["longitude"], profile["miles"])
         cached = await asyncio.to_thread(
             catchment_image.render,
@@ -8864,7 +8890,10 @@ async def school_badge(request: Request, urn: int):
         if len(name) > 40:
             name = name[:39].rstrip() + "…"
         _school_labels(profile)
-        if profile.get("miles"):
+        if profile.get("no_distance_limit"):
+            headline = "Distance did not limit entry"
+            sub = f"{profile['year_or_latest']}, {profile.get('authority', '')}".strip(", ")
+        elif profile.get("miles"):
             headline = f"Admitted from {profile['miles_label']} miles"
             sub = f"{profile['year_or_latest']}, {profile.get('authority', '')}".strip(", ")
         else:
@@ -8915,7 +8944,8 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["school"] = _school_labels(profile)
     # The share image: the ring to scale when there is a distance (step 3
     # of the catchment map), the plain card when there is not.
-    context["og_school_url"] = (f"{base}/school/{urn}/catchment.png" if profile.get("miles")
+    context["og_school_url"] = (f"{base}/school/{urn}/catchment.png"
+                                if profile.get("miles") and not profile.get("no_distance_limit")
                                 else f"{base}/og/school/{urn}.png")
     context["council_slug"] = schools_db._slugify(profile.get("authority", ""))
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(base, [
@@ -8932,6 +8962,7 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
          "away": n["away_miles"], "url": f"/school/{n['urn']}/{n['slug']}"}
         for n in context["nearby_with_figure"]
         if n.get("latitude") is not None and n.get("longitude") is not None and n.get("miles")
+        and n["miles"] <= NO_DISTANCE_LIMIT_MILES
     ][:6]
     context["shortlisted"] = bool(context["current_user"]) and any(
         i["urn"] == urn for i in school_shortlist.list_items(context["current_user"]["id"])
@@ -8955,11 +8986,12 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
             context["check_error"] = True
         else:
             km = _haversine_km(profile["latitude"], profile["longitude"], where["latitude"], where["longitude"])
-            verdict = _admission_verdict(km / 1.60934, profile["miles"])
+            verdict = _admission_verdict(km / 1.60934, profile["miles"], profile.get("no_distance_limit"))
             verdict.update({"postcode": where["postcode"], "latitude": where["latitude"],
                             "longitude": where["longitude"]})
             context["check"] = verdict
-    context["nearby_areas"] = await asyncio.to_thread(
+    # Districts "inside the distance" mean nothing when there is no limit.
+    context["nearby_areas"] = [] if profile.get("no_distance_limit") else await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
     )
     # Catchment map, step 2: the same districts as labels on the map, at
@@ -8989,10 +9021,15 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         (f"What is the catchment area for {profile['name']}?",
          "It does not have one in the sense most people mean. Like most English schools, "
          "when it is oversubscribed it offers places outward from the school until they run "
-         f"out. The furthest child admitted {profile['in_year']} lived "
-         f"{profile['miles']} miles away, according to {profile['authority']}."),
+         f"out. The furthest child admitted {profile['in_year']} lived " +
+         (f"{profile['miles_label']} miles away, which is further than any school run. Read plainly that "
+          f"means distance did not limit entry: no nearer applicant was refused on it. Published by "
+          f"{profile['authority']}." if profile["no_distance_limit"]
+          else f"{profile['miles']} miles away, according to {profile['authority']}.")),
         (f"How close do I need to live to get into {profile['name']}?",
-         f"{profile['miles']} miles was enough {profile['in_year']}, which makes it "
+         (f"Distance did not limit entry {profile['in_year']}: the furthest offer the council recorded was "
+          f"{profile['miles_label']} miles away. That makes it " if profile["no_distance_limit"]
+          else f"{profile['miles']} miles was enough {profile['in_year']}, which makes it ") +
          "the best evidence available rather than a promise about next year. The distance "
          "moves every year with the number of applications."),
         (f"Does buying a house near {profile['name']} guarantee a place?",

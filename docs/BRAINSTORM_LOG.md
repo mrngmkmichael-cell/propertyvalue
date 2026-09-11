@@ -6,6 +6,22 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- A published distance beyond a school run is no longer shown as a
+  catchment (12 Sep 2026). 91 school pages carried a council-published
+  "last distance offered" over 20 miles, up to 868.30. Brent publishes
+  621.37 for four schools, which is exactly 1000 km and so plainly a "no
+  limit" sentinel; Gloucestershire publishes round county-wide numbers
+  for 55. The page had been printing the figure as the headline, putting
+  it in the title and the share title, drawing it as a circle on the map
+  and rendering it to scale in the catchment picture. Above
+  NO_DISTANCE_LIMIT_MILES = 20 the page now says what the figure implies
+  and nothing more: distance did not limit entry, so no nearer applicant
+  was refused on it. The ring is not drawn, catchment.png answers 404 and
+  the plain share card is used instead, the districts section is dropped,
+  the postcode verdict says the same thing, and nearby-school tables read
+  "No limit". Found while pulling numbers for a Reddit post, which is
+  the second time an outward-facing draft has surfaced a defect on the
+  pages Google ranks best. Tests 268.
 - All eight ideas of the 11 Sep 2026 brainstorm, built the same day
   (3afe11b, 94ce7f6, c5e16a7). Michael read the eight and said "Do all 8
   in sequence", which is the approval the two decision-flagged ones

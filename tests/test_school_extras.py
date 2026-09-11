@@ -151,3 +151,57 @@ def test_the_distance_exists_as_a_real_image(client):
     # profile query joins the distance table), so the only "no picture"
     # case is a school that is not on the register at all.
     assert client.get("/school/900199/catchment.png", follow_redirects=False).status_code in (404, 302)
+
+
+def test_a_distance_beyond_a_school_run_is_not_shown_as_a_catchment(client):
+    """91 councils publish a last-admitted distance that is not a
+    catchment: Brent's 621.37 miles is exactly 1000 km, and the widest is
+    868.30. The page used to print it as a figure, put it in the title
+    and draw it as a circle. It now says what the figure implies, and the
+    picture that would draw the ring to scale answers 404."""
+    from app import db, main as app_main
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    from app.services import _cache
+    with db.get_session() as session:
+        session.merge(School(urn=900110, name="No Limit High School", phase="Secondary", type_name="Academy",
+                             postcode="M14 5TG", latitude=53.4501, longitude=-2.2201))
+        session.merge(SchoolDetail(urn=900110, town="Manchester", local_authority="Manchester"))
+        session.merge(SchoolAdmissionRadius(urn=900110, last_distance_miles=868.3, academic_year="2025/26",
+                                            source_authority="Cheshire West and Chester"))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+
+    body = client.get("/school/900110/no-limit-high-school").text
+    title = body.split("<title>")[1].split("</title>")[0]
+    assert "868" not in title and "distance did not limit entry" in title
+    og = body.split('property="og:title" content="')[1].split('"')[0]
+    assert "868" not in og and "distance did not limit entry" in og
+    assert "No limit" in body and "868.3 miles away, which is further than any school run" in body
+    assert "noLimit: true" in body                         # the map draws no ring
+    assert "No circle to draw" in body
+    assert "Postcode districts within" not in body         # meaningless without a limit
+    assert 'content="https://testserver/og/school/900110.png"' in body   # the plain card, not the ring picture
+    assert client.get("/school/900110/catchment.png", follow_redirects=False).status_code in (404, 302)
+
+    badge = client.get("/school/900110/badge.svg")
+    assert badge.status_code == 200 and "Distance did not limit entry" in badge.text and "868" not in badge.text
+
+    checked = client.get("/school/900110/no-limit-high-school?check=M14+5TG").text
+    assert "Very likely" in checked and "Distance did not limit entry" in checked
+    assert "comfortably inside" not in checked
+
+    # A real distance is untouched: its own figure, title and share title
+    # still quote it. ("No limit" does appear on that page now, in the
+    # nearby-schools table, which is the row for the school above.)
+    ordinary = client.get("/school/900101/riverside-primary-school").text
+    assert "0.62 miles" in ordinary
+    assert "0.62 miles" in ordinary.split("<title>")[1].split("</title>")[0]
+    assert '<span class="score-tile-value">0.62 mi</span>' in ordinary
+
+
+def test_the_threshold_is_stated_once(client):
+    from app import main as app_main
+    assert app_main.NO_DISTANCE_LIMIT_MILES == 20
+    assert app_main._school_labels({"miles": 20.5, "academic_year": "2025/26"})["no_distance_limit"] is True
+    assert app_main._school_labels({"miles": 19.5, "academic_year": "2025/26"})["no_distance_limit"] is False
+    assert app_main._school_labels({"miles": None, "academic_year": ""})["no_distance_limit"] is False
