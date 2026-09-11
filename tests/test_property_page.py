@@ -381,7 +381,12 @@ def test_the_cold_report_wait_is_recorded_not_invisible(client, fake_report):
     """The middleware records only status 200, so anyone who abandoned
     during the 202 "building your report" wait left no row at all: the
     funnel read "searched, never saw a report" with nothing to say why.
-    The wait is now a synthetic pageview, like the paywall moment."""
+    The wait is a synthetic pageview, like the paywall moment.
+
+    Since 11 Sep 2026 it is the page's first poll that records it, not
+    the 202 render. That day the 202 was rendered 144 times and produced
+    2 views of a finished report, because something was requesting the
+    URL and never running the page."""
     from app.db import get_session
     from app.main import BUILDING_PATH
     from app.models import PageView
@@ -397,15 +402,107 @@ def test_the_cold_report_wait_is_recorded_not_invisible(client, fake_report):
     assert r.status_code == 202
     assert "building" in r.text.lower()
 
+    # Asking for the page is not a wait. Only a client that comes back
+    # for the answer is.
+    with get_session() as s:
+        assert s.query(PageView).filter(PageView.path == BUILDING_PATH).count() == before, (
+            "rendering the wait page must not record a wait on its own")
+
+    client.get("/api/report-ready?postcode=M14%205TG", headers=browser)
     with get_session() as s:
         after = s.query(PageView).filter(PageView.path == BUILDING_PATH).count()
-    assert after == before + 1, "the wait must leave a row"
+    assert after == before + 1, "the poll that starts the build must leave a row"
+
+    # Polling again while the same build runs is one wait, not many.
+    client.get("/api/report-ready?postcode=M14%205TG", headers=browser)
+    with get_session() as s:
+        assert s.query(PageView).filter(PageView.path == BUILDING_PATH).count() == after
 
     # The crawler path is unchanged: blocking render, no synthetic row.
     r2 = client.get("/property?postcode=M14%205TG")
     assert r2.status_code == 200
     with get_session() as s:
         assert s.query(PageView).filter(PageView.path == BUILDING_PATH).count() == after
+
+
+def test_a_report_page_request_does_not_start_a_gather_on_its_own(client, fake_report,
+                                                                  monkeypatch):
+    """11 Sep 2026: 144 wait pages rendered against 2 finished report
+    views, at 8 to 24 an hour without a pause from 23:00 the night
+    before. Each 202 render started a full ~30-service gather, so one
+    plain GET was enough to make the site do all of that work, on an
+    instance that runs two builds at a time. The first poll starts it
+    now, which costs a browser one round trip and costs a client that
+    never runs the page nothing at all."""
+    from app import main
+
+    fake_report()
+    browser = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"}
+
+    spawned = []
+    monkeypatch.setattr(main, "_spawn_gather",
+                        lambda location, hn: spawned.append((location["postcode"], hn)))
+
+    r = client.get("/property?postcode=M14%205TG", headers=browser)
+    assert r.status_code == 202
+    assert spawned == [], "the wait page itself must not start a gather"
+
+    client.get("/api/report-ready?postcode=M14%205TG", headers=browser)
+    assert len(spawned) == 1, "the first poll starts it"
+
+
+def test_a_crawler_is_not_held_for_a_whole_cold_build(client, fake_report, monkeypatch):
+    """11 Sep 2026, production, with a crawler user agent: M1 1AE took
+    25.39 s and LS6 3AA 21.52 s, against 0.32 s for the same address
+    warm. On a two-worker instance that is a request a person is queued
+    behind, and the report page is noindex, follow in any case, so the
+    blocking render was buying link discovery rather than a place in the
+    index. Past the deadline the crawler gets the same interim page a
+    person sees, with the district's real figures on it."""
+    import asyncio
+
+    from app import main
+
+    fake_report()
+
+    async def _never(*_args, **_kwargs):
+        await asyncio.sleep(30)
+
+    monkeypatch.setattr(main, "CRAWLER_RENDER_DEADLINE_S", 0.3)
+    monkeypatch.setattr(main, "_gather_with_cap", _never)
+
+    r = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"})
+    assert r.status_code == 200
+    assert "building" in r.text.lower()
+    # Still noindex, so an interim page cannot take a report's place.
+    assert 'content="noindex, follow"' in r.text
+
+
+def test_a_crawler_never_takes_a_build_slot_from_a_person(monkeypatch):
+    """Both slots busy means people are already waiting for a build. A
+    crawler starts nothing of its own then, and is handed the district
+    page instead of being queued in front of them."""
+    import asyncio
+
+    from app import main
+    from app.services import _cache
+
+    _cache._store.clear()
+    _cache._bytes = 0
+    main._gather_progress.clear()
+
+    spawned = []
+    monkeypatch.setattr(main, "_spawn_gather", lambda location, hn: spawned.append(1))
+
+    async def go():
+        async with main._GATHER_CONCURRENCY:
+            async with main._GATHER_CONCURRENCY:
+                assert main._GATHER_CONCURRENCY.locked()
+                return await main._gather_within_deadline({"postcode": "M14 5TG"}, "")
+
+    assert asyncio.run(go()) is False
+    assert spawned == [], "a crawler must not start a gather while people are waiting"
 
 
 def test_the_report_loads_no_third_party_scripts_or_styles(client, fake_report):

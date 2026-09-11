@@ -3,12 +3,43 @@ from urllib.parse import quote
 
 import httpx
 
+from app.services import _cache
+
 API_BASE = "https://api.postcodes.io"
+
+# A postcode's coordinates, district and area codes change only when ONS
+# publishes a new release, which is quarterly. Until 11 Sep 2026 this
+# function was the one lookup on the site with no cache at all, and it
+# is on the front of nearly every path that matters: the report route,
+# the "building your report" page, the poll that page makes, the
+# running-costs answer, and every school and area address check. Twenty
+# four call sites, each an HTTP round trip to a third party before any
+# of our own work began. Measured that day on production, the wait page
+# that exists to remove the wait took 3.96 and 5.37 s to appear.
+#
+# A week is far shorter than the release cadence and short enough that a
+# newly created postcode appears without a deploy. A miss is cached too,
+# for an hour only: a postcode that does not exist is usually a typo,
+# and a genuinely new one should not be denied for a week.
+_TTL_S = 7 * 24 * 3600
+_MISS_TTL_S = 3600
 
 
 async def lookup_postcode(raw_postcode: str) -> dict | None:
     """Look up a postcode. Returns the postcodes.io result dict, or None
     if the postcode is not valid / not found."""
+    cleaned = raw_postcode.strip().upper()
+    key = ("postcode_lookup", cleaned)
+    # None is a real answer here, so the cache holds a one-key wrapper
+    # rather than the result itself; a bare None cannot be told apart
+    # from a miss.
+    hit = _cache.get(key, _TTL_S)
+    if hit is not None:
+        if hit["result"] is not None:
+            return hit["result"]
+        if _cache.get(key, _MISS_TTL_S) is not None:
+            return None
+
     encoded = quote(raw_postcode.strip())
     url = f"{API_BASE}/postcodes/{encoded}"
 
@@ -16,9 +47,12 @@ async def lookup_postcode(raw_postcode: str) -> dict | None:
         response = await client.get(url)
 
     if response.status_code == 404:
+        _cache.set(key, {"result": None})
         return None
     response.raise_for_status()
-    return response.json()["result"]
+    result = response.json()["result"]
+    _cache.set(key, {"result": result})
+    return result
 
 
 _MONTHS = ("January", "February", "March", "April", "May", "June",

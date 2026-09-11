@@ -175,7 +175,7 @@
         {% set max_count = daily_pageviews | map(attribute='count') | max %}
         {% for d in daily_pageviews %}
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;"
-             title="{{ d.date }}: {{ d.count }} views, of which {{ d.audience }} on pages read more than once and {{ d.crawl }} on pages visited exactly once. {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}">
+             title="{{ d.date }}: {{ d.count }} views, of which {{ d.audience }} on pages read more than once and {{ d.crawl }} on pages visited exactly once. {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}{% if d.capped_views %}. {{ d.capped_views }} repeat views of {{ d.capped_path }} held back from the people figure{% endif %}">
             <div style="width:100%; display:flex; flex-direction:column; justify-content:flex-end; height:80px;">
                 <div style="width:100%; background:var(--surface-2); border:1px solid var(--border); border-bottom:0; border-radius:3px 3px 0 0; height:{{ (d.crawl / max_count * 80) if max_count else 0 }}px;"></div>
                 <div style="width:100%; background:{{ 'var(--warn)' if d.flagged else 'var(--accent)' }}; height:{{ (d.audience / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
@@ -198,6 +198,13 @@
         who reads one area guide and leaves is counted as crawl here.
         Nothing is subtracted from the raw counts above, and user agents
         are still not stored.
+        One page can no longer carry a day on its own: it counts for at
+        most as much as every other repeated page put together, and the
+        remainder moves to the pale part.
+        {% if capped_days_14d %}That held back
+        <strong>{{ "{:,}".format(capped_views_14d) }}</strong> views across
+        {{ capped_days_14d }} day{{ 's' if capped_days_14d != 1 }} in this window
+        (hover a bar to see which page).{% else %}No day in this window needed it.{% endif %}
         Days that look like people average
         <strong>{{ pageviews_avg_unflagged }}</strong> views;
         {% if flagged_days_14d %}the {{ flagged_days_14d }} amber day{{ 's' if flagged_days_14d != 1 }} carr{{ 'y' if flagged_days_14d != 1 else 'ies' }} an
@@ -234,7 +241,7 @@
             {% endfor %}
             {% for col in c.columns %}
             <rect class="pv-hit" x="{{ col.x }}" y="{{ c.top }}" width="{{ col.w }}" height="{{ c.h - c.top - c.bottom }}">
-                <title>{{ col.date }}: {{ col.count }} views, {{ col.audience }} people, {{ col.crawl }} crawl-shaped{% if col.flagged %}; automation pattern: {{ col.reason }}{% endif %}</title>
+                <title>{{ col.date }}: {{ col.count }} views, {{ col.audience }} people, {{ col.crawl }} crawl-shaped{% if col.flagged %}; automation pattern: {{ col.reason }}{% endif %}{% if col.capped_views %}; {{ col.capped_views }} repeat views of {{ col.capped_path }} held back{% endif %}</title>
             </rect>
             {% endfor %}
         </svg>

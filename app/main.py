@@ -1450,6 +1450,12 @@ def _median(values: list) -> float | None:
     return vals[len(vals) // 2] if vals else None
 
 
+# Six hours. Council tax is set once a year, the EPC register and the
+# Land Registry publish monthly, and nothing in this answer moves inside
+# a working day.
+RUNNING_COSTS_ANSWER_TTL_S = 6 * 3600
+
+
 async def _running_costs_for_postcode(where: dict, house_number: str = "") -> dict:
     """Everything official the site can say about what it costs to live
     in one postcode, for the running-costs page's table: council tax,
@@ -1607,7 +1613,22 @@ async def running_costs_page(request: Request, postcode: str = "", house_number:
         except httpx.HTTPError:
             where = None
         if where:
-            context["checked"] = await _running_costs_for_postcode(where, context["check_house"])
+            # The answer is a function of the postcode and house number
+            # and nothing else, and every part of it is an annual or
+            # quarterly official release. Until 11 Sep 2026 it was built
+            # from scratch every single time: measured that day on
+            # production, BR6 9AX with house number 6 took 3.15 s and
+            # the identical request straight after took 3.22 s, on what
+            # is now the busiest URL on the site. Tier 1 only, not the
+            # Postgres tier the area guides use, because there are 1.7
+            # million postcodes and only 2,943 districts; the bounded
+            # LRU is the right shape for a key space that large.
+            rc_key = ("running_costs_answer", where["postcode"], context["check_house"])
+            answer = _cache.get(rc_key, RUNNING_COSTS_ANSWER_TTL_S)
+            if answer is None:
+                answer = await _running_costs_for_postcode(where, context["check_house"])
+                _cache.set(rc_key, answer)
+            context["checked"] = answer
         else:
             context["checked"] = {"postcode": postcode.strip(), "district": "", "council_tax": None, "unknown": True}
     return templates.TemplateResponse(request, "running_costs.html", context)
@@ -2587,11 +2608,23 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     # A cold postcode means 10+ seconds of blank page while 38 sources
     # are queried. Real browsers instead get an instant "building your
     # report" page that polls /api/report-ready and reloads when the
-    # gather (kicked off here in the background) has landed in the
-    # cache. Crawlers and test clients keep the blocking render so SEO
-    # and the test suites see the finished page. Status 202 keeps the
-    # interim page out of the pageview count and the page cache.
-    if postcode.strip() and not _is_crawler(request.headers.get("user-agent")):
+    # gather has landed in the cache. Crawlers and test clients keep the
+    # blocking render so SEO and the test suites see the finished page.
+    # Status 202 keeps the interim page out of the pageview count and
+    # the page cache.
+    #
+    # The gather is NOT started here (changed 11 Sep 2026). It used to
+    # be, and that made a full ~30-service gather free to trigger with
+    # one plain GET: that day 144 wait pages were rendered against 2
+    # views of a finished report, at 8 to 24 an hour without a pause
+    # from 23:00 the night before, on a 512 MB instance that runs two
+    # builds at a time. Real searches queued behind a client that never
+    # came back for the answer. The first poll starts it instead, which
+    # the ready endpoint already did for a gather that died mid-flight,
+    # so the cost falls on clients that run the page's JavaScript and a
+    # browser pays one round trip of about 200 ms for it.
+    user_agent = request.headers.get("user-agent")
+    if postcode.strip() and (not _is_crawler(user_agent) or _is_real_crawler(user_agent)):
         try:
             building_location = await lookup_postcode(postcode.strip())
         except httpx.HTTPError:
@@ -2600,50 +2633,15 @@ async def property_search(request: Request, postcode: str = "", house_number: st
             b_canonical = building_location["postcode"]
             b_hn = house_number.strip()
             if _cache.get(("property_search_gather", b_canonical, b_hn), PROPERTY_SEARCH_CACHE_TTL_S) is None:
-                _spawn_gather(building_location, b_hn)
-                ctx = base_context(request)
-                ctx["building_postcode"] = b_canonical
-                ctx["building_house_number"] = b_hn
-                ctx["build_sources"] = GATHER_SOURCE_ORDER
-                # What the area guide already holds for this district,
-                # straight from the tier-2 cache: instant, true, and worth
-                # reading while the property's own checks come in. On 2
-                # Sep 2026 half the people who started a report left
-                # during the 13-second wait. Nothing is fetched for this;
-                # a district with no built guide shows nothing extra. A
-                # guide past its refresh window is still a fact about the
-                # district, so the window here is generous.
-                b_outcode = b_canonical.split(" ")[0].upper()
-                ctx["outcode"] = b_outcode
-                ctx["known"] = await asyncio.to_thread(
-                    _cache.get_persistent, ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, b_outcode),
-                    AREA_GUIDE_CACHE_TTL_S * 4,
-                )
-                ctx["known_schools"] = (
-                    await asyncio.to_thread(schools_db.admission_rows_in_outcodes, {b_outcode})
-                    if ctx["known"] else []
-                )
-                # The pageview middleware records only status 200, so
-                # until 30 Aug 2026 anyone who abandoned during the
-                # cold-report wait was invisible: their search left no
-                # row at all, and the funnel read "searched, no report"
-                # with nothing to say why. Recorded the same way the
-                # paywall moment is, as a synthetic path, so waiting can
-                # be counted and compared with the finished-report views
-                # that follow it.
-                if not _is_excluded_viewer(request) and db.is_configured():
-                    try:
-                        with db.get_session() as pv_session:
-                            user = auth.current_user(request)
-                            if not _is_admin(user):
-                                pv_session.add(PageView(
-                                    path=BUILDING_PATH,
-                                    user_id=user["id"] if user else None,
-                                ))
-                                pv_session.commit()
-                    except Exception:  # noqa: BLE001 - analytics must never break the page
-                        pass
-                return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
+                if not _is_real_crawler(user_agent):
+                    # The wait is recorded when the page's first poll
+                    # arrives, not here: see _record_building_wait.
+                    ctx = await _building_context(request, b_canonical, b_hn)
+                    return templates.TemplateResponse(request, "report_building.html", ctx, status_code=202)
+                landed = await _gather_within_deadline(building_location, b_hn)
+                if not landed:
+                    ctx = await _building_context(request, b_canonical, b_hn)
+                    return templates.TemplateResponse(request, "report_building.html", ctx, status_code=200)
 
     response = await _render_property(request, postcode, house_number)
     if cacheable and getattr(response, "status_code", None) == 200 and getattr(response, "body", None):
@@ -2927,10 +2925,162 @@ async def _gather_with_cap(location: dict, house_number: str) -> None:
     _release_memory()
 
 
-def _spawn_gather(location: dict, house_number: str) -> None:
+def _new_progress_sink() -> dict:
+    return {
+        "done": [],
+        "total": len(GATHER_SOURCE_ORDER),
+        "started": time.time(),
+        "touched": time.time(),
+    }
+
+
+def _spawn_gather(location: dict, house_number: str) -> asyncio.Task | None:
+    """Start one background gather for this address, unless one is
+    already running. Returns the task, or None if one was already live.
+
+    The progress entry is claimed here, synchronously, rather than left
+    to the gather itself (11 Sep 2026). _gather_with_cap waits on a
+    semaphore of two, and the sink that says "this address is being
+    built" was created inside _full_property_gather, which is on the far
+    side of that wait. So while both slots were busy, a queued task had
+    registered nothing, the ready endpoint saw no progress, and every
+    polling browser spawned another task every 900 ms, each of which
+    queued behind the same two slots. The one-line claim below is what
+    makes "leave a live one alone" true while it is still waiting its
+    turn."""
+    key = (location["postcode"], house_number)
+    live = _gather_progress.get(key)
+    if live is not None and time.time() - live["touched"] <= STALLED_GATHER_S:
+        return None
+    _gather_progress[key] = _new_progress_sink()
     task = asyncio.create_task(_gather_with_cap(location, house_number))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
+    return task
+
+
+# How long a search-engine crawler is made to wait for a cold report
+# before it is given the interim page instead. Measured on production on
+# 11 Sep 2026 with a crawler user agent: M1 1AE took 25.39 s and LS6 3AA
+# 21.52 s, against 0.32 s for the same address warm and about 12 s for a
+# browser, which never blocks at all. A request that holds a worker for
+# 25 seconds on a two-worker instance is a request a person is queued
+# behind, and the report page is noindex, follow in any case, so the
+# blocking render was buying link discovery, not a place in the index.
+# The interim page is the same noindex, follow page a person sees, with
+# the district's real figures and the same links on it.
+CRAWLER_RENDER_DEADLINE_S = 12.0
+_CRAWLER_WAIT_POLL_S = 0.25
+
+
+def _is_real_crawler(user_agent: str | None) -> bool:
+    """A crawler, but not our own test client.
+
+    The blocking render exists for two readers: search engines, and the
+    test suites, which drive the app through Starlette's TestClient and
+    must see a finished report rather than a holding page. Only the
+    first of them should ever be kept waiting."""
+    if not _is_crawler(user_agent):
+        return False
+    return "testclient" not in (user_agent or "").lower()
+
+
+async def _gather_within_deadline(location: dict, house_number: str) -> bool:
+    """Start the gather for this address and wait a bounded time for it.
+
+    Returns True if the result is cached and the full report can be
+    rendered. The gather is never cancelled: it keeps running in the
+    background and lands in the cache for whoever asks next, so a
+    crawler that gave up still paid for the next reader's page.
+
+    Nothing is started at all while both build slots are busy. A
+    person's report must not queue behind a crawler's, and a crawler
+    that is handed the district page has lost nothing it can measure."""
+    key = ("property_search_gather", location["postcode"], house_number)
+    cached = _cache.get(key, PROPERTY_SEARCH_CACHE_TTL_S) is not None
+    if cached:
+        return True
+    if _GATHER_CONCURRENCY.locked() and (location["postcode"], house_number) not in _gather_progress:
+        return False
+    task = _spawn_gather(location, house_number)
+    if task is None:
+        # Another reader is already building this address. Wait the same
+        # bounded time for their result rather than starting a second.
+        deadline = time.time() + CRAWLER_RENDER_DEADLINE_S
+        while time.time() < deadline:
+            await asyncio.sleep(_CRAWLER_WAIT_POLL_S)
+            if _cache.get(key, PROPERTY_SEARCH_CACHE_TTL_S) is not None:
+                return True
+        return False
+    # Shielded, so the deadline stops us waiting without stopping the
+    # work: the gather finishes and lands in the cache for whoever asks
+    # next. A gather that raises is not the crawler's problem either;
+    # the report page says in words which sources were unavailable.
+    try:
+        await asyncio.wait_for(asyncio.shield(task), CRAWLER_RENDER_DEADLINE_S)
+        return True
+    except asyncio.TimeoutError:
+        return False
+    except Exception:  # noqa: BLE001 - fall back to the interim page
+        return _cache.get(key, PROPERTY_SEARCH_CACHE_TTL_S) is not None
+
+
+async def _building_context(request: Request, canonical: str, house_number: str) -> dict:
+    """The interim "building your report" page's context.
+
+    What the area guide already holds for this district, straight from
+    the tier-2 cache: instant, true, and worth reading while the
+    property's own checks come in. On 2 Sep 2026 half the people who
+    started a report left during the 13-second wait. Nothing is fetched
+    for this; a district with no built guide shows nothing extra. A
+    guide past its refresh window is still a fact about the district, so
+    the window here is generous."""
+    ctx = base_context(request)
+    ctx["building_postcode"] = canonical
+    ctx["building_house_number"] = house_number
+    ctx["build_sources"] = GATHER_SOURCE_ORDER
+    outcode = canonical.split(" ")[0].upper()
+    ctx["outcode"] = outcode
+    ctx["known"] = await asyncio.to_thread(
+        _cache.get_persistent, ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, outcode),
+        AREA_GUIDE_CACHE_TTL_S * 4,
+    )
+    ctx["known_schools"] = (
+        await asyncio.to_thread(schools_db.admission_rows_in_outcodes, {outcode})
+        if ctx["known"] else []
+    )
+    return ctx
+
+
+def _record_building_wait(request: Request) -> None:
+    """Record one cold-report wait, as a synthetic path.
+
+    The pageview middleware records only status 200, so until 30 Aug
+    2026 anyone who abandoned during the cold-report wait was invisible:
+    their search left no row at all, and the funnel read "searched, no
+    report" with nothing to say why. Recorded the same way the paywall
+    moment is.
+
+    Called from the ready endpoint on the poll that actually starts a
+    gather, not from the 202 render (moved 11 Sep 2026). On that day the
+    202 was rendered 144 times and produced 2 finished report views,
+    because a client was requesting the URL and never running the page.
+    Counting those as waits made the one number that measures the cold
+    build unreadable. A wait now means a client that asked for the
+    report and stayed to watch it being built."""
+    if _is_excluded_viewer(request) or not db.is_configured():
+        return
+    try:
+        with db.get_session() as pv_session:
+            user = auth.current_user(request)
+            if not _is_admin(user):
+                pv_session.add(PageView(
+                    path=BUILDING_PATH,
+                    user_id=user["id"] if user else None,
+                ))
+                pv_session.commit()
+    except Exception:  # noqa: BLE001 - analytics must never break the page
+        pass
 
 
 def _progress_prune() -> None:
@@ -3208,12 +3358,11 @@ async def _full_property_gather(
     # asyncio.gather's tasks inherit the context, and they all share
     # this one dict object.
     _progress_prune()
-    sink = {
-        "done": [],
-        "total": len(GATHER_SOURCE_ORDER),
-        "started": time.time(),
-        "touched": time.time(),
-    }
+    # A background gather claimed its key in _spawn_gather before it
+    # queued for a build slot; this replaces that placeholder with the
+    # sink the sources actually tick. A blocking render (a crawler, the
+    # PDF) arrives here with nothing claimed and simply creates one.
+    sink = _new_progress_sink()
     _gather_progress[(canonical, house_number)] = sink
     _progress_sink.set(sink)
     # Local JSON lookup, England only; None elsewhere and the card says so.
@@ -5920,7 +6069,24 @@ def _real_page_views():
     )
 
 
-def _audience_split(paths: dict[str, int]) -> tuple[int, int]:
+# A page an audience uses is used alongside the rest of the site. On
+# 11 Sep 2026 /running-costs took 490 of 1,120 real views, hit at a
+# near-constant rate through every hour of the night (94, 37, 43, 34,
+# 43, 49, 33, 39, 45, 42, 30 an hour from midnight), while the whole
+# rest of the site managed 52 repeat views and nobody signed in. The
+# split below called all 490 of them people, because its only test was
+# "more than one view of this path". So one page may contribute at most
+# as much as every other repeated page put together; the rest is crawl.
+#
+# Checked against every day since 20 Aug 2026 before choosing it. It
+# leaves 20 of 23 days exactly as they were, including the two launch
+# days when the homepage legitimately took 436 of 1,014 and 463 of
+# 2,607 views with people signed in throughout. It moves the two days
+# that were known incidents: the 30 Aug scraper (5,307 people down to
+# 352, where /schools/guide alone was 5,131) and 11 Sep (550 down to
+# 104). A 25% share cap was tried first and left the scraper day
+# reading 1,891, which is why this one won.
+def _audience_split(paths: dict[str, int]) -> tuple[int, int, str, int]:
     """Split one day's views into (audience, crawl-shaped tail).
 
     The tail is every view of a path that was visited exactly once that
@@ -5942,9 +6108,26 @@ def _audience_split(paths: dict[str, int]) -> tuple[int, int]:
     This is a floor, not a truth: a real visitor who reads one area
     guide and leaves counts as crawl. The page says so, because a
     silently adjusted number is no more trustworthy than a silently
-    wrong one."""
+    wrong one.
+
+    Returns (audience, crawl, capped_path, capped_views). The last two
+    name the page whose repeats were held back by the rule above, so
+    the dashboard can show the adjustment rather than apply it in
+    silence."""
+    total = sum(paths.values())
     crawl = sum(c for c in paths.values() if c == 1)
-    return sum(paths.values()) - crawl, crawl
+    audience = total - crawl
+    repeats = {p: c for p, c in paths.items() if c > 1}
+    # Below this a day is too small for "one URL dominated" to mean
+    # anything; the same threshold the automation flag uses.
+    if total < TRAFFIC_SHAPE_MIN_VIEWS or not repeats:
+        return audience, crawl, "", 0
+    top_path, top_count = max(repeats.items(), key=lambda kv: kv[1])
+    others = audience - top_count
+    if top_count <= others:
+        return audience, crawl, "", 0
+    held_back = top_count - others
+    return audience - held_back, crawl + held_back, top_path, held_back
 
 
 def _people_views_chart(days: list[dict]) -> dict:
@@ -6183,16 +6366,19 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             top_path, top_count = max(day["paths"].items(), key=lambda kv: kv[1])
         one_hit = sum(1 for c in day["paths"].values() if c == 1)
         flagged, reason = _traffic_day_shape(total, top_path, top_count, one_hit, day["signed_in"])
-        audience, crawl = _audience_split(day["paths"])
+        audience, crawl, capped_path, capped_views = _audience_split(day["paths"])
         daily_all.append({
             "date": key, "count": total, "distinct": len(day["paths"]),
             "signed_in": day["signed_in"], "flagged": flagged, "reason": reason,
             "audience": audience, "crawl": crawl,
+            "capped_path": capped_path, "capped_views": capped_views,
         })
     m["daily_pageviews"] = daily_all[-14:]
     pageview_counts = {d["date"]: d["count"] for d in m["daily_pageviews"]}
     m["people_chart"] = _people_views_chart(daily_all)
     m["flagged_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["flagged"])
+    m["capped_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["capped_views"])
+    m["capped_views_14d"] = sum(d["capped_views"] for d in m["daily_pageviews"])
 
     # The same split rolled up. Each day is split on its own before the
     # days are added together: a page a crawler visits once a day for a
@@ -6935,10 +7121,13 @@ async def postcode_suggest(q: str = ""):
 
 
 @app.get("/api/report-ready")
-async def report_ready(postcode: str = "", house_number: str = ""):
+async def report_ready(request: Request, postcode: str = "", house_number: str = ""):
     """Polled by the report_building page. True once the gather for
-    this address is cached. Also (re)starts the gather, so a server
-    restart mid-build cannot strand a polling browser."""
+    this address is cached. Also starts the gather: since 11 Sep 2026
+    this is the only place a search starts one, so a client that asks
+    for a report page without running it never costs a gather. It also
+    restarts one that has gone quiet, so a server restart mid-build
+    cannot strand a polling browser."""
     try:
         location = await lookup_postcode(postcode.strip())
     except httpx.HTTPError:
@@ -6955,6 +7144,11 @@ async def report_ready(postcode: str = "", house_number: str = ""):
     # it firing on every poll we would run a dozen gathers at once, so
     # a live one is left alone.
     if progress is None or time.time() - progress["touched"] > STALLED_GATHER_S:
+        # A gather this poll had to start is a cold wait that a real
+        # client is sitting through, which is the thing worth counting.
+        # A restart of a stalled build is not a second wait.
+        if progress is None:
+            await asyncio.to_thread(_record_building_wait, request)
         _spawn_gather(location, hn)
         progress = _gather_progress.get((location["postcode"], hn))
     return JSONResponse({

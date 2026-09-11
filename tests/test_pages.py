@@ -1829,16 +1829,56 @@ def test_audience_split_separates_a_crawl_from_an_audience():
 
     # A crawler walking a family in order: every page once.
     crawl = {f"/school/{i}/x": 1 for i in range(100)}
-    assert _audience_split(crawl) == (0, 100)
+    assert _audience_split(crawl) == (0, 100, "", 0)
 
     # People: a few pages, read repeatedly.
     people = {"/": 40, "/running-costs": 30, "/property": 12}
-    assert _audience_split(people) == (82, 0)
+    assert _audience_split(people) == (82, 0, "", 0)
 
     # The real shape is both at once, and the split keeps them apart.
     mixed = {**crawl, **people}
-    assert _audience_split(mixed) == (82, 100)
-    assert sum(_audience_split(mixed)) == sum(mixed.values())
+    assert _audience_split(mixed) == (82, 100, "", 0)
+    audience, tail, _, _ = _audience_split(mixed)
+    assert audience + tail == sum(mixed.values())
+
+
+def test_one_page_cannot_carry_a_day_on_its_own():
+    """11 Sep 2026: /running-costs took 490 of 1,120 real views at a
+    near-constant rate through every hour of the night while the rest of
+    the site managed 52 repeat views and nobody signed in. The split
+    called all 490 of them people. A page now counts for at most as much
+    as every other repeated page put together."""
+    from app.main import _audience_split
+
+    day = {"/running-costs": 490, "/": 17, "/schools/guide": 9,
+           "/browser-extension": 3, "/area/G42/private-schools": 3,
+           "/market-report": 3}
+    day.update({f"/one-hit/{i}": 1 for i in range(578)})
+    audience, tail, path, held = _audience_split(day)
+    assert (audience, path, held) == (70, "/running-costs", 455)
+    assert audience + tail == sum(day.values())
+
+    # The 30 Aug 2026 scraper put 5,131 views on one guide.
+    scraped = {"/schools/guide": 5131, "/": 43}
+    scraped.update({f"/g/{i}": 2 for i in range(66)})
+    scraped.update({f"/one/{i}": 1 for i in range(1554)})
+    audience, _, path, _ = _audience_split(scraped)
+    assert path == "/schools/guide"
+    assert audience < 400
+
+    # A launch day is left alone: on 22 Aug 2026 the homepage took 463
+    # of 2,607 views with people signed in throughout, and that is an
+    # audience, not a client.
+    launch = {"/": 463, "/property": 300, "/premium": 200, "/signup": 150}
+    launch.update({f"/x/{i}": 2 for i in range(200)})
+    launch.update({f"/one/{i}": 1 for i in range(1094)})
+    assert _audience_split(launch)[2:] == ("", 0)
+
+    # Too small a day to judge, and a day with nothing repeated at all.
+    small = {"/": 40, "/premium": 2}
+    small.update({f"/one/{i}": 1 for i in range(20)})
+    assert _audience_split(small) == (42, 20, "", 0)
+    assert _audience_split({f"/one/{i}": 1 for i in range(400)}) == (0, 400, "", 0)
 
 
 def test_a_report_search_records_where_it_started(client, monkeypatch):

@@ -166,6 +166,13 @@ def fake_report(monkeypatch):
         _cache._store.clear()
         _cache._bytes = 0
 
+        # In-flight gathers are remembered outside the cache, and since
+        # 11 Sep 2026 a claimed address is left alone rather than
+        # rebuilt. Without this, one test's finished build tells the
+        # next test's poll that this address is already being seen to.
+        from app.main import _gather_progress
+        _gather_progress.clear()
+
         async def _lookup(_postcode):
             return location
 
