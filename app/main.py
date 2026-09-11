@@ -1205,13 +1205,18 @@ async def on_startup():
 # page that earned it. The header is not sticky, so nothing is lost by
 # scrolling: past the hero neither box is on screen either way.
 #
-# Measured on the live pages by where each form sits in the document,
-# against the h1: the header field is at 2,719 characters on every page,
-# and the page's own is at 6,950 on /running-costs, 8,079 on an area
-# guide, 6,961 on a council tax page and 7,673 on an admissions hub,
-# each just past its own heading. School pages are deliberately absent:
-# theirs is at 22,119, most of a page below the headline, so there the
-# header box is the only one near the top and it stays.
+# Measured on the live pages at 375px. The header field sits at y=124 on
+# every page; the page's own is at y=601 on /running-costs and y=513 on a
+# council tax page, both inside the first screen, and the area guide and
+# admissions hub are the same shape. Removing the header one took the
+# /running-costs heading from y=264 to y=199.
+#
+# School pages are deliberately absent, and not because of where their
+# box sits (y=808, also within the first screen). Theirs asks a
+# different question: it measures one postcode against this school's
+# published distance and answers on the same page, while the header box
+# runs a full property report. Two boxes are only one too many when they
+# ask the same thing.
 HERO_SEARCH_PATHS = ("/", "/running-costs")
 HERO_SEARCH_PREFIXES = ("/area/", "/schools/admissions/",
                         "/running-costs/council-tax/")

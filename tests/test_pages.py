@@ -1874,8 +1874,10 @@ def test_a_page_that_asks_for_a_postcode_does_not_ask_twice(client):
                  "/schools/admissions/manchester"):
         assert _page_asks_for_a_postcode(path), path
 
-    # A school page's own checker is most of a page below its headline,
-    # so the header box is the only one near the top and it stays.
+    # A school page keeps both: its own box measures a postcode against
+    # that school's published distance and answers in place, where the
+    # header box runs a full property report. Two boxes are only one too
+    # many when they ask the same thing.
     for path in ("/school/143210/brooklands-primary-school", "/premium",
                  "/schools/guide", "/buying-guide"):
         assert not _page_asks_for_a_postcode(path), path
