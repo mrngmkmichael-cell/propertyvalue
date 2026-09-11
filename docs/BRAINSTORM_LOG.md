@@ -6,6 +6,91 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All eight ideas of the 11 Sep 2026 brainstorm, built the same day
+  (3afe11b, 94ce7f6, c5e16a7). Michael read the eight and said "Do all 8
+  in sequence", which is the approval the two decision-flagged ones
+  needed. The day's reading of production: 1,236 views by 10:54 UTC of
+  which 490 were /running-costs alone and 144 the synthetic wait page,
+  against 2 views of a finished report and zero signed-in views; no
+  signup or unlock since 9 Sep at 22:24; Premium still the two accounts
+  of 26 Aug and 6 Sep out of 50 real accounts.
+  1. The /admin people figure no longer lets one page carry a day. The
+  split counted every repeat view as a person, so a single URL hit at a
+  near-constant rate through the night read as 683 people. A path now
+  counts for at most as much as every other repeated page put together,
+  and the page names what it held back. Chosen by running it over every
+  day since 20 Aug: 20 of 23 unchanged, including both launch days when
+  the homepage took 436 of 1,014 and 463 of 2,607 views with people
+  signed in throughout; the 30 Aug scraper day falls from 5,307 people
+  to 352 and 11 Sep from 550 to 104. A 25% share cap was tried first and
+  left the scraper day reading 1,891, which is why it lost.
+  2. postcodes.io lookups are cached a week, a miss an hour. Twenty four
+  call sites and the only lookup on the site with no cache at all; it
+  sits in front of the report route, the wait page, the poll that page
+  makes, the running-costs answer and every address check. The
+  running-costs answer is cached six hours per postcode and house
+  number, tier 1 only: 1.7 million postcodes is the wrong key space for
+  the Postgres tier the 2,943 area guides use. Live after: an identical
+  repeat went from 3.22 s to 0.35 s, and the wait page from 3.96 and
+  5.37 s to 0.69 and 1.16 s.
+  3. A report page request no longer starts a gather; the first poll
+  does. 144 wait pages against 2 finished reports, each render firing
+  ~30 upstream services on an instance that runs two builds at a time.
+  Two things found on the way and fixed: the progress entry that says
+  "this address is already building" was created on the far side of the
+  build semaphore, so while both slots were busy every poll from every
+  browser spawned another queued task; and the wait pageview counted
+  renders rather than waits, which is why the figure was unreadable. A
+  wait now means a client that came back for the answer.
+  4. A crawler waits at most 12 s for a cold report, then gets the same
+  interim page a person sees. Live: 25.39 s and 21.52 s became 13.3 s
+  and 13.2 s. The gather is shielded rather than cancelled so it still
+  lands for the next reader, and nothing starts at all while both build
+  slots are busy. The report page is noindex, follow either way, so the
+  blocking render was buying link discovery, not indexing. The test
+  client keeps the full blocking render.
+  5. Removal: a page that asks for a postcode no longer asks twice. The
+  header box is gone from /running-costs, area guides, council tax pages
+  and admissions hubs, which is the homepage's own rule applied to every
+  page that earned it. Measured at 375px: header field y=124 everywhere,
+  the page's own at y=601 and y=513, and the /running-costs heading rose
+  from y=264 to y=199. School pages keep both, and the first reason
+  written down for that was wrong: their box is at y=808, inside the
+  first screen, not most of a page down. It stays because it asks a
+  different question, one postcode against that school's published
+  distance answered in place, where the header box runs a full report.
+  Two boxes are only one too many when they ask the same thing.
+  6. Every council tax figure says who does not pay it. The Manchester
+  page gave Band D at 2,312.04 and every band A to H, correctly sourced,
+  and never mentioned that one adult alone pays a quarter less. All 350
+  council pages, the running-costs page, the report modal and the PDF
+  had the gap. Only statutory national rules are stated, with gov.uk or
+  mygov.scot named: 25% single person, 50% or nothing for a disregarded
+  household, the disabled band reduction, Council Tax Reduction. Empty
+  and second-home premiums are deliberately absent because each council
+  sets its own. No figure on the site is discounted, because what a
+  household pays depends on who lives there and no dataset holds that.
+  council_tax.for_district now carries its nation.
+  7. The school shortlist is offered at the answer, not above it. Four
+  schools across three accounts in ten days, with the button sitting
+  above the figure before the reader had a reason to want it. The ask is
+  now inside the verdict and carries the checked postcode through
+  sign-up; only the saved state stays at the top. If this does not move
+  in a fortnight the feature is a removal candidate, on the district
+  following and weekly digest precedent.
+  8. The funnel a day at a time on /admin. The two existing columns are
+  cumulative, so a day that kept its traffic and stopped converting read
+  exactly like a day when nothing happened. The answer to "are the quiet
+  days real": the flood began at 23:00 on 10 Sep, an hour that went from
+  0 to 138 on /running-costs and 0 to 41 on the wait page and has not
+  stopped since. Before it, 10 Sep was an ordinary day, 39 report views
+  against 32 and 38 on the two days before, with nine visits to the
+  signup page and not one account, where 5 to 9 Sep ran between a third
+  and a half. 11 Sep is genuinely thin on the human side: 18 homepage
+  views, 2 report views and no signup page views at all. So the three
+  quiet days are two different things, and the signup-page column is the
+  one to watch. Tests 266, smoke 54 against production.
+
 - /admin: people against all views, last 30 days, as one chart (10 Sep
   2026, Michael's ask). The daily people/crawl split the 14-day bars use
   is now computed for 30 days; the bars keep their 14 and every figure

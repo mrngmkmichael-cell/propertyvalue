@@ -1808,6 +1808,10 @@ def test_admin_dashboard_renders_for_the_owner_and_404s_for_everyone_else(client
     # a table of the same days so the reading never rests on the drawing.
     assert 'id="people-views-chart"' in body and "People and all views, last 30 days" in body
     assert "The same 30 days as a table" in body and body.count('class="pv-hit"') == 30
+    # 11 Sep 2026: the funnel a day at a time, and the note saying a
+    # page can no longer carry a day on its own.
+    assert "A day at a time" in body and "Signup page" in body
+    assert "every other repeated page put together" in body
 
 
 def test_running_costs_leads_with_the_answer_once_there_is_one(client):
