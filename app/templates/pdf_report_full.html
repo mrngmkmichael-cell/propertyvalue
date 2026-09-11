@@ -321,6 +321,7 @@
     {{ kv("Ground rent and service charge", "None: this home sold as freehold", "HM Land Registry", "good") }}
     {% endif %}
     {{ kv("Estate charge, on a managed development only", "No official source publishes it; ask the seller for the last two demands and the management company's name", "Companies House holds the management company's filings") }}
+    {{ kv("Discounts on the council tax above", "One adult alone pays 25% less. A home where everyone is disregarded pays 50% less or nothing. A home adapted for a disabled resident is charged at the band below.", "Statutory, Local Government Finance Act 1992; Council Tax Reduction for low incomes is set by the council in England and nationally in Wales and Scotland. Full rules at gov.uk/council-tax") }}
     {% if rental and rental.price_all %}
     {{ kv("Renting instead, " ~ rental.la_name, rental.price_all | gbp ~ " a month, " ~ ((rental.price_all * 12) | gbp) ~ " a year", "ONS Price Index of Private Rents, all sizes") }}
     {% endif %}

@@ -1196,6 +1196,32 @@ async def on_startup():
         asyncio.create_task(_prewarm_reports([_HERO_SAMPLE_POSTCODE]))
 
 
+# Pages that ask for a postcode in their own hero. The header carries a
+# postcode box on every page, which on these is the same question asked
+# twice within one screen: at 375px on /running-costs the header field
+# sits at the top and an identical field about 500 px below it, after a
+# hundred words of introduction. The homepage has been exempt since it
+# was built, for exactly this reason; this is that rule applied to every
+# page that earned it. The header is not sticky, so nothing is lost by
+# scrolling: past the hero neither box is on screen either way.
+#
+# Measured on the live pages by where each form sits in the document,
+# against the h1: the header field is at 2,719 characters on every page,
+# and the page's own is at 6,950 on /running-costs, 8,079 on an area
+# guide, 6,961 on a council tax page and 7,673 on an admissions hub,
+# each just past its own heading. School pages are deliberately absent:
+# theirs is at 22,119, most of a page below the headline, so there the
+# header box is the only one near the top and it stays.
+HERO_SEARCH_PATHS = ("/", "/running-costs")
+HERO_SEARCH_PREFIXES = ("/area/", "/schools/admissions/",
+                        "/running-costs/council-tax/")
+
+
+def _page_asks_for_a_postcode(path: str) -> bool:
+    """Does this page put a postcode box in its own hero?"""
+    return path in HERO_SEARCH_PATHS or path.startswith(HERO_SEARCH_PREFIXES)
+
+
 def base_context(request: Request) -> dict:
     return {
         "current_user": auth.current_user(request),
@@ -1215,6 +1241,7 @@ def base_context(request: Request) -> dict:
         # content varies by query param (e.g. /property?postcode=...) set
         # their own normalized canonical_url after resolving that param.
         "canonical_url": f"{_public_base_url(request)}{request.url.path}",
+        "page_asks_for_a_postcode": _page_asks_for_a_postcode(request.url.path),
     }
 
 
@@ -6379,6 +6406,68 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["flagged_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["flagged"])
     m["capped_days_14d"] = sum(1 for d in m["daily_pageviews"] if d["capped_views"])
     m["capped_views_14d"] = sum(d["capped_views"] for d in m["daily_pageviews"])
+
+    # The same funnel, but a day at a time (11 Sep 2026). The two
+    # columns above are cumulative, so a day on which the site kept its
+    # traffic and stopped converting looks exactly like a day on which
+    # nothing happened. On 10 Sep the site had an ordinary day of report
+    # traffic, 39 report views against 32 and 38 on the two days before,
+    # and nine visits to the signup page, and not one of them became an
+    # account, where 5 to 9 Sep ran at between a third and a half. That
+    # is the shape this table exists to show, and no figure on the page
+    # showed it.
+    #
+    # Three grouped queries rather than one per day: every statement is
+    # a round trip to a database in another country, which is the unit
+    # this page is charged in.
+    funnel_from = today_start - datetime.timedelta(days=13)
+    stage_rows = session.execute(
+        select(func.date(PageView.created_at), PageView.path, func.count())
+        .where(PageView.created_at >= funnel_from,
+               PageView.path.in_(("/property", BUILDING_PATH, PAYWALL_PATH, "/signup")))
+        .group_by(func.date(PageView.created_at), PageView.path)
+    ).all()
+    signup_rows = session.execute(
+        select(func.date(User.created_at), func.count())
+        .where(User.created_at >= funnel_from,
+               *( [User.id.notin_(test_ids)] if test_ids else [] ))
+        .group_by(func.date(User.created_at))
+    ).all()
+    unlock_rows = session.execute(
+        select(func.date(PremiumUnlock.created_at), func.count())
+        .where(PremiumUnlock.created_at >= funnel_from,
+               *( [PremiumUnlock.user_id.notin_(test_ids)] if test_ids else [] ))
+        .group_by(func.date(PremiumUnlock.created_at))
+    ).all()
+
+    stages: dict = {}
+    for day, path, count in stage_rows:
+        stages.setdefault(str(day), {})[path] = count
+    signups_by_day = {str(d): c for d, c in signup_rows}
+    unlocks_by_day = {str(d): c for d, c in unlock_rows}
+    people_by_day = {d["date"]: d["audience"] for d in daily_all}
+
+    m["daily_funnel"] = []
+    for d in date_range[-14:]:
+        key = str(d)
+        row = stages.get(key, {})
+        signup_page = row.get("/signup", 0)
+        signed_up = signups_by_day.get(key, 0)
+        m["daily_funnel"].append({
+            "date": key,
+            "people": people_by_day.get(key, 0),
+            "reports": row.get("/property", 0),
+            "waits": row.get(BUILDING_PATH, 0),
+            "signup_page": signup_page,
+            "signups": signed_up,
+            # The one rate worth a column: of the people who reached the
+            # signup form, how many finished. Blank rather than 0% when
+            # nobody reached it, because no visitors is not a failure to
+            # convert them.
+            "signup_rate": round(100 * signed_up / signup_page) if signup_page else None,
+            "unlocks": unlocks_by_day.get(key, 0),
+            "paywall": row.get(PAYWALL_PATH, 0),
+        })
 
     # The same split rolled up. Each day is split on its own before the
     # days are added together: a page a crawler visits once a day for a

@@ -1254,6 +1254,7 @@
                     {{ council_tax.basis }} Figures are the {{ council_tax.year }} area charge; local
                     parish or community precepts can vary within the authority.
                 </p>
+                {% with nation = council_tax.nation | default("England"), figure_words = "figures above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}
                 {% else %}
                 <p class="notice">Council tax rates aren't available for this council yet. England, Scotland and
                 Wales are covered; Northern Ireland uses domestic rates instead of council tax.</p>

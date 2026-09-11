@@ -77,6 +77,7 @@ def for_district(ons_code: str | None, district_name: str | None = None) -> dict
         band_d = entry["band_d"]
         return {
             "authority": entry["authority"], "slug": slug_for_name(entry["authority"]), "year": year, "band_d": band_d,
+            "nation": "England",
             "bands": {b: round(band_d * n / 9, 2) for b, n in ENGLAND_NINTHS.items()},
             "basis": ("Band D is the authority's published average area charge (MHCLG). Other bands "
                       "use the statutory ratios from the Local Government Finance Act 1992."),
@@ -87,6 +88,7 @@ def for_district(ons_code: str | None, district_name: str | None = None) -> dict
         if entry:
             return {
                 "authority": entry["authority"], "slug": slug_for_name(entry["authority"]), "year": year,
+                "nation": "Scotland",
                 "band_d": entry["bands"]["D"], "bands": entry["bands"],
                 "basis": ("Every band as published by the Scottish Government for this council; "
                           "Scotland sets its own band multipliers."),
@@ -96,6 +98,7 @@ def for_district(ons_code: str | None, district_name: str | None = None) -> dict
             band_d = entry["band_d"]
             return {
                 "authority": entry["authority"], "slug": slug_for_name(entry["authority"]), "year": year, "band_d": band_d,
+                "nation": "Wales",
                 "bands": {b: round(band_d * n / 9, 2) for b, n in WALES_NINTHS.items()},
                 "basis": ("Band D is the Welsh Government's published overall average for this "
                           "authority. Other bands (A to I in Wales) use the statutory Welsh ratios."),

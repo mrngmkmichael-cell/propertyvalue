@@ -23,21 +23,16 @@
 
 <span class="kicker">Admissions</span>
 <h1>{{ school.name }}</h1>
-{% if current_user %}
-<form action="/schools/shortlist/save" method="post" class="nav-form" style="margin: -0.5rem 0 1rem;">
-    <input type="hidden" name="urn" value="{{ school.urn }}">
-    <input type="hidden" name="next" value="/school/{{ school.urn }}/{{ school.slug }}">
-    {% if shortlisted %}
-    <span class="section-sub">Saved to <a href="/schools/shortlist">your shortlist</a>.</span>
-    {% else %}
-    <button type="submit">Save to my shortlist</button>
-    <span class="section-sub">and be told when {{ school.authority }} republishes this distance.</span>
-    {% endif %}
-</form>
-{% else %}
-<p class="section-sub" style="margin: -0.5rem 0 1rem;">
-    <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> to save this school and be told when {{ school.authority }} republishes its distance.
-</p>
+{# The ask to save this school moved to the verdict on 11 Sep 2026: in
+   the ten days from launch the shortlist collected four schools across
+   three accounts, with the button sitting here, above the figure and
+   before the reader has any reason to want it. What it is for is being
+   told when the council republishes a distance, and the moment that
+   matters is the moment an address comes back Likely or Borderline.
+   Only the saved state stays up here, because that is a fact about the
+   page rather than a request. #}
+{% if current_user and shortlisted %}
+<p class="section-sub" style="margin: -0.5rem 0 1rem;">Saved to <a href="/schools/shortlist">your shortlist</a>.</p>
 {% endif %}
 {# The dek is built from this school's register entry, so no two read
    alike. This page shares a template with 615 others and was measured
@@ -144,6 +139,24 @@
             come before distance, and the distance moves every year.
             <a href="/property?postcode={{ check.postcode | urlencode }}">Run the full report on {{ check.postcode }}</a> for every school at once, and the house itself.
         </span>
+        {# The distance this verdict rests on is last year's, and the
+           council republishes it every year. This is the point at which
+           that is worth being told about. #}
+        {% if current_user and not shortlisted %}
+        <form action="/schools/shortlist/save" method="post" class="nav-form" style="flex-basis:100%; margin:0.5rem 0 0;">
+            <input type="hidden" name="urn" value="{{ school.urn }}">
+            <input type="hidden" name="next" value="/school/{{ school.urn }}/{{ school.slug }}?check={{ check.postcode | urlencode }}#verdict">
+            <button type="submit">Save this school</button>
+            <span class="section-sub">and be told when {{ school.authority }} republishes the distance this answer rests on.</span>
+        </form>
+        {% elif current_user %}
+        <span class="section-sub" style="flex-basis:100%; margin:0.5rem 0 0;">On <a href="/schools/shortlist">your shortlist</a>: you will be told when {{ school.authority }} republishes this distance.</span>
+        {% else %}
+        <span class="section-sub" style="flex-basis:100%; margin:0.5rem 0 0;">
+            <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}%3Fcheck%3D{{ check.postcode | urlencode }}">Sign up</a>
+            to save this school and be told when {{ school.authority }} republishes the distance this answer rests on.
+        </span>
+        {% endif %}
     </div>
     {% endif %}
 

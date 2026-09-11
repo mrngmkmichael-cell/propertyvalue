@@ -935,6 +935,26 @@ def test_cache_never_serves_a_personalised_or_parameterised_page(client):
 
 
 
+def test_the_shortlist_is_offered_at_the_answer_not_before_it(client):
+    """Ten days after launch the shortlist held four schools across three
+    accounts, with the save button above the figure, before the reader
+    had any reason to want it. What it is for is being told when a
+    council republishes a distance, so the ask now sits in the verdict:
+    the moment an address comes back Likely, Borderline or Unlikely."""
+    _seed_admission_school()
+    _signed_in(client)
+    page = client.get("/school/990002/riverside-academy")
+    assert page.status_code == 200
+    assert "Save this school" not in page.text, (
+        "nothing to save until an address has been checked")
+
+    answered = client.get("/school/990002/riverside-academy?check=M14+5TG").text
+    assert "Save this school" in answered
+    # The ask is inside the verdict, not floating above the headline.
+    assert answered.index('id="verdict"') < answered.index("Save this school")
+    assert "republishes the distance this answer rests on" in answered
+
+
 # ---- school shortlist + admission-update alerts ----------------------------
 
 def _signed_in(client, email="parent@example.com"):
@@ -1818,6 +1838,51 @@ def test_the_council_tax_pages_can_check_an_address(client):
     assert 'action="/property"' in body
     assert 'name="src" value="council-tax"' in body
     assert "Check an address in Manchester" in body
+
+
+def test_every_council_tax_figure_says_who_does_not_pay_it(client):
+    """The Manchester page stated Band D at 2,312.04 and every band from
+    A to H, correctly sourced, and never mentioned that one adult living
+    alone pays a quarter less. All 350 council pages, the running-costs
+    page and the report had the same gap on 11 Sep 2026. These are
+    statutory rules with a government page behind them, so nothing here
+    is modelled and no figure on the site is discounted."""
+    for path in ("/running-costs/council-tax/manchester", "/running-costs"):
+        body = client.get(path).text
+        assert "25% less" in body, path
+        assert "charged at the band below" in body, path
+        assert "Council Tax Reduction" in body, path
+        assert "gov.uk/council-tax" in body, path
+
+    # Scotland gets its own government's page, not gov.uk.
+    body = client.get("/running-costs/council-tax/glasgow-city").text
+    assert "mygov.scot" in body
+
+
+def test_a_page_that_asks_for_a_postcode_does_not_ask_twice(client):
+    """At 375px on /running-costs the header's postcode field sat at the
+    top of the screen and an identical one about 500 px below it, after
+    a hundred words of introduction. The homepage has been exempt from
+    the header box since it was built; every page with its own hero
+    checker now is too. The header is not sticky, so scrolling loses
+    neither box either way."""
+    from app.main import _page_asks_for_a_postcode
+
+    # The families whose own box sits just past their heading.
+    for path in ("/", "/running-costs", "/area/BR6",
+                 "/running-costs/council-tax/manchester",
+                 "/schools/admissions/manchester"):
+        assert _page_asks_for_a_postcode(path), path
+
+    # A school page's own checker is most of a page below its headline,
+    # so the header box is the only one near the top and it stays.
+    for path in ("/school/143210/brooklands-primary-school", "/premium",
+                 "/schools/guide", "/buying-guide"):
+        assert not _page_asks_for_a_postcode(path), path
+
+    # And the rendered pages agree.
+    assert 'class="header-search"' not in client.get("/running-costs").text
+    assert 'class="header-search"' in client.get("/premium").text
 
 
 def test_audience_split_separates_a_crawl_from_an_audience():

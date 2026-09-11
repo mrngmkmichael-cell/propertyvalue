@@ -50,6 +50,7 @@
     </table>
     </div>
     <p class="section-sub">{{ ct.basis }} Source: {{ ct.source }}, {{ ct.year }}. The band itself belongs to the property, set by the {% if ct.nation == "Scotland" %}Scottish Assessors{% else %}Valuation Office Agency{% endif %}; the highest Band D in {{ ct.nation }} this year is {{ ct.highest }}, the lowest {{ ct.lowest }}.</p>
+    {% with nation = ct.nation, figure_words = "bills above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}
 </section>
 
 {% if finance and finance.history %}

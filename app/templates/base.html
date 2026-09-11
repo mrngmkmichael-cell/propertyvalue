@@ -155,10 +155,12 @@
                     </span>UKPropertyInsight</a>
                 <span class="tagline">UK Property Intelligence</span>
             </div>
-            {# A postcode box on every page except the homepage, which
-               has the full search form in its hero. Same action and field
-               name as that form, so it is one search, two entry points. #}
-            {% if request.url.path != "/" %}
+            {# A postcode box on every page except the ones that ask for
+               a postcode themselves, which would be the same question
+               twice within one screen. Same action and field name as
+               those forms, so it is one search with two entry points on
+               the pages that have both. See HERO_SEARCH_PATHS. #}
+            {% if not page_asks_for_a_postcode %}
             <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
                     <label for="header-postcode" class="visually-hidden">Postcode</label>
