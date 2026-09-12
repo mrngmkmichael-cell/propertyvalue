@@ -6,6 +6,42 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The second home is the offer (12 Sep 2026). Michael asked what could
+  be done about subscriptions not moving. The accounts answered it: 41
+  of 56 real accounts used the site on exactly one day and not one of
+  them has ever subscribed; 15 came back on another day and 2 of those
+  subscribed. Both paying accounts are the two with several homes on the
+  go across several days, four and seven. Conversion has been a
+  returning-visitor event every single time. 16 accounts have ever
+  reached the paywall and 2 bought, which is not a broken paywall; only
+  5 paywall views have happened in the six days since 7 Sep, which is
+  the real problem. So the comparison, the page written for a reader
+  weighing two houses, moved to the moment it becomes true: saving has
+  been automatic since 8 Sep, so a second saved home means a second
+  property genuinely opened, and the report now names the other home and
+  links the comparison with both already chosen. Free accounts get the
+  free light comparison and a line on what the paid one adds; Premium
+  goes straight to every check; four at a time, and the block says so
+  when more are saved. Costs no extra Neon round trip: the new list
+  query replaced the single-row lookup the page already made. Michael
+  chose this over a free preview of the full comparison and over pushing
+  saving higher up the report. Do not re-raise those two as new; they
+  are the untried alternatives if this does not move.
+  Three defects found in the same reading, all fixed in the same deploy:
+  the homepage hero strip said "40 checks" while the trust section on
+  the same page said 44 three times, because the figure was a literal in
+  main.py outside bump_check_count.py's reach (now CHECK_COUNT, moved by
+  the script, pinned by the existing check-count test); the pricing page
+  explained the difference between the pass and the subscription,
+  unconditionally and in its FAQ structured data, while the pass has
+  been off sale since 5 Sep with no button, aimed at exactly the reader
+  least willing to take a monthly bill (gated on pass_available, and
+  while it is off the question is answered with the three-month plan,
+  saying plainly that it renews unless cancelled); and /running-costs,
+  the busiest page on the site, told a mistyped postcode to use the full
+  report search at the top of the page, which the one-box rule removed
+  from that page on 11 Sep. Tests 269.
+
 - A published distance beyond a school run is no longer shown as a
   catchment (12 Sep 2026). 91 school pages carried a council-published
   "last distance offered" over 20 miles, up to 868.30. Brent publishes
