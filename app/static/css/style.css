@@ -7850,6 +7850,29 @@ body:not(.theme-dark) .lx-hero-scrim {
     margin: 1rem 0 0.5rem;
 }
 
+/* The same reading as the school page's verdict block, at the size a
+   table row can carry: the guide puts the school's admission distance
+   and the distance from the searched postcode in adjacent columns, and
+   this is the column that answers the question they raise. Outlined
+   rather than filled, unlike the Ofsted badges beside it, because a
+   verdict about one address is a reading of two figures and should not
+   shout louder than the grade the inspectorate gave. */
+.table-verdict {
+    display: inline-block;
+    padding: 0.2rem 0.65rem;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    font-family: var(--font-sans);
+    font-weight: var(--weight-semi);
+    font-size: var(--text-xs);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.table-verdict-likely { border-color: var(--good); background: var(--good-bg); color: var(--good); }
+.table-verdict-borderline { border-color: var(--warn); background: var(--warn-bg); color: var(--warn); }
+.table-verdict-unlikely { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
+
 .admission-verdict {
     display: flex;
     flex-wrap: wrap;

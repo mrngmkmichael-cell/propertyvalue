@@ -37,8 +37,17 @@ def _outcode_table() -> dict[str, tuple[float, float]]:
 
 
 async def resolve(query: str) -> dict | None:
-    """Returns {"latitude", "longitude", "label"} for the best match,
-    or None if nothing was found by either source."""
+    """Returns {"latitude", "longitude", "label", "kind"} for the best
+    match, or None if nothing was found by either source.
+
+    `kind` says how precise the point is, because the callers cannot
+    tell from a latitude and longitude and one of them now needs to:
+    "postcode" is a real full postcode from postcodes.io, "outcode" is
+    the centre of a postcode district, and "place" is whatever a
+    geocoder made of a town name. Only the first is an address. The
+    guide will measure an admission distance against a postcode and
+    will not do it against the middle of Oxford.
+    """
     query = query.strip()
     if not query:
         return None
@@ -51,7 +60,8 @@ async def resolve(query: str) -> dict | None:
     if len(query) <= 4 and " " not in query and any(c.isdigit() for c in query):
         here = _outcode_table().get(query.upper())
         if here:
-            return {"latitude": here[0], "longitude": here[1], "label": query.upper()}
+            return {"latitude": here[0], "longitude": here[1],
+                    "label": query.upper(), "kind": "outcode"}
 
     postcode_result = await lookup_postcode(query)
     if postcode_result:
@@ -59,6 +69,7 @@ async def resolve(query: str) -> dict | None:
             "latitude": postcode_result["latitude"],
             "longitude": postcode_result["longitude"],
             "label": postcode_result["postcode"],
+            "kind": "postcode",
         }
 
     # A short all-letters-then-digits token like "OX1" or "SW1A" is
@@ -72,6 +83,7 @@ async def resolve(query: str) -> dict | None:
                 "latitude": outcode_result["latitude"],
                 "longitude": outcode_result["longitude"],
                 "label": query.upper(),
+                "kind": "outcode",
             }
 
     async with httpx.AsyncClient(timeout=10, headers=HEADERS) as client:
@@ -85,4 +97,5 @@ async def resolve(query: str) -> dict | None:
         return None
     place = results[0]
     label = place.get("display_name", query).split(",")[0]
-    return {"latitude": float(place["lat"]), "longitude": float(place["lon"]), "label": label}
+    return {"latitude": float(place["lat"]), "longitude": float(place["lon"]),
+            "label": label, "kind": "place"}

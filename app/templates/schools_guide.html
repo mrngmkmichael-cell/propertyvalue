@@ -112,6 +112,8 @@
                             <th data-sort="text">Ofsted</th>
                             <th class="num" data-sort="num" aria-sort="ascending">Distance</th>
                             <th class="num" data-sort="num">Admitted from</th>
+                            {# Only for a real full postcode. See _guide_rows. #}
+                            {% if area.verdict_postcode %}<th data-sort="num">From {{ area.verdict_postcode }}</th>{% endif %}
                             <th class="num" data-sort="num">Results</th>
                         </tr>
                     </thead>
@@ -129,12 +131,26 @@
                                 {% else %}<span class="section-sub">{{ r.ofsted_note or "No current grade" }}</span>{% endif %}
                             </td>
                             <td class="num" data-value="{{ r.distance_m }}">{{ r.distance_m | distance }}</td>
-                            <td class="num" data-value="{{ r.admission_miles if r.admission_miles is not none else 999 }}">
-                                {% if r.admission_miles is not none %}{{ r.admission_miles }} mi
+                            <td class="num" data-value="{{ 998 if r.no_distance_limit else (r.admission_miles if r.admission_miles is not none else 999) }}">
+                                {# A published figure past the no-limit threshold is a
+                                   sentinel, not a measurement: Brent's 621.37 is exactly
+                                   1000 km. It sorts just inside "no figure" because it is
+                                   the widest gate there is, not the narrowest. #}
+                                {% if r.no_distance_limit %}<span class="section-sub">No limit</span>
+                                    <span class="school-table-note">{{ r.admission_year }}</span>
+                                {% elif r.admission_miles is not none %}{{ r.admission_miles }} mi
                                     {% if r.admission_kind == 'published' %}<span class="school-table-note">{{ r.admission_year }}</span>
                                     {% else %}<span class="estimate-badge">est.</span>{% endif %}
                                 {% else %}<span class="section-sub">no figure</span>{% endif %}
                             </td>
+                            {% if area.verdict_postcode %}
+                            <td data-value="{{ {'likely': 1, 'borderline': 2, 'unlikely': 3}.get(r.verdict_level, 4) }}">
+                                {% if r.verdict_label %}
+                                <span class="table-verdict table-verdict-{{ r.verdict_level }}"
+                                      title="{{ r.verdict_why }}">{{ r.verdict_label }}</span>
+                                {% else %}<span class="section-sub">No figure</span>{% endif %}
+                            </td>
+                            {% endif %}
                             <td class="num" data-value="{{ r.result_value if r.result_value is not none else -999 }}">
                                 {% if r.result_value is not none %}
                                     {{ r.result_value }}{{ '%' if r.result_label != 'Progress 8' }}
@@ -149,9 +165,14 @@
             <p class="section-sub">
                 "Admitted from" is how far the last child offered a place lived, in the year shown, from the
                 council's own published figure. Where a council publishes none, "est." is a modelled estimate
-                and meaningfully less reliable. Results are Progress 8 for secondaries and the share meeting the
-                expected standard for primaries. Nothing here is a catchment boundary: most English schools
-                have none, and the distance moves every year.
+                and meaningfully less reliable. "No limit" means the council's own figure puts the furthest
+                offer beyond any commute, so distance did not decide who got in. Results are Progress 8 for
+                secondaries and the share meeting the expected standard for primaries. Nothing here is a
+                catchment boundary: most English schools have none, and the distance moves every year.
+                {% if area.verdict_postcode %}The reading for {{ area.verdict_postcode }} compares the
+                distance from that postcode with the figure beside it, the same three bands every school page
+                and report uses: Likely is comfortably inside last time's distance, Borderline is close enough
+                that a busier year could go either way, Unlikely is outside it.{% endif %}
             </p>
 
             <p class="section-sub">
@@ -247,7 +268,11 @@
                     info.setContent('<strong>' + r.name + '</strong><br>' + r.phase + (r.rating ? ', ' + r.rating : '') + '<br>' + miles + ' miles away');
                     info.open(map, m);
                 });
-                if (r.admission_miles !== null && r.admission_miles !== undefined) {
+                /* A "no limit" sentinel is not a radius. Brent publishes
+                   621.37 miles, exactly 1000 km, for four schools in one
+                   district: drawn to scale that is a circle over the whole
+                   country, and it hid every real ring underneath it. */
+                if (r.admission_miles !== null && r.admission_miles !== undefined && !r.no_distance_limit) {
                     const real = r.admission_kind === 'published';
                     const c = real ? '#d97706' : '#78716c';
                     new google.maps.Circle({
@@ -291,7 +316,11 @@
                 const miles = (r.distance_m / 1609.34).toFixed(1);
                 L.circleMarker([r.latitude, r.longitude], { radius: 7, color: '#ffffff', weight: 1.5, fillColor: color, fillOpacity: 0.95 })
                     .bindPopup('<strong>' + r.name + '</strong><br>' + r.phase + (r.rating ? ', ' + r.rating : '') + '<br>' + miles + ' miles away').addTo(map);
-                if (r.admission_miles !== null && r.admission_miles !== undefined) {
+                /* A "no limit" sentinel is not a radius. Brent publishes
+                   621.37 miles, exactly 1000 km, for four schools in one
+                   district: drawn to scale that is a circle over the whole
+                   country, and it hid every real ring underneath it. */
+                if (r.admission_miles !== null && r.admission_miles !== undefined && !r.no_distance_limit) {
                     const real = r.admission_kind === 'published';
                     const c = real ? '#d97706' : '#78716c';
                     L.circle([r.latitude, r.longitude], {

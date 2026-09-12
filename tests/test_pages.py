@@ -718,11 +718,14 @@ def _seed_school_near(lat, lon, urn=990001, name="Testbrook Primary School"):
             session.commit()
 
 
-def _resolve_to(monkeypatch, lat, lon, label):
+def _resolve_to(monkeypatch, lat, lon, label, kind=None):
     from app import main as app_main
 
     async def _resolve(_query):
-        return {"latitude": lat, "longitude": lon, "label": label}
+        found = {"latitude": lat, "longitude": lon, "label": label}
+        if kind:
+            found["kind"] = kind
+        return found
 
     monkeypatch.setattr(app_main.place_search, "resolve", _resolve)
 
@@ -2306,3 +2309,87 @@ def test_the_trust_figures_count_up_without_lying_to_a_crawler(client):
     assert "prefers-reduced-motion" in script, "the count-up must not run for a reader who asked for less motion"
     assert "IntersectionObserver" in script, "it must wait to be scrolled to, not fire on load"
     assert "unobserve" in script, "it must run once, not every time the section comes back"
+
+
+def _seed_school_with_distance(lat, lon, miles, urn, name):
+    """A school with a published admission distance, near the point."""
+    from app import db
+    from app.models import School, SchoolAdmissionRadius
+    with db.get_session() as session:
+        if session.get(School, urn) is None:
+            session.add(School(
+                urn=urn, name=name, phase="Primary", type_name="Community school",
+                postcode="M1 1AE", latitude=lat + 0.004, longitude=lon - 0.003,
+                ofsted_rating=2, ofsted_rating_label="Good",
+            ))
+            session.merge(SchoolAdmissionRadius(
+                urn=urn, last_distance_miles=miles, academic_year="2025/26",
+                source_authority="Testshire",
+            ))
+            session.commit()
+
+
+def test_a_postcode_search_reads_the_admission_distance_for_that_address(client, monkeypatch):
+    """The guide already put the distance to each school and the distance
+    the school admitted from in adjacent columns, and left the reader to
+    do the arithmetic (Michael, 12 Sep 2026). It now does it, with the
+    same three bands and the same _admission_verdict the school pages and
+    the report use.
+
+    About 0.28 miles separates the seeded school from the search point,
+    so a school that admitted from 2 miles is comfortably Likely and one
+    that admitted from 0.1 miles is Unlikely."""
+    _seed_school_with_distance(53.40, -2.20, 2.0, 991101, "Wide Gate Primary School")
+    _seed_school_with_distance(53.40, -2.20, 0.1, 991102, "Tight Gate Primary School")
+    _resolve_to(monkeypatch, 53.40, -2.20, "M1 1AE", kind="postcode")
+
+    body = client.get("/schools/guide?q=M1+1AE").text
+    assert "From M1 1AE" in body, "the column is headed with the postcode it answers for"
+    assert "table-verdict-likely" in body
+    assert "table-verdict-unlikely" in body
+
+
+def test_a_town_or_district_search_is_never_given_a_catchment_reading(client, monkeypatch):
+    """A postcode district's centroid and a geocoded town name are points
+    on a map, not addresses. Measuring a school's admission distance
+    against the middle of a town would read as an answer while being
+    nothing of the kind, so the column is not offered at all."""
+    _seed_school_with_distance(53.41, -2.21, 2.0, 991103, "Centroid Primary School")
+
+    for kind, label in (("outcode", "M1"), ("place", "Manchester"), (None, "M1")):
+        _resolve_to(monkeypatch, 53.41, -2.21, label, kind=kind)
+        body = client.get("/schools/guide?q=" + label).text
+        # The class names live in the inlined stylesheet on every page,
+        # so the rendered attribute is what proves a pill was drawn.
+        assert 'class="table-verdict' not in body, f"{kind or 'unknown'} search was given a verdict"
+        assert f"From {label}" not in body
+
+
+def test_a_no_limit_sentinel_is_not_a_distance_on_the_guide_or_its_map(client, monkeypatch):
+    """91 schools carry a published figure above 20 miles, up to 868.30,
+    and Brent's 621.37 is exactly 1000 km, which is a "no limit" sentinel
+    rather than a measurement. School pages stopped presenting those as
+    distances on 12 Sep 2026; this table and its map had not caught up,
+    so four schools in the Kingsbury guide alone printed 621.37 mi and
+    drew a circle over the whole country."""
+    _seed_school_with_distance(53.42, -2.22, 621.37, 991104, "No Limit Primary School")
+    _resolve_to(monkeypatch, 53.42, -2.22, "M1 1AE", kind="postcode")
+
+    body = client.get("/schools/guide?q=M1+1AE").text
+    # Read the table's own numeric cells rather than the whole page: the
+    # figure is named in a source comment in the map script below it.
+    cells = re.findall(r'<td class="num"[^>]*>(.*?)</td>', body, re.S)
+    assert cells, "no numeric cells found: has the table changed shape?"
+    assert not any("621.37" in c for c in cells), "the sentinel is printed as if it were a catchment"
+    assert any("No limit" in c for c in cells)
+    # Nothing to be outside of, so the address cannot be refused on distance.
+    assert "Very likely" in body
+    # The map skips it rather than drawing a 1000km circle. Only one
+    # branch renders (dev has no Google key, so this is Leaflet), which
+    # is exactly how a fix lands on one map and not the other, so the
+    # template source is checked for both.
+    assert body.count("!r.no_distance_limit") == 1
+    source = pathlib.Path("app/templates/schools_guide.html").read_text(encoding="utf-8")
+    assert source.count("!r.no_distance_limit") == 2, (
+        "the Google and Leaflet branches must both skip the sentinel"
+    )

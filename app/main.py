@@ -9377,11 +9377,28 @@ async def outstanding_schools(request: Request):
     return templates.TemplateResponse(request, "outstanding_schools.html", context)
 
 
-def _guide_rows(landscape: dict | None) -> list[dict]:
+def _guide_rows(landscape: dict | None, verdict_from: dict | None = None) -> list[dict]:
     """Every school in the landscape as one flat, JSON-safe row for the
     guide's table and map: no date objects, nearest first. Admission
     distance carries its provenance (published figure with its year, or
-    a modelled estimate) so the table can say which it is."""
+    a modelled estimate) so the table can say which it is.
+
+    `verdict_from` is the searched location, and only when it is a real
+    full postcode. Given one, every row that has an admission figure
+    also carries the same Likely/Borderline/Unlikely reading the school
+    pages and the report give, from the same _admission_verdict. The
+    guide already put the two numbers that answer the question in
+    adjacent columns and left the reader to do the arithmetic; this does
+    it for them (Michael, 12 Sep 2026).
+
+    A published figure above NO_DISTANCE_LIMIT_MILES is not a catchment.
+    91 schools carry one, up to 868.30 miles, and Brent's 621.37 is
+    exactly 1000 km, which is a "no limit" sentinel rather than a
+    measurement. School pages stopped presenting those as distances on
+    12 Sep 2026; this table and its map had not caught up, so four
+    schools in the Kingsbury guide alone still printed 621.37 mi and
+    drew a 621-mile circle over the whole country.
+    """
     rows = []
     for s in (landscape or {}).get("all_schools", []):
         if s.get("latitude") is None or s.get("longitude") is None:
@@ -9392,8 +9409,17 @@ def _guide_rows(landscape: dict | None) -> list[dict]:
             kind, year = "published", s["admission_radius"]["academic_year"]
         elif s.get("catchment_estimate"):
             adm, kind = s["catchment_estimate"]["radius_miles"], "estimated"
+        no_limit = (kind == "published" and isinstance(adm, (int, float))
+                    and adm > NO_DISTANCE_LIMIT_MILES)
+        verdict = None
+        if verdict_from and adm is not None:
+            verdict = _admission_verdict(s["distance_m"] / 1609.34, adm, no_limit=no_limit)
         ex = s.get("exam_results") or {}
         rows.append({
+            "no_distance_limit": no_limit,
+            "verdict_level": verdict["level"] if verdict else None,
+            "verdict_label": verdict["label"] if verdict else None,
+            "verdict_why": verdict["why"] if verdict else None,
             "urn": s["urn"], "name": s["name"],
             "phase": s.get("phase_group") or "Special",
             "type": s.get("type") or "",
@@ -9889,9 +9915,16 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
         landscape = await asyncio.to_thread(schools_db.school_landscape, area["latitude"], area["longitude"])
         remaining = area_list[:i] + area_list[i + 1:]
         label = (area.get("label") or "").strip().upper()
+        # The verdict column is offered only for a real full postcode.
+        # A postcode district's centroid and a geocoded town name are
+        # both points on a map, and measuring a school's admission
+        # distance against the middle of Oxford would read as an answer
+        # while being nothing of the kind.
+        precise = area if area.get("kind") == "postcode" else None
         areas_with_stats.append({
             **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
-            "rows": _guide_rows(landscape),
+            "verdict_postcode": (area.get("label") or "").strip().upper() if precise else None,
+            "rows": _guide_rows(landscape, verdict_from=precise),
             # A search that was a postcode district gets a link to its area
             # guide; a town or full postcode doesn't have one.
             "outcode": label if _OUTCODE_RE.match(label) else None,
