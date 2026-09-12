@@ -6,6 +6,55 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The schools guide answers the postcode you typed (12 Sep 2026,
+  Michael's ask, verified live). The table already held both halves of
+  "will this address get in": the distance from the searched point to
+  each school and the distance that school admitted from last time, in
+  adjacent columns, with 34 rows of arithmetic left to the reader. A
+  column headed with the postcode now does it, through the same
+  _admission_verdict and the same three bands as the school pages, the
+  report and the extension, so the guide cannot disagree with the rest
+  of the site. Only for a real full postcode: place_search.resolve now
+  reports whether it found a postcode, a district centroid or a geocoded
+  town, and a district or town search gets no column, because measuring
+  an admission distance against the middle of a town reads as an answer
+  while being nothing of the kind. Live on BR6 9AX: 7 columns, 34 rows,
+  23 readings, 2 Likely, 2 Borderline, 19 Unlikely, and "No figure"
+  where the school has none. BR6 on its own: 6 columns, no readings.
+  Also fixed on the same table, and it had never had it: the no-limit
+  rule. 91 schools carry a published figure above 20 miles, up to
+  868.30, and Brent's 621.37 is 1000 km exactly. School pages stopped
+  presenting those as catchments earlier the same day; the guide had
+  not caught up, so the Kingsbury guide printed 621.37 mi four times and
+  its map drew four circles over the whole country, hiding every real
+  ring. Now "No limit", sorted as the widest gate, read as Very likely,
+  and no circle on either map branch. Verified on NW9 8AA: four rows
+  read No limit, nothing in the table exceeds 16.97 mi, and the map
+  shows real rings. At 375px the table scrolls inside its own box with
+  no page overflow, though the reading sits sixth of seven columns and
+  a phone reader has to scroll right to reach it. Tests 273.
+
+- The scroll reveal made perceptible (12 Sep 2026). Michael asked
+  whether the report page had any scroll animation; it has had one on 53
+  blocks the whole time, confirmed running live. It was finishing before
+  the eye arrived: 16px over half a second on a generic ease, triggered
+  as a block first peeked over the bottom edge, which on a wide window
+  put every reveal below where anyone was looking. Now 28px on a real
+  ease-out over 0.7s with opacity 0.45s ahead of it, triggered at -22%
+  with three quarters of a viewport of runway left. will-change is set
+  while waiting and dropped on landing. The reduced-motion rule that
+  shows every block immediately was already correct and is untouched.
+  Do not re-suggest adding scroll animation to the report page.
+
+- The trust figures count up on scroll (12 Sep 2026, Michael's ask).
+  Once, at 60% visibility, four figures staggered 90ms apart, eased out
+  over 1.1s, nothing at all under prefers-reduced-motion or without
+  IntersectionObserver. The 28 Aug 2026 removal of the hero count-up
+  still stands for the hero and its reason is unchanged: numbers
+  spinning on load are a template tell. The real values stay in the
+  markup and are overwritten only once the animation begins, so the
+  first paint and every crawler see the truth.
+
 - The second home is the offer (12 Sep 2026). Michael asked what could
   be done about subscriptions not moving. The accounts answered it: 41
   of 56 real accounts used the site on exactly one day and not one of
