@@ -1889,6 +1889,17 @@ def _admission_stats() -> dict:
     return cached
 
 
+# The number of checks the site quotes, in one place so two parts of one
+# page cannot disagree. The report page is the real source of truth (see
+# tests/test_property_page.py::test_landing_page_check_count_matches_the_report,
+# which counts the cards on a real report), and scripts/bump_check_count.py
+# moves every written copy of the figure when a check is added. The hero
+# pillar strip was outside that script's reach and still read 40 on 12 Sep
+# 2026 while the same page said 44 three times, which is why it now reads
+# this constant instead of a literal of its own.
+CHECK_COUNT = 44
+
+
 @app.get("/")
 def index(request: Request):
     context = base_context(request)
@@ -1897,7 +1908,11 @@ def index(request: Request):
     context["admission_stats"] = _admission_stats()
     ct = _council_tax_summary()
     context["pillars"] = {
-        "checks": 40, "areas": len(ALL_OUTCODES),
+        # Keep in step with the figure the rest of the site quotes:
+        # scripts/bump_check_count.py moves that one, and this line was
+        # outside its reach, so the hero strip read 40 while the same
+        # page said 44 three times (found live, 12 Sep 2026).
+        "checks": CHECK_COUNT, "areas": len(ALL_OUTCODES),
         "schools": context["admission_stats"]["schools"],
         "councils": ct["count"] + ct["wales"] + ct["scotland"],
     }
@@ -2611,6 +2626,67 @@ def _anon_cacheable(request: Request) -> bool:
     return auth.current_user(request) is None
 
 
+# The second home is where this product stops being a lookup and starts
+# being a decision, so it is where the comparison is offered.
+#
+# Measured on the live accounts, 12 Sep 2026: 41 of 56 real accounts used
+# the site on exactly one day, and not one of them has ever subscribed.
+# Fifteen came back on another day and two of those subscribed. Both
+# paying accounts were the two that looked at several homes across
+# several days, four days and seven. The side-by-side comparison is the
+# one page that speaks to that reader, and it sat behind My properties,
+# a page most accounts never open: the light comparison had to be found,
+# chosen and ticked before it showed anything.
+#
+# Saving has been automatic since 8 Sep, so a second saved home means a
+# second property genuinely opened, not a button someone pressed. That
+# makes this a real moment rather than a prompt: at the point a reader
+# has two homes on the go, the report names the other one and offers to
+# put them next to each other, already selected.
+COMPARE_OFFER_MIN_ITEMS = 2
+
+
+def _saved_home_label(item: dict) -> str:
+    """A saved home the way a person would say it: number then postcode."""
+    number = (item.get("house_number") or "").strip()
+    return f"{number} {item['postcode']}" if number else item["postcode"]
+
+
+def _compare_offer(items: list[dict], postcode: str, house_number: str,
+                   user: dict | None) -> dict | None:
+    """The other homes this account has open, and a link putting them
+    side by side with this one, or None when there is nothing to compare.
+
+    The link carries the ids already, so the offer costs one click rather
+    than a page, a tick box per home and a button. Capped at
+    COMPARE_FULL_MAX homes because that is what both comparison pages
+    render, and this one is the entry point to them."""
+    if len(items) < COMPARE_OFFER_MIN_ITEMS:
+        return None
+    this_one = [i for i in items
+                if i["postcode"] == postcode and i["house_number"] == house_number]
+    others = [i for i in items
+              if i["postcode"] != postcode or i["house_number"] != house_number]
+    if not others:
+        return None
+    # This home first, then the most recently saved others: list_items
+    # already comes back newest first.
+    chosen = (this_one + others)[:COMPARE_FULL_MAX]
+    query = urlencode([("item_ids", i["id"]) for i in chosen])
+    # Only the homes the link actually opens are named, so the sentence
+    # and the page that follows it always agree.
+    named = [_saved_home_label(i) for i in chosen if i not in this_one]
+    return {
+        "others": named,
+        "other_count": len(named),
+        "compared_count": len(chosen),
+        "held_back": max(0, len(items) - len(chosen)),
+        "url": f"/watchlist/compare?{query}",
+        "full_url": f"/watchlist/compare/full?{query}",
+        "is_premium": bool(user and user.get("is_premium")),
+    }
+
+
 @app.get("/property")
 async def property_search(request: Request, postcode: str = "", house_number: str = "", src: str = ""):
     # Launch-day fast path: anonymous views of the same address reuse
@@ -2797,8 +2873,18 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["auto_saved"] = watchlist.remember(
             context["current_user"]["id"], canonical, house_number
         )
-        context["watchlist_item"] = watchlist.get_item(
-            context["current_user"]["id"], canonical, house_number
+        # One query, not two: the whole list is needed for the second-home
+        # offer below, and this address is in it. Neon round trips are the
+        # unit of a page's cost, so the item comes out of the list rather
+        # than out of a second statement.
+        saved_items = watchlist.list_items(context["current_user"]["id"])
+        context["watchlist_item"] = next(
+            (i for i in saved_items
+             if i["postcode"] == canonical and i["house_number"] == house_number),
+            None,
+        )
+        context["compare_offer"] = _compare_offer(
+            saved_items, canonical, house_number, context["current_user"]
         )
         context["shortlisted_urns"] = {
             item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])

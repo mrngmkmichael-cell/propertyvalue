@@ -331,6 +331,41 @@
                     </form>
                 </p>
                 {% endif %}
+                {# Two homes on the go is the moment this stops being a
+                   lookup and becomes a decision. See _compare_offer in
+                   main.py for the accounts behind that. The link carries
+                   the homes already, so the comparison is one click and
+                   not a page, a tick box each and a button. #}
+                {% if compare_offer %}
+                <div class="compare-offer">
+                    <p class="compare-offer-lead">
+                        {% if compare_offer.other_count == 1 %}
+                        You have another home open: <strong>{{ compare_offer.others[0] }}</strong>.
+                        {% else %}
+                        You have {{ compare_offer.other_count }} other homes open:
+                        <strong>{{ compare_offer.others | join(", ") }}</strong>.
+                        {% endif %}
+                    </p>
+                    <p>
+                        <a class="compare-offer-link" href="{{ compare_offer.full_url if compare_offer.is_premium else compare_offer.url }}">
+                            {% if compare_offer.compared_count == 2 %}Put both side by side{% else %}Put all {{ {3: "three", 4: "four"}[compare_offer.compared_count] }} side by side{% endif %}{% if compare_offer.is_premium %}, every check{% endif %} &rarr;
+                        </a>
+                    </p>
+                    {% if not compare_offer.is_premium %}
+                    <p class="section-sub">
+                        Seven headline figures for each, free. Premium puts every check on
+                        the report next to each other and counts the ones that differ.
+                    </p>
+                    {% endif %}
+                    {% if compare_offer.held_back %}
+                    <p class="section-sub">
+                        {{ compare_offer.held_back }} more saved {{ "home is" if compare_offer.held_back == 1 else "homes are" }}
+                        in <a href="/watchlist">My properties</a>. Four at a time is what the
+                        comparison shows.
+                    </p>
+                    {% endif %}
+                </div>
+                {% endif %}
                 <form class="stacked-form watchlist-form" action="/watchlist/save" method="post">
                     <input type="hidden" name="postcode" value="{{ location.postcode }}">
                     <input type="hidden" name="house_number" value="{{ house_number }}">

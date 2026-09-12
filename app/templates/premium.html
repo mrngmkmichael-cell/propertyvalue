@@ -259,8 +259,18 @@
     <dl class="faq-list">
         <dt>Do I need a card for the free report?</dt>
         <dd>No. An account is free, and the first property you open gets every check in full, with no card and no clock running.</dd>
+        {# The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so this
+           answer is gated with it. Unconditional, it described a product with
+           no button on the page, to exactly the reader most likely to want it:
+           someone checking one house who does not want a subscription. The
+           three-month plan is that reader's plan while the pass is off. #}
+        {% if pass_available %}
         <dt>What is the difference between the pass and the subscription?</dt>
         <dd>The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking.</dd>
+        {% else %}
+        <dt>I only have one house to check. Am I stuck with a monthly bill?</dt>
+        <dd>No. The three-month plan is &pound;24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel, and cancelling takes two clicks from your account page and stops the next payment. Everything you unlocked stays unlocked after that.</dd>
+        {% endif %}
         <dt>Can I cancel?</dt>
         <dd>Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked.</dd>
         <dt>What do I get that the free report does not show?</dt>
@@ -273,7 +283,11 @@
     "@context": "https://schema.org", "@type": "FAQPage",
     "mainEntity": [
         {"@type": "Question", "name": "Do I need a card for the free report?", "acceptedAnswer": {"@type": "Answer", "text": "No. An account is free, and the first property you open gets every check in full, with no card and no clock running."}},
-        {"@type": "Question", "name": "What is the difference between the pass and the subscription?", "acceptedAnswer": {"@type": "Answer", "text": "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."}},
+    ] + ([
+        {"@type": "Question", "name": "What is the difference between the pass and the subscription?", "acceptedAnswer": {"@type": "Answer", "text": "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."}}
+    ] if pass_available else [
+        {"@type": "Question", "name": "I only have one house to check. Am I stuck with a monthly bill?", "acceptedAnswer": {"@type": "Answer", "text": "No. The three-month plan is £24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel, and cancelling takes two clicks from your account page and stops the next payment."}}
+    ]) + [
         {"@type": "Question", "name": "Can I cancel?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked."}},
         {"@type": "Question", "name": "What do I get that the free report does not show?", "acceptedAnswer": {"@type": "Answer", "text": "Every check on every property rather than one: flood and subsidence detail, school admission verdicts for every nearby school, the questions for your solicitor and surveyor, the full PDF, and change alerts on saved properties."}},
         {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk."}}

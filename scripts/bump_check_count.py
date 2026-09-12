@@ -75,6 +75,11 @@ def main(argv: list[str]) -> int:
         (ROOT / "app" / "templates" / "signup.html", f"all {old} checks unlocked", f"all {new} checks unlocked"),
         (ROOT / "app" / "templates" / "area_guide.html", f"Run the {old} checks", f"Run the {new} checks"),
         (ROOT / "app" / "templates" / "running_costs.html", f"its {WORDS[old]} other checks", f"its {WORDS[new]} other checks"),
+        # The hero pillar strip reads this constant. It was a literal in
+        # main.py until 12 Sep 2026 and so was never moved by this script:
+        # the live homepage said 40 checks in the strip and 44 in the trust
+        # section a few hundred pixels below it.
+        (ROOT / "app" / "main.py", f"CHECK_COUNT = {old}", f"CHECK_COUNT = {new}"),
     ]
     for path, before, after in moves:
         _move(path, before, after)

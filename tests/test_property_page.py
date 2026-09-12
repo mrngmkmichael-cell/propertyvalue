@@ -258,6 +258,19 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
         f"({len(titles)} cards less {sorted(NOT_AN_OFFICIAL_SOURCE_CHECK)})"
     )
 
+    # The hero pillar strip carries the same claim a few hundred pixels
+    # higher up. On 12 Sep 2026 it read "40 checks" on the live site
+    # while the trust section on the same page said 44, because it took
+    # its number from a literal in main.py that the bump script never
+    # touched. One page cannot hold two answers to the same question.
+    from app.main import CHECK_COUNT
+    assert CHECK_COUNT == checks, (
+        f"main.CHECK_COUNT is {CHECK_COUNT}, report has {checks}"
+    )
+    assert f"{checks} checks," in home, (
+        f"the hero pillar strip does not say {checks} checks"
+    )
+
     # The dek spells the same number out in words, and nothing else
     # checks it. A digit is easy to remember to update; "Forty" reads as
     # prose and would sit there wrong for months.

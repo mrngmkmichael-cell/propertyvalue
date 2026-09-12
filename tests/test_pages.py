@@ -2240,3 +2240,45 @@ def test_the_comparison_page_is_dated_and_fair(client):
     assert "\u2014" not in body                                   # no em-dashes in user-facing copy
     assert "/alternatives" in client.get("/sitemap.xml").text
     assert 'href="/alternatives"' in client.get("/premium").text and 'href="/alternatives"' in client.get("/").text
+
+
+def test_the_second_home_is_offered_against_the_first(client):
+    """Measured on the live accounts on 12 Sep 2026: 41 of 56 real
+    accounts used the site on exactly one day and not one of them ever
+    subscribed, while both paying accounts came back on four and seven
+    separate days and had several homes on the go. The comparison is the
+    page that speaks to that reader and it sat behind My properties. So
+    the second home is offered against the first, on the report, with
+    both homes already chosen in the link.
+
+    One home is not a comparison, and must not be asked to be one."""
+    from app import auth, watchlist
+    from app.db import get_session
+
+    client.post("/signup", data={
+        "email": "two-homes@example.test", "password": "correct horse battery staple",
+    }, follow_redirects=False)
+    with get_session() as db:
+        user_id = auth.find_user_by_email(db, "two-homes@example.test").id
+
+    first = client.get("/property?postcode=M1+1AE").text
+    # The class name is in the inlined stylesheet on every page, so the
+    # copy is what proves the block rendered.
+    assert "home open" not in first, "one saved home is not a comparison"
+    assert "/watchlist/compare?item_ids=" not in first
+
+    second = client.get("/property?postcode=BR6+9AX").text
+    assert "You have another home open" in second
+    assert "M1 1AE" in second
+    assert "Put both side by side" in second
+
+    # The link carries both homes, so the comparison is one click.
+    ids = {i["id"] for i in watchlist.list_items(user_id)}
+    assert len(ids) == 2
+    for item_id in ids:
+        assert f"item_ids={item_id}" in second
+
+    # A free account is offered the free comparison and told what the
+    # paid one adds; it is never sent to a page it cannot read.
+    assert "/watchlist/compare?item_ids=" in second
+    assert "/watchlist/compare/full?item_ids=" not in second

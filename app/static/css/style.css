@@ -1994,6 +1994,38 @@ button:not([class]):hover { background: var(--accent-hover); }
     margin: 0 0 0.75rem;
 }
 
+/* The second home offered against this one. Quiet by design: it is an
+   offer, not an alarm, so it takes the same surface and the same single
+   hairline border as every other block on the page, and the accent does
+   its work in the one link. */
+.compare-offer {
+    margin: 0 0 1rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-md);
+}
+
+.compare-offer p {
+    margin: 0;
+}
+
+.compare-offer-lead {
+    font-size: var(--text-base);
+}
+
+.compare-offer-link {
+    display: inline-block;
+    margin-top: 0.35rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.compare-offer .section-sub {
+    margin-top: 0.5rem;
+}
+
 .inline-undo {
     display: inline;
 }
