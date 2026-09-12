@@ -1721,7 +1721,8 @@ def alternatives_page(request: Request):
          f"ten categories, plus an instant valuation, as read on {ALTERNATIVES_CHECKED_ON}."),
         ("What does Locrating do that UKPropertyInsight does not?",
          "Locrating shows where a school's existing pupils live, its feeder and destination schools and its priority areas, and "
-         "has published school data since 2010. This site shows the council's published admission distance for 3,627 schools, "
+         "has published school data since 2010. This site shows the council's published admission distance for "
+         f"{_admission_stats()['schools']:,} schools, "
          "with a postcode checker and a map, and does not hold those three things."),
         ("Which one should I use?",
          "For area statistics at no cost, Crystal Roof. For school choice above everything else, Locrating. For planning "
@@ -1906,6 +1907,24 @@ def index(request: Request):
     context["accuracy_counts"] = _landing_accuracy_counts()
     context["trustpilot"] = TRUSTPILOT
     context["admission_stats"] = _admission_stats()
+    # The one sentence that states school coverage, built here so the
+    # visible FAQ and the FAQ structured data cannot disagree, and so
+    # it follows an import instead of being retyped after one. It said
+    # "more than 3,600 across 88 councils" as a literal until 12 Sep
+    # 2026, in both places, one of them inside the JSON-LD Google may
+    # show as a rich result.
+    _adm = context["admission_stats"]
+    context["school_coverage"] = (
+        f"Published distances are held for {_adm['schools']:,} English schools "
+        f"across {_adm['councils']} councils; where a council publishes none, "
+        "the page says so rather than guessing."
+        if _adm.get("schools") else
+        # No database, no count. Saying nought would be a false figure
+        # in structured data; this says what is true either way.
+        "Published distances are held for thousands of English schools across "
+        "dozens of councils; where a council publishes none, the page says so "
+        "rather than guessing."
+    )
     ct = _council_tax_summary()
     context["pillars"] = {
         # Keep in step with the figure the rest of the site quotes:

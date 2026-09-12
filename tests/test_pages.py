@@ -2457,3 +2457,46 @@ def test_the_typing_demo_is_one_implementation_on_every_box_that_wants_it(client
     loop = loop[:loop.index("})();")]
     assert ".placeholder = " in loop
     assert ".value = " not in loop
+
+
+def test_school_coverage_is_one_derived_sentence_in_both_places(client):
+    """"more than 3,600 English schools across 88 councils" was a literal
+    typed into index.html twice, once inside the FAQ structured data
+    Google may show as a rich result. It was true on 12 Sep 2026 and
+    nothing would have told us the day it stopped being (the "40 checks"
+    defect, in the worst possible place for it).
+
+    It is now built once in the route from the same counts the hero
+    strip uses, so an import moves all of it or none of it."""
+    body = client.get("/").text
+
+    assert "more than 3,600" not in body, "the old literal is back"
+    # The Jinja braces must not reach the reader: the visible copy lives
+    # inside a {% set %} list, where a {{ ... }} in a string is text.
+    assert "{{" not in body and "school_coverage" not in body
+
+    said = re.findall(r"Published distances are held for ([^;]+);", body)
+    assert len(said) == 2, f"expected the sentence twice, found {len(said)}"
+    assert said[0] == said[1], f"the two copies disagree: {said}"
+
+    from app.main import _admission_stats
+    stats = _admission_stats()
+    if stats.get("schools"):
+        assert f"{stats['schools']:,} English schools" in body
+        assert f"across {stats['councils']} councils" in body
+
+
+def test_school_coverage_never_prints_a_nought(monkeypatch, client):
+    """_admission_stats returns zeros when the database is unreachable,
+    on purpose, so the homepage still renders. Printing those would put
+    "0 English schools across 0 councils" into structured data, which is
+    a false figure rather than a missing one. It says what is true
+    without a database instead."""
+    from app import main as app_main
+
+    monkeypatch.setattr(app_main, "_admission_stats", lambda: {"schools": 0, "councils": 0})
+    body = client.get("/").text
+
+    assert "0 English schools" not in body
+    assert "across 0 councils" not in body
+    assert "thousands of English schools" in body
