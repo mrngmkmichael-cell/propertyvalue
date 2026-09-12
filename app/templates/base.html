@@ -164,7 +164,7 @@
             <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
                     <label for="header-postcode" class="visually-hidden">Postcode</label>
-                    <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" required>
+                    <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" data-typing-demo required>
                 </div>
                 {# Slides open when the postcode field is used, so the
                    collapsed header stays narrow enough for one row. Always
@@ -313,24 +313,46 @@
             pc.addEventListener('blur', maybeCollapse);
             house.addEventListener('blur', maybeCollapse);
 
-            if (!reduced) {
-                const samples = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
+        })();
+
+        (function () {
+            /* The typing demo: real postcodes cycled through a field's
+               placeholder with a caret, so an empty box shows what to
+               put in it rather than sitting there blank.
+
+               One implementation for every box that wants it, marked
+               with data-typing-demo. There were two copies of this, in
+               the header and in the landing hero, and the third box
+               that wanted it was the reason to stop copying (Michael,
+               12 Sep 2026).
+
+               Placeholder only, never the value, so it cannot interfere
+               with anything typed. The field's own placeholder is put
+               back the moment it is focused or filled: freezing a
+               half-typed postcode and a caret behind someone's cursor
+               is the one state this should never leave behind. Nothing
+               runs at all under prefers-reduced-motion, which leaves
+               every box showing its own example. */
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            const SAMPLES = ['SW1A 1AA', 'M1 1AE', 'LS1 4DY', 'CF10 1EP', 'EH1 1YZ', 'B1 1BB'];
+            document.querySelectorAll('input[data-typing-demo]').forEach(function (input) {
+                const own = input.getAttribute('placeholder') || '';
                 let si = 0, ci = 0, deleting = false;
                 (function tick() {
-                    const word = samples[si];
-                    if (document.activeElement !== pc && !pc.value) {
-                        pc.placeholder = word.slice(0, ci) + '▏';
+                    const word = SAMPLES[si];
+                    if (document.activeElement !== input && !input.value) {
+                        input.placeholder = word.slice(0, ci) + '▏';
                     } else {
-                        pc.placeholder = 'Postcode';
+                        input.placeholder = own;
                     }
                     let delay;
                     if (!deleting && ci < word.length) { ci++; delay = 110; }
                     else if (!deleting) { deleting = true; delay = 1600; }
                     else if (ci > 0) { ci--; delay = 45; }
-                    else { deleting = false; si = (si + 1) % samples.length; delay = 350; }
+                    else { deleting = false; si = (si + 1) % SAMPLES.length; delay = 350; }
                     setTimeout(tick, delay);
                 })();
-            }
+            });
         })();
 
         (function () {

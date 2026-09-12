@@ -2428,3 +2428,32 @@ def test_the_homepage_still_asks_only_once_itself(client):
     one, and a page without its own box keeps it."""
     assert 'id="header-search"' not in client.get("/").text
     assert 'id="header-search"' in client.get("/premium").text
+
+
+def test_the_typing_demo_is_one_implementation_on_every_box_that_wants_it(client):
+    """The placeholder typing demo existed twice, in the header and in
+    the landing hero, and the third box that wanted it was the reason to
+    stop copying (Michael, 12 Sep 2026). One implementation now, driven
+    by data-typing-demo, so a box opts in with an attribute."""
+    import pathlib as _pl
+
+    base = _pl.Path("app/templates/base.html").read_text(encoding="utf-8")
+    index = _pl.Path("app/templates/index.html").read_text(encoding="utf-8")
+
+    # Exactly one loop in the whole site, and it lives in base.html.
+    assert base.count("input[data-typing-demo]") == 1
+    assert "si = (si + 1) % SAMPLES.length" in base
+    assert "deleting = false" not in index, "the landing page kept its own copy"
+
+    # Each box opts in with the attribute rather than its own script.
+    for path in ("/", "/areas"):
+        body = client.get(path).text
+        assert "data-typing-demo" in body, f"{path} has no typing demo"
+
+    # It writes the placeholder, never the value: a demo that typed into
+    # the field would fight whoever is using it, and on the header box
+    # would leave a postcode nobody entered in a submitted search.
+    loop = base[base.index("input[data-typing-demo]"):]
+    loop = loop[:loop.index("})();")]
+    assert ".placeholder = " in loop
+    assert ".value = " not in loop
