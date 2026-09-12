@@ -78,7 +78,15 @@ for path, body in pages_html.items():
 # 2,943 cold renders, which is a load test rather than an audit - so
 # repetitive families are sampled instead.
 def family(h):
-    m = re.match(r"^(/area|/property|/schools/guide)", h)
+    # The boundary here was a literal backspace byte until 12 Sep 2026,
+    # so this returned None for everything, the cap below never fired,
+    # and the audit checked the first 150 hrefs alphabetically: 147 area
+    # guides and three other links, while reporting that it had sampled
+    # families. Measured after the fix, the same 150 cover eight
+    # families. School pages and admissions hubs are capped too, or they
+    # take the places the area guides used to.
+    m = re.match(r"^(/area|/property|/schools/guide|/school/|/schools/admissions/"
+                 r"|/schools/independent/|/running-costs/council-tax/|/compare/)", h)
     return m.group(1) if m else None
 
 seen_family = {}
@@ -267,6 +275,57 @@ for path, body in pages_html.items():
         labelled = has_id and f'for="{has_id.group(1)}"' in body
         if not labelled and "aria-label" not in inp:
             problems["input without label"].append(f"{path}: {inp[:70]}")
+
+# ---- 7. the page against the world outside it --------------------------
+# Both defects this rule pair catches were live on 12 Sep 2026, and
+# neither the test suite nor smoke could see them, because both pages
+# rendered perfectly. The copy was true when it was written and became
+# false when something else changed.
+print("checking copy against the pages it describes...")
+
+# A sentence that sends a reader to a control has to be able to find it.
+# /running-costs told a mistyped postcode to "try the full report search
+# at the top of the page" for a day after the one-box rule removed that
+# box from that page.
+_POINTERS = (
+    (r"search (?:box )?at the top of (?:the|this) page", r'<input[^>]*name="postcode"'),
+    (r"box above", r"<input[^>]*type=\"text\""),
+    (r"form below", r"<form"),
+)
+for path, body in pages_html.items():
+    text = visible_text(body)
+    for phrase, needs in _POINTERS:
+        if re.search(phrase, text, re.I) and not re.search(needs, body, re.I):
+            problems["copy points at something missing"].append(
+                f"{path}: says {phrase!r} but no matching control is on the page"
+            )
+
+# A plan the copy explains has to be a plan someone can buy. /premium
+# answered "what is the difference between the pass and the
+# subscription?" in the visible FAQ and in its FAQ structured data for a
+# week after the pass came off sale, aimed at exactly the reader least
+# willing to take a monthly bill.
+_pricing = pages_html.get("/premium", "")
+if _pricing:
+    # The audit fetches signed out, which is how most readers meet
+    # this page, so a buy route is a sign-up link rather than a form.
+    # Both live inside the pricing grid, so the grid is where to look.
+    _grid = re.search(r'<div class="pricing-grid">(.*?)<p class="pricing-reassure"',
+                      _pricing, re.S)
+    _for_sale = visible_text(_grid.group(1)).lower() if _grid else ""
+    _rest = visible_text(_pricing).lower()
+    if _for_sale:
+        _rest = _rest.replace(_for_sale, " ")
+    for _product in ("pass",):
+        _word = r"\b" + _product + r"\b"
+        if re.search(_word, _rest) and not re.search(_word, _for_sale):
+            problems["copy sells something unbuyable"].append(
+                f"/premium: the copy describes the {_product} but no card on sale offers it"
+            )
+    if not _for_sale.strip():
+        problems["copy sells something unbuyable"].append(
+            "/premium: the pricing grid is empty, so nothing on the page can be bought"
+        )
 
 # ---- report ------------------------------------------------------------
 print("\n" + "=" * 68)

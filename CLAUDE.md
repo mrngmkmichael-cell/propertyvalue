@@ -46,10 +46,17 @@ UK property due-diligence site. FastAPI + Jinja2 + SQLAlchemy on Postgres
 
 Dev server: use the preview tools (`.claude/launch.json`, port 8010), never
 a bare shell command.
-Tests: `.venv/Scripts/python.exe -m pytest -q` (105 tests, run before
-every push), then `.venv/Scripts/python.exe smoke.py` against a running
-server. pytest fakes the ~30 upstream services; smoke.py walks the real
-pages and catches what a fake cannot. Pass a base URL to point it at
-production.
+Tests: `.venv/Scripts/python.exe -m pytest -q` (run before every push),
+then `.venv/Scripts/python.exe smoke.py` against a running server, then
+`.venv/Scripts/python.exe scripts/audit_site.py`. pytest fakes the ~30
+upstream services; smoke.py walks the real pages and catches what a fake
+cannot; audit_site.py reads the rendered copy and catches what both
+miss. All three take a base URL to point them at production.
+
+**Run all three, not two.** The audit was outside this sentence until 12
+Sep 2026, so nobody ran it, and the homepage said "40 checks" beside its
+own "44 checks" for days with a rule sitting in that script that would
+have caught it the day it drifted. A tool nobody is told to run is a
+tool nobody runs.
 Data imports: `scripts/import_*.py`, each re-runnable and commented with
 its source and refresh cadence.
