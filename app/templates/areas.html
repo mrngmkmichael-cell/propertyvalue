@@ -21,6 +21,28 @@
 <h1>Every UK postcode district, one guide each</h1>
 <p class="dek">{{ total }} districts. House prices, schools, crime and flood risk for each, from the same official sources as a full property report.</p>
 
+{# The Property section's own front door had 2,943 district links on it
+   and no way to ask about an address (Michael, 12 Sep 2026). A district
+   guide is the answer to "what is this area like"; the question someone
+   arriving here is usually carrying is "what about this house". Same
+   form, field names and action as the homepage hero and the area
+   guides' own box, so it is one search with several entry points, and
+   the header box drops off this page under the rule that a page asking
+   for a postcode does not ask twice. #}
+<form action="/property" method="get" class="search-form area-check" role="search">
+    <input type="hidden" name="src" value="areas">
+    <div class="search-form-field">
+        <label for="areas-postcode">Check one address instead</label>
+        <input type="text" id="areas-postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+    </div>
+    <div class="search-form-field">
+        <label for="areas-house">House or flat number (optional)</label>
+        <input type="text" id="areas-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+    </div>
+    <button type="submit">Run the {{ check_count }} checks</button>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
+</form>
+
 {% set link_prefix = "/area/" %}
 {% include "_area_index.html" %}
 {% endblock %}

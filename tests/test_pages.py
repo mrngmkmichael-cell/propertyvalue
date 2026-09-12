@@ -2393,3 +2393,38 @@ def test_a_no_limit_sentinel_is_not_a_distance_on_the_guide_or_its_map(client, m
     assert source.count("!r.no_distance_limit") == 2, (
         "the Google and Leaflet branches must both skip the sentinel"
     )
+
+
+def test_the_property_section_front_door_can_ask_about_one_address(client):
+    """/areas is what the Property nav item opens, and it carried 2,943
+    district links and no way to ask about a house (Michael, 12 Sep
+    2026). A district guide answers "what is this area like"; someone
+    arriving here is usually carrying "what about this house".
+
+    Same action and field names as the homepage hero, so it is one
+    search with several entry points rather than a second thing to
+    maintain."""
+    body = client.get("/areas").text
+
+    assert 'action="/property" method="get"' in body
+    assert 'name="postcode"' in body
+    assert 'name="house_number"' in body
+    assert "House or flat number (optional)" in body
+
+    # The page asks for a postcode now, so the header must not ask again
+    # within the same screen. That rule shipped on 11 Sep 2026.
+    assert 'id="header-search"' not in body
+
+    # And the start is attributable, which is the whole point of the
+    # hidden field: a new entry point that cannot be measured tells us
+    # nothing about whether it was worth adding.
+    assert '<input type="hidden" name="src" value="areas">' in body
+    from app.main import REPORT_SOURCES
+    assert "areas" in REPORT_SOURCES
+
+
+def test_the_homepage_still_asks_only_once_itself(client):
+    """The rule cuts both ways: a page with its own box loses the header
+    one, and a page without its own box keeps it."""
+    assert 'id="header-search"' not in client.get("/").text
+    assert 'id="header-search"' in client.get("/premium").text

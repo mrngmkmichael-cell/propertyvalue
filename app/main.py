@@ -1217,7 +1217,7 @@ async def on_startup():
 # published distance and answers on the same page, while the header box
 # runs a full property report. Two boxes are only one too many when they
 # ask the same thing.
-HERO_SEARCH_PATHS = ("/", "/running-costs")
+HERO_SEARCH_PATHS = ("/", "/running-costs", "/areas")
 HERO_SEARCH_PREFIXES = ("/area/", "/schools/admissions/",
                         "/running-costs/council-tax/")
 
@@ -2281,6 +2281,7 @@ def areas_index(request: Request):
     context = base_context(request)
     context["regions"] = _area_index()
     context["total"] = len(ALL_OUTCODES)
+    context["check_count"] = CHECK_COUNT
     return templates.TemplateResponse(request, "areas.html", context)
 
 
@@ -2592,7 +2593,8 @@ ANON_PAGE_CACHE_TTL_S = 600
 # not stored. Whether the next month goes on a fifteenth page family or
 # on deepening the five that exist turns on this, and a hidden field
 # costs nothing and identifies nobody.
-REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide", "running-costs", "council-hub"}
+REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide",
+                  "running-costs", "council-hub", "areas"}
 REPORT_SOURCE_PATH_PREFIX = "/from/"
 
 
