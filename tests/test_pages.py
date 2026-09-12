@@ -2282,3 +2282,27 @@ def test_the_second_home_is_offered_against_the_first(client):
     # paid one adds; it is never sent to a page it cannot read.
     assert "/watchlist/compare?item_ids=" in second
     assert "/watchlist/compare/full?item_ids=" not in second
+
+
+def test_the_trust_figures_count_up_without_lying_to_a_crawler(client):
+    """The figures in the trust section animate to their real values the
+    first time they are scrolled into view (asked for 12 Sep 2026).
+
+    The reason a count-up was taken off the hero on 28 Aug 2026 still
+    stands for the hero: numbers spinning on load read as a template.
+    This one has to stay the other thing: the true figure in the markup,
+    the animation only on deliberate scroll, and nothing at all for a
+    reader who asked for less motion."""
+    home = client.get("/").text
+
+    # The server sends the real numbers, not a zero waiting for a script.
+    figures = re.findall(r'data-target="(\d+)"[^>]*>([\d,]+)</span>', home)
+    assert len(figures) >= 3, f"only {len(figures)} trust figures found"
+    for target, shown in figures:
+        assert shown.replace(",", "") == target, f"{shown!r} does not match {target!r}"
+
+    script = home[home.index("lx-about-stats .stat-count"):]
+    script = script[:script.index("})();")]
+    assert "prefers-reduced-motion" in script, "the count-up must not run for a reader who asked for less motion"
+    assert "IntersectionObserver" in script, "it must wait to be scrolled to, not fire on load"
+    assert "unobserve" in script, "it must run once, not every time the section comes back"

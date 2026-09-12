@@ -723,11 +723,71 @@
     }
 })();
 
-/* The count-up on .stat-count was removed 28 Aug 2026 with the hero
-   stats row. The real values are in the markup, so the figures in the
-   trust section simply render; this script existed only to drop them to
-   zero first and animate back up. A rolling counter on three numbers
-   reads as a template, which is the opposite of what the page says. */
+/* The figures in the trust section count up to their real values the
+   first time they are scrolled into view (asked for by Michael, 12 Sep
+   2026).
+
+   A count-up was removed from the hero on 28 Aug 2026 for a good reason:
+   three numbers spinning the moment a landing page loads is a template
+   tell, and it fired whether or not anyone was looking at it. What is
+   different here is the trigger and the restraint. It runs once, on the
+   section a reader has deliberately scrolled to, staggered rather than
+   in lockstep, eased to a stop rather than ticking, and it never runs at
+   all under prefers-reduced-motion or without IntersectionObserver.
+
+   The real numbers stay in the markup and are only overwritten once the
+   animation actually begins, so a crawler, a reader with no JavaScript
+   and the first paint all show the truth rather than a zero waiting for
+   a script. tests/test_property_page.py pins that. */
+
+(function () {
+    const nums = document.querySelectorAll('.lx-about-stats .stat-count');
+    if (!nums.length) return;
+    /* Both exits leave the server-rendered figure exactly as it is. */
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!('IntersectionObserver' in window)) return;
+
+    const DURATION_MS = 1100;
+    const STAGGER_MS = 90;
+
+    function render(el, value) {
+        el.textContent = el.dataset.locale
+            ? value.toLocaleString('en-GB')
+            : String(value);
+    }
+
+    function run(el, index) {
+        const target = parseInt(el.dataset.target, 10);
+        if (!Number.isFinite(target)) return;
+        const started = performance.now() + index * STAGGER_MS;
+        render(el, 0);
+        function frame(now) {
+            const elapsed = now - started;
+            if (elapsed < 0) { requestAnimationFrame(frame); return; }
+            const t = Math.min(1, elapsed / DURATION_MS);
+            /* Ease out cubic: quick at first, then slowing into the real
+               figure, so it reads as arriving rather than as a counter. */
+            const eased = 1 - Math.pow(1 - t, 3);
+            render(el, Math.round(target * eased));
+            if (t < 1) requestAnimationFrame(frame);
+            else render(el, target);  // never leave a rounding error on screen
+        }
+        requestAnimationFrame(frame);
+    }
+
+    const order = new Map();
+    Array.prototype.forEach.call(nums, function (el, i) { order.set(el, i); });
+
+    const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            observer.unobserve(entry.target);
+            run(entry.target, order.get(entry.target) || 0);
+        });
+    }, { threshold: 0.6 });
+
+    Array.prototype.forEach.call(nums, function (el) { observer.observe(el); });
+})();
 
 (function () {
     /* The hero strip, fed by this site's own /api/lookup so the numbers

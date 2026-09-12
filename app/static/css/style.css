@@ -6887,6 +6887,13 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
     line-height: 1;
     letter-spacing: 0.02em;
     color: var(--accent);
+    /* Every digit the same width, so a figure counting up to its real
+       value settles instead of jittering, and so 2,943 does not shuffle
+       its own digits on the way there. Permanent rather than added for
+       the animation: a font-variant swapped off at the end would move
+       the number once more, after it had finished. */
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
 }
 .lx-about-stat-l {
     margin: 0.5rem 0 0;
