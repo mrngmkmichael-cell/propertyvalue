@@ -453,6 +453,11 @@
         (function () {
             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
             const targets = document.querySelectorAll('[data-animate]');
+            /* The same line the observer's rootMargin draws, as a
+               fraction of the viewport. The two must agree or the
+               hash-jump safety net reveals things the observer would
+               still be holding. */
+            const REVEAL_AT = 0.78;
             if (!('IntersectionObserver' in window)) {
                 targets.forEach(function (el) { el.classList.add('in-view'); });
                 return;
@@ -464,7 +469,15 @@
                         observer.unobserve(entry.target);
                     }
                 });
-            }, { threshold: 0, rootMargin: '0px 0px -10% 0px' });
+            }, { threshold: 0, rootMargin: '0px 0px -22% 0px' });
+            /* Was -10%, which fired as a block first peeked over the
+               bottom edge: it had finished arriving before the reader's
+               eye got to it, which is why a page with 53 of these read
+               as having no animation at all (Michael, 12 Sep 2026). At
+               -22% the block is properly on screen when it moves. It
+               still has about three quarters of a viewport of runway
+               before it reaches the middle, so a fast scroll does not
+               overtake it. REVEAL_AT below has to match. */
             targets.forEach(function (el) { observer.observe(el); });
 
             // A direct #hash jump (e.g. a same-page nav link) can land a
@@ -483,7 +496,7 @@
                 targets.forEach(function (el) {
                     if (el.classList.contains('in-view')) return;
                     const rect = el.getBoundingClientRect();
-                    if (rect.top < vh * 0.9 && rect.bottom > 0) pending.push(el);
+                    if (rect.top < vh * REVEAL_AT && rect.bottom > 0) pending.push(el);
                 });
                 pending.forEach(function (el) {
                     el.classList.add('in-view');

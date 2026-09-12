@@ -3924,17 +3924,32 @@ dialog.report-modal .report-section {
     color: var(--ink-soft);
 }
 
-/* Scroll-in animation */
+/* Scroll-in animation.
+
+   Made perceptible on 12 Sep 2026: Michael read a report and asked
+   whether the page had any scroll animation at all, which it has had on
+   53 blocks the whole time. At 16px over half a second on a generic
+   ease, a block had finished arriving before the eye reached it. The
+   travel is now 28px and the curve is a real ease-out, fast away from
+   the start and slowing into place, so a card reads as settling rather
+   than as fading in. Opacity is kept slightly ahead of the movement so
+   the block is legible while it is still travelling, which is what
+   stops a longer distance feeling slower to read. */
 
 [data-animate] {
     opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(28px);
+    transition: opacity 0.45s ease-out, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    /* The browser is told what will move before it moves, and told to
+       forget once it has: 53 promoted layers left standing on a report
+       page is memory spent on blocks that have finished. */
+    will-change: opacity, transform;
 }
 
 [data-animate].in-view {
     opacity: 1;
     transform: translateY(0);
+    will-change: auto;
 }
 
 .dashboard-grid button[data-animate]:nth-child(1) { transition-delay: 0.02s; }
