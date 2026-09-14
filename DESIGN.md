@@ -56,7 +56,7 @@ purchase of their life, often anxious and short on time. Sometimes their
 partner, reading a link they were sent.
 
 **What they should do:** type a postcode. Then, if convinced, sign up for
-three free reports.
+the free full report on their first property.
 
 **What they should feel:** that someone competent already did the
 homework, and is not selling them a house.

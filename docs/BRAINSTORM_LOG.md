@@ -6,6 +6,45 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All eight ideas of the 14 Sep 2026 brainstorm, built the same evening.
+  Michael read the eight and said "fix everything in order", which is
+  the approval idea 5 needed. The day's reading: 5 real sign-ups and 4
+  free unlocks from 11 to 14 Sep, no new Premium, paywall once a day,
+  the /running-costs flood over since 11:00 UTC on 12 Sep.
+  1. The report's running-costs link carried {{ postcode }}, which the
+  report never sets, so every report since the strip shipped said "The
+  full running-costs table for : every year" and opened an empty form,
+  the homepage's own M1 1AE sample included. Now location.postcode.
+  2. The free and Premium check lists live in main.py (FREE_CHECKS,
+  PREMIUM_CHECKS). The pricing page renders them and the landing page
+  counts them. The landing page had typed 23 free beside the pricing
+  page's 26; a signed-out report locks 18 of 44, so 26 was right. A test
+  checks both lists against which cards the report actually locks.
+  DESIGN.md no longer says sign-up gives three free reports.
+  3. "Add to Chrome . Free" is a middot, brownfield dwellings carry a
+  thousands separator on the card and modal, and one fixed figure reads
+  "1 was wrong".
+  4. Sewage: outfalls still reporting now lead. M1 1AE's card led with
+  Store Street CSO, last return 2022 and 0 spills, while Victoria Bridge
+  Street CSO reported 34 in 2025. Every consumer reads the first entry
+  (card, flag, score, solicitor questions, PDF), so the order was fixed
+  once in sewage_discharge.pick_outfalls; the modal and PDF show each
+  row's own year.
+  5. Removal: the Resident Reviews card shows only once an area has a
+  review. The table has never held a row. The modal and submit route
+  stay. The /api card list the extension reads is unchanged.
+  6. The homepage's anonymous HTML is kept an hour, other pages ten
+  minutes. This helps only while the entry survives the shared LRU, so
+  it is not the held cache partition and not a warming cadence.
+  7. /admin's daily funnel has "Came back": of each day's new accounts,
+  how many were seen signed in on a later day within a week, marked "so
+  far" until the week is over. Judge the 12 Sep second-home offer by it.
+  8. A day_label filter ("3 Jul 2026"): area guide sale dates and bus
+  timetable weeks, school page bus weeks; the guide's HPI month uses
+  month_label. Crime months remain the separate queued session.
+  Tests 285. No dev server could be started from the unattended
+  session, so smoke and the audit ran against production after deploy.
+
 - The schools guide answers the postcode you typed (12 Sep 2026,
   Michael's ask, verified live). The table already held both halves of
   "will this address get in": the distance from the searched point to

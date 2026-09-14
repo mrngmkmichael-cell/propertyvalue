@@ -216,6 +216,40 @@ def test_amenities_endpoint_rejects_bad_input(client, monkeypatch):
 NOT_AN_OFFICIAL_SOURCE_CHECK = {"Resident Reviews", "In the News?"}
 
 
+def test_the_plan_lists_match_what_a_signed_out_report_locks(client, fake_report):
+    """FREE_CHECKS and PREMIUM_CHECKS feed the pricing page's two lists
+    and the landing page's "N free, N more" line. They must be the
+    report's own cards, split the way the report splits them. Until 14
+    Sep 2026 the landing page typed 23 free beside the pricing page's
+    26, and 23 plus 18 is not 44."""
+    import html
+
+    from app.main import CHECK_COUNT, FREE_CHECKS, PREMIUM_CHECKS
+
+    report = _report(client, fake_report)
+    free, locked = set(), set()
+    for m in re.finditer(r'<(?:button|a|div)[^>]*class="dashboard-card [^"]*"[^>]*>', report):
+        title = html.unescape(re.search(r'dashboard-card-title">(.*?)</span>', report[m.end():m.end() + 3000]).group(1))
+        (locked if "dashboard-card-locked" in m.group(0) else free).add(title)
+    free -= NOT_AN_OFFICIAL_SOURCE_CHECK
+
+    assert {c[1] for c in FREE_CHECKS} == free
+    assert {c[1] for c in PREMIUM_CHECKS} == locked
+    assert len(FREE_CHECKS) + len(PREMIUM_CHECKS) == CHECK_COUNT
+
+    home = client.get("/").text
+    assert f"{len(FREE_CHECKS)} free on every report" in home
+    assert f"{len(PREMIUM_CHECKS)} more with Premium" in home
+
+
+def test_an_area_with_no_reviews_shows_no_reviews_card(client, fake_report):
+    """The empty "No reviews yet. Be the first" card came off every
+    report on 14 Sep 2026: the table has never held a row."""
+    body = _report(client, fake_report)
+    assert "No reviews yet. Be the first" not in body
+    assert '<span class="dashboard-card-title">Resident Reviews</span>' not in body
+
+
 def test_landing_page_check_count_matches_the_report(client, fake_report):
     """The hero says "N checks". N has to be a number a visitor can
     verify by counting cards on a real report.
@@ -231,9 +265,10 @@ def test_landing_page_check_count_matches_the_report(client, fake_report):
     titles = re.findall(r'<span class="dashboard-card-title">(.*?)</span>', report)
     assert len(titles) > 30, f"only {len(titles)} cards found - has the grid changed shape?"
 
-    for name in NOT_AN_OFFICIAL_SOURCE_CHECK:
-        assert name in titles, f"{name!r} is excluded from the count but is no longer on the report"
-    checks = len(titles) - len(NOT_AN_OFFICIAL_SOURCE_CHECK)
+    # Resident Reviews only appears once an area has a review (14 Sep
+    # 2026), so it is subtracted when present rather than required.
+    assert "In the News?" in titles, "'In the News?' is excluded from the count but is no longer on the report"
+    checks = len(titles) - len([n for n in NOT_AN_OFFICIAL_SOURCE_CHECK if n in titles])
 
     home = client.get("/").text
     # The hero used to carry this in a tracked-caps stats row. That row
@@ -594,7 +629,12 @@ def test_report_shows_what_it_costs_to_live_here(client, fake_report):
     ))
     body = client.get("/property?postcode=M14%205TG").text
     assert "What it costs to live here" in body
-    assert 'href="/running-costs?postcode=' in body  # the full table for this postcode, one click away
+    # The full table for this postcode, one click away. The link read
+    # {{ postcode }}, which the report never sets, so on every report
+    # it said "The full running-costs table for : every year" and
+    # opened an empty form (found live on M1 1AE, 14 Sep 2026).
+    assert 'href="/running-costs?postcode=M14%205TG' in body
+    assert "running-costs table for M14 5TG:" in body
     assert "2,108" in body or "2,107" in body
     assert "1,200" in body and "Freehold" in body
     assert 'href="/running-costs"' in body

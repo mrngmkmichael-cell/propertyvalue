@@ -453,7 +453,7 @@
         </tbody>
     </table>
     </div>
-    <p class="section-sub">Scheduled departures for the week of {{ bus.ref_weekday }}, from the timetables operators publish to the Department for Transport's Bus Open Data Service; not observed running. Two stops on opposite sides of a road are two rows.</p>
+    <p class="section-sub">Scheduled departures for the week of {{ bus.ref_weekday | day_label }}, from the timetables operators publish to the Department for Transport's Bus Open Data Service; not observed running. Two stops on opposite sides of a road are two rows.</p>
     {% else %}
     <p class="section-sub">No bus stop with a scheduled departure within 600 m of the school, in the timetables operators have published to the Bus Open Data Service.</p>
     {% endif %}

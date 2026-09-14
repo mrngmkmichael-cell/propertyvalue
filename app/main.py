@@ -145,6 +145,12 @@ _SAFE_REF_RE = re.compile(r"[^A-Za-z0-9_-]")
 # straight back. Same rule the property report has used since launch,
 # widened to the pages that actually get search traffic.
 _ANON_HTML_TTL_S = 600
+# The homepage keeps an hour. It had 56 to 94 counted views a day in
+# mid-September 2026, fewer than one per ten minutes, so most arrivals
+# found the copy expired and waited 1.37 s where /premium answered in
+# 0.27 s (14 Sep). Its figures move on a deploy or an import, and a
+# deploy restarts the process and empties the store anyway.
+_ANON_HOME_TTL_S = 3600
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
     "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
@@ -185,7 +191,7 @@ async def anon_html_cache(request: Request, call_next):
     key = _anon_html_key(request)
     if key is None:
         return await call_next(request)
-    hit = _cache.get(key, _ANON_HTML_TTL_S)
+    hit = _cache.get(key, _ANON_HOME_TTL_S if key[1] == "/" else _ANON_HTML_TTL_S)
     if hit is not None:
         status, body = hit
         # A page we are willing to serve from memory for ten minutes can
@@ -1039,6 +1045,20 @@ def _month_label(value) -> str:
 
 
 templates.env.filters["month_label"] = _month_label
+
+
+def _day_label(value) -> str:
+    """"2026-07-03" as "3 Jul 2026"; anything else passes through unchanged.
+    Sale dates and timetable weeks printed in ISO form on the area guides
+    and school pages until 14 Sep 2026, which read as a database dump."""
+    try:
+        year, month, day = str(value)[:10].split("-")
+        return f"{int(day)} {_MONTH_NAMES[int(month) - 1][:3]} {int(year)}"
+    except (ValueError, IndexError):
+        return str(value or "")
+
+
+templates.env.filters["day_label"] = _day_label
 
 
 _ADDRESS_STREET = re.compile(r"^(?:(?:flat|apartment|unit)\s+\S+\s+)?\d+\S*\s+(.+)$", re.I)
@@ -1900,6 +1920,62 @@ def _admission_stats() -> dict:
 # this constant instead of a literal of its own.
 CHECK_COUNT = 44
 
+# Every check by plan, in the report's own card titles: (icon, title,
+# what it shows, source). The pricing page lists these and the landing
+# page counts them, so "N free on every report" and "N more with
+# Premium" are lengths rather than numbers typed twice. They were typed
+# twice until 14 Sep 2026, and the landing page said 23 free beside the
+# pricing page's 26, a pair that did not add up to 44. A test checks
+# both lists against which cards a signed-out report actually locks.
+FREE_CHECKS = (
+    ('market', 'Local Market', 'Every sale since 1995', 'HM Land Registry'),
+    ('prosperity', 'Area Prosperity', 'Area prices, year on year', 'UK House Price Index'),
+    ('energy', 'Energy Efficiency', 'EPC band, running costs, floor area', 'EPC Register'),
+    ('flood', 'Flood Risk', 'Zone and live warnings', 'Environment Agency'),
+    ('flood', 'Surface Water Risk', 'Rainfall flooding, separate from rivers', 'Environment Agency'),
+    ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping'),
+    ('crime', 'Crime & Safety', 'By category, against the area', 'Police.uk'),
+    ('radon', 'Radon Gas', 'Affected-area class', 'British Geological Survey'),
+    ('statistics', 'Council Tax', 'Band D for the authority', 'MHCLG, 2026-27'),
+    ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom'),
+    ('mobile', 'Mobile Signal', '4G and 5G coverage', 'Ofcom'),
+    ('planning', 'Planning Constraints', 'Protected and designated areas', 'Natural England, Historic England'),
+    ('environmental', 'Environmental Designations', 'National Parks, SSSIs and more', 'Natural England'),
+    ('heritage', 'Listed Buildings', 'Listed buildings nearby', 'Historic England'),
+    ('schools', 'Schools Nearby', 'Ofsted rating and distance', 'Ofsted, DfE'),
+    ('schools', 'State Schools', 'Primary and secondary, counted', 'DfE Get Information About Schools'),
+    ('schools', 'Private Schools', 'Fee-paying, prep and senior', 'DfE Get Information About Schools'),
+    ('schools', 'Universities', 'Higher education institutions nearby', 'DfE Get Information About Schools'),
+    ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap'),
+    ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
+    ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
+    ('qualification', 'Qualification', 'Degree-educated share', 'Census 2021'),
+    ('age', 'Age Profile', 'Age mix of the area', 'Census 2021'),
+    ('housing', 'Housing Types & Tenure', 'Owned, rented, detached to flats', 'Census 2021'),
+    ('ethnicity', 'Ethnicity, Religion & Origin', 'Community makeup', 'Census 2021'),
+    ('statistics', 'Since 2011', 'How the area changed between censuses', 'ONS Census 2011 and 2021'),
+)
+PREMIUM_CHECKS = (
+    ('valuation', 'Valuation Estimate', 'Estimate with a range', 'Modelled from nearby sales'),
+    ('valuation', 'Costs & Affordability', 'Stamp duty, mortgage and yield', 'HMRC rates, Bank of England'),
+    ('rental', 'Rental Analysis', 'Typical rent by bedrooms', 'ONS private rents'),
+    ('statistics', 'Price Trend & Forecast', 'Five-year history and trend', 'UK House Price Index'),
+    ('extension', 'Extended or Modified', 'Floor area changes over time', 'EPC history'),
+    ('orientation', 'Aspect', 'Which way garden and rooms face', 'Derived from OpenStreetMap'),
+    ('flood', 'Sewage Discharge', 'Storm overflows, spills and hours', 'Environment Agency'),
+    ('geology', 'Subsidence Risk', 'Clay shrink-swell, 2030 and 2050', 'British Geological Survey'),
+    ('air_quality', 'Air Quality', 'Against WHO guidelines', 'Defra Pollution Climate Mapping'),
+    ('landfill', 'Historic Contamination', 'Former landfill sites nearby', 'Environment Agency'),
+    ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'The Coal Authority'),
+    ('schools', 'School Catchment Areas', 'Real admission distances', 'Council admissions data'),
+    ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
+    ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
+    ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021'),
+    ('planning', 'Development Nearby', 'Brownfield register sites within half a mile', 'MHCLG planning data platform'),
+    ('bus', 'Bus Service', 'Buses an hour at the nearest stops', 'DfT Bus Open Data Service'),
+    ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
+)
+
 
 @app.get("/")
 def index(request: Request):
@@ -1935,6 +2011,8 @@ def index(request: Request):
         "schools": context["admission_stats"]["schools"],
         "councils": ct["count"] + ct["wales"] + ct["scotland"],
     }
+    context["free_check_count"] = len(FREE_CHECKS)
+    context["premium_check_count"] = len(PREMIUM_CHECKS)
 
     # Hand the hero strip whatever is already cached, so it paints with
     # real figures immediately instead of waiting on round trips.
@@ -6542,6 +6620,33 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         .group_by(func.date(PremiumUnlock.created_at))
     ).all()
 
+    # Of each day's new accounts, how many were seen signed in again on
+    # a later day within a week (14 Sep 2026). Every subscription so far
+    # followed a return visit and not one followed a single-day account,
+    # so this is the column the second-home offer of 12 Sep is judged
+    # by. page_views.user_id is already stored for signed-in views; no
+    # new tracking. Two statements for the whole fortnight.
+    new_accounts = session.execute(
+        select(User.id, func.date(User.created_at))
+        .where(User.created_at >= funnel_from,
+               *( [User.id.notin_(test_ids)] if test_ids else [] ))
+    ).all()
+    came_back_by_day: dict = {}
+    if new_accounts:
+        joined = {uid: datetime.date.fromisoformat(str(d)[:10]) for uid, d in new_accounts}
+        visits = session.execute(
+            select(PageView.user_id, func.date(PageView.created_at))
+            .where(PageView.user_id.in_(list(joined)), PageView.created_at >= funnel_from)
+            .distinct()
+        ).all()
+        returned = {
+            uid for uid, d in visits
+            if 0 < (datetime.date.fromisoformat(str(d)[:10]) - joined[uid]).days <= 7
+        }
+        for uid in returned:
+            key = str(joined[uid])
+            came_back_by_day[key] = came_back_by_day.get(key, 0) + 1
+
     stages: dict = {}
     for day, path, count in stage_rows:
         stages.setdefault(str(day), {})[path] = count
@@ -6567,6 +6672,9 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             # nobody reached it, because no visitors is not a failure to
             # convert them.
             "signup_rate": round(100 * signed_up / signup_page) if signup_page else None,
+            "came_back": came_back_by_day.get(key, 0),
+            # A week has not passed yet, so the figure can still grow.
+            "came_back_open": (today_start.date() - d).days < 7,
             "unlocks": unlocks_by_day.get(key, 0),
             "paywall": row.get(PAYWALL_PATH, 0),
         })
@@ -6993,6 +7101,8 @@ def premium_info(request: Request, checkout: str = "", error: str = ""):
     context["checkout_cancelled"] = checkout == "cancelled"
     context["checkout_error"] = error == "checkout_failed"
     context["portal_error"] = error == "portal_failed"
+    context["free_checks"] = FREE_CHECKS
+    context["premium_checks"] = PREMIUM_CHECKS
     return templates.TemplateResponse(request, "premium.html", context)
 
 

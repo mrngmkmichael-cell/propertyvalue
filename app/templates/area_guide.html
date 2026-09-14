@@ -123,7 +123,7 @@
         Average price in {{ hpi.local_authority.name }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
         {% if hpi.local_authority.annual_change_pct >= 0 %}up{% else %}down{% endif %}
         {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}% on a year ago
-        ({{ hpi.local_authority.period[:7] }}).
+        ({{ hpi.local_authority.period | month_label }}).
         {% if hpi.region %}
         The wider {{ hpi.region.name }} average is {{ hpi.region.average_price | gbp }}.
         {% endif %}
@@ -176,7 +176,7 @@
                     <td>{{ s.address }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</td>
                     <td>{{ s.property_type or "Not recorded" }}</td>
                     <td class="num">{{ s.amount | gbp }}</td>
-                    <td class="num">{{ s.date }}</td>
+                    <td class="num">{{ s.date | day_label }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -404,7 +404,7 @@
         {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
         {{ bus.count }} stop{{ 's' if bus.count != 1 }} with a scheduled service within that distance.
     </p>
-    <p class="section-sub">Departures a passenger can board, from the timetables operators publish to the Department for Transport's Bus Open Data Service, for {{ bus.ref_weekday }} (a Tuesday) and {{ bus.ref_sunday }} (a Sunday). Scheduled, not observed. Two stops on opposite sides of a road are two stops. The full report does this for the stops within 500 m of an address.</p>
+    <p class="section-sub">Departures a passenger can board, from the timetables operators publish to the Department for Transport's Bus Open Data Service, for Tuesday {{ bus.ref_weekday | day_label }} and Sunday {{ bus.ref_sunday | day_label }}. Scheduled, not observed. Two stops on opposite sides of a road are two stops. The full report does this for the stops within 500 m of an address.</p>
 </section>
 {% endif %}
 

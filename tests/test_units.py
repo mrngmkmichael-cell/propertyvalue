@@ -876,3 +876,76 @@ def test_a_postcode_district_resolves_from_the_local_table(monkeypatch):
 
     monkeypatch.setattr(place_search, "lookup_postcode", _lookup)
     assert asyncio.run(place_search.resolve("M1 2AA"))["label"] == "M1 2AA" and calls == ["M1 2AA"]
+
+
+# ---- 14 Sep 2026 brainstorm fixes ----------------------------------------
+
+def test_sewage_leads_with_an_outfall_that_still_reports():
+    """M1 1AE led with Store Street CSO: nearest, last return 2022, 0
+    spills. Victoria Bridge Street CSO, further off, reported 34 in 2025."""
+    from app.services.sewage_discharge import pick_outfalls
+
+    def row(name, year, spills, x, y):
+        return {"attributes": {"site_name_wasc_op_name": name, "annual_return_year": year,
+                               "counted_spills_12_24hr_calculated": spills},
+                "geometry": {"x": x, "y": y}}
+
+    features = [
+        row("Store Street CSO", "2022", 0, -2.22959, 53.47861),
+        row("Victoria Bridge Street CSO", "2025", 34, -2.24605, 53.48469),
+        row("Victoria Bridge Street CSO", "2024", 38, -2.24605, 53.48469),
+        row("Store Street CSO", "2021", 0, -2.22959, 53.47861),
+    ]
+    out = pick_outfalls(features, 53.483487, -2.231182)
+    assert [o["name"] for o in out] == ["Victoria Bridge Street CSO", "Store Street CSO"]
+    assert out[0]["year"] == "2025" and out[0]["spill_count"] == 34 and out[0]["current"]
+    assert out[1]["year"] == "2022" and not out[1]["current"]
+
+
+def test_day_label_reads_like_a_person_wrote_it():
+    assert app_main._day_label("2026-07-03") == "3 Jul 2026"
+    assert app_main._day_label("2026-09-08T00:00:00") == "8 Sep 2026"
+    assert app_main._day_label(None) == ""
+    assert app_main._day_label("varies") == "varies"
+
+
+def test_extension_page_cta_uses_a_middot_not_a_full_stop():
+    from pathlib import Path
+
+    tpl = (Path(__file__).resolve().parent.parent / "app" / "templates" / "browser_extension.html").read_text(encoding="utf-8")
+    assert "Add to Chrome . Free" not in tpl and "Add to Chrome &middot; Free" in tpl
+
+
+def test_admin_daily_funnel_counts_accounts_that_came_back(client):
+    """Every subscription so far followed a return visit. The daily
+    funnel now says, per sign-up day, how many came back signed in on a
+    later day within a week; a view on the sign-up day itself is not a
+    return."""
+    import datetime
+
+    from app.db import get_session
+    from app.models import PageView, User
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    joined = now - datetime.timedelta(days=5)
+
+    def row_for(m):
+        return next(d for d in m["daily_funnel"] if d["date"] == str(joined.date()))
+
+    with get_session() as s:
+        before = row_for(app_main._admin_metrics(s, now))
+        back = User(email="returner@realmail.test", password_hash="x", created_at=joined)
+        once = User(email="oneday@realmail.test", password_hash="x", created_at=joined)
+        s.add_all([back, once])
+        s.commit()
+        s.add_all([
+            PageView(path="/property", user_id=back.id, created_at=joined),
+            PageView(path="/property", user_id=back.id, created_at=joined + datetime.timedelta(days=2)),
+            PageView(path="/property", user_id=once.id, created_at=joined),
+        ])
+        s.commit()
+        after = row_for(app_main._admin_metrics(s, now))
+
+    assert after["signups"] == before["signups"] + 2
+    assert after["came_back"] == before["came_back"] + 1
+    assert after["came_back_open"] is True  # five days in, the week is not over

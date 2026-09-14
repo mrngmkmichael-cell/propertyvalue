@@ -78,15 +78,29 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
     data = response.json()
     if "error" in data:
         return []
+    return pick_outfalls(data.get("features", []), lat, lon)
 
+
+def pick_outfalls(features: list[dict], lat: float, lon: float) -> list[dict]:
+    """The outfalls to show, still-reporting ones first.
+
+    Every consumer reads the first entry as the headline ("N spills
+    nearby in YEAR", the Check-this flag, the score). Sorting by
+    distance alone put an outfall that stopped reporting years ago in
+    front of live ones: M1 1AE led with Store Street CSO, last return
+    2022 and 0 spills, while Victoria Bridge Street CSO 900 m further
+    reported 34 in 2025 (found live, 14 Sep 2026). So outfalls whose
+    latest return is the newest year in the query come first, by
+    distance, and any that have stopped reporting follow."""
     # One row per outfall per reporting year - keep only the most
     # recent year's row per outfall (rows already sorted DESC by year).
     # Grouped by rounded coordinates rather than unique_id: unique_id
     # is inconsistently populated (null on some years' rows for the
     # very same physical outfall), which would otherwise split one
     # real outfall into duplicate entries.
+    features = sorted(features, key=lambda f: str((f.get("attributes") or {}).get("annual_return_year") or ""), reverse=True)
     by_outfall = {}
-    for feature in data.get("features", []):
+    for feature in features:
         attrs = feature["attributes"]
         geom = feature.get("geometry")
         if not geom:
@@ -104,5 +118,8 @@ async def _fetch_nearby(lat: float, lon: float) -> list[dict]:
             "distance_m": round(_haversine_m(lat, lon, geom["y"], geom["x"])),
         }
 
-    outfalls = sorted(by_outfall.values(), key=lambda o: o["distance_m"])
+    latest = max((str(o["year"]) for o in by_outfall.values() if o["year"]), default="")
+    for o in by_outfall.values():
+        o["current"] = str(o["year"] or "") == latest
+    outfalls = sorted(by_outfall.values(), key=lambda o: (not o["current"], o["distance_m"]))
     return outfalls[:RESULT_LIMIT]

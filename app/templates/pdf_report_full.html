@@ -432,7 +432,7 @@
 <h3>Storm overflows within range</h3>
 <table class="data">
     <tr><th style="width: 30%">Overflow</th><th style="width: 18%">Operator</th><th style="width: 20%">Receiving water</th><th class="num" style="width: 10%">Spills</th><th class="num" style="width: 10%">Hours</th><th class="num" style="width: 12%">Distance</th></tr>
-    {% for o in sewage_outfalls[:8] %}<tr><td class="b">{{ o.name }}</td><td>{{ o.water_company }}</td><td>{{ o.receiving_water or "" }}</td><td class="num">{{ o.spill_count }}</td><td class="num">{{ o.duration_hrs }}</td><td class="num">{{ o.distance_m | distance }}</td></tr>{% endfor %}
+    {% for o in sewage_outfalls[:8] %}<tr><td class="b">{{ o.name }}</td><td>{{ o.water_company }}</td><td>{{ o.receiving_water or "" }}</td><td class="num">{{ o.spill_count }}{% if o.year and o.year != sewage_outfalls[0].year %} ({{ o.year }}){% endif %}</td><td class="num">{{ o.duration_hrs }}</td><td class="num">{{ o.distance_m | distance }}</td></tr>{% endfor %}
 </table>
 <p class="tiny faint">Environment Agency event duration monitoring{% if sewage_outfalls[0].year %}, {{ sewage_outfalls[0].year }}{% endif %}. A spill is a discharge of untreated sewage into the named watercourse.</p>
 </td></tr></table>
