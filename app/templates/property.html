@@ -553,7 +553,7 @@
     </div>
     {% endif %}
 
-    <p class="section-sub">Tap a card to see the details in a popup.</p>
+    <p class="section-sub report-cards-hint">Tap a card to see the details in a popup.</p>
 
     {# premium_unlocked comes from the route: per-property, not per-account. #}
     {# Logged-out visitors have a free trial waiting, so say that rather
@@ -600,6 +600,30 @@
     </div>
     {% endif %}
 
+    {# The report's groups (14 Sep 2026). The script straight after the
+       last grid rebuilds these headings and grids as tiles that open;
+       with no script the reader gets every card, as before. The early
+       script below hides the grids before they are parsed, so they
+       never flash up and then fold. #}
+    <div class="report-categories" id="report-categories">
+    <script>
+    (function () {
+        /* Runs before the cards below are parsed, so the full grid never
+           flashes up and then folds. If the script after the grid never
+           runs, the timer puts every card back rather than leave the report
+           hidden. */
+        var root = document.getElementById('report-categories');
+        if (!root) return;
+        root.classList.add('is-enhancing');
+        var hint = document.querySelector('.report-cards-hint');
+        if (hint) hint.hidden = true;
+        setTimeout(function () {
+            if (root.classList.contains('is-enhanced')) return;
+            root.classList.remove('is-enhancing');
+            if (hint) hint.hidden = false;
+        }, 2500);
+    })();
+    </script>
     <h3 class="dashboard-category-heading">Value &amp; Market</h3>
     <div class="dashboard-grid">
         <button type="button" class="dashboard-card status-{{ 'muted' if (tx_error or not transactions) else 'ok' }}" data-modal-target="modal-sold-price-history" data-animate>
@@ -1159,6 +1183,294 @@
         </button>
         {% endif %}
     </div>
+
+    </div>
+    <script>
+    (function () {
+        /* The report's groups as tiles that open (14 Sep 2026). Every card
+           at once, 46 of them, was too much for one screen. This reads the
+           server's full list, the headings and grids above, and rebuilds it
+           as one tile per group with the cards in a panel that opens under
+           the tile's own row. Nothing here decides a status: the counts come
+           from the cards as rendered, so a locked card's finding stays
+           behind its lock exactly as it does in the grid. */
+        var root = document.getElementById('report-categories');
+        if (!root || !root.classList.contains('is-enhancing')) return;
+        var hint = document.querySelector('.report-cards-hint');
+
+        try {
+            build();
+        } catch (err) {
+            root.classList.remove('is-enhancing');
+            if (hint) hint.hidden = false;
+            return;
+        }
+
+        function build() {
+            var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var heads = Array.prototype.filter.call(root.children, function (el) {
+                var next = el.nextElementSibling;
+                return el.classList.contains('dashboard-category-heading') &&
+                    next && next.classList.contains('dashboard-grid');
+            });
+            if (heads.length < 2) throw new Error('fewer than two groups');
+
+            var words = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+            var groupWord = words[heads.length] || String(heads.length);
+
+            var head = document.createElement('div');
+            head.className = 'cat-board-head';
+            var lede = document.createElement('p');
+            lede.className = 'cat-board-lede';
+            var viewToggle = document.createElement('button');
+            viewToggle.type = 'button';
+            viewToggle.className = 'cat-view-toggle';
+            head.appendChild(lede);
+            head.appendChild(viewToggle);
+
+            var board = document.createElement('div');
+            board.className = 'cat-board';
+
+            var cats = heads.map(function (heading, n) {
+                var grid = heading.nextElementSibling;
+                var name = heading.textContent.trim();
+                var slug = 'cat-' + name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
+
+                var tile = document.createElement('button');
+                tile.type = 'button';
+                tile.className = 'cat-tile';
+                tile.id = slug;
+                tile.setAttribute('aria-expanded', 'false');
+                tile.setAttribute('aria-controls', slug + '-cards');
+                tile.style.setProperty('--n', n);
+                tile.innerHTML =
+                    '<span class="cat-tile-icons" aria-hidden="true"></span>' +
+                    '<span class="cat-tile-chevron" aria-hidden="true"></span>' +
+                    '<span class="cat-tile-name"></span>' +
+                    '<span class="cat-tile-meta"></span>';
+                tile.querySelector('.cat-tile-name').textContent = name;
+
+                var panel = document.createElement('div');
+                panel.className = 'cat-panel';
+                panel.id = slug + '-cards';
+                panel.setAttribute('role', 'region');
+                panel.setAttribute('aria-label', name);
+                panel.hidden = true;
+                heading.classList.add('cat-panel-heading');
+                panel.appendChild(heading);
+                panel.appendChild(grid);
+
+                var foot = document.createElement('div');
+                foot.className = 'cat-panel-foot';
+                var next = document.createElement('button');
+                next.type = 'button';
+                next.className = 'cat-next';
+                foot.appendChild(next);
+                panel.appendChild(foot);
+
+                board.appendChild(tile);
+                board.appendChild(panel);
+                return { n: n, name: name, slug: slug, tile: tile, panel: panel, grid: grid, next: next };
+            });
+
+            root.appendChild(head);
+            root.appendChild(board);
+
+            cats.forEach(function (c) {
+                /* The cards pop in on every open, so the page-wide scroll
+                   reveal must not also hold them at opacity 0. */
+                Array.prototype.forEach.call(c.grid.querySelectorAll('.dashboard-card'), function (card, i) {
+                    card.removeAttribute('data-animate');
+                    card.classList.add('in-view');
+                    card.style.setProperty('--i', Math.min(i, 12));
+                });
+                /* The group's own colours: the first four different icons
+                   of the cards inside it. */
+                var strip = c.tile.querySelector('.cat-tile-icons');
+                var seen = {};
+                Array.prototype.some.call(c.grid.querySelectorAll('.dashboard-card-icon'), function (icon) {
+                    if (seen[icon.className]) return false;
+                    seen[icon.className] = true;
+                    strip.appendChild(icon.cloneNode(true));
+                    return strip.children.length >= 4;
+                });
+                summarise(c);
+                /* Two cards arrive after the page (nearby essentials, the
+                   valuation) and can change a group's count or flags. */
+                if ('MutationObserver' in window) {
+                    new MutationObserver(function () { summarise(c); })
+                        .observe(c.grid, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+                }
+                var after = cats[c.n + 1];
+                c.next.textContent = after ? 'Next: ' + after.name : 'Back to all groups';
+                c.next.setAttribute('data-dir', after ? 'next' : 'up');
+            });
+
+            function addSpan(parent, cls, text) {
+                var s = document.createElement('span');
+                s.className = cls;
+                s.textContent = text;
+                parent.appendChild(s);
+            }
+
+            /* A locked card is neither a finding nor an all-clear, so a
+               group holding one never says "nothing flagged". */
+            function summarise(c) {
+                var cards = c.grid.querySelectorAll('.dashboard-card').length;
+                var flagged = c.grid.querySelectorAll('.dashboard-card.status-attn').length;
+                var locked = c.grid.querySelectorAll('.dashboard-card-locked').length;
+                var meta = c.tile.querySelector('.cat-tile-meta');
+                meta.textContent = '';
+                addSpan(meta, 'cat-tile-count', cards + (cards === 1 ? ' card' : ' cards'));
+                if (locked) addSpan(meta, 'cat-tile-locked', locked + ' locked');
+                if (flagged) addSpan(meta, 'cat-tile-flag', flagged + ' to check');
+                else if (!locked) addSpan(meta, 'cat-tile-clear', 'nothing flagged');
+            }
+
+            var current = null;
+            var listMode = false;
+
+            function columns() {
+                var cols = getComputedStyle(board).gridTemplateColumns.split(' ').filter(Boolean).length;
+                return cols > 0 ? cols : 1;
+            }
+
+            /* The open panel sits straight after the last tile in its tile's
+               row, whatever the column count, with its notch under the tile. */
+            function place() {
+                cats.forEach(function (c) {
+                    c.tile.style.order = listMode ? '' : String(c.n * 2);
+                    c.panel.style.order = '';
+                });
+                if (listMode || !current) return;
+                var cols = columns();
+                var rowEnd = Math.min((Math.floor(current.n / cols) + 1) * cols, cats.length) - 1;
+                current.panel.style.order = String(rowEnd * 2 + 1);
+                var t = current.tile.getBoundingClientRect();
+                var p = current.panel.getBoundingClientRect();
+                current.panel.style.setProperty('--notch-x', Math.round(t.left + t.width / 2 - p.left) + 'px');
+            }
+
+            /* Opening a group can remove a taller panel above the tile that
+               was tapped; hold that tile where the reader's finger was. */
+            function holdInPlace(el, change) {
+                var before = el.getBoundingClientRect().top;
+                change();
+                var moved = el.getBoundingClientRect().top - before;
+                if (Math.abs(moved) > 1) window.scrollBy(0, moved);
+            }
+
+            function show(c, isOpen) {
+                c.tile.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                c.panel.hidden = !isOpen;
+            }
+
+            function open(c, how) {
+                how = how || {};
+                if (current !== c) {
+                    holdInPlace(c.tile, function () {
+                        if (current) show(current, false);
+                        current = c;
+                        show(c, true);
+                        place();
+                    });
+                }
+                var behavior = still ? 'auto' : 'smooth';
+                if (how.scroll) {
+                    window.scrollTo({ top: c.tile.getBoundingClientRect().top + window.pageYOffset - 16, behavior: behavior });
+                } else {
+                    /* A tile near the bottom of the screen would open its
+                       cards out of sight. */
+                    var vh = window.innerHeight || document.documentElement.clientHeight;
+                    var top = c.panel.getBoundingClientRect().top;
+                    if (top > vh * 0.72) window.scrollBy({ top: top - vh * 0.4, behavior: behavior });
+                }
+                if (how.focus) c.tile.focus({ preventScroll: true });
+            }
+
+            function close() {
+                if (!current) return;
+                var c = current;
+                holdInPlace(c.tile, function () {
+                    show(c, false);
+                    current = null;
+                    place();
+                });
+            }
+
+            function setList(on, remember) {
+                listMode = on;
+                current = null;
+                root.classList.toggle('is-list', on);
+                cats.forEach(function (c) {
+                    c.tile.setAttribute('aria-expanded', 'false');
+                    c.panel.hidden = !on;
+                });
+                lede.textContent = on
+                    ? 'Every card at once. Tap a card for the details.'
+                    : 'The report in ' + groupWord + ' groups. Open one to see its cards, then tap a card for the details.';
+                viewToggle.textContent = on ? 'Show in groups' : 'Show every card at once';
+                place();
+                if (remember) {
+                    try { localStorage.setItem('uki-report-view', on ? 'list' : 'groups'); } catch (e) {}
+                }
+            }
+
+            cats.forEach(function (c) {
+                c.tile.addEventListener('click', function () {
+                    if (current === c) close();
+                    else open(c);
+                });
+                c.next.addEventListener('click', function () {
+                    var after = cats[c.n + 1];
+                    if (after) {
+                        open(after, { scroll: true, focus: true });
+                    } else {
+                        close();
+                        window.scrollTo({ top: head.getBoundingClientRect().top + window.pageYOffset - 16, behavior: still ? 'auto' : 'smooth' });
+                        cats[0].tile.focus({ preventScroll: true });
+                    }
+                });
+            });
+            viewToggle.addEventListener('click', function () {
+                holdInPlace(viewToggle, function () { setList(!listMode, true); });
+            });
+
+            var saved = null;
+            try { saved = localStorage.getItem('uki-report-view'); } catch (e) {}
+            setList(saved === 'list', false);
+
+            /* A link to #cat-risk-safety and the like opens that group. */
+            var wanted = (window.location.hash || '').slice(1);
+            cats.forEach(function (c) {
+                if (!listMode && wanted === c.slug) open(c);
+            });
+
+            /* The tiles rise in the first time the board is on screen. */
+            if (still || !('IntersectionObserver' in window)) {
+                board.classList.add('is-shown');
+            } else {
+                var io = new IntersectionObserver(function (entries) {
+                    if (entries.some(function (e) { return e.isIntersecting; })) {
+                        board.classList.add('is-shown');
+                        io.disconnect();
+                    }
+                }, { rootMargin: '0px 0px -22% 0px' });
+                io.observe(board);
+            }
+
+            var frame = 0;
+            window.addEventListener('resize', function () {
+                if (frame) return;
+                frame = requestAnimationFrame(function () { frame = 0; place(); });
+            });
+
+            root.classList.add('is-enhanced');
+            root.classList.remove('is-enhancing');
+            if (hint) hint.hidden = true;
+        }
+    })();
+    </script>
 
     {% if buyer_questions %}
     <section class="report-section buyer-questions" data-animate id="buyer-questions">
@@ -4353,89 +4665,6 @@ Listed building data from Historic England's
     }, 3600);
 </script>
 {% endif %}
-
-{# Fold the categories where nothing was flagged. See the note in
-   scratchpad/add_collapse.py for why this reads the rendered DOM
-   rather than re-deriving the statuses in Jinja. #}
-<script>
-(function () {
-    var headings = document.querySelectorAll('.dashboard-category-heading');
-    if (!headings.length) return;
-
-    Array.prototype.forEach.call(headings, function (heading) {
-        var grid = heading.nextElementSibling;
-        if (!grid || !grid.classList.contains('dashboard-grid')) return;   // "What stands out"
-
-        var cards = grid.querySelectorAll('.dashboard-card');
-        if (!cards.length) return;
-
-        var flagged = grid.querySelectorAll('.dashboard-card.status-attn').length;
-        var locked = grid.querySelectorAll('.dashboard-card-locked').length;
-        var open = cards.length - locked;
-
-        /* What the fold is worth saying. A locked card is not a finding
-           and not an all-clear either, so it is counted separately
-           rather than folded into "nothing flagged" - claiming a check
-           came back clean when nobody has run it would be the exact
-           thing this site refuses to do. */
-        var parts = [];
-        if (open) parts.push(open + (open === 1 ? ' check' : ' checks') + ', nothing flagged');
-        if (locked) parts.push(locked + ' with Premium');
-
-        var name = heading.textContent.trim();
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'cat-toggle';
-        /* Every category starts open (folded-by-default hid the
-           breadth of the report; readers can still fold them away). */
-        btn.setAttribute('aria-expanded', 'true');
-
-        var id = 'cat-' + name.toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
-        grid.id = id;
-        btn.setAttribute('aria-controls', id);
-
-        btn.innerHTML =
-            '<span class="cat-name"></span>' +
-            '<span class="cat-summary"></span>' +
-            '<span class="cat-chevron" aria-hidden="true"></span>';
-        btn.querySelector('.cat-name').textContent = name;
-        btn.querySelector('.cat-summary').textContent =
-            flagged ? (flagged === 1 ? '1 to check' : flagged + ' to check') : parts.join(' \· ');
-        if (flagged) btn.querySelector('.cat-summary').classList.add('cat-summary-flagged');
-
-        heading.textContent = '';
-        heading.appendChild(btn);
-        heading.classList.add('dashboard-category-heading-toggle');
-
-        btn.addEventListener('click', function () {
-            var nowOpen = grid.hidden;
-            grid.hidden = !nowOpen;
-            btn.setAttribute('aria-expanded', nowOpen ? 'true' : 'false');
-            if (nowOpen) {
-                /* Cards inside a hidden grid never met the reveal
-                   observer, so they would sit at opacity 0 on open. */
-                Array.prototype.forEach.call(grid.querySelectorAll('[data-animate]'), function (el) {
-                    el.classList.add('in-view');
-                });
-            }
-        });
-    });
-
-    /* The attention banner's chips jump to a card. If its category is
-       folded, open it first or the jump lands on nothing. */
-    document.addEventListener('click', function (e) {
-        var chip = e.target.closest && e.target.closest('[data-modal-target]');
-        if (!chip) return;
-        var card = document.getElementById(chip.getAttribute('data-modal-target'));
-        var grid = card && card.closest('.dashboard-grid');
-        if (grid && grid.hidden) {
-            var t = grid.previousElementSibling &&
-                    grid.previousElementSibling.querySelector('.cat-toggle');
-            if (t) t.click();
-        }
-    }, true);
-})();
-</script>
 
 {% if location %}
 <script>

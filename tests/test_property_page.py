@@ -831,3 +831,34 @@ def test_price_per_square_metre_sits_in_the_valuation_modal(client, fake_report)
     assert "Price per square metre" in body and "£4,400 per m²" in body and "would be worth about <strong>£352,000</strong>" in body
     assert "This home last sold at <strong>£4,400 per m²</strong>" in body and "£4,400/m² locally" in body
 
+
+def test_the_report_cards_sit_in_the_group_board(client, fake_report):
+    """14 Sep 2026: the report opens on its groups, and a tile opens each
+    group's cards. The groups are built in the browser from the server's
+    full list, so the server's HTML must still carry every heading and
+    every card, with no grid hidden: a reader without JavaScript gets the
+    whole report, as before."""
+    body = _report(client, fake_report)
+    assert 'class="report-categories" id="report-categories"' in body
+    region = body.split('id="report-categories"', 1)[1].split("The report's groups as tiles that open", 1)[0]
+    headings = re.findall(r'<h3 class="dashboard-category-heading">(.*?)</h3>', region)
+    assert headings == [
+        "Value &amp; Market", "Property &amp; Condition", "Risk &amp; Safety",
+        "Planning &amp; Heritage", "Location &amp; Connectivity", "Area &amp; Community",
+    ]
+    in_region = len(re.findall(r'<span class="dashboard-card-title">', region))
+    assert in_region > 30 and in_region == len(re.findall(r'<span class="dashboard-card-title">', body))
+    assert not re.search(r'<div class="dashboard-grid"[^>]*\bhidden', body)
+    assert 'class="section-sub report-cards-hint"' in body
+    assert "cat-board" in body and "cat-toggle" not in body
+
+
+def test_the_group_board_holds_still_for_reduced_motion():
+    """DESIGN.md: prefers-reduced-motion is respected on every animation.
+    The tiles rise in and a group's cards pop in; both must stand still."""
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    still = re.findall(r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S)
+    for selector in (".cat-panel .dashboard-card", ".cat-board.is-shown .cat-tile", ".cat-tile-chevron"):
+        assert any(selector in block for block in still), selector
