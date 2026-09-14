@@ -2931,8 +2931,6 @@ button:not([class]):hover { background: var(--accent-hover); }
 /* Ofsted's report card (November 2025 onwards): not a quality level,
    so a neutral blue rather than a place on the green-to-red scale. */
 .ofsted-5 { background: #4f6fbf; }
-.building-known { margin: 1.5rem 0 2rem; padding: 1.25rem 1.25rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); background: var(--surface); }
-.building-known h2 { margin: 0 0 0.25rem; font-size: var(--text-lg); }
 .rating-card { background: #4f6fbf; }
 .ofsted-card { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.25rem; }
 .ofsted-card li { display: flex; justify-content: space-between; gap: 1rem; font-size: var(--text-sm); }
@@ -5678,9 +5676,19 @@ main:focus { outline: none; }
 /* ---- Report building page ---- */
 .building-wrap { max-width: 34rem; margin: 3rem auto; }
 .building-heading { letter-spacing: -0.01em; }
-/* Real progress, so it gets a real counter and bar. */
+
+/* The wait's one moving object (replaced the district "at a glance"
+   box, 14 Sep 2026). A dial with a mark per source, clockwise from
+   twelve in the list's order: a mark turns green only when its source
+   has really come back. Marks still out carry a slow wave, so a slow
+   source reads as work rather than a stuck page, and the site's own
+   mark searches the house in the middle. The checklist below keeps
+   still; one thing moving is the restraint. */
+.building-live { display: flex; align-items: center; gap: 1.75rem; margin: 2.25rem 0 0; }
+.building-dial { width: 148px; height: 148px; flex: none; }
+.building-status { min-width: 0; }
 .building-count {
-    margin: 1.5rem 0 0.5rem;
+    margin: 0 0 0.5rem;
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     letter-spacing: 0.08em;
@@ -5688,22 +5696,58 @@ main:focus { outline: none; }
     color: var(--ink-soft);
 }
 .building-count #building-done { color: var(--accent); font-variant-numeric: tabular-nums; }
-.building-bar {
-    height: 3px;
-    background: var(--border);
-    border-radius: var(--radius-pill);
-    overflow: hidden;
+/* Two lines reserved, so a long source name never shifts the page. */
+.building-latest { margin: 0; min-height: 3em; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); }
+.building-latest.is-fresh { animation: building-latest-in 0.3s ease-out; }
+
+.dial-mark {
+    fill: var(--accent);
+    opacity: 0.16;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: dial-wave 2.85s ease-in-out infinite;
+    animation-delay: calc(var(--i) / var(--n) * 2.85s);
 }
-.building-bar-fill {
-    display: block;
-    width: 0;
-    height: 100%;
-    background: var(--good);
-    border-radius: var(--radius-pill);
-    transition: width 0.45s ease;
+.dial-mark.is-done {
+    fill: var(--good);
+    opacity: 1;
+    animation: dial-land 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dial-house { fill: var(--accent); }
+/* The halo is the page ground, cutting the lens out of the house the
+   way the header mark's tile colour does. */
+.dial-lens-halo { fill: none; stroke: var(--bg); }
+.dial-lens-line { fill: none; stroke: var(--accent); }
+.dial-lens { animation: dial-lens-search 4.2s ease-in-out infinite; }
+
+@keyframes dial-wave {
+    0%, 32%, 100% { opacity: 0.16; }
+    12% { opacity: 0.72; }
+}
+@keyframes dial-land {
+    from { opacity: 0.2; transform: scale(0.4); }
+    60% { transform: scale(1.18); }
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes dial-lens-search {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-9px, -4px); }
+    50% { transform: translate(-14px, -12px); }
+    75% { transform: translate(-4px, -10px); }
+}
+/* Starts part-visible: sources often land a beat apart, and a fade
+   from nothing restarted on each one read as flicker. */
+@keyframes building-latest-in {
+    from { opacity: 0.35; transform: translateY(3px); }
+    to { opacity: 1; transform: none; }
+}
+@media (max-width: 480px) {
+    .building-live { gap: 1.1rem; }
+    .building-dial { width: 112px; height: 112px; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .building-bar-fill { transition: none; }
+    .dial-mark, .dial-mark.is-done, .dial-lens, .building-latest.is-fresh { animation: none; }
+    .building-item, .building-tick { transition: none; }
 }
 
 .building-list { list-style: none; margin: 2rem 0; padding: 0; display: flex; flex-direction: column; gap: 0.55rem; }
@@ -5724,13 +5768,6 @@ main:focus { outline: none; }
     width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
-.building-item:not(.done) .building-tick {
-    animation: building-pulse 1.2s ease-in-out infinite;
-}
-.building-item:not(.done):first-of-type .building-tick,
-.building-item.done + .building-item:not(.done) .building-tick { border-color: var(--accent); }
-@keyframes building-pulse { 50% { opacity: 0.45; } }
-@media (prefers-reduced-motion: reduce) { .building-tick { animation: none !important; } }
 
 /* ---- Map layer control ---- */
 .leaflet-control-layers { border-radius: var(--radius-sm) !important; border: 1px solid var(--border) !important; box-shadow: 0 8px 24px -12px rgba(31,42,90,0.3) !important; }

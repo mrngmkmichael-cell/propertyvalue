@@ -3167,27 +3167,17 @@ async def _gather_within_deadline(location: dict, house_number: str) -> bool:
 async def _building_context(request: Request, canonical: str, house_number: str) -> dict:
     """The interim "building your report" page's context.
 
-    What the area guide already holds for this district, straight from
-    the tier-2 cache: instant, true, and worth reading while the
-    property's own checks come in. On 2 Sep 2026 half the people who
-    started a report left during the 13-second wait. Nothing is fetched
-    for this; a district with no built guide shows nothing extra. A
-    guide past its refresh window is still a fact about the district, so
-    the window here is generous."""
+    Only what the page draws: the address, and the gather's source list
+    that the dial and the checklist both tick off as each source really
+    comes back. From 2 to 14 Sep 2026 it also carried the district's
+    area guide figures from the tier-2 cache, because half the people
+    who started a report on 2 Sep left during the wait. The box read as
+    clutter and came out, and with it a cache read and a schools query
+    on every wait page."""
     ctx = base_context(request)
     ctx["building_postcode"] = canonical
     ctx["building_house_number"] = house_number
     ctx["build_sources"] = GATHER_SOURCE_ORDER
-    outcode = canonical.split(" ")[0].upper()
-    ctx["outcode"] = outcode
-    ctx["known"] = await asyncio.to_thread(
-        _cache.get_persistent, ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, outcode),
-        AREA_GUIDE_CACHE_TTL_S * 4,
-    )
-    ctx["known_schools"] = (
-        await asyncio.to_thread(schools_db.admission_rows_in_outcodes, {outcode})
-        if ctx["known"] else []
-    )
     return ctx
 
 

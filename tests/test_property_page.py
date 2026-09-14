@@ -534,28 +534,47 @@ def test_the_report_loads_no_third_party_scripts_or_styles(client, fake_report):
         assert href.startswith("/"), f"off-site stylesheet: {href}"
 
 
-def test_the_wait_page_shows_what_the_district_already_knows(client, fake_report):
+def test_the_wait_page_draws_the_sources_not_the_district(client, fake_report):
     """Half of the people who started a report on 2 Sep 2026 left during
-    the wait. The page now carries the district's cached facts, from the
-    area guide in tier 2, so there is something true to read."""
+    the wait, and until 14 Sep the page answered with a box of the
+    district's area guide figures. It read as clutter and came out. The
+    wait now has one moving object: a dial with a mark per source, in
+    the checklist's order, which fills as each source really comes back.
+    A district with a built guide must not bring the box back."""
+    import html
+    import re
+
     from app import main as app_main
     from app.services import _cache
 
     fake_report()
     _cache.set(("area_guide", app_main.AREA_GUIDE_PAYLOAD_VERSION, "M14"), {
         "local_sales": {"enough_for_median": True, "median": 250000, "count": 40, "years": 2},
-        "hpi": {"local_authority": {"name": "Manchester", "annual_change_pct": 2.9}},
-        "landscape": {"good_or_better_pct": 76},
-        "crime": {"total": 120, "month": "June 2026", "by_category": [{"category": "Violence and sexual offences"}]},
         "flood_zone": {"label": "Flood zone 1"},
     })
     browser = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"}
     r = client.get("/property?postcode=M14%205TG", headers=browser)
     assert r.status_code == 202
     body = r.text
-    assert "M14 at a glance" in body
-    assert "250,000" in body and "+2.9%" in body and "76%" in body and "Flood zone 1" in body
-    assert 'href="/area/M14"' in body
+    assert "M14 at a glance" not in body
+    assert "250,000" not in body and "Flood zone 1" not in body and 'href="/area/M14"' not in body
+
+    expected = [html.escape(s) for s in app_main.GATHER_SOURCE_ORDER]
+    assert re.findall(r'<rect class="dial-mark" data-source="([^"]+)"', body) == expected
+    assert re.findall(r'<li class="building-item" data-source="([^"]+)"', body) == expected
+
+
+def test_the_wait_dial_holds_still_for_reduced_motion():
+    """DESIGN.md: prefers-reduced-motion is respected on every animation.
+    The dial is the wait page's only moving object, so it is the one to
+    pin."""
+    import re
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    still = re.findall(r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S)
+    for selector in (".dial-mark", ".dial-lens", ".building-latest"):
+        assert any(selector in block for block in still), selector
 
 
 def test_the_report_offers_a_free_save_under_the_score(client, fake_report):

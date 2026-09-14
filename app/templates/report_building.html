@@ -9,49 +9,40 @@
     <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
     <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
 
-    {% if known %}
-    {# The district's facts are already on file; the visitor reads them
-       while the property's own checks arrive, instead of a progress
-       bar alone. Every figure names its source, as on the guide. #}
-    <section class="building-known">
-        <h2>Meanwhile, {{ outcode }} at a glance</h2>
-        <p class="section-sub">Already on file for this district, from its area guide. The address's own checks are coming in below.</p>
-        <div class="scorecard-row">
-            {% if known.local_sales and known.local_sales.enough_for_median %}
-            <div class="score-tile"><span class="score-tile-value">{{ known.local_sales.median | gbp }}</span><span class="score-tile-label">Median sale price</span><span class="score-tile-note">{{ known.local_sales.count }} sales around {{ outcode }}{% if known.local_sales.years %} in the last {{ known.local_sales.years }} years{% endif %}. HM Land Registry.</span></div>
-            {% endif %}
-            {% if known.hpi and known.hpi.local_authority and known.hpi.local_authority.annual_change_pct is not none %}
-            <div class="score-tile"><span class="score-tile-value">{{ "%+.1f"|format(known.hpi.local_authority.annual_change_pct) }}%</span><span class="score-tile-label">Prices on a year ago</span><span class="score-tile-note">{{ known.hpi.local_authority.name }}. UK House Price Index.</span></div>
-            {% endif %}
-            {% if known.landscape and known.landscape.good_or_better_pct is not none %}
-            <div class="score-tile"><span class="score-tile-value">{{ known.landscape.good_or_better_pct }}%</span><span class="score-tile-label">Good or Outstanding</span><span class="score-tile-note">Share of nearby schools, at their last Ofsted inspection.</span></div>
-            {% endif %}
-            {% if known.crime and known.crime.total is not none %}
-            <div class="score-tile"><span class="score-tile-value">{{ known.crime.total }}</span><span class="score-tile-label">Crimes within a mile</span><span class="score-tile-note">{% if known.crime.month %}In {{ known.crime.month | month_label }}{% if known.crime.by_category %}, mostly {{ known.crime.by_category[0].category | lower }}{% endif %}.{% elif known.crime.by_category %}Mostly {{ known.crime.by_category[0].category | lower }}.{% endif %} Police.uk.</span></div>
-            {% endif %}
-            {% if known.flood_zone and known.flood_zone.label %}
-            <div class="score-tile"><span class="score-tile-value score-tile-value-text">{{ known.flood_zone.label }}</span><span class="score-tile-label">Flood zone</span><span class="score-tile-note">At the district centre. Environment Agency.</span></div>
-            {% endif %}
+    {# The wait's one moving object. The dial has a mark per source, in
+       the list's order clockwise from twelve, and a mark fills only when
+       its source has actually come back (see /api/report-ready). The
+       site's own mark searches the house in the middle until every
+       source is in. It replaced a box of the district's area guide
+       figures on 14 Sep 2026, which read as clutter. #}
+    {% set n_sources = build_sources | length %}
+    <div class="building-live" id="building-live">
+        <svg class="building-dial" viewBox="0 0 160 160" style="--n: {{ n_sources }}" aria-hidden="true" focusable="false">
+            {% for src in build_sources %}
+            <g transform="rotate({{ '%.2f' | format(loop.index0 * 360 / n_sources) }} 80 80)"><rect class="dial-mark" data-source="{{ src }}" style="--i: {{ loop.index0 }}" x="78" y="6" width="4" height="15" rx="2"/></g>
+            {% endfor %}
+            <svg x="48" y="43" width="64" height="64" viewBox="0 0 48 48" overflow="visible">
+                <path class="dial-house" d="M18 10 L4 24 L32 24 Z"/>
+                <rect class="dial-house" x="7" y="22" width="22" height="17"/>
+                <g class="dial-lens">
+                    <line class="dial-lens-halo" x1="34.5" y1="37.5" x2="41" y2="44" stroke-width="7.4" stroke-linecap="round"/>
+                    <circle class="dial-lens-halo" cx="29" cy="32" r="8" stroke-width="5.4"/>
+                    <line class="dial-lens-line" x1="34.5" y1="37.5" x2="41" y2="44" stroke-width="4" stroke-linecap="round"/>
+                    <circle class="dial-lens-line" cx="29" cy="32" r="8" stroke-width="3.6"/>
+                </g>
+            </svg>
+        </svg>
+        <div class="building-status">
+            <p class="building-count" id="building-count" aria-live="polite"><span id="building-done">0</span> of {{ n_sources }} sources back</p>
+            <p class="building-latest" id="building-latest">Waiting for the first source to answer</p>
         </div>
-        {% if known_schools %}
-        <p class="section-sub">Schools in {{ outcode }} with a published admission distance:
-            {% for s in known_schools[:4] %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a> ({{ s.miles }} mi){% if not loop.last %}, {% endif %}{% endfor %}.
-            The report measures this address against each of them.</p>
-        {% endif %}
-        <p class="section-sub"><a href="/area/{{ outcode }}">The full {{ outcode }} area guide →</a></p>
-    </section>
-    {% endif %}
+    </div>
 
     {# The list is the real gather's source list, and each row ticks
        when that source actually comes back (see /api/report-ready).
        The old version ran a timer and looped when the gather was slow,
        which meant the one screen showing our working was the one
        screen making it up. #}
-    <p class="building-count" id="building-count" aria-live="polite">
-        <span id="building-done">0</span> of {{ build_sources | length }} sources back
-    </p>
-    <div class="building-bar" aria-hidden="true"><span class="building-bar-fill" id="building-bar"></span></div>
-
     <ul class="building-list" id="building-list">
         {% for src in build_sources %}
         <li class="building-item" data-source="{{ src }}"><span class="building-tick"></span>{{ src }}</li>
@@ -63,33 +54,78 @@
 
 <script>
 (function () {
-    var items = document.querySelectorAll('.building-item');
-    var bar = document.getElementById('building-bar');
+    var live = document.getElementById('building-live');
     var doneEl = document.getElementById('building-done');
-    var total = items.length;
-    var qs = window.location.search;
-
     var countEl = document.getElementById('building-count');
+    var latestEl = document.getElementById('building-latest');
+    var lens = document.querySelector('.dial-lens');
+    var qs = window.location.search;
+    var rows = {}, marks = {};
+    document.querySelectorAll('.building-item').forEach(function (li) { rows[li.getAttribute('data-source')] = li; });
+    document.querySelectorAll('.dial-mark').forEach(function (m) { marks[m.getAttribute('data-source')] = m; });
+    var total = Object.keys(rows).length;
+    var seen = {}, landed = 0, queue = [], timer = null;
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    function paint(done) {
-        var set = {};
-        done.forEach(function (d) { set[d] = true; });
-        var n = 0;
-        items.forEach(function (li) {
-            if (set[li.dataset.source]) { li.classList.add('done'); n++; }
-        });
-        doneEl.textContent = n;
-        if (bar) bar.style.width = (total ? (n / total) * 100 : 0) + '%';
-        /* Every source is back but the page is still being put
-           together. Saying so beats a full bar that appears stuck. */
-        if (n >= total && countEl) countEl.textContent = 'All sources back, putting the report together';
+    function say(text) {
+        latestEl.textContent = text;
+        latestEl.classList.remove('is-fresh');
+        void latestEl.offsetWidth;  /* restarts the fade for each new line */
+        latestEl.classList.add('is-fresh');
     }
+
+    /* One source back: its row ticks, its mark fills, and the line
+       under the count names it. */
+    function land(src) {
+        rows[src].classList.add('done');
+        if (marks[src]) marks[src].classList.add('is-done');
+        landed++;
+        if (landed >= total) {
+            /* Every source is back but the page is still being put
+               together. Saying so beats a full dial that appears stuck. */
+            countEl.textContent = 'All sources back, putting the report together';
+            say('The report opens here as soon as it is ready.');
+            live.classList.add('is-complete');
+        } else {
+            doneEl.textContent = landed;
+            say('Just in: ' + src);
+        }
+    }
+
+    /* Several sources often come back between two polls. Landing them
+       a beat apart lets each one be seen; nothing lands before it is
+       actually back. */
+    function drain() {
+        timer = null;
+        if (!queue.length) return;
+        land(queue.shift());
+        if (queue.length) timer = setTimeout(drain, still ? 0 : 140);
+    }
+
+    function paint(done, now) {
+        done.forEach(function (src) {
+            if (rows[src] && !seen[src]) { seen[src] = true; queue.push(src); }
+        });
+        if (now) {
+            clearTimeout(timer);
+            timer = null;
+            while (queue.length) land(queue.shift());
+        } else if (!timer) {
+            drain();
+        }
+    }
+
+    /* Once every source is in, the lens finishes its loop and rests
+       where the header's mark holds it, rather than stopping mid-way. */
+    if (lens) lens.addEventListener('animationiteration', function () {
+        if (live.classList.contains('is-complete')) lens.style.animation = 'none';
+    });
 
     function poll() {
         fetch('/api/report-ready' + qs)
             .then(function (r) { return r.json(); })
             .then(function (d) {
-                paint(d.done || []);
+                paint(d.done || [], d.ready);
                 if (d.ready) window.location.reload();
                 else setTimeout(poll, 900);
             })
