@@ -5057,7 +5057,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card(
                     "Sewage Discharge",
                     "Data unavailable" if isinstance(sewage_result, Exception)
-                    else (f"{sewage_outfalls[0]['spill_count']} spills nearby in {sewage_outfalls[0]['year']}" if sewage_outfalls else "No outfalls found nearby"),
+                    else (f"{sewage_outfalls[0]['spill_count']} spill{'' if sewage_outfalls[0]['spill_count'] == 1 else 's'} nearby in {sewage_outfalls[0]['year']}" if sewage_outfalls else "No outfalls found nearby"),
                     sewage_status,
                     detail=sewage_detail,
                 ),

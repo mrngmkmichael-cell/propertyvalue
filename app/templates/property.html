@@ -761,7 +761,7 @@
             <span class="dashboard-card-title">Sewage Discharge</span>
             <span class="dashboard-card-status">
                 {% if sewage_error %}Data unavailable
-                {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spills nearby in {{ sewage_outfalls[0].year }}
+                {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spill{{ '' if sewage_outfalls[0].spill_count == 1 else 's' }} nearby in {{ sewage_outfalls[0].year }}
                 {% else %}No outfalls found nearby{% endif %}
             </span>
         </button>
