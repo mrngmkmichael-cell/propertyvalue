@@ -1120,7 +1120,10 @@
             <span class="dashboard-card-icon icon-occupation">{{ icons.icon('occupation') }}</span>
             <span class="dashboard-card-title">Occupation</span>
             <span class="dashboard-card-status">
-                {% if occupation %}{{ occupation.professional_pct }}% managerial/professional
+                {# The break opportunity after the slash: a browser will
+                   not wrap at "/", and at five columns the word ran out
+                   of the card (Michael, 15 Sep 2026). #}
+                {% if occupation %}{{ occupation.professional_pct }}% managerial/<wbr>professional
                 {% else %}No data available{% endif %}
             </span>
         </button>

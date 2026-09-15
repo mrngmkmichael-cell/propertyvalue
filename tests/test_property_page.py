@@ -874,6 +874,20 @@ def test_the_group_board_holds_still_for_reduced_motion():
         assert any(selector in block for block in still), selector
 
 
+def test_a_card_status_with_no_space_in_it_can_still_wrap(client, fake_report):
+    """15 Sep 2026: "managerial/professional" ran 23px out of its card
+    at five columns, because a browser will not wrap at a slash. The
+    word carries a break opportunity now, and every card status may
+    break anywhere as a last resort rather than leave its card."""
+    from pathlib import Path
+
+    body = _report(client, fake_report, gather=fake_gather(occupation={"professional_pct": 55.6, "breakdown": []}))
+    assert "55.6% managerial/<wbr>professional" in body
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    rule = css.split("\n.dashboard-card-status {", 1)[1].split("}", 1)[0]
+    assert "overflow-wrap: anywhere" in rule and "min-width: 0" in rule
+
+
 def test_the_group_board_keeps_its_checklist_per_address(client, fake_report):
     """15 Sep 2026: an opened group is ticked and counted, kept on the
     device under this address, and once every group has been opened the

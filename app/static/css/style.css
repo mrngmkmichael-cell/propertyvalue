@@ -3660,6 +3660,12 @@ a.school-profile-lock-label:hover {
     line-height: 1.25;
     letter-spacing: -0.01em;
     color: var(--ink);
+    /* A word with no break in it must wrap rather than leave the card:
+       "managerial/professional" ran out of its card at five columns
+       (15 Sep 2026). Only ever used when nothing else fits, so ordinary
+       text still wraps at its spaces. */
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-card-substat {
