@@ -2892,7 +2892,7 @@
             <tbody>
             {% for g in grammar_schools %}
             <tr>
-                <td><a href="/school/{{ g.urn }}/{{ g.slug }}">{{ g.name }}</a>{% if g.gender and g.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ g.gender }})</span>{% endif %}</td>
+                <td>{% if g.has_page %}<a href="/school/{{ g.urn }}/{{ g.slug }}">{{ g.name }}</a>{% else %}{{ g.name }}{% endif %}{% if g.gender and g.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ g.gender }})</span>{% endif %}</td>
                 <td class="num">{{ g.distance_m | distance }}</td>
                 <td>{{ g.ofsted_rating_label or g.ofsted_note or "Not rated" }}</td>
                 <td class="num">{% if g.last_distance_miles is not none %}{{ g.last_distance_miles }} mi{% if g.distance_year %} ({{ g.distance_year }}){% endif %}{% else %}Not published{% endif %}</td>

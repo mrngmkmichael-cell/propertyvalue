@@ -60,6 +60,11 @@ def _row(school: School, detail: SchoolDetail, radius: SchoolAdmissionRadius | N
         "last_distance_miles": radius.last_distance_miles if radius else None,
         "distance_year": radius.academic_year if radius else "",
         "distance_source": radius.source_authority if radius else "",
+        # A school page exists only where a published distance is held
+        # (schools_db.admission_profile joins on it), so only those names
+        # may link to one. Until 15 Sep 2026 every name did, and most of
+        # the list on /schools/grammar answered "Page not found".
+        "has_page": radius is not None,
         "distance_m": distance_m,
     }
 

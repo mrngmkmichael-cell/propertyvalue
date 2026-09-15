@@ -14,6 +14,11 @@ def _seed():
         session.merge(School(urn=900002, name="Private Selective School", phase="Not applicable", type_name="Other independent school", postcode="M14 5TG",
                              latitude=53.453, longitude=-2.223))
         session.merge(SchoolDetail(urn=900002, admissions_policy="Selective", local_authority="Testshire"))
+        # A grammar school with no published distance: listed, but with no
+        # school page of its own.
+        session.merge(School(urn=900093, name="Unpublished Grammar School", phase="Secondary", type_name="Foundation school", postcode="M14 5TG",
+                             latitude=53.454, longitude=-2.224, ofsted_rating=2, ofsted_rating_label="Good"))
+        session.merge(SchoolDetail(urn=900093, town="Manchester", admissions_policy="Selective", local_authority="Testshire"))
         session.commit()
     _cache._store.clear(); _cache._bytes = 0
 
@@ -25,6 +30,8 @@ def test_only_state_secondaries_count_and_the_distance_comes_along(client):
     assert "Testshire Grammar School" in names and "Private Selective School" not in names
     row = next(r for r in rows if r["urn"] == 900001)
     assert row["last_distance_miles"] == 2.4 and row["distance_year"] == "2025/26" and row["slug"] == "testshire-grammar-school"
+    assert row["has_page"] is True
+    assert next(r for r in rows if r["urn"] == 900093)["has_page"] is False
     near = grammar.schools_near(53.45, -2.22)
     assert near and near[0]["urn"] == 900001 and near[0]["distance_m"] < 400
     assert grammar.schools_near(51.5, 0.5) == []
@@ -36,3 +43,15 @@ def test_the_page_lists_them_by_council_with_the_official_papers(client):
     assert "Grammar schools in England" in body and "Testshire Grammar School" in body and "2.4 mi (2025/26)" in body
     assert "11plus.gl-assessment.co.uk/pages/free-materials" in body and "csse.org.uk" in body and "kent-test" in body
     assert "Private Selective School" not in body
+
+
+def test_only_a_school_with_a_page_is_linked_to_one(client):
+    """15 Sep 2026: every name on /schools/grammar linked to a school
+    page, but a school page exists only where a published distance is
+    held, so most of those links answered "Page not found". A school
+    without one is still listed by name, and its own site stays linked."""
+    _seed()
+    body = client.get("/schools/grammar").text
+    assert 'href="/school/900001/testshire-grammar-school"' in body
+    assert "Unpublished Grammar School" in body and 'href="/school/900093/' not in body
+    assert client.get("/school/900093/unpublished-grammar-school").status_code == 404

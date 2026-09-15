@@ -53,7 +53,7 @@
         <tbody>
         {% for s in rows %}
         <tr>
-            <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% if s.gender and s.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ s.gender }})</span>{% endif %}</td>
+            <td>{% if s.has_page %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}{% if s.gender and s.gender not in ("Mixed", "Not applicable", "") %} <span class="section-sub">({{ s.gender }})</span>{% endif %}</td>
             <td>{{ s.town }}</td>
             <td>{{ s.ofsted_rating_label or s.ofsted_note or "Not rated" }}</td>
             <td class="num">{% if s.last_distance_miles is not none %}{{ s.last_distance_miles }} mi{% if s.distance_year %} ({{ s.distance_year }}){% endif %}{% else %}Not published{% endif %}</td>

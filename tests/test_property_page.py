@@ -814,10 +814,19 @@ def test_grammar_schools_within_reach_sit_in_the_schools_modal(client, fake_repo
     with the published distance that applies after the pass mark."""
     rows = [{"urn": 900001, "name": "Testshire Grammar School", "slug": "testshire-grammar-school", "council": "Testshire", "town": "Manchester",
              "gender": "Girls", "ofsted_rating_label": "Outstanding", "ofsted_note": "", "website": "", "latitude": 53.452, "longitude": -2.222,
-             "last_distance_miles": 2.4, "distance_year": "2025/26", "distance_source": "Testshire", "distance_m": 2100, "type": "Academy converter", "postcode": "M14 5TG"}]
+             "last_distance_miles": 2.4, "distance_year": "2025/26", "distance_source": "Testshire", "distance_m": 2100, "type": "Academy converter", "postcode": "M14 5TG",
+             "has_page": True},
+            {"urn": 900093, "name": "Unpublished Grammar School", "slug": "unpublished-grammar-school", "council": "Testshire", "town": "Manchester",
+             "gender": "Mixed", "ofsted_rating_label": "Good", "ofsted_note": "", "website": "", "latitude": 53.454, "longitude": -2.224,
+             "last_distance_miles": None, "distance_year": "", "distance_source": "", "distance_m": 2600, "type": "Foundation school", "postcode": "M14 5TG",
+             "has_page": False}]
     body = _report(client, fake_report, gather=fake_gather(grammar_schools=rows))
     assert "Grammar schools within reach" in body and "Testshire Grammar School" in body and "2.4 mi (2025/26)" in body
     assert 'href="/schools/grammar"' in body
+    # Only a school with a published distance has a page to link to
+    # (15 Sep 2026); the other is named, not sent to "Page not found".
+    assert 'href="/school/900001/testshire-grammar-school"' in body
+    assert "Unpublished Grammar School" in body and 'href="/school/900093/' not in body
 
 
 def test_price_per_square_metre_sits_in_the_valuation_modal(client, fake_report):
