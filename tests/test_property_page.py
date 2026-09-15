@@ -869,5 +869,27 @@ def test_the_group_board_holds_still_for_reduced_motion():
 
     css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
     still = re.findall(r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S)
-    for selector in (".cat-panel .dashboard-card", ".cat-board.is-shown .cat-tile", ".cat-tile-chevron"):
+    for selector in (".cat-panel .dashboard-card", ".cat-board.is-shown .cat-tile", ".cat-tile-chevron",
+                     ".cat-tile-seen.is-new", ".cat-panel .dashboard-card.status-attn::after", ".cat-complete"):
         assert any(selector in block for block in still), selector
+
+
+def test_the_group_board_keeps_its_checklist_per_address(client, fake_report):
+    """15 Sep 2026: an opened group is ticked and counted, kept on the
+    device under this address, and once every group has been opened the
+    page's own save offer appears. The server supplies the address key
+    and the offer for whoever is reading; a shared report gets no key."""
+    body = _report(client, fake_report)
+    assert 'data-report-key="M14 5TG|"' in body
+    offer = body.split('id="cat-complete"', 1)[1].split("</div>", 1)[0]
+    assert offer.lstrip().startswith("hidden")
+    assert 'href="/signup?next=/property%3Fpostcode%3DM14' in offer
+    assert "be told when anything on it changes" in offer
+    assert "uki-report-checked" in body
+
+    # Signed in, the report has already saved itself (watchlist.remember,
+    # 8 Sep 2026), so the line points at My properties instead.
+    r = client.post("/signup", data={"email": "checklist@customer.test", "password": "password123", "next": "/"}, follow_redirects=False)
+    assert r.status_code == 303
+    offer = _report(client, fake_report).split('id="cat-complete"', 1)[1].split("</div>", 1)[0]
+    assert 'href="/watchlist"' in offer and "/signup" not in offer

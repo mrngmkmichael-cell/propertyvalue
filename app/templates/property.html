@@ -605,7 +605,7 @@
        with no script the reader gets every card, as before. The early
        script below hides the grids before they are parsed, so they
        never flash up and then fold. #}
-    <div class="report-categories" id="report-categories">
+    <div class="report-categories" id="report-categories" data-report-key="{{ '' if shared else (location.postcode ~ '|' ~ (house_number or '')) }}">
     <script>
     (function () {
         /* Runs before the cards below are parsed, so the full grid never
@@ -1185,6 +1185,15 @@
     </div>
 
     </div>
+    {# Shown by the script below once every group has been opened
+       (15 Sep 2026): the page's own save offer, for whoever is reading.
+       A signed-in reader's report has already put itself in My
+       properties (watchlist.remember), so for them it is a reminder. #}
+    <div class="cat-complete" id="cat-complete" hidden>
+        {%- if current_user %}This property is in <a href="/watchlist">My properties</a>, so you will be told when anything on it changes.
+        {%- else %}<a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when anything on it changes.
+        {%- endif %}
+    </div>
     <script>
     (function () {
         /* The report's groups as tiles that open (14 Sep 2026). Every card
@@ -1193,7 +1202,12 @@
            as one tile per group with the cards in a panel that opens under
            the tile's own row. Nothing here decides a status: the counts come
            from the cards as rendered, so a locked card's finding stays
-           behind its lock exactly as it does in the grid. */
+           behind its lock exactly as it does in the grid.
+
+           15 Sep 2026: a group holding a flagged card wears that card's red
+           ring and opens with it first; a group is ticked once it has been
+           opened, counted above the tiles and kept on this device for this
+           address; and a panel opens out of the tile that was tapped. */
         var root = document.getElementById('report-categories');
         if (!root || !root.classList.contains('is-enhancing')) return;
         var hint = document.querySelector('.report-cards-hint');
@@ -1220,12 +1234,31 @@
 
             var head = document.createElement('div');
             head.className = 'cat-board-head';
+            var intro = document.createElement('div');
+            intro.className = 'cat-board-intro';
             var lede = document.createElement('p');
             lede.className = 'cat-board-lede';
+            var progress = document.createElement('p');
+            progress.className = 'cat-progress';
+            progress.setAttribute('aria-live', 'polite');
+            var bar = document.createElement('span');
+            bar.className = 'cat-progress-bar';
+            bar.setAttribute('aria-hidden', 'true');
+            var progressText = document.createElement('span');
+            progressText.className = 'cat-progress-text';
+            progress.appendChild(bar);
+            progress.appendChild(progressText);
+            intro.appendChild(lede);
+            intro.appendChild(progress);
+            /* The offer to save, written by the server for whoever is reading
+               (signed out, signed in, already saved) and shown once every
+               group has been opened. */
+            var complete = document.getElementById('cat-complete');
+            if (complete) intro.appendChild(complete);
             var viewToggle = document.createElement('button');
             viewToggle.type = 'button';
             viewToggle.className = 'cat-view-toggle';
-            head.appendChild(lede);
+            head.appendChild(intro);
             head.appendChild(viewToggle);
 
             var board = document.createElement('div');
@@ -1248,7 +1281,14 @@
                     '<span class="cat-tile-chevron" aria-hidden="true"></span>' +
                     '<span class="cat-tile-name"></span>' +
                     '<span class="cat-tile-meta"></span>';
-                tile.querySelector('.cat-tile-name').textContent = name;
+                var nameEl = tile.querySelector('.cat-tile-name');
+                nameEl.textContent = name;
+                var seen = document.createElement('span');
+                seen.className = 'cat-tile-seen';
+                seen.hidden = true;
+                seen.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.6 6.3 5 8.6 9.5 3.7"/></svg>' +
+                                 '<span class="visually-hidden">, checked</span>';
+                nameEl.appendChild(seen);
 
                 var panel = document.createElement('div');
                 panel.className = 'cat-panel';
@@ -1270,13 +1310,20 @@
 
                 board.appendChild(tile);
                 board.appendChild(panel);
-                return { n: n, name: name, slug: slug, tile: tile, panel: panel, grid: grid, next: next };
+                return { n: n, name: name, slug: slug, tile: tile, panel: panel, grid: grid, next: next, seen: seen };
             });
 
             root.appendChild(head);
             root.appendChild(board);
 
             cats.forEach(function (c) {
+                /* A flagged card leads its group, in the order the report
+                   gives them, so a group with something to check opens on it. */
+                Array.prototype.filter.call(c.grid.children, function (el) {
+                    return el.classList.contains('dashboard-card') && el.classList.contains('status-attn');
+                }).reverse().forEach(function (card) {
+                    c.grid.insertBefore(card, c.grid.firstElementChild);
+                });
                 /* The cards pop in on every open, so the page-wide scroll
                    reveal must not also hold them at opacity 0. */
                 Array.prototype.forEach.call(c.grid.querySelectorAll('.dashboard-card'), function (card, i) {
@@ -1287,10 +1334,10 @@
                 /* The group's own colours: the first four different icons
                    of the cards inside it. */
                 var strip = c.tile.querySelector('.cat-tile-icons');
-                var seen = {};
+                var icons = {};
                 Array.prototype.some.call(c.grid.querySelectorAll('.dashboard-card-icon'), function (icon) {
-                    if (seen[icon.className]) return false;
-                    seen[icon.className] = true;
+                    if (icons[icon.className]) return false;
+                    icons[icon.className] = true;
                     strip.appendChild(icon.cloneNode(true));
                     return strip.children.length >= 4;
                 });
@@ -1304,6 +1351,7 @@
                 var after = cats[c.n + 1];
                 c.next.textContent = after ? 'Next: ' + after.name : 'Back to all groups';
                 c.next.setAttribute('data-dir', after ? 'next' : 'up');
+                bar.appendChild(document.createElement('i'));
             });
 
             function addSpan(parent, cls, text) {
@@ -1325,6 +1373,63 @@
                 if (locked) addSpan(meta, 'cat-tile-locked', locked + ' locked');
                 if (flagged) addSpan(meta, 'cat-tile-flag', flagged + ' to check');
                 else if (!locked) addSpan(meta, 'cat-tile-clear', 'nothing flagged');
+                c.tile.classList.toggle('cat-tile-flagged', flagged > 0);
+            }
+
+            /* Which groups have been opened, per address, on this device
+               only. A shared report is somebody else's address, so the
+               server leaves its key empty and nothing is kept. */
+            var KEY = root.getAttribute('data-report-key') || '';
+            var STORE = 'uki-report-checked';
+            var checked = {};
+
+            function readChecked() {
+                if (!KEY) return;
+                try {
+                    var all = JSON.parse(localStorage.getItem(STORE) || '{}');
+                    var mine = all && all[KEY];
+                    if (mine && Array.isArray(mine.g)) mine.g.forEach(function (s) { checked[s] = true; });
+                } catch (e) {}
+            }
+
+            function writeChecked() {
+                if (!KEY) return;
+                try {
+                    var all = JSON.parse(localStorage.getItem(STORE) || '{}');
+                    if (!all || typeof all !== 'object' || Array.isArray(all)) all = {};
+                    all[KEY] = { g: Object.keys(checked), at: Date.now() };
+                    /* Forty addresses is plenty of history for one device. */
+                    Object.keys(all).sort(function (a, b) {
+                        return ((all[b] && all[b].at) || 0) - ((all[a] && all[a].at) || 0);
+                    }).slice(40).forEach(function (k) { delete all[k]; });
+                    localStorage.setItem(STORE, JSON.stringify(all));
+                } catch (e) { /* private mode, quota, disabled storage: not worth a fuss */ }
+            }
+
+            function paintProgress() {
+                var done = cats.filter(function (c) { return checked[c.slug]; }).length;
+                var all = done === cats.length;
+                Array.prototype.forEach.call(bar.children, function (seg, i) {
+                    seg.classList.toggle('is-done', i < done);
+                });
+                progressText.textContent = all
+                    ? 'All ' + groupWord + ' groups checked'
+                    : done + ' of ' + cats.length + ' groups checked';
+                root.classList.toggle('is-complete', all);
+                if (complete) complete.hidden = !all;
+            }
+
+            function check(c) {
+                if (checked[c.slug]) return;
+                checked[c.slug] = true;
+                c.seen.hidden = false;
+                if (!still) {
+                    c.seen.classList.remove('is-new');
+                    void c.seen.offsetWidth;  /* restarts the pop */
+                    c.seen.classList.add('is-new');
+                }
+                paintProgress();
+                writeChecked();
             }
 
             var current = null;
@@ -1351,6 +1456,25 @@
                 current.panel.style.setProperty('--notch-x', Math.round(t.left + t.width / 2 - p.left) + 'px');
             }
 
+            /* The panel opens out of the tile that was tapped: it starts as a
+               strip the tile's width, just under it, and widens and deepens
+               to its full size while the cards settle in. */
+            function reveal(c) {
+                if (still || typeof c.panel.animate !== 'function') return;
+                var t = c.tile.getBoundingClientRect();
+                var p = c.panel.getBoundingClientRect();
+                if (!p.width || !p.height) return;
+                var left = Math.max(0, Math.round(t.left - p.left));
+                var right = Math.max(0, Math.round(p.right - t.right));
+                var bottom = Math.max(0, Math.round(p.height - 8));
+                try {
+                    c.panel.animate([
+                        { clipPath: 'inset(-14px ' + right + 'px ' + bottom + 'px ' + left + 'px round 16px)', opacity: 0.6 },
+                        { clipPath: 'inset(-14px 0px 0px 0px round 16px)', opacity: 1 }
+                    ], { duration: 560, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' });
+                } catch (e) { /* no clip-path animation here: the panel simply appears */ }
+            }
+
             /* Opening a group can remove a taller panel above the tile that
                was tapped; hold that tile where the reader's finger was. */
             function holdInPlace(el, change) {
@@ -1374,6 +1498,8 @@
                         show(c, true);
                         place();
                     });
+                    reveal(c);
+                    check(c);
                 }
                 var behavior = still ? 'auto' : 'smooth';
                 if (how.scroll) {
@@ -1439,6 +1565,10 @@
             var saved = null;
             try { saved = localStorage.getItem('uki-report-view'); } catch (e) {}
             setList(saved === 'list', false);
+
+            readChecked();
+            cats.forEach(function (c) { c.seen.hidden = !checked[c.slug]; });
+            paintProgress();
 
             /* A link to #cat-risk-safety and the like opens that group. */
             var wanted = (window.location.hash || '').slice(1);
