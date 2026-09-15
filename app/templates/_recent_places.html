@@ -1,0 +1,206 @@
+{# "Pick up where you left off": the addresses and schools this device
+   has looked at, offered back under the boxes that ask for one (the
+   homepage's since 26 Aug 2026, the rest since 15 Sep). Kept in this
+   browser's localStorage only, never sent anywhere, and every list says
+   so beside a Clear button. The markup is empty until its script fills
+   it, so a first visit, a crawler and the cached HTML never show it.
+
+   Written by the report (with its score), the running-costs checker and
+   every school page. Read by the homepage, the area guides index and
+   the running-costs checker (addresses), and the schools search
+   (schools). Each list uses fixed ids, so include it once per page. #}
+
+{% macro remember_address(pc, hn, area, score=none, grade=none) -%}
+<script>
+(function () {
+    /* A figure an earlier page recorded, the report's score, is kept
+       when a page without one records the same address again. */
+    try {
+        var KEY = 'uki-recent';
+        var entry = {
+            pc: {{ pc | tojson }},
+            hn: {{ (hn or "") | tojson }},
+            area: {{ (area or "") | tojson }},
+            score: {{ score | tojson }},
+            grade: {{ grade | tojson }},
+            at: Date.now()
+        };
+        var list = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (!Array.isArray(list)) list = [];
+        var earlier = null;
+        list = list.filter(function (e) {
+            if (!e || !e.pc) return false;
+            var same = e.pc === entry.pc && (e.hn || '') === entry.hn;
+            if (same) earlier = e;
+            return !same;
+        });
+        if (earlier) {
+            if (typeof entry.score !== 'number' && typeof earlier.score === 'number') {
+                entry.score = earlier.score;
+                entry.grade = earlier.grade || null;
+            }
+            if (!entry.area && earlier.area) entry.area = earlier.area;
+        }
+        list.unshift(entry);
+        localStorage.setItem(KEY, JSON.stringify(list.slice(0, 6)));
+    } catch (e) { /* private mode, quota, disabled storage: not worth a fuss */ }
+})();
+</script>
+{%- endmacro %}
+
+{% macro remember_school(school) -%}
+<script>
+(function () {
+    /* The figure kept is the one this page shows today: how far away
+       the last child offered a place lived, or that distance did not
+       limit entry. */
+    try {
+        var KEY = 'uki-recent-schools';
+        var entry = {
+            urn: {{ school.urn | tojson }},
+            slug: {{ school.slug | tojson }},
+            name: {{ school.name | tojson }},
+            place: {{ (school.town or school.authority or "") | tojson }},
+            miles: {{ (none if school.no_distance_limit else school.miles_label) | tojson }},
+            nolimit: {{ (true if school.no_distance_limit else false) | tojson }},
+            year: {{ (school.year_label or "") | tojson }},
+            at: Date.now()
+        };
+        var list = JSON.parse(localStorage.getItem(KEY) || '[]');
+        if (!Array.isArray(list)) list = [];
+        list = list.filter(function (e) {
+            return e && e.urn && String(e.urn) !== String(entry.urn);
+        });
+        list.unshift(entry);
+        localStorage.setItem(KEY, JSON.stringify(list.slice(0, 6)));
+    } catch (e) { /* private mode, quota, disabled storage: not worth a fuss */ }
+})();
+</script>
+{%- endmacro %}
+
+{% macro recent_addresses(target="/property", skip_pc="", skip_hn="") -%}
+<div class="lx-recent" id="lx-recent" hidden>
+    <p class="lx-recent-label">Pick up where you left off</p>
+    <div class="lx-recent-items" id="lx-recent-items"></div>
+    <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="lx-recent-clear">Clear</button></p>
+</div>
+<script>
+(function () {
+    /* The homepage and the area guides open the report; the running-
+       costs checker opens that address's running costs. The address
+       already on screen is left out rather than offered back to itself. */
+    var TARGET = {{ target | tojson }};
+    var SKIP_PC = {{ (skip_pc or "") | tojson }};
+    var SKIP_HN = {{ (skip_hn or "") | tojson }};
+    var wrap = document.getElementById('lx-recent');
+    var items = document.getElementById('lx-recent-items');
+    if (!wrap || !items) return;
+
+    var list;
+    try {
+        list = JSON.parse(localStorage.getItem('uki-recent') || '[]');
+    } catch (e) { return; }
+    if (!Array.isArray(list) || !list.length) return;
+
+    list.filter(function (e) {
+        return e && e.pc && !(e.pc === SKIP_PC && (e.hn || '') === SKIP_HN);
+    }).slice(0, 4).forEach(function (e) {
+        var label = e.hn ? e.hn + ', ' + e.pc : e.pc;
+        var a = document.createElement('a');
+        a.className = 'lx-recent-item';
+        a.href = TARGET + '?postcode=' + encodeURIComponent(e.pc) +
+                 (e.hn ? '&house_number=' + encodeURIComponent(e.hn) : '');
+        a.title = label + (e.area ? ', ' + e.area : '');
+
+        var pc = document.createElement('span');
+        pc.className = 'lx-recent-pc';
+        pc.textContent = label;
+        a.appendChild(pc);
+
+        if (e.area) {
+            var area = document.createElement('span');
+            area.className = 'lx-recent-area';
+            area.textContent = e.area;
+            a.appendChild(area);
+        }
+        if (typeof e.score === 'number') {
+            var s = document.createElement('span');
+            s.className = 'lx-recent-score';
+            s.textContent = e.score;
+            a.appendChild(s);
+        }
+        items.appendChild(a);
+    });
+
+    if (!items.children.length) return;
+    wrap.hidden = false;
+
+    var clear = document.getElementById('lx-recent-clear');
+    if (clear) clear.addEventListener('click', function () {
+        try { localStorage.removeItem('uki-recent'); } catch (e) {}
+        wrap.hidden = true;
+    });
+})();
+</script>
+{%- endmacro %}
+
+{% macro recent_schools() -%}
+<div class="lx-recent" id="school-recent" hidden>
+    <p class="lx-recent-label">Pick up where you left off</p>
+    <div class="lx-recent-items" id="school-recent-items"></div>
+    <p class="lx-recent-note">Kept on this device only. <button type="button" class="lx-recent-clear" id="school-recent-clear">Clear</button></p>
+</div>
+<script>
+(function () {
+    /* Schools this device has opened, newest first, each with the
+       figure its page showed that day. */
+    var wrap = document.getElementById('school-recent');
+    var items = document.getElementById('school-recent-items');
+    if (!wrap || !items) return;
+
+    var list;
+    try {
+        list = JSON.parse(localStorage.getItem('uki-recent-schools') || '[]');
+    } catch (e) { return; }
+    if (!Array.isArray(list) || !list.length) return;
+
+    list.slice(0, 4).forEach(function (e) {
+        if (!e || !e.urn || !e.slug || !e.name) return;
+        var a = document.createElement('a');
+        a.className = 'lx-recent-item lx-recent-school';
+        a.href = '/school/' + encodeURIComponent(e.urn) + '/' + encodeURIComponent(e.slug);
+        a.title = e.name + (e.place ? ', ' + e.place : '');
+
+        var name = document.createElement('span');
+        name.className = 'lx-recent-pc';
+        name.textContent = e.name;
+        a.appendChild(name);
+
+        if (e.place) {
+            var place = document.createElement('span');
+            place.className = 'lx-recent-area';
+            place.textContent = e.place;
+            a.appendChild(place);
+        }
+        if (e.nolimit || e.miles) {
+            var m = document.createElement('span');
+            m.className = 'lx-recent-score lx-recent-miles';
+            m.textContent = e.nolimit ? 'No limit' : e.miles + ' mi';
+            m.title = (e.nolimit ? 'Distance did not limit entry' : 'Admitted from ' + e.miles + ' miles') +
+                      (e.year ? ', ' + e.year : '');
+            a.appendChild(m);
+        }
+        items.appendChild(a);
+    });
+
+    if (!items.children.length) return;
+    wrap.hidden = false;
+
+    var clear = document.getElementById('school-recent-clear');
+    if (clear) clear.addEventListener('click', function () {
+        try { localStorage.removeItem('uki-recent-schools'); } catch (e) {}
+        wrap.hidden = true;
+    });
+})();
+</script>
+{%- endmacro %}

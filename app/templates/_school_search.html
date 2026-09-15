@@ -8,6 +8,8 @@
     <button type="submit">Search</button>
     <ul class="typeahead" id="sa-suggest" role="listbox" hidden></ul>
 </form>
+{% import "_recent_places.html" as recent %}
+{{ recent.recent_schools() }}
 <script>
 (function () {
     var input = document.getElementById('sa-q');

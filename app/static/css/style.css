@@ -6775,6 +6775,22 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
     cursor: pointer;
 }
 .lx-recent-clear:hover { color: var(--ink); background: none; }
+/* The same lists under the other boxes (15 Sep 2026). In the running-
+   costs checker the list stays in the form's column, below the form,
+   whether or not the map sits beside it. */
+.rc-grid .lx-recent { grid-column: 1; margin-top: 0; }
+/* A chip never runs past a phone's width. The part that varies most
+   gives way with an ellipsis (a school's name, an address's district);
+   the postcode, the place and the figure always show, and the whole
+   text stays in the link and its title. */
+.lx-recent-item { max-width: 100%; }
+.lx-recent-pc,
+.lx-recent-area { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lx-recent-item:not(.lx-recent-school) .lx-recent-pc,
+.lx-recent-school .lx-recent-area,
+.lx-recent-score { flex: none; }
+/* A school's figure is a distance rather than a score. */
+.lx-recent-miles { padding: 0 0.55rem; white-space: nowrap; }
 
 .lx-hero-stats {
     display: flex;

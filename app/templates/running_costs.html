@@ -107,7 +107,14 @@
 </script>
 {% endif %}
 {% endif %}
+{# The addresses this device has looked at, under the box, each opening
+   its running costs (15 Sep 2026). The one on screen is left out, and a
+   checked address is remembered for the next visit. #}
+{% import "_recent_places.html" as recent %}
+{% set rc_answered = checked and not checked.unknown %}
+{{ recent.recent_addresses("/running-costs", checked.postcode if rc_answered else "", check_house if rc_answered else "") }}
 </div>
+{% if rc_answered %}{{ recent.remember_address(checked.postcode, check_house, checked.council_tax.authority if checked.council_tax else "") }}{% endif %}
 
 {% if checked %}
 <section class="report-section" id="checked">

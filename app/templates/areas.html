@@ -42,6 +42,8 @@
     <button type="submit">Run the {{ check_count }} checks</button>
     <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
 </form>
+{% import "_recent_places.html" as recent %}
+{{ recent.recent_addresses("/property") }}
 
 {% set link_prefix = "/area/" %}
 {% include "_area_index.html" %}

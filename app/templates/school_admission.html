@@ -729,4 +729,8 @@
     </div>
 </section>
 {% endif %}
+{# This school, remembered on the device for the schools search's
+   "Pick up where you left off" (15 Sep 2026). #}
+{% import "_recent_places.html" as recent %}
+{{ recent.remember_school(school) }}
 {% endblock %}
