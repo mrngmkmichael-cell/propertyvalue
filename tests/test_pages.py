@@ -297,6 +297,33 @@ def test_pricing_page_lists_every_check_the_landing_page_claims(client, monkeypa
     assert f"{claimed - free} more with Premium" in body
 
 
+def test_the_premium_lead_colours_the_prices_it_compares(client, monkeypatch):
+    """16 Sep 2026: the lead's argument is the gap between what one
+    search costs per property and what we charge, so those are the only
+    coloured words on it, at lead size. Both colours are tokens, so the
+    dark palette flips them with everything else."""
+    import pathlib
+
+    # The lead sits on the open-for-business branch, as in production.
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_x")
+    monkeypatch.setenv("STRIPE_PRICE_ID_MONTHLY", "price_m")
+    monkeypatch.setenv("STRIPE_PRICE_ID_QUARTERLY", "price_q")
+    from app.services import _cache
+    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] == "anon_html"]:
+        _cache._evict(key)
+    body = client.get("/premium").text
+    lead = re.search(r'<p class="premium-lede">(.*?)</p>', body, re.S).group(1)
+    assert re.findall(r'<span class="lede-cost">(.*?)</span>', lead) == [
+        "&pound;25", "&pound;50&ndash;&pound;110", "&pound;40",
+    ]
+    assert '<span class="lede-ours">&pound;9.99 a month</span>' in lead
+    css = pathlib.Path("app/static/css/style.css").read_text(encoding="utf-8")
+    assert ".lede-cost { color: var(--bad);" in css
+    assert ".lede-ours { color: var(--good);" in css
+    at = css.index(".premium-lede {")
+    assert "font-size: var(--text-lg);" in css[at:at + 260]
+
+
 def test_anonymous_compare_builds_a_column_per_postcode(client, monkeypatch):
     """The compare view is open to everyone: no account, no watchlist.
     Two postcodes in, two columns out, each linking to its own report."""

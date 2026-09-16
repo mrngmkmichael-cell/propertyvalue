@@ -5710,6 +5710,19 @@ main:focus { outline: none; }
 .paywall-banner-by-hand { display: block; margin-top: 0.45rem; font-size: var(--text-sm); color: var(--ink-soft); }
 .paywall-banner-by-hand a { color: var(--ink-soft); }
 
+/* The premium page's lead (16 Sep 2026): lead size, and the prices
+   carry the argument, so they are the only coloured words on it. */
+.premium-lede {
+    max-width: 46rem;
+    margin: 0.7rem 0 1.25rem;
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    color: var(--ink-soft);
+}
+.premium-lede strong { color: var(--ink); }
+.lede-cost { color: var(--bad); font-weight: var(--weight-semi); white-space: nowrap; }
+.lede-ours { color: var(--good); font-weight: var(--weight-semi); white-space: nowrap; }
+
 /* What the checks cost by hand: one message, not a wall of figures
    (16 Sep 2026). A mark per website, then the sentence. */
 .by-hand { margin: 1.75rem 0 0.75rem; }
