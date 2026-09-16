@@ -90,3 +90,36 @@ authority, the area guide payload's build date, the HPI period).
 ## What was not done
 
 No changes were made to the site. This is a read-only assessment.
+
+## Outcome, same evening
+
+Michael asked how to reach 100. The honest ceiling from our own hands is
+about 93: roughly 88 from work needing no decision (group A), about 93
+with two decisions (group B), and the last 7 only from other people
+talking about us (video, Wikipedia, organic brand mentions), which cannot
+be built without faking it.
+
+**Group A shipped as `84d8504`**, verified live at desktop and phone:
+
+- Pages built from a stored payload say when their figures were gathered,
+  visibly and as `dateModified`, from the payload's own stored time, never
+  the render time. Area guides, the market report and the district
+  comparisons. Each guide carries its own real date (on the day:
+  KT3 16 Sep, LS6 15 Sep, AB12 14 Sep, matching their database rows).
+- The admissions hub has five common questions with FAQPage markup and a
+  question heading, and opens with the national figures.
+- The market report, council tax table and areas page open with an
+  answer in figures.
+- Every area guide draws its Band D council tax history as a trend.
+- The Organization schema lists the Chrome Web Store listing and the
+  Trustpilot page as `sameAs`, with no score or count.
+
+**Group B, waiting on Michael:**
+
+1. A page date for school pages. The admissions data stores the year but
+   not when it was imported, so this needs the import date recorded from
+   now on, a small change to the live database.
+2. Who is behind the site: a name, a founding date, one honest line.
+
+**Not to be done:** stamping today's date on pages, writing a Wikipedia
+article about ourselves, or posting mentions of the site on Reddit.
