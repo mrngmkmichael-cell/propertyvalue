@@ -73,6 +73,16 @@
             {% endif %}
             {% endif %}
 
+            {# Sales since: the same rows and pins, narrowed by year
+               (16 Sep 2026). Every sale stays on the page; this only
+               hides the older ones while a range is chosen. #}
+            <div class="comp-range" role="group" aria-label="Sales since">
+                <button type="button" data-years="0" aria-pressed="true">All years</button>
+                <button type="button" data-years="10" aria-pressed="false">Last 10 years</button>
+                <button type="button" data-years="5" aria-pressed="false">Last 5 years</button>
+                <button type="button" data-years="2" aria-pressed="false">Last 2 years</button>
+                <span class="comp-range-count" id="comp-range-count" aria-live="polite"></span>
+            </div>
             <table class="tx-table" id="comparables-table">
                 <thead>
                     <tr>
@@ -87,7 +97,7 @@
                 </thead>
                 <tbody>
                     {% for tx in comparables %}
-                    <tr>
+                    <tr data-date="{{ tx.date }}">
                         <td>{{ tx.address }}</td>
                         <td>{{ tx.postcode }}</td>
                         <td class="capitalize">{{ tx.property_type or "Not recorded" }}</td>
@@ -134,6 +144,37 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         if (t < 0.66) return '#eab308';
         return '#dc2626';
     }
+
+    /* Sales since (16 Sep 2026): one filter for the table rows and the
+       map pins. Dates are ISO strings, so they compare as text. */
+    var compMarkers = [];
+    window.__compYears = 0;
+    function compApplyRange(years) {
+        var cutoff = null;
+        if (years > 0) {
+            var d = new Date();
+            d.setFullYear(d.getFullYear() - years);
+            cutoff = d.toISOString().slice(0, 10);
+        }
+        var rows = document.querySelectorAll('#comparables-table tbody tr[data-date]');
+        var shown = 0;
+        rows.forEach(function (tr) {
+            var ok = !cutoff || tr.getAttribute('data-date') >= cutoff;
+            tr.hidden = !ok;
+            if (ok) shown++;
+        });
+        compMarkers.forEach(function (m) { m.show(!cutoff || (m.date || '') >= cutoff); });
+        var count = document.getElementById('comp-range-count');
+        if (count) count.textContent = shown === rows.length ? 'All ' + rows.length + ' sales shown' : shown + ' of ' + rows.length + ' sales shown';
+        document.querySelectorAll('.comp-range button').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(parseInt(b.getAttribute('data-years'), 10) === years));
+        });
+        window.__compYears = years;
+    }
+    document.querySelectorAll('.comp-range button').forEach(function (b) {
+        b.addEventListener('click', function () { compApplyRange(parseInt(b.getAttribute('data-years'), 10)); });
+    });
+    compApplyRange(0);
 </script>
 {% if google_maps_api_key %}
 {{ mapstyle.dark_map_style() }}
@@ -170,7 +211,9 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
                 infoWindow.setContent(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
                 infoWindow.open(map, marker);
             });
+            compMarkers.push({ date: c.date, show: function (visible) { marker.setMap(visible ? map : null); } });
         });
+        compApplyRange(window.__compYears || 0);
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initComparablesMap&loading=async" async defer></script>
@@ -191,7 +234,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
 
     comparablePoints.forEach(function (c) {
         if (c.latitude == null || c.longitude == null) return;
-        L.circleMarker([c.latitude, c.longitude], {
+        var pin = L.circleMarker([c.latitude, c.longitude], {
             radius: 6,
             color: '#ffffff',
             weight: 1.5,
@@ -200,7 +243,9 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         })
             .addTo(compMap)
             .bindPopup(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
+        compMarkers.push({ date: c.date, show: function (visible) { if (visible) pin.addTo(compMap); else compMap.removeLayer(pin); } });
     });
+    compApplyRange(window.__compYears || 0);
 </script>
 {% endif %}
 {% endif %}

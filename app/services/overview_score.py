@@ -35,6 +35,27 @@ CONCERN_LABELS = {
     "deprivation": "Among more deprived areas nationally",
 }
 
+# The card each concern's reason opens on the report (16 Sep 2026):
+# the verdict names its drivers, so each one is a way into its card.
+CONCERN_MODALS = {
+    "prosperity": "modal-sold-price-history",
+    "extension": "modal-extension",
+    "flood": "modal-flood",
+    "surface_water": "modal-surface-water",
+    "noise": "modal-noise",
+    "radon": "modal-radon",
+    "air_quality": "modal-air-quality",
+    "landfill": "modal-historic-landfill",
+    "coal_mining": "modal-coal-mining",
+    "sewage": "modal-sewage",
+    "clay_risk": "modal-clay-risk",
+    "planning": "modal-planning",
+    "environmental": "modal-environmental",
+    "broadband": "modal-broadband",
+    "mobile": "modal-mobile",
+    "deprivation": "modal-deprivation",
+}
+
 GRADE_BANDS = [
     (85, "Excellent"),
     (70, "Good"),
@@ -175,6 +196,17 @@ def _find_positives(context: dict) -> list[str]:
     return positives
 
 
+def _positive_modal(text: str) -> str:
+    """The card a positive opens, from the four fixed phrasings above."""
+    if "schools" in text:
+        return "modal-schools"
+    if text.startswith("Energy-efficient"):
+        return "modal-epc"
+    if text.startswith("Lower crime"):
+        return "modal-crime"
+    return "modal-sold-price-history"
+
+
 def _grade_for(score: int) -> str:
     for threshold, label in GRADE_BANDS:
         if score >= threshold:
@@ -212,6 +244,12 @@ def compute(context: dict, premium_unlocked: bool = False) -> dict:
         "score": score,
         "grade": grade,
         "verdict": _verdict_sentence(grade, concerns, positives),
+        # The same sentence as parts, each with the card it came from,
+        # so the report can make every reason a way into its card.
+        "reasons": {
+            "positives": [{"text": t, "modal": _positive_modal(t)} for t in positives],
+            "concerns": [{"text": CONCERN_LABELS[c], "modal": CONCERN_MODALS[c]} for c in concerns],
+        },
         "positives": positives,
         "concerns": [CONCERN_LABELS[c] for c in concerns],
         "premium_extra_checks": len(all_concerns) - len(concerns) if not premium_unlocked else 0,

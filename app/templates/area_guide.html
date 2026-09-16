@@ -3,6 +3,7 @@
 {% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ admin_district if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
 {% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
+{% block robots %}{% if compare or compare_error %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block extra_head %}
 {% if outcode %}
 <script type="application/ld+json">
@@ -151,6 +152,39 @@
    same authority. These are the actual transactions on these streets,
    which is the part of the page that is genuinely about {{ outcode }}
    and not about the whole city. #}
+{# Two districts side by side (16 Sep 2026). The schools guide could
+   already put two areas next to each other and this page could not,
+   and "which area" is the question these pages get asked. Each row is
+   the guide's own figure for each district, from the same source as
+   the section it comes from. A comparison page is noindex: the linkable
+   neighbour pages at /compare/A/vs/B are the ones search sees. #}
+<section class="report-section area-compare" id="compare">
+    <h2>{% if compare %}{{ outcode }} against {{ compare.outcode }}{% else %}Compare {{ outcode }} with another district{% endif %}</h2>
+    <form action="/area/{{ outcode }}#compare" method="get" class="search-form area-compare-form">
+        <div class="search-form-field">
+            <label for="area-compare-outcode">Another postcode district</label>
+            <input type="text" id="area-compare-outcode" name="compare" placeholder="e.g. SW11 or M20" value="{{ compare.outcode if compare else '' }}" autocomplete="off" required>
+        </div>
+        <button type="submit">Compare</button>
+    </form>
+    {% if compare_error %}<p class="notice notice-error">{{ compare_error }}</p>{% endif %}
+    {% if compare %}
+    <table class="tx-table compare-table">
+        <thead>
+            <tr><th scope="col">Figure</th><th scope="col">{{ outcode }}</th><th scope="col">{{ compare.outcode }}{% if compare.admin_district %} ({{ compare.admin_district }}){% endif %}</th></tr>
+        </thead>
+        <tbody>
+            {% for row in compare.rows %}
+            <tr><th scope="row">{{ row.label }}<br><span class="section-sub">{{ row.source }}</span></th><td>{{ row.here }}</td><td>{{ row.there }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="section-sub">Each figure is for the centre of its district, from the source named beside it, and "Not held" means that source has nothing for the district. <a href="/area/{{ compare.outcode }}">Open the {{ compare.outcode }} guide</a>{% if compare.versus_href %}, or <a href="{{ compare.versus_href }}">the full {{ outcode }} or {{ compare.outcode }} comparison</a>{% endif %}.</p>
+    {% else %}
+    <p class="section-sub">Sold prices, the price trend, schools, flood zone, Band D council tax and crime for {{ outcode }} against any other district, each from the source the section below names.</p>
+    {% endif %}
+</section>
+
 <section class="report-section">
     <h2>What actually sold around {{ outcode }}</h2>
     <p class="section-sub">

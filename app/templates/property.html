@@ -266,7 +266,16 @@
             </div>
             <div class="overview-score-body">
                 <span class="overview-score-grade">{{ overview.grade }}</span>
+                {# Each reason is a button to its card (16 Sep 2026); the
+                   sentence is overview.verdict, part by part. #}
+                {% set rs = overview.reasons if overview.reasons is defined else none %}
+                {% if rs and (rs.positives or rs.concerns) %}
+                <p class="overview-score-verdict">{{ overview.grade }} overall:
+                    {%- for r in rs.positives %} <button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button>{% if not loop.last %};{% endif %}{% endfor %}
+                    {%- if rs.concerns %}{% if rs.positives %}, balanced against{% endif %} {{ rs.concerns | length }} thing{{ 's' if rs.concerns | length != 1 }} worth checking ({% for r in rs.concerns %}<button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button>{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}.</p>
+                {% else %}
                 <p class="overview-score-verdict">{{ overview.verdict }}</p>
+                {% endif %}
                 {% if overview.premium_extra_checks %}
                 <a href="{{ '/signup' if not current_user else '/premium' }}" class="overview-score-upsell">
                     +{{ overview.premium_extra_checks }} more check{{ 's' if overview.premium_extra_checks != 1 }} factored in with Premium →
@@ -606,7 +615,13 @@
        with no script the reader gets every card, as before. The early
        script below hides the grids before they are parsed, so they
        never flash up and then fold. #}
-    <div class="report-categories" id="report-categories" data-report-key="{{ '' if shared else (location.postcode ~ '|' ~ (house_number or '')) }}">
+    {% if since_last_visit %}
+    {# What moved since this account last looked, from the saved snapshot
+       the change alerts compare (16 Sep 2026); the group it belongs to
+       opens by itself below. #}
+    <div class="since-visit" data-animate><strong>Since you last looked:</strong> {{ since_last_visit | join("; ") }}.</div>
+    {% endif %}
+    <div class="report-categories" id="report-categories" data-report-key="{{ '' if shared else (location.postcode ~ '|' ~ (house_number or '')) }}" data-open-group="{{ open_group or '' }}">
     <script>
     (function () {
         /* Runs before the cards below are parsed, so the full grid never
@@ -1604,8 +1619,9 @@
             cats.forEach(function (c) { c.seen.hidden = !checked[c.slug]; });
             paintProgress();
 
-            /* A link to #cat-risk-safety and the like opens that group. */
-            var wanted = (window.location.hash || '').slice(1);
+            /* A link to #cat-risk-safety and the like opens that group; so
+               does the server, for a return visit where something changed. */
+            var wanted = (window.location.hash || '').slice(1) || root.getAttribute('data-open-group') || '';
             cats.forEach(function (c) {
                 if (!listMode && wanted === c.slug) open(c);
             });

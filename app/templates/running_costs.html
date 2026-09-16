@@ -27,12 +27,45 @@
 {% if answered %}
 <h1>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h1>
 {% if checked.typical_year %}
-<p class="area-lead">
-    <strong>{{ checked.typical_year | gbp }} a year</strong>{% if checked.typical_share_pct %}, {{ checked.typical_share_pct }}% of the typical household income here{% endif %}.
-    That is Band D council tax{% if checked.council_tax %} at {{ checked.council_tax.authority }}{% endif %} plus
+<p class="area-lead" id="rc-lead">
+    <strong id="rc-total">{{ checked.typical_year | gbp }} a year</strong>{% if checked.typical_share_pct %}, <span id="rc-share">{{ checked.typical_share_pct }}</span>% of the typical household income here{% endif %}.
+    That is Band <span id="rc-band-label">D</span> council tax{% if checked.council_tax %} at {{ checked.council_tax.authority }}{% endif %} plus
     {% if checked.home and checked.home.energy_now %}this home's own EPC energy estimate{% else %}the middle EPC energy estimate for the postcode{% endif %},
     and nothing else: no water, insurance, mortgage or estate charge. Every figure below is the publishing body's own.
 </p>
+{% if checked.council_tax and checked.council_tax.bands and checked.energy_figure %}
+{# The home's band is on the seller's bill, not in open data (the
+   methodology page says so), so the reader picks it: every band's
+   bill is already in the table below, and the figure above follows
+   the choice (16 Sep 2026). Nothing is estimated; a band is a fact
+   the reader supplies. #}
+<div class="rc-band-pick" data-energy="{{ checked.energy_figure }}" data-income="{{ checked.income_value or '' }}" data-bands='{{ checked.council_tax.bands | tojson }}'>
+    <label for="rc-band">Not Band D? Pick the home's band and the figure above follows.</label>
+    <select id="rc-band">{% for band in checked.council_tax.bands %}<option value="{{ band }}"{% if band == 'D' %} selected{% endif %}>Band {{ band }}</option>{% endfor %}</select>
+    <span class="section-sub">The band is on the seller's council tax bill.</span>
+</div>
+<script>
+(function () {
+    var pick = document.querySelector('.rc-band-pick');
+    if (!pick) return;
+    var sel = document.getElementById('rc-band');
+    var bands = JSON.parse(pick.getAttribute('data-bands'));
+    var energy = parseFloat(pick.getAttribute('data-energy')) || 0;
+    var income = parseFloat(pick.getAttribute('data-income')) || 0;
+    var total = document.getElementById('rc-total');
+    var share = document.getElementById('rc-share');
+    var label = document.getElementById('rc-band-label');
+    sel.addEventListener('change', function () {
+        var amount = bands[sel.value];
+        if (amount == null) return;
+        var year = Math.round(amount + energy);
+        total.textContent = '£' + year.toLocaleString('en-GB') + ' a year';
+        if (share && income) share.textContent = (Math.round(1000 * year / income) / 10).toFixed(1);
+        label.textContent = sel.value;
+    });
+})();
+</script>
+{% endif %}
 {% elif checked.council_tax %}
 <p class="area-lead">
     <strong>{{ checked.council_tax.band_d | gbp }} a year</strong> at Band D, from {{ checked.council_tax.authority }} for {{ checked.council_tax.year }} (MHCLG).

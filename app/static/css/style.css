@@ -6513,6 +6513,87 @@ body.theme-dark .leaflet-popup-tip {
     .cat-bar-next, .cat-bar-next:hover, .cat-bar-next:active { border-color: var(--accent); color: var(--accent); }
 }
 .report-categories.is-list .cat-panel-bar { display: none; }
+
+/* The score's reasons open their cards (16 Sep 2026): text buttons in
+   the verdict sentence, dotted so they read as tappable without
+   looking like links away from the page. */
+.verdict-reason,
+.verdict-reason:hover,
+.verdict-reason:active {
+    display: inline;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    font: inherit;
+    color: inherit;
+    text-decoration: underline dotted;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    transform: none;
+}
+.verdict-reason:hover,
+.verdict-reason:focus-visible { color: var(--accent); text-decoration-style: solid; }
+
+/* What moved since this account last looked (16 Sep 2026). */
+.since-visit {
+    margin: 1.5rem 0 0;
+    padding: 0.85rem 1rem;
+    background: var(--good-bg);
+    border: 1px solid var(--good);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--ink);
+}
+
+/* The running-costs band picker (16 Sep 2026). */
+.rc-band-pick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: -0.5rem 0 1.25rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.rc-band-pick label { color: var(--ink); }
+.rc-band-pick select {
+    font: inherit;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+}
+
+/* Sales since, on the comparables page (16 Sep 2026). */
+.comp-range { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.75rem; }
+.comp-range button,
+.comp-range button:hover,
+.comp-range button:active {
+    padding: 0.35rem 0.8rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    box-shadow: none;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    transform: none;
+}
+.comp-range button:hover { border-color: var(--accent); color: var(--accent); }
+.comp-range button[aria-pressed="true"],
+.comp-range button[aria-pressed="true"]:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.comp-range-count { margin-left: auto; font-size: var(--text-sm); color: var(--ink-soft); }
+
+/* Two districts side by side on an area guide (16 Sep 2026). */
+.compare-table th[scope="row"] { font-weight: var(--weight-medium); }
+.compare-table td, .compare-table th { vertical-align: top; }
 .cat-next,
 .cat-next:hover,
 .cat-next:active {

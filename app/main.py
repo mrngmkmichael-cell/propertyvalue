@@ -798,6 +798,50 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     return summary
 
 
+def _summary_from_report(context: dict, canonical: str, house_number: str) -> dict:
+    """The fields _snapshot_changes compares, taken from a rendered
+    report's own gather rather than a second one (16 Sep 2026). Same
+    keys as _comparison_summary, so a snapshot written here and one
+    written by the watchlist page compare like for like. A source that
+    failed on this render leaves its key out, and the comparison then
+    says nothing about it rather than reporting a change."""
+    summary = {"postcode": canonical, "house_number": house_number}
+    transactions = context.get("transactions") or []
+    if not context.get("tx_error"):
+        summary["avg_price"] = _average_amount(transactions)
+        summary["tx_count"] = len(transactions)
+    detail = context.get("property_detail") or {}
+    if isinstance(detail, dict) and detail.get("inspection_date"):
+        summary["epc_date"] = detail.get("inspection_date")
+    zone = context.get("flood_zone") or {}
+    if isinstance(zone, dict) and zone.get("label"):
+        summary["flood_zone"] = zone["label"]
+    crime = context.get("crime") or {}
+    if isinstance(crime, dict) and crime.get("total") is not None:
+        summary["crime_total"] = crime.get("total")
+    hpi_data = context.get("hpi") or {}
+    growth_area = (hpi_data.get("local_authority") or hpi_data.get("region") or {}) if isinstance(hpi_data, dict) else {}
+    if growth_area.get("annual_change_pct") is not None:
+        summary["price_growth_pct"] = growth_area.get("annual_change_pct")
+        summary["price_growth_area"] = growth_area.get("name")
+    return summary
+
+
+def _group_for_changes(changes: list[str]) -> str:
+    """The report group a return visit opens on, from the first change
+    that belongs to one (16 Sep 2026): prices to Value & Market, flood
+    and crime to Risk & Safety, a new EPC to Property & Condition."""
+    for text in changes:
+        low = text.lower()
+        if "sold price" in low or "trend" in low:
+            return "cat-value-market"
+        if "flood zone" in low or "crime" in low:
+            return "cat-risk-safety"
+        if "energy certificate" in low:
+            return "cat-property-condition"
+    return ""
+
+
 def _snapshot_changes(old: dict, new: dict) -> list[str]:
     """Human-readable differences between two _comparison_summary
     snapshots of the same address, for the watchlist's "what's
@@ -1637,6 +1681,8 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     # A typical year uses the home's own energy figure when there is one.
     energy_figure = (home.get("energy_now") if home else None) or (energy.get("median") if energy else None)
     out["typical_year"] = int(round(ct["band_d"] + energy_figure)) if ct and energy_figure else None
+    # The page's band picker adds this to any band's bill (16 Sep 2026).
+    out["energy_figure"] = energy_figure
     income = out.get("income") or {}
     income_value = income.get("here") if isinstance(income, dict) else None
     out["income_value"] = income_value
@@ -2982,6 +3028,21 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
              if i["postcode"] == canonical and i["house_number"] == house_number),
             None,
         )
+        # A return visit opens on what changed (16 Sep 2026). The saved
+        # item holds the summary the change alerts compare; the same
+        # comparison runs here from this report's own gather, so it
+        # costs no fetch, and the snapshot moves on so the next visit
+        # compares against today.
+        context["since_last_visit"] = []
+        context["open_group"] = ""
+        saved_here = context["watchlist_item"]
+        if saved_here:
+            fresh = _summary_from_report(context, canonical, house_number)
+            old = json.loads(saved_here["last_snapshot"]) if saved_here.get("last_snapshot") else None
+            if old:
+                context["since_last_visit"] = _snapshot_changes(old, fresh)
+                context["open_group"] = _group_for_changes(context["since_last_visit"])
+            watchlist.update_snapshot(context["current_user"]["id"], saved_here["id"], json.dumps(fresh, default=str))
         context["compare_offer"] = _compare_offer(
             saved_items, canonical, house_number, context["current_user"]
         )
@@ -6098,8 +6159,99 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
     return out
 
 
+def _area_figures(outcode: str, payload: dict) -> list[dict]:
+    """A district's headline figures as label, value and source, in one
+    fixed order, so two districts line up row for row (16 Sep 2026).
+    Every value is one the guide already prints; a source with nothing
+    for the district says "Not held" rather than a blank."""
+    sales = payload.get("local_sales") or {}
+    la = (payload.get("hpi") or {}).get("local_authority") or {}
+    landscape = payload.get("landscape") or {}
+    flood = payload.get("flood_zone") or {}
+    finance = payload.get("finance") or {}
+    history = finance.get("history") or []
+    crime = payload.get("crime") or {}
+
+    if sales.get("enough_for_median") and sales.get("median"):
+        price = f"£{int(sales['median']):,} median of {sales['count']} sales"
+    elif la.get("average_price"):
+        price = f"£{la['average_price']:,.0f} district average"
+    else:
+        price = "Not held"
+    if la.get("annual_change_pct") is not None and la.get("name"):
+        pct = la["annual_change_pct"]
+        change = f"{'+' if pct >= 0 else ''}{pct:.1f}% ({la['name']})"
+    else:
+        change = "Not held"
+    if landscape.get("good_or_better_pct") is not None and landscape.get("total_schools"):
+        schools = f"{landscape['good_or_better_pct']}% of {landscape['total_schools']} within {landscape.get('radius_miles', 3)} miles"
+    else:
+        schools = "Not held"
+    zone = flood.get("label") or "Not held"
+    if history and history[-1].get("band_d") and finance.get("name"):
+        band_d = f"£{history[-1]['band_d']:,.0f} a year ({finance['name']}, {finance.get('latest_label', '')})".replace(", )", ")")
+    else:
+        band_d = "Not held"
+    if crime.get("total") is not None:
+        month = f" in {_month_label(crime['month'])}" if crime.get("month") else ""
+        crimes = f"{crime['total']}{month}"
+    else:
+        crimes = "Not held"
+    return [
+        {"label": "Sold prices around the centre", "source": "HM Land Registry", "value": price},
+        {"label": "Prices on a year ago", "source": "UK House Price Index", "value": change},
+        {"label": "Schools rated Good or Outstanding", "source": "Ofsted", "value": schools},
+        {"label": "Flood zone at the centre", "source": "Environment Agency", "value": zone},
+        {"label": "Band D council tax", "source": "MHCLG", "value": band_d},
+        {"label": "Crimes within about a mile", "source": "Police.uk", "value": crimes},
+    ]
+
+
+async def _area_compare(context: dict, outcode: str, compare: str) -> None:
+    """Two districts side by side on an area guide (16 Sep 2026). The
+    schools guide could already put two areas next to each other and
+    the area guide could not, and "which area" is the question these
+    pages get asked. The other district's payload comes from the same
+    persistent cache the guides use, built the same way if it is not
+    there yet, so the comparison is exactly what its own page shows."""
+    context["compare"] = None
+    context["compare_error"] = ""
+    other = (compare or "").strip().upper()
+    if not other:
+        return
+    if other == outcode:
+        context["compare_error"] = f"That is {outcode} itself. Try another district."
+        return
+    if not _OUTCODE_RE.match(other):
+        context["compare_error"] = "That is not a postcode district. Try the first part of a postcode, such as SW11 or M20."
+        return
+    try:
+        location, _ = await _resolve_extension_location(other)
+        if location is None:
+            context["compare_error"] = f"No district called {other} was found."
+            return
+        key = ("area_guide", AREA_GUIDE_PAYLOAD_VERSION, other)
+        payload = await asyncio.to_thread(_cache.get_persistent, key, AREA_GUIDE_CACHE_TTL_S)
+        if payload is None:
+            payload = await _build_area_payload(other, location, key)
+    except Exception:
+        logging.getLogger(__name__).exception("area compare %s against %s failed", outcode, other)
+        context["compare_error"] = f"The figures for {other} could not be gathered just now. Try again in a moment."
+        return
+    here = _area_figures(outcode, context)
+    there = _area_figures(other, payload)
+    pair = sorted([outcode, other])
+    context["compare"] = {
+        "outcode": other,
+        "admin_district": location.get("admin_district") or "",
+        "rows": [{"label": h["label"], "source": h["source"], "here": h["value"], "there": t["value"]} for h, t in zip(here, there)],
+        # The linkable page exists only for genuine neighbours.
+        "versus_href": f"/compare/{pair[0]}/vs/{pair[1]}" if _are_neighbours(outcode, other) else "",
+    }
+
+
 @app.get("/area/{outcode}")
-async def area_guide(request: Request, outcode: str):
+async def area_guide(request: Request, outcode: str, compare: str = ""):
     """A standing SEO landing page per UK postcode district (e.g.
     /area/SW1A), separate from /property?postcode=X: that page is
     written for someone evaluating one specific purchase and runs the
@@ -6162,17 +6314,16 @@ async def area_guide(request: Request, outcode: str):
     cached = await asyncio.to_thread(_cache.get_persistent, cache_key, AREA_GUIDE_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
-        _area_guide_extras(context, outcode, lat, lon)
-        response = templates.TemplateResponse(request, "area_guide.html", context)
-        response.headers["Server-Timing"] = f'cache;desc="{_cache.last_outcome}"'
-        return response
-
-    page_data = await _build_area_payload(outcode, location, cache_key)
-    context.update(page_data)
+        outcome = _cache.last_outcome
+        timing = ""
+    else:
+        context.update(await _build_area_payload(outcode, location, cache_key))
+        outcome = _cache.last_outcome
+        timing = _server_timing_header()
     _area_guide_extras(context, outcode, lat, lon)
+    await _area_compare(context, outcode, compare)
     response = templates.TemplateResponse(request, "area_guide.html", context)
-    timing = _server_timing_header()
-    response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{_cache.last_outcome}"'
+    response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{outcome}"'
     return response
 
 
