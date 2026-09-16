@@ -5705,6 +5705,35 @@ main:focus { outline: none; }
    not the ask. */
 .paywall-banner-aside { display: block; margin-top: 0.4rem; font-size: var(--text-xs); color: var(--ink-faint); }
 .paywall-banner-aside a { color: var(--ink-soft); }
+/* What the checks cost by hand, counted on 16 Sep 2026: the one line
+   at the wall that says why the report is worth having. */
+.paywall-banner-by-hand { display: block; margin-top: 0.45rem; font-size: var(--text-sm); color: var(--ink-soft); }
+.paywall-banner-by-hand a { color: var(--ink-soft); }
+
+/* The counted block on the premium page and the record on the
+   methodology page (16 Sep 2026). */
+.by-hand { margin: 1.75rem 0 0.75rem; }
+.by-hand h2 { margin-bottom: 0.35rem; }
+.by-hand-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin: 1.1rem 0 1rem;
+    padding: 0;
+}
+.by-hand-facts div {
+    padding: 0.8rem 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.by-hand-facts dt { font-size: var(--text-xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+.by-hand-facts dd { margin: 0.2rem 0 0; font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
+.by-hand p { max-width: 46rem; }
+.by-hand-table td, .by-hand-table th { vertical-align: top; }
+@media (max-width: 700px) {
+    .by-hand-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .paywall-banner-cta {
     flex: none; padding: 0.6rem 1.2rem; background: var(--accent); color: var(--accent-ink);
     border-radius: var(--radius-sm); font-weight: var(--weight-semi); font-size: var(--text-sm); text-decoration: none;

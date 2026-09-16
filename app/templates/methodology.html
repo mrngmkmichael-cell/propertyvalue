@@ -69,6 +69,53 @@
     </div>
 </section>
 
+{# The same checks by hand (16 Sep 2026): the evidence behind the
+   counted line on the report's paywall and the premium page. The full
+   write-up is docs/audits/2026-09-16-manual-check-timing.md; the
+   figures here are copied from it and nowhere else. #}
+<section class="landing-section" id="by-hand">
+    <h2 class="landing-heading">The same checks by hand, timed</h2>
+    <p class="section-sub" style="max-width: 46rem;">Every figure on a report comes from a website anyone can visit, so on 16 September 2026 we visited them: all 44 checks for one address, 55 Malden Hill Gardens, New Malden, KT3 4HX, each on the official site it comes from, with a clock running from the start of each check to the answer on screen. The person already knew every site and had the spreadsheet lookups scripted, so the minutes are a floor, not a buyer's afternoon. Where a figure existed on the website it matched the report, 14 of them to the decimal.</p>
+    <div class="tablewrap">
+    <table class="tx-table by-hand-table">
+        <thead><tr><th>Check</th><th>Official site</th><th>The catch</th><th class="num">Steps</th><th class="num">Min</th></tr></thead>
+        <tbody>
+            <tr><td>Sold prices</td><td>HM Land Registry price paid data</td><td>The latest sale is found by scanning 19 entries</td><td class="num">3</td><td class="num">0.7</td></tr>
+            <tr><td>Valuation estimate</td><td>No official tool</td><td>Your own median over the rows; the search has no radius</td><td class="num">0</td><td class="num">0</td></tr>
+            <tr><td>Price index, five-year trend</td><td>UK House Price Index</td><td>The data-table tab; the five-year change is your own division</td><td class="num">8</td><td class="num">1.1</td></tr>
+            <tr><td>Council tax</td><td>VOA band lookup, then the council's charges table</td><td>Two sites and a five-column table</td><td class="num">7</td><td class="num">1.3</td></tr>
+            <tr><td>Stamp duty</td><td>gov.uk SDLT calculator</td><td>Eleven pages, once per buyer type</td><td class="num">11</td><td class="num">2.8</td></tr>
+            <tr><td>Rents</td><td>ONS Price Index of Private Rents</td><td>The borough's name and the local tool</td><td class="num">5</td><td class="num">1.1</td></tr>
+            <tr><td>EPC and the cost to C</td><td>EPC register</td><td>A long certificate page; four improvement steps to read</td><td class="num">3</td><td class="num">0.8</td></tr>
+            <tr><td>Extended or modified</td><td>Council planning register (Idox)</td><td>No result means no application, not no extension</td><td class="num">3</td><td class="num">1.8</td></tr>
+            <tr><td>Aspect</td><td>A map</td><td>A compass and a guess</td><td class="num">2</td><td class="num">0.5</td></tr>
+            <tr><td>Flood zone, surface water</td><td>Environment Agency flood map for planning</td><td>A robot check on the address route; the zone is a colour, with no marker on the postcode</td><td class="num">6</td><td class="num">2.0</td></tr>
+            <tr><td>Sewage discharges</td><td>Thames Water map; Environment Agency annual return</td><td>The map says now; the year's count is a national spreadsheet</td><td class="num">4</td><td class="num">0.7</td></tr>
+            <tr><td>Noise</td><td>DEFRA strategic noise map (Extrium viewer)</td><td>A colour band; the map stayed at country scale after the postcode</td><td class="num">5</td><td class="num">1.2</td></tr>
+            <tr><td>Crime</td><td>police.uk</td><td>The police neighbourhood, not a radius</td><td class="num">4</td><td class="num">0.9</td></tr>
+            <tr><td>Radon</td><td>UKHSA radon map</td><td>A colour; the address report is paid</td><td class="num">5</td><td class="num">1.1</td></tr>
+            <tr><td>Subsidence</td><td>BGS GeoIndex</td><td>No shrink-swell layer; a GIS download or a paid report</td><td class="num">4</td><td class="num">1.4</td></tr>
+            <tr><td>Air quality</td><td>DEFRA background maps</td><td>A 7.9 MB file of 254,911 rows, your grid square, the WHO guideline</td><td class="num">8</td><td class="num">0.8</td></tr>
+            <tr><td>Historic landfill</td><td>Environment Agency, via data.gov.uk</td><td>Three datasets with one name; GIS software</td><td class="num">6</td><td class="num">1.2</td></tr>
+            <tr><td>Coal mining</td><td>gov.uk, the Mining Remediation Authority</td><td>The old map is a 404; the report is from &pound;27 plus VAT</td><td class="num">4</td><td class="num">2.1</td></tr>
+            <tr><td>Planning constraints, brownfield land, listed outlines</td><td>planning.data.gov.uk map</td><td>7 of 57 layers to tick; the page warns its data may be incomplete</td><td class="num">8</td><td class="num">0.9</td></tr>
+            <tr><td>Environmental designations</td><td>Natural England MAGIC map</td><td>Would not open in the browser used; dozens of layers</td><td class="num">&ndash;</td><td class="num">0.9</td></tr>
+            <tr><td>Listed buildings</td><td>Historic England map search</td><td>A click per pin</td><td class="num">5</td><td class="num">1.1</td></tr>
+            <tr><td>Schools, state, private, universities</td><td>Get Information about Schools, then Ofsted</td><td>235 establishments within a mile to filter; one Ofsted page per school</td><td class="num">6 + 2 a school</td><td class="num">1.5</td></tr>
+            <tr><td>School places</td><td>The council's admissions guide, a 40-page PDF</td><td>Found by web search; your own distance per school</td><td class="num">6 a school</td><td class="num">1.3</td></tr>
+            <tr><td>Nearby essentials</td><td>A map app</td><td>One search per category</td><td class="num">6</td><td class="num">0.7</td></tr>
+            <tr><td>Getting around</td><td>A map app's directions</td><td>Find the station, then route to it</td><td class="num">4 a station</td><td class="num">0.4</td></tr>
+            <tr><td>Health services</td><td>NHS find a GP; three NHS Digital files</td><td>Three national files matched on the practice code</td><td class="num">3 + 3 files</td><td class="num">0.8</td></tr>
+            <tr><td>Bus service</td><td>bustimes.org (Bus Open Data)</td><td>Counting departures from a timetable</td><td class="num">6</td><td class="num">0.8</td></tr>
+            <tr><td>Broadband, mobile</td><td>Ofcom checkers</td><td>Four coverage maps by colour, behind a reCAPTCHA</td><td class="num">9</td><td class="num">3.4</td></tr>
+            <tr><td>Household income</td><td>ONS income estimates for small areas</td><td>The MSOA code from a lookup; a 1.8 MB workbook</td><td class="num">4</td><td class="num">0.7</td></tr>
+            <tr><td>Deprivation and seven census cards</td><td>gov.uk indices of deprivation 2025; Nomis census profile</td><td>The LSOA code; a 33,756-row file; eight tables and six sums</td><td class="num">15</td><td class="num">1.9</td></tr>
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub" style="max-width: 46rem;">Totals: 28 websites, about 190 steps, 9 files needing a spreadsheet or GIS program, 12 answers that are colours on maps, 3 paid reports, 13 dead ends, 35.8 minutes. Five answers the websites cannot give at all: crimes within a mile, sales within 0.6 miles, buses an hour, patients per GP, and the chance of a school place. Three sites could not be opened in the browser used (the Environment Agency address check behind its robot check, Natural England's MAGIC map, the old Coal Authority map) and are described from their pages. And that is one house: the second is the same 28 websites again, with nothing to put side by side.</p>
+</section>
+
 <section class="landing-section">
     <h2 class="landing-heading">Every source we query</h2>
     <div class="sources-strip" style="margin-top: 1.5rem;">

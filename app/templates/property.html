@@ -585,6 +585,10 @@
         <div class="paywall-banner-copy">
             <strong>The locked cards below are free to open.</strong>
             Sign up and your first property gets every check in full, this one included. No card needed.
+            {# Counted, not claimed (16 Sep 2026): every check done by hand for
+               one address on the official sites, timed; the record is on the
+               methodology page. Every figure here is from that run. #}
+            <span class="paywall-banner-by-hand">Done by hand, these 44 checks are 28 websites, nine spreadsheets and three paid reports for one house, and none of it compares with the next house. <a href="/methodology#by-hand">Timed on 16 September 2026</a>.</span>
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
         {% else %}
@@ -601,6 +605,7 @@
             <strong>You've used your free report.</strong>
             The ones you opened stay unlocked for good. Unlocking new ones is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
             {% endif %}
+            <span class="paywall-banner-by-hand">The next house by hand is the same 28 websites again, and still nothing side by side. Premium opens every check on every house, and the comparison page puts two of them next to each other. <a href="/methodology#by-hand">How we counted</a>.</span>
             {% if paywall_history and paywall_history.free_report %}
             <span class="paywall-banner-aside">Your free report went on <a href="{{ paywall_history.free_report.url }}">{{ paywall_history.free_report.label }}</a>, and it stays open for good.</span>
             {% endif %}
