@@ -803,7 +803,7 @@ def test_since_2011_card_names_the_biggest_mover(client, fake_report):
             "has_2011": True, "has_2021": True, "merged_from": 1}
     body = _report(client, fake_report, gather=fake_gather(census_change=data))
     assert "Since 2011" in body and 'id="modal-census-change"' in body
-    assert "Owner-occupiers down 12.0 points" in body and "1,336 residents in 2021, up 5.4% on 2011" in body
+    assert "Owner-occupiers down 12.0 percentage points" in body and "1,336 residents in 2021, up 5.4% on 2011" in body
     assert "How the area changed, 2011 to 2021" in body and "+9.7 pts" in body and "+3.7 pts" in body
     body = _report(client, fake_report, gather=fake_gather(census_change=dict(data, biggest=None, has_2011=False, rows=[])))
     assert "No comparable 2011 figure" in body
@@ -882,7 +882,9 @@ def test_a_card_status_with_no_space_in_it_can_still_wrap(client, fake_report):
     from pathlib import Path
 
     body = _report(client, fake_report, gather=fake_gather(occupation={"professional_pct": 55.6, "breakdown": []}))
-    assert "55.6% managerial/<wbr>professional" in body
+    # Reworded 16 Sep 2026: words wrap at their spaces, and a first-time
+    # visitor can read them; the wrap fallback stays for any future token.
+    assert "55.6% in managerial or professional jobs" in body
     css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
     rule = css.split("\n.dashboard-card-status {", 1)[1].split("}", 1)[0]
     assert "overflow-wrap: anywhere" in rule and "min-width: 0" in rule

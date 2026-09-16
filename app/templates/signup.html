@@ -12,6 +12,10 @@
 <span class="kicker">Create account</span>
 <h1>One full report, free.</h1>
 <p class="dek">Every Premium check unlocked on the first property you look at. No card, nothing to cancel, and no clock running down while you are not house-hunting. Come back to it any time and it stays free.</p>
+{# The house this sign-up came from, when it came from a report: the
+   page knew it (next= carries the postcode) and did not say so until
+   16 Sep 2026. #}
+{% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up and it opens in full.</p>{% endif %}
 {% endif %}
 
 {% if error %}

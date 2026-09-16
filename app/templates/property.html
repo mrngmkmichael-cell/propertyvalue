@@ -802,7 +802,9 @@
                 {% else %}No modelled noise nearby{% endif %}
             </span>
             {% if noise and noise_max is not none %}
-            <span class="dashboard-card-substat">{{ noise_max }} dB(A) at its loudest</span>
+            {# The band in words, from the popup's own scale: a dB(A) figure
+               alone meant nothing to the audit's first-time visitor. #}
+            <span class="dashboard-card-substat">{{ noise_max }} dB(A) at its loudest: {{ {'Low': 'a quiet residential street', 'Moderate': 'a road heard indoors with the windows shut', 'High': 'a busy road right outside', 'Very high': 'next to heavy traffic'}[noise_max_label] }}</span>
             {% endif %}
         </button>
 
@@ -1099,7 +1101,7 @@
 
                 {% elif census_change is not defined or not census_change or not census_change.biggest %}No comparable 2011 figure
 
-                {% else %}{{ census_change.biggest.short }} {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} points{% endif %}
+                {% else %}{{ census_change.biggest.short }} {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} percentage points{% endif %}
 
             </span>
 
@@ -1115,16 +1117,19 @@
                 {% if deprivation %}Decile {{ deprivation.imd_decile }} of 10
                 {% else %}No data available{% endif %}
             </span>
+            {# Which way the scale runs, on the card: "Decile 8 of 10" on its
+               own told the audit's first-time visitor nothing (16 Sep 2026). #}
+            {% if deprivation %}<span class="dashboard-card-substat">1 is the most deprived tenth of England, 10 the least</span>{% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ 'muted' if not occupation else 'ok' }}" data-modal-target="modal-occupation" data-animate>
             <span class="dashboard-card-icon icon-occupation">{{ icons.icon('occupation') }}</span>
             <span class="dashboard-card-title">Occupation</span>
             <span class="dashboard-card-status">
-                {# The break opportunity after the slash: a browser will
-                   not wrap at "/", and at five columns the word ran out
-                   of the card (Michael, 15 Sep 2026). #}
-                {% if occupation %}{{ occupation.professional_pct }}% managerial/<wbr>professional
+                {# In words rather than "managerial/professional": the slash
+                   ran out of the card at five columns (15 Sep 2026) and the
+                   audit's first-time visitor could not read it (16 Sep). #}
+                {% if occupation %}{{ occupation.professional_pct }}% in managerial or professional jobs
                 {% else %}No data available{% endif %}
             </span>
         </button>
@@ -1627,12 +1632,21 @@
         <p class="section-sub">Take this list to your viewing and your conveyancer. The PDF report includes it.</p>
         {% else %}
         <div class="bq-locked">
-            <p><strong>{{ buyer_questions_count }} questions</strong> were generated for this property, including:</p>
-            <ul class="bq-locked-list">
-                {% for audience, qs in buyer_questions %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
-                <li>{{ item.trigger }}</li>
-                {% endif %}{% endfor %}{% endfor %}
-            </ul>
+            {# One real question in full, then what the others came from.
+               Until 16 Sep 2026 this listed only the triggers ("Built
+               before 1970"), which read as a heading, not a question. #}
+            {% set bq = namespace(sample=none, others=[]) %}
+            {% for audience, qs in buyer_questions %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
+                {% if bq.sample is none %}{% set bq.sample = item %}{% else %}{% set _ = bq.others.append(item.trigger) %}{% endif %}
+            {% endif %}{% endfor %}{% endfor %}
+            <p><strong>{{ buyer_questions_count }} questions</strong> were generated for this property.{% if bq.sample %} One of them, in full:{% endif %}</p>
+            {% if bq.sample %}
+            <div class="bq-item bq-sample">
+                <span class="bq-trigger">{{ bq.sample.trigger }}{% if bq.sample.cost %} &middot; {{ bq.sample.cost }}{% endif %}</span>
+                <p class="bq-question">{{ bq.sample.question }}</p>
+            </div>
+            {% endif %}
+            {% if bq.others %}<p class="section-sub">The others come from: {{ bq.others | join(", ") }}.</p>{% endif %}
             <a class="pdf-download-btn" href="{{ lock_redirect }}">Unlock the full question list</a>
         </div>
         {% endif %}
@@ -2932,6 +2946,9 @@
                 The schools data service didn't respond. Try again in a moment.
             </p>
         {% elif schools %}
+            {# Two of the badges below are not grades; said once here, as on
+               the schools guide's key (16 Sep 2026). #}
+            <p class="section-sub">Report card: inspected since Ofsted stopped one-word grades in late 2024, so it has a report card rather than a grade. No current grade: Ofsted's register holds no graded inspection for the school, usually because it is new, or has become an academy and not yet been inspected as one.</p>
             {% for group_name in ["Nursery", "Primary", "Secondary"] %}
                 {% if schools[group_name] %}
                 <h3 class="subsection-heading">{{ group_name }}</h3>

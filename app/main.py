@@ -15,7 +15,7 @@ import re
 import secrets
 import statistics
 import time
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qs, quote, urlencode, urlparse
 from xml.sax.saxutils import escape
 
 import httpx
@@ -5110,7 +5110,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
             "cards": [
                 card("Household Income", f"{_format_gbp(income_data['here'])} p/a" if income_data else "No data", "ok" if income_data else "muted", detail=income_detail),
                 card("Deprivation", f"Decile {deprivation_data['imd_decile']} of 10" if deprivation_data else "No data", deprivation_status, detail=deprivation_detail),
-                card("Occupation", f"{occupation_data['professional_pct']}% managerial/professional" if occupation_data else "No data", "ok" if occupation_data else "muted", detail=occupation_detail),
+                card("Occupation", f"{occupation_data['professional_pct']}% in managerial or professional jobs" if occupation_data else "No data", "ok" if occupation_data else "muted", detail=occupation_detail),
                 card("Qualification", f"{qualification_data['degree_pct']}% degree-educated" if qualification_data else "No data", "ok" if qualification_data else "muted", detail=qualification_detail),
                 card("Age Profile", f"{age_profile_data['under_25_pct']}% under 25" if age_profile_data else "No data", "ok" if age_profile_data else "muted", detail=age_profile_detail),
                 card("Housing Types & Tenure", f"{housing_data['owned_pct']}% owner-occupied" if housing_data and housing_data.get("owned_pct") is not None else "No data", "ok" if housing_data else "muted", detail=housing_detail),
@@ -7264,10 +7264,31 @@ _AUTH_ERRORS = {
 }
 
 
+def _free_report_label(next_url: str) -> str:
+    """The address a sign-up will unlock, read from the next= it arrived
+    with ("/property?postcode=KT3 4HX&house_number=36" gives "36, KT3
+    4HX"), or "" when next is not a report. Three of the four accounts
+    before 16 Sep 2026 came from a locked card on a report, and the
+    sign-up page could not say which house their free report would be."""
+    try:
+        parsed = urlparse(next_url or "")
+    except ValueError:
+        return ""
+    if parsed.path != "/property":
+        return ""
+    query = parse_qs(parsed.query)
+    postcode = (query.get("postcode") or [""])[0].strip().upper()
+    if not postcode or len(postcode) > 10:
+        return ""
+    house_number = (query.get("house_number") or [""])[0].strip()[:20]
+    return f"{house_number}, {postcode}" if house_number else postcode
+
+
 @app.get("/signup")
 def signup_form(request: Request, next: str = "/", error: str = ""):
     context = base_context(request)
     context["next"] = next
+    context["free_report_for"] = _free_report_label(next)
     context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "signup.html", context)
 
@@ -7278,6 +7299,7 @@ def signup_submit(
 ):
     context = base_context(request)
     context["next"] = next
+    context["free_report_for"] = _free_report_label(next)
     email = email.strip().lower()
     context["email_value"] = email
 

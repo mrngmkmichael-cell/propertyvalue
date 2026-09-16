@@ -95,6 +95,11 @@
         <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
     </div>
     <button type="submit">Check this postcode</button>
+    {# Where the check leads (16 Sep 2026): Google sends people to this
+       page, sign-ups happen on the report, and the landing screen did
+       not say the two were connected. The answer itself links to the
+       report as well. #}
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Checking a house? After the answer, the full report on that postcode is one tap away: every nearby school at once, and the house itself.</p>
 </form>
 {% endif %}
 
