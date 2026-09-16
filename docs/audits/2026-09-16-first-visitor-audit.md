@@ -114,6 +114,21 @@ What not to add: numbers that count up, confetti, sounds, auto-sliding carousels
 
 ---
 
+## Outcome, overnight 16 September 2026
+
+Michael asked for every finding and every interactive item to be done in sequence. Four commits, each verified on the dev server (pytest, smoke.py, scripts/audit_site.py and a scripted browser walk at 1280 and 375 px) and then on the live site:
+
+| Commit | What it closed |
+|---|---|
+| `da5bb15` | High 1 to 3: one ask before the first card and no lock pills, the globe plays once a session and not at all under reduced motion, print shows every block. Also the 12px card titles, the two small controls and the hero strip hidden from screen readers |
+| `aca77e5` | Medium: card lines a first-timer can read, a real question in the teaser, the sign-up page names the house it will unlock, the guide key explains "Report card" and "No current grade", the school page hands over to the report (interactive item 3) |
+| `6213975` | Long phone pages: an open group keeps its name, Close and Next at the top of the screen |
+| `97063ba` | Interactive items 1, 2, 4, 5 and 6: the verdict's reasons open their cards; the running-costs answer follows the band picked; an area guide compares two districts (`?compare=`, noindex); the comparables table and both maps filter by year; a signed-in return visit says what changed and opens that group |
+
+Note-only, left as they were: the unnamed map zoom controls (vendor markup) and the cold first load. Nothing from the "what not to add" list was added.
+
+---
+
 # 初次訪客審核，2026 年 9 月 16 日
 
 做法：以初次訪客身份按腳本走一遍正式網站，分別用 1280px 桌面和 375px 手機，唯讀，並帶內部標頭，所以不會算作流量。走訪的頁面：首頁、KT3 4HX 報告（先冷後熱）、Premium、註冊、一個從 Google 進來的學校頁面（Pebble Brook Primary School）、KT3 的學校指南、KT3 地區指南、KT3 4HX 的居住成本、alternatives、methodology、買樓指南和錄取索引。已登入用戶看到的內容是從模板讀取的。以下每個數字都是 2026 年 9 月 16 日在頁面上量度或讀到的；截圖在工作階段的 scratchpad 資料夾 `visit/out`。
@@ -227,3 +242,16 @@ Premium 頁說「One wrong house costs more than a lifetime of reports」，把 
 | 報告整頁截圖中的空白區段 | 捲動顯示效果造成的假象；捲動的讀者能看到全部。列印的情況是真實的，列為高優先第 3 項 |
 | 學校指南上 84 個沒有名稱的按鈕 | 地圖程式庫的標記元素，不是網站的控制項 |
 | 學校頁面上的「0.02 mi, about 34 metres」 | 看起來奇怪，但這是議會公布的數字，頁面也有說明 |
+
+## 結果，2026 年 9 月 16 日通宵完成
+
+Michael 要求按次序完成所有發現和所有互動項目。共四個提交，每個都先在開發伺服器驗證（pytest、smoke.py、scripts/audit_site.py，以及 1280 和 375 像素的腳本化瀏覽器巡查），再在正式網站驗證：
+
+| 提交 | 完成的項目 |
+|---|---|
+| `da5bb15` | 高優先第 1 至 3 項：第一張卡片之前只剩一個請求，沒有鎖定標籤；地球動畫每次工作階段只播一次，減少動態設定下完全不播；列印時每個區塊都顯示。另外還有 12px 的卡片標題、兩個過小的控制項，以及對螢幕閱讀器隱藏的首頁橫幅 |
+| `aca77e5` | 中優先：初次訪客看得懂的卡片說明、預告區顯示真正的問題、註冊頁寫明會解鎖哪間屋、學校指南圖例解釋「Report card」和「No current grade」、學校頁面接駁到報告（互動項目第 3 項） |
+| `6213975` | 手機長頁面：展開的分類把名稱、關閉和下一步固定在螢幕頂部 |
+| `97063ba` | 互動項目第 1、2、4、5、6 項：評分理由可點開對應卡片；生活開支的答案跟隨所選的稅階；區域指南可比較兩個地區（`?compare=`，不列入索引）；可比較物業的表格和兩種地圖都能按年份篩選；已登入的回訪會說明有什麼變了，並自動展開該分類 |
+
+只記錄、不動工：地圖縮放按鈕沒有名稱（第三方程式庫的標記）和冷啟動的首次載入。「不要加入」清單上的東西一項都沒有加。
