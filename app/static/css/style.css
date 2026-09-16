@@ -5710,29 +5710,60 @@ main:focus { outline: none; }
 .paywall-banner-by-hand { display: block; margin-top: 0.45rem; font-size: var(--text-sm); color: var(--ink-soft); }
 .paywall-banner-by-hand a { color: var(--ink-soft); }
 
-/* The counted block on the premium page and the record on the
-   methodology page (16 Sep 2026). */
+/* What the checks cost by hand: one message, not a wall of figures
+   (16 Sep 2026). A mark per website, then the sentence. */
 .by-hand { margin: 1.75rem 0 0.75rem; }
 .by-hand h2 { margin-bottom: 0.35rem; }
-.by-hand-facts {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.75rem;
-    margin: 1.1rem 0 1rem;
-    padding: 0;
-}
-.by-hand-facts div {
-    padding: 0.8rem 0.9rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-}
-.by-hand-facts dt { font-size: var(--text-xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
-.by-hand-facts dd { margin: 0.2rem 0 0; font-size: var(--text-xl); font-weight: var(--weight-bold); color: var(--ink); font-variant-numeric: tabular-nums; }
 .by-hand p { max-width: 46rem; }
+.by-hand-marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 1rem 0 0.9rem;
+}
+.by-hand-marks i {
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 3px;
+    background: var(--accent);
+    opacity: 1;
+}
+/* The marks arrive in order, one per website, once the block is on
+   screen. They start visible, so a reader with no script, reduced
+   motion set, or a printer gets all 28 standing still. */
+.by-hand.in-view .by-hand-marks i {
+    animation: by-hand-mark 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--n) * 0.03s);
+}
+@keyframes by-hand-mark {
+    from { opacity: 0; transform: scale(0.4); }
+    to { opacity: 1; transform: scale(1); }
+}
+.by-hand-headline {
+    margin: 0 0 0.75rem;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--ink-soft);
+    text-wrap: balance;
+}
+.by-hand-headline strong { color: var(--ink); font-weight: inherit; }
+/* The last beat is the one the page is making: no comparison. */
+.by-hand-nothing { color: var(--bad); }
+.by-hand.in-view .by-hand-nothing { animation: by-hand-nothing 0.5s ease-out 0.95s both; }
+@keyframes by-hand-nothing {
+    from { opacity: 0.25; }
+    to { opacity: 1; }
+}
 .by-hand-table td, .by-hand-table th { vertical-align: top; }
 @media (max-width: 700px) {
-    .by-hand-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .by-hand-headline { font-size: var(--text-lg); }
+    .by-hand-marks i { width: 0.75rem; height: 0.75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .by-hand.in-view .by-hand-marks i,
+    .by-hand.in-view .by-hand-nothing { animation: none; }
 }
 .paywall-banner-cta {
     flex: none; padding: 0.6rem 1.2rem; background: var(--accent); color: var(--accent-ink);

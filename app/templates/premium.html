@@ -31,20 +31,20 @@
    timed. The figures are that run's and nothing else; the record is
    on the methodology page and in docs/audits. No estimate of a
    buyer's afternoon is made anywhere, because none was measured. #}
-<section class="by-hand" id="by-hand-summary">
-    <h2>What the report saves you, counted</h2>
-    <p class="section-sub">Every figure in a report is public. On 16 September 2026 we did all 44 checks by hand for one address, 55 Malden Hill Gardens in New Malden, on the official websites they come from, with a clock running.</p>
-    <dl class="by-hand-facts">
-        <div><dt>Websites</dt><dd>28</dd></div>
-        <div><dt>Steps</dt><dd>about 190</dd></div>
-        <div><dt>Files needing a spreadsheet or GIS program</dt><dd>9</dd></div>
-        <div><dt>Answers that are a colour on a map</dt><dd>12</dd></div>
-        <div><dt>Paid reports</dt><dd>3</dd></div>
-        <div><dt>Dead ends</dt><dd>13</dd></div>
-        <div><dt>Minutes, knowing every site</dt><dd>36</dd></div>
-        <div><dt>Houses compared at the end</dt><dd>0</dd></div>
-    </dl>
-    <p>The 36 minutes is a floor: someone who already knew every site, one of the 76 school pages opened, the spreadsheets done by script. And it is one house. The next is the same 28 websites again, with nothing side by side. The report does every house while you wait and puts two of them next to each other. <a href="/methodology#by-hand">The check-by-check record</a>.</p>
+<section class="by-hand" id="by-hand-summary" data-animate>
+    <h2>Doing this yourself</h2>
+    {# One mark per website, arriving in order when the block is
+       scrolled to (16 Sep 2026). Eight equal tiles of figures were
+       here first and said nothing: a reader had to work out which
+       number mattered. The marks are the 28 as a quantity you see
+       rather than a number that ticks up, which the design brief
+       rules out, and they carry no information the sentence below
+       does not, so they are hidden from screen readers. The site's
+       own reveal drives them, so reduced motion leaves them still. #}
+    <p class="by-hand-marks" aria-hidden="true">{% for i in range(28) %}<i style="--n: {{ i }}"></i>{% endfor %}</p>
+    <p class="by-hand-headline"><strong>28 websites.</strong> <strong>One house.</strong> <span class="by-hand-nothing">Nothing to compare at the end.</span></p>
+    <p>That is what these 44 checks cost by hand on 16 September 2026, each on the official site it comes from. Nine of the answers sit in files that need a spreadsheet or mapping software, three are behind a paid report, and twelve are a colour you read off a map. The next house starts again at the first website.</p>
+    <p class="section-sub">It took 36 minutes, and that was someone who already knew every site. <a href="/methodology#by-hand">The record, check by check</a>.</p>
 </section>
 
 {% if checkout_cancelled %}

@@ -17,8 +17,7 @@ def test_the_wall_on_the_free_report_says_what_the_checks_cost_by_hand(client, f
     body = _report(client, fake_report)
     banner = body.split('class="paywall-banner"', 1)[1].split("</div>\n    </div>", 1)[0]
     assert 'class="paywall-banner-by-hand"' in banner
-    assert "28 websites, nine spreadsheets and three paid reports for one house" in banner
-    assert "none of it compares with the next house" in banner
+    assert "28 websites for one house, and nothing to compare at the end" in banner
     assert 'href="/methodology#by-hand"' in banner
 
 
@@ -58,20 +57,36 @@ def test_the_premium_page_counts_what_the_report_saves(client, monkeypatch):
         _cache._evict(key)
     body = client.get("/premium").text
     assert 'id="by-hand-summary"' in body
-    assert "What the report saves you, counted" in body
-    facts = dict(re.findall(r"<dt>(.*?)</dt><dd>(.*?)</dd>", body.split('class="by-hand-facts"', 1)[1].split("</dl>", 1)[0]))
-    assert facts == {
-        "Websites": "28", "Steps": "about 190",
-        "Files needing a spreadsheet or GIS program": "9",
-        "Answers that are a colour on a map": "12",
-        "Paid reports": "3", "Dead ends": "13",
-        "Minutes, knowing every site": "36",
-        "Houses compared at the end": "0",
-    }
-    assert "The 36 minutes is a floor" in body
-    assert 'href="/methodology#by-hand"' in body
-    # No invented afternoon anywhere on the page.
-    assert "hours" not in body.split('id="by-hand-summary"', 1)[1].split("</section>", 1)[0]
+    block = body.split('id="by-hand-summary"', 1)[1].split("</section>", 1)[0]
+    # One message, three beats, not a wall of figures (16 Sep 2026).
+    assert "<strong>28 websites.</strong> <strong>One house.</strong>" in block
+    assert '<span class="by-hand-nothing">Nothing to compare at the end.</span>' in block
+    assert "by-hand-facts" not in body
+    # One mark per website, each with its place in the order.
+    marks = re.findall(r'<i style="--n: (\d+)"></i>', block)
+    assert marks == [str(i) for i in range(28)]
+    assert 'class="by-hand-marks" aria-hidden="true"' in block
+    # The supporting numbers stay, in prose, and so does the floor.
+    for fact in ("Nine of the answers", "three are behind a paid report", "twelve are a colour",
+                 "The next house starts again at the first website",
+                 "36 minutes, and that was someone who already knew every site"):
+        assert fact in block, fact
+    assert 'href="/methodology#by-hand"' in block
+    # No invented afternoon anywhere on the block.
+    assert "hours" not in block
+
+
+def test_the_marks_stand_still_for_a_reader_who_asked_for_that(client):
+    """The marks arrive only once the site's own scroll reveal adds
+    in-view, so no script, reduced motion or a printer leaves all 28
+    standing. DESIGN.md: every animation respects the setting."""
+    css = (ROOT / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    base = css.index(".by-hand-marks i {")
+    assert "opacity: 1;" in css[base:base + 220]
+    assert ".by-hand.in-view .by-hand-marks i {" in css
+    still = re.findall(r"@media \(prefers-reduced-motion: reduce\) \{(.*?)\n\}", css, re.S)
+    assert any(".by-hand.in-view .by-hand-marks i" in block and ".by-hand.in-view .by-hand-nothing" in block
+               for block in still)
 
 
 def test_the_methodology_page_carries_the_check_by_check_record(client):
