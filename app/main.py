@@ -2245,6 +2245,18 @@ GSC_EARNED_OUTCODES = [
     "ST18", "ST19", "ST5", "SY2", "TR1", "TS18", "TS2", "TS25", "TS3", "TS9",
     "TW10", "TW18", "TW3", "W1K", "WA1", "WA10", "WA5", "WD18", "WD25", "WF4",
     "WN5", "WR2", "WR4", "YO60",
+    # --- Promoted from Search Console, 16 Sep 2026 (three months to 14 Sep) ---
+    # 61 districts with impressions and no priority yet, from
+    # scripts/promote_from_gsc.py. N1P, NE99, NG90 and S96 are
+    # non-geographic districts; kept as NE98 and NG80 were in earlier
+    # rounds, since each resolves to a real guide that Google is showing.
+    "AL5", "B42", "B43", "B75", "BH2", "BH4", "BN7", "BR3", "BR4", "BR6",
+    "BT10", "BT21", "BT8", "CF3", "CM21", "CM8", "CR2", "CT7", "DA4",
+    "DE73", "DH4", "G53", "GL51", "GL8", "GU1", "GU33", "HG2", "IG5",
+    "KT12", "KT23", "KT7", "L27", "M33", "MK5", "N1P", "NE27", "NE99",
+    "NG90", "NN4", "OL3", "PO41", "PR1", "PR2", "PR5", "RG31", "RH10",
+    "RH15", "RM12", "S96", "SA5", "SK1", "SK14", "SM6", "SR2", "TF3",
+    "TN1", "TQ1", "TR21", "TW11", "WD17", "WV6",
 ]
 AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
@@ -9288,14 +9300,18 @@ def _school_labels(profile: dict) -> dict:
     return profile
 
 
-# The twenty school pages Search Console showed at positions 5 to 13 in
-# the three months to 6 Sep 2026, with impressions but no clicks yet. The
-# admissions hub links them so the site's own weight reaches the pages
-# closest to page one. Refresh from the weekly export; drop any that
-# reach the top five, they no longer need the help.
+# The twenty school pages Search Console showed at positions 5 to 13,
+# with 8 or more impressions and no clicks yet, most impressions first.
+# The admissions hub links them so the site's own weight reaches the
+# pages closest to page one. Refresh from the weekly export; drop any
+# that reach the top five, they no longer need the help.
+# Refreshed from the export of 16 Sep 2026: none had reached the top
+# five; seven that have since earned a click or were overtaken made way
+# for seven with more impressions (Glyn, Gillespie, Fielding, Harris
+# Chobham, King Edward VII, Elmlea, Landau Forte).
 NEAR_MISS_SCHOOL_URNS = [
-    139616, 136644, 152145, 145894, 137093, 102679, 100429, 102097, 130303, 102156,
-    108076, 120277, 143597, 145868, 143274, 100050, 101005, 101026, 144308, 137531,
+    102156, 136534, 100405, 120277, 137531, 101897, 102097, 144308, 100050, 139703,
+    137093, 108076, 152145, 100429, 107140, 139616, 136644, 147476, 145894, 138790,
 ]
 
 

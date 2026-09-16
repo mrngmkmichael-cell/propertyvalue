@@ -58,7 +58,8 @@ def test_the_admissions_hub_links_the_near_miss_schools(client):
     from app import db, main as app_main
     from app.models import School, SchoolAdmissionRadius
     from app.services import _cache
-    urn = app_main.NEAR_MISS_SCHOOL_URNS[9]                    # Fortismere, the page with the most impressions
+    urn = 102156                                               # Fortismere, the page with the most impressions
+    assert urn in app_main.NEAR_MISS_SCHOOL_URNS
     with db.get_session() as session:
         session.merge(School(urn=urn, name="Fortismere School", phase="Secondary", type_name="Academy converter", postcode="N10 1NE",
                              latitude=51.59, longitude=-0.15))
