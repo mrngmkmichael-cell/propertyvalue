@@ -6336,30 +6336,56 @@ body.theme-dark .leaflet-popup-tip {
 .cat-tile-icons .dashboard-card-icon { width: 2rem; height: 2rem; border-radius: var(--radius-sm); }
 .cat-tile-icons .dashboard-card-icon svg { width: 16px; height: 16px; }
 
-/* A chevron drawn from a border, in a ring that turns over when the
-   group is open. */
+/* The open control (16 Sep 2026): a pill that says "Open", filled on
+   hover and reading "Close" while the group is showing. A bare chevron
+   in a ring left a first-timer unsure the tile did anything. The word
+   is CSS content on an aria-hidden span: the tile itself is the button
+   and its expanded state is what a screen reader hears. */
+.cat-tile-open {
+    display: inline-flex;
+    align-items: center;
+    justify-self: end;
+    align-self: start;
+    gap: 0.35rem;
+    height: 1.85rem;
+    padding: 0 0.6rem 0 0.75rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--accent);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+.cat-tile-open-text::before { content: "Open"; }
+.cat-tile[aria-expanded="true"] .cat-tile-open-text::before { content: "Close"; }
 .cat-tile-chevron {
     position: relative;
-    width: 1.85rem;
-    height: 1.85rem;
-    border: 1px solid var(--border);
-    border-radius: 50%;
-    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+    width: 0.9rem;
+    height: 0.9rem;
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .cat-tile-chevron::before {
     content: "";
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 7px;
-    height: 7px;
-    border-right: 2px solid var(--ink-soft);
-    border-bottom: 2px solid var(--ink-soft);
+    width: 6px;
+    height: 6px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
     transform: translate(-50%, -70%) rotate(45deg);
 }
-.cat-tile:hover .cat-tile-chevron { border-color: var(--border-strong); }
-.cat-tile[aria-expanded="true"] .cat-tile-chevron { transform: rotate(180deg); border-color: var(--accent); }
-.cat-tile[aria-expanded="true"] .cat-tile-chevron::before { border-color: var(--accent); }
+.cat-tile:hover .cat-tile-open,
+.cat-tile[aria-expanded="true"] .cat-tile-open {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+}
+.cat-tile[aria-expanded="true"] .cat-tile-chevron { transform: rotate(180deg); }
 
 .cat-tile-name {
     grid-column: 1 / -1;
@@ -6394,8 +6420,19 @@ body.theme-dark .leaflet-popup-tip {
     font-size: var(--text-sm);
     color: var(--ink-soft);
 }
-.cat-tile-locked::before,
-.cat-tile-clear::before { content: "\00B7"; margin-right: 0.45rem; color: var(--ink-faint); }
+/* The group's lead fact, in ink: the reason to open (16 Sep 2026). */
+.cat-tile-fact { color: var(--ink); }
+.cat-tile-fact-title { font-weight: var(--weight-medium); }
+/* Every card by name, the count first. */
+.cat-tile-cards {
+    grid-column: 1 / -1;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-soft);
+}
+.cat-tile-card-2::before,
+.cat-tile-card-3::before { content: "\00a0\00B7\00a0"; color: var(--ink-faint); }
+.cat-tile-more::before { content: "\00a0"; }
 .cat-tile-flag {
     padding: 0.08rem 0.5rem;
     border-radius: var(--radius-pill);
@@ -6664,11 +6701,20 @@ body.theme-dark .leaflet-popup-tip {
     .cat-tile-name { font-size: var(--text-base); }
     .cat-panel { padding: 0.85rem; }
 }
+@media (max-width: 700px) {
+    .cat-tile-icons .dashboard-card-icon:nth-child(n+4) { display: none; }
+}
+/* One column on a phone (16 Sep 2026): a tile half the width of a
+   375px screen could not hold three icons and the Open pill on one
+   row, and the fact and card-name lines it carries now need the width
+   to read as sentences rather than as a stack of broken words. */
+@media (max-width: 560px) {
+    .cat-board { grid-template-columns: minmax(0, 1fr); }
+}
 @media (max-width: 480px) {
     .cat-tile-icons .dashboard-card-icon { width: 1.75rem; height: 1.75rem; }
     .cat-tile-icons .dashboard-card-icon svg { width: 14px; height: 14px; }
-    .cat-tile-icons .dashboard-card-icon:nth-child(n+4) { display: none; }
-    .cat-tile-chevron { width: 1.7rem; height: 1.7rem; }
+    .cat-tile-open { height: 1.7rem; padding: 0 0.5rem 0 0.65rem; }
     .cat-progress-bar i { width: 0.9rem; }
 }
 
@@ -6681,6 +6727,7 @@ body.theme-dark .leaflet-popup-tip {
     .cat-board:not(.is-shown) .cat-tile { opacity: 1; }
     .cat-tile,
     .cat-tile-chevron,
+    .cat-tile-open,
     .cat-progress-bar i,
     .cat-next,
     .cat-next::after { transition: none; }

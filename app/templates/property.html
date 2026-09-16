@@ -1300,11 +1300,16 @@
                 tile.setAttribute('aria-expanded', 'false');
                 tile.setAttribute('aria-controls', slug + '-cards');
                 tile.style.setProperty('--n', n);
+                /* The open control is a pill that says so (16 Sep 2026); its
+                   word comes from the state in CSS, so nothing here keeps it
+                   in step. The two lines under the name are what the group
+                   says and what it holds, filled in by summarise(). */
                 tile.innerHTML =
                     '<span class="cat-tile-icons" aria-hidden="true"></span>' +
-                    '<span class="cat-tile-chevron" aria-hidden="true"></span>' +
+                    '<span class="cat-tile-open" aria-hidden="true"><span class="cat-tile-open-text"></span><span class="cat-tile-chevron"></span></span>' +
                     '<span class="cat-tile-name"></span>' +
-                    '<span class="cat-tile-meta"></span>';
+                    '<span class="cat-tile-meta"></span>' +
+                    '<span class="cat-tile-cards"></span>';
                 var nameEl = tile.querySelector('.cat-tile-name');
                 nameEl.textContent = name;
                 var seen = document.createElement('span');
@@ -1401,19 +1406,69 @@
                 parent.appendChild(s);
             }
 
-            /* A locked card is neither a finding nor an all-clear, so a
-               group holding one never says "nothing flagged". */
+            function tidy(el) {
+                return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+            }
+
+            /* The group's lead fact: its first card's own status line, with
+               the card's name so "Zone 1" or "None found" says of what. A
+               flagged card leads its grid, so a group with something to
+               check leads with that. A locked card is neither a finding nor
+               an all-clear and a pending one has nothing yet, so neither
+               leads; nor does a line that only says the data is missing. */
+            function factFor(c) {
+                /* Declared here, not above as a var: summarise() first runs
+                   from the loop that builds the tiles, before this point in
+                   the script, and a hoisted var would still be undefined. */
+                var skip = /…|unavailable|not available|search with a house|not reached/i;
+                var cards = c.grid.querySelectorAll('.dashboard-card');
+                for (var i = 0; i < cards.length; i++) {
+                    var card = cards[i];
+                    if (card.classList.contains('dashboard-card-locked') ||
+                        card.classList.contains('dashboard-card-pending')) continue;
+                    var title = tidy(card.querySelector('.dashboard-card-title'));
+                    var text = tidy(card.querySelector('.dashboard-card-status'));
+                    if (!title || !text || skip.test(text)) continue;
+                    return { title: title, text: text };
+                }
+                return null;
+            }
+
+            /* The tile's two lines (16 Sep 2026). "Nothing flagged" told a
+               first-timer there was no reason to look; the lead card's own
+               line gives them one. Then the first three cards by name with
+               the count first, and how many more there are. */
             function summarise(c) {
-                var cards = c.grid.querySelectorAll('.dashboard-card').length;
+                var all = c.grid.querySelectorAll('.dashboard-card');
+                var cards = all.length;
                 var flagged = c.grid.querySelectorAll('.dashboard-card.status-attn').length;
                 var locked = c.grid.querySelectorAll('.dashboard-card-locked').length;
                 var meta = c.tile.querySelector('.cat-tile-meta');
                 meta.textContent = '';
-                addSpan(meta, 'cat-tile-count', cards + (cards === 1 ? ' card' : ' cards'));
-                if (locked) addSpan(meta, 'cat-tile-locked', locked + ' locked');
                 if (flagged) addSpan(meta, 'cat-tile-flag', flagged + ' to check');
-                else if (!locked) addSpan(meta, 'cat-tile-clear', 'nothing flagged');
+                var fact = factFor(c);
+                if (fact) {
+                    var line = document.createElement('span');
+                    line.className = 'cat-tile-fact';
+                    addSpan(line, 'cat-tile-fact-title', fact.title + ': ');
+                    line.appendChild(document.createTextNode(fact.text));
+                    meta.appendChild(line);
+                } else if (!flagged && !locked) {
+                    addSpan(meta, 'cat-tile-clear', 'nothing flagged');
+                }
                 c.tile.classList.toggle('cat-tile-flagged', flagged > 0);
+
+                var list = c.tile.querySelector('.cat-tile-cards');
+                list.textContent = '';
+                addSpan(list, 'cat-tile-count', cards + (cards === 1 ? ' card' : ' cards') +
+                    (locked ? ', ' + locked + ' locked' : '') + ': ');
+                var names = [];
+                Array.prototype.forEach.call(all, function (card) {
+                    var title = tidy(card.querySelector('.dashboard-card-title'));
+                    if (title && names.length < 3) names.push(title);
+                });
+                names.forEach(function (name, i) { addSpan(list, 'cat-tile-card cat-tile-card-' + (i + 1), name); });
+                if (cards > 3) addSpan(list, 'cat-tile-more', 'and ' + (cards - 3) + ' more');
             }
 
             /* Which groups have been opened, per address, on this device

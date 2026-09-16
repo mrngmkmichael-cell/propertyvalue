@@ -880,6 +880,39 @@ def test_the_group_board_holds_still_for_reduced_motion():
         assert any(selector in block for block in still), selector
 
 
+def test_each_tile_says_what_its_group_holds_and_how_to_open_it(client, fake_report):
+    """16 Sep 2026: a tile gave a first-timer four unlabelled icons, a
+    count, "nothing flagged" and a chevron, and "nothing flagged" read as
+    no reason to look. Now the tile leads with its first ready card's
+    own line, names its cards with the count, and its control says Open.
+    The board is built in the browser, so this pins the script and the
+    stylesheet that build it."""
+    from pathlib import Path
+
+    body = _report(client, fake_report)
+    script = body.split("The report's groups as tiles that open", 1)[1]
+    # The three parts of a tile: the pill, the lead fact, the card names.
+    assert '<span class="cat-tile-open" aria-hidden="true"><span class="cat-tile-open-text"></span>' in script
+    assert "'<span class=\"cat-tile-cards\"></span>'" in script
+    assert "line.className = 'cat-tile-fact'" in script
+    # The lead fact never comes from a locked or pending card, nor a line
+    # that only says the data is missing.
+    fact_at = script.index("function factFor(c)")
+    fact = script[fact_at:fact_at + 900]
+    assert "dashboard-card-locked" in fact and "dashboard-card-pending" in fact and "skip.test(text)" in fact
+    assert "unavailable|not available|search with a house" in fact
+    # The first three names, with the count first and how many more there are.
+    assert "names.length < 3" in script and "'and ' + (cards - 3) + ' more'" in script
+    assert "' locked' : '') + ': '" in script
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    assert '.cat-tile-open-text::before { content: "Open"; }' in css
+    assert '.cat-tile[aria-expanded="true"] .cat-tile-open-text::before { content: "Close"; }' in css
+    # One column on a phone: a half-width tile could not hold the icons
+    # and the pill on one row, and the new lines need the width to read.
+    one_column = css.index(".cat-board { grid-template-columns: minmax(0, 1fr); }")
+    assert css.rfind("@media", 0, one_column) == css.rfind("@media (max-width: 560px) {", 0, one_column)
+
+
 def test_a_card_status_with_no_space_in_it_can_still_wrap(client, fake_report):
     """15 Sep 2026: "managerial/professional" ran 23px out of its card
     at five columns, because a browser will not wrap at a slash. The
