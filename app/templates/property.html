@@ -382,10 +382,11 @@
                     {% endif %}
                 </form>
             {% else %}
-                <p class="section-sub">
-                    <a href="/login?next=/property?postcode={{ location.postcode }}{% if house_number %}&house_number={{ house_number }}{% endif %}">Log in</a>
-                    to keep this property in My properties, with notes and change alerts.
-                </p>
+                {# The invitation to keep this property is the score card's
+                   "Save it free" line. Until 16 Sep 2026 a second one sat
+                   here ("Log in to keep this property"), and the audit
+                   counted it among four asks a first-time visitor met
+                   before the first card. #}
             {% endif %}
         {% endif %}
     </div>
@@ -4770,32 +4771,46 @@ Listed building data from Historic England's
 {# Self-hosted since 31 Aug 2026: this was the only script on the
    site served from a third-party CDN, a dependency and a DNS round
    trip on every report for a decorative intro. #}
-<script src="/static/vendor/globe/globe.gl.min.js"></script>
 <script>
-    const globeEl = document.getElementById('globe-intro');
-    const globeRect = globeEl.getBoundingClientRect();
-    const targetLat = {{ location.latitude | tojson }};
-    const targetLng = {{ location.longitude | tojson }};
-
-    const myGlobe = new Globe(globeEl)
-        .width(globeRect.width)
-        .height(globeRect.height)
-        .globeImageUrl('/static/vendor/globe/earth-blue-marble.jpg')
-        .backgroundColor('#05070a')
-        .pointOfView({ lat: 20, lng: -20, altitude: 2.6 }, 0);
-
-    myGlobe.controls().autoRotate = true;
-    myGlobe.controls().autoRotateSpeed = 2.2;
-    myGlobe.controls().enableZoom = false;
-
-    setTimeout(() => {
-        myGlobe.controls().autoRotate = false;
-        myGlobe.pointOfView({ lat: targetLat, lng: targetLng, altitude: 0.4 }, 2200);
-    }, 1100);
-
-    setTimeout(() => {
-        globeEl.classList.add('fade-out');
-    }, 3600);
+(function () {
+    /* The globe plays on the first report of a session only (16 Sep
+       2026). It used to play on every report open, and until it faded
+       the map's place was a black box for 3.6 s; the audit's first-time
+       visitor did not know it was decorative. A second report in the
+       same session, and anyone who has asked their device for less
+       motion, gets the map at once, and the globe script is not fetched
+       for them either. */
+    var globeEl = document.getElementById('globe-intro');
+    if (!globeEl) return;
+    var seen = false;
+    try { seen = sessionStorage.getItem('uki-globe-shown') === '1'; } catch (e) {}
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (seen || still) { globeEl.classList.add('globe-skip'); return; }
+    try { sessionStorage.setItem('uki-globe-shown', '1'); } catch (e) {}
+    var s = document.createElement('script');
+    s.src = '/static/vendor/globe/globe.gl.min.js';
+    s.onload = function () {
+        var globeRect = globeEl.getBoundingClientRect();
+        var targetLat = {{ location.latitude | tojson }};
+        var targetLng = {{ location.longitude | tojson }};
+        var myGlobe = new Globe(globeEl)
+            .width(globeRect.width)
+            .height(globeRect.height)
+            .globeImageUrl('/static/vendor/globe/earth-blue-marble.jpg')
+            .backgroundColor('#05070a')
+            .pointOfView({ lat: 20, lng: -20, altitude: 2.6 }, 0);
+        myGlobe.controls().autoRotate = true;
+        myGlobe.controls().autoRotateSpeed = 2.2;
+        myGlobe.controls().enableZoom = false;
+        setTimeout(function () {
+            myGlobe.controls().autoRotate = false;
+            myGlobe.pointOfView({ lat: targetLat, lng: targetLng, altitude: 0.4 }, 2200);
+        }, 1100);
+        setTimeout(function () { globeEl.classList.add('fade-out'); }, 3600);
+    };
+    s.onerror = function () { globeEl.classList.add('globe-skip'); };
+    document.head.appendChild(s);
+})();
 </script>
 {% endif %}
 

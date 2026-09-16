@@ -109,7 +109,12 @@
         {% if strip_seeds %}
         <script type="application/json" id="lx-strip-seed">{{ strip_seeds | tojson }}</script>
         {% endif %}
-        <div class="lx-strip" id="lx-strip" hidden data-animate>
+        {# aria-hidden: the strip sits before the heading in the markup,
+           so a screen reader met "ukpropertyinsight.co.uk/property?
+           postcode=M1 1AE 76 GOOD ..." before the page had said what it
+           was (16 Sep 2026). The same figures are one link away, "See a
+           real report for M1 1AE", which stays in the reading order. #}
+        <div class="lx-strip" id="lx-strip" hidden data-animate aria-hidden="true">
             <div class="lx-strip-chrome">
                 <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
                 <span class="lx-strip-url">ukpropertyinsight.co.uk/property?postcode=<span id="lx-strip-pc"></span></span>
