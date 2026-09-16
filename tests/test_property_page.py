@@ -860,6 +860,12 @@ def test_the_report_cards_sit_in_the_group_board(client, fake_report):
     assert not re.search(r'<div class="dashboard-grid"[^>]*\bhidden', body)
     assert 'class="section-sub report-cards-hint"' in body
     assert "cat-board" in body and "cat-toggle" not in body
+    # The phone bar (16 Sep 2026) is built into every panel and pinned by CSS.
+    assert "cat-panel-bar" in body
+    from pathlib import Path
+    css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    bar_at = css.index(".cat-panel-bar {\n        display: flex;")
+    assert "position: sticky" in css[bar_at:bar_at + 400]
 
 
 def test_the_group_board_holds_still_for_reduced_motion():

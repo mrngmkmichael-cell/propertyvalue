@@ -1306,6 +1306,19 @@
                 panel.setAttribute('aria-label', name);
                 panel.hidden = true;
                 heading.classList.add('cat-panel-heading');
+                /* On a phone an open group runs to two or three screens
+                   and its controls sat at the foot (16 Sep 2026): this
+                   bar keeps the group's name, Close and Next at the top
+                   of the screen. Styled away on wider screens. */
+                var bar = document.createElement('div');
+                bar.className = 'cat-panel-bar';
+                bar.innerHTML =
+                    '<span class="cat-panel-bar-name" aria-hidden="true"></span>' +
+                    '<button type="button" class="cat-bar-btn cat-bar-close">Close</button>' +
+                    '<button type="button" class="cat-bar-btn cat-bar-next">Next</button>';
+                bar.querySelector('.cat-panel-bar-name').textContent = name;
+                bar.querySelector('.cat-bar-close').setAttribute('aria-label', 'Close ' + name);
+                panel.appendChild(bar);
                 panel.appendChild(heading);
                 panel.appendChild(grid);
 
@@ -1319,7 +1332,8 @@
 
                 board.appendChild(tile);
                 board.appendChild(panel);
-                return { n: n, name: name, slug: slug, tile: tile, panel: panel, grid: grid, next: next, seen: seen };
+                return { n: n, name: name, slug: slug, tile: tile, panel: panel, grid: grid, next: next, seen: seen,
+                         barClose: bar.querySelector('.cat-bar-close'), barNext: bar.querySelector('.cat-bar-next') };
             });
 
             root.appendChild(head);
@@ -1360,6 +1374,8 @@
                 var after = cats[c.n + 1];
                 c.next.textContent = after ? 'Next: ' + after.name : 'Back to all groups';
                 c.next.setAttribute('data-dir', after ? 'next' : 'up');
+                c.barNext.textContent = after ? 'Next' : 'All groups';
+                c.barNext.setAttribute('aria-label', after ? 'Next: ' + after.name : 'Back to all groups');
                 bar.appendChild(document.createElement('i'));
             });
 
@@ -1556,7 +1572,7 @@
                     if (current === c) close();
                     else open(c);
                 });
-                c.next.addEventListener('click', function () {
+                function goNext() {
                     var after = cats[c.n + 1];
                     if (after) {
                         open(after, { scroll: true, focus: true });
@@ -1565,6 +1581,15 @@
                         window.scrollTo({ top: head.getBoundingClientRect().top + window.pageYOffset - 16, behavior: still ? 'auto' : 'smooth' });
                         cats[0].tile.focus({ preventScroll: true });
                     }
+                }
+                c.next.addEventListener('click', goNext);
+                c.barNext.addEventListener('click', goNext);
+                c.barClose.addEventListener('click', function () {
+                    /* The bar may be a screen or two below the tile when
+                       it is tapped; closing brings the tile back. */
+                    close();
+                    window.scrollTo({ top: c.tile.getBoundingClientRect().top + window.pageYOffset - 16, behavior: still ? 'auto' : 'smooth' });
+                    c.tile.focus({ preventScroll: true });
                 });
             });
             viewToggle.addEventListener('click', function () {

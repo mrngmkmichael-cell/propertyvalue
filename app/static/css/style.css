@@ -6462,6 +6462,57 @@ body.theme-dark .leaflet-popup-tip {
 }
 
 .cat-panel-foot { display: flex; justify-content: flex-end; margin-top: 1rem; }
+
+/* On a phone an open group runs to two or three screens and its Next
+   sat at the foot (16 Sep 2026). This bar keeps the group's name, Close
+   and Next at the top of the screen while the group is open; wider
+   screens keep the tiles in view anyway, so it is phones only. The
+   negative margin is the panel's phone padding, so the bar bleeds to
+   the panel's edge. */
+.cat-panel-bar { display: none; }
+@media (max-width: 860px) {
+    .cat-panel-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        margin: -0.85rem -0.85rem 0.75rem;
+        padding: 0.5rem 0.85rem;
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--border);
+        border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+    }
+    .cat-panel-bar-name {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-bold);
+    }
+    .cat-bar-btn,
+    .cat-bar-btn:hover,
+    .cat-bar-btn:active {
+        flex: none;
+        min-height: 32px;
+        padding: 0.3rem 0.8rem;
+        background: var(--surface);
+        color: var(--ink);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-pill);
+        box-shadow: none;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-medium);
+        cursor: pointer;
+        transform: none;
+    }
+    .cat-bar-next, .cat-bar-next:hover, .cat-bar-next:active { border-color: var(--accent); color: var(--accent); }
+}
+.report-categories.is-list .cat-panel-bar { display: none; }
 .cat-next,
 .cat-next:hover,
 .cat-next:active {
@@ -6558,6 +6609,7 @@ body.theme-dark .leaflet-popup-tip {
     .cat-board-head,
     .cat-tile,
     .cat-panel-foot,
+    .cat-panel-bar,
     .cat-panel::before { display: none !important; }
     .cat-panel,
     .cat-panel[hidden] { display: block !important; padding: 0; border: 0; background: none; }
