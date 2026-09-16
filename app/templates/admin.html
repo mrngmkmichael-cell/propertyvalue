@@ -106,6 +106,14 @@
         account, where the five days before ran between a third and a
         half. Nothing on this page said so.
     </p>
+    <p class="section-sub">
+        From 17 Sep 2026 the signup page is counted by the page itself
+        once it loads in a browser, not by the request for it. On 15 and
+        16 Sep a crawl of the school and area pages followed the header
+        link and read as 19 and 55 visits with no account, hour for hour
+        in step with the crawl. Days before 17 Sep in this column include
+        crawlers.
+    </p>
     <div class="tablewrap">
     <table class="tx-table">
         <thead><tr>
@@ -146,6 +154,48 @@
     </p>
     <p class="section-sub" style="margin-top: 1rem;">"Hit the paywall" counts accounts with no free reports left that opened a property they had not unlocked. It only started being recorded when this funnel shipped, so the all-time column undercounts it before then.
     {% if test_accounts_excluded %}Every account figure on this page excludes {{ test_accounts_excluded }} internal and test account{{ 's' if test_accounts_excluded != 1 }} (the owner's own, example.* addresses, and the two refunded Stripe test purchases), so these are customers, not noise.{% endif %}</p>
+</section>
+
+<section class="landing-section" id="alert-runs">
+    <h2 class="landing-heading">Change alerts: what each run did</h2>
+    <p class="landing-subheading">
+        The daily job re-checks every saved home and emails an account only
+        when something on one of its homes changed. It is the one reason to
+        come back the site sends, so this is whether it ever fires.
+    </p>
+    {% if alert_runs %}
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr>
+            <th>Run (UTC)</th><th class="num">Homes checked</th><th class="num">First look</th>
+            <th class="num">Failed</th><th class="num">Homes changed</th>
+            <th class="num">Accounts told</th><th class="num">Emails sent</th><th class="num">Seconds</th>
+        </tr></thead>
+        <tbody>
+        {% for r in alert_runs %}
+        <tr>
+            <td>{{ r.at | replace("T", " ") }}</td>
+            <td class="num">{{ r.checked }}</td>
+            <td class="num">{{ r.first_look }}</td>
+            <td class="num">{{ r.failed }}</td>
+            <td class="num">{{ r.homes_changed }}</td>
+            <td class="num">{{ r.users_with_changes }}</td>
+            <td class="num">{{ r.emails_sent }}</td>
+            <td class="num">{{ r.seconds }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <p class="section-sub">
+        First look is a home checked for the first time, which records it
+        and cannot change yet. Accounts told can exceed emails sent: mail
+        goes only to a confirmed address. Recording began on 17 Sep 2026;
+        earlier runs left no figures.
+    </p>
+    {% else %}
+    <p class="section-sub">No run recorded yet. Recording began on 17 Sep 2026, and the job runs once a day.</p>
+    {% endif %}
 </section>
 
 <section class="landing-section">

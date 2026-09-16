@@ -8,10 +8,14 @@ Checks, in order:
   5. Placeholder text that should never ship (lorem, TODO, FIXME, XXX).
   6. Accessibility basics: every img has alt, every input has a label,
      every page has exactly one h1 and a non-empty title.
+  7. Copy against the world outside it: pointers to controls that are
+     gone, plans described but not on sale, and a comparison of named
+     competitors read too long ago.
 
 Runs against the dev server so it sees the real rendered output rather
 than the templates.
 """
+import datetime
 import html
 import re
 import sys
@@ -47,6 +51,8 @@ PAGES = [
     "/schools/outstanding",
     # Added 1 Sep 2026 with the admissions pages.
     "/schools/admissions", "/schools/admissions/hertfordshire", "/schools/how-admissions-work",
+    # Added 17 Sep 2026 for the staleness rule in section 7.
+    "/alternatives",
     "/schools/tightest-catchments", "/schools/catchment-house-prices", "/running-costs", "/running-costs/council-tax", "/estate-charges", "/estate-charges/managing-agents", "/estate-charges/company/firstport", "/schools/independent", "/schools/independent/surrey",
 ]
 
@@ -326,6 +332,33 @@ if _pricing:
         problems["copy sells something unbuyable"].append(
             "/premium: the pricing grid is empty, so nothing on the page can be bought"
         )
+
+# A comparison naming other companies has to have been read recently.
+# /alternatives quotes Propbar, Crystal Roof and Locrating, prices
+# included, "read on 9 September 2026" seven times, and on 16 Sep 2026
+# nothing watched that date: a stale comparison naming rivals is worse
+# than none. Re-read the three sites, then move ALTERNATIVES_CHECKED_ON
+# in app/main.py.
+ALTERNATIVES_MAX_AGE_DAYS = 30
+_alternatives = pages_html.get("/alternatives", "")
+if _alternatives:
+    _read = re.findall(r"read on (\d{1,2} [A-Z][a-z]+ \d{4})", visible_text(_alternatives))
+    if not _read:
+        problems["competitor comparison"].append(
+            "/alternatives: no 'read on <date>' found, so its age cannot be checked"
+        )
+    else:
+        _dates = {datetime.datetime.strptime(d, "%d %B %Y").date() for d in _read}
+        if len(_dates) > 1:
+            problems["competitor comparison"].append(
+                f"/alternatives: the page gives {len(_dates)} different read dates"
+            )
+        _age = (datetime.date.today() - min(_dates)).days
+        if _age > ALTERNATIVES_MAX_AGE_DAYS:
+            problems["competitor comparison"].append(
+                f"/alternatives: rivals last read {_age} days ago ({min(_dates):%d %b %Y}); "
+                f"re-read them and move ALTERNATIVES_CHECKED_ON"
+            )
 
 # ---- report ------------------------------------------------------------
 print("\n" + "=" * 68)

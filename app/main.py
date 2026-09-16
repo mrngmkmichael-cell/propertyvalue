@@ -193,7 +193,8 @@ async def anon_html_cache(request: Request, call_next):
         return await call_next(request)
     hit = _cache.get(key, _ANON_HOME_TTL_S if key[1] == "/" else _ANON_HTML_TTL_S)
     if hit is not None:
-        status, body = hit
+        status, packed = hit
+        body = _cache.unpack_text(packed)
         # A page we are willing to serve from memory for ten minutes can
         # be reused by the browser for two, which makes back-navigation
         # between school pages instant; stale-while-revalidate lets it
@@ -214,7 +215,7 @@ async def anon_html_cache(request: Request, call_next):
         async for chunk in response.body_iterator:
             chunks.append(chunk)
         body = b"".join(chunks).decode("utf-8")
-        _cache.set(key, (response.status_code, body))
+        _cache.set(key, (response.status_code, _cache.pack_text(body)))
         headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
         headers["X-Anon-Cache"] = "miss"
         return HTMLResponse(body, status_code=response.status_code, headers=headers)
@@ -246,7 +247,9 @@ async def capture_referral(request: Request, call_next):
 # the site" is asking about.
 _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
 _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico", "/llms.txt",
-                           "/schools/admission-distances.csv"}
+                           "/schools/admission-distances.csv",
+                           # Counted by the page itself: see signup_seen.
+                           "/signup"}
 if indexnow.key():
     _PAGEVIEW_EXCLUDE_PATHS.add(f"/{indexnow.key()}.txt")
 
@@ -2404,7 +2407,7 @@ def sitemap(request: Request):
     base = _public_base_url(request)
     cached = _cache.get(("sitemap", base), SITEMAP_TTL_S)
     if cached is not None:
-        return Response(content=cached, media_type="application/xml")
+        return Response(content=_cache.unpack_text(cached), media_type="application/xml")
     # lastmod is the deploy's own date: a guide's data changes on the
     # cadence of the imports behind it, and every deploy re-reads those,
     # so this is honest without tracking per-page dates. It used to be
@@ -2422,7 +2425,7 @@ def sitemap(request: Request):
                   for u, pr in entries)
         + "</urlset>"
     )
-    _cache.set(("sitemap", base), body)
+    _cache.set(("sitemap", base), _cache.pack_text(body))
     return Response(content=body, media_type="application/xml")
 
 
@@ -2864,10 +2867,21 @@ def _compare_offer(items: list[dict], postcode: str, house_number: str,
     render, and this one is the entry point to them."""
     if len(items) < COMPARE_OFFER_MIN_ITEMS:
         return None
-    this_one = [i for i in items
-                if i["postcode"] == postcode and i["house_number"] == house_number]
-    others = [i for i in items
-              if i["postcode"] != postcode or i["house_number"] != house_number]
+    # One home, however it was typed (16 Sep 2026: account 84's only two
+    # rows were 17 CM5 9HH and CM5 9HH, and the offer put them side by
+    # side). This home is the saved row the report itself uses; every
+    # other row at the same place is left out, and a home saved twice
+    # elsewhere is offered once, its newest row.
+    here = watchlist.find_in(items, postcode, house_number)
+    this_one = [here] if here else []
+    others = []
+    for i in items:
+        if i["postcode"] == postcode and watchlist.same_place(i["house_number"], house_number):
+            continue
+        if any(o["postcode"] == i["postcode"] and watchlist.same_place(o["house_number"], i["house_number"])
+               for o in others):
+            continue
+        others.append(i)
     if not others:
         return None
     # This home first, then the most recently saved others: list_items
@@ -2881,7 +2895,7 @@ def _compare_offer(items: list[dict], postcode: str, house_number: str,
         "others": named,
         "other_count": len(named),
         "compared_count": len(chosen),
-        "held_back": max(0, len(items) - len(chosen)),
+        "held_back": max(0, len(this_one) + len(others) - len(chosen)),
         "url": f"/watchlist/compare?{query}",
         "full_url": f"/watchlist/compare/full?{query}",
         "is_premium": bool(user and user.get("is_premium")),
@@ -2912,7 +2926,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     if cacheable:
         cached_body = _cache.get(key, ANON_PAGE_CACHE_TTL_S)
         if cached_body is not None:
-            return HTMLResponse(cached_body)
+            return HTMLResponse(_cache.unpack_text(cached_body))
 
     # A cold postcode means 10+ seconds of blank page while 38 sources
     # are queried. Real browsers instead get an instant "building your
@@ -2954,7 +2968,7 @@ async def property_search(request: Request, postcode: str = "", house_number: st
 
     response = await _render_property(request, postcode, house_number)
     if cacheable and getattr(response, "status_code", None) == 200 and getattr(response, "body", None):
-        _cache.set(key, response.body.decode("utf-8"))
+        _cache.set(key, _cache.pack_text(response.body.decode("utf-8")))
     return response
 
 
@@ -3079,11 +3093,7 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         # unit of a page's cost, so the item comes out of the list rather
         # than out of a second statement.
         saved_items = watchlist.list_items(context["current_user"]["id"])
-        context["watchlist_item"] = next(
-            (i for i in saved_items
-             if i["postcode"] == canonical and i["house_number"] == house_number),
-            None,
-        )
+        context["watchlist_item"] = watchlist.find_in(saved_items, canonical, house_number)
         # A return visit opens on what changed (16 Sep 2026). The saved
         # item holds the summary the change alerts compare; the same
         # comparison runs here from this report's own gather, so it
@@ -7080,6 +7090,7 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["premium_accounts"] = _premium_accounts(session, now)
     m["verified_accounts"] = session.scalar(_real_users().where(User.email_verified_at.is_not(None))) or 0
     m["verification_live"] = email_service.can_verify()
+    m["alert_runs"] = _alert_runs()[:14]
     return m
 
 
@@ -7548,6 +7559,34 @@ def signup_form(request: Request, next: str = "/", error: str = ""):
     context["free_report_for"] = _free_report_label(next)
     context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "signup.html", context)
+
+
+@app.post("/signup/seen")
+def signup_seen(request: Request):
+    """One view of the signup form, sent by the form's own page once it
+    has loaded in a browser.
+
+    Until 17 Sep 2026 the GET was the count, and the signup-page column
+    on /admin, the one the 11 Sep reading named as the one to watch,
+    stopped meaning anything: 19 views on 15 Sep and 55 on 16 Sep with
+    no account on either day, and the 55 rose and fell hour by hour
+    with a crawl of the school and area pages (03:00 UTC: 11 signup
+    views beside 243 school pages and 234 guides). The page is noindex,
+    follow, so every crawler walking a school page followed the header
+    link to it. A crawler that fetches HTML does not run the page, so
+    counting from the page is the same rule the report wait has used
+    since 11 Sep: a view is a client that stayed for it. No identifier
+    is sent or stored, same as every other pageview."""
+    if not _is_excluded_viewer(request) and db.is_configured():
+        try:
+            user = auth.current_user(request)
+            if not _is_admin(user):
+                with db.get_session() as pv_session:
+                    pv_session.add(PageView(path="/signup", user_id=user["id"] if user else None))
+                    pv_session.commit()
+        except Exception:  # noqa: BLE001 - a counter must never break a page
+            pass
+    return Response(status_code=204)
 
 
 @app.post("/signup")
@@ -8605,6 +8644,30 @@ def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:
     )
 
 
+# What each change-alert run did, newest first (17 Sep 2026). The job ran
+# every day and reported success, because the workflow's curl checks only
+# the status code, while the answer it returned (homes checked, accounts
+# with a change, emails sent) went nowhere. It is the only reason to come
+# back the site is allowed to send, since nothing goes out on a schedule,
+# and a return visit is what both paying accounts had in common, so
+# whether it ever fires is worth one row a day. Kept in the page cache
+# table, which survives a deploy, so no new table.
+ALERT_RUNS_KEY = ("watchlist_alert_runs",)
+ALERT_RUNS_KEPT = 30
+ALERT_RUNS_TTL_S = 86400 * 365
+
+
+def _alert_runs() -> list[dict]:
+    return list(_cache.get_persistent(ALERT_RUNS_KEY, ALERT_RUNS_TTL_S) or [])
+
+
+def _record_alert_run(run: dict) -> None:
+    try:
+        _cache.set_persistent(ALERT_RUNS_KEY, ([run] + _alert_runs())[:ALERT_RUNS_KEPT])
+    except Exception:  # noqa: BLE001 - recording must never fail the job
+        pass
+
+
 @app.post("/internal/run-watchlist-alerts")
 async def run_watchlist_alerts(request: Request):
     """Scheduled job (see .github/workflows/watchlist-alerts.yml), not a
@@ -8625,14 +8688,20 @@ async def run_watchlist_alerts(request: Request):
     if not email_service.is_configured():
         return JSONResponse({"error": "email_not_configured"}, status_code=503)
 
+    started = time.monotonic()
     items = watchlist.all_items_with_owner_email()
     changes_by_email: dict[str, list[dict]] = {}
+    failed = 0
+    first_look = 0
 
     for item in items:
         try:
             fresh = await _comparison_summary(item["postcode"], item["house_number"])
         except Exception:
+            failed += 1
             continue
+        if not item["last_snapshot"]:
+            first_look += 1
         old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
         changes = _snapshot_changes(old, fresh) if old else []
         watchlist.update_snapshot(item["user_id"], item["id"], json.dumps(fresh, default=str))
@@ -8657,7 +8726,18 @@ async def run_watchlist_alerts(request: Request):
         if sent:
             notified += 1
 
-    return JSONResponse({"checked": len(items), "users_with_changes": len(changes_by_email), "emails_sent": notified})
+    result = {"checked": len(items), "users_with_changes": len(changes_by_email), "emails_sent": notified}
+    _record_alert_run({
+        **result,
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="minutes"),
+        "failed": failed,
+        # A home seen for the first time only records its snapshot; it
+        # cannot produce a change until the next run.
+        "first_look": first_look,
+        "homes_changed": sum(len(e) for e in changes_by_email.values()),
+        "seconds": round(time.monotonic() - started),
+    })
+    return JSONResponse(result)
 
 
 @app.post("/watchlist/save")
@@ -8710,8 +8790,16 @@ def _parse_areas_param(raw: str) -> list[dict]:
         parts = chunk.split(",", 2)
         if len(parts) != 3:
             continue
+        label = parts[2]
+        # The kind is not in the parameter, and without it an area carried
+        # into a comparison lost its postcode reading as soon as a second
+        # area was added. The label says it: postcodes.io's canonical
+        # postcode, an outcode, or a place name.
+        kind = ("postcode" if _FULL_POSTCODE_RE.match(label.strip())
+                else "outcode" if _OUTCODE_RE.match(label.strip()) else "place")
         try:
-            areas.append({"latitude": float(parts[0]), "longitude": float(parts[1]), "label": parts[2]})
+            areas.append({"latitude": float(parts[0]), "longitude": float(parts[1]),
+                          "label": label, "kind": kind})
         except ValueError:
             continue
     return areas

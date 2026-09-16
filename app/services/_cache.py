@@ -14,6 +14,7 @@ import builtins
 import json
 import logging
 import sys
+import zlib
 import time
 
 _store: "collections.OrderedDict" = collections.OrderedDict()
@@ -104,6 +105,25 @@ def stats() -> dict:
     problem is visible without reaching Render's logs."""
     return {"entries": len(_store), "bytes": _bytes,
             "max_entries": MAX_ENTRIES, "max_bytes": MAX_BYTES}
+
+
+def pack_text(text: str) -> bytes:
+    """A finished page as the store keeps it: compressed.
+
+    Measured 16 Sep 2026: a schools guide page was 452,640 bytes, 197,211
+    of them the stylesheet every page inlines, byte for byte the same.
+    Kept as a str, 108 of them filled all of MAX_BYTES, and a crawler
+    walking the 684 guides in the sitemap (4,122 views that week) pushed
+    out the report gathers sharing the store: the homepage's own sample
+    report answered in 6.34 s that morning and 0.28 s on the repeat.
+    Compressed, the same page is about 60 KB, so the budget holds
+    roughly seven times as many. Decompressing costs about a millisecond.
+    """
+    return zlib.compress(text.encode("utf-8"), 6)
+
+
+def unpack_text(packed: bytes) -> str:
+    return zlib.decompress(packed).decode("utf-8")
 
 
 def get(key, ttl_seconds: float, keep_expired: bool = False):

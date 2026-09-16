@@ -9,7 +9,9 @@
 <span class="kicker">School guide</span>
 {% if areas and areas | length == 1 %}
 <h1>Schools near {{ areas[0].label }}</h1>
-<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, on the map and in the table, against the national picture. Add another area to compare.</p>
+<p class="dek">Every Ofsted-rated school within {{ areas[0].landscape.radius_miles if areas[0].landscape else 3 }} miles, on the map and in the table, against the national picture.
+{%- if areas[0].verdict_postcode %} Add another area to compare.
+{%- else %} Search a full postcode and the table adds a column for that address: whether it sits inside each school's last admission distance.{% endif %}</p>
 {% elif areas %}
 <h1>Schools compared: {{ areas | map(attribute='label') | join(' vs ') }}</h1>
 <p class="dek">Side by side, from the same Ofsted and DfE data as every property report here.</p>
@@ -30,10 +32,15 @@
 <form action="/schools/guide" method="get" class="search-form" style="margin: 1.5rem 0;">
     <input type="hidden" name="areas" value="{{ areas_param }}">
     <div class="search-form-field">
-        <label for="q">Postcode or town</label>
+        {# 16 Sep 2026: the 684 district guides in the sitemap, the most
+           crawled pages on the site, asked only to "add an area", and
+           never said a full postcode answers the question parents come
+           with. Same one box, now labelled for both. #}
+        {% set any_precise = areas | selectattr('verdict_postcode') | list %}
+        <label for="q">{{ "Full postcode or town" if areas and not any_precise else "Postcode or town" }}</label>
         <input type="text" id="q" name="q" placeholder="e.g. Oxford, or OX1 1BP" autocomplete="off" required>
     </div>
-    <button type="submit">{{ "Add area to compare" if areas else "Search" }}</button>
+    <button type="submit">{{ ("Add area to compare" if any_precise else "Check a postcode or add an area") if areas else "Search" }}</button>
 </form>
 
 {% if search_error %}
@@ -105,6 +112,14 @@
                page (16 Sep 2026): a parent reads "no grade" as "bad". #}
             <p class="section-sub" style="margin-top: 0.25rem;">Report card: inspected since Ofsted stopped one-word grades in late 2024, so it has a report card rather than a grade. No current grade: Ofsted's register holds no graded inspection for the school, usually because it is new, or has become an academy and not yet been inspected as one.</p>
 
+            {% if not area.verdict_postcode and area.rows | selectattr('admission_miles', 'ne', none) | list %}
+            <p class="section-sub guide-postcode-hint">
+                No reading for an address here: {{ area.label }} is {{ "a district" if area.kind == "outcode" else "a place" }}, and a school's
+                admission distance is measured from a home, not from the middle of an area. Search a full postcode in {{ area.label if area.kind == "outcode" else "the box above" }}
+                and its table adds a column saying, school by school, whether that address sits inside last time's distance.
+                <a href="#q">Check a postcode</a>
+            </p>
+            {% endif %}
             {# Every school, visible. Sort by any column; tap a name for
                its full profile, fetched on demand. #}
             <div class="tablewrap">
@@ -151,7 +166,11 @@
                             <td data-value="{{ {'likely': 1, 'borderline': 2, 'unlikely': 3}.get(r.verdict_level, 4) }}">
                                 {% if r.verdict_label %}
                                 <span class="table-verdict table-verdict-{{ r.verdict_level }}"
-                                      title="{{ r.verdict_why }}">{{ r.verdict_label }}</span>
+                                      title="{{ r.verdict_why }}{% if r.admission_kind == 'estimated' %}, measured against a modelled estimate, not a published figure{% endif %}">{{ r.verdict_label }}</span>
+                                {#- The reading is the cell people act on, and on a phone it
+                                   sits a sideways scroll away from the "est." beside the
+                                   figure (16 Sep 2026: 72 estimates on the M14 table). #}
+                                {%- if r.admission_kind == 'estimated' %} <span class="estimate-badge">est.</span>{% endif %}
                                 {% else %}<span class="section-sub">No figure</span>{% endif %}
                             </td>
                             {% endif %}
@@ -176,7 +195,9 @@
                 {% if area.verdict_postcode %}The reading for {{ area.verdict_postcode }} compares the
                 distance from that postcode with the figure beside it, the same three bands every school page
                 and report uses: Likely is comfortably inside last time's distance, Borderline is close enough
-                that a busier year could go either way, Unlikely is outside it.{% endif %}
+                that a busier year could go either way, Unlikely is outside it. A reading marked "est." is
+                measured against a modelled estimate, not a council's published figure, and carries the same
+                caution.{% endif %}
             </p>
 
             <p class="section-sub">

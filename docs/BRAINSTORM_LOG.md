@@ -6,6 +6,55 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- Seven of the eight ideas of the 16 Sep 2026 brainstorm, built on 17
+  Sep. Michael said "Do 1,2,3,5,6,7,8"; that is the approval idea 1's
+  row tidy needed. Idea 4, taking the 684 /schools/guide?q= URLs out of
+  the sitemap, was not chosen: do not re-raise it without a Search
+  Console reading of what those URLs earn. The day's reading: 8 real
+  accounts in seven days, none since 14 Sep, no Premium since 6 Sep,
+  signed-in views 22, 2, 0 across 14 to 16 Sep, and 15 and 16 Sep almost
+  wholly crawl (7,456 distinct paths in 8,202 views).
+  1. One home is one saved row. Four of 16 accounts with saved homes
+  held a home twice, because every lookup compared the raw house-number
+  string, and the second-home offer put 17 CM5 9HH beside CM5 9HH.
+  watchlist.same_home matches word by word ignoring case, commas and
+  spacing, and a number against the same number with its street;
+  same_place also joins a postcode-only row to a numbered one, and is
+  used only where two rows would be put side by side. remember,
+  save_item, get_item and the report's own lookup use it; the offer
+  leaves out every row at this place and names a home saved twice once.
+  The stored key and PremiumUnlock are unchanged.
+  2. The anonymous HTML cache, the /property page cache and the sitemap
+  keep their bodies zlib-compressed (_cache.pack_text). A guide page was
+  452,640 bytes, 197,211 of them the same inlined stylesheet, so 108
+  filled the 48 MB store the report gathers share, and the homepage's
+  sample report measured 6.34 s cold against 0.28 s warm. About 60 KB
+  compressed. Not the 3 Sep inlined-stylesheet question, which was
+  transfer per request, and not a warming cadence.
+  3. The signup page is counted by the page, not the request: a POST to
+  /signup/seen from the page's own script, the rule the report wait has
+  used since 11 Sep. 55 signup views and no account on 16 Sep moved hour
+  for hour with a school and area crawl. robots.txt was deliberately not
+  changed: the page is noindex, and a Disallow would stop Google reading
+  that and risks "indexed, though blocked". /admin says the column
+  includes crawlers before 17 Sep.
+  5. A district or town search on the schools guide says a full postcode
+  adds the address column, beside the table where the column would be,
+  and the one box is labelled "Full postcode or town" with "Check a
+  postcode or add an area". An area carried into a comparison now keeps
+  its kind from its label, so a full postcode no longer loses its
+  reading as soon as a second area is added, which it had since 12 Sep.
+  6. Each change-alert run keeps its answer (homes checked, first looks,
+  failures, homes changed, accounts told, emails sent, seconds) in the
+  page cache table, 30 runs, shown on /admin under "Change alerts: what
+  each run did". The workflow's curl had reported success daily while
+  the figures went nowhere.
+  7. A Likely, Borderline or Unlikely reading taken from a modelled
+  estimate carries "est." in its own cell and says so on hover, and the
+  table note says so. 79 such readings on the M14 5TG table.
+  8. audit_site.py fetches /alternatives and fails once the rivals' read
+  date is more than 30 days old, or missing, or given two ways.
+
 - All eight ideas of the 14 Sep 2026 brainstorm, built the same evening.
   Michael read the eight and said "fix everything in order", which is
   the approval idea 5 needed. The day's reading: 5 real sign-ups and 4

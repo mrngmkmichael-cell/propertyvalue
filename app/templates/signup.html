@@ -54,4 +54,15 @@
     <p class="signup-benefits-note">No card. No tracking. Your free report never expires, and a property you unlock stays unlocked for good.</p>
 </aside>
 </div>
+{# The /admin signup-page count, sent from the page so a crawler that
+   only fetches the HTML is not counted (17 Sep 2026, see signup_seen).
+   Nothing identifying is sent. #}
+<script>
+(function () {
+    try {
+        if (navigator.sendBeacon) { navigator.sendBeacon('/signup/seen'); }
+        else { fetch('/signup/seen', {method: 'POST', keepalive: true}); }
+    } catch (e) {}
+})();
+</script>
 {% endblock %}

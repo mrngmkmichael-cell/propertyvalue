@@ -2,6 +2,7 @@
 in main.py the same way the external-API lookups live in
 app/services/.
 """
+import re
 from datetime import datetime, timezone
 
 from sqlalchemy import select
@@ -10,15 +11,61 @@ from app.db import get_session
 from app.models import User, WatchlistItem
 
 
+def _address_words(house_number: str) -> list[str]:
+    return re.sub(r"[^a-z0-9]+", " ", (house_number or "").lower()).split()
+
+
+def same_home(a: str, b: str) -> bool:
+    """Do two house-number strings typed at one postcode name one home?
+
+    Equal once case, commas and spacing are ignored, or one is the other
+    with the street added ("101" and "101 maryhill road"). Measured 16
+    Sep 2026: 4 of the 16 real accounts with saved homes held a home
+    twice, because every lookup here compared the raw string, so
+    "Flat 1, 66 London Road" and "Flat 1  66 London Road" were two rows
+    and the report offered to compare a flat with itself. Word by word,
+    so "1" never matches "1A" and "Flat 1" never matches "Flat 12".
+    An empty string is not a match: a postcode-only report is its own
+    page, and see same_place for when that difference does not matter.
+    """
+    wa, wb = _address_words(a), _address_words(b)
+    if not wa or not wb:
+        return wa == wb
+    shorter, longer = (wa, wb) if len(wa) <= len(wb) else (wb, wa)
+    return longer[:len(shorter)] == shorter
+
+
+def same_place(a: str, b: str) -> bool:
+    """same_home, and also a postcode-only row beside a numbered one.
+    Used where two rows are about to be put side by side: comparing 17
+    CM5 9HH with CM5 9HH compares a house with its own street."""
+    return same_home(a, b) or not _address_words(a) or not _address_words(b)
+
+
+def _find_home(session, user_id: int, postcode: str, house_number: str):
+    """The saved row for this home, exact match first."""
+    rows = session.scalars(
+        select(WatchlistItem).where(
+            WatchlistItem.user_id == user_id,
+            WatchlistItem.postcode == postcode,
+        )
+    ).all()
+    exact = [r for r in rows if r.house_number == house_number]
+    if exact:
+        return exact[0]
+    return next((r for r in rows if same_home(r.house_number, house_number)), None)
+
+
+def find_in(items: list[dict], postcode: str, house_number: str) -> dict | None:
+    """The same lookup as _find_home, over a list already fetched."""
+    here = [i for i in items if i["postcode"] == postcode]
+    return (next((i for i in here if i["house_number"] == house_number), None)
+            or next((i for i in here if same_home(i["house_number"], house_number)), None))
+
+
 def get_item(user_id: int, postcode: str, house_number: str = "") -> dict | None:
     with get_session() as session:
-        item = session.scalar(
-            select(WatchlistItem).where(
-                WatchlistItem.user_id == user_id,
-                WatchlistItem.postcode == postcode,
-                WatchlistItem.house_number == house_number,
-            )
-        )
+        item = _find_home(session, user_id, postcode, house_number)
         return {"id": item.id, "note": item.note} if item else None
 
 
@@ -79,13 +126,7 @@ def get_items_by_ids(user_id: int, item_ids: list[int]) -> list[dict]:
 
 def save_item(user_id: int, postcode: str, house_number: str, note: str) -> None:
     with get_session() as session:
-        existing = session.scalar(
-            select(WatchlistItem).where(
-                WatchlistItem.user_id == user_id,
-                WatchlistItem.postcode == postcode,
-                WatchlistItem.house_number == house_number,
-            )
-        )
+        existing = _find_home(session, user_id, postcode, house_number)
         if existing:
             existing.note = note
         else:
@@ -112,14 +153,7 @@ def remember(user_id: int, postcode: str, house_number: str) -> bool:
     this must not overwrite it.
     """
     with get_session() as session:
-        existing = session.scalar(
-            select(WatchlistItem).where(
-                WatchlistItem.user_id == user_id,
-                WatchlistItem.postcode == postcode,
-                WatchlistItem.house_number == house_number,
-            )
-        )
-        if existing:
+        if _find_home(session, user_id, postcode, house_number):
             return False
         session.add(WatchlistItem(
             user_id=user_id, postcode=postcode, house_number=house_number, note="",
