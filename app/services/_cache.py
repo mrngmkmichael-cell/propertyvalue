@@ -121,6 +121,19 @@ def get(key, ttl_seconds: float, keep_expired: bool = False):
     return entry[1]
 
 
+def stored_at(key) -> float | None:
+    """When the value tier 1 holds for key was gathered, as epoch
+    seconds, or None if tier 1 does not hold it.
+
+    After a get_persistent hit from tier 2 this is the database row's own
+    created_at, carried into tier 1 by _put, so a page can say honestly
+    when its figures were gathered without a second round trip. Added
+    16 Sep 2026 for the pages' dateModified; a page never falls back to
+    the render time, because that would claim a freshness nobody checked."""
+    entry = _store.get(key)
+    return entry[0] if entry is not None else None
+
+
 def get_stale(key):
     """The cached value regardless of age, or None if never cached (or
     since evicted). For stale-while-revalidate callers only."""

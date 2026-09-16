@@ -19,7 +19,11 @@
 {% block content %}
 <span class="kicker">Area guides</span>
 <h1>Every UK postcode district, one guide each</h1>
-<p class="dek">{{ total }} districts. House prices, schools, crime and flood risk for each, from the same official sources as a full property report.</p>
+{# What a guide holds, said as an answer with its sources named (16 Sep
+   2026): the page opened on a count and a list of 2,943 links. These are
+   the six figures every guide leads with, the same six its comparison
+   table lines up. #}
+<p class="dek">{{ "{:,}".format(total) }} postcode districts across {{ regions|length }} regions and nations, one guide each. Every guide gives the district's recorded sold prices from HM Land Registry, the price trend from the UK House Price Index, the share of nearby schools Ofsted rates Good or Outstanding, the Environment Agency flood zone at its centre, the council's Band D council tax from MHCLG, and recorded crime from Police.uk, each figure naming its source.</p>
 
 {# The Property section's own front door had 2,943 district links on it
    and no way to ask about an address (Michael, 12 Sep 2026). A district

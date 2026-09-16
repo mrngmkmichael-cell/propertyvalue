@@ -9,11 +9,17 @@
 
 <span class="kicker">Admissions</span>
 <h1>How far schools admitted from, council by council</h1>
+{# The answer first, with the national figures in it (16 Sep 2026): most
+   AI citations come from the top third of a page, and this one opened
+   on counts alone. Every figure is from the distances in the table. #}
 <p class="dek">
     After each admissions round, councils publish how far away the last child offered a place at each
     oversubscribed school lived. That figure is the closest thing most English schools have to a
     catchment. We hold it for {{ "{:,}".format(total_schools) }} schools across {{ councils | length }}
-    councils. Pick yours. School sites show you the school; this shows you whether the house gets a child in.
+    councils{% if admission_national %}: the middle school admitted from {{ admission_national.median_miles }} miles,
+    the last place at {{ "{:,}".format(admission_national.under_a_mile) }} went to a child living under a mile away,
+    and {{ "{:,}".format(admission_national.over_five) }} reached five miles or more{% endif %}.
+    Pick yours. School sites show you the school; this shows you whether the house gets a child in.
 </p>
 
 {% include "_school_search.html" %}
@@ -63,8 +69,23 @@
     </p>
 </section>
 
+{% if admission_faqs %}
+<section class="report-section" id="admissions-faq">
+    <h2>Common questions about admission distances</h2>
+    <div class="faq-list">
+        {% for q, a in admission_faqs %}
+        <details class="faq-item">
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+{% if admission_faqs_jsonld %}<script type="application/ld+json">{{ admission_faqs_jsonld | safe }}</script>{% endif %}
+{% endif %}
+
 <section class="report-section">
-    <h2>Checking one address</h2>
+    <h2>How do I check one address?</h2>
     <p class="section-sub">
         Every school page has a checker: put a postcode in and it is measured against that school's
         distance. The <a href="/">full property report</a> does the same for every school near an

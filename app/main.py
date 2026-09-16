@@ -1743,6 +1743,13 @@ def council_tax_table_page(request: Request):
         cached = council_tax.all_authorities()
         _cache.set(("council_tax_all",), cached)
     context["ct"] = cached
+    # England's range for the opening answer (16 Sep 2026), from the same
+    # rows the table lists.
+    england = sorted((a for a in cached.get("england", []) if a.get("band_d")), key=lambda a: a["band_d"])
+    context["ct_range"] = {
+        "count": len(england), "median": england[len(england) // 2]["band_d"],
+        "cheapest": england[0], "dearest": england[-1],
+    } if england else None
     return templates.TemplateResponse(request, "council_tax_table.html", context)
 
 
@@ -2463,6 +2470,33 @@ EXTENSION_STORE_URL = (
     "poclbfmjpgdnoabacpcdlmiiediakbcl"
 )
 
+# The site's own public profiles, as sameAs on its Organization schema
+# (16 Sep 2026), so search and AI systems can tie the brand to its
+# listings. Only profiles the business really has. The Trustpilot page
+# is a plain link here, which its brand rules allow; no score or count
+# goes anywhere near the schema.
+templates.env.globals["org_same_as"] = [
+    url for url in (EXTENSION_STORE_URL, TRUSTPILOT["profile_url"]) if url
+]
+
+
+def _set_page_date(context: dict, cache_key) -> None:
+    """The date a cached page's figures were gathered, for its visible
+    line and its dateModified (16 Sep 2026).
+
+    AI answers favour recent pages, and no page on the site said when it
+    was checked, so current figures read as stale. The date is the stored
+    time of the payload the page was built from, never the render time: a
+    page whose payload is not held in memory gets no date at all, because
+    stamping today on every request would be claiming a check that did
+    not happen."""
+    stamp = _cache.stored_at(cache_key)
+    if stamp is None:
+        return
+    when = datetime.datetime.fromtimestamp(stamp, tz=datetime.timezone.utc)
+    context["page_modified"] = when.date().isoformat()
+    context["page_modified_label"] = f"{when.day} {when.strftime('%B %Y')}"
+
 
 @app.get("/browser-extension")
 def browser_extension_page(request: Request):
@@ -2534,6 +2568,7 @@ async def market_report(request: Request):
     cached = await asyncio.to_thread(_cache.get_persistent, ("market_report", 1), MARKET_REPORT_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
+        _set_page_date(context, ("market_report", 1))
         return templates.TemplateResponse(request, "market_report.html", context)
 
     results = await asyncio.gather(
@@ -2552,6 +2587,7 @@ async def market_report(request: Request):
     }
     await asyncio.to_thread(_cache.set_persistent, ("market_report", 1), page_data)
     context.update(page_data)
+    _set_page_date(context, ("market_report", 1))
     return templates.TemplateResponse(request, "market_report.html", context)
 
 
@@ -5635,6 +5671,15 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     # already in it, so the 2,943 warm guides pick it up without a
     # payload version bump and a full re-warm.
     context["area_lead"] = _area_lead(outcode, context)
+    # The Band D history as a trend (16 Sep 2026), from the same rows as
+    # the table it sits above; outside the payload for the same reason.
+    finance = context.get("finance") or {}
+    context["council_tax_trend"] = _trend_chart([
+        {"value": h.get("band_d"), "period": h.get("label", ""),
+         "note": (f"up {h['rise']}% on the year before" if h["rise"] >= 0 else f"down {abs(h['rise'])}% on the year before")
+         if h.get("rise") is not None else ""}
+        for h in (finance.get("history") or []) if isinstance(h, dict)
+    ])
 
     def _nearest():
         cached = _cache.get(("nearby_outcodes", outcode), 7 * 86400)
@@ -6321,6 +6366,7 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
         outcome = _cache.last_outcome
         timing = _server_timing_header()
     _area_guide_extras(context, outcode, lat, lon)
+    _set_page_date(context, cache_key)
     await _area_compare(context, outcode, compare)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{outcome}"'
@@ -6486,6 +6532,46 @@ def _audience_split(paths: dict[str, int]) -> tuple[int, int, str, int]:
         return audience, crawl, "", 0
     held_back = top_count - others
     return audience - held_back, crawl + held_back, top_path, held_back
+
+
+def _trend_chart(rows: list[dict]) -> dict | None:
+    """Geometry for a small one-series money trend, drawn by the
+    _trend_chart.html macro (16 Sep 2026).
+
+    A 2px line over a faint area wash that starts from a zero baseline,
+    so the slope shows the real size of the change rather than an
+    exaggeration of it. The end value is labelled, the first and last
+    periods sit on the axis, and every other value is in the hover and
+    keyboard readout and in the table the chart sits above, so nothing
+    is only reachable by hovering. Rows are {value, period, note}. Fewer
+    than three usable points is not a trend, so there is no chart."""
+    points = [r for r in rows if isinstance(r.get("value"), (int, float)) and r["value"] > 0]
+    if len(points) < 3:
+        return None
+    width, height, left, right, top_pad, bottom = 420, 176, 58, 62, 12, 28
+    peak = max(p["value"] for p in points)
+    tick = next((t for t in (50, 100, 200, 250, 500, 1000, 2000, 2500, 5000) if peak / t <= 4), 10000)
+    top = int(max(tick, -(-peak // tick) * tick))
+    n = len(points)
+
+    def x(i: int) -> float:
+        return left + (width - left - right) * i / (n - 1)
+
+    def y(v: float) -> float:
+        return top_pad + (height - top_pad - bottom) * (1 - v / top)
+
+    line = " ".join(f"{x(i):.1f},{y(p['value']):.1f}" for i, p in enumerate(points))
+    shaped = [{"x": round(x(i), 1), "y": round(y(p["value"]), 1),
+               "value": f"£{p['value']:,.0f}", "period": p.get("period", ""), "note": p.get("note", "")}
+              for i, p in enumerate(points)]
+    return {
+        "w": width, "h": height, "left": left, "right": right, "top": top_pad,
+        "baseline": round(y(0), 1),
+        "line": line,
+        "area": f"{x(0):.1f},{y(0):.1f} {line} {x(n - 1):.1f},{y(0):.1f}",
+        "ticks": [{"y": round(y(v), 1), "label": f"£{v:,}"} for v in range(0, top + 1, tick)],
+        "points": shaped, "first": shaped[0], "end": shaped[-1],
+    }
 
 
 def _people_views_chart(days: list[dict]) -> dict:
@@ -8935,6 +9021,7 @@ async def area_versus(request: Request, left: str, right: str):
         await asyncio.to_thread(_cache.set_persistent, cache_key, cached)
 
     context["canonical_url"] = f"{_public_base_url(request)}/compare/{left}/vs/{right}"
+    _set_page_date(context, cache_key)
     context["left_code"], context["right_code"] = left, right
     context["columns"] = [
         {"postcode": left, "house_number": "", "summary": cached["left"], "outcode": left},
@@ -9766,6 +9853,58 @@ async def school_profile_fragment(
     return response
 
 
+def _admissions_hub_faqs(stats: dict) -> list[tuple[str, str]]:
+    """The admissions hub's common questions (16 Sep 2026).
+
+    The hub is where search sends people asking how far away they can
+    live, and it carried no questions and no FAQ markup while a single
+    school page carried both. Two answers are explanations the site's own
+    admissions guide already gives, in its words; the rest are counted
+    from the published distances the hub is built on, and a question
+    whose figure is missing is left out rather than answered vaguely."""
+    faqs = [(
+        "What is the last distance offered?",
+        "After each admissions round, councils publish how far away the last child offered a place at "
+        "each oversubscribed school lived. It is usually measured in a straight line from the home to "
+        "the school's gate or main entrance, though some councils use a walking route. It is the closest "
+        "thing most English schools have to a catchment area, and it describes the last round, not the next.",
+    )]
+    total, median = stats.get("total"), stats.get("median_miles")
+    if total and median is not None:
+        faqs.append((
+            "How far away can you live and still get a school place?",
+            f"It depends on the school. Across the {total:,} schools with a published figure here, the middle "
+            f"one admitted from {median} miles. The last place went to a child living under a mile away at "
+            f"{stats.get('under_a_mile', 0):,} of them, and {stats.get('over_five', 0):,} reached five miles "
+            "or more. Each council's page has its own schools.",
+        ))
+    tightest = (stats.get("tightest") or [None])[0]
+    if tightest and tightest.get("miles") is not None:
+        miles = tightest["miles"]
+        metres = f", about {round(miles * 1609.34)} metres" if miles < 0.25 else ""
+        year = tightest.get("academic_year") or ""
+        when = f" in {year}" if year[:2].isdigit() else ""
+        town = f" in {tightest['town']}" if tightest.get("town") else ""
+        faqs.append((
+            "Which school admitted from the shortest distance?",
+            f"{tightest['name']}{town}, in {tightest['authority']}: its last place went to a child living "
+            f"{miles} miles away{metres}{when}, according to the council's published figures.",
+        ))
+    faqs.append((
+        "Does living inside the distance guarantee a place?",
+        "No. The distance is where the last round's offers ran out, and it moves every year with how many "
+        "children apply and where they live. Schools place looked-after children, siblings and sometimes "
+        "faith applicants before distance, so those groups fill places first.",
+    ))
+    faqs.append((
+        "Why is my council not listed?",
+        "Either it has not published its figures in a form that can be imported, or it publishes none. "
+        "Councils are added as their data becomes available, and a distance is never modelled where none "
+        "was published.",
+    ))
+    return faqs
+
+
 @app.get("/schools/admissions")
 async def admissions_index(request: Request):
     """Every council whose published admission distances we hold."""
@@ -9790,7 +9929,13 @@ async def admissions_index(request: Request):
         stats = await asyncio.to_thread(schools_db.tightest_catchments)
         context["council_stats"] = {c["slug"]: c for c in stats["councils"]}
     except Exception:  # noqa: BLE001 - the plain list still renders
+        stats = {}
         context["council_stats"] = {}
+    # The national picture for the opening answer and the common
+    # questions (16 Sep 2026). Only present when the figures are.
+    context["admission_national"] = stats if stats.get("total") and stats.get("median_miles") is not None else None
+    context["admission_faqs"] = _admissions_hub_faqs(stats)
+    context["admission_faqs_jsonld"] = _faq_jsonld(context["admission_faqs"])
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_public_base_url(request), [
         ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
     ])

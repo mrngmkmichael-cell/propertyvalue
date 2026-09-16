@@ -59,6 +59,9 @@
 {% if area_lead %}
 <p class="area-lead">{% for sentence in area_lead %}{{ sentence }} {% endfor %}</p>
 {% endif %}
+{% if page_modified_label %}
+<p class="page-date">Figures gathered {{ page_modified_label }}, each from the source named in its section.</p>
+{% endif %}
 
 {# Following a district, not an address. Most people choose an area
    long before they have a door number, and this is the only thing on
@@ -475,6 +478,12 @@
         a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
         {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}; the full report gives the band of a specific address.
     </p>
+    {% if council_tax_trend %}
+    {% import "_trend_chart.html" as trendchart %}
+    {{ trendchart.trend(council_tax_trend,
+        "Band D council tax at " ~ finance.name ~ " by year, from " ~ council_tax_trend.first.value ~ " in " ~ council_tax_trend.first.period ~ " to " ~ council_tax_trend.end.value ~ " in " ~ council_tax_trend.end.period ~ ". Use the left and right arrow keys to read each year.",
+        "Band D bill a year at " ~ finance.name ~ ", all precepts included, from MHCLG. Every year and its rise is in the table below.") }}
+    {% endif %}
     <div class="tablewrap">
     <table class="tx-table finance-table">
         <thead><tr><th>Year</th><th class="num">Band D bill</th><th class="num">Rise</th></tr></thead>
@@ -563,6 +572,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
+{% if council_tax_trend %}
+{% import "_trend_chart.html" as trendchart_js %}
+{{ trendchart_js.script() }}
+{% endif %}
 {% if is_scotland %}
 <script>
     (function () {

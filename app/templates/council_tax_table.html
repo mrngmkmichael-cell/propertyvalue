@@ -14,6 +14,12 @@
     in Great Britain is here with its {{ ct.year }} Band D charge, the band most homes are compared on, and
     the lowest and highest bands beside it. Click a heading to sort. The report shows the full set of
     bands for the council of any address you check.
+    {# The answer in figures (16 Sep 2026), from the rows below. #}
+    {% if ct_range %}
+    Across England's {{ ct_range.count }} billing authorities the middle Band D bill for {{ ct.year }} is
+    {{ ct_range.median | gbp }}, from {{ ct_range.cheapest.band_d | gbp }} at {{ ct_range.cheapest.authority }}
+    to {{ ct_range.dearest.band_d | gbp }} at {{ ct_range.dearest.authority }}.
+    {% endif %}
 </p>
 
 <form class="search-form" action="/running-costs" method="get" role="search" style="max-width: 36rem;">

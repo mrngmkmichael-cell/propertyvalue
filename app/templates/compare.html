@@ -17,6 +17,9 @@
     Two neighbouring postcode districts compared on sold prices, energy, flood risk, crime and
     deprivation, all from the same official sources as every report on this site.
 </p>
+{% if page_modified_label %}
+<p class="page-date">Figures gathered {{ page_modified_label }}.</p>
+{% endif %}
 
 {% if versus_faqs_jsonld %}<script type="application/ld+json">{{ versus_faqs_jsonld | safe }}</script>{% endif %}
 {% if differences %}

@@ -79,7 +79,8 @@
                 "url": "https://ukpropertyinsight.co.uk",
                 "logo": "{{ request.url_for('static', path='img/og-default.png') }}",
                 "email": "support@ukpropertyinsight.co.uk",
-                "areaServed": "GB"
+                "areaServed": "GB"{% if org_same_as %},
+                "sameAs": {{ org_same_as | tojson }}{% endif %}
             },
             {
                 "@type": "WebSite",
@@ -92,7 +93,17 @@
                     "target": {"@type": "EntryPoint", "urlTemplate": "https://ukpropertyinsight.co.uk/property?postcode={postcode}"},
                     "query-input": "required name=postcode"
                 }
-            }
+            }{% if page_modified %},
+            {# When this page's figures were gathered (16 Sep 2026). Set
+               only by pages built from a stored payload, from that
+               payload's own stored time, never the render time. #}
+            {
+                "@type": "WebPage",
+                "@id": {{ (canonical_url ~ "#webpage") | tojson }},
+                "url": {{ canonical_url | tojson }},
+                "isPartOf": {"@id": "https://ukpropertyinsight.co.uk/#site"},
+                "dateModified": {{ page_modified | tojson }}
+            }{% endif %}
         ]
     }
     </script>

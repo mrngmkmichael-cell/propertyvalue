@@ -2107,6 +2107,66 @@ button:not([class]):hover { background: var(--accent-hover); }
     padding-left: 0.9rem;
     border-left: 2px solid var(--border);
 }
+/* A small one-series money trend (16 Sep 2026), to the dataviz spec:
+   2px line, 10% area wash, hairline recessive grid, an end dot ringed in
+   the surface colour, text in text tokens and never in the series colour.
+   The SVG scales to its box, so text is set in viewBox units sized to
+   read at phone width, and the chart is capped so desktop stays calm. */
+.trend-chart { margin: 0.9rem 0 1.1rem; max-width: 28rem; }
+.trend-chart figcaption { margin: 0.35rem 0 0; }
+.trend-chart-plot { position: relative; border-radius: var(--radius-sm); }
+.trend-chart-plot:focus { outline: none; }
+.trend-chart-plot:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.trend-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.trend-grid { stroke: var(--border); stroke-width: 1; shape-rendering: crispEdges; }
+.trend-tick,
+.trend-period { fill: var(--ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.trend-area { fill: var(--accent); fill-opacity: 0.1; stroke: none; }
+.trend-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.trend-end,
+.trend-focus { fill: var(--accent); stroke: var(--surface); stroke-width: 2; }
+.trend-end-label { fill: var(--ink); font-size: 14px; font-weight: var(--weight-semi); font-variant-numeric: tabular-nums; }
+.trend-cross { stroke: var(--ink-soft); stroke-width: 1; shape-rendering: crispEdges; }
+.trend-tip {
+    position: absolute;
+    z-index: 2;
+    padding: 0.35rem 0.55rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    font-size: var(--text-xs);
+    line-height: 1.35;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px));
+    transition: opacity 0.12s ease-out;
+}
+.trend-tip.is-on { opacity: 1; }
+.trend-tip.is-left { transform: translate(-14px, calc(-100% - 12px)); }
+.trend-tip.is-right { transform: translate(calc(-100% + 14px), calc(-100% - 12px)); }
+.trend-tip.is-below { transform: translate(-50%, 14px); }
+.trend-tip.is-below.is-left { transform: translate(-14px, 14px); }
+.trend-tip.is-below.is-right { transform: translate(calc(-100% + 14px), 14px); }
+.trend-tip strong { display: block; font-size: var(--text-sm); color: var(--ink); font-variant-numeric: tabular-nums; }
+.trend-tip span { color: var(--ink-soft); }
+@media (prefers-reduced-motion: reduce) {
+    .trend-tip { transition: none; }
+}
+@media print {
+    .trend-cross, .trend-focus, .trend-tip { display: none; }
+}
+
+/* When a page's figures were gathered (16 Sep 2026): a quiet line, true
+   to the stored payload, so readers and AI answers can see the page is
+   current. It tucks up under the lead it follows. */
+.page-date {
+    margin: -0.9rem 0 1.5rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.dek + .page-date { margin-top: -0.4rem; }
 
 @media (max-width: 860px) {
     .area-lead {

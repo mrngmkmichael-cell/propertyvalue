@@ -13,6 +13,13 @@
     Average price and annual change across {{ areas|length }} major UK cities, straight from HM Land
     Registry's House Price Index, the same source every property report on this site uses, not a
     press release or a one-off article. Updated {{ generated_date }}.
+    {# The answer in figures, before the table (16 Sep 2026): the table
+       is sorted by annual change, so its ends are the extremes. #}
+    {% if areas and areas|length > 1 %}{% set rising = areas | selectattr('annual_change_pct', 'gt', 0) | list %}
+    Prices rose over the year in {{ rising|length }} of the {{ areas|length }} cities. The strongest was
+    {{ areas[0].name }} at {{ '%+.1f'|format(areas[0].annual_change_pct) }}%, and the weakest
+    {{ areas[-1].name }} at {{ '%+.1f'|format(areas[-1].annual_change_pct) }}%.
+    {% endif %}
 </p>
 
 {% if areas %}

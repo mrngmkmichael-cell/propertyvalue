@@ -1,0 +1,112 @@
+{#
+  A small one-series money trend (16 Sep 2026). Geometry comes from
+  _trend_chart() in main.py; this only draws. Built to the dataviz spec:
+  2px line, area wash at 10%, a zero baseline, hairline recessive grid,
+  an end dot with a 2px surface ring, one direct label at the end, no
+  legend for a single series, and colour from tokens so both themes work.
+  Values are reachable without hovering: the end label here, and the
+  table the chart always sits above.
+#}
+{% macro trend(chart, aria, caption) %}
+<figure class="trend-chart" data-trend='{{ chart.points | tojson }}'>
+    <div class="trend-chart-plot" tabindex="0" role="group" aria-label="{{ aria }}">
+        <svg viewBox="0 0 {{ chart.w }} {{ chart.h }}" aria-hidden="true" focusable="false">
+            {% for t in chart.ticks %}
+            <line class="trend-grid" x1="{{ chart.left }}" x2="{{ chart.w - chart.right }}" y1="{{ t.y }}" y2="{{ t.y }}"></line>
+            <text class="trend-tick" x="{{ chart.left - 8 }}" y="{{ t.y }}" dy="0.32em" text-anchor="end">{{ t.label }}</text>
+            {% endfor %}
+            <polygon class="trend-area" points="{{ chart.area }}"></polygon>
+            <polyline class="trend-line" points="{{ chart.line }}"></polyline>
+            <circle class="trend-end" cx="{{ chart.end.x }}" cy="{{ chart.end.y }}" r="4.5"></circle>
+            <text class="trend-end-label" x="{{ chart.end.x + 10 }}" y="{{ chart.end.y }}" dy="0.32em">{{ chart.end.value }}</text>
+            <text class="trend-period" x="{{ chart.first.x }}" y="{{ chart.h - 6 }}" text-anchor="start">{{ chart.first.period }}</text>
+            <text class="trend-period" x="{{ chart.end.x }}" y="{{ chart.h - 6 }}" text-anchor="end">{{ chart.end.period }}</text>
+            <line class="trend-cross" x1="0" x2="0" y1="{{ chart.top }}" y2="{{ chart.baseline }}" display="none"></line>
+            <circle class="trend-focus" cx="0" cy="0" r="4.5" display="none"></circle>
+        </svg>
+        <div class="trend-tip" role="status" aria-live="polite"></div>
+    </div>
+    <figcaption class="section-sub">{{ caption }}</figcaption>
+</figure>
+{% endmacro %}
+
+{# Once per page, after every chart. Pointer finds the nearest period;
+   the arrow keys step through them; text goes in with textContent. #}
+{% macro script() %}
+<script>
+(function () {
+    document.querySelectorAll('.trend-chart').forEach(function (fig) {
+        var pts;
+        try { pts = JSON.parse(fig.getAttribute('data-trend')); } catch (e) { return; }
+        if (!pts || !pts.length) return;
+        var plot = fig.querySelector('.trend-chart-plot');
+        var svg = plot.querySelector('svg');
+        var cross = svg.querySelector('.trend-cross');
+        var dot = svg.querySelector('.trend-focus');
+        var tip = plot.querySelector('.trend-tip');
+        var box = svg.viewBox.baseVal;
+        var current = -1;
+
+        function show(i) {
+            var p = pts[i];
+            current = i;
+            cross.setAttribute('x1', p.x);
+            cross.setAttribute('x2', p.x);
+            cross.removeAttribute('display');
+            dot.setAttribute('cx', p.x);
+            dot.setAttribute('cy', p.y);
+            dot.removeAttribute('display');
+            tip.textContent = '';
+            var value = document.createElement('strong');
+            value.textContent = p.value;
+            var label = document.createElement('span');
+            label.textContent = p.period + (p.note ? ', ' + p.note : '');
+            tip.appendChild(value);
+            tip.appendChild(label);
+            var fx = p.x / box.width;
+            var fy = p.y / box.height;
+            tip.style.left = (fx * 100) + '%';
+            tip.style.top = (fy * 100) + '%';
+            tip.classList.toggle('is-left', fx < 0.3);
+            tip.classList.toggle('is-right', fx > 0.7);
+            /* A point near the top opens its readout below, inside the
+               plot, rather than over the axis label and the text above. */
+            tip.classList.toggle('is-below', fy < 0.45);
+            tip.classList.add('is-on');
+        }
+
+        function hide() {
+            current = -1;
+            cross.setAttribute('display', 'none');
+            dot.setAttribute('display', 'none');
+            tip.classList.remove('is-on');
+        }
+
+        function nearest(evt) {
+            var r = svg.getBoundingClientRect();
+            var at = (evt.clientX - r.left) / r.width * box.width;
+            var best = 0;
+            pts.forEach(function (p, i) {
+                if (Math.abs(p.x - at) < Math.abs(pts[best].x - at)) best = i;
+            });
+            return best;
+        }
+
+        plot.addEventListener('pointermove', function (e) { show(nearest(e)); });
+        plot.addEventListener('pointerleave', function () { if (document.activeElement !== plot) hide(); });
+        plot.addEventListener('focus', function () { show(current < 0 ? pts.length - 1 : current); });
+        plot.addEventListener('blur', hide);
+        plot.addEventListener('keydown', function (e) {
+            var i = current < 0 ? pts.length - 1 : current;
+            if (e.key === 'ArrowLeft') i = Math.max(0, i - 1);
+            else if (e.key === 'ArrowRight') i = Math.min(pts.length - 1, i + 1);
+            else if (e.key === 'Home') i = 0;
+            else if (e.key === 'End') i = pts.length - 1;
+            else return;
+            e.preventDefault();
+            show(i);
+        });
+    });
+})();
+</script>
+{% endmacro %}
