@@ -15,6 +15,7 @@
     {{ district.name }}: {{ district.mainstream }} mainstream and {{ district.special }} special.
     {% if district.single_sex %}{{ district.single_sex }} {{ "are" if district.single_sex != 1 else "is" }} single-sex.{% endif %}
     {% if district.with_sixth_form %}{{ district.with_sixth_form }} take pupils to 18.{% endif %}
+    {% if stage_sentence %}{{ stage_sentence }}{% endif %}
     Everything below is the Department for Education's register as it stands; fees, entrance tests and
     inspection reports live on each school's own site.
 </p>
@@ -32,9 +33,10 @@
 </p>
 {% endif %}
 
-{% for group_name, schools in district.groups %}
+{% for group_name, group_note, schools in district.groups %}
 <section class="report-section">
     <h2>{{ group_name }}</h2>
+    <p class="section-sub">{{ schools | length }} school{{ "s" if schools | length != 1 }}. {{ group_note }}</p>
     <div class="tablewrap">
         <table class="tx-table school-table">
             <thead>

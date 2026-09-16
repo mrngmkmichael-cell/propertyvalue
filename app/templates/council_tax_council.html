@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 
 {% block title %}Council Tax in {{ ct.authority }} {{ ct.year }}: Band D £{{ "{:,.0f}".format(ct.band_d) }}, Every Band A to {{ ct.top_band }}{% endblock %}
-{% block meta_description %}Council tax in {{ ct.authority }} for {{ ct.year }}: Band D £{{ "{:,.2f}".format(ct.band_d) }}, every band from A to {{ ct.top_band }}, the {{ ct.rank_label }} highest of {{ ct.of }} councils in {{ ct.nation }}{% if finance and finance.history %}, six years of rises and the council's finances{% endif %}. Source: {{ ct.source_short }}.{% endblock %}
+{# Every band's amount leads the description (16 Sep 2026). People search
+   "basildon council tax band c" and this page ranked 6th, but the result
+   showed only Band D, so the council's own site got the click. The bands
+   come first so Google's truncation cuts the rank and source, never a
+   band. Rounded to the pound here; the page carries the pence. #}
+{% block meta_description %}{{ ct.authority }} council tax {{ ct.year }}: {% for band in "ABCDEFGHI" if band in ct.bands %}{% if loop.first %}Band {% endif %}{{ band }} £{{ "{:,.0f}".format(ct.bands[band]) }}{{ ", " if not loop.last else "." }}{% endfor %} The {{ ct.rank_label }} highest Band D of {{ ct.of }} councils in {{ ct.nation }}. Source: {{ ct.source_short }}.{% endblock %}
 {% block og_title %}Council tax in {{ ct.authority }}, {{ ct.year }}{% endblock %}
 
 {% block content %}

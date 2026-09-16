@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 
-{% block title %}{{ seo_title("Private schools in " ~ outcode, ", " ~ admin_district if admin_district else "", ": fees, ages and admissions") }}{% endblock %}
+{# "fees" came out of this title on 16 Sep 2026: the register holds no
+   fees, and the page says so, so the title was promising a figure the
+   page does not have. #}
+{% block title %}{{ seo_title("Private schools in " ~ outcode, ", " ~ admin_district if admin_district else "", ": ages, selection and distance") }}{% endblock %}
 {% block meta_description %}Every fee-paying school within {{ radius_miles }} miles of {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}: ages, selection, single-sex or mixed. From the DfE register.{% endblock %}
 {% block og_title %}Private schools in {{ outcode }}{% endblock %}
 

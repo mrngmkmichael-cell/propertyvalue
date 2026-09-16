@@ -888,22 +888,54 @@ def independent_district(slug: str) -> dict | None:
     schools.sort(key=lambda x: x["name"])
     mainstream = [x for x in schools if not x["special"]]
     special = [x for x in schools if x["special"]]
+    # Mainstream schools by stage (16 Sep 2026). People search "prep school
+    # leeds" and "private primary schools plymouth", and the page listed
+    # every school in one alphabetical block, so the answer meant scanning
+    # the age column. Each stage is defined by the register's own statutory
+    # age range and the heading says so; nothing is inferred from a name.
+    by_stage = {"prep_primary": [], "all_through": [], "senior_only": [], "age_unstated": []}
+    for school in mainstream:
+        by_stage[independent_stage(school["age_low"], school["age_high"])].append(school)
+    name = district["name"]
     groups = []
-    if mainstream:
-        groups.append(("Mainstream independent schools", mainstream))
+    for key, heading, note in (
+        ("prep_primary", f"Private primary and prep schools in {name}", "Ages up to 11 or 13, from each school's registered age range."),
+        ("all_through", f"All-through private schools in {name}", "From primary age into the senior years, from each school's registered age range."),
+        ("senior_only", f"Private senior schools in {name}", "Starting at 11 or 13, from each school's registered age range."),
+        ("age_unstated", f"Private schools in {name} with no age range on the register", "The register holds no age range for these."),
+    ):
+        if by_stage[key]:
+            groups.append((heading, note, by_stage[key]))
     if special:
-        groups.append(("Independent special schools", special))
+        groups.append((f"Independent special schools in {name}", "Registered as independent special schools.", special))
     return {
         **district,
         "count": len(schools),
         "mainstream": len(mainstream),
         "special": len(special),
+        "prep_primary": len(by_stage["prep_primary"]),
+        "all_through": len(by_stage["all_through"]),
+        "senior_only": len(by_stage["senior_only"]),
+        "stage_names": {key: [s["name"] for s in rows] for key, rows in by_stage.items()},
         "single_sex": sum(1 for x in schools if x["gender"].lower() in ("boys", "girls")),
         "with_sixth_form": sum(1 for x in schools if x["age_high"] and x["age_high"] >= 18),
         "pupils": sum(x["number_on_roll"] or 0 for x in schools),
         "groups": groups,
         "schools": schools,
     }
+
+
+def independent_stage(age_low, age_high) -> str:
+    """A school's stage from its registered statutory age range: up to 13
+    is primary and prep age, starting at 11 or later is senior, spanning
+    both is all-through, and a missing end is said to be missing."""
+    if age_low is None or age_high is None:
+        return "age_unstated"
+    if age_high <= 13:
+        return "prep_primary"
+    if age_low >= 11:
+        return "senior_only"
+    return "all_through"
 
 
 def nearby_admission_pages(urn: int, limit: int = 6, radius_miles: float = 3.0) -> list[dict]:

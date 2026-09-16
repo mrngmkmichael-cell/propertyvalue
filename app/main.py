@@ -1846,6 +1846,14 @@ def council_tax_council_page(request: Request, slug: str):
          f"£{band_d / 10:,.2f} a month; a household that asks for twelve instalments pays £{band_d / 12:,.2f} a month. "
          "The bill includes every precept: the county or unitary council, police, fire and any parish or town council."),
     ]
+    # Every band as a question of its own (16 Sep 2026), second, for the
+    # band-specific searches ("basildon council tax band c").
+    band_order = [b for b in "ABCDEFGHI" if b in data["bands"]]
+    faqs.insert(1, (
+        f"What are the council tax bands in {data['authority']} for {data['year']}?",
+        ", ".join(f"Band {b} £{data['bands'][b]:,.2f}" for b in band_order)
+        + f". A home's band is shown on its council tax bill. Source: {data['source_short']}.",
+    ))
     if total_rise:
         faqs.append((f"How much has council tax in {data['authority']} gone up?",
                      f"Band D was £{total_rise['first']:,.2f} in {total_rise['first_label']} and £{band_d:,.2f} in {data['year']}, "
@@ -10169,6 +10177,17 @@ async def independent_index(request: Request):
     return templates.TemplateResponse(request, "schools_independent_index.html", context)
 
 
+def _name_list(names: list[str], limit: int = 5) -> str:
+    """Up to five names in plain English, then how many more."""
+    shown = names[:limit]
+    if not shown:
+        return ""
+    extra = len(names) - len(shown)
+    if extra:
+        return ", ".join(shown) + f" and {extra} more"
+    return shown[0] if len(shown) == 1 else ", ".join(shown[:-1]) + " and " + shown[-1]
+
+
 @app.get("/schools/independent/{slug}")
 async def independent_district_page(request: Request, slug: str):
     """Every fee-paying school registered in one council. "private
@@ -10197,6 +10216,41 @@ async def independent_district_page(request: Request, slug: str):
          (f"{district['with_sixth_form']} of them have a registered upper age of 18 or over. The table on this page shows each school's age range."
           if district["with_sixth_form"] else "None registered in this council has an upper age of 18 or over.")),
     ]
+    # Stage answers (16 Sep 2026), from the registered age ranges, for the
+    # "prep school <town>" and "private primary schools <town>" searches.
+    name = district["name"]
+    names = district.get("stage_names") or {}
+    prep, through, senior = district.get("prep_primary", 0), district.get("all_through", 0), district.get("senior_only", 0)
+    if prep or through:
+        if prep:
+            answer = (f"{prep} independent school{'s' if prep != 1 else ''} in {name} take{'' if prep != 1 else 's'} pupils up to 11 or 13, "
+                      f"by their registered age ranges: {_name_list(names.get('prep_primary', []))}.")
+            if through:
+                answer += f" {through} all-through school{'s' if through != 1 else ''} also take{'' if through != 1 else 's'} primary-age pupils."
+        else:
+            answer = (f"None registered in {name} stops at 11 or 13, but {through} all-through school{'s' if through != 1 else ''} "
+                      f"take{'' if through != 1 else 's'} primary-age pupils: {_name_list(names.get('all_through', []))}.")
+        faqs.insert(1, (f"Which private primary and prep schools are there in {name}?", answer))
+    if senior or through:
+        if senior:
+            parts = [f"{senior} start{'' if senior != 1 else 's'} at 11 or 13 ({_name_list(names.get('senior_only', []))})"]
+            if through:
+                parts.append(f"{through} run{'' if through != 1 else 's'} through from primary age")
+            answer = f"By their registered age ranges, {' and '.join(parts)}."
+        else:
+            answer = (f"None registered in {name} starts at 11 or 13, but {through} all-through school{'s' if through != 1 else ''} "
+                      f"take{'' if through != 1 else 's'} senior pupils: {_name_list(names.get('all_through', []))}.")
+        faqs.insert(2, (f"Which private senior schools are there in {name}?", answer))
+    stage_parts = []
+    if prep:
+        stage_parts.append(f"{prep} take{'' if prep != 1 else 's'} pupils up to 11 or 13")
+    if through:
+        stage_parts.append(f"{through} run{'' if through != 1 else 's'} from primary age into the senior years")
+    if senior:
+        stage_parts.append(f"{senior} start{'' if senior != 1 else 's'} at 11 or 13")
+    context["stage_sentence"] = (
+        "Of the mainstream schools, " + (", ".join(stage_parts[:-1]) + " and " + stage_parts[-1] if len(stage_parts) > 1 else stage_parts[0]) + "."
+    ) if stage_parts else ""
     context["independent_faqs_jsonld"] = _faq_jsonld(faqs)
     return templates.TemplateResponse(request, "schools_independent_district.html", context)
 
