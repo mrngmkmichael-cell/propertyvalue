@@ -583,6 +583,7 @@
             streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
             styles: window.mapStyles(),
         });
+        if (window.watchMapTheme) window.watchMapTheme(map);
         new google.maps.Marker({ position: centre, map: map, title: S.name });
         // A figure beyond a school run is not a distance to draw, so the
         // map shows the school and the checked postcode and nothing else.

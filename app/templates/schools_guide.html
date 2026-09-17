@@ -276,6 +276,7 @@
                 streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
                 styles: window.mapStyles(),
             });
+            if (window.watchMapTheme) window.watchMapTheme(map);
             new google.maps.Marker({ position: centre, map: map, title: 'Search point' });
             const info = new google.maps.InfoWindow();
             const bounds = new google.maps.LatLngBounds();

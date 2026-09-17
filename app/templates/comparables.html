@@ -190,6 +190,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
             fullscreenControl: false,
             styles: window.mapStyles(),
         });
+        if (window.watchMapTheme) window.watchMapTheme(map);
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
 
         const infoWindow = new google.maps.InfoWindow();

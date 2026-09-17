@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# The phone browser's toolbar colour, matched to the header. The
+       theme script at the top of <body> and the lamp both update it. #}
+    <meta name="theme-color" content="#ffffff">
     <meta name="google-site-verification" content="ONmACMSK2QA9zket2_0CImCu-k6LpfkSXOOcsopY9Po" />
     <title>{% block title %}UKPropertyInsight{% endblock %}</title>
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
@@ -16,10 +19,6 @@
     used to cost. #}
     <link rel="preload" href="/static/fonts/instrument-sans-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/static/fonts/jetbrains-mono-labels.woff2" as="font" type="font/woff2" crossorigin>
-    {# Bebas sets every h1 on the site, so it is always above the fold.
-    Without this it was arriving at 1,854ms, discovered only once the
-    inlined CSS had parsed. #}
-    <link rel="preload" href="/static/fonts/bebas-neue-latin-normal.woff2" as="font" type="font/woff2" crossorigin>
 
     {# The largest thing the landing page paints is the hero's poster
     frame, so it is the LCP element and wants to start downloading with
@@ -111,30 +110,30 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    {# Light is the default (readers found the dark theme hard going;
-       decided 27 Aug 2026). The dark palette is still complete and
-       reachable with ?theme=dark, which sticks for the session;
-       ?theme=light returns. Only the opt-in runs in script, so the
-       default survives with JavaScript off or storage disabled.
+    {# Light is the default (readers found the old dark theme hard going;
+       decided 26 Aug 2026). Dark mode is each reader's own choice, made
+       with the lamp in the header (17 Sep 2026) and remembered in this
+       browser's storage only; nothing about it is sent to us.
+       ?theme=dark and ?theme=light still set it from a link, and the
+       retired ?theme=contrast preview now means dark. Only the opt-in
+       runs in script, so the default survives with JavaScript off or
+       storage disabled.
 
        This has to be the first thing inside <body>, not a deferred
        script: nothing below has been parsed yet, so the class lands
        before the first paint and there is no flash of light on the way
        to dark. The HTML is identical for every visitor either way, so
-       the anonymous report cache still holds a single copy. #}
+       the anonymous page cache still holds a single copy. #}
     <script>
         (function () {
             try {
                 var q = new URLSearchParams(location.search).get('theme');
-                if (q === 'dark' || q === 'light' || q === 'contrast') sessionStorage.setItem('uki-theme', q);
-                var chosen = sessionStorage.getItem('uki-theme');
-                if (chosen === 'dark') {
+                if (q === 'contrast') q = 'dark';
+                if (q === 'dark' || q === 'light') localStorage.setItem('uki-theme', q);
+                if (localStorage.getItem('uki-theme') === 'dark') {
                     document.body.classList.add('theme-dark');
-                } else if (chosen === 'contrast') {
-                    /* The higher-readability dark preview: dark plus
-                       lifted inks and larger micro-labels. Link-only. */
-                    document.body.classList.add('theme-dark');
-                    document.body.classList.add('theme-contrast');
+                    var bar = document.querySelector('meta[name="theme-color"]');
+                    if (bar) bar.setAttribute('content', '#1e1b18');
                 }
             } catch (e) { /* storage unavailable: keep the default */ }
         })();
@@ -189,6 +188,22 @@
                 </button>
             </form>
             {% endif %}
+            {# The lamp: light and dark mode. Lit means the page is light;
+               pressed means dark mode is on. The script at the end of the
+               page sets the pressed state and the tooltip, so the markup
+               is the same for every visitor and the page cache keeps one
+               copy. Before the menu button in the source so that, on a
+               phone, the menu button stays at the far right. #}
+            <button type="button" class="lamp-switch" id="lamp-switch" aria-pressed="false" aria-label="Dark mode" title="Switch to dark mode">
+                <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                    <defs><radialGradient id="lamp-glow-fill"><stop offset="0" stop-opacity=".85"/><stop offset=".55" stop-opacity=".35"/><stop offset="1" stop-opacity="0"/></radialGradient></defs>
+                    <circle class="lamp-glow" cx="13" cy="19" r="12" fill="url(#lamp-glow-fill)"/>
+                    <path class="lamp-line" d="M13 1v7"/>
+                    <path class="lamp-line" d="M13 8c-3.8 0-5.9 3-6.7 9h13.4c-.8-6-2.9-9-6.7-9z"/>
+                    <path class="lamp-line lamp-bulb" d="M10.6 17a2.4 2.4 0 0 0 4.8 0z"/>
+                    <g class="lamp-cord"><path class="lamp-line" d="M25 1v14"/><rect class="lamp-bead" x="23.4" y="14.6" width="3.2" height="5.6" rx="1.6"/></g>
+                </svg>
+            </button>
             {% if accounts_configured %}
             <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="site-nav-menu" aria-label="Menu">
                 <span class="nav-toggle-bars"></span>
@@ -479,6 +494,108 @@
                     menu.classList.remove('nav-open');
                     toggle.setAttribute('aria-expanded', 'false');
                 }
+            });
+        })();
+
+        (function () {
+            /* The lamp (17 Sep 2026). Pulling the cord switches between
+               light and dark and remembers the choice in this browser.
+               Where the browser has view transitions and the reader has
+               not asked for less motion, the light spreads out of the
+               lamp, or draws back into it, through a soft radial mask
+               on the transition's picture of the page, tinted warm while
+               the pool is small because lamplight warms as it dims. The
+               CSS for the mask and for the glyph's delayed afterglow is
+               under .lamp-switch in style.css; the durations here and
+               the delays there are one timing. */
+            var lamp = document.getElementById('lamp-switch');
+            if (!lamp) return;
+            var root = document.documentElement;
+            var body = document.body;
+            var bar = document.querySelector('meta[name="theme-color"]');
+            var busy = false;
+            var runs = 0;
+
+            function sync() {
+                var dark = body.classList.contains('theme-dark');
+                lamp.setAttribute('aria-pressed', dark ? 'true' : 'false');
+                lamp.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+                if (bar) bar.setAttribute('content', dark ? '#1e1b18' : '#ffffff');
+            }
+            sync();
+
+            function apply(dark) {
+                body.classList.toggle('theme-dark', dark);
+                try { localStorage.setItem('uki-theme', dark ? 'dark' : 'light'); } catch (e) { /* not remembered */ }
+                sync();
+                /* Maps and canvases that painted their colours once
+                   repaint on this. */
+                document.dispatchEvent(new CustomEvent('uki:themechange', { detail: { dark: dark } }));
+            }
+
+            lamp.addEventListener('click', function () {
+                if (busy) return;
+                var dark = !body.classList.contains('theme-dark');
+                lamp.classList.remove('is-pulled');
+                void lamp.offsetWidth;
+                lamp.classList.add('is-pulled');
+
+                var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                if (!document.startViewTransition || still) { apply(dark); return; }
+
+                busy = true;
+                var run = ++runs;
+                var glyph = lamp.querySelector('svg').getBoundingClientRect();
+                var x = glyph.left + glyph.width / 2;
+                var y = glyph.top + glyph.height / 2;
+                root.classList.remove('lamp-going-dark', 'lamp-going-light');
+                root.classList.add('lamp-transition', dark ? 'lamp-going-dark' : 'lamp-going-light');
+                lamp.style.viewTransitionName = 'lamp-switch';
+
+                var done = function () {
+                    lamp.style.viewTransitionName = '';
+                    busy = false;
+                    /* The bulb's afterglow outlives the transition. */
+                    setTimeout(function () {
+                        if (run === runs) root.classList.remove('lamp-transition', 'lamp-going-dark', 'lamp-going-light');
+                    }, 300);
+                };
+                var t;
+                try {
+                    t = document.startViewTransition(function () { apply(dark); });
+                } catch (e) {
+                    apply(dark);
+                    done();
+                    return;
+                }
+                t.ready.then(function () {
+                    var w = window.innerWidth;
+                    var h = window.innerHeight;
+                    /* The pool is solid to 58% of its radius, so this is
+                       the diameter whose solid part just reaches the
+                       farthest corner of the screen. */
+                    var d = Math.hypot(Math.max(x, w - x), Math.max(y, h - y)) * 2 / 0.58;
+                    var point = { maskSize: '0px 0px', webkitMaskSize: '0px 0px',
+                                  maskPosition: x + 'px ' + y + 'px', webkitMaskPosition: x + 'px ' + y + 'px' };
+                    var full = { maskSize: d + 'px ' + d + 'px', webkitMaskSize: d + 'px ' + d + 'px',
+                                 maskPosition: (x - d / 2) + 'px ' + (y - d / 2) + 'px',
+                                 webkitMaskPosition: (x - d / 2) + 'px ' + (y - d / 2) + 'px' };
+                    var picture = dark ? '::view-transition-old(root)' : '::view-transition-new(root)';
+                    var warm = 'sepia(0.55) saturate(1.25) brightness(0.86)';
+                    root.animate(dark ? [full, point] : [point, full], {
+                        duration: dark ? 640 : 720,
+                        easing: dark ? 'cubic-bezier(0.25, 0.7, 0.4, 1)' : 'cubic-bezier(0.33, 0, 0.2, 1)',
+                        fill: 'both',
+                        pseudoElement: picture
+                    });
+                    root.animate(dark ? [{ filter: 'none' }, { filter: warm }] : [{ filter: warm }, { filter: 'none' }], {
+                        duration: dark ? 640 : 720,
+                        easing: dark ? 'cubic-bezier(0.5, 0, 0.75, 0)' : 'cubic-bezier(0.25, 1, 0.5, 1)',
+                        fill: 'both',
+                        pseudoElement: picture
+                    });
+                }).catch(function () { /* skipped: the theme has still changed */ });
+                t.finished.then(done, done);
             });
         })();
     </script>

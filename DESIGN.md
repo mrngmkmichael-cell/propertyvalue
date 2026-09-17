@@ -36,6 +36,25 @@ The mono is the site's signature — kickers, stat labels, section pills.
 Seven-step scale (`--text-xs` … `--text-3xl`), weights normal/medium/
 semi/bold. Self-hosted, no external font requests.
 
+**Dark mode: lamplight (17 Sep 2026).** The same document read by
+lamplight, chosen by the reader with the lamp in the header and
+remembered in their browser. Light stays the default. Tokens live in
+`body.theme-dark` in style.css.
+
+| Role | Value | Note |
+|---|---|---|
+| Ground | `--bg: #141210`, `--surface: #1e1b18`, `--surface-2: #27231f` | Warm near-black. Never pure black: the August dark theme was, and readers found it hard going. |
+| Ink | `--ink: #f2ece3`, `--ink-soft: #c5bbad`, `--ink-faint: #a39889` | Warm off-white, 15.9:1. Never pure white; the glare lives in the last few points of contrast. |
+| Border | `--border: #342e28` | Still one border colour. |
+| Accent | `--accent: #ddb46a`, `--accent-ink: #141210` | Gold replaces the navy, which vanishes on a dark ground. Still one accent. |
+| Status | `--good: #8dc7a5`, `--warn: #eba35f`, `--bad: #ee978c` | Lifted, same meanings. |
+
+Rules: the lamp changes the light, never the page. Same typefaces, sizes,
+spacing and case in both themes, so nothing moves when it is switched
+(`tests/test_dark_mode.py` fails any dark rule that sets a size, face or
+spacing). Anything that paints its colours once, like a canvas or a
+Google map, listens for the `uki:themechange` event.
+
 ---
 
 ## 2. Reference

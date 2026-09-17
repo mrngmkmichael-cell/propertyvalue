@@ -966,7 +966,6 @@
     if (!stage || !backCv || !frontCv) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const darkTheme = document.body.classList.contains('theme-dark');
     const cardEls = document.querySelectorAll('#lx-orbit-cards .lx-orbit-card');
     if (!cardEls.length) return;
 
@@ -975,9 +974,14 @@
        The icon SVGs use currentColor, so a clone gets its resolved
        colour written in before serialisation. */
     const TS = 384;
-    const INK = darkTheme
-        ? { bg: '#171717', border: '#2e2e2e', eyebrow: '#b3aea6', value: '#ffffff', source: '#8d8779', wash: 'rgba(5,5,5,0.55)' }
-        : { bg: '#ffffff', border: '#e5e1d8', eyebrow: '#57504a', value: '#1c1714', source: '#736a61', wash: 'rgba(250,249,246,0.55)' };
+    /* The tiles are pictures, so when the lamp is pulled they are
+       repainted in the other theme's inks rather than restyled. */
+    function inkFor() {
+        return document.body.classList.contains('theme-dark')
+            ? { bg: '#1e1b18', border: '#342e28', eyebrow: '#c5bbad', value: '#f2ece3', source: '#a39889', wash: 'rgba(20,18,16,0.55)' }
+            : { bg: '#ffffff', border: '#e5e1d8', eyebrow: '#57504a', value: '#1c1714', source: '#736a61', wash: 'rgba(250,249,246,0.55)' };
+    }
+    let INK = inkFor();
 
     function wrap(x, text, maxW) {
         const words = text.split(' ');
@@ -1031,15 +1035,22 @@
     const FRONT_TILES = [], BACK_TILES = [];
     function buildTiles() {
         cardEls.forEach(function (el, i) {
-            const f = document.createElement('canvas');
-            f.width = TS; f.height = TS;
+            if (!FRONT_TILES[i]) {
+                const fc = document.createElement('canvas');
+                fc.width = TS; fc.height = TS;
+                const bc = document.createElement('canvas');
+                bc.width = TS; bc.height = TS;
+                FRONT_TILES[i] = fc; BACK_TILES[i] = bc;
+            }
+            const f = FRONT_TILES[i];
             const fx2 = f.getContext('2d');
-            const b = document.createElement('canvas');
-            b.width = TS; b.height = TS;
-            const bx2 = b.getContext('2d');
-            FRONT_TILES.push(f); BACK_TILES.push(b);
+            const bx2 = BACK_TILES[i].getContext('2d');
+            const ink = INK;
 
             function finish(img) {
+                /* The lamp was pulled while this icon was loading: the
+                   newer repaint owns the tile. */
+                if (ink !== INK) return;
                 paintTile(fx2, el, img);
                 bx2.clearRect(0, 0, TS, TS);
                 bx2.drawImage(f, 0, 0);
@@ -1169,6 +1180,10 @@
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
         buildTiles();
         stage.classList.add('lx-orbit-on');
+    });
+    document.addEventListener('uki:themechange', function () {
+        INK = inkFor();
+        if (FRONT_TILES.length) buildTiles();
     });
     const vis = new IntersectionObserver(function (entries) {
         setRunning(entries[0].isIntersecting && !document.hidden);
@@ -1362,13 +1377,17 @@
         const canvas = document.getElementById('lx-build-orb');
         if (!canvas || !canvas.getContext) return;
         const ctx = canvas.getContext('2d');
-        /* Theme is decided before first paint and sticks for the
-           session, so reading it once here is safe. Gold points vanish
-           on the light ground; the light sphere runs in the accent
-           navy instead. */
-        const darkTheme = document.body.classList.contains('theme-dark');
-        const DOT = darkTheme ? '#d4a95f' : '#2b4c8c';
-        const DOT_BRIGHT = darkTheme ? '#e6c584' : '#5b7ab8';
+        /* Gold points vanish on the light ground, so the light sphere
+           runs in the accent navy instead. The draw loop reads these
+           every frame, so pulling the lamp only has to re-read them. */
+        let darkTheme, DOT, DOT_BRIGHT;
+        function orbColours() {
+            darkTheme = document.body.classList.contains('theme-dark');
+            DOT = darkTheme ? '#ddb46a' : '#2b4c8c';
+            DOT_BRIGHT = darkTheme ? '#ebc98e' : '#5b7ab8';
+        }
+        orbColours();
+        document.addEventListener('uki:themechange', orbColours);
         const N = 420, pts = [];
         const GOLDEN = Math.PI * (3 - Math.sqrt(5));
         for (let i = 0; i < N; i++) {

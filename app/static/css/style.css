@@ -76,22 +76,11 @@
    measureText against the local fallback, vertical metrics read out of
    the woff2 by scripts/font_metrics.py.
 
-   Bebas is the one that mattered. At 57% of Arial's width, a fallback
-   headline was drawn 75% wider than the real one, and the snap back
-   was 0.629 of the page's 0.885 layout shift.
-
    The ascent and descent overrides are divided by the size-adjust
    because size-adjust scales them too, and what we want to match is the
-   webfont's own proportion of the em. */
-@font-face {
-    font-family: 'Bebas Fallback';
-    src: local('Arial'), local('Helvetica Neue'), local('Liberation Sans'), local('Roboto');
-    size-adjust: 57.07%;
-    ascent-override: 157.70%;      /* 90% / 0.5707 */
-    descent-override: 52.57%;      /* 30% / 0.5707 */
-    line-gap-override: 0%;
-}
-
+   webfont's own proportion of the em. (Bebas Neue and its fallback went
+   on 17 Sep 2026: it only ever set the dark theme's headlines, and dark
+   mode now keeps the house faces.) */
 @font-face {
     font-family: 'Instrument Fallback';
     src: local('Arial'), local('Helvetica Neue'), local('Liberation Sans'), local('Roboto');
@@ -457,6 +446,122 @@ a {
         text-align: left;
         padding: 0.6rem 0.75rem;
     }
+}
+
+/* ---- The lamp: light and dark mode (17 Sep 2026) -----------------------
+   A pendant lamp with a pull cord. Lit, the page is light; pull the cord
+   and the light draws back into the lamp and the page goes dark. Pull it
+   again and the light spreads back out. Asked for as "a light on/off" in
+   the top bar. The glow is the one colour both themes share, because it
+   is the light itself; the state is also in the button's name and its
+   aria-pressed, never in colour alone. The page transition is the
+   view-transition block below.
+
+   Placement: after the menu on wide screens (order 1 puts it past the
+   links in every wrapping of the header), and top right beside the menu
+   button on phones. */
+:root { --lamp-light: #e9b458; }
+
+.lamp-switch {
+    order: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease;
+}
+.lamp-switch:hover { color: var(--ink); border-color: var(--border-strong); }
+.lamp-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lamp-switch svg { width: 28px; height: 28px; overflow: visible; }
+.lamp-line { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.lamp-switch stop { stop-color: var(--lamp-light); }
+.lamp-glow {
+    transform-box: fill-box;
+    transform-origin: 50% 20%;
+    transition: opacity 300ms cubic-bezier(0.16, 1, 0.3, 1) 40ms, transform 360ms cubic-bezier(0.16, 1, 0.3, 1) 40ms;
+}
+.lamp-bulb { fill: var(--lamp-light); transition: fill 90ms ease-out; }
+.lamp-bead { fill: currentColor; }
+.lamp-cord { transition: transform 160ms ease; }
+.lamp-switch:hover .lamp-cord { transform: translateY(1px); }
+.lamp-switch.is-pulled .lamp-cord { animation: lamp-pull 440ms cubic-bezier(0.3, 0, 0.2, 1); }
+@keyframes lamp-pull {
+    0% { transform: translateY(0); }
+    30% { transform: translateY(3.5px); }
+    64% { transform: translateY(-1px); }
+    100% { transform: translateY(0); }
+}
+body.theme-dark .lamp-glow { opacity: 0; transform: scale(0.55); transition: opacity 200ms ease-in, transform 240ms ease-in; }
+body.theme-dark .lamp-bulb { fill: transparent; transition: fill 160ms ease; }
+/* Switching off, the light draws back into the lamp first and only then
+   does the bulb go out, with a short afterglow. These delays match the
+   page transition's timing in base.html. */
+:root.lamp-going-dark .lamp-switch { transition: color 200ms ease 470ms, border-color 200ms ease 470ms; }
+:root.lamp-going-dark body.theme-dark .lamp-glow { transition: opacity 220ms ease-in 430ms, transform 260ms ease-in 430ms; }
+:root.lamp-going-dark body.theme-dark .lamp-bulb { transition: fill 420ms cubic-bezier(0.2, 0, 0, 1) 470ms; }
+
+/* ---- The light pool --------------------------------------------------
+   The page transition when the cord is pulled. The new picture of the
+   page (light) spreads out of the lamp through a soft radial mask, or
+   the old one (light) draws back into it. The lamp itself rides above
+   both pictures, live, so its pull and its glow are seen either way.
+   Only where the browser has view transitions and the reader has not
+   asked for less motion; everyone else gets the change at once. */
+:root.lamp-transition::view-transition-old(root),
+:root.lamp-transition::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+:root.lamp-going-light::view-transition-new(root),
+:root.lamp-going-dark::view-transition-old(root) {
+    -webkit-mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
+    mask-image: radial-gradient(closest-side, #000 58%, transparent 100%);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+:root.lamp-going-dark::view-transition-old(root) { z-index: 1; }
+:root.lamp-transition::view-transition-group(lamp-switch) { z-index: 2; animation: none; }
+:root.lamp-transition::view-transition-old(lamp-switch) { animation: none; opacity: 0; }
+:root.lamp-transition::view-transition-new(lamp-switch) { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+    .lamp-cord,
+    .lamp-switch:hover .lamp-cord,
+    .lamp-switch.is-pulled .lamp-cord { animation: none; transition: none; transform: none; }
+    .lamp-glow { transition-duration: 1ms; }
+}
+
+/* Phones: logo on the left, the lamp and the menu button on the right
+   of the same row, instead of the menu button on a row of its own. The
+   narrower gap is what lets all three fit a 375px screen. */
+@media (max-width: 640px) {
+    .site-header-inner { column-gap: 0.5rem; }
+    .lamp-switch { margin-left: auto; }
+    .nav-toggle { order: 1; }
+}
+
+/* The menu sits against the lamp rather than floating mid-row. */
+@media (min-width: 641px) {
+    .site-nav { margin-left: auto; }
+}
+
+/* Too narrow for the menu to share the logo's row: the lamp takes that
+   row's right-hand end instead of a row of its own. */
+@media (min-width: 641px) and (max-width: 900px) {
+    .lamp-switch { order: 0; margin-left: auto; }
+}
+
+/* Between phone and desktop the menu shares its row with the lamp and
+   wraps; whole links wrap, never the words inside one ("Why / trust /
+   this" on three lines at 700px). */
+@media (min-width: 641px) and (max-width: 1320px) {
+    .site-nav { flex-wrap: wrap; }
+    .site-nav a, .site-nav .nav-form button { white-space: nowrap; }
 }
 
 /* Main */
@@ -3031,7 +3136,7 @@ button:not([class]):hover { background: var(--accent-hover); }
 .ofsted-card-grade { font-weight: var(--weight-medium); white-space: nowrap; }
 .ofsted-card-exceptional, .ofsted-card-strong-standard, .ofsted-card-met { color: #2f6b4f; }
 .ofsted-card-needs-attention { color: #8a5a12; }
-.ofsted-card-urgent-improvement, .ofsted-card-not-met { color: #a83a32; }
+.ofsted-card-urgent-improvement, .ofsted-card-not-met { color: var(--bad); }
 
 .shortlist-btn {
     display: inline-block;
@@ -4213,8 +4318,11 @@ dialog.report-modal .report-section {
 
 @media (max-width: 640px) {
     .site-header-inner {
-        flex-direction: column;
-        align-items: flex-start;
+        /* A wrapping row rather than a column (17 Sep 2026), so the lamp
+           and the menu button sit beside the logo. The search and the
+           opened menu still take full rows of their own. */
+        flex-direction: row;
+        align-items: center;
     }
 
     .report-head,
@@ -5996,83 +6104,73 @@ main:focus { outline: none; }
 .area-chip-all:hover { background: var(--accent-hover); color: var(--accent-ink); }
 
 /* ========================================================================
-   DARK REPORT THEME
+   DARK MODE: LAMPLIGHT
    ------------------------------------------------------------------------
+   A reader's own choice, made with the lamp in the header (17 Sep 2026).
+   Light stays the default for everyone who has not chosen, as decided on
+   26 Aug 2026.
+
+   The August dark theme was pure black, pure white and a condensed caps
+   headline face, and readers found it hard going. This is the same
+   document read by lamplight instead: a warm near-black ground, a warm
+   off-white ink at 15.9:1 rather than white's 20.4:1 (the glare is in
+   that difference), and the house typefaces, sizes and spacing exactly
+   as the light theme sets them. The switch changes the light, never the
+   page, so nothing moves when it is thrown. Gold stands in for the
+   navy, which disappears on a dark ground.
+
    Almost every rule in this file reads its colour from a token, so the
    theme is mostly a token swap rather than a second stylesheet. What
    follows the token block is the exception list: rules that hardcoded a
-   light hex back when there was only one theme.
-
-   Applied by the route as body.theme-dark. Currently opt-in on a
-   property report via ?theme=dark.
+   light colour back when there was only one theme. Warm, never neutral
+   grey, for the same reason DESIGN.md gives for the light palette.
    ==================================================================== */
-
-/* Bebas Neue, self-hosted like every other face here: no third-party
-   origin. One weight, because it only has one - a condensed caps face
-   that sets large without needing bold. */
-@font-face {
-    font-family: 'Bebas Neue';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/static/fonts/bebas-neue-latin-normal.woff2') format('woff2');
-    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-@font-face {
-    font-family: 'Bebas Neue';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/static/fonts/bebas-neue-latin-ext-normal.woff2') format('woff2');
-    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
-}
 
 /* --- Tokens ------------------------------------------------------------
    Every text colour below was measured against all three surfaces and
-   clears 4.5:1; the worst case is --ink-faint on --surface-2 at 4.56:1.
-   The semantic three keep their meaning but are lifted, because the
-   light theme's green and red go muddy against near-black. */
+   clears 4.5:1. Worst cases, on --surface-2: --ink 13.45, --ink-soft
+   8.34, --ink-faint 5.57, --accent 8.13, --good 8.15, --warn 7.47,
+   --bad 7.10. The semantic three keep their meaning but are lifted,
+   because the light theme's green and red go muddy on a dark ground. */
 body.theme-dark {
-    --bg: #050505;
-    /* The first pass had cards at #0e0e0e on a #050505 page, which is
-       nine points of luminance: on a phone in daylight the cards did not
-       separate from the page at all. A card is now four times the
-       luminance of the ground it sits on, which is what makes the grid
-       read as cards rather than as text on black. */
-    --surface: #121212;
-    --surface-2: #1b1b1b;
+    --bg: #141210;
+    /* The first dark pass had cards nine points of luminance above the
+       page, and on a phone in daylight they did not separate at all.
+       Card on ground here is 1.08:1 with a hairline border, the
+       separation that fixed it then. */
+    --surface: #1e1b18;
+    --surface-2: #27231f;
 
-    --ink: #ffffff;
-    --ink-soft: #b3aea6;
-    --ink-faint: #8d8779;
+    --ink: #f2ece3;
+    --ink-soft: #c5bbad;
+    --ink-faint: #a39889;
 
-    --border: #2e2e2e;
-    --border-strong: #454545;
+    --border: #342e28;
+    --border-strong: #4b433b;
 
-    /* Gold replaces the navy. --accent-ink is near-black on purpose:
-       white on gold measures 2.2:1 and is unreadable. Black on gold is
-       9.36:1. */
-    --accent: #d4a95f;
-    --accent-hover: #e7c98b;
-    --accent-soft: rgba(212, 169, 95, 0.10);
-    --accent-ink: #050505;
+    /* Gold replaces the navy. --accent-ink is the ground on purpose:
+       white on gold measures 2.2:1 and is unreadable, the ground on
+       gold is 9.62:1. */
+    --accent: #ddb46a;
+    --accent-hover: #ebc98e;
+    --accent-soft: rgba(221, 180, 106, 0.12);
+    --accent-ink: #141210;
 
-    --cta-orange: #d4a95f;
+    --cta-orange: #ddb46a;
+    --cta-orange-hover: #ebc98e;
 
-    --good: #7fbf9a;
-    --warn: #d4a95f;
-    --bad: #e08b7f;
-    --good-bg: rgba(127, 191, 154, 0.10);
-    --warn-bg: rgba(212, 169, 95, 0.10);
-    --bad-bg: rgba(224, 139, 127, 0.10);
+    --good: #8dc7a5;
+    --warn: #eba35f;
+    --bad: #ee978c;
+    --good-bg: rgba(141, 199, 165, 0.10);
+    --warn-bg: rgba(235, 163, 95, 0.10);
+    --bad-bg: rgba(238, 151, 140, 0.10);
 
-    /* A drop shadow is invisible on near-black, so separation comes from
-       the hairline borders instead. */
+    /* A drop shadow is invisible on a dark ground, so separation comes
+       from the hairline borders instead. */
     --shadow-sm: none;
     --shadow-md: none;
-    --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.7);
-
-    --font-display: 'Bebas Neue', 'Bebas Fallback', sans-serif;
+    --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.6);
 
     /* Tells the browser to draw its own furniture dark: scrollbars, the
        modal's scroll track, select menus, date pickers. Without it a
@@ -6083,32 +6181,16 @@ body.theme-dark {
     color: var(--ink);
 }
 
-/* --- Display type ---------------------------------------------------- */
-body.theme-dark h1,
-body.theme-dark .overview-score-value {
-    font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: 0.015em;
-}
-
-body.theme-dark .report-head h1 {
-    font-size: clamp(2.6rem, 7vw, 4.2rem);
-    line-height: 0.92;
-    margin: 0.1rem 0 0;
-}
-
-body.theme-dark .kicker,
-body.theme-dark .dashboard-category-heading,
-body.theme-dark .subsection-heading {
-    color: var(--accent);
-    letter-spacing: 0.22em;
-}
+/* The page's own scrollbar belongs to <html>, which a class on <body>
+   cannot reach any other way. */
+:root:has(> body.theme-dark) { color-scheme: dark; }
 
 /* --- The head and the score ------------------------------------------
-   The score is the one hero mark on the page, so it gets the gold and
-   the display face. Grade stays legible on its own: the pill carries
-   the semantic colour and it also spells the word, so meaning never
-   rests on colour alone. */
+   The score is the one hero mark on the page, so it takes the gold.
+   Grade stays legible on its own: the pill carries the semantic colour
+   and it also spells the word, so meaning never rests on colour alone.
+   Colour only in this block: sizes and spacing stay the light theme's,
+   so the report does not reflow when the lamp is switched. */
 body.theme-dark .report-head {
     background: var(--surface);
     border-color: var(--border);
@@ -6121,11 +6203,9 @@ body.theme-dark .overview-grade-fair,
 body.theme-dark .overview-grade-below-average,
 body.theme-dark .overview-grade-poor {
     background:
-        linear-gradient(135deg, rgba(212, 169, 95, 0.08), rgba(212, 169, 95, 0) 55%),
+        linear-gradient(135deg, rgba(221, 180, 106, 0.08), rgba(221, 180, 106, 0) 55%),
         var(--surface-2);
-    border-color: rgba(212, 169, 95, 0.3);
-    gap: 1.4rem;
-    padding: 1.35rem 1.5rem;
+    border-color: rgba(221, 180, 106, 0.3);
 }
 
 body.theme-dark .overview-score-value,
@@ -6135,7 +6215,6 @@ body.theme-dark .overview-grade-fair .overview-score-value,
 body.theme-dark .overview-grade-below-average .overview-score-value,
 body.theme-dark .overview-grade-poor .overview-score-value {
     color: var(--accent);
-    font-size: clamp(3.4rem, 8vw, 5rem);
 }
 
 body.theme-dark .overview-score-max { color: var(--ink-faint); }
@@ -6143,7 +6222,6 @@ body.theme-dark .overview-score-max { color: var(--ink-faint); }
 body.theme-dark .overview-score-grade {
     background: rgba(255, 255, 255, 0.07);
     color: var(--ink-soft);
-    letter-spacing: 0.16em;
 }
 body.theme-dark .overview-grade-excellent .overview-score-grade { background: var(--good-bg); color: var(--good); }
 body.theme-dark .overview-grade-good .overview-score-grade { background: var(--good-bg); color: var(--good); }
@@ -6169,8 +6247,8 @@ body.theme-dark .report-head {
 }
 
 body.theme-dark .dashboard-card:hover {
-    border-color: rgba(212, 169, 95, 0.55);
-    box-shadow: inset 0 1px 0 rgba(212, 169, 95, 0.25);
+    border-color: rgba(221, 180, 106, 0.55);
+    box-shadow: inset 0 1px 0 rgba(221, 180, 106, 0.25);
 }
 
 /* A locked card has to read as quieter than an open one. On paper a
@@ -6179,16 +6257,16 @@ body.theme-dark .dashboard-card:hover {
    to the page background is what reads as "not yet". */
 body.theme-dark .dashboard-card-locked {
     background: var(--bg);
-    border-color: #2b2b2b;
+    border-color: var(--border);
 }
 
 body.theme-dark .dashboard-card-lock-overlay {
-    background: rgba(212, 169, 95, 0.12);
+    background: rgba(221, 180, 106, 0.12);
 }
 
 body.theme-dark .report-tabs { background: rgba(255, 255, 255, 0.04); }
 body.theme-dark .report-tab.active {
-    background: rgba(212, 169, 95, 0.14);
+    background: rgba(221, 180, 106, 0.14);
     color: var(--accent);
 }
 
@@ -6249,48 +6327,48 @@ body.theme-dark .icon-sewage        { background: rgba(129, 124, 116, 0.13); col
    than as a second colour system. */
 /* A card that needs attention reads red, not gold. Gold is the brand
    accent and is all over the page - a warning painted in it says
-   "emphasis", not "look at this one". --bad is #e08b7f here, which is
+   "emphasis", not "look at this one". --bad is #ee978c here, which is
    the lifted red the dark theme already uses for a bad flood zone, so
    the report keeps one language for risk. */
 body.theme-dark .dashboard-card.status-attn {
     border-color: var(--bad);
     box-shadow: 0 0 0 1px var(--bad);
-    background: linear-gradient(180deg, rgba(224, 139, 127, 0.07), transparent), var(--surface);
+    background: linear-gradient(180deg, rgba(238, 151, 140, 0.07), transparent), var(--surface);
 }
 body.theme-dark .dashboard-card.status-attn:hover { border-color: var(--bad); }
 body.theme-dark .dashboard-card.status-attn .dashboard-card-icon {
-    background: rgba(224, 139, 127, 0.14);
+    background: rgba(238, 151, 140, 0.14);
     color: var(--bad);
-    border-color: rgba(224, 139, 127, 0.3);
+    border-color: rgba(238, 151, 140, 0.3);
 }
 
 body.theme-dark .check-this-tag {
-    background: rgba(224, 139, 127, 0.14);
-    border: 1px solid rgba(224, 139, 127, 0.4);
+    background: rgba(238, 151, 140, 0.14);
+    border: 1px solid rgba(238, 151, 140, 0.4);
     color: var(--bad);
 }
 
 body.theme-dark .watchlist-change-chip,
 body.theme-dark .attention-banner-chip {
-    background: rgba(212, 169, 95, 0.12);
-    border-color: rgba(212, 169, 95, 0.35);
+    background: rgba(221, 180, 106, 0.12);
+    border-color: rgba(221, 180, 106, 0.35);
     color: var(--accent);
 }
 
 body.theme-dark .attention-banner,
 body.theme-dark .watchlist-alert-banner {
     background: var(--warn-bg);
-    border-color: rgba(212, 169, 95, 0.3);
+    border-color: rgba(221, 180, 106, 0.3);
     color: var(--ink);
 }
 body.theme-dark .attention-banner-clear {
     background: var(--good-bg);
-    border-color: rgba(127, 191, 154, 0.3);
+    border-color: rgba(141, 199, 165, 0.3);
 }
 body.theme-dark .attention-banner-count,
-body.theme-dark .watchlist-alert-count { color: #050505; }
+body.theme-dark .watchlist-alert-count { color: var(--accent-ink); }
 
-body.theme-dark .notice-error { border-color: rgba(224, 139, 127, 0.35); }
+body.theme-dark .notice-error { border-color: rgba(238, 151, 140, 0.35); }
 
 /* --- Tables, charts, maps --------------------------------------------- */
 body.theme-dark .tx-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
@@ -6298,8 +6376,8 @@ body.theme-dark .tx-table tbody tr:hover { background: rgba(255, 255, 255, 0.03)
 /* Light theme paints the tooltip ink-on-white; on dark, --ink is white,
    so this would be white on white. */
 body.theme-dark .price-chart-tooltip {
-    background: #f5f2ec;
-    color: #0e0e0e;
+    background: var(--ink);
+    color: var(--bg);
 }
 
 /* OpenStreetMap ships one light tile set and no dark one, so the tiles
@@ -6328,7 +6406,7 @@ body.theme-dark .map-container {
 body.theme-dark .leaflet-control-layers,
 body.theme-dark .leaflet-bar a,
 body.theme-dark .leaflet-control-attribution {
-    background: rgba(14, 14, 14, 0.92);
+    background: rgba(30, 27, 24, 0.92);
     color: var(--ink-soft);
     border-color: var(--border-strong);
 }
@@ -6338,6 +6416,21 @@ body.theme-dark .leaflet-popup-content-wrapper,
 body.theme-dark .leaflet-popup-tip {
     background: var(--surface-2);
     color: var(--ink);
+}
+
+/* Leaflet's own #ddd shows behind the tiles while they load on every
+   map, not only the ones wrapped in .map-container (the school page's
+   map found it, 17 Sep 2026). */
+body.theme-dark .leaflet-container { background: var(--surface-2); }
+
+/* District names on the admissions maps are dark type in a white halo,
+   drawn for a pale basemap. On the dark basemap the halo becomes the
+   ground and the type the light. The Google branch sets its label
+   colour inline, hence the !important. */
+body.theme-dark .map-district-label,
+body.theme-dark .map-district-label-g {
+    color: var(--ink) !important;
+    text-shadow: 0 0 3px var(--bg), 0 0 3px var(--bg), 0 0 3px var(--bg);
 }
 
 /* ---- Report categories: groups that open ------------------------------
@@ -7111,7 +7204,7 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 /* Typeahead under the admissions search box. */
 .typeahead { list-style: none; margin: 0; padding: 0.25rem 0; position: absolute; left: 0; right: 0; top: 100%; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08); max-height: 22rem; overflow: auto; }
 .typeahead li a { display: block; padding: 0.55rem 0.9rem; color: var(--ink); text-decoration: none; font-size: var(--text-sm); }
-.typeahead li a:hover, .typeahead li a:focus { background: var(--surface-alt, #f3f1ec); outline: none; }
+.typeahead li a:hover, .typeahead li a:focus { background: var(--surface-2); outline: none; }
 .typeahead-sub { display: block; font-size: var(--text-xs); color: var(--ink-soft); }
 /* Three doors under the search: what the site does, with live counts. */
 .lx-pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 1.25rem 0 0; }
@@ -7125,6 +7218,10 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 .lx-pillar-v { font-weight: var(--weight-semibold, 600); font-size: var(--text-sm); }
 .lx-pillar-s { font-size: var(--text-xs); color: var(--ink-soft); line-height: 1.45; }
 @media (max-width: 860px) { .lx-pillars { grid-template-columns: 1fr; } }
+/* Dark mode: the frosted glass is the card surface, not white (its own
+   label measured 1.1:1 on it, 17 Sep 2026). */
+body.theme-dark .lx-pillar { background: rgba(30, 27, 24, 0.78); border-color: var(--border-strong); }
+body.theme-dark .lx-pillar:hover { border-color: var(--accent); }
 .lx-hero-sample {
     margin: 1rem 0 0;
     font-size: var(--text-sm);
@@ -7425,14 +7522,16 @@ body:not(.theme-dark) .lx-hero-poster { filter: brightness(1.06) saturate(0.95);
 
 /* ---- The offer band -------------------------------------------------
    Sits between the hero and the areas. Its base rule paints it solid
-   --good, which on black is the loudest thing on the page and fights
+   --good, which on a dark ground is the loudest thing on the page and fights
    the gold, so the dark theme makes it a quiet band and lets the button
    do the selling. (This was lost once already, when the old landing
    block was replaced wholesale and took the override with it.) */
 body.theme-dark .promo-banner {
-    background: linear-gradient(180deg, rgba(212, 169, 95, 0.13), rgba(212, 169, 95, 0.05));
-    border-top: 1px solid rgba(212, 169, 95, 0.25);
-    border-bottom: 1px solid rgba(212, 169, 95, 0.25);
+    background: linear-gradient(180deg, rgba(221, 180, 106, 0.13), rgba(221, 180, 106, 0.05));
+    /* Hairlines drawn as inset shadows, not borders: the light band has
+       no border, and a real one would move the page 2px when the lamp
+       is pulled. */
+    box-shadow: inset 0 1px 0 rgba(221, 180, 106, 0.25), inset 0 -1px 0 rgba(221, 180, 106, 0.25);
 }
 /* Colour only. The 220% background-size that used to live here was for
    the old background-position sweep; the layer itself is now 220% wide
@@ -7441,7 +7540,7 @@ body.theme-dark .promo-banner {
    wide to ever clear the left edge, which is exactly how it looked. */
 body.theme-dark .promo-banner::before {
     background: linear-gradient(100deg, transparent 30%,
-        rgba(212, 169, 95, 0.14) 45%, rgba(212, 169, 95, 0.14) 50%, transparent 65%);
+        rgba(221, 180, 106, 0.14) 45%, rgba(221, 180, 106, 0.14) 50%, transparent 65%);
 }
 body.theme-dark .promo-banner-text { color: var(--ink); }
 body.theme-dark .promo-banner-btn { background: var(--accent); color: var(--accent-ink); }
@@ -7455,8 +7554,8 @@ body.theme-dark .promo-banner-btn:hover { background: var(--accent-hover); }
    section itself; it was lost when the old landing block was replaced
    wholesale.) */
 body.theme-dark .accuracy-strip {
-    background: linear-gradient(135deg, rgba(212, 169, 95, 0.11), rgba(212, 169, 95, 0.03)), var(--surface);
-    border: 1px solid rgba(212, 169, 95, 0.28);
+    background: linear-gradient(135deg, rgba(221, 180, 106, 0.11), rgba(221, 180, 106, 0.03)), var(--surface);
+    box-shadow: inset 0 0 0 1px rgba(221, 180, 106, 0.28);
 }
 body.theme-dark .accuracy-strip-heading { color: var(--accent); }
 body.theme-dark .accuracy-strip-copy p,
@@ -7907,9 +8006,11 @@ body:not(.theme-dark) .lx-strip-score { border-color: var(--border); }
 body:not(.theme-dark) .lx-strip-chrome { background: var(--surface-2); }
 body:not(.theme-dark) .lx-dial-in { background: var(--surface); }
 body:not(.theme-dark) .lx-dial { background: conic-gradient(var(--accent) var(--arc), var(--surface-2) 0); }
-body:not(.theme-dark) .lx-hero-h1,
-body:not(.theme-dark) .lx-h2,
-body:not(.theme-dark) .lx-about-caption-figure { text-transform: none; letter-spacing: -0.01em; }
+/* Sentence case in both themes since 17 Sep 2026: the caps were Bebas's,
+   and the lamp changes the light, not the type. */
+.lx-hero-h1,
+.lx-h2,
+.lx-about-caption-figure { text-transform: none; letter-spacing: -0.01em; }
 
 /* --- Forms ------------------------------------------------------------- */
 body.theme-dark input[type="text"],
@@ -8179,26 +8280,6 @@ body.theme-dark textarea::placeholder { color: var(--ink-faint); }
     .lx-build-done { margin-top: 1rem; }
 }
 
-/* ---- ?theme=contrast: readability preview of the dark theme ----
-   The dark palette with the two dimmer inks lifted and the smallest
-   type set larger. #cdc9c2 measures ~10.9:1 on the card surface and
-   #b5ad9f ~7.2:1, against ~7.4:1 and ~4.6:1 before. Small uppercase
-   mono labels also lose some tracking: at 10px, wide letter-spacing
-   costs more legibility than any colour does. */
-body.theme-contrast {
-    --ink-soft: #cdc9c2;
-    --ink-faint: #b5ad9f;
-}
-body.theme-contrast .lx-eyebrow { font-size: 0.78rem; letter-spacing: 0.16em; }
-body.theme-contrast .lx-lede { font-size: 1.09em; }
-body.theme-contrast .lx-check-source,
-body.theme-contrast .lx-tier-note { font-size: 0.86em; }
-body.theme-contrast .lx-build-mote { font-size: 0.66rem; letter-spacing: 0.07em; }
-body.theme-contrast .lx-build-done-pill { font-size: 0.66rem; letter-spacing: 0.05em; }
-body.theme-contrast .lx-build-tally,
-body.theme-contrast .lx-build-hint,
-body.theme-contrast .lx-build-done-head { font-size: 0.74rem; letter-spacing: 0.1em; }
-body.theme-contrast .lx-strip-k { font-size: 0.72rem; }
 
 /* ---- Light theme: polish pass (27 Aug 2026) --------------------------
    Light became the default and these are its corrections for the pieces
@@ -8426,6 +8507,21 @@ body:not(.theme-dark) .lx-hero-scrim {
 @media (prefers-reduced-motion: reduce) {
     .lx-hero-form button[type="submit"] { transition: none; }
     .lx-hero-form button[type="submit"]::after { animation: none; }
+}
+/* Dark mode: the same glass button lit in the lamp's gold. Navy sinks
+   into the night photograph and would be a second accent there. The
+   ground-coloured label on this gold measures 7.3:1 at its darkest. */
+body.theme-dark .lx-hero-form button[type="submit"] {
+    background: linear-gradient(180deg, #ecc98a 0%, #ddb46a 55%, #c99a4c 100%);
+    color: var(--accent-ink);
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.45),
+        0 10px 26px -10px rgba(221, 180, 106, 0.45);
+}
+body.theme-dark .lx-hero-form button[type="submit"]:hover {
+    box-shadow:
+        inset 0 1px rgba(255, 255, 255, 0.55),
+        0 14px 30px -10px rgba(221, 180, 106, 0.55);
 }
 
 
@@ -8691,7 +8787,7 @@ body:not(.theme-dark) .lx-hero-scrim {
 }
 
 /* The health tables: a practice well above the national list per GP carries the warm tint. */
-.health-table .health-high td { background: var(--warn-soft, #fbf3e6); }
+.health-table .health-high td { background: var(--warn-bg); }
 @media (max-width: 480px) {
     .health-table th:nth-child(5), .health-table td:nth-child(5) { display: none; }
     .health-table td:first-child { min-width: 9rem; }
