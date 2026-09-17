@@ -6422,6 +6422,11 @@ body.theme-dark .leaflet-popup-tip {
    map, not only the ones wrapped in .map-container (the school page's
    map found it, 17 Sep 2026). */
 body.theme-dark .leaflet-container { background: var(--surface-2); }
+/* Google's equivalent is an inline #e5e3df on the div that holds
+   .gm-style, so it needs !important. Production only: dev has no Maps
+   key and draws Leaflet, which is how the live sweep, not the dev one,
+   found it. */
+body.theme-dark div:has(> .gm-style) { background-color: var(--surface-2) !important; }
 
 /* District names on the admissions maps are dark type in a white halo,
    drawn for a pale basemap. On the dark basemap the halo becomes the
