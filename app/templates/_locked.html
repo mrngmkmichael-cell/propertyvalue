@@ -1,0 +1,35 @@
+{# The one line a locked check shows in place of its status: what the
+   check answers and who publishes it, never what it found (owner's
+   decision 8 of the first-visitor audit, 17 Sep 2026). Before this a
+   locked card rendered the finding itself and the stylesheet hid the
+   whole status line, so the signed-out half of the grid was a title and
+   an icon with nothing under it.
+
+   The wording lives in app/main.py (LOCKED_CARD_LINES and its two
+   companions, passed in as template globals) and is keyed by the card's
+   title, so this file holds no copy of it and the report, the tests and
+   any other page read one source.
+
+   failed:  that check's own service did not answer, so the card says it
+            could not be checked rather than offering a finding it never
+            got.
+   instead: a line for a check this report cannot run at all, whoever is
+            reading it, e.g. Extended or Modified with no house number. #}
+{% macro locked_status(title, failed=false, instead=none) -%}
+<span class="dashboard-card-status dashboard-card-locked-line">{% if instead %}{{ instead }}{% elif failed %}{{ locked_card_unavailable[title] }}{% else %}{{ locked_card_lines[title] }}{% endif %}</span>
+{%- endmacro %}
+
+{# What a locked check's pop-up holds, in place of its answer (17 Sep
+   2026, the same audit). Until then a signed-out report's HTML carried
+   every locked finding in full and the stylesheet hid only the cards'
+   lines: "1.7x WHO guideline at worst", "Improbable by 2030", the
+   valuation's own table under "Estimate (median)". Anyone who opened
+   the page source, and every crawler and scraper, read the lot. Now a
+   locked pop-up renders its heading, how the check is done and who
+   publishes it, and this, the way in. The link and its words are the
+   card's own (lock_redirect and lock_label), so the wall says the same
+   thing wherever it is met, and the count is a length from
+   PREMIUM_CHECKS rather than a number typed into copy. #}
+{% macro locked_body(label, redirect) -%}
+<p class="notice">One of the {{ locked_check_count }} checks that open with a full report. <a href="{{ redirect }}">{{ label }}</a></p>
+{%- endmacro %}

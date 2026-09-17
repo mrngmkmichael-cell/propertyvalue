@@ -3,6 +3,7 @@
 {% import "_amenities.html" as amen %}
 {% import "_valuation.html" as val %}
 {% import "_tabs.html" as tabnav %}
+{% import "_locked.html" as locked %}
 {% import "_map_style.html" as mapstyle %}
 
 {% block title %}{{ query }} | UKPropertyInsight{% endblock %}
@@ -693,8 +694,11 @@
             Sign up and your first property gets every check in full, this one included. No card needed.
             {# Counted, not claimed (16 Sep 2026): every check done by hand for
                one address on the official sites, timed; the record is on the
-               methodology page. Every figure here is from that run. #}
-            <span class="paywall-banner-by-hand">By hand, these 44 checks are 28 websites for one house, and nothing to compare at the end. <a href="/methodology#by-hand">We timed it on 16 September 2026</a>.</span>
+               methodology page. Every figure here is from that run. The
+               number of checks was typed here until 17 Sep 2026 and is now
+               CHECK_COUNT from the route; the 28 websites and the date are
+               that run's own figures and stay written out. #}
+            <span class="paywall-banner-by-hand">By hand, these {{ check_count }} checks are 28 websites for one house, and nothing to compare at the end. <a href="/methodology#by-hand">We timed it on 16 September 2026</a>.</span>
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
         {# 17 Sep 2026: a new account was told "You've used your free
@@ -807,15 +811,19 @@
 
         {{ val.valuation_card(valuation, price_per_sqm, valuation_error, valuation_pending, premium_unlocked, lock_label, lock_redirect) }}
 
-        <button type="button" class="dashboard-card status-ok{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-calculators" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+        {# Free on every report since 17 Sep 2026 (owner's decision, that
+           day's first-visitor audit), with Household Income below.
+           Neither the calculators nor ONS private rents cost anything to
+           read, and a visitor met both behind the wall before they had
+           seen a single figure. FREE_CHECKS in main.py moved with them,
+           so the counts on the landing and pricing pages follow. #}
+        <button type="button" class="dashboard-card status-ok" data-modal-target="modal-calculators" data-animate>
             <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
             <span class="dashboard-card-title">Costs &amp; Affordability</span>
             <span class="dashboard-card-status">Stamp duty, mortgage, yield</span>
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-rental" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+        <button type="button" class="dashboard-card status-{{ 'muted' if (rental_error or not rental) else 'ok' }}" data-modal-target="modal-rental" data-animate>
             <span class="dashboard-card-icon icon-rental">{{ icons.icon('rental') }}</span>
             <span class="dashboard-card-title">Rental Analysis</span>
             <span class="dashboard-card-status">
@@ -842,11 +850,15 @@
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-statistics">{{ icons.icon('statistics') }}</span>
             <span class="dashboard-card-title">Price Trend &amp; Forecast</span>
+            {# A locked card says what the check answers and who publishes
+               it, not what it found (17 Sep 2026); see _locked.html. #}
+            {% if not premium_unlocked %}{{ locked.locked_status('Price Trend & Forecast', price_trend_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if price_trend_error %}Data unavailable
                 {% elif price_trend %}{{ "%+.1f"|format(price_trend.pct_change) }}% over 5 years
                 {% else %}Not enough historical data{% endif %}
             </span>
+            {% endif %}
         </button>
     </div>
 
@@ -876,6 +888,11 @@
             {% if ext_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-extension">{{ icons.icon('extension') }}</span>
             <span class="dashboard-card-title">Extended or Modified</span>
+            {# Locked, this card says what the check answers, and on a
+               postcode-only report that it needs a house number: there
+               are no certificates to compare whoever is reading, so
+               selling it would be selling nothing (17 Sep 2026). #}
+            {% if not premium_unlocked %}{{ locked.locked_status('Extended or Modified', epc_error, none if house_number else locked_card_needs_house_number) }}{% else %}
             <span class="dashboard-card-status">
                 {% if extension_signal and extension_signal.likely_extended %}Likely extended
                 {% elif extension_signal and extension_signal.change_pct <= -15 %}Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%
@@ -883,17 +900,20 @@
                 {% elif house_number %}Not enough EPC history
                 {% else %}Search with a house number{% endif %}
             </span>
+            {% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ 'muted' if not orientation else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-orientation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-orientation">{{ icons.icon('orientation') }}</span>
             <span class="dashboard-card-title">Aspect</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Aspect', orientation_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if orientation %}Garden faces {{ orientation.rear_facing }}
                 {% elif orientation_error %}Data unavailable
                 {% else %}No estimate available{% endif %}
             </span>
+            {% endif %}
         </button>
     </div>
 
@@ -936,11 +956,13 @@
             {% if sewage_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-sewage">{{ icons.icon('flood') }}</span>
             <span class="dashboard-card-title">Sewage Discharge</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Sewage Discharge', sewage_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if sewage_error %}Data unavailable
                 {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spill{{ '' if sewage_outfalls[0].spill_count == 1 else 's' }} nearby in {{ sewage_outfalls[0].year }}
                 {% else %}No outfalls found nearby{% endif %}
             </span>
+            {% endif %}
         </button>
 
         {% set noise_max_label = ('Low' if noise_max < 55 else ('Moderate' if noise_max < 65 else ('High' if noise_max < 75 else 'Very high'))) if noise_max is not none else none %}
@@ -997,11 +1019,13 @@
             {% if clay_risk_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-geology">{{ icons.icon('geology') }}</span>
             <span class="dashboard-card-title">Subsidence Risk</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Subsidence Risk', clay_risk_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if clay_risk_error %}Data unavailable
                 {% elif clay_risk %}{{ clay_risk.label_2030 }} by 2030
                 {% else %}No data available{% endif %}
             </span>
+            {% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ aq_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-air-quality" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
@@ -1009,11 +1033,13 @@
             {% if aq_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-air-quality">{{ icons.icon('air_quality') }}</span>
             <span class="dashboard-card-title">Air Quality</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Air Quality', air_quality_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if air_quality_error %}Data unavailable
                 {% elif air_quality %}{{ aq_worst }}&times; WHO guideline at worst
                 {% else %}No data available{% endif %}
             </span>
+            {% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ landfill_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-historic-landfill" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
@@ -1021,6 +1047,7 @@
             {% if landfill_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-landfill">{{ icons.icon('landfill') }}</span>
             <span class="dashboard-card-title">Historic Contamination</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Historic Contamination', historic_landfill_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if historic_landfill_error %}Data unavailable
                 {% elif historic_landfill and historic_landfill.status == 'on_site' %}On a former landfill
@@ -1028,6 +1055,7 @@
                 {% elif historic_landfill %}None nearby
                 {% else %}No data available{% endif %}
             </span>
+            {% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ coal_mining_status }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-coal-mining" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
@@ -1035,12 +1063,17 @@
             {% if coal_mining_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-mining">{{ icons.icon('mining') }}</span>
             <span class="dashboard-card-title">Mining Risk</span>
+            {# The Coal Authority was down during the audit walk, so this
+               is the card that showed a locked reader a failure dressed
+               as a finding. Locked and failed now says so (17 Sep 2026). #}
+            {% if not premium_unlocked %}{{ locked.locked_status('Mining Risk', coal_mining_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if coal_mining_error %}Data unavailable
                 {% elif coal_mining and coal_mining.present %}In a Coal Mining Reporting Area
                 {% elif coal_mining %}Not in a reporting area
                 {% else %}No data available{% endif %}
             </span>
+            {% endif %}
         </button>
     </div>
 
@@ -1076,6 +1109,7 @@
             {% if brownfield_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
             <span class="dashboard-card-title">Development Nearby</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Development Nearby', brownfield_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if brownfield_error %}Data unavailable
                 {% elif brownfield is not defined or not brownfield %}No data available
@@ -1084,7 +1118,11 @@
                 {% elif brownfield.council and not brownfield.council.published %}Register not on the national platform
                 {% else %}None within half a mile{% endif %}
             </span>
-            {% if brownfield is defined and brownfield and brownfield.covered and brownfield.count and brownfield.dwellings %}<span class="dashboard-card-substat">Up to {{ "{:,}".format(brownfield.dwellings) }} homes where the register gives a figure</span>{% endif %}
+            {% endif %}
+            {# A substat is the finding in smaller type, so it goes when the
+               card is locked (17 Sep 2026); the stylesheet used to hide it
+               while the figure stayed in the HTML. #}
+            {% if premium_unlocked and brownfield is defined and brownfield and brownfield.covered and brownfield.count and brownfield.dwellings %}<span class="dashboard-card-substat">Up to {{ "{:,}".format(brownfield.dwellings) }} homes where the register gives a figure</span>{% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
@@ -1163,6 +1201,7 @@
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('map') }}</span>
             <span class="dashboard-card-title">School Catchment Areas</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('School Catchment Areas', catchment_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if catchment_error %}Data unavailable
                 {% elif catchment %}In {{ catchment | length }} catchment{{ "s" if catchment | length != 1 else "" }}
@@ -1170,6 +1209,7 @@
                 {% elif catchment_distance_count %}{{ catchment_distance_count }} school{{ "s" if catchment_distance_count != 1 else "" }}, {{ "real + estimated" if catchment_distance_any_real else "estimated" }}
                 {% else %}Not covered for this area{% endif %}
             </span>
+            {% endif %}
         </button>
 
         {{ amen.essentials_card(amenities, amenities_error, amenities_pending) }}
@@ -1183,6 +1223,7 @@
             {% if health_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
             <span class="dashboard-card-title">Health Services</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Health Services', health_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if health_error %}Data unavailable
                 {% elif health is not defined or not health %}No data available
@@ -1190,7 +1231,8 @@
                 {% elif health.nearest.patients_per_qualified_gp %}{{ "{:,}".format(health.nearest.patients_per_qualified_gp) }} patients per GP at the nearest practice
                 {% else %}{{ "{:,}".format(health.nearest.patients) }} patients at the nearest practice{% endif %}
             </span>
-            {% if health is defined and health and health.count %}<span class="dashboard-card-substat">{% if health.nearest.patients_per_qualified_gp and health.median_patients_per_qualified_gp %}England median {{ "{:,}".format(health.median_patients_per_qualified_gp) }}{% endif %}{% if health.trusts %}{% if health.nearest.patients_per_qualified_gp and health.median_patients_per_qualified_gp %}; {% endif %}A&amp;E {{ health.trusts[0].type1_within_4h_pct }}% within four hours{% endif %}</span>{% endif %}
+            {% endif %}
+            {% if premium_unlocked and health is defined and health and health.count %}<span class="dashboard-card-substat">{% if health.nearest.patients_per_qualified_gp and health.median_patients_per_qualified_gp %}England median {{ "{:,}".format(health.median_patients_per_qualified_gp) }}{% endif %}{% if health.trusts %}{% if health.nearest.patients_per_qualified_gp and health.median_patients_per_qualified_gp %}; {% endif %}A&amp;E {{ health.trusts[0].type1_within_4h_pct }}% within four hours{% endif %}</span>{% endif %}
         </button>
 
         {# Scheduled buses at the stops within 500 m, from the Bus Open Data
@@ -1200,13 +1242,15 @@
             {% if bus_status == 'attn' %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-broadband">{{ icons.icon('bus') }}</span>
             <span class="dashboard-card-title">Bus Service</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Bus Service', bus_service_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if bus_service_error %}Data unavailable
                 {% elif bus_service is not defined or not bus_service %}No timetable data
                 {% elif not bus_service.count %}No stop within 500 m
                 {% else %}{{ bus_service.best.weekday_day_per_hour }} an hour, weekday daytime{% endif %}
             </span>
-            {% if bus_service is defined and bus_service and bus_service.count %}<span class="dashboard-card-substat">{{ bus_service.best.name }}, {{ bus_service.best.distance_m | distance }}{% if bus_service.best.sunday_day_per_hour %}; {{ bus_service.best.sunday_day_per_hour }} an hour on Sunday{% endif %}</span>{% endif %}
+            {% endif %}
+            {% if premium_unlocked and bus_service is defined and bus_service and bus_service.count %}<span class="dashboard-card-substat">{{ bus_service.best.name }}, {{ bus_service.best.distance_m | distance }}{% if bus_service.best.sunday_day_per_hour %}; {{ bus_service.best.sunday_day_per_hour }} an hour on Sunday{% endif %}</span>{% endif %}
         </button>
 
         <button type="button" class="dashboard-card status-{{ broadband_status }}" data-modal-target="modal-broadband" data-animate>
@@ -1232,8 +1276,9 @@
 
     <h3 class="dashboard-category-heading">Area &amp; Community</h3>
     <div class="dashboard-grid">
-        <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-household-income" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+        {# Free on every report since 17 Sep 2026, with Costs &
+           Affordability and Rental Analysis above: see the note there. #}
+        <button type="button" class="dashboard-card status-{{ 'muted' if not household_income else 'ok' }}" data-modal-target="modal-household-income" data-animate>
             <span class="dashboard-card-icon icon-income">{{ icons.icon('income') }}</span>
             <span class="dashboard-card-title">Household Income</span>
             <span class="dashboard-card-status">
@@ -1331,10 +1376,12 @@
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-wellbeing">{{ icons.icon('wellbeing') }}</span>
             <span class="dashboard-card-title">Health, Relationships &amp; Social Grade</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Health, Relationships & Social Grade', wellbeing_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if wellbeing and wellbeing.good_health_pct is not none %}{{ wellbeing.good_health_pct }}% good or very good health
                 {% else %}No data available{% endif %}
             </span>
+            {% endif %}
         </button>
 
         {# Shown only once an area has a review (14 Sep 2026). The reviews
@@ -1872,9 +1919,13 @@
         <div class="bq-locked">
             {# One real question in full, then what the others came from.
                Until 16 Sep 2026 this listed only the triggers ("Built
-               before 1970"), which read as a heading, not a question. #}
+               before 1970"), which read as a heading, not a question.
+               17 Sep 2026: drawn from buyer_questions_teaser, which drops
+               the questions a locked check triggered, because their
+               triggers state that check's finding. The count above is
+               still every question. #}
             {% set bq = namespace(sample=none, others=[]) %}
-            {% for audience, qs in buyer_questions %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
+            {% for audience, qs in buyer_questions_teaser %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
                 {% if bq.sample is none %}{% set bq.sample = item %}{% else %}{% set _ = bq.others.append(item.trigger) %}{% endif %}
             {% endif %}{% endfor %}{% endfor %}
             <p><strong>{{ buyer_questions_count }} questions</strong> were generated for this property.{% if bq.sample %} One of them, in full:{% endif %}</p>
@@ -2148,7 +2199,7 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Valuation estimate</h2>
-        {{ val.valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, valuation_pending) }}
+        {{ val.valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, valuation_pending, premium_unlocked, lock_label, lock_redirect) }}
             </section>
         </div>
     </dialog>
@@ -2158,7 +2209,20 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Price trend &amp; forecast</h2>
-        {% if price_trend_error %}
+        {# Locked, a pop-up gives the method and the source and no figure
+           for this address (17 Sep 2026, item B3 of that day's audit).
+           The chart, its five years of monthly points and the projection
+           table were all in the HTML of a signed-out report. This
+           paragraph is the method paragraph below with the area's name
+           and its trend taken out. #}
+        {% if not premium_unlocked %}
+            <p class="section-sub">
+                A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
+                Price Index for the local authority this address sits in. Not a guarantee, just
+                where prices would land if the recent trend continued in a straight line.
+            </p>
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif price_trend_error %}
             <p class="notice notice-error">
                 The house price index data service didn't respond. Try again in a moment.
             </p>
@@ -2245,9 +2309,15 @@
         <h3 class="subsection-heading">Stamp duty / transaction tax</h3>
         <div class="calc-grid">
             <div class="search-form-field">
+                {# Costs & Affordability is free, the valuation estimate
+                   behind it is not: the box was filled with that estimate
+                   for everyone, so a locked figure was readable in the
+                   page's own HTML. Locked, it starts from the area's
+                   average sale price instead, which the report shows on
+                   its free cards (17 Sep 2026). #}
                 <label for="calc-price">Purchase price (£)</label>
                 <input type="number" id="calc-price" min="0" step="1000"
-                       value="{{ (valuation.estimate if valuation else (avg_price if avg_price else 300000)) | int }}">
+                       value="{{ ((valuation.estimate if (valuation and premium_unlocked) else none) or avg_price or 300000) | int }}">
             </div>
             <div class="search-form-field">
                 <label for="calc-buyer-type">Buyer type</label>
@@ -2524,7 +2594,11 @@
             not self-reported, but not certain: floor area can also drift a little between
             assessments just from measurement differences, with no work actually done.
         </p>
-        {% if not house_number %}
+        {# Locked: the method above stands for any address, the floor
+           areas and dates below are this one's (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif not house_number %}
             <p class="notice">
                 Search with a house or flat number to check this specific address, with just a
                 postcode we can't tell which property's EPC history to compare.
@@ -2570,7 +2644,11 @@
             a typical street-fronting layout and doesn't account for trees or neighbouring buildings
             that might shade the garden.
         </p>
-        {% if orientation %}
+        {# Locked: the method above, never which way this garden faces
+           (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif orientation %}
             <table class="tx-table">
                 <tbody>
                     <tr>
@@ -2725,12 +2803,12 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Sewage discharge</h2>
-        {% if sewage_error %}
-            <p class="notice notice-error">
-                The Environment Agency's storm overflow data service didn't respond. Try again in a
-                moment.
-            </p>
-        {% elif sewage_outfalls %}
+        {# The method paragraph is true of the check wherever it is read,
+           so a locked pop-up shows it and stops; the table of outfalls,
+           spills and hours is this address's answer (17 Sep 2026). Held
+           in one place rather than written twice, so the two cannot
+           drift apart. #}
+        {% set sewage_method %}
             <p class="section-sub">
                 Storm overflows (combined sewer outfalls) within 1.5 miles, from water companies'
                 Event Duration Monitoring returns to the Environment Agency: how often and for how long each discharged untreated sewage into its receiving watercourse in its most
@@ -2738,6 +2816,17 @@
                 of sustained pressure over river water quality, not something UKPropertyInsight models
                 or estimates.
             </p>
+        {% endset %}
+        {% if not premium_unlocked %}
+            {{ sewage_method }}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif sewage_error %}
+            <p class="notice notice-error">
+                The Environment Agency's storm overflow data service didn't respond. Try again in a
+                moment.
+            </p>
+        {% elif sewage_outfalls %}
+            {{ sewage_method }}
             <table class="tx-table">
                 <thead>
                     <tr>
@@ -3354,7 +3443,13 @@
             not a historical year-by-year archive, since none of these sources publish past years'
             shapes either.
         </p>
-        {% if catchment_error %}
+        {# Locked: the method above, never the schools, their distances or
+           whether this address is likely for any of them (17 Sep 2026).
+           The map's rings and shapes go with it: see the two map branches
+           at the foot of this file. #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif catchment_error %}
             <p class="notice notice-error">
                 The catchment data service didn't respond. Try again in a moment.
             </p>
@@ -3422,14 +3517,12 @@
             </table>
             {% endif %}
             {% endfor %}
-        {% elif catchment_distance_count %}
-            <p class="notice">
-                No real boundary <strong>shape</strong> published for this council, but
-                {{ catchment_distance_count }} nearby school{{ "s" if catchment_distance_count != 1 else "" }}
-                {{ "have" if catchment_distance_count != 1 else "has" }} a
-                {{ "real or estimated" if catchment_distance_any_real else "modelled estimated" }}
-                admission distance instead. Upgrade to Premium to see them.
-            </p>
+        {# 17 Sep 2026: a "...Upgrade to Premium to see them" branch on
+           catchment_distance_count stood here. Only an unlocked reader
+           reaches this chain now, and for an unlocked reader every
+           counted school is in catchment_distance_schools above, so the
+           branch could not render, and its wording would have been wrong
+           if it had. What is left below is the case it stood in for. #}
         {% else %}
             <p class="notice">
                 Not covered. This address isn't in one of the local authorities that publishes
@@ -3449,6 +3542,21 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Getting around</h2>
+
+        {# Locked, this pop-up is the method and the way in: the stations,
+           their walking distances and the live city journeys are the
+           finding, and so is the commute calculator, which answers for
+           this address (17 Sep 2026). The station pins go off the map
+           too: see the two map branches at the foot of this file. #}
+        {% if not premium_unlocked %}
+        <p class="section-sub">
+            Rail, Tube and tram stations first (closest 5 of each, within ~2 miles), then the nearest
+            bus stop, prioritised in that order since trains, the Tube and trams usually matter more
+            for a commute than the nearest bus stop. Stations and stops from OpenStreetMap, city
+            journeys from National Rail's live departures.
+        </p>
+        {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% else %}
 
         {% if routing_configured %}
         <div class="commute-calculator" data-lat="{{ location.latitude }}" data-lon="{{ location.longitude }}">
@@ -3471,6 +3579,7 @@
             for a commute than the nearest bus stop.
         </p>
         {{ amen.transport_body(stations, stations_list, amenities_error, amenities_pending) }}
+        {% endif %}
             </section>
         </div>
     </dialog>
@@ -3643,7 +3752,14 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>GP practices and A&amp;E near this address</h2>
-        {% if health_error %}
+        {# Locked, the method and its sources with no practice, no list
+           size and no four-hour figure (17 Sep 2026). The paragraph in
+           the answered branch below carries this area's own release dates
+           and the England median, so the locked reader gets this one. #}
+        {% if not premium_unlocked %}
+            <p class="section-sub">The nearest GP practices by distance, with each one's registered patient list and its fully qualified GP full-time equivalents from NHS England Digital's monthly releases. A practice's list divided by its fully qualified GPs is the national pressure measure, and the England median is given beside it. Then the trusts NHS England maps to this area's integrated care board that run a Type 1 A&amp;E, with the share of patients seen within four hours. England only. Distance is not registration: a practice may not be taking new patients.</p>
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif health_error %}
             <p class="notice notice-error">The NHS practice data didn't load. Try again in a moment.</p>
         {% elif health is not defined or not health %}
             <p class="notice">No practice data is loaded for this address yet.</p>
@@ -3701,7 +3817,14 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Bus service at the nearest stops</h2>
-        {% if bus_service_error %}
+        {# Locked, the method and its source with no stop, no route and no
+           departure (17 Sep 2026). The answered branch below names the
+           radius, the reference days and the feed date for this address,
+           so the locked reader gets this paragraph instead. #}
+        {% if not premium_unlocked %}
+            <p class="section-sub">From the timetables bus operators publish to the Department for Transport's Bus Open Data Service: the departures a passenger can board at each stop within walking distance of an address, counted for a weekday and a Sunday and divided into buses an hour. Scheduled, not observed. Some Welsh and Scottish operators do not publish there, so absence is not always proof. Open Government Licence.</p>
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif bus_service_error %}
             <p class="notice notice-error">The bus timetable data didn't load. Try again in a moment.</p>
         {% elif bus_service is not defined or not bus_service %}
             <p class="notice">No timetable data is loaded for this address yet.</p>
@@ -3886,11 +4009,9 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Subsidence risk (clay shrink-swell)</h2>
-        {% if clay_risk_error %}
-            <p class="notice notice-error">
-                The BGS geology data service didn't respond. Try again in a moment.
-            </p>
-        {% elif clay_risk %}
+        {# Same as the sewage pop-up: the method is the check's, the 2030
+           and 2050 readings are this address's (17 Sep 2026). #}
+        {% set clay_method %}
             <p class="section-sub">
                 From the British Geological Survey's open GeoClimate dataset. Not a rating of the
                 current baseline hazard (BGS's precise GeoSure product for that is commercially
@@ -3899,6 +4020,16 @@
                 genuinely useful forward-looking signal for a 25-30 year mortgage, even though it
                 isn't the same thing as "how much clay is under this house today".
             </p>
+        {% endset %}
+        {% if not premium_unlocked %}
+            {{ clay_method }}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif clay_risk_error %}
+            <p class="notice notice-error">
+                The BGS geology data service didn't respond. Try again in a moment.
+            </p>
+        {% elif clay_risk %}
+            {{ clay_method }}
             <table class="tx-table">
                 <thead>
                     <tr>
@@ -3935,7 +4066,11 @@
             Guideline levels, a stricter, health-based reference point than the UK's own (much
             older) legal limits.
         </p>
-        {% if air_quality_error %}
+        {# Locked: the method above, never this address's concentrations
+           or how many times the guideline they are (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif air_quality_error %}
             <p class="notice notice-error">
                 The air quality data service didn't respond. Try again in a moment.
             </p>
@@ -3978,7 +4113,11 @@
             after closing. Being nearby isn't automatically disqualifying, but it's worth asking
             about site investigation reports and any gas protection measures if buying.
         </p>
-        {% if historic_landfill_error %}
+        {# Locked: the method above, never whether a site is here or how
+           far away it is (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif historic_landfill_error %}
             <p class="notice notice-error">
                 The historic landfill data service didn't respond. Try again in a moment.
             </p>
@@ -4013,7 +4152,11 @@
             (checking for shafts, adits, or other historic workings nearby) is standard practice before
             buying, and some lenders require one.
         </p>
-        {% if coal_mining_error %}
+        {# Locked: the method above, never whether this address is in a
+           reporting area (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif coal_mining_error %}
             <p class="notice notice-error">
                 The Coal Authority data service didn't respond. Try again in a moment.
             </p>
@@ -4037,7 +4180,14 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Development nearby: the brownfield land register</h2>
-        {% if brownfield_error %}
+        {# Locked, the method and its source without the search radius in
+           metres, the council's name or a single site (17 Sep 2026). The
+           paragraph in the covered branch below carries this address's
+           own radius, so the locked reader gets this one instead. #}
+        {% if not premium_unlocked %}
+            <p class="section-sub">Every council in England must keep a register of previously developed land it considers suitable for housing, and the government's planning data platform collects them. This check reads that register within about half a mile of an address. An entry is the council's view that a site could take homes, not a permission; the register says whether permission exists. Source: MHCLG planning data platform, brownfield-land dataset, Open Government Licence.</p>
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif brownfield_error %}
             <p class="notice notice-error">The planning data platform didn't respond. Try again in a moment.</p>
         {% elif brownfield is not defined or not brownfield %}
             <p class="notice">No register data came back for this address.</p>
@@ -4409,7 +4559,11 @@
             classification. Not the same as commercial market-research social grade (AB/C1/C2/DE),
             which isn't published as free open data; NS-SEC is the closest free equivalent.
         </p>
-        {% if wellbeing_error %}
+        {# Locked: the method above, never this neighbourhood's health,
+           marital or NS-SEC shares (17 Sep 2026). #}
+        {% if not premium_unlocked %}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif wellbeing_error %}
             <p class="notice notice-error">
                 The census data service didn't respond. Try again in a moment.
             </p>
@@ -4606,8 +4760,15 @@ Listed building data from Historic England's
                 const card = document.getElementById('card-valuation');
                 if (card) {
                     card.classList.remove('dashboard-card-pending');
+                    // 17 Sep 2026: a locked card's status is now its
+                    // neutral line, saying what the check answers and
+                    // who publishes it. Leave it alone: writing "Data
+                    // unavailable" over it would put a reading back on
+                    // a card that is not showing readings.
                     const status = card.querySelector('.dashboard-card-status');
-                    if (status) status.textContent = 'Data unavailable';
+                    if (status && !card.classList.contains('dashboard-card-locked')) {
+                        status.textContent = 'Data unavailable';
+                    }
                 }
             });
     })();
@@ -4653,8 +4814,15 @@ Listed building data from Historic England's
                 if (window.__addStationsToMap) window.__addStationsToMap(data.stations_list);
             })
             .catch(function () {
+                // 17 Sep 2026: same as the valuation fetch above. A
+                // locked card keeps its neutral line rather than being
+                // told a reading could not be fetched for it.
                 document.querySelectorAll('#card-amenities .dashboard-card-status, #card-transport .dashboard-card-status')
-                    .forEach(function (s) { s.textContent = 'Data unavailable'; });
+                    .forEach(function (s) {
+                        const card = s.closest('.dashboard-card');
+                        if (card && card.classList.contains('dashboard-card-locked')) return;
+                        s.textContent = 'Data unavailable';
+                    });
                 document.querySelectorAll('.dashboard-card-pending')
                     .forEach(function (c) { c.classList.remove('dashboard-card-pending'); });
             });
@@ -4886,7 +5054,14 @@ Listed building data from Historic England's
         if (window.watchMapTheme) window.watchMapTheme(map);
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
 
-        const catchments = {{ (catchment or []) | tojson }};
+        /* Locked checks send the map nothing (17 Sep 2026). The gather
+           already stripped the catchment shapes for a locked reader, but
+           the school names, the admission rings and the stations were
+           still written into this script, which is School Catchment
+           Areas and Getting Around in full for anyone reading the
+           source. Both map branches gate the same three, and the Leaflet
+           branch below does the same. */
+        const catchments = {{ ((catchment or []) if premium_unlocked else []) | tojson }};
         catchments.forEach(function (c) {
             if (!c.rings) return;
             c.rings.forEach(function (ring) {
@@ -4901,7 +5076,7 @@ Listed building data from Historic England's
             });
         });
 
-        ({{ catchment_distance_schools | tojson }}).forEach(function (s) {
+        ({{ (catchment_distance_schools if premium_unlocked else []) | tojson }}).forEach(function (s) {
             const color = s.is_real ? '#d97706' : '#78716c';
             new google.maps.Circle({
                 center: { lat: s.latitude, lng: s.longitude },
@@ -4964,7 +5139,7 @@ Listed building data from Historic England's
                 });
             });
         };
-        window.__addStationsToMap({{ (stations_list or {}) | tojson }});
+        window.__addStationsToMap({{ ((stations_list or {}) if premium_unlocked else {}) | tojson }});
 
         if (havePins) {
             map.fitBounds(bounds, 30);
@@ -4989,8 +5164,12 @@ Listed building data from Historic England's
         .addTo(map)
         .bindPopup({{ location.postcode | tojson }});
 
+    /* The dev branch of the same gate as the Google one above: a locked
+       check draws nothing on the map and its data is not written into
+       this script (17 Sep 2026). Production renders the Google branch,
+       so both have to hold. */
     const catchmentLayer = L.layerGroup();
-    ({{ (catchment or []) | tojson }}).forEach(function (c) {
+    ({{ ((catchment or []) if premium_unlocked else []) | tojson }}).forEach(function (c) {
         if (!c.rings) return;
         L.geoJSON(
             { type: 'Feature', properties: { name: c.school_name }, geometry: { type: 'Polygon', coordinates: c.rings } },
@@ -4998,7 +5177,7 @@ Listed building data from Historic England's
         ).bindPopup(c.school_name + ' catchment').addTo(catchmentLayer);
     });
 
-    ({{ catchment_distance_schools | tojson }}).forEach(function (s) {
+    ({{ (catchment_distance_schools if premium_unlocked else []) | tojson }}).forEach(function (s) {
         const color = s.is_real ? '#d97706' : '#78716c';
         const label = s.is_real
             ? s.name + ' · published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
@@ -5044,7 +5223,7 @@ Listed building data from Historic England's
         });
     }
     window.__addStationsToMap = addStationsToMap;
-    addStationsToMap({{ (stations_list or {}) | tojson }});
+    addStationsToMap({{ ((stations_list or {}) if premium_unlocked else {}) | tojson }});
 
     schoolLayer.addTo(map);
     stationLayer.addTo(map);

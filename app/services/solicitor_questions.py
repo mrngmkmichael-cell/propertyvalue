@@ -8,12 +8,31 @@ report cards use for their own attention states (see property.html),
 so a question never appears without the card that explains it also
 flagging up.
 
-Each question dict: {"audience", "trigger", "question", "why", "cost"}.
-"cost" is a typical third-party search/report fee as a plain string,
-only where one is well established, otherwise empty.
+Each question dict: {"audience", "trigger", "question", "why", "cost",
+"check"}. "cost" is a typical third-party search/report fee as a plain
+string, only where one is well established, otherwise empty. "check" is
+the report check whose finding triggered the question, set only where
+that check is one of the locked ones, and empty otherwise.
 """
 
 AUDIENCES = ("Ask the seller", "For your solicitor", "For your surveyor")
+
+# The checks that only open with a full report, by the same keys
+# overview_score._PREMIUM_ONLY_CONCERNS uses. A question tagged with one
+# of these states the locked check's finding in its own trigger, so it
+# cannot be shown to a reader the report is locked for.
+#
+# 17 Sep 2026: added for the first-visitor audit. The locked cards and
+# pop-ups stopped rendering their findings, but the "Questions to ask"
+# teaser still named five of them in plain body text, one of them a
+# figure. The teaser keeps its job from the questions that are left.
+LOCKED_CHECKS = frozenset({"extension", "coal_mining", "landfill", "sewage", "clay_risk"})
+
+
+def without_locked(questions: list[dict]) -> list[dict]:
+    """The questions whose triggers give nothing away to a reader who
+    has not unlocked the report."""
+    return [x for x in questions if x.get("check") not in LOCKED_CHECKS]
 
 
 def _noise_max(noise: dict | None) -> int | None:
@@ -25,8 +44,9 @@ def _noise_max(noise: dict | None) -> int | None:
 def build(context: dict) -> list[dict]:
     q: list[dict] = []
 
-    def add(audience, trigger, question, why, cost=""):
-        q.append({"audience": audience, "trigger": trigger, "question": question, "why": why, "cost": cost})
+    def add(audience, trigger, question, why, cost="", check=""):
+        q.append({"audience": audience, "trigger": trigger, "question": question, "why": why,
+                  "cost": cost, "check": check})
 
     flood_zone = context.get("flood_zone")
     if (flood_zone and flood_zone.get("zone", 1) >= 2) or context.get("flood_warnings"):
@@ -57,21 +77,21 @@ def build(context: dict) -> list[dict]:
         add("For your solicitor", "Coal Mining Reporting Area",
             "Order a CON29M coal mining search.",
             "It reports past and planned mining, shafts, and subsidence claims. Lenders normally insist on it in these areas.",
-            "around £40")
+            "around £40", check="coal_mining")
 
     landfill = context.get("historic_landfill")
     if landfill and landfill.get("status") != "clear":
         add("For your solicitor", "Historic landfill on or near the site",
             "Order an environmental search and ask whether contaminated land liability could pass to the buyer.",
             "Under Part 2A the current owner can inherit clean-up liability if the original polluter cannot be found.",
-            "around £50-£110")
+            "around £50-£110", check="landfill")
 
     outfalls = context.get("sewage_outfalls")
     if outfalls and (outfalls[0].get("spill_count") or 0) >= 20:
         add("For your solicitor", "Frequent sewage discharges nearby",
             "Order the CON29DW drainage and water search, and check where the property's foul water drains.",
             "It confirms mains connection, shared drains and who maintains what, and it names the sewerage undertaker responsible for problems.",
-            "around £40-£60")
+            "around £40-£60", check="sewage")
 
     noise_max = _noise_max(context.get("noise"))
     if noise_max is not None and noise_max >= 65:
@@ -83,13 +103,15 @@ def build(context: dict) -> list[dict]:
     if clay and clay.get("class_2030") == "Probable":
         add("For your surveyor", "Rising clay subsidence risk",
             "Look specifically for movement: cracks over doors and windows, sticking frames, and how close large trees stand to the walls.",
-            "Shrink-swell clay moves with wet and dry years. Past underpinning or a subsidence claim also raises insurance sharply, so ask the insurer about street history.")
+            "Shrink-swell clay moves with wet and dry years. Past underpinning or a subsidence claim also raises insurance sharply, so ask the insurer about street history.",
+            check="clay_risk")
 
     ext = context.get("extension_signal")
     if ext and ext.get("likely_extended"):
         add("Ask the seller", f"Floor area grew about {ext.get('change_pct', 0):+.0f}% between energy certificates",
             "Which works were done, and can you provide the planning permission and building regulations completion certificates?",
-            "Works without sign-off become the buyer's problem. Indemnity insurance covers enforcement, not safety.")
+            "Works without sign-off become the buyer's problem. Indemnity insurance covers enforcement, not safety.",
+            check="extension")
 
     for flag in context.get("planning_flags") or []:
         label = flag.get("label", "")

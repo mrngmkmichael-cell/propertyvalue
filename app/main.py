@@ -2006,9 +2006,18 @@ CHECK_COUNT = 44
 # twice until 14 Sep 2026, and the landing page said 23 free beside the
 # pricing page's 26, a pair that did not add up to 44. A test checks
 # both lists against which cards a signed-out report actually locks.
+#
+# 17 Sep 2026: Rental Analysis, Household Income and Costs &
+# Affordability moved from the locked list to this one (owner's
+# decision, first-visitor audit). None of the three reads a paid source,
+# and the first-visitor walk found all three locked behind a wall the
+# visitor met before any figure. 26 free and 18 locked became 29 and 15;
+# CHECK_COUNT is unchanged, so nothing that quotes a total moves.
 FREE_CHECKS = (
     ('market', 'Local Market', 'Every sale since 1995', 'HM Land Registry'),
     ('prosperity', 'Area Prosperity', 'Area prices, year on year', 'UK House Price Index'),
+    ('valuation', 'Costs & Affordability', 'Stamp duty, mortgage and yield', 'HMRC rates, Bank of England'),
+    ('rental', 'Rental Analysis', 'Typical rent by bedrooms', 'ONS private rents'),
     ('energy', 'Energy Efficiency', 'EPC band, running costs, floor area', 'EPC Register'),
     ('flood', 'Flood Risk', 'Zone and live warnings', 'Environment Agency'),
     ('flood', 'Surface Water Risk', 'Rainfall flooding, separate from rivers', 'Environment Agency'),
@@ -2026,6 +2035,7 @@ FREE_CHECKS = (
     ('schools', 'Private Schools', 'Fee-paying, prep and senior', 'DfE Get Information About Schools'),
     ('schools', 'Universities', 'Higher education institutions nearby', 'DfE Get Information About Schools'),
     ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap'),
+    ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
     ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
     ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
     ('qualification', 'Qualification', 'Degree-educated share', 'Census 2021'),
@@ -2036,8 +2046,6 @@ FREE_CHECKS = (
 )
 PREMIUM_CHECKS = (
     ('valuation', 'Valuation Estimate', 'Estimate with a range', 'Modelled from nearby sales'),
-    ('valuation', 'Costs & Affordability', 'Stamp duty, mortgage and yield', 'HMRC rates, Bank of England'),
-    ('rental', 'Rental Analysis', 'Typical rent by bedrooms', 'ONS private rents'),
     ('statistics', 'Price Trend & Forecast', 'Five-year history and trend', 'UK House Price Index'),
     ('extension', 'Extended or Modified', 'Floor area changes over time', 'EPC history'),
     ('orientation', 'Aspect', 'Which way garden and rooms face', 'Derived from OpenStreetMap'),
@@ -2048,12 +2056,65 @@ PREMIUM_CHECKS = (
     ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'The Coal Authority'),
     ('schools', 'School Catchment Areas', 'Real admission distances', 'Council admissions data'),
     ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
-    ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
     ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021'),
     ('planning', 'Development Nearby', 'Brownfield register sites within half a mile', 'MHCLG planning data platform'),
     ('bus', 'Bus Service', 'Buses an hour at the nearest stops', 'DfT Bus Open Data Service'),
     ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
 )
+
+# One line per locked check: what the check answers and who publishes
+# it, never what it found (owner's decision 8, first-visitor audit of
+# 17 Sep 2026). Until then a locked card rendered its own finding and
+# the stylesheet hid the whole status line, so a signed-out visitor met
+# fifteen cards that were a title, an icon and nothing else, and could
+# not tell what any of them was for or whether it was worth an account.
+# Keyed by the card's title exactly as the report writes it, so a check
+# cannot get a card without getting a line: the test in
+# tests/test_audit_fixes_17sep.py holds these keys against
+# PREMIUM_CHECKS, and against FREE_CHECKS the other way round. The
+# separator is a middle dot, the same one the report uses between a
+# fact and its source.
+LOCKED_CARD_LINES = {
+    'Valuation Estimate': 'A price range from recorded sales nearby · HM Land Registry',
+    'Price Trend & Forecast': 'How local prices moved over five years · UK House Price Index',
+    'Extended or Modified': 'Whether the floor area changed between certificates · EPC register',
+    'Aspect': 'Which way the garden and main rooms face · OpenStreetMap outlines',
+    'Sewage Discharge': 'Storm overflow spills nearby, and for how long · Environment Agency',
+    'Subsidence Risk': 'Clay shrink-swell risk by 2030 and 2050 · British Geological Survey',
+    'Air Quality': 'Nitrogen dioxide and particles against WHO guidelines · Defra',
+    'Historic Contamination': 'Former landfill sites nearby · Environment Agency',
+    'Mining Risk': 'Whether this is a coal mining reporting area · The Coal Authority',
+    'School Catchment Areas': 'Likely, borderline or unlikely for each nearby school · Council admissions data',
+    'Getting Around': 'Nearest stations and journey times to the city · National Rail',
+    'Health, Relationships & Social Grade': 'Health and social grade mix of the area · Census 2021',
+    'Development Nearby': 'Brownfield sites for building within half a mile · MHCLG planning data',
+    'Bus Service': 'Buses an hour at the nearest stops · DfT Bus Open Data Service',
+    'Health Services': 'GP list sizes and A&E performance nearby · NHS England',
+}
+
+# The same card when that check's own service did not answer, the Coal
+# Authority being the one the audit walked into. Hiding the failure
+# would be a lie by omission and showing the line above would sell a
+# check this report did not manage to run, so the card says neither and
+# keeps the publisher's name (17 Sep 2026).
+LOCKED_CARD_UNAVAILABLE = {
+    title: 'Could not be checked just now · ' + line.split(' · ', 1)[1]
+    for title, line in LOCKED_CARD_LINES.items()
+}
+
+# Extended or Modified compares one address's EPC certificates, so a
+# postcode-only report has nothing to compare, locked or not. The card
+# says so before anyone signs up rather than selling a check this
+# report cannot run (17 Sep 2026).
+LOCKED_CARD_NEEDS_HOUSE_NUMBER = 'Needs a house number · EPC register'
+
+templates.env.globals["locked_card_lines"] = LOCKED_CARD_LINES
+templates.env.globals["locked_card_unavailable"] = LOCKED_CARD_UNAVAILABLE
+templates.env.globals["locked_card_needs_house_number"] = LOCKED_CARD_NEEDS_HOUSE_NUMBER
+# A global, not a context value, because the locked pop-up's words are
+# written in a macro imported without context (_locked.html), and the
+# count it reads is a length rather than a number typed into copy.
+templates.env.globals["locked_check_count"] = len(PREMIUM_CHECKS)
 
 # The offer, in one sentence, used word for word wherever a page states
 # it (owner's decision, 17 Sep 2026). The first-visitor audit that day
@@ -3158,6 +3219,9 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # "The N locked checks are not included" (17 Sep 2026). A length,
     # never typed: the free and locked lists are due to change.
     context["premium_check_count"] = len(PREMIUM_CHECKS)
+    # The wall's "By hand, these N checks are 28 websites" was a typed 44
+    # until 17 Sep 2026, on the one page a reader can count the cards on.
+    context["check_count"] = CHECK_COUNT
 
     context.update(await _full_property_gather(location, house_number, premium_unlocked))
 
@@ -3208,9 +3272,21 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
 
     # Questions to ask before you buy - rules over this report's own
     # findings (see services/solicitor_questions.py). Premium content;
-    # the template shows only the trigger list when locked.
-    context["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(context))
+    # the template shows one sample question and the other triggers
+    # when locked.
+    _questions = solicitor_questions.build(context)
+    context["buyer_questions"] = solicitor_questions.grouped(_questions)
     context["buyer_questions_count"] = sum(len(qs) for _, qs in context["buyer_questions"])
+    # 17 Sep 2026: the locked teaser draws on a shorter list. A question
+    # triggered by a locked check states that check's finding in its own
+    # trigger ("Coal Mining Reporting Area", "Floor area grew about
+    # +22%..."), which put five locked answers back into the page as
+    # plain body text on the same screen where their cards say only what
+    # the check answers. The count below stays the full count: how many
+    # questions were generated is not a finding.
+    context["buyer_questions_teaser"] = solicitor_questions.grouped(
+        solicitor_questions.without_locked(_questions)
+    )
 
     # JSON-safe school points for the map layers: only the fields the
     # pins need, so no date objects reach | tojson.
@@ -3583,6 +3659,13 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
 
     amen = templates.get_template("_amenities.html").module
     ctx = {"amenities": None, "stations": {}, "stations_list": {}, "nearest_transport": None, **context}
+    # Nearby Essentials is free; Getting Around is not. The card was
+    # gated and its pop-up body was not, so this reply carried the
+    # stations, their walking distances and the live city journeys to a
+    # signed-out page, and handed the same list to the map (17 Sep
+    # 2026). Locked, neither is sent: the page's own pop-up holds the
+    # method and the way in, and its swap does nothing with an empty
+    # string.
     return JSONResponse({
         "essentials_card": str(amen.essentials_card(ctx["amenities"], ctx["amenities_error"], False)),
         "transport_card": str(amen.transport_card(
@@ -3590,8 +3673,11 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
             premium_unlocked, lock_label, lock_redirect,
         )),
         "essentials_body": str(amen.essentials_body(ctx["amenities"], ctx["amenities_error"], False)),
-        "transport_body": str(amen.transport_body(ctx["stations"], ctx["stations_list"], ctx["amenities_error"], False)),
-        "stations_list": ctx["stations_list"],
+        "transport_body": (
+            str(amen.transport_body(ctx["stations"], ctx["stations_list"], ctx["amenities_error"], False))
+            if premium_unlocked else ""
+        ),
+        "stations_list": ctx["stations_list"] if premium_unlocked else {},
     })
 
 @app.get("/api/property/valuation")
@@ -3643,6 +3729,12 @@ async def property_valuation(request: Request, postcode: str = "", house_number:
     lock_redirect = "/signup?next=" + quote("/premium") if not current else "/premium"
 
     val = templates.get_template("_valuation.html").module
+    # The card has been gated since this endpoint existed; the body was
+    # not, so the estimate, its low-to-high table and every comparable
+    # sale came back to a signed-out page and were swapped straight into
+    # the pop-up it had rendered locked (17 Sep 2026). Both now take the
+    # same decision, made above from the session and this property's own
+    # unlock.
     return JSONResponse({
         "card": str(val.valuation_card(
             context["valuation"], context["price_per_sqm"], context["valuation_error"], False,
@@ -3651,6 +3743,7 @@ async def property_valuation(request: Request, postcode: str = "", house_number:
         "body": str(val.valuation_body(
             context["valuation"], context["price_per_sqm"], context["valuation_error"],
             context["valuation_floor_area_known"], False,
+            premium_unlocked, lock_label, lock_redirect,
         )),
     })
 

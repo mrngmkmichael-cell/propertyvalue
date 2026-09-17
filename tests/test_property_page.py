@@ -6,8 +6,51 @@ import re
 from tests.conftest import fake_gather, fake_location
 
 
+def _locked_line(title):
+    """The line a locked card carries, as the page writes it: the words
+    live in main.py (LOCKED_CARD_LINES, 17 Sep 2026) and the template
+    escapes the ampersand in a source like "A&E"."""
+    from markupsafe import escape
+
+    from app import main as app_main
+    return str(escape(app_main.LOCKED_CARD_LINES[title]))
+
+
 def _report(client, fake_report, **kw):
     fake_report(**kw)
+    r = client.get("/property?postcode=M14%205TG")
+    assert r.status_code == 200
+    return r.text
+
+
+def _unlocked_report(client, fake_report, email, **kw):
+    """The same report read by an account that has spent its one free
+    unlock on this address.
+
+    From 17 Sep 2026 a locked card carries one neutral line saying what
+    the check answers and who publishes it, and nothing it found
+    (decision 8 of that day's first-visitor audit), so a locked card's
+    own reading is on the page only for a reader who has unlocked it.
+    The tests below that were written against a card's words therefore
+    read them here, and keep their "no leak" assertions on the
+    signed-out page from _report.
+
+    Called more than once in a test, it signs up once and stays signed
+    in: the unlock is per property and claim_unlock is idempotent."""
+    from app import auth
+    from app.db import get_session
+
+    fake_report(**kw)
+    with get_session() as db:
+        known = auth.find_user_by_email(db, email) is not None
+    if not known:
+        r = client.post("/signup", data={"email": email, "password": "correct horse battery staple"},
+                        follow_redirects=False)
+        assert r.status_code == 303, "the test account could not be created"
+    with get_session() as db:
+        user = auth.find_user_by_email(db, email)
+        assert user is not None
+        assert auth.claim_unlock(db, user.id, "M14 5TG", "") is True
     r = client.get("/property?postcode=M14%205TG")
     assert r.status_code == 200
     return r.text
@@ -133,9 +176,35 @@ def test_amenities_render_pending_then_arrive_by_follow_up_fetch(client, fake_re
     data = r.json()
     assert {"essentials_card", "transport_card", "essentials_body", "transport_body"} <= set(data)
     assert "1 nearby" in data["essentials_card"] and "dashboard-card-pending" not in data["essentials_card"]
-    assert "9 min train to Manchester" in data["transport_card"]
+    # Getting Around is locked signed out, so the fragment carries the
+    # same neutral line the page it replaces does (17 Sep 2026).
+    assert "9 min train to Manchester" not in data["transport_card"]
+    assert _locked_line("Getting Around") in data["transport_card"]
     assert "Test Stores" in data["essentials_body"]
-    assert 'id="transport-body"' in data["transport_body"] and "Test Station" in data["transport_body"]
+    # The body behind the locked card comes back empty, and so does the
+    # list the map draws its station pins from (17 Sep 2026, item B3):
+    # this reply used to carry the station, its distance and the live
+    # city journey to a signed-out page, which then swapped them into a
+    # pop-up it had rendered locked.
+    assert data["transport_body"] == ""
+    assert data["stations_list"] == {}
+    assert "Test Station" not in data["transport_card"]
+
+    # Unlocked, the same fragment carries the journey it found.
+    from app import auth
+    from app.db import get_session
+    assert client.post("/signup", data={"email": "transport-fragment@example.test",
+                                        "password": "correct horse battery staple"},
+                       follow_redirects=False).status_code == 303
+    with get_session() as db:
+        user = auth.find_user_by_email(db, "transport-fragment@example.test")
+        assert auth.claim_unlock(db, user.id, "M14 5TG", "") is True
+    unlocked = client.get("/api/property/amenities?postcode=M14%205TG").json()
+    card = unlocked["transport_card"]
+    assert "9 min train to Manchester" in card and "dashboard-card-locked" not in card
+    # And the body and the map's stations come with it.
+    assert 'id="transport-body"' in unlocked["transport_body"] and "Test Station" in unlocked["transport_body"]
+    assert unlocked["stations_list"]["rail"][0]["name"] == "Test Station"
 
 
 def test_valuation_renders_pending_then_arrives_by_follow_up_fetch(client, fake_report, monkeypatch):
@@ -151,7 +220,12 @@ def test_valuation_renders_pending_then_arrives_by_follow_up_fetch(client, fake_
         valuation_error=False, valuation_floor_area_known=False,
     ))
     assert 'id="card-valuation"' in body and "dashboard-card-pending" in body
-    assert "Reading nearby sales" in body
+    # Locked signed out, so the card carries its neutral line from the
+    # first render rather than a working-on-it line for an answer this
+    # reader will not be shown either way (17 Sep 2026). "Reading nearby
+    # sales" is what an unlocked reader sees while it runs.
+    assert "Reading nearby sales" not in body
+    assert _locked_line("Valuation Estimate") in body
     assert "/api/property/valuation?postcode=M14%205TG" in body
 
     async def _fake_comparables(lat, lon):
@@ -719,16 +793,22 @@ def test_development_nearby_is_a_premium_card_that_says_what_the_register_holds(
     data = brownfield.summarise(sites, {"entity": 65, "name": "London Borough of Bromley"}, 88)
     body = _report(client, fake_report, gather=fake_gather(brownfield=data))
     assert "Development Nearby" in body and 'id="modal-brownfield"' in body
-    assert "2 register sites within half a mile" in body
-    assert "Ontario Centre, Helegan Close" in body and "Has planning permission (outline planning permission)" in body
-    assert "register holds 88 sites on the platform" in body
-    # Locked: no Check-this tag or attention line leaks the finding to a free reader.
+    # Locked: no Check-this tag or attention line leaks the finding to a
+    # free reader, and since 17 Sep 2026 the card's own count does not
+    # either: it says what the check answers and who publishes it.
     assert "Development site on the brownfield register nearby" not in body
+    assert "2 register sites within half a mile" not in body
+    assert _locked_line("Development Nearby") in body
+
+    full = _unlocked_report(client, fake_report, "brownfield@example.test", gather=fake_gather(brownfield=data))
+    assert "2 register sites within half a mile" in full
+    assert "Ontario Centre, Helegan Close" in full and "Has planning permission (outline planning permission)" in full
+    assert "register holds 88 sites on the platform" in full
     quiet = brownfield.summarise([], {"entity": 1, "name": "Quiet Council"}, None)
-    body = _report(client, fake_report, gather=fake_gather(brownfield=quiet))
-    assert "Register not on the national platform" in body and "Quiet Council has not published" in body
-    body = _report(client, fake_report, gather=fake_gather(brownfield={"covered": False, "country": "Wales"}))
-    assert "England only" in body
+    full = _unlocked_report(client, fake_report, "brownfield@example.test", gather=fake_gather(brownfield=quiet))
+    assert "Register not on the national platform" in full and "Quiet Council has not published" in full
+    full = _unlocked_report(client, fake_report, "brownfield@example.test", gather=fake_gather(brownfield={"covered": False, "country": "Wales"}))
+    assert "England only" in full
 
 
 def test_bus_service_card_leads_with_the_best_stop(client, fake_report):
@@ -740,12 +820,21 @@ def test_bus_service_card_leads_with_the_best_stop(client, fake_report):
             "feed_date": "2026-09-07", "ref_weekday": "2026-09-08", "ref_sunday": "2026-09-13"}
     body = _report(client, fake_report, gather=fake_gather(bus_service=data))
     assert "Bus Service" in body and 'id="modal-bus"' in body
-    assert "8.0 an hour, weekday daytime" in body and "8.0 buses an hour" in body
-    assert "first bus 05:30, last 23:45" in body and "Routes at these stops: 43, X47" in body
+    # Locked, the card says what the check answers, not the service it
+    # found (17 Sep 2026).
+    assert "8.0 an hour, weekday daytime" not in body
+    assert _locked_line("Bus Service") in body
     none = dict(data, stops=[], count=0, nearest=None, best=None, routes=[])
     body = _report(client, fake_report, gather=fake_gather(bus_service=none))
-    assert "No stop within 500 m" in body
     assert "Few or no scheduled buses nearby" not in body  # locked: the flag waits
+
+    # Unlocked, the card and its pop-up read the timetable. Signed in
+    # from here: the signed-out checks above run first on purpose.
+    full = _unlocked_report(client, fake_report, "buses@example.test", gather=fake_gather(bus_service=data))
+    assert "8.0 an hour, weekday daytime" in full and "8.0 buses an hour" in full
+    assert "first bus 05:30, last 23:45" in full and "Routes at these stops: 43, X47" in full
+    full = _unlocked_report(client, fake_report, "buses@example.test", gather=fake_gather(bus_service=none))
+    assert "No stop within 500 m" in full
 
 
 def test_health_services_card_shows_list_pressure_and_a_and_e(client, fake_report):
@@ -762,10 +851,16 @@ def test_health_services_card_shows_list_pressure_and_a_and_e(client, fake_repor
             "trusts": [t], "ae_period": "July 2026", "national_type1_within_4h_pct": 61.5, "pressure": 1.35}
     body = _report(client, fake_report, gather=fake_gather(health=data))
     assert "Health Services" in body and 'id="modal-health"' in body
-    assert "2,821 patients per GP at the nearest practice" in body and "England median 2,186" in body
-    assert "A&amp;E 60.0% within four hours" in body and "+35%" in body
-    assert "A&amp;E four-hour performance, July 2026" in body
     assert "Nearest GP practice well above the national list size per GP" not in body  # locked: no leak
+    # Locked, the card says what the check answers and who publishes it,
+    # not the list size it found (17 Sep 2026).
+    assert "2,821 patients per GP at the nearest practice" not in body
+    assert _locked_line("Health Services") in body
+
+    full = _unlocked_report(client, fake_report, "gp@example.test", gather=fake_gather(health=data))
+    assert "2,821 patients per GP at the nearest practice" in full and "England median 2,186" in full
+    assert "A&amp;E 60.0% within four hours" in full and "+35%" in full
+    assert "A&amp;E four-hour performance, July 2026" in full
 
 
 def test_flood_re_is_flagged_for_a_post_2009_home_at_risk(client, fake_report):
@@ -831,12 +926,18 @@ def test_grammar_schools_within_reach_sit_in_the_schools_modal(client, fake_repo
 
 def test_price_per_square_metre_sits_in_the_valuation_modal(client, fake_report):
     """Idea 9 of 7 Sep 2026: sold prices over EPC floor areas, for recent
-    sales nearby and this home, inside the Premium valuation modal."""
+    sales nearby and this home, inside the Premium valuation modal.
+
+    Read here by an account that has unlocked this address: from 17 Sep
+    2026 (item B3 of that day's audit) a locked pop-up renders its
+    method and no figure at all, so these are on the page only for a
+    reader who can see them."""
     data = {"sample_size": 3, "median": 4400, "low": 4200, "high": 4800, "years_window": 1,
             "rows": [{"address": "1 Test Street", "date": "2026-06-01", "amount": 400000.0, "floor_area": 100, "per_sqm": 4050, "sold_per_sqm": 4000, "distance_m": 120}],
             "subject": {"amount": 352000.0, "date": "2023-08-10", "year": "2023", "per_sqm": 4400, "floor_area": 80},
             "subject_floor_area": 80, "implied_value": 352000, "subject_vs_median_pct": 0}
-    body = _report(client, fake_report, gather=fake_gather(price_per_sqm=data, valuation={"estimate": 350000, "low": 330000, "high": 370000, "sample_size": 2, "years_window": 1, "floor_area_variance_pct": 5}))
+    gather = fake_gather(price_per_sqm=data, valuation={"estimate": 350000, "low": 330000, "high": 370000, "sample_size": 2, "years_window": 1, "floor_area_variance_pct": 5})
+    body = _unlocked_report(client, fake_report, "price-per-sqm@customer.test", gather=gather)
     assert "Price per square metre" in body and "£4,400 per m²" in body and "would be worth about <strong>£352,000</strong>" in body
     assert "This home last sold at <strong>£4,400 per m²</strong>" in body and "£4,400/m² locally" in body
 

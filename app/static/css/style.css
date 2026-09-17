@@ -2307,9 +2307,28 @@ button:not([class]):hover { background: var(--accent-hover); }
     background: var(--bg);
 }
 
-.dashboard-card-locked .dashboard-card-status,
-.dashboard-card-locked .dashboard-card-substat {
-    display: none;
+/* A locked card's status and substat were hidden here, by CSS, while
+   the report still wrote the finding into them: "1.7x WHO guideline at
+   worst" was in the HTML of every signed-out report, one View Source
+   away, and in whatever a crawler stored. The template now renders no
+   value at all for a locked check, so there is nothing left to hide and
+   those two rules are gone (17 Sep 2026). The rule that undid them for
+   the Premium page's preview cards went with them.
+
+   The one line that replaced the value, 17 Sep 2026: what the check
+   answers and who publishes it, never what it found. With the value
+   simply absent the locked half of the grid was a title and an icon,
+   and the audit's first-time visitor could not tell what any of those
+   cards was for. Same size and family as any other status line, so it
+   reads as the card's own words rather than fine print; only the colour
+   moves, to the softer ink a line that is not a finding wants, and that
+   comes from a token so dark mode follows. It keeps display: block and
+   the extra class on the selector, which is what outruns the pending
+   pulse below, two classes deep. */
+.dashboard-card-locked .dashboard-card-status.dashboard-card-locked-line {
+    display: block;
+    color: var(--ink-soft);
+    animation: none;
 }
 
 .dashboard-card-lock-overlay {
@@ -2367,13 +2386,6 @@ button:not([class]):hover { background: var(--accent-hover); }
     .dashboard-card-pending .dashboard-card-status {
         animation: none;
     }
-}
-
-/* The Premium page's preview cards reuse the locked look but their
-   "status" line is the feature description, which is the whole point
-   of that page - keep it visible there. */
-.premium-preview-lede ~ .dashboard-grid .dashboard-card-locked .dashboard-card-status {
-    display: block;
 }
 
 .watchlist-changes {

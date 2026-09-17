@@ -72,8 +72,9 @@ def main(argv: list[str]) -> int:
         # "full list of 44" left the landing page with the orbit on 17 Sep
         # 2026; the link now reads CHECK_COUNT, moved below.
         # The sign-up page's "all N checks unlocked" reads CHECK_COUNT
-        # from its route since 17 Sep 2026, as do /alternatives and the
-        # council tax pages, which this script never reached.
+        # from its route since 17 Sep 2026, as do /alternatives, the
+        # council tax pages and the report wall's "By hand, these N
+        # checks are 28 websites", none of which this script reached.
         (ROOT / "app" / "templates" / "area_guide.html", f"Run the {old} checks", f"Run the {new} checks"),
         (ROOT / "app" / "templates" / "running_costs.html", f"its {WORDS[old]} other checks", f"its {WORDS[new]} other checks"),
         # The hero pillar strip reads this constant. It was a literal in

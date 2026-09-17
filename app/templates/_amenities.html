@@ -4,6 +4,7 @@
    /api/property/amenities once the page is up - see property.html's
    extra_scripts. One template for both paths so they can't drift. #}
 {% import "_icons.html" as icons %}
+{% import "_locked.html" as locked %}
 
 {% macro essentials_card(amenities, amenities_error, pending) %}
 <button type="button" id="card-amenities" class="dashboard-card status-{{ 'muted' if (pending or amenities_error or not amenities) else 'ok' }}{{ ' dashboard-card-pending' if pending else '' }}" data-modal-target="modal-amenities" data-animate>
@@ -23,6 +24,11 @@
     {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
     <span class="dashboard-card-icon icon-transport">{{ icons.icon('transport') }}</span>
     <span class="dashboard-card-title">Getting Around</span>
+    {# Locked, the card says what the check answers, not the journey it
+       found (17 Sep 2026); see _locked.html. As with the valuation, the
+       pending state has nothing to add for a reader who cannot see the
+       answer, so the line stands from the first render. #}
+    {% if not premium_unlocked %}{{ locked.locked_status('Getting Around', amenities_error) }}{% else %}
     <span class="dashboard-card-status">
         {% if pending %}Finding stations&hellip;
         {% elif amenities_error %}Data unavailable
@@ -32,6 +38,7 @@
             {%- else %} {{ nearest_transport.distance_m | distance }}{% endif %}
         {% else %}Nothing nearby{% endif %}
     </span>
+    {% endif %}
 </button>
 {% endmacro %}
 

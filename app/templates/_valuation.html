@@ -5,32 +5,51 @@
    extra_scripts. One template for both paths so they cannot drift, the
    same arrangement the amenities cards have used since 4 Sep 2026. #}
 {% import "_icons.html" as icons %}
+{% import "_locked.html" as locked %}
 
 {% macro valuation_card(valuation, price_per_sqm, valuation_error, pending, premium_unlocked, lock_label, lock_redirect) %}
 <button type="button" id="card-valuation" class="dashboard-card status-{{ 'muted' if (pending or valuation_error or not valuation) else 'ok' }}{{ ' dashboard-card-pending' if pending else '' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-valuation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
     {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
     <span class="dashboard-card-icon icon-valuation">{{ icons.icon('valuation') }}</span>
     <span class="dashboard-card-title">Valuation Estimate</span>
+    {# Locked, the card says what the check answers and who publishes the
+       sales behind it, never a figure (17 Sep 2026); see _locked.html.
+       The pending state has nothing to say to a reader who cannot see
+       the answer either way, so the line stands from the first render. #}
+    {% if not premium_unlocked %}{{ locked.locked_status('Valuation Estimate', valuation_error) }}{% else %}
     <span class="dashboard-card-status">
         {% if pending %}Reading nearby sales&hellip;
         {% elif valuation_error %}Data unavailable
         {% elif valuation %}{{ valuation.estimate | gbp }}
         {% else %}Not enough nearby sales{% endif %}
     </span>
-    {% if valuation %}
+    {% endif %}
+    {# The range and the local rate are the finding too, and the locked
+       card was still writing them into the page under a stylesheet rule
+       that hid them (17 Sep 2026). Locked, the card carries its line and
+       nothing else. #}
+    {% if valuation and premium_unlocked %}
     <span class="dashboard-card-substat">{{ valuation.low | gbp }} &ndash; {{ valuation.high | gbp }} range{% if price_per_sqm and price_per_sqm.median %}; {{ price_per_sqm.median | gbp }}/m² locally{% endif %}</span>
     {% endif %}
 </button>
 {% endmacro %}
 
-{% macro valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, pending) %}
+{% macro valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, pending, premium_unlocked, lock_label="", lock_redirect="") %}
 <div id="valuation-body">
     <p class="section-sub">
         A rough DIY estimate from public sold price data, not a professional valuation. There's
         no free equivalent to a lender's automated valuation model, so this is fully transparent
         about its method instead of pretending to more precision than it has.
     </p>
-    {% if pending %}
+    {# Locked, the pop-up stops here: the method above, then the way in.
+       It used to render the estimate, its low-to-high table and every
+       comparable sale with its price per square metre to a signed-out
+       reader, hidden by nothing at all once the pop-up was opened
+       (17 Sep 2026). The wrapper stays either way so the follow-up
+       fetch in property.html swaps this same element. #}
+    {% if not premium_unlocked %}
+    {{ locked.locked_body(lock_label, lock_redirect) }}
+    {% elif pending %}
         <p class="notice">
             Reading the sold prices and floor areas of the homes around this one. This is the
             slowest source on the report, so the page came up without waiting for it. It will
@@ -82,8 +101,9 @@
         </p>
     {% endif %}
     {# Price per square metre (idea 9 of 7 Sep 2026): sold prices over
-       EPC floor areas, for the recent sales nearby and this home. #}
-    {% if price_per_sqm %}
+       EPC floor areas, for the recent sales nearby and this home. Part
+       of the same locked check, so it goes with it (17 Sep 2026). #}
+    {% if price_per_sqm and premium_unlocked %}
     <h3 class="subsection-heading">Price per square metre</h3>
     {% if price_per_sqm.median %}
     <p class="section-sub">Recent sales nearby with a known floor area: <strong>{{ price_per_sqm.median | gbp }} per m²</strong> at the median ({{ price_per_sqm.low | gbp }} to {{ price_per_sqm.high | gbp }} across the middle half of {{ price_per_sqm.sample_size }} sale{{ 's' if price_per_sqm.sample_size != 1 }} in the last {{ price_per_sqm.years_window }} year{{ 's' if price_per_sqm.years_window != 1 }}, each scaled for the area's growth since it sold).{% if price_per_sqm.implied_value and price_per_sqm.subject_floor_area %} At that rate this home's {{ price_per_sqm.subject_floor_area }} m² would be worth about <strong>{{ price_per_sqm.implied_value | gbp }}</strong>.{% endif %}</p>

@@ -551,13 +551,30 @@ def test_a4_the_verdict_summary_counts_estimated_readings():
     assert summary["estimated"] == {"likely": 1, "borderline": 1, "unlikely": 0}
 
 
-def test_a4_the_schools_card_marks_estimated_readings_and_the_popup_says_what_likely_means(client, fake_report):
+def test_a4_the_schools_card_marks_estimated_readings_and_the_popup_says_what_likely_means(client, fake_report, monkeypatch):
     from tests.conftest import fake_gather
-    fake_report(gather=fake_gather(school_landscape=_landscape(MIXED_SCHOOLS), catchment=[]))
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    gather = fake_gather(school_landscape=_landscape(MIXED_SCHOOLS), catchment=[])
+    fake_report(gather=gather)
     body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
 
     assert _card_status(body, "Schools Nearby") == "Likely for 2 schools (1 est.), borderline 1 (1 est.)"
-    assert _card_status(body, "School Catchment Areas") == "2 likely (1 est.), 1 borderline (1 est.), 1 unlikely"
+    # School Catchment Areas is locked, and from 17 Sep 2026 a locked
+    # card carries what the check answers instead of its own reading
+    # (item B2 below), so the counts are read on the card an account
+    # that has unlocked this home sees.
+    assert _b2_line(body, "School Catchment Areas") == _b2_escaped("School Catchment Areas")
+    fake_report(gather=gather)
+    assert _signup(client, "a4-catchment@customer.test").status_code == 303
+    # Its own house number, so no address in this file ends up unlocked
+    # by two accounts: tests/test_email_verification.py already unlocks
+    # M14 5TG with no house number, and /admin counts that pattern.
+    assert client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": "4"},
+                       follow_redirects=False).status_code == 303
+    unlocked = client.get("/property?postcode=M14+5TG&house_number=4",
+                          headers={"User-Agent": "Googlebot/2.1"}).text
+    assert _card_status(unlocked, "School Catchment Areas") == "2 likely (1 est.), 1 borderline (1 est.), 1 unlikely"
+    client.cookies.clear()
 
     popup = _flat(body.split('id="modal-schools"', 1)[1].split("</dialog>", 1)[0])
     assert "we can't say whether this address falls within any school's admission area" not in popup
@@ -1153,3 +1170,705 @@ def test_fix_the_gather_flags_a_failed_house_price_index(monkeypatch):
     assert "hpi" not in context
     # Named beside the other failed sources the banner reads.
     assert context.get("noise_error") and context.get("radon_error") and context.get("deprivation_error")
+
+
+# ---- B1. Rental, income and affordability are free checks ----------------
+# The first-visitor walk met Rental Analysis, Household Income and Costs &
+# Affordability behind the wall, three checks that read nothing anyone
+# pays for: ONS private rents, ONS small-area income and calculators that
+# run in the browser off published tax bands. The owner moved all three to
+# the free list on 17 Sep 2026, so 26 free and 18 locked became 29 and 15.
+# CHECK_COUNT does not move, and every count a visitor reads is still the
+# length of one of the two lists.
+
+B1_RENTAL = {
+    "la_name": "Manchester", "period": "2026-06", "price_all": 1050,
+    "change_all_pct": 5.2,
+    "by_bedroom": [
+        {"label": "One bedroom", "price": 795, "change_pct": 6.1},
+        {"label": "Two bedrooms", "price": 1025, "change_pct": 4.8},
+    ],
+}
+B1_INCOME = {
+    "here": 38500, "la_name": "Manchester", "la_average": 36200,
+    "region_name": "North West", "region_average": 35100,
+}
+
+
+def _b1_card(body, title):
+    """(opening tag, inner HTML) of the report card with this title."""
+    for m in re.finditer(r'<button[^>]*class="dashboard-card[^"]*"[^>]*>', body):
+        block = body[m.end():body.index("</button>", m.end())]
+        if f'<span class="dashboard-card-title">{title}</span>' in block:
+            return m.group(0), block
+    raise AssertionError(f"the report has no card titled {title}")
+
+
+def _b1_locked_cards(body):
+    return [m.group(0) for m in re.finditer(r'<button[^>]*class="dashboard-card[^"]*"[^>]*>', body)
+            if "dashboard-card-locked" in m.group(0)]
+
+
+def test_b1_a_signed_out_report_opens_rental_income_and_affordability(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather(rental=B1_RENTAL, household_income=B1_INCOME))
+    body = client.get("/property?postcode=M14+5TG").text
+
+    for title in ("Costs &amp; Affordability", "Rental Analysis", "Household Income"):
+        tag, block = _b1_card(body, title)
+        assert "dashboard-card-locked" not in tag, title
+        assert "data-lock-redirect" not in tag, title
+        assert "dashboard-card-lock-overlay" not in block, title
+
+    # Each reads its own figure to a visitor with no account.
+    assert _card_status(body, "Costs &amp; Affordability") == "Stamp duty, mortgage, yield"
+    assert _card_status(body, "Rental Analysis") == "£1,050/month typical"
+    assert _card_status(body, "Household Income") == "£38,500 p/a"
+    assert '<span class="dashboard-card-substat">Manchester, by bedroom count</span>' in body
+
+    # And the pop-up behind each one opens on the same page.
+    rent = _flat(body.split('id="modal-rental"', 1)[1].split("</dialog>", 1)[0])
+    assert "£1,050" in rent and "Two bedrooms" in rent and "ONS's Price Index of Private Rents" in rent
+    income = _flat(body.split('id="modal-household-income"', 1)[1].split("</dialog>", 1)[0])
+    assert "£38,500" in income and "£36,200" in income
+    costs = _flat(body.split('id="modal-calculators"', 1)[1].split("</dialog>", 1)[0])
+    assert "Stamp duty / transaction tax" in costs
+
+
+def test_b1_the_free_and_locked_lists_are_twenty_nine_and_fifteen(client, fake_report):
+    assert len(app_main.FREE_CHECKS) == 29
+    assert len(app_main.PREMIUM_CHECKS) == 15
+    assert len(app_main.FREE_CHECKS) + len(app_main.PREMIUM_CHECKS) == app_main.CHECK_COUNT
+
+    free = {c[1] for c in app_main.FREE_CHECKS}
+    locked = {c[1] for c in app_main.PREMIUM_CHECKS}
+    for title in ("Costs & Affordability", "Rental Analysis", "Household Income"):
+        assert title in free and title not in locked, title
+    # Moved whole: icon, words and source came with them.
+    assert ("rental", "Rental Analysis", "Typical rent by bedrooms", "ONS private rents") in app_main.FREE_CHECKS
+    assert ("income", "Household Income", "Modelled for the small area", "ONS") in app_main.FREE_CHECKS
+    assert ("valuation", "Costs & Affordability", "Stamp duty, mortgage and yield",
+            "HMRC rates, Bank of England") in app_main.FREE_CHECKS
+
+    # What a signed-out report locks is the locked list, counted.
+    fake_report()
+    body = client.get("/property?postcode=M14+5TG").text
+    assert len(_b1_locked_cards(body)) == len(app_main.PREMIUM_CHECKS)
+
+    home = client.get("/").text
+    assert f"{len(app_main.FREE_CHECKS)} free on every report" in home
+    assert f"{len(app_main.PREMIUM_CHECKS)} more with Premium" in home
+
+
+def test_b1_the_walls_by_hand_line_counts_the_checks_from_the_constant(client, fake_report, monkeypatch):
+    fake_report()
+    monkeypatch.setattr(app_main, "CHECK_COUNT", app_main.CHECK_COUNT + 3)
+    body = client.get("/property?postcode=M14+5TG").text
+    assert f"By hand, these {app_main.CHECK_COUNT} checks are 28 websites for one house" in body
+
+    template = (ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8")
+    assert "these 44 checks" not in template
+    # The rest of that line is what the 16 September run actually counted,
+    # so it stays written out.
+    assert "28 websites for one house, and nothing to compare at the end" in template
+    assert "We timed it on 16 September 2026" in template
+
+
+# ---- B2. Every locked card says what its check answers --------------------
+# A locked card rendered its own finding and the stylesheet hid the status
+# line, so the fifteen locked cards were a title, an icon and a lock: the
+# audit's first-time visitor could not tell what any of them was for, and
+# the only one that said anything, Mining Risk, was saying "Data
+# unavailable" from behind the lock while the Coal Authority was down.
+# Owner's decision 8: one neutral line on each, what the check answers and
+# who publishes it, never what it found. The wording is in main.py
+# (LOCKED_CARD_LINES) and the cards read it through _locked.html.
+
+# A gather in which no locked check failed. conftest's fake marks every
+# service it is not given as failed, which is a realistic state and the
+# one the failure test below leans on, but it is not the state that shows
+# what each card says when its check ran. What each one found does not
+# matter here: a locked card never reads it.
+B2_ANSWERED = dict(
+    price_trend=None, clay_risk=None, sewage=None, coal_mining=None, valuation=None,
+    orientation=None, air_quality=None, historic_landfill=None, catchment=None,
+    amenities=None, wellbeing=None,
+)
+
+
+def _b2_escaped(title):
+    """The line as the page must write it: main.py holds the words and the
+    template escapes the ampersand in a source like "A&E"."""
+    from markupsafe import escape
+    return str(escape(app_main.LOCKED_CARD_LINES[title]))
+
+
+def _b2_escaped_unavailable(title):
+    from markupsafe import escape
+    return str(escape(app_main.LOCKED_CARD_UNAVAILABLE[title]))
+
+
+def _b2_line(body, title):
+    """The line the locked card with this title shows in place of its
+    status, asserting it is locked and that no finding is left in it."""
+    tag, block = _b1_card(body, title)
+    assert "dashboard-card-locked" in tag, f"{title} is not locked on this report"
+    assert '<span class="dashboard-card-status">' not in block, (
+        f"the locked {title} card still renders its own finding")
+    m = re.search(r'<span class="dashboard-card-status dashboard-card-locked-line">(.*?)</span>', block, re.S)
+    assert m, f"the locked {title} card shows no line"
+    return _flat(m.group(1))
+
+
+def test_b2_every_locked_check_has_a_line_and_no_free_check_does():
+    lines = app_main.LOCKED_CARD_LINES
+    assert set(lines) == {c[1] for c in app_main.PREMIUM_CHECKS}
+    assert not set(lines) & {c[1] for c in app_main.FREE_CHECKS}
+
+    for title, line in lines.items():
+        answers, _, publisher = line.partition(" · ")
+        assert publisher, f"{title} names no publisher after a middle dot"
+        assert line.count("·") == 1, f"{title} has more than one middle dot"
+        for wrong in ("—", "–", " - ", "!"):
+            assert wrong not in line, f"{title} uses {wrong!r}"
+        assert answers[0].isupper() and not answers.endswith("."), title
+        # The line says what the check answers, never what it found: no
+        # figure, and no verdict word a finding would carry.
+        assert not re.search(r"\d+(\.\d+)?%|£", line), f"{title} reads a figure"
+
+    # A check whose service did not answer keeps the publisher and offers
+    # nothing else.
+    assert set(app_main.LOCKED_CARD_UNAVAILABLE) == set(lines)
+    for title, line in app_main.LOCKED_CARD_UNAVAILABLE.items():
+        assert line.startswith("Could not be checked just now · ")
+        assert line.endswith(lines[title].split(" · ", 1)[1])
+
+
+def test_b2_every_locked_card_in_the_templates_asks_for_its_line():
+    """One call per locked check, across every template that draws a
+    card: a sixteenth locked card added without a line, or a title typed
+    differently from the one in main.py, fails here rather than
+    rendering an empty status."""
+    templates = pathlib.Path(app_main.__file__).parent / "templates"
+    calls = []
+    for path in sorted(templates.rglob("*.html")):
+        calls += re.findall(r"locked\.locked_status\('([^']+)'", path.read_text(encoding="utf-8"))
+    assert sorted(calls) == sorted(app_main.LOCKED_CARD_LINES)
+
+
+def test_b2_a_signed_out_report_shows_a_line_on_every_locked_card(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather(**B2_ANSWERED))
+    body = client.get("/property?postcode=M14+5TG&house_number=1").text
+
+    assert len(_b1_locked_cards(body)) == len(app_main.PREMIUM_CHECKS)
+    for _icon, title, _value, _source in app_main.PREMIUM_CHECKS:
+        shown = _b2_line(body, html.escape(title))
+        assert shown == _b2_escaped(title), title
+    # The line is one of the card's own status lines, which is where its
+    # size comes from, and never on its own.
+    assert 'class="dashboard-card-locked-line"' not in body
+    # The lock overlay and its screen-reader words are untouched.
+    assert "dashboard-card-lock-label" in body
+
+
+def test_b2_a_postcode_only_report_says_the_extension_check_needs_a_house_number(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather(**B2_ANSWERED))
+    body = client.get("/property?postcode=M14+5TG").text
+
+    assert _b2_line(body, "Extended or Modified") == app_main.LOCKED_CARD_NEEDS_HOUSE_NUMBER
+    assert "Needs a house number · EPC register" == app_main.LOCKED_CARD_NEEDS_HOUSE_NUMBER
+    # Nothing else changes: the other fourteen read as they do with a
+    # house number.
+    assert _b2_line(body, "Aspect") == _b2_escaped("Aspect")
+    assert _b2_line(body, "Valuation Estimate") == _b2_escaped("Valuation Estimate")
+
+
+def test_b2_a_locked_check_whose_service_failed_says_so(client, fake_report):
+    """conftest's fake marks every service it is not given as failed, so
+    the default report is the one the audit walked into: the Coal
+    Authority down behind a lock."""
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather())
+    body = client.get("/property?postcode=M14+5TG&house_number=1").text
+
+    assert _b2_line(body, "Mining Risk") == "Could not be checked just now · The Coal Authority"
+    for title in ("Mining Risk", "Air Quality", "Subsidence Risk", "Historic Contamination"):
+        shown = _b2_line(body, html.escape(title))
+        assert shown == _b2_escaped_unavailable(title), title
+        assert "Data unavailable" not in shown
+        # Not offered as a check that ran.
+        assert shown != _b2_escaped(title)
+    # A check that did answer still reads as its own line on the same page.
+    assert _b2_line(body, "Bus Service") == _b2_escaped("Bus Service")
+
+
+def test_b2_the_lock_and_the_one_sign_up_offer_are_unchanged(client, fake_report, monkeypatch):
+    from tests.conftest import fake_gather
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    # The default fake, so the unlocked half of this test renders the
+    # cards the way the rest of the suite does.
+    gather = fake_gather()
+    fake_report(gather=gather)
+    body = client.get("/property?postcode=M14+5TG&house_number=1").text
+    lock_label = "Sign up: 1 free full report"
+
+    tag, block = _b1_card(body, "Mining Risk")
+    assert "dashboard-card-lock-overlay" in block and "data-lock-redirect" in tag
+    assert lock_label in block          # the overlay's words for a screen reader
+    # Still one offer on the page, and still the sign-up the audit left.
+    page = _without_popup(body)
+    assert page.count('class="paywall-banner-cta"') == 1
+    wall = re.search(r'<a class="paywall-banner-cta" href="([^"]*)"', _banner(body)).group(1)
+    assert wall.startswith("/signup?next=")
+
+    # Unlocked, the lines are gone and the cards read their findings again.
+    fake_report(gather=gather)
+    assert _signup(client, "b2-unlocked@customer.test").status_code == 303
+    assert client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": "1"},
+                       follow_redirects=False).status_code == 303
+    full = client.get("/property?postcode=M14+5TG&house_number=1").text
+    assert 'class="dashboard-card-status dashboard-card-locked-line"' not in full
+    assert _b1_locked_cards(full) == []
+    assert _card_status(full, "Bus Service") == "No timetable data"
+
+
+def test_b2_the_line_is_readable_at_the_cards_own_status_size():
+    rule = STYLE_CSS.split(
+        ".dashboard-card-locked .dashboard-card-status.dashboard-card-locked-line", 1)[1].split("}", 1)[0]
+    assert "display: block" in rule and "display: none" not in rule
+    # Size, weight and family stay the status line's own: only the colour
+    # moves, and it moves to a token so dark mode follows.
+    for property_ in ("font-size", "font-family", "font-weight", "letter-spacing", "line-height"):
+        assert property_ not in rule, f"the locked line must not set {property_}"
+    assert "var(--ink-soft)" in rule
+    assert "body.theme-dark .dashboard-card-locked-line" not in STYLE_CSS
+    assert STYLE_CSS.count("dashboard-card-locked-line") == 1
+
+
+# ---- B3. A locked check's answer is not in the page at all ---------------
+# The lock was a stylesheet rule. A signed-out report rendered every
+# locked finding into its HTML and hid two lines of it with display:
+# none: "1.7x WHO guideline at worst", "Improbable by 2030", "16.5 an
+# hour", "4 likely, 0 borderline, 4 unlikely", and, in the pop-ups,
+# which were not hidden at all, the valuation's "Estimate (median)" with
+# its table of sales, every GP practice, every bus stop and every
+# brownfield site. The catchment rings and the stations went into the
+# map's own script. Anyone who opened the page source read the lot, and
+# so did every crawler and scraper. Now nothing a locked check found is
+# rendered: the card carries its line (B2), the pop-up carries how the
+# check is done, who publishes it and the way in, and the two map
+# branches and the two follow-up endpoints are sent nothing.
+
+# Every locked check, answered, with values that appear nowhere else on
+# the page. What each one found does not matter; that it is absent does.
+B3_FINDINGS = dict(
+    valuation={"estimate": 412345, "low": 401111, "high": 423333, "sample_size": 7,
+               "years_window": 2, "floor_area_variance_pct": 5},
+    valuation_floor_area_known=True,
+    price_per_sqm={"sample_size": 4, "median": 5111, "low": 4900, "high": 5300, "years_window": 1,
+                   "rows": [{"address": "9 Locked Lane", "date": "2026-02-01", "amount": 404040.0,
+                             "floor_area": 79, "per_sqm": 5115, "sold_per_sqm": 5090, "distance_m": 90}],
+                   "subject": None, "subject_floor_area": 79, "implied_value": 403769,
+                   "subject_vs_median_pct": None},
+    price_trend={"area_name": "Lockedshire", "pct_change": 17.3, "start_price": 211111,
+                 "current_price": 247777, "projections": [{"months_ahead": 12, "price": 255555}],
+                 "series": [{"period": "2021-06", "average_price": 211111},
+                            {"period": "2026-06", "average_price": 247777}]},
+    extension_signal={"likely_extended": True, "change_pct": 22.5, "earliest_area": 71,
+                      "latest_area": 87, "earliest_date": "2011-03-02", "latest_date": "2025-12-16"},
+    orientation={"rear_facing": "South-west", "front_facing": "North-east", "nearest_road": "Locked Lane"},
+    sewage_error=False,
+    sewage_outfalls=[{"name": "Locked Outfall", "water_company": "Locked Water",
+                      "receiving_water": "River Locked", "spill_count": 41, "duration_hrs": 312.4,
+                      "distance_m": 880, "year": 2025}],
+    clay_risk={"class_2030": "Probable", "label_2030": "Probable",
+               "class_2050": "Probable", "label_2050": "Probable"},
+    air_quality={"year": 2024, "pollutants": [{"name": "no2", "label": "NO2", "value": 34.9,
+                                               "who_guideline": 10, "times_guideline": 3.49}]},
+    historic_landfill={"status": "nearby", "site_name": "Locked Tip", "distance_m": 420},
+    coal_mining={"present": True, "area_name": "Locked Coalfield"},
+    catchment=[{"school_name": "Locked Primary", "phase": "Primary",
+                "authority": "Lockedshire", "rings": None}],
+    catchment_distance_schools=[{"name": "Locked Primary", "latitude": 53.45, "longitude": -2.22,
+                                 "phase_group": "Primary", "ofsted_rating": None,
+                                 "ofsted_rating_label": None, "radius_miles": 0.87, "is_real": True,
+                                 "academic_year": "2025/26", "source_authority": "Lockedshire",
+                                 "property_distance_miles": 0.31, "within_catchment": True,
+                                 "verdict": {"level": "likely", "label": "Likely"}}],
+    catchment_distance_count=1, catchment_distance_any_real=True,
+    stations={"rail": {"name": "Locked Central", "distance_m": 410,
+                       "city_journeys": [{"minutes": 13, "city": "Manchester", "departs": "08:00",
+                                          "arrives": "08:13", "operator": "Locked Rail"}]}},
+    stations_list={"rail": [{"name": "Locked Central", "distance_m": 410, "lat": 53.46, "lon": -2.23}],
+                   "tube": [], "tram": [], "bus": []},
+    nearest_transport={"name": "Locked Central", "distance_m": 410, "walking_distance_m": 480},
+    amenities={k: [] for k in ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking",
+                               "ev_charging", "gp", "dentist", "green_space", "wind_turbine",
+                               "solar_farm")},
+    wellbeing={"good_health_pct": 63.7, "health_breakdown": [{"label": "Very good health", "pct": 63.7}],
+               "marital_breakdown": [], "nssec_breakdown": []},
+    brownfield={"covered": True, "count": 3, "hectares": 1.4, "dwellings": 144, "dwellings_stated": 2,
+                "permissioned": 1, "radius_m": 800, "country": "England",
+                "council": {"name": "Lockedshire", "published": True, "register_count": 12},
+                "newest_entry": "2025-01-01",
+                "sites": [{"distance_m": 300, "address": "Locked Yard", "hectares": 1.4,
+                           "max_dwellings": 144, "min_dwellings": 100, "permission": "Yes",
+                           "permission_type": "Full", "ownership": "Private",
+                           "entry_date": "2025-01-01", "plan_url": ""}]},
+    bus_service={"count": 2, "radius_m": 500, "ref_weekday": "2026-06-02", "ref_sunday": "2026-06-07",
+                 "feed_date": "2026-06-01", "routes": ["142", "197"],
+                 "best": {"name": "Locked Road Stop A", "atco_code": "X1", "distance_m": 120,
+                          "weekday_day": 33, "weekday_day_per_hour": 16.5, "weekday_eve_per_hour": 6.0,
+                          "sunday_day_per_hour": 4.5, "weekday_first": "05:12", "weekday_last": "23:44"},
+                 "stops": [{"name": "Locked Road Stop A", "atco_code": "X1", "distance_m": 120,
+                            "weekday_day_per_hour": 16.5, "weekday_eve_per_hour": 6.0,
+                            "sunday_day_per_hour": 4.5, "weekday_first": "05:12",
+                            "weekday_last": "23:44", "routes": ["142"]}]},
+    health={"count": 2, "radius_m": 3000, "patients_date": "2026-06-01", "workforce_date": "2026-05-01",
+            "median_patients_per_qualified_gp": 2294, "ae_period": "June 2026", "icb_name": "Locked ICB",
+            "national_type1_within_4h_pct": 58.1,
+            "nearest": {"patients": 12345, "patients_per_qualified_gp": 3777, "vs_median": 1.65},
+            "practices": [{"name": "Locked Medical Centre", "distance_m": 300, "patients": 12345,
+                           "qualified_gp_fte": 3.2, "gp_fte": 4.0, "patients_per_qualified_gp": 3777,
+                           "vs_median": 1.65, "estimated": False}],
+            "trusts": [{"name": "Locked NHS Trust", "type1_attendances": 9876,
+                        "type1_within_4h_pct": 61.4, "all_within_4h_pct": 71.2}]},
+)
+
+# One string per locked check that the answer, and only the answer, puts
+# on the page. Written as the page writes them.
+B3_ANSWERS = (
+    "412,345", "401,111", "Estimate (median)", "5,111",          # Valuation Estimate
+    "17.3", "247,777", "255,555",                                # Price Trend & Forecast
+    "2011-03-02", "87 m", "Locked Lane",                         # Extended or Modified, Aspect
+    "South-west", "Locked Outfall", "312.4",                     # Aspect, Sewage Discharge
+    "Probable by 2030", "34.9", "3.49",                          # Subsidence Risk, Air Quality
+    "Locked Tip", "Locked Coalfield",                            # Contamination, Mining Risk
+    "Locked Primary", "Lockedshire",                             # School Catchment Areas
+    "Locked Central", "Locked Rail",                             # Getting Around
+    "63.7", "Locked Yard", "144",                                # Wellbeing, Development Nearby
+    "Locked Road Stop A", "16.5",                                # Bus Service
+    "Locked Medical Centre", "3,777", "2,294", "Locked NHS Trust", "61.4",   # Health Services
+)
+
+# The pop-up each locked card opens. Held against LOCKED_CARD_LINES
+# below, so a sixteenth locked check cannot be added without saying
+# which pop-up has to stay shut.
+B3_MODALS = {
+    "Valuation Estimate": "modal-valuation",
+    "Price Trend & Forecast": "modal-price-trend",
+    "Extended or Modified": "modal-extension",
+    "Aspect": "modal-orientation",
+    "Sewage Discharge": "modal-sewage",
+    "Subsidence Risk": "modal-clay-risk",
+    "Air Quality": "modal-air-quality",
+    "Historic Contamination": "modal-historic-landfill",
+    "Mining Risk": "modal-coal-mining",
+    "School Catchment Areas": "modal-catchment",
+    "Getting Around": "modal-getting-around",
+    "Health, Relationships & Social Grade": "modal-wellbeing",
+    "Development Nearby": "modal-brownfield",
+    "Bus Service": "modal-bus",
+    "Health Services": "modal-health",
+}
+
+B3_WAY_IN = f"One of the {len(app_main.PREMIUM_CHECKS)} checks that open with a full report."
+
+
+def _b3_gather():
+    """The same findings every time, with the trend chart the real
+    gather computes from the trend it is given."""
+    from tests.conftest import fake_gather
+    return fake_gather(price_trend_chart=app_main._price_trend_chart(B3_FINDINGS["price_trend"]),
+                       **B3_FINDINGS)
+
+
+def _b3_report(client, fake_report, gather=None, house_number="1"):
+    fake_report(gather=gather or _b3_gather())
+    r = client.get(f"/property?postcode=M14+5TG&house_number={house_number}")
+    assert r.status_code == 200
+    return r.text
+
+
+def _b3_modal(body, modal_id):
+    assert f'id="{modal_id}"' in body, f"the report has no {modal_id}"
+    return body.split(f'id="{modal_id}"', 1)[1].split("</dialog>", 1)[0]
+
+
+def _b3_subscriber(client, email):
+    assert _signup(client, email).status_code == 303
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        user.is_premium, user.plan = True, "monthly"
+        session.commit()
+
+
+def test_b3_a_signed_out_report_holds_no_locked_answer_anywhere(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    body = _b3_report(client, fake_report)
+
+    # Every locked check answered, and not one of those answers is in
+    # the page: not in a card, not in a pop-up, not in a script.
+    for answer in B3_ANSWERS:
+        assert answer not in body, f"a signed-out report still carries {answer!r}"
+    # The tables those answers sat in are gone with them.
+    for heading in ("Estimate (median)", "Catchment radius", "Patients per GP",
+                    "Weekday daytime, an hour", "Listed since", "Rear/garden-facing"):
+        assert heading not in body, heading
+
+    # The report itself is whole: fifteen locked cards, each with its
+    # line, and the free checks still read their own figures.
+    assert len(_b1_locked_cards(body)) == len(app_main.PREMIUM_CHECKS)
+    assert _b2_line(body, "Air Quality") == _b2_escaped("Air Quality")
+    assert "£250,000" in body                       # the sale the free card names
+    assert _card_status(body, "Household Income") == "No data available"
+
+
+def test_b3_every_locked_popup_holds_its_method_its_source_and_the_way_in(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert sorted(B3_MODALS) == sorted(app_main.LOCKED_CARD_LINES)
+    body = _b3_report(client, fake_report)
+
+    for title, modal_id in B3_MODALS.items():
+        modal = _b3_modal(body, modal_id)
+        # The way in, worded and pointed the way the card is.
+        assert B3_WAY_IN in _flat(modal), f"{modal_id} does not offer the way in"
+        tag, _block = _b1_card(body, html.escape(title))
+        redirect = re.search(r'data-lock-redirect="([^"]*)"', tag).group(1)
+        assert f'<a href="{redirect}">' in modal, f"{modal_id} does not point where its card does"
+        # Nothing a figure could hide in.
+        for shape in ("<table", "<svg", "<circle", "catchment-badge", "clay-badge"):
+            assert shape not in modal, f"{modal_id} still renders {shape}"
+        # Still says who publishes the answer it is not giving.
+        assert len(_flat(modal)) > len(B3_WAY_IN) + 200, f"{modal_id} says nothing about the check"
+
+
+def test_b3_neither_map_branch_is_sent_a_locked_checks_data(client, fake_report, monkeypatch):
+    """Production renders the Google branch and dev the Leaflet one, so
+    the catchment shapes, the admission rings and the stations have to
+    go from both."""
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    for key in ("", "test-maps-key"):
+        monkeypatch.setenv("GOOGLE_MAPS_API_KEY", key)
+        body = _b3_report(client, fake_report)
+        assert ("maps.googleapis.com" in body) == bool(key)
+        scripts = "".join(re.findall(r"<script[^>]*>(.*?)</script>", body, re.S))
+        for value in ("Locked Primary", "Locked Central", "0.87", "Lockedshire", "2025/26"):
+            assert value not in scripts, f"the map script carries {value!r} with key={key!r}"
+        assert "addStationsToMap({})" in scripts.replace(" ", "")
+
+
+def test_b3_a_subscriber_and_an_unlocked_home_read_every_figure(client, fake_report, monkeypatch):
+    """The other half of the gate: nothing here is taken from a reader
+    who has paid, or who has spent their free report on this home."""
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    _b3_subscriber(client, "b3-subscriber@customer.test")
+    full = _b3_report(client, fake_report)
+    for answer in B3_ANSWERS:
+        assert answer in full, f"a subscriber has lost {answer!r}"
+    assert _b1_locked_cards(full) == []
+    assert B3_WAY_IN not in full
+    # The map gets its layers back, in whichever branch is rendered.
+    assert "Locked Primary" in full and "Locked Central" in full
+
+    # A free account that has spent its one report on this address reads
+    # the same page. Its own house number, so no address in this file
+    # ends up unlocked by two accounts: /admin counts that pattern and a
+    # test of its own reads the count.
+    client.cookies.clear()
+    assert _signup(client, "b3-unlocked@customer.test").status_code == 303
+    fake_report(gather=_b3_gather())
+    assert client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": "9"},
+                       follow_redirects=False).status_code == 303
+    mine = _b3_report(client, fake_report, house_number="9")
+    for answer in B3_ANSWERS:
+        assert answer in mine, f"an unlocked home has lost {answer!r}"
+
+
+def test_b3_the_two_follow_up_endpoints_answer_by_who_is_asking(client, fake_report, monkeypatch):
+    """The valuation and the amenities fragments are fetched after the
+    page renders and swapped into it, so the same decision has to be
+    made again there: both used to send the finding to a page that had
+    just rendered it locked."""
+    from app.services import amenities as amenities_service
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+
+    async def _comparables(_lat, _lon):
+        return []
+
+    async def _gather(location, house_number, premium_unlocked=False, wait_for_slow=False):
+        return {"location": location, **_b3_gather()}
+
+    def _apply(context, *_args, **_kw):
+        context["valuation"] = B3_FINDINGS["valuation"]
+        context["price_per_sqm"] = B3_FINDINGS["price_per_sqm"]
+        context["valuation_floor_area_known"] = True
+
+    async def _amenities(_lat, _lon, lite=False):
+        return {"categories": B3_FINDINGS["amenities"], "stations": B3_FINDINGS["stations"],
+                "stations_list": B3_FINDINGS["stations_list"]}
+
+    fake_report(gather=_b3_gather())
+    monkeypatch.setattr(app_main, "_comparables_fetch", _comparables)
+    monkeypatch.setattr(app_main, "_full_property_gather", _gather)
+    monkeypatch.setattr(app_main, "_apply_valuation", _apply)
+    monkeypatch.setattr(amenities_service, "nearby_amenities_and_station", _amenities)
+
+    out = client.get("/api/property/valuation?postcode=M14%205TG").json()
+    for answer in ("412,345", "401,111", "423,333", "Estimate (median)", "5,111", "Locked Lane"):
+        assert answer not in out["card"] + out["body"], f"the valuation endpoint sent {answer!r}"
+    assert B3_WAY_IN in _flat(out["body"])
+
+    nearby = client.get("/api/property/amenities?postcode=M14%205TG").json()
+    assert "Locked Central" not in nearby["transport_card"] + nearby["transport_body"]
+    assert nearby["stations_list"] == {}
+
+    # Signed in as a subscriber, both reply in full.
+    _b3_subscriber(client, "b3-endpoints@customer.test")
+    out = client.get("/api/property/valuation?postcode=M14%205TG").json()
+    assert "£412,345" in out["card"] and "Estimate (median)" in out["body"] and "£5,111" in out["body"]
+    nearby = client.get("/api/property/amenities?postcode=M14%205TG").json()
+    assert "Locked Central" in nearby["transport_body"]
+    assert nearby["stations_list"]["rail"][0]["name"] == "Locked Central"
+
+
+def test_b3_the_stylesheet_no_longer_hides_a_locked_cards_value():
+    """The CSS that hid the finding is gone, because there is no longer
+    a finding to hide. A rule like it coming back would mean the value
+    is being written into the page again."""
+    assert ".dashboard-card-locked .dashboard-card-substat" not in STYLE_CSS
+    assert ".premium-preview-lede ~ .dashboard-grid .dashboard-card-locked" not in STYLE_CSS
+    locked_rules = [block for block in STYLE_CSS.split("}")
+                    if ".dashboard-card-locked .dashboard-card-status" in block]
+    assert len(locked_rules) == 1 and "display: none" not in locked_rules[0]
+
+
+# ---- Batch B fix pass: what the review of B1 to B3 found left over -------
+# B3 took every locked finding out of the cards, the pop-ups, the two map
+# branches and the two follow-up endpoints, and left one place standing:
+# the "Questions to ask" teaser, which named five of them in plain body
+# text, one of them a figure, on the same screen where their cards say
+# only what the check answers. A question triggered by a locked check
+# states that check's finding in its own trigger, so the teaser now draws
+# on buyer_questions_teaser, the list with those questions dropped.
+
+# The triggers of the five questions a locked check can raise, as the
+# page writes them for the B3 findings.
+B3_LOCKED_TRIGGERS = (
+    "Coal Mining Reporting Area",
+    "Historic landfill on or near the site",
+    "Frequent sewage discharges nearby",
+    "Rising clay subsidence risk",
+    "Floor area grew about +22% between energy certificates",
+)
+
+
+def _b3_questions(body):
+    """The "Questions to ask" section, whichever branch rendered it."""
+    assert 'id="buyer-questions"' in body, "the report has no questions section"
+    return _flat(body.split('id="buyer-questions"', 1)[1].split("</section>", 1)[0])
+
+
+def _b3_flood_gather():
+    """The B3 findings plus one free check that raises questions of its
+    own, so the teaser has something left to show."""
+    gather = _b3_gather()
+    gather["flood_zone"] = {"zone": 3, "label": "Zone 3 (high probability)", "source": None}
+    return gather
+
+
+def test_b3_the_questions_teaser_names_no_locked_finding(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    teaser = _b3_questions(_b3_report(client, fake_report, gather=_b3_flood_gather()))
+
+    # The teaser still does its job, from the flood question a free check
+    # raised: a real question in full, and where the rest came from.
+    assert "questions</strong> were generated for this property." in teaser
+    assert "Has the property ever flooded" in teaser
+    assert "The others come from: Flood: Zone 3 (high probability)." in teaser
+    # And it names none of the five findings behind the lock.
+    for trigger in B3_LOCKED_TRIGGERS:
+        assert trigger not in teaser, f"the teaser still names {trigger!r}"
+
+    # Nowhere else on a signed-out page either. "Coal Mining Reporting
+    # Area" is left out of this sweep on purpose: the Mining Risk pop-up
+    # names it as what the check answers, which is the point of B2, not a
+    # reading of this address.
+    body = _flat(_b3_report(client, fake_report, gather=_b3_flood_gather()))
+    for trigger in B3_LOCKED_TRIGGERS[1:]:
+        assert trigger not in body, f"a signed-out report still carries {trigger!r}"
+
+
+def test_b3_the_teaser_counts_every_question_and_a_subscriber_reads_them_all(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    teaser = _b3_questions(_b3_report(client, fake_report, gather=_b3_flood_gather()))
+    counted = int(re.search(r"<strong>(\d+) questions</strong>", teaser).group(1))
+
+    _b3_subscriber(client, "b-fix-questions@customer.test")
+    full = _b3_questions(_b3_report(client, fake_report, gather=_b3_flood_gather()))
+    # How many questions were generated is not a finding, so the locked
+    # count is still every question, the five dropped ones included.
+    assert counted == len(re.findall(r'class="bq-item"', full))
+    assert counted > len(B3_LOCKED_TRIGGERS)
+    for trigger in B3_LOCKED_TRIGGERS:
+        assert trigger in full, f"a subscriber has lost {trigger!r}"
+
+
+def test_b3_only_a_locked_checks_question_is_dropped_from_the_teaser():
+    from app.services import overview_score, solicitor_questions
+    # The tags are the keys the score already uses for the same idea, so
+    # a check moving between the tiers moves in one place.
+    assert solicitor_questions.LOCKED_CHECKS <= overview_score._PREMIUM_ONLY_CONCERNS
+
+    questions = solicitor_questions.build(dict(B3_FINDINGS))
+    assert {q["check"] for q in questions if q["check"]} == set(solicitor_questions.LOCKED_CHECKS)
+    kept = solicitor_questions.without_locked(questions)
+    assert len(kept) == len(questions) - len(solicitor_questions.LOCKED_CHECKS)
+    # What is left says nothing about this address at all.
+    assert {q["trigger"] for q in kept} == {"Every purchase"}
+
+
+def test_b3_a_failed_follow_up_fetch_leaves_a_locked_cards_line_alone():
+    """Both follow-up fetches used to write "Data unavailable" into the
+    card's status when they failed. That span was hidden inside a locked
+    card until 17 Sep 2026; it is the neutral line now, so a failed fetch
+    would have put a reading back on a card that shows none."""
+    template = (ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8")
+    assert template.count("textContent = 'Data unavailable'") == 2
+    assert "if (status && !card.classList.contains('dashboard-card-locked')) {" in template
+    assert "if (card && card.classList.contains('dashboard-card-locked')) return;" in template
+
+
+# One publisher each of the four locked checks whose method paragraph is
+# written twice, once for the locked reader and once for the answered
+# branch. A rename in one copy and not the other now fails here rather
+# than leaving the locked reader with the old source.
+B3_SHARED_PUBLISHERS = {
+    "modal-price-trend": "HM Land Registry's monthly House Price Index",
+    "modal-health": "NHS England Digital",
+    "modal-bus": "Department for Transport's Bus Open Data Service",
+    "modal-brownfield": "the government's planning data platform",
+}
+
+
+def test_b3_the_duplicated_method_paragraphs_name_the_same_publisher(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    locked = _b3_report(client, fake_report)
+    _b3_subscriber(client, "b-fix-publishers@customer.test")
+    answered = _b3_report(client, fake_report)
+
+    for modal_id, publisher in B3_SHARED_PUBLISHERS.items():
+        assert publisher in _flat(_b3_modal(locked, modal_id)), f"{modal_id} locked lost {publisher!r}"
+        assert publisher in _flat(_b3_modal(answered, modal_id)), f"{modal_id} answered lost {publisher!r}"
+
+
+def test_b3_the_catchment_popup_no_longer_offers_an_upgrade_it_cannot_show():
+    """A branch on catchment_distance_count ended "Upgrade to Premium to
+    see them." Only an unlocked reader reaches that chain now, and for an
+    unlocked reader every counted school is in the list above it, so the
+    branch could not render and its wording would have been wrong."""
+    template = _without_template_comments(
+        (ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8"))
+    assert "Upgrade to Premium to see them" not in template
