@@ -44,7 +44,9 @@
         <input type="text" id="areas-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
     </div>
     <button type="submit">Run the {{ check_count }} checks</button>
-    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
+    {# Ended "Free, no account." until 17 Sep 2026; the offer now reads
+       as on every other page (OFFER_SENTENCE in main.py). #}
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. {{ offer_sentence }}</p>
 </form>
 {% import "_recent_places.html" as recent %}
 {{ recent.recent_addresses("/property") }}

@@ -83,7 +83,10 @@
         <input type="text" id="area-check-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
     </div>
     <button type="submit">Run the 44 checks</button>
-    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. Free, no account.</p>
+    {# Ended "Free, no account." until 17 Sep 2026, which a first-timer
+       read as every check being open. The offer now reads as on every
+       other page: OFFER_SENTENCE in main.py. #}
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. {{ offer_sentence }}</p>
 </form>
 
 {# The "Follow this district" row was removed on 7 Sep 2026: zero
@@ -484,7 +487,11 @@
     <p>
         A Band D household in <strong>{{ finance.name }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
         a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
-        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}; the full report gives the band of a specific address.
+        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}. A home's own band is on its council tax bill, free to look up at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>; the report shows every band's bill at the council beside the home's other checks.
+        {# It said "the full report gives the band of a specific address"
+           until 17 Sep 2026. It does not: the band list is not open data.
+           This section is MHCLG's, so England only, and the gov.uk lookup
+           covers England and Wales. #}
     </p>
     {% if council_tax_trend %}
     {% import "_trend_chart.html" as trendchart %}

@@ -250,9 +250,15 @@
                     Download full PDF report
                 </a>
                 {% elif not shared %}
+                {# Labelled by state, the way lock_redirect is (17 Sep 2026).
+                   It said Premium to everyone, while the PDF comes with the
+                   free full report (owner's decision that day): only an
+                   account that has spent its report needs Premium for it.
+                   Kept short: the button does not wrap, and a longer label
+                   measured wider than a 375px phone leaves it room for. #}
                 <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                    PDF report &middot; Premium
+                    {% if current_user and not can_unlock_now and not needs_confirmation %}PDF report &middot; Premium{% else %}Free PDF for your first home{% endif %}
                 </a>
                 {% endif %}
             </div>
@@ -277,8 +283,21 @@
                 <p class="overview-score-verdict">{{ overview.verdict }}</p>
                 {% endif %}
                 {% if overview.premium_extra_checks %}
-                <a href="{{ '/signup' if not current_user else '/premium' }}" class="overview-score-upsell">
-                    +{{ overview.premium_extra_checks }} more check{{ 's' if overview.premium_extra_checks != 1 }} factored in with Premium →
+                {# Goes where a locked card goes (lock_redirect), 17 Sep 2026.
+                   It sent every signed-in account to /premium, a brand-new
+                   one with its free full report unused included, and a
+                   visitor without an account to /signup without the house.
+                   Now only an account that has spent its report goes to
+                   Premium; one with it unused goes to the offer at the top. #}
+                {% set extra_n = overview.premium_extra_checks %}
+                <a href="{{ lock_redirect }}" class="overview-score-upsell">
+                    {% if current_user and can_unlock_now %}
+                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} {{ 'open' if extra_n != 1 else 'opens' }} with your free full report →
+                    {% elif current_user and needs_confirmation %}
+                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} {{ 'open' if extra_n != 1 else 'opens' }} with your free full report, once your email address is confirmed →
+                    {% else %}
+                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} factored in with Premium →
+                    {% endif %}
                 </a>
                 {% endif %}
                 {% if not current_user %}
@@ -510,10 +529,79 @@
         </div>
     </div>
     {% else %}
-    <div class="attention-banner attention-banner-clear" data-animate>
-        <span class="attention-banner-count">&#10003;</span>
+    {# What the all-clear may vouch for, 17 Sep 2026. It read "No major
+       red flags found across flood, noise, radon, air quality,
+       contamination, planning and area indicators" to every reader: with
+       air quality and contamination locked and their flags turned to ok
+       above, and still green while the noise service and the Coal
+       Authority check had failed (first-visitor audit, 17 Sep 2026). It
+       now names only the checks this reader can open that ran and came
+       back clear, names a failed one as not checked, and gives locked
+       checks as a count from PREMIUM_CHECKS and nothing else: a locked
+       check's finding, clear or failed, never changes a word of it. A
+       check with no data and no failure (outside the flood maps, say) is
+       simply not named. #}
+    {% set banner_clear = [] %}
+    {% set banner_unchecked = [] %}
+    {% if not flood_not_covered %}
+        {% if flood_error and flood_zone_error %}{% set _ = banner_unchecked.append('flood risk') %}
+        {% elif flood_zone_error %}{% set _ = banner_unchecked.append('the flood zone') %}
+        {% elif flood_error %}{% set _ = banner_unchecked.append('live flood warnings') %}{% endif %}
+        {% if flood_status == 'ok' and flood_zone and not flood_zone_error %}{% set _ = banner_clear.append('the flood zone' if flood_error else 'flood risk') %}{% endif %}
+        {% if surface_water_error %}{% set _ = banner_unchecked.append('surface water flooding') %}
+        {% elif surface_water_status == 'ok' and surface_water %}{% set _ = banner_clear.append('surface water flooding') %}{% endif %}
+    {% endif %}
+    {% if premium_unlocked %}
+        {% if clay_risk_error %}{% set _ = banner_unchecked.append('subsidence') %}
+        {% elif clay_risk_status == 'ok' %}{% set _ = banner_clear.append('subsidence') %}{% endif %}
+        {% if coal_mining_error %}{% set _ = banner_unchecked.append('mining') %}
+        {% elif coal_mining_status == 'ok' and coal_mining %}{% set _ = banner_clear.append('mining') %}{% endif %}
+        {% if historic_landfill_error %}{% set _ = banner_unchecked.append('contamination') %}
+        {% elif landfill_status == 'ok' and historic_landfill %}{% set _ = banner_clear.append('contamination') %}{% endif %}
+    {% endif %}
+    {% if radon_error %}{% set _ = banner_unchecked.append('radon') %}
+    {% elif radon_status == 'ok' %}{% set _ = banner_clear.append('radon') %}{% endif %}
+    {% if premium_unlocked %}
+        {% if air_quality_error %}{% set _ = banner_unchecked.append('air quality') %}
+        {% elif aq_status == 'ok' %}{% set _ = banner_clear.append('air quality') %}{% endif %}
+    {% endif %}
+    {% if noise_error %}{% set _ = banner_unchecked.append('noise') %}
+    {% elif noise_status == 'ok' %}{% set _ = banner_clear.append('noise') %}{% endif %}
+    {% if premium_unlocked %}
+        {% if sewage_error %}{% set _ = banner_unchecked.append('sewage discharges') %}
+        {% elif sewage_status == 'ok' and sewage_outfalls is defined %}{% set _ = banner_clear.append('sewage discharges') %}{% endif %}
+    {% endif %}
+    {% if designations_error %}{% set _ = banner_unchecked.append('planning constraints') %}{% set _ = banner_unchecked.append('environmental designations') %}
+    {% elif designations is defined and designations %}{% set _ = banner_clear.append('planning constraints') %}{% set _ = banner_clear.append('environmental designations') %}{% endif %}
+    {% if premium_unlocked %}
+        {% if brownfield_error %}{% set _ = banner_unchecked.append('development nearby') %}
+        {% elif brownfield_status == 'ok' %}{% set _ = banner_clear.append('development nearby') %}{% endif %}
+        {% if epc_error %}{% set _ = banner_unchecked.append('extensions') %}
+        {% elif ext_status == 'ok' %}{% set _ = banner_clear.append('extensions') %}{% endif %}
+    {% endif %}
+    {% if hpi_error %}{% set _ = banner_unchecked.append('area prices') %}
+    {% elif prosperity_status == 'ok' %}{% set _ = banner_clear.append('area prices') %}{% endif %}
+    {% if finance and not finance.flag %}{% set _ = banner_clear.append('council finances') %}{% endif %}
+    {% if deprivation_error %}{% set _ = banner_unchecked.append('deprivation') %}
+    {% elif deprivation_status == 'ok' %}{% set _ = banner_clear.append('deprivation') %}{% endif %}
+    {% if broadband_error %}{% set _ = banner_unchecked.append('broadband') %}
+    {% elif broadband_status == 'ok' %}{% set _ = banner_clear.append('broadband') %}{% endif %}
+    {% if mobile_error %}{% set _ = banner_unchecked.append('mobile signal') %}
+    {% elif mobile_status == 'ok' %}{% set _ = banner_clear.append('mobile signal') %}{% endif %}
+    {% if premium_unlocked %}
+        {% if bus_service_error %}{% set _ = banner_unchecked.append('bus services') %}
+        {% elif bus_status == 'ok' %}{% set _ = banner_clear.append('bus services') %}{% endif %}
+        {% if health_error %}{% set _ = banner_unchecked.append('GP list sizes') %}
+        {% elif health_status == 'ok' %}{% set _ = banner_clear.append('GP list sizes') %}{% endif %}
+    {% endif %}
+    {% set clear_words = ((banner_clear[:-1] | join(', ')) ~ ' and ' ~ banner_clear[-1]) if banner_clear | length > 1 else (banner_clear | first) %}
+    {% set unchecked_words = ((banner_unchecked[:-1] | join(', ')) ~ ' and ' ~ banner_unchecked[-1]) if banner_unchecked | length > 1 else (banner_unchecked | first) %}
+    <div class="attention-banner {{ 'attention-banner-clear' if banner_clear else 'attention-banner-unread' }}" data-animate>
+        {% if banner_clear %}<span class="attention-banner-count">&#10003;</span>{% endif %}
         <div class="attention-banner-body">
-            <strong>No major red flags found</strong> across flood, noise, radon, air quality, contamination, planning and area indicators.
+            {% if banner_clear %}<strong>No major red flags found</strong> across {{ clear_words }}.{% else %}<strong>No all-clear to give.</strong>{% if not banner_unchecked %} None of the checks open to you had data to read for this address.{% endif %}{% endif %}
+            {% if banner_unchecked %}{{ unchecked_words[:1] | upper }}{{ unchecked_words[1:] }} could not be checked just now.{% endif %}
+            {% if not premium_unlocked and premium_check_count %}The {{ premium_check_count }} locked check{{ 's are' if premium_check_count != 1 else ' is' }} not included.{% endif %}
         </div>
     </div>
     {% endif %}
@@ -609,6 +697,24 @@
             <span class="paywall-banner-by-hand">By hand, these 44 checks are 28 websites for one house, and nothing to compare at the end. <a href="/methodology#by-hand">We timed it on 16 September 2026</a>.</span>
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
+        {# 17 Sep 2026: a new account was told "You've used your free
+           report", with a price and "See plans", a scroll below the offer
+           asking whether to use that same report here. The signed-in wall
+           never checked can_unlock_now or needs_confirmation. Now the
+           used-up wording is only for an account that has spent its
+           report. With it unused the page keeps its one ask (16 Sep 2026)
+           and this only points back at it; unconfirmed, it points at the
+           confirmation banner. Neither carries a button of its own. #}
+        {% elif can_unlock_now %}
+        <div class="paywall-banner-copy">
+            <strong>The locked cards below open with your free full report.</strong>
+            It is only used when you choose &ldquo;Yes, unlock every card&rdquo; <a href="#use-free-report">at the top of this report</a>.
+        </div>
+        {% elif needs_confirmation %}
+        <div class="paywall-banner-copy">
+            <strong>Your free full report is waiting for a confirmed email address.</strong>
+            Confirm yours with the link we sent, and this page will then ask whether to use the report here. <a href="#verify-banner">Need the link again?</a>
+        </div>
         {% else %}
         {# The second and later visits to this wall say something the
            first one did not. Twelve accounts reached it in the week to
@@ -620,8 +726,13 @@
             <strong>This is the {{ paywall_history.nth_locked }} time you have reached this wall.</strong>
             You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each of them, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium is &pound;9.99 a month for every check on all of them, however many you end up walking away from.
             {% else %}
+            {# "The ones you opened stay unlocked for good" until 17 Sep 2026:
+               a lapsed subscriber reads this on a home opened during the
+               subscription that has just locked again. Only the free
+               report's home stays open (owner's decision 4 that day), and the
+               aside below names it when the history is to hand. #}
             <strong>You've used your free report.</strong>
-            The ones you opened stay unlocked for good. Unlocking new ones is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
+            {% if not (paywall_history and paywall_history.free_report) %}The home you opened with it stays open for good. {% endif %}Opening another is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
             {% endif %}
             <span class="paywall-banner-by-hand">The next house by hand is the same 28 websites again, and still nothing side by side. Premium opens every check on every house, and the comparison page puts two of them next to each other. <a href="/methodology#by-hand">How we counted</a>.</span>
             {% if paywall_history and paywall_history.free_report %}
@@ -988,13 +1099,18 @@
 
     <h3 class="dashboard-category-heading">Location &amp; Connectivity</h3>
     <div class="dashboard-grid">
+        {# How many readings were measured against a modelled estimate, not
+           a council's published distance, marked "est." as the schools
+           guide marks them (17 Sep 2026). A cached gather from before then
+           has no "estimated" key, so it reads as none. #}
+        {% set sv_est = (school_verdicts.get('estimated') if school_verdicts else none) or {} %}
         <button type="button" class="dashboard-card status-{{ 'muted' if (schools_error or not schools_total) else 'ok' }}" data-modal-target="modal-schools" data-animate>
             <span class="dashboard-card-icon icon-schools">{{ icons.icon('schools') }}</span>
             <span class="dashboard-card-title">Schools Nearby</span>
             <span class="dashboard-card-status">
                 {% if schools_error %}Data unavailable
-                {% elif school_verdicts and school_verdicts.counts.likely %}Likely for {{ school_verdicts.counts.likely }} school{{ 's' if school_verdicts.counts.likely != 1 }}{% if school_verdicts.counts.borderline %}, borderline {{ school_verdicts.counts.borderline }}{% endif %}
-                {% elif school_verdicts %}Borderline {{ school_verdicts.counts.borderline }}, unlikely {{ school_verdicts.counts.unlikely }}
+                {% elif school_verdicts and school_verdicts.counts.likely %}Likely for {{ school_verdicts.counts.likely }} school{{ 's' if school_verdicts.counts.likely != 1 }}{% if sv_est.likely %} ({{ sv_est.likely }} est.){% endif %}{% if school_verdicts.counts.borderline %}, borderline {{ school_verdicts.counts.borderline }}{% if sv_est.borderline %} ({{ sv_est.borderline }} est.){% endif %}{% endif %}
+                {% elif school_verdicts %}Borderline {{ school_verdicts.counts.borderline }}{% if sv_est.borderline %} ({{ sv_est.borderline }} est.){% endif %}, unlikely {{ school_verdicts.counts.unlikely }}{% if sv_est.unlikely %} ({{ sv_est.unlikely }} est.){% endif %}
                 {% elif school_landscape and school_landscape.total_schools %}{{ school_landscape.total_schools }} within {{ school_landscape.radius_miles }} miles
                 {% elif schools_total %}{{ schools_total }} nearby
                 {% else %}None found nearby{% endif %}
@@ -1050,7 +1166,7 @@
             <span class="dashboard-card-status">
                 {% if catchment_error %}Data unavailable
                 {% elif catchment %}In {{ catchment | length }} catchment{{ "s" if catchment | length != 1 else "" }}
-                {% elif school_verdicts %}{{ school_verdicts.counts.likely }} likely, {{ school_verdicts.counts.borderline }} borderline, {{ school_verdicts.counts.unlikely }} unlikely
+                {% elif school_verdicts %}{{ school_verdicts.counts.likely }} likely{% if sv_est.likely %} ({{ sv_est.likely }} est.){% endif %}, {{ school_verdicts.counts.borderline }} borderline{% if sv_est.borderline %} ({{ sv_est.borderline }} est.){% endif %}, {{ school_verdicts.counts.unlikely }} unlikely{% if sv_est.unlikely %} ({{ sv_est.unlikely }} est.){% endif %}
                 {% elif catchment_distance_count %}{{ catchment_distance_count }} school{{ "s" if catchment_distance_count != 1 else "" }}, {{ "real + estimated" if catchment_distance_any_real else "estimated" }}
                 {% else %}Not covered for this area{% endif %}
             </span>
@@ -1859,9 +1975,13 @@
                 {% if council_tax %}
                 <p class="section-sub">
                     What each band pays per year in {{ council_tax.authority }} for {{ council_tax.year }},
-                    including all precepts. A property's own band is set by the Valuation Office Agency and
-                    appears on the seller's bill; ask which band this property is in.
+                    including all precepts. A property's own band is set by the {% if council_tax.nation == "Scotland" %}Scottish Assessors{% else %}Valuation Office Agency{% endif %} and
+                    appears on the seller's bill; ask which band this property is in, or look it up free
+                    {% if council_tax.nation == "Scotland" %}on the <a href="https://www.saa.gov.uk/" target="_blank" rel="noopener">Scottish Assessors</a> website{% else %}at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>{% endif %}.
                 </p>
+                {# The free lookup was added 17 Sep 2026, when the council tax
+                   pages and area guides stopped promising that this report
+                   gives an address's band and started pointing there. #}
                 <table class="tx-table">
                     <thead><tr><th>Band</th><th class="num">Per year</th><th class="num">Per month</th></tr></thead>
                     <tbody>
@@ -3005,10 +3125,26 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Schools nearby</h2>
+        {# The opening said "we can't say whether this address falls within
+           any school's admission area" until 17 Sep 2026, directly under a
+           card reading "Likely for 4 schools" and after school pages that
+           give the same reading. The first-visitor audit read that as the
+           site disowning its own answer. It now says what Likely means, and
+           that it is never a guarantee. #}
+        {% if school_verdicts %}
         <p class="section-sub">
-            Nearest 3 of each type, by proximity only. Not a catchment area or admissions guarantee.
-            No reliable free UK-wide catchment data exists, so we can't say whether this address falls
-            within any school's admission area.
+            Likely means this address is comfortably inside the distance the school last offered places to.
+            That distance is the council's published figure where the council publishes one, and a modelled
+            estimate where it does not, marked "est." on the card. It is never a guarantee: places go first to
+            children who meet the school's other criteria, such as looked-after children, siblings and, at many
+            faith schools, faith, and the distance moves every year with demand. Borderline is close enough to
+            that distance that a busier year could go either way; Unlikely is outside it. The card counts the
+            nearest {{ school_verdicts.total }} school{{ 's' if school_verdicts.total != 1 }} with an admission distance, published or estimated.
+        </p>
+        {% endif %}
+        <p class="section-sub">
+            The tables below are the nearest 3 of each type, by proximity only: not a catchment area or an
+            admissions guarantee.
         </p>
         {% if school_landscape %}
         <div class="landscape-summary">

@@ -239,7 +239,13 @@ def test_homepage_promo_banner_copy_matches_the_real_offer(client):
     from app import auth
     assert auth.FREE_PREMIUM_UNLOCKS == 1, "allowance changed: update the copy that describes it"
     body = client.get("/").text
-    assert "get a full Premium property report on us" in body
+    # "get a full Premium property report on us, normally £9.99/month"
+    # until 17 Sep 2026; the band now states the site's one offer
+    # sentence, whose "your first home" is this allowance of one.
+    from app.main import OFFER_SENTENCE
+    banner = body.split('<section class="promo-banner">', 1)[1].split("</section>", 1)[0]
+    assert OFFER_SENTENCE in banner
+    assert "normally" not in banner
 
 
 def test_oauth_buttons_render_only_for_configured_providers(client, monkeypatch):

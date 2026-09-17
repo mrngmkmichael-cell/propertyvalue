@@ -19,22 +19,10 @@
 {% endblock %}
 
 {% block extra_head %}
-{# FAQ rich result: the five questions at the foot of the page, verbatim. #}
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-        {"@type": "Question", "name": "What is UKPropertyInsight?", "acceptedAnswer": {"@type": "Answer", "text": "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we show the facts about a property and its area."}},
-        {"@type": "Question", "name": "Is it free to use?", "acceptedAnswer": {"@type": "Answer", "text": "Searching is free and needs no account. Creating an account is free and unlocks every Premium check on the first property you look at, no card required."}},
-        {"@type": "Question", "name": "What happens after the free report?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good. Opening a new one needs a subscription, and postcode search stays free either way."}},
-        {"@type": "Question", "name": "How is this different from Rightmove or Zoopla?", "acceptedAnswer": {"@type": "Answer", "text": "Those are listings portals showing homes for sale. We list nothing and are not affiliated with any agent. We show the due-diligence data behind any address, listed or not."}},
-        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Every figure traces back to a source."}},
-        {"@type": "Question", "name": "Will my child get into the school near a house I am looking at?", "acceptedAnswer": {"@type": "Answer", "text": "Every report and every school page measures an address against how far the school admitted from in its last published round, using the council's own figure, and says Likely, Borderline or Unlikely. {{ school_coverage }}"}},
-        {"@type": "Question", "name": "Which parts of the UK are covered?", "acceptedAnswer": {"@type": "Answer", "text": "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and some layers only appear where a council has published the data. Where something is not covered, the report says so."}}
-    ]
-}
-</script>
+{# FAQ rich result: the questions at the foot of the page, word for word.
+   Both read home_faqs from the index route (17 Sep 2026); this was a
+   hand-shortened second copy that had drifted from the page. #}
+{% if home_faqs_jsonld %}<script type="application/ld+json">{{ home_faqs_jsonld | safe }}</script>{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -140,8 +128,12 @@
         <p class="lx-hero-dek">
             Forty-four checks on any UK address, each from the body that published
             it. Whether the house gets a child into the school. What it costs
-            to live there. Free, and no account needed.
+            to live there. {{ offer_sentence }}
         </p>
+        {# The dek ended "Free, and no account needed." until 17 Sep 2026,
+           and a first-timer took it as the whole deal, so the locks a
+           minute later read as bait. It now states the offer in the one
+           sentence every page uses (OFFER_SENTENCE in main.py). #}
 
         <form class="lx-hero-form search-form" action="/property" method="get">
             <div class="search-form-field lx-field">
@@ -217,12 +209,13 @@
 </section>
 
 {% if not current_user %}
+{# Said "get a full Premium property report on us, normally £9.99/month"
+   with the price struck through until 17 Sep 2026. The owner took the
+   struck price out that day: the band states the offer in the same
+   words as the rest of the site. #}
 <section class="promo-banner">
     <div class="promo-banner-inner">
-        <p class="promo-banner-text">
-            <strong>Sign up free</strong> and get a full Premium property report on us, normally
-            <span class="promo-banner-price">£9.99/month</span>. No card required.
-        </p>
+        <p class="promo-banner-text">{{ offer_sentence }}</p>
         <a href="/signup" class="promo-banner-btn">Sign up free</a>
     </div>
 </section>
@@ -292,63 +285,26 @@
 </section>
 
 {# =================================================================== CHECKS
-   The split is the real one: 22 checks open on every report and 15 more
-   come with Premium. A selection of each is shown. Every "sub" line is
-   the body that publishes the figure, which is the whole point of the
-   section. #}
-<section class="lx-section lx-checks" id="checks">
+   Until 17 Sep 2026 this section was the orbit: twelve of the report's
+   check cards painted onto canvases and spun round a "Forty-four checks"
+   heading. The first-visitor audit counted about four and a half phone
+   screens between the hero and the pricing link, the scroll-built report
+   above and the orbit both saying 44, and the owner removed the orbit
+   that day. What it carried that nothing else on the page says stays:
+   the free and Premium split, as lengths of FREE_CHECKS and
+   PREMIUM_CHECKS, and the link to the full list. The offer itself is in
+   the hero dek, in the one sentence the site uses for it. #}
+<section class="lx-section lx-checks lx-plan" id="checks">
     <div class="lx-wrap lx-centre">
         <p class="lx-eyebrow">What we check</p>
-
-        {# The section IS the ring: twelve of the report's own check
-           cards orbit the heading, passing behind and in front of the
-           real DOM words. The card list below feeds the tile painter
-           (content, tones and this site's own icons) and doubles as
-           the static fallback for no-JS and reduced-motion readers,
-           for whom the ring never starts and the list stays. #}
-        <div class="lx-orbit-stage lx-orbit-wide" id="lx-orbit-stage">
-            <canvas class="lx-orbit-canvas lx-orbit-back" id="lx-orbit-back" aria-hidden="true"></canvas>
-            <h2 class="lx-h2 lx-orbit-core lx-orbit-heading">Forty-four<br>checks</h2>
-            <canvas class="lx-orbit-canvas lx-orbit-front" id="lx-orbit-front" aria-hidden="true"></canvas>
-        </div>
-
-        <p class="lx-lede lx-lede-centre">
-            Every one on a single address, every one traced to the body that
-            published it. Twelve of them in orbit here; the full report runs
-            all forty-four.
-        </p>
-        <p class="lx-orbit-tiers">
+        <p class="lx-plan-tiers">
             <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} {{ free_check_count }} free on every report</span>
-            <span class="lx-orbit-tiers-sep">&middot;</span>
-            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} {{ premium_check_count }} more with Premium, free on your first property</span>
+            <span class="lx-plan-tiers-sep" aria-hidden="true">&middot;</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} {{ premium_check_count }} more with Premium</span>
         </p>
-        <p class="lx-orbit-more">
-            <a class="lx-orbit-more-btn" href="/premium#all-checks">See pricing for the full list of 44 &rsaquo;</a>
+        <p class="lx-plan-more">
+            <a class="lx-plan-more-btn" href="/premium#all-checks">See pricing for the full list of {{ pillars.checks }} &rsaquo;</a>
         </p>
-
-        <ul class="lx-orbit-cards" id="lx-orbit-cards">
-            {% for icon, title, value, source, tone in [
-                ('market', 'Sold prices', 'Every sale since 1995', 'HM Land Registry', 'good'),
-                ('flood', 'Flood risk', 'Zone and live warnings', 'Environment Agency', 'good'),
-                ('schools', 'Schools', 'Ofsted rating and distance', 'Ofsted, DfE', 'good'),
-                ('energy', 'Energy', 'EPC band and floor area', 'EPC Register', 'plain'),
-                ('crime', 'Crime', 'By category, against the area', 'Police.uk', 'good'),
-                ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping', 'warn'),
-                ('broadband', 'Broadband', 'Speeds at the address', 'Ofcom', 'good'),
-                ('valuation', 'Valuation', 'Estimate with a range', 'Modelled from nearby sales', 'plain'),
-                ('statistics', 'Price forecast', 'Five-year history and trend', 'UK House Price Index', 'good'),
-                ('geology', 'Subsidence', 'Clay shrink-swell risk', 'British Geological Survey', 'good'),
-                ('air_quality', 'Air quality', 'Against WHO guidelines', 'Defra AURN', 'warn'),
-                ('transport', 'Getting around', 'Live times to the nearest city', 'National Rail', 'plain')
-            ] %}
-            <li class="lx-check lx-orbit-card" data-title="{{ title }}" data-value="{{ value }}" data-source="{{ source }}">
-                <span class="lx-check-icon lx-tone-{{ tone }}">{{ icons.icon(icon) }}</span>
-                <p class="lx-check-title">{{ title }}</p>
-                <p class="lx-check-value">{{ value }}</p>
-                <p class="lx-check-source">{{ source }}</p>
-            </li>
-            {% endfor %}
-        </ul>
     </div>
 </section>
 
@@ -495,17 +451,26 @@
 <section class="landing-section" id="compare-alternatives">
     <span class="section-pill" data-animate>The alternative</span>
     <h2 class="landing-heading" data-animate>What buyers do instead</h2>
+    {# 17 Sep 2026: the DIY column said "12+ separate sites" and "Hours"
+       while the site's own timed record says 28 websites and 36 minutes
+       for someone who already knew every site, so it now quotes the
+       record and links to it. On a phone the table scrolled sideways
+       and this site's own column started off screen; below 600px
+       (.alt-table-stack in style.css) each row stacks its label, the
+       DIY cell and ours, and the portals column is left out. The
+       data-label on each stacked cell names its column there, because
+       the header row is hidden. #}
     <div class="alt-table-wrap" data-animate>
-        <table class="alt-table">
+        <table class="alt-table alt-table-stack">
             <thead><tr>
-                <th></th><th>Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
+                <th></th><th class="alt-portal">Listings portals</th><th>DIY on gov.uk</th><th class="alt-us">UKPropertyInsight</th>
             </tr></thead>
             <tbody>
-                <tr><td>Everything on one page</td><td class="alt-no">Listings, not checks</td><td class="alt-no">12+ separate sites</td><td class="alt-us alt-yes">One report</td></tr>
-                <tr><td>Works for any address, listed or not</td><td class="alt-no">Only what&rsquo;s for sale</td><td class="alt-yes">Yes</td><td class="alt-us alt-yes">Yes</td></tr>
-                <tr><td>Every figure names its source</td><td class="alt-no">No</td><td class="alt-yes">It is the source</td><td class="alt-us alt-yes">Yes, on every card</td></tr>
-                <tr><td>Who pays for it</td><td class="alt-no">Agents&rsquo; listings</td><td>Public</td><td class="alt-us">You do, so it answers to you</td></tr>
-                <tr><td>Time per property</td><td>Not applicable</td><td class="alt-no">Hours</td><td class="alt-us alt-yes">Seconds</td></tr>
+                <tr><td>Everything on one page</td><td class="alt-portal alt-no">Listings, not checks</td><td class="alt-no" data-label="DIY on gov.uk">28 websites</td><td class="alt-us alt-yes" data-label="UKPropertyInsight">One report</td></tr>
+                <tr><td>Works for any address, listed or not</td><td class="alt-portal alt-no">Only what&rsquo;s for sale</td><td class="alt-yes" data-label="DIY on gov.uk">Yes</td><td class="alt-us alt-yes" data-label="UKPropertyInsight">Yes</td></tr>
+                <tr><td>Every figure names its source</td><td class="alt-portal alt-no">No</td><td class="alt-yes" data-label="DIY on gov.uk">It is the source</td><td class="alt-us alt-yes" data-label="UKPropertyInsight">Yes, on every card</td></tr>
+                <tr><td>Who pays for it</td><td class="alt-portal alt-no">Agents&rsquo; listings</td><td data-label="DIY on gov.uk">Public</td><td class="alt-us" data-label="UKPropertyInsight">You do, so it answers to you</td></tr>
+                <tr><td>Time per property</td><td class="alt-portal">Not applicable</td><td class="alt-no" data-label="DIY on gov.uk"><a href="/methodology#by-hand">36 minutes, by someone who already knew every site</a></td><td class="alt-us alt-yes" data-label="UKPropertyInsight">About 10 seconds for a new address</td></tr>
             </tbody>
         </table>
     </div>
@@ -531,15 +496,7 @@
     <span class="section-pill" data-animate>Questions</span>
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
     <div class="faq-list">
-        {% for q, a in [
-            ('What is UKPropertyInsight?', 'A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, noise, demographics and more, pulled live from official public data. Not a listings site: we don\'t show what\'s currently for sale, we show the facts about a property and its area.'),
-            ('Is it free to use?', 'Searching is free and needs no account. You\'ll see headline verdicts on every check straight away. Creating an account is also free, and unlocks every Premium check on the first property you look at, no card required. After that the deeper checks lock unless you subscribe.'),
-            ('What happens after the free report?', 'Nothing is charged, because there is no card on file. The properties you already opened stay unlocked for good, so you can go back to them any time. Opening a new one needs a subscription, and postcode search stays free either way.'),
-            ('How is this different from Rightmove or Zoopla?', 'Those are listings portals. They show homes currently for sale. We don\'t list anything and aren\'t affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: sold prices, EPC history, official risk designations and area statistics.'),
-            ('Where does the data come from?', 'Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every figure traces back to a source.'),
-            ('Will my child get into the school near a house I am looking at?', 'Every report and every school page measures an address against how far the school admitted from in its last published round, using the figure the council itself published, and says Likely, Borderline or Unlikely. ' ~ school_coverage ~ ''),
-            ('Which parts of the UK are covered?', 'Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where a council has published that data openly. Where something isn\'t covered for an address, the report says so rather than leaving a gap unexplained.'),
-        ] %}
+        {% for q, a in home_faqs %}
         <details class="faq-item" data-animate>
             <summary>{{ q }}</summary>
             <p>{{ a }}</p>
@@ -593,10 +550,10 @@
         <div>
             <p class="lx-eyebrow">Start here</p>
             <h2 class="lx-h2">One search.<br>Every check.</h2>
-            <p class="lx-lede">
-                Search is free and needs no account. Sign up and the first property
-                come with every Premium check unlocked, no card required.
-            </p>
+            {# "Sign up and the first property come with every Premium
+               check unlocked" until 17 Sep 2026: the offer's fourth
+               wording on this page, with a grammar slip. #}
+            <p class="lx-lede">{{ offer_sentence }}</p>
             <ul class="lx-contact-facts">
                 <li>{{ icons.icon('map') }} England, Wales, Scotland and Northern Ireland</li>
                 <li>{{ icons.icon('statistics') }} Open Government Licence v3.0</li>
@@ -953,247 +910,9 @@
     else addEventListener('load', idle);
 })();
 
-(function () {
-    /* The orbit ring around "Forty checks". Twelve rounded
-       tiles on a tilted circle, projected with the same maths as the
-       reference implementation; the far half draws on the canvas
-       behind the heading, the near half on the canvas in front, so
-       the tiles pass through the words. Tiles are flat palette
-       gradients rather than textures - this site's look, and cheap. */
-    const stage = document.getElementById('lx-orbit-stage');
-    const backCv = document.getElementById('lx-orbit-back');
-    const frontCv = document.getElementById('lx-orbit-front');
-    if (!stage || !backCv || !frontCv) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const cardEls = document.querySelectorAll('#lx-orbit-cards .lx-orbit-card');
-    if (!cardEls.length) return;
-
-    /* Each tile is one of the report's check cards, painted onto a
-       canvas from the same content and icons the fallback list holds.
-       The icon SVGs use currentColor, so a clone gets its resolved
-       colour written in before serialisation. */
-    const TS = 384;
-    /* The tiles are pictures, so when the lamp is pulled they are
-       repainted in the other theme's inks rather than restyled. */
-    function inkFor() {
-        return document.body.classList.contains('theme-dark')
-            ? { bg: '#1e1b18', border: '#342e28', eyebrow: '#c5bbad', value: '#f2ece3', source: '#a39889', wash: 'rgba(20,18,16,0.55)' }
-            : { bg: '#ffffff', border: '#e5e1d8', eyebrow: '#57504a', value: '#1c1714', source: '#736a61', wash: 'rgba(250,249,246,0.55)' };
-    }
-    let INK = inkFor();
-
-    function wrap(x, text, maxW) {
-        const words = text.split(' ');
-        const lines = [];
-        let line = '';
-        words.forEach(function (w) {
-            const probe = line ? line + ' ' + w : w;
-            if (x.measureText(probe).width > maxW && line) { lines.push(line); line = w; }
-            else line = probe;
-        });
-        if (line) lines.push(line);
-        return lines.slice(0, 2);
-    }
-
-    function paintTile(x, el, iconImg) {
-        x.clearRect(0, 0, TS, TS);
-        x.fillStyle = INK.bg;
-        x.fillRect(0, 0, TS, TS);
-        const chip = el.querySelector('.lx-check-icon');
-        const chipCs = getComputedStyle(chip);
-        /* icon chip */
-        x.fillStyle = chipCs.backgroundColor;
-        x.beginPath();
-        const cx0 = 36, cy0 = 34, cw = 74, cr = 18;
-        x.moveTo(cx0 + cr, cy0);
-        x.arcTo(cx0 + cw, cy0, cx0 + cw, cy0 + cw, cr);
-        x.arcTo(cx0 + cw, cy0 + cw, cx0, cy0 + cw, cr);
-        x.arcTo(cx0, cy0 + cw, cx0, cy0, cr);
-        x.arcTo(cx0, cy0, cx0 + cw, cy0, cr);
-        x.closePath();
-        x.fill();
-        if (iconImg) x.drawImage(iconImg, cx0 + 17, cy0 + 17, 40, 40);
-        /* eyebrow */
-        x.fillStyle = INK.eyebrow;
-        x.font = '400 21px "JetBrains Mono", ui-monospace, monospace';
-        x.fillText(el.dataset.title.toUpperCase().split('').join('\u200a'), 36, 156);
-        /* value */
-        x.fillStyle = INK.value;
-        x.font = '600 33px "Instrument Sans", sans-serif';
-        const lines = wrap(x, el.dataset.value, TS - 72);
-        lines.forEach(function (l, i) { x.fillText(l, 36, 200 + i * 42); });
-        /* hairline + source */
-        x.strokeStyle = INK.border;
-        x.lineWidth = 2;
-        x.beginPath(); x.moveTo(36, 296); x.lineTo(TS - 36, 296); x.stroke();
-        x.fillStyle = INK.source;
-        x.font = '400 22px "Instrument Sans", sans-serif';
-        x.fillText(el.dataset.source, 36, 334);
-    }
-
-    const FRONT_TILES = [], BACK_TILES = [];
-    function buildTiles() {
-        cardEls.forEach(function (el, i) {
-            if (!FRONT_TILES[i]) {
-                const fc = document.createElement('canvas');
-                fc.width = TS; fc.height = TS;
-                const bc = document.createElement('canvas');
-                bc.width = TS; bc.height = TS;
-                FRONT_TILES[i] = fc; BACK_TILES[i] = bc;
-            }
-            const f = FRONT_TILES[i];
-            const fx2 = f.getContext('2d');
-            const bx2 = BACK_TILES[i].getContext('2d');
-            const ink = INK;
-
-            function finish(img) {
-                /* The lamp was pulled while this icon was loading: the
-                   newer repaint owns the tile. */
-                if (ink !== INK) return;
-                paintTile(fx2, el, img);
-                bx2.clearRect(0, 0, TS, TS);
-                bx2.drawImage(f, 0, 0);
-                bx2.fillStyle = INK.wash;
-                bx2.fillRect(0, 0, TS, TS);
-            }
-            finish(null);   /* text-only immediately; icon joins when ready */
-
-            const svg = el.querySelector('.lx-check-icon svg');
-            if (!svg) return;
-            const clone = svg.cloneNode(true);
-            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-            clone.setAttribute('width', '40');
-            clone.setAttribute('height', '40');
-            clone.style.color = getComputedStyle(el.querySelector('.lx-check-icon')).color;
-            const img = new Image();
-            img.onload = function () { finish(img); };
-            img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(new XMLSerializer().serializeToString(clone))));
-        });
-    }
-    const N = cardEls.length;
-
-    /* Ring constants, straight from the reference: plane ratio 0.492
-       (a ~60 degree tilt), major axis rolled 25.5 degrees, camera at
-       13 radii, tile side 0.486 of the radius, 15s per revolution. */
-    const RATIO = 0.492, AXIS_DEG = 25.5, SIDE = 0.47, DIST = 13, CORNER = 0.09, DUR = 18;
-    const ax = AXIS_DEG * Math.PI / 180, cf = RATIO, sf = Math.sqrt(1 - cf * cf);
-    const U = [Math.cos(ax), Math.sin(ax), 0];
-    const V = [-Math.sin(ax) * cf, Math.cos(ax) * cf, sf];
-    const AX3 = [U[1] * V[2] - U[2] * V[1], U[2] * V[0] - U[0] * V[2], U[0] * V[1] - U[1] * V[0]];
-
-    let W = 0, H = 0, A = 0, dpr = 1;
-    function size() {
-        dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const r = stage.getBoundingClientRect();
-        /* the canvases are centred on the stage and overflow it */
-        /* The ring is anchored to the heading: a touch wider than the
-           words so tiles graze them rather than bury them, and hard
-           capped so no viewport ever gets a giant ring. */
-        const core = stage.querySelector('.lx-orbit-core');
-        const Acss = Math.min(Math.max(r.width * 0.3, 215), 365);
-        A = Acss * dpr;
-        W = Math.round(A * 3.8);
-        H = Math.round(A * 3.0);
-        /* Centre the ring on the heading itself, not the container -
-           in a single-column layout the container is much wider than
-           the words and the ring would drift off to the right. */
-        const cr = core.getBoundingClientRect();
-        const cxCss = (cr.left - r.left) + cr.width / 2;
-        const cyCss = (cr.top - r.top) + cr.height / 2;
-        [backCv, frontCv].forEach(function (c) {
-            c.width = W; c.height = H;
-            c.style.width = (W / dpr) + 'px';
-            c.style.height = (H / dpr) + 'px';
-            c.style.left = cxCss + 'px';
-            c.style.top = cyCss + 'px';
-        });
-    }
-
-    function roundRect(x, w, h, r) {
-        x.beginPath();
-        x.moveTo(-w / 2 + r, -h / 2);
-        x.lineTo(w / 2 - r, -h / 2); x.quadraticCurveTo(w / 2, -h / 2, w / 2, -h / 2 + r);
-        x.lineTo(w / 2, h / 2 - r); x.quadraticCurveTo(w / 2, h / 2, w / 2 - r, h / 2);
-        x.lineTo(-w / 2 + r, h / 2); x.quadraticCurveTo(-w / 2, h / 2, -w / 2, h / 2 - r);
-        x.lineTo(-w / 2, -h / 2 + r); x.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + r, -h / 2);
-        x.closePath();
-    }
-    function project(p) {
-        const k = A * DIST / (DIST - p[2]);
-        return [W / 2 + k * p[0], H / 2 + k * p[1], k];
-    }
-    function drawTile(x, i, psi, faceFront) {
-        const c = Math.cos(psi), s = Math.sin(psi);
-        const C = [c * U[0] + s * V[0], c * U[1] + s * V[1], c * U[2] + s * V[2]];
-        const T = [-s * U[0] + c * V[0], -s * U[1] + c * V[1], -s * U[2] + c * V[2]];
-        const h = SIDE / 2;
-        const p0 = project(C);
-        /* Both axes sampled negatively: the ring's own axis projects
-           downward on screen, and a card full of text - unlike the
-           reference's abstract tiles - has a right way up. */
-        const pT = project([C[0] - T[0] * h, C[1] - T[1] * h, C[2] - T[2] * h]);
-        const pA = project([C[0] - AX3[0] * h, C[1] - AX3[1] * h, C[2] - AX3[2] * h]);
-        const ex = pT[0] - p0[0], ey = pT[1] - p0[1];
-        const fx = pA[0] - p0[0], fy = pA[1] - p0[1];
-        if (Math.abs(ex * fy - ey * fx) < 0.4) return;
-        const img = (faceFront ? FRONT_TILES : BACK_TILES)[i % N];
-        x.setTransform(ex * 2 / TS, ey * 2 / TS, fx * 2 / TS, fy * 2 / TS, p0[0], p0[1]);
-        roundRect(x, TS, TS, TS * CORNER);
-        x.save(); x.clip();
-        x.drawImage(img, -TS / 2, -TS / 2, TS, TS);
-        x.restore();
-        x.setTransform(1, 0, 0, 1, 0, 0);
-    }
-
-    const bx = backCv.getContext('2d');
-    const fxc = frontCv.getContext('2d');
-    let running = false, raf = 0;
-    const t0 = performance.now();
-    function render(now) {
-        raf = 0;
-        if (!running) return;
-        const spin = ((now - t0) / 1000 / DUR) * Math.PI * 2;
-        bx.clearRect(0, 0, W, H);
-        fxc.clearRect(0, 0, W, H);
-        const list = [];
-        for (let i = 0; i < N; i++) {
-            const psi = -i * 2 * Math.PI / N + spin;
-            const c = Math.cos(psi), s = Math.sin(psi);
-            list.push({ i: i, psi: psi, z: c * U[2] + s * V[2] });
-        }
-        list.sort(function (a, b) { return a.z - b.z; });
-        list.forEach(function (e) {
-            drawTile(e.z > 0 ? fxc : bx, e.i, e.psi, e.z > 0);
-        });
-        raf = requestAnimationFrame(render);
-    }
-    function setRunning(on) {
-        if (on === running) return;
-        running = on;
-        if (on && !raf) raf = requestAnimationFrame(render);
-    }
-    size();
-    addEventListener('resize', function () { size(); }, { passive: true });
-    /* Tiles carry text, so they wait for the site's fonts; the ring
-       then takes over from the static list. */
-    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(function () {
-        buildTiles();
-        stage.classList.add('lx-orbit-on');
-    });
-    document.addEventListener('uki:themechange', function () {
-        INK = inkFor();
-        if (FRONT_TILES.length) buildTiles();
-    });
-    const vis = new IntersectionObserver(function (entries) {
-        setRunning(entries[0].isIntersecting && !document.hidden);
-    }, { threshold: 0 });
-    vis.observe(stage);
-    document.addEventListener('visibilitychange', function () {
-        const r = stage.getBoundingClientRect();
-        setRunning(!document.hidden && r.bottom > 0 && r.top < innerHeight);
-    });
-})();
+{# The orbit ring's script stood here until 17 Sep 2026, when the orbit
+   came off the page (see the CHECKS section above). The orb behind the
+   scroll-built report, further down, is a different drawing and stays. #}
 
 (function () {
     /* Variant B: grids cascade. The hidden state is applied by THIS

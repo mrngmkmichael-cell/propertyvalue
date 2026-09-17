@@ -344,8 +344,14 @@
     </div>
     <p class="section-sub">
         <a href="/running-costs/council-tax">Every council in England, Wales and Scotland, sortable →</a>
+        {# "and the EPC card gives the band where the register records it"
+           read, in a paragraph about council tax, as a promise of the
+           home's council tax band, which no report here holds. The EPC
+           band is a different thing. Changed 17 Sep 2026 with the other
+           pages that promised an address's band. #}
         The band is the home's, not the council's: the report shows all eight (nine in Wales) at the
-        address's council, and the EPC card gives the band where the register records it. Bands are fixed
+        address's council, and the home's own band is on its council tax bill, free to look up at
+        <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>. Bands are fixed
         fractions of Band D, from six ninths for Band A to eighteen ninths for Band H.
     </p>
 {% with nation = "England", figure_words = "bills above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}

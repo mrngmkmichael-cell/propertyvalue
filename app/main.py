@@ -1791,9 +1791,14 @@ def alternatives_page(request: Request):
     base = _public_base_url(request)
     context["canonical_url"] = f"{base}/alternatives"
     context["checked_on"] = ALTERNATIVES_CHECKED_ON
+    # Counted from the lists, not typed (17 Sep 2026): the page said "26
+    # of 44" in three places outside scripts/bump_check_count.py, and the
+    # free list is due to change.
+    context["free_check_count"] = len(FREE_CHECKS)
+    context["check_count"] = CHECK_COUNT
     faqs = [
         ("Is there a free alternative to Propbar?",
-         "Crystal Roof is free for area statistics by postcode. UKPropertyInsight shows 26 of its 44 checks free on any "
+         f"Crystal Roof is free for area statistics by postcode. UKPropertyInsight shows {len(FREE_CHECKS)} of its {CHECK_COUNT} checks free on any "
          "address, gives every new account one full Premium report free, and charges £9.99 a month or £24.99 a quarter after "
          "that. Propbar's search is free and its detail is paid, on plans from £24.99 a month on a six-month term to £49.99 "
          f"month by month, as its pricing page read on {ALTERNATIVES_CHECKED_ON}."),
@@ -1833,6 +1838,7 @@ def council_tax_council_page(request: Request, slug: str):
     base = _public_base_url(request)
     context["canonical_url"] = f"{base}/running-costs/council-tax/{slug}"
     context["ct"] = data
+    context["check_count"] = CHECK_COUNT  # the checker's button, typed until 17 Sep 2026
     finance = None
     if data["code"]:
         try:
@@ -2049,6 +2055,20 @@ PREMIUM_CHECKS = (
     ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
 )
 
+# The offer, in one sentence, used word for word wherever a page states
+# it (owner's decision, 17 Sep 2026). The first-visitor audit that day
+# found it worded four ways on the homepage alone: "Free, and no account
+# needed." in the hero, a struck-through "normally £9.99/month" band, a
+# tier line and a closing block that said "the first property come with
+# every Premium check unlocked", with "Free, no account." under the area
+# guides' search boxes. Both counts are lengths and constants, never
+# typed: the free and locked lists are due to change.
+OFFER_SENTENCE = (
+    f"{len(FREE_CHECKS)} checks free with no account. "
+    f"Sign up free, no card, and your first home gets all {CHECK_COUNT}."
+)
+templates.env.globals["offer_sentence"] = OFFER_SENTENCE
+
 
 @app.get("/")
 def index(request: Request):
@@ -2086,6 +2106,51 @@ def index(request: Request):
     }
     context["free_check_count"] = len(FREE_CHECKS)
     context["premium_check_count"] = len(PREMIUM_CHECKS)
+    # "Is it free to use?", built here for the same reason as
+    # school_coverage: the visible FAQ and its JSON-LD had already drifted
+    # apart, and the visible one promised "headline verdicts on every
+    # check straight away" where a signed-out report locks cards with no
+    # verdict at all. Both now read this one string (17 Sep 2026).
+    context["free_to_use_answer"] = (
+        f"{OFFER_SENTENCE} After that, the locked checks on any other home "
+        "need a subscription."
+    )
+    # The whole FAQ, one list for the questions on the page and the
+    # FAQPage structured data (17 Sep 2026). Until then the structured
+    # data was a hand-shortened second copy: five of the seven answers
+    # read differently from the page, and "What happens after the free
+    # report?" told both that "the properties you already opened stay
+    # unlocked for good", in the plural for an allowance of one and
+    # untrue of homes opened on a subscription that has ended (owner's
+    # decision 4 that day). The wording kept is the page's.
+    context["home_faqs"] = [
+        ("What is UKPropertyInsight?",
+         "A due-diligence tool for any UK postcode: sold price history, energy rating, flood risk, crime, schools, "
+         "noise, demographics and more, pulled live from official public data. Not a listings site: we don't show "
+         "what's currently for sale, we show the facts about a property and its area."),
+        ("Is it free to use?", context["free_to_use_answer"]),
+        ("What happens after the free report?",
+         "Nothing is charged, because there is no card on file. The home you opened with your free full report "
+         "stays open for good. Opening another needs a subscription, and postcode search stays free either way."),
+        ("How is this different from Rightmove or Zoopla?",
+         "Those are listings portals. They show homes currently for sale. We don't list anything and aren't "
+         "affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: "
+         "sold prices, EPC history, official risk designations and area statistics."),
+        ("Where does the data come from?",
+         "Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, "
+         "ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every "
+         "figure traces back to a source."),
+        ("Will my child get into the school near a house I am looking at?",
+         "Every report and every school page measures an address against how far the school admitted from in its "
+         "last published round, using the figure the council itself published, and says Likely, Borderline or "
+         "Unlikely. " + context["school_coverage"]),
+        ("Which parts of the UK are covered?",
+         "Coverage depends on the source: Land Registry and EPC data cover England and Wales, Police.uk covers "
+         "England, Wales and Northern Ireland, and a few layers like school catchment boundaries only appear where "
+         "a council has published that data openly. Where something isn't covered for an address, the report says "
+         "so rather than leaving a gap unexplained."),
+    ]
+    context["home_faqs_jsonld"] = _faq_jsonld(context["home_faqs"])
 
     # Hand the hero strip whatever is already cached, so it paints with
     # real figures immediately instead of waiting on round trips.
@@ -3089,6 +3154,10 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # subscription". Getting that wrong locks cards on a report the user
     # has just spent one of their free unlocks opening.
     context["premium_unlocked"] = premium_unlocked
+    # How many cards a locked report locks, for the all-clear banner's
+    # "The N locked checks are not included" (17 Sep 2026). A length,
+    # never typed: the free and locked lists are due to change.
+    context["premium_check_count"] = len(PREMIUM_CHECKS)
 
     context.update(await _full_property_gather(location, house_number, premium_unlocked))
 
@@ -3886,7 +3955,12 @@ async def _full_property_gather(
     else:
         _apply_amenities(context, amenities_result)
 
-    if not isinstance(hpi_result, Exception):
+    if isinstance(hpi_result, Exception):
+        # Flagged like the other failed services (17 Sep 2026): without it
+        # the report's all-clear dropped "area prices" without a word,
+        # where every other failed open check is named as not checked.
+        context["hpi_error"] = True
+    else:
         context["hpi"] = hpi_result
         area = hpi_result.get("local_authority") or hpi_result.get("region")
         if area:
@@ -5504,8 +5578,9 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     cards (food hygiene, CQC ratings, Google ratings) that are about
     the neighbourhood rather than the property's own due diligence.
 
-    A Premium feature: gated the same way dashboard-card-locking is
-    everywhere else, via premium_unlocked on the current session."""
+    Gated like the report's cards: a subscriber gets any home's PDF, a
+    free account the PDF of a home it has unlocked, the same access
+    check /share makes."""
     postcode = postcode.strip()
     house_number = house_number.strip()
     if not postcode:
@@ -5515,9 +5590,13 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     if not current_user:
         qs = urlencode({"postcode": postcode, "house_number": house_number}) if house_number else urlencode({"postcode": postcode})
         return RedirectResponse(f"/login?next=/property?{qs}", status_code=303)
-    if not current_user.get("is_premium"):
-        return RedirectResponse(f"/premium?postcode={postcode}", status_code=303)
-
+    # Until 17 Sep 2026 this let subscribers only, so the "Download full
+    # PDF report" button on a home a free account had just unlocked sent
+    # it to /premium, while sign-up lists the PDF under what you get
+    # today. The owner's decision that day: the PDF comes with the free
+    # first property. The key is canonicalised exactly as
+    # /property/unlock records it; the report's button links with the
+    # same location.postcode that form posts.
     try:
         location = await lookup_postcode(postcode)
     except httpx.HTTPError:
@@ -5525,6 +5604,20 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
     if location is None:
         return RedirectResponse("/", status_code=303)
 
+    # Checked on the looked-up postcode, after the lookup, as
+    # _render_property decides the report's own lock (17 Sep 2026). On
+    # the postcode as typed, a link reading ?postcode=m139pl showed an
+    # unlocked account its open report and sent it to /premium for the PDF.
+    if not current_user.get("subscribed"):
+        canonical, unlock_house = auth.property_key(location["postcode"], house_number)
+        with db.get_session() as session:
+            home_unlocked = auth.has_unlocked(session, current_user["id"], canonical, unlock_house)
+        if not home_unlocked:
+            return RedirectResponse(f"/premium?postcode={postcode}", status_code=303)
+
+    # premium_unlocked=True is this home's own access, not a subscription
+    # flag: only a subscriber or an account that unlocked this home gets
+    # past the check above, and both see every card on its report.
     report, running_costs = await asyncio.gather(
         _full_property_gather(location, house_number, premium_unlocked=True, wait_for_slow=True),
         _running_costs_for_postcode(location, house_number),
@@ -7664,6 +7757,7 @@ def signup_form(request: Request, next: str = "/", error: str = ""):
     context = base_context(request)
     context["next"] = next
     context["free_report_for"] = _free_report_label(next)
+    context["check_count"] = CHECK_COUNT  # typed in the benefits list until 17 Sep 2026
     context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "signup.html", context)
 
@@ -7703,6 +7797,7 @@ def signup_submit(
     context = base_context(request)
     context["next"] = next
     context["free_report_for"] = _free_report_label(next)
+    context["check_count"] = CHECK_COUNT
     email = email.strip().lower()
     context["email_value"] = email
 
@@ -9432,9 +9527,17 @@ def _school_verdict_summary(landscape: dict | None, limit: int = 8) -> dict | No
     if not rows:
         return None
     counts = {"likely": 0, "borderline": 0, "unlikely": 0}
+    # How many of each reading were measured against a modelled estimate
+    # rather than a council's published distance (17 Sep 2026). The report
+    # card said "Likely for 4 schools, borderline 2" with the two kinds
+    # mixed and unmarked, where the schools guide marks every estimated
+    # reading "est."; the card now says "(1 est.)" the same way.
+    estimated = {"likely": 0, "borderline": 0, "unlikely": 0}
     for r in rows:
         counts[r["level"]] += 1
-    return {"schools": rows, "counts": counts, "total": len(rows),
+        if r["kind"] == "estimated":
+            estimated[r["level"]] += 1
+    return {"schools": rows, "counts": counts, "estimated": estimated, "total": len(rows),
             "any_published": any(r["kind"] == "published" for r in rows)}
 
 

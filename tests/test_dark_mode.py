@@ -161,5 +161,8 @@ def test_every_google_map_follows_the_lamp():
 
 def test_the_homepage_canvases_repaint_when_the_lamp_is_pulled():
     home = (TEMPLATES / "index.html").read_text(encoding="utf-8")
-    assert home.count("addEventListener('uki:themechange'") == 2
+    # One canvas since 17 Sep 2026, when the orbit ring and its listener
+    # came off the homepage: the orb behind the scroll-built report.
+    assert home.count("addEventListener('uki:themechange'") == 1
+    assert "document.addEventListener('uki:themechange', orbColours);" in home
     assert "#d4a95f" not in home and "#171717" not in home

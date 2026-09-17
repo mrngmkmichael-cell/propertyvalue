@@ -3656,6 +3656,14 @@ a.school-profile-lock-label:hover {
     border-color: #a7f3d0;
 }
 
+/* Neither red flags nor an all-clear: nothing open to the reader came
+   back clear, usually because its services failed (17 Sep 2026). Neutral,
+   so it reads as neither a warning nor a green light. */
+.attention-banner-unread {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
 .attention-banner-count {
     flex-shrink: 0;
     display: inline-flex;
@@ -5136,11 +5144,6 @@ html { scroll-behavior: smooth; }
     font-size: var(--text-sm);
 }
 
-.promo-banner-price {
-    text-decoration: line-through;
-    opacity: 0.75;
-}
-
 .promo-banner-btn {
     flex-shrink: 0;
     padding: 0.5rem 1.2rem;
@@ -5832,6 +5835,36 @@ main:focus { outline: none; }
 .alt-table .alt-yes { color: var(--good); }
 .alt-table td.alt-no { color: var(--ink-faint); }
 
+/* The homepage comparison on a phone (17 Sep 2026). Four columns at a
+   40rem minimum scrolled sideways, and at 375px this site's own column
+   started off screen. Below 600px each row stacks its label, the DIY
+   cell and ours, each captioned from its data-label because the header
+   row is hidden, and the portals column is left out. Scoped to
+   .alt-table-stack: the Premium page's and /alternatives' tables keep
+   their own layout. */
+@media (max-width: 600px) {
+    .alt-table-stack { min-width: 0; }
+    .alt-table-stack thead,
+    .alt-table-stack .alt-portal { display: none; }
+    .alt-table-stack tbody,
+    .alt-table-stack tr,
+    .alt-table-stack td { display: block; }
+    .alt-table-stack tr { padding: 0.9rem 0; border-bottom: 1px solid var(--border); }
+    .alt-table-stack td { padding: 0.45rem 0.75rem; border-bottom: none; }
+    .alt-table-stack td:first-child { padding-top: 0; }
+    .alt-table-stack td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.15rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: var(--weight-normal);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+    }
+}
+
 /* A bold band, in the palette rather than in near-black: on the light
    theme it runs in the accent navy (the dark theme keeps its own
    override further down). */
@@ -6379,6 +6412,10 @@ body.theme-dark .watchlist-alert-banner {
 body.theme-dark .attention-banner-clear {
     background: var(--good-bg);
     border-color: rgba(141, 199, 165, 0.3);
+}
+body.theme-dark .attention-banner-unread {
+    background: var(--surface-2);
+    border-color: var(--border);
 }
 body.theme-dark .attention-banner-count,
 body.theme-dark .watchlist-alert-count { color: var(--accent-ink); }
@@ -8377,74 +8414,53 @@ body:not(.theme-dark) .lx-hero-scrim {
     [data-cascade="diagonal"].cascade-ready > * { opacity: 1; transform: none; transition: none; }
 }
 
-/* ---- Orbit ring around the "Thirty seven checks" heading ---- */
-
-.lx-orbit-stage {
-    position: relative;
-    /* room for the ring to breathe around the stacked heading */
-    margin: 0.5rem 0 1rem;
-}
-.lx-orbit-core {
-    position: relative;
-    z-index: 1;
-    margin: 0;
-}
-.lx-orbit-canvas {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-}
-.lx-orbit-back { z-index: 0; }
-.lx-orbit-front { z-index: 2; }
-@media (prefers-reduced-motion: reduce) {
-    .lx-orbit-canvas { display: none; }
-}
-
-/* ---- Orbit: the checks section as a ring of real cards ---- */
-
-.lx-orbit-wide {
-    min-height: clamp(430px, 58vh, 620px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.lx-orbit-heading { text-align: center; }
-
-.lx-orbit-tiers {
+/* ---- Landing: the free and Premium split, and the link to the list ----
+   The orbit ring around a "Forty-four checks" heading stood here until
+   17 Sep 2026, when the owner took it off the homepage. Its tier line and
+   pricing link stayed, under these names. The section now holds
+   two lines, so it takes a smaller share of a full section's padding. */
+.lx-plan { padding: clamp(2.5rem, 5vw, 4rem) 0 0; }
+.lx-plan-tiers {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
     gap: 0.5rem 1rem;
-    margin: 0.75rem 0 0;
+    margin: 0;
 }
-.lx-orbit-tiers .lx-tier-label {
+.lx-plan-tiers .lx-tier-label {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
 }
-.lx-orbit-tiers svg { width: 14px; height: 14px; }
-.lx-orbit-tiers-sep { color: var(--ink-faint); }
-
-/* The card list: the painter's source of truth, and the static
-   presentation for anyone whose ring never starts (no JavaScript,
-   reduced motion, or a canvas failure). Hidden only once the ring is
-   actually running. */
-.lx-orbit-cards {
-    list-style: none;
-    margin: 2.5rem 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 1rem;
-    text-align: left;
+.lx-plan-tiers svg { width: 14px; height: 14px; }
+.lx-plan-tiers-sep { color: var(--ink-faint); }
+@media (max-width: 600px) {
+    /* Two lines on a phone: the dot was left hanging at the end of the first. */
+    .lx-plan-tiers { flex-direction: column; }
+    .lx-plan-tiers-sep { display: none; }
 }
-.lx-orbit-on ~ .lx-orbit-cards { display: none; }
+.lx-plan-more { margin: 1.1rem 0 0; }
+.lx-plan-more-btn {
+    display: inline-block;
+    padding: 0.55rem 1.3rem;
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    color: var(--accent);
+    font-family: var(--font-sans);
+    font-weight: var(--weight-semi);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.lx-plan-more-btn:hover {
+    background: var(--accent);
+    color: var(--accent-ink);
+    transform: translateY(-1px);
+}
 @media (prefers-reduced-motion: reduce) {
-    /* the ring never runs here, so the list always stands */
-    .lx-orbit-on ~ .lx-orbit-cards { display: grid; }
+    .lx-plan-more-btn { transition: none; }
+    .lx-plan-more-btn:hover { transform: none; }
 }
 
 /* ---- Pricing: the two-tier check layout (moved from the landing) ---- */
@@ -8544,26 +8560,6 @@ body.theme-dark .lx-hero-form button[type="submit"]:hover {
         0 14px 30px -10px rgba(221, 180, 106, 0.55);
 }
 
-
-/* ---- Landing: link from the orbit to the full 37 on pricing ---- */
-.lx-orbit-more { margin: 1.1rem 0 0; }
-.lx-orbit-more-btn {
-    display: inline-block;
-    padding: 0.55rem 1.3rem;
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    color: var(--accent);
-    font-family: var(--font-sans);
-    font-weight: var(--weight-semi);
-    font-size: var(--text-sm);
-    text-decoration: none;
-    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
-}
-.lx-orbit-more-btn:hover {
-    background: var(--accent);
-    color: var(--accent-ink);
-    transform: translateY(-1px);
-}
 
 /* The "Following a district" row was removed on 7 Sep 2026 with the
    feature; its nine rules came out with it. */

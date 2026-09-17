@@ -3,7 +3,11 @@
 
 {% block title %}Premium: Unlimited UK Property Reports | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}Save properties to a watchlist, track how they change over time and export full PDF reports. £9.99 a month, cancel any time. Postcode search stays free.{% endblock %}
+{# Until 17 Sep 2026 this sold saving properties, tracking their changes
+   and the PDF as Premium. Saving and change alerts come with every free
+   account, and the first property's PDF with the free full report, so
+   it names only what Premium adds. #}
+{% block meta_description %}Premium opens every check on every property, with the full question list, each home's PDF and every check side by side. £9.99 a month, cancel any time.{% endblock %}
 {% block content %}
 <span class="kicker">Premium</span>
 
@@ -82,12 +86,20 @@
 {% if current_user and current_user.free_unlocks_left > 0 %}
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
     <strong>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 else "" }} left.</strong>
-    Every check below is unlocked on them. Subscribing removes the limit.
+    Every check below is unlocked on {{ "it" if current_user.free_unlocks_left == 1 else "them" }}. Subscribing removes the limit.
 </p>
 {% elif current_user %}
+{# Read "You have used all 1 free reports." for every free account from
+   28 Aug, when the allowance became one, to 17 Sep 2026. Only the free
+   full report is stored as an unlock, so only what it opened is said
+   to stay open: homes opened on a subscription lock when it ends. #}
 <p class="notice" style="background: var(--warn-bg); color: var(--warn);">
-    <strong>You have used all {{ current_user.free_unlocks_total }} free reports.</strong>
-    The properties you already opened stay unlocked. Subscribe to open new ones.
+    {% if current_user.free_unlocks_total == 1 %}
+    <strong>You have used your free full report.</strong>
+    {% else %}
+    <strong>You have used all {{ current_user.free_unlocks_total }} free full reports.</strong>
+    {% endif %}
+    {{ "The property you opened with it stays" if current_user.free_unlocks_used == 1 else "The properties you opened free stay" }} unlocked. Subscribe to open new ones.
 </p>
 {% endif %}
 <div class="pricing-grid">
@@ -134,7 +146,7 @@
     </div>
     {% endfor %}
 </div>
-<p class="pricing-reassure">Stripe checkout &middot; Cancel any time in two clicks &middot; The free plan needs no card at all</p>
+<p class="pricing-reassure">Stripe checkout &middot; Cancel any time from this page &middot; The free plan needs no card at all</p>
 
 {# The 25-page PDF was rebuilt on 6 Sep 2026 as the thing that makes the
    subscription worth paying for, and this page did not show a single
@@ -172,6 +184,9 @@
     </p>
 </section>
 
+{# The PDF row said "Not included" for a free account until 17 Sep 2026.
+   The PDF comes with the free first property now (see property_pdf in
+   main.py), and sign-up lists it under what you get today. #}
 <div class="alt-table-wrap" style="margin-top: 2.5rem;">
     <table class="alt-table">
         <thead><tr><th></th><th>Free account</th><th class="alt-us">Premium</th></tr></thead>
@@ -179,7 +194,7 @@
             <tr><td>Postcode search &amp; headline verdicts</td><td class="alt-yes">Always free</td><td class="alt-us alt-yes">Always free</td></tr>
             <tr><td>Full reports, every check unlocked</td><td>Your first property</td><td class="alt-us alt-yes">Unlimited</td></tr>
             <tr><td>Questions to ask your solicitor &amp; surveyor</td><td>What triggered them</td><td class="alt-us alt-yes">The full list, with costs</td></tr>
-            <tr><td>PDF report to keep or send</td><td class="alt-no">Not included</td><td class="alt-us alt-yes">Every property</td></tr>
+            <tr><td>PDF report to keep or send</td><td>Your first property</td><td class="alt-us alt-yes">Every property</td></tr>
             <tr><td>Share a full report with anyone</td><td>On unlocked properties</td><td class="alt-us alt-yes">Every property</td></tr>
             <tr><td>Compare the homes you save, side by side</td><td>Seven headline figures</td><td class="alt-us alt-yes">Every check on the report</td></tr>
             <tr><td>My properties: notes and change alerts</td><td class="alt-yes">Included</td><td class="alt-us alt-yes">Included</td></tr>
@@ -194,7 +209,8 @@
 {% endif %}
 
 {# The two-tier card layout that used to live on the landing page's
-   checks section (the landing now shows the orbit ring instead). This
+   checks section (the landing showed an orbit ring instead until 17 Sep
+   2026, and now a one-line free and Premium split linking here). This
    is the full picture a buyer weighs up: what every report gives away,
    against what Premium adds. #}
 <p class="section-sub"><a href="/alternatives">How this compares with Propbar, Crystal Roof and Locrating, feature by feature →</a></p>
@@ -242,43 +258,54 @@
 
 {% endif %}
 
+{# The questions are one list, drawn twice below: as the visible answers
+   and as their FAQPage structured data (17 Sep 2026). They were typed
+   twice until then and had drifted apart, and both copies said three
+   things that were not true:
+   - "What do I get" listed change alerts as a Premium addition, while
+     the table above has them included with every free account, and
+     alerts are the one message allowed to bring a buyer back.
+   - "Can I cancel?" and the one-house answer said everything unlocked
+     stays unlocked. Only the free full report is stored as an unlock
+     (auth.claim_unlock); a home opened on a subscription is open
+     because of it, so it locks again when the paid period ends, as the
+     terms say. The free full report's home stays open for good.
+   - Both sent readers to an "account page" that does not exist.
+     Cancelling is Manage subscription on this page.
+   The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so its
+   answer is gated with it. Unconditional, it described a product with
+   no button on the page, to exactly the reader most likely to want it:
+   someone checking one house who does not want a subscription. The
+   three-month plan is that reader's plan while the pass is off. The
+   Premium count is the list's length, never typed, because the split
+   between free and Premium checks is going to move. #}
+{% set premium_faq = [
+    ("Do I need a card for the free report?",
+     "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running."),
+] + ([
+    ("What is the difference between the pass and the subscription?",
+     "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."),
+] if pass_available else [
+    ("I only have one house to check. Am I stuck with a monthly bill?",
+     "No. The three-month plan is £24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
+]) + [
+    ("Can I cancel?",
+     "Yes, any time, from this page once you have subscribed. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
+    ("What do I get that the free report does not show?",
+     "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
+    ("Where does the data come from?",
+     "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
+] %}
 <section class="report-section">
     <h2>Before you pay</h2>
     <dl class="faq-list">
-        <dt>Do I need a card for the free report?</dt>
-        <dd>No. An account is free, and the first property you open gets every check in full, with no card and no clock running.</dd>
-        {# The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so this
-           answer is gated with it. Unconditional, it described a product with
-           no button on the page, to exactly the reader most likely to want it:
-           someone checking one house who does not want a subscription. The
-           three-month plan is that reader's plan while the pass is off. #}
-        {% if pass_available %}
-        <dt>What is the difference between the pass and the subscription?</dt>
-        <dd>The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking.</dd>
-        {% else %}
-        <dt>I only have one house to check. Am I stuck with a monthly bill?</dt>
-        <dd>No. The three-month plan is &pound;24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel, and cancelling takes two clicks from your account page and stops the next payment. Everything you unlocked stays unlocked after that.</dd>
-        {% endif %}
-        <dt>Can I cancel?</dt>
-        <dd>Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked.</dd>
-        <dt>What do I get that the free report does not show?</dt>
-        <dd>Every check on every property rather than one: flood and subsidence detail, school admission verdicts for every nearby school, the questions for your solicitor and surveyor, the full PDF, and change alerts on saved properties.</dd>
-        <dt>Where does the data come from?</dt>
-        <dd>Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so.</dd>
+        {% for question, answer in premium_faq %}
+        <dt>{{ question }}</dt>
+        <dd>{{ answer }}</dd>
+        {% endfor %}
     </dl>
 </section>
-<script type="application/ld+json">{{ {
-    "@context": "https://schema.org", "@type": "FAQPage",
-    "mainEntity": [
-        {"@type": "Question", "name": "Do I need a card for the free report?", "acceptedAnswer": {"@type": "Answer", "text": "No. An account is free, and the first property you open gets every check in full, with no card and no clock running."}},
-    ] + ([
-        {"@type": "Question", "name": "What is the difference between the pass and the subscription?", "acceptedAnswer": {"@type": "Answer", "text": "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."}}
-    ] if pass_available else [
-        {"@type": "Question", "name": "I only have one house to check. Am I stuck with a monthly bill?", "acceptedAnswer": {"@type": "Answer", "text": "No. The three-month plan is £24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel, and cancelling takes two clicks from your account page and stops the next payment."}}
-    ]) + [
-        {"@type": "Question", "name": "Can I cancel?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, any time, from your account page. Cancelling stops the next payment; everything you unlocked stays unlocked."}},
-        {"@type": "Question", "name": "What do I get that the free report does not show?", "acceptedAnswer": {"@type": "Answer", "text": "Every check on every property rather than one: flood and subsidence detail, school admission verdicts for every nearby school, the questions for your solicitor and surveyor, the full PDF, and change alerts on saved properties."}},
-        {"@type": "Question", "name": "Where does the data come from?", "acceptedAnswer": {"@type": "Answer", "text": "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk."}}
-    ]
-} | tojson }}</script>
+{% set faq_ld = namespace(questions=[]) %}
+{% for question, answer in premium_faq %}{% set faq_ld.questions = faq_ld.questions + [{"@type": "Question", "name": question, "acceptedAnswer": {"@type": "Answer", "text": answer}}] %}{% endfor %}
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_ld.questions} | tojson }}</script>
 {% endblock %}

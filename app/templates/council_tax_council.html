@@ -38,8 +38,19 @@
         <label for="ct-check-house">House or flat number (optional)</label>
         <input type="text" id="ct-check-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
     </div>
-    <button type="submit">Run the 44 checks</button>
-    <p class="section-sub" style="margin: 0.5rem 0 0;">Its council tax band by band, the EPC's energy estimate, sold prices, flood risk and every nearby school's admission odds. Free, no account. Or see just <a href="/running-costs">what it costs to live there</a>.</p>
+    {# The count is CHECK_COUNT from the route (17 Sep 2026): typed, it
+       sat outside scripts/bump_check_count.py. #}
+    <button type="submit">Run the {{ check_count }} checks</button>
+    {# Until 17 Sep 2026 this line and "Check a specific address" below
+       promised the band an address carries. The site does not hold it:
+       the band list is not open data, and the methodology page says so.
+       The first-visitor audit clicked through for the promised band and
+       was told to ask the seller. What the report does show is every
+       band's bill at the council, so that is what both lines now say. #}
+    {# "Free, no account." became the site's one offer sentence the same
+       day (OFFER_SENTENCE in main.py), as under every other box that
+       runs the checks. #}
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Every band's bill at {{ ct.authority }} beside the EPC's energy estimate, sold prices, flood risk and the schools nearby. {{ offer_sentence }} The home's own band is on its council tax bill; <a href="/running-costs">running costs by postcode</a> gives the yearly bill for the band you pick.</p>
 </form>
 
 <section class="report-section">
@@ -119,6 +130,6 @@
 
 <section class="report-section">
     <h2>Check a specific address</h2>
-    <p>The council sets the bill; the band belongs to the home. <a href="/">Run a free report</a> for the band an address actually carries, the bill that follows from it, and forty-three other checks on the same page.</p>
+    <p>The council sets the bill; the band belongs to the home, and this site does not hold it. A home's band is on its council tax bill, and anyone can look it up free {% if ct.nation == "Scotland" %}on the <a href="https://www.saa.gov.uk/" target="_blank" rel="noopener">Scottish Assessors</a> website{% else %}at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>{% endif %}. <a href="/">A free report</a> shows every band's bill at the address's council beside the home's other checks, and <a href="/running-costs">running costs by postcode</a> gives the yearly bill for the band you pick.</p>
 </section>
 {% endblock %}

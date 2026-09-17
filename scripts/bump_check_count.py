@@ -6,9 +6,8 @@ The landing page's trust section carries the number a visitor can verify
 by counting cards on a report, and a test fails when the two disagree
 (tests/test_property_page.py::test_landing_page_check_count_matches_the_report).
 The same figure appears in the build-strip tally, the "All N checks"
-line, the dek, the orbit heading, the contact note, the pricing link, the
-sign-up page, the area guide's button and the running-costs page, and the
-landing page names every check in a script array. This script moves all
+line, the dek, the contact note, the area guide's
+button and the running-costs page, and the landing page names every check in a script array. This script moves all
 of them together and appends the new card's name to the array, so a new
 check is one command rather than a hunt. Safe to re-run: a string already
 moved is skipped.
@@ -67,12 +66,14 @@ def main(argv: list[str]) -> int:
         (INDEX, f"[('{old}', 'Checks per property')", f"[('{new}', 'Checks per property')"),
         (INDEX, f"/ {old} checks</p>", f"/ {new} checks</p>"),
         (INDEX, f"All <strong>{old} checks</strong>", f"All <strong>{new} checks</strong>"),
-        (INDEX, f"all {WORDS[old]}.", f"all {WORDS[new]}."),
         (INDEX, f"{WORDS[old].capitalize()} checks on any UK address", f"{WORDS[new].capitalize()} checks on any UK address"),
-        (INDEX, f'lx-orbit-heading">{WORDS[old].capitalize()}<br>checks</h2>', f'lx-orbit-heading">{WORDS[new].capitalize()}<br>checks</h2>'),
         (INDEX, f"{old} checks &middot; 13 official sources", f"{new} checks &middot; 13 official sources"),
-        (INDEX, f"full list of {old}", f"full list of {new}"),
-        (ROOT / "app" / "templates" / "signup.html", f"all {old} checks unlocked", f"all {new} checks unlocked"),
+        # The orbit heading, its "all forty-four." and the pricing link's
+        # "full list of 44" left the landing page with the orbit on 17 Sep
+        # 2026; the link now reads CHECK_COUNT, moved below.
+        # The sign-up page's "all N checks unlocked" reads CHECK_COUNT
+        # from its route since 17 Sep 2026, as do /alternatives and the
+        # council tax pages, which this script never reached.
         (ROOT / "app" / "templates" / "area_guide.html", f"Run the {old} checks", f"Run the {new} checks"),
         (ROOT / "app" / "templates" / "running_costs.html", f"its {WORDS[old]} other checks", f"its {WORDS[new]} other checks"),
         # The hero pillar strip reads this constant. It was a literal in

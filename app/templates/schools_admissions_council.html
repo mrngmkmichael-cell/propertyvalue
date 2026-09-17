@@ -36,7 +36,9 @@
         <input type="text" id="hub-check-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
     </div>
     <button type="submit">Likely, borderline or unlikely, for each school</button>
-    <p class="section-sub" style="margin: 0.5rem 0 0;">The report measures the address against every nearby school's published distance, alongside sold prices, flood, crime and running costs. Free, no account.</p>
+    {# Ended "Free, no account." until 17 Sep 2026; the offer now reads
+       as on every other page (OFFER_SENTENCE in main.py). #}
+    <p class="section-sub" style="margin: 0.5rem 0 0;">The report measures the address against every nearby school's published distance, alongside sold prices, flood, crime and running costs. {{ offer_sentence }}</p>
 </form>
 
 <div class="scorecard-row">

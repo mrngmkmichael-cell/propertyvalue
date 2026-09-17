@@ -11,11 +11,16 @@
 {% else %}
 <span class="kicker">Create account</span>
 <h1>One full report, free.</h1>
-<p class="dek">Every Premium check unlocked on the first property you look at. No card, nothing to cancel, and no clock running down while you are not house-hunting. Come back to it any time and it stays free.</p>
+<p class="dek">Every Premium check unlocked on the property you choose. No card, nothing to cancel, and no clock running down while you are not house-hunting. Come back to it any time and it stays free.</p>
 {# The house this sign-up came from, when it came from a report: the
    page knew it (next= carries the postcode) and did not say so until
-   16 Sep 2026. #}
-{% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up and it opens in full.</p>{% endif %}
+   16 Sep 2026. Until 17 Sep 2026 it said "sign up and it opens in
+   full", but signing up spends nothing: the report asks once whether
+   to use the free full report there, and the owner kept that yes. A
+   password account also confirms its address first while confirmation
+   is switched on (auth.needs_confirmation); a Google, Facebook or
+   LinkedIn sign-in is confirmed on creation. #}
+{% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up, say yes once on the report, and it opens in full.{% if verification_available() %} With an email and password, confirm your address first.{% endif %}</p>{% endif %}
 {% endif %}
 
 {% if error %}
@@ -45,10 +50,16 @@
 <aside class="signup-benefits">
     <h2 class="signup-benefits-heading">What you get today</h2>
     <ul class="signup-benefits-list">
-        <li><strong>1 full Premium report</strong>, all 44 checks unlocked, on any property you choose</li>
+        {# The count is CHECK_COUNT from the route (17 Sep 2026), not typed. #}
+        <li><strong>1 full Premium report</strong>, all {{ check_count }} checks unlocked, on any property you choose</li>
         <li><strong>Questions for your solicitor and surveyor</strong>, generated from each property's own findings</li>
         <li><strong>The full PDF report</strong> to keep, print or send</li>
-        <li><strong>My properties</strong>: notes, side-by-side comparison, and an email when anything changes on a saved property</li>
+        {# "anything changes" until 17 Sep 2026. The alert run
+           (_snapshot_changes in main.py) emails a meaningful move only:
+           sold prices, a new energy certificate, the flood zone, recorded
+           crime or the area price trend. "Something", as My properties
+           itself says. #}
+        <li><strong>My properties</strong>: notes, side-by-side comparison, and an email when something changes on a saved property</li>
         <li><strong>Share any unlocked report</strong> with a partner or friend, free for them to read</li>
     </ul>
     <p class="signup-benefits-note">No card. No tracking. Your free report never expires, and a property you unlock stays unlocked for good.</p>
