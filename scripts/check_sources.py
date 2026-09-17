@@ -133,7 +133,11 @@ async def main() -> int:
         if location is None:
             print("    postcode lookup failed, skipping")
             continue
-        context = await _full_property_gather(location, "", False, wait_for_amenities=True)
+        # wait_for_slow, because a source that is merely slow must not be
+        # counted as empty here. The flag was renamed in main.py and this
+        # call was not, so the script crashed on its first address; a test
+        # in the suite now checks the keyword still exists.
+        context = await _full_property_gather(location, "", False, wait_for_slow=True)
         elapsed = time.monotonic() - started
         found = _sources(context)
         results[postcode] = found

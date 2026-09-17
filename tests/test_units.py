@@ -1012,6 +1012,18 @@ def test_check_sources_still_knows_every_source_the_gather_has():
     spec.loader.exec_module(module)
     assert module._check_list_is_current() == []
 
+    # the script also has to call the gather the way main.py declares it; the
+    # keyword was renamed once and the script crashed on its first address
+    import inspect
+    import re
+
+    from app.main import _full_property_gather
+
+    call = re.search(r"_full_property_gather\(([^)]*)\)", path.read_text(encoding="utf-8"))
+    assert call, "check_sources.py no longer calls the gather"
+    used = set(re.findall(r"(\w+)=", call.group(1)))
+    assert used <= set(inspect.signature(_full_property_gather).parameters), used
+
 
 def _run(coro):
     import asyncio
