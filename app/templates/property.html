@@ -4787,6 +4787,7 @@ Listed building data from Historic England's
         const ratingColors = {
             'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
             'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+            'Report card': '#4f6fbf',
         };
         const bounds = new google.maps.LatLngBounds();
         bounds.extend(center);
@@ -4877,6 +4878,7 @@ Listed building data from Historic England's
     const ratingColors = {
         'Outstanding': '#2f6b4f', 'Good': '#3f7d5c',
         'Requires improvement': '#8a5a12', 'Inadequate': '#a83a32',
+        'Report card': '#4f6fbf',
     };
     const schoolLayer = L.layerGroup();
     ({{ (map_schools or []) | tojson }}).forEach(function (sch) {

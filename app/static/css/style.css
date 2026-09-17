@@ -3123,19 +3123,34 @@ button:not([class]):hover { background: var(--accent-hover); }
     color: #fff;
 }
 
-.ofsted-1 { background: #059669; }
-.ofsted-2 { background: #10b981; }
-.ofsted-3 { background: #ca8a04; }
-.ofsted-4 { background: #dc2626; }
+/* The school pins' colours (ratingColors in schools_guide.html and
+   property.html, and the map key), so a badge and the pin beside it say
+   the same thing. They are the light theme's status colours, with Good a
+   step lighter so it reads apart from Outstanding. Written as values, not
+   var(--good) and the rest, because the dark theme lifts those tokens to
+   pale tints that white cannot sit on; these hold in both themes. White
+   12px text measures 6.29, 4.88, 5.91 and 6.33:1 on them and 4.82:1 on
+   the report card blue. The Tailwind greens and amber they replaced
+   measured 3.77, 2.54 and 2.94:1 against the 4.5 small text needs
+   (tests/test_ofsted_badges.py, 17 Sep 2026). */
+.ofsted-1 { background: #2f6b4f; }
+.ofsted-2 { background: #3f7d5c; }
+.ofsted-3 { background: #8a5a12; }
+.ofsted-4 { background: #a83a32; }
 /* Ofsted's report card (November 2025 onwards): not a quality level,
    so a neutral blue rather than a place on the green-to-red scale. */
 .ofsted-5 { background: #4f6fbf; }
-.rating-card { background: #4f6fbf; }
+/* The rating chips' classes (rating_css in schools_db.py) are only ever
+   styled under .school-guide-chip or .landscape-stat-details. A bare
+   .rating-card rule painted the report's whole expandable school list
+   blue, the fault the comment there warns about. */
 .ofsted-card { list-style: none; margin: 0 0 0.5rem; padding: 0; display: grid; gap: 0.25rem; }
 .ofsted-card li { display: flex; justify-content: space-between; gap: 1rem; font-size: var(--text-sm); }
 .ofsted-card-grade { font-weight: var(--weight-medium); white-space: nowrap; }
-.ofsted-card-exceptional, .ofsted-card-strong-standard, .ofsted-card-met { color: #2f6b4f; }
-.ofsted-card-needs-attention { color: #8a5a12; }
+/* Tokens, so the words lift with the lamp: the light values measured
+   2.72 and 2.90:1 on a dark card. */
+.ofsted-card-exceptional, .ofsted-card-strong-standard, .ofsted-card-met { color: var(--good); }
+.ofsted-card-needs-attention { color: var(--warn); }
 .ofsted-card-urgent-improvement, .ofsted-card-not-met { color: var(--bad); }
 
 .shortlist-btn {
