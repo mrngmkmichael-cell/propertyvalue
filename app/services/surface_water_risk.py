@@ -27,6 +27,7 @@ import asyncio
 import httpx
 
 from app.services import _cache
+from app.services.flood_zones import outside_coverage
 
 BASE_URL = (
     "https://services1.arcgis.com/JZM7qJpmv7vJ0Hzx/arcgis/rest/services/"
@@ -44,7 +45,11 @@ VERY_LOW_LABEL = "Very low risk"
 VERY_LOW_PROBABILITY = "Less than 1 in 1000 (0.1%)"
 
 
-async def risk_for(lat: float, lon: float) -> dict | None:
+async def risk_for(lat: float, lon: float, country: str | None = None) -> dict | None:
+    """None outside England, without asking: an empty answer there is
+    no map, not Very low risk (flood_zones.outside_coverage)."""
+    if outside_coverage(country):
+        return None
     key = _cache.coord_key("surface_water_risk", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:

@@ -158,13 +158,17 @@ def test_area_figures_line_up_two_districts_row_for_row():
     ]
     values = [r["value"] for r in rows]
     assert values[0] == "£412,500 median of 63 sales"
-    assert values[1] == "+3.4% (Manchester)"
+    # The month is named, so a guide and a comparison gathered either side
+    # of a UK House Price Index release do not look like a contradiction.
+    assert values[1] == "+3.4% (Manchester, June 2026)"
     assert values[2] == "84% of 61 within 3 miles"
     assert values[3] == "Flood Zone 1, low risk"
     assert values[4] == "£1,978 a year (Manchester, 2026-27)"
     assert values[5] == "214 in May 2026"
     # A source with nothing for the district says so in words, never a blank.
     assert [r["value"] for r in app_main._area_figures("IV27", {})] == ["Not held"] * 6
+    # Outside England the flood row says the EA map does not reach, never Zone 1.
+    assert app_main._area_figures("IV27", _M20, "Scotland")[3]["value"] == "Not mapped for Scotland"
     # The district average stands in when the streets around the centre have too few sales.
     thin = app_main._area_figures("IV27", {"local_sales": {"enough_for_median": False, "count": 2},
                                            "hpi": {"local_authority": {"name": "Highland", "average_price": 187000, "annual_change_pct": -1.2}}})

@@ -741,7 +741,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         await asyncio.gather(
             sold_prices_for_postcode(canonical),
             _epc_flow(canonical, house_number, epc_configured),
-            flood_zones.zone_for(lat, lon),
+            flood_zones.zone_for(lat, lon, location.get("country")),
             crime.summary_near(lat, lon),
             asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
             hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
@@ -772,6 +772,8 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
 
     if not isinstance(flood_zone_result, Exception) and flood_zone_result:
         summary["flood_zone"] = flood_zone_result["label"]
+    elif flood_zones.not_mapped_label(location.get("country")):
+        summary["flood_zone"] = flood_zones.not_mapped_label(location.get("country"))
 
     if not isinstance(crime_result, Exception) and crime_result:
         summary["crime_total"] = crime_result.get("total")
@@ -785,6 +787,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         if growth_area:
             summary["price_growth_pct"] = growth_area.get("annual_change_pct")
             summary["price_growth_area"] = growth_area.get("name")
+            summary["price_growth_period"] = growth_area.get("period")
 
     # Which schools each house is likely to get into: the row parents
     # actually compare two houses on. Kept JSON-safe for the snapshot.
@@ -827,6 +830,7 @@ def _summary_from_report(context: dict, canonical: str, house_number: str) -> di
     if growth_area.get("annual_change_pct") is not None:
         summary["price_growth_pct"] = growth_area.get("annual_change_pct")
         summary["price_growth_area"] = growth_area.get("name")
+        summary["price_growth_period"] = growth_area.get("period")
     return summary
 
 
@@ -857,7 +861,11 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
         changes.append(f"Average sold price changed from {_format_gbp(old_price)} to {_format_gbp(new_price)}")
 
     old_zone, new_zone = old.get("flood_zone"), new.get("flood_zone")
-    if old_zone and new_zone and old_zone != new_zone:
+    # Only zone against zone: "Not mapped for Wales" replacing the Zone 1
+    # a Welsh home wrongly carried before 17 Sep 2026 is a correction on
+    # our side, not a change at the property.
+    if (old_zone and new_zone and old_zone != new_zone
+            and old_zone.startswith("Zone") and new_zone.startswith("Zone")):
         changes.append(f"Flood zone changed from {old_zone} to {new_zone}")
 
     old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
@@ -1648,7 +1656,7 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
         return await hpi.area_comparison(where.get("admin_district") or "", where.get("region") or "", where.get("country") or "")
 
     async def _flood():
-        return await flood_zones.zone_for(lat, lon) if lat is not None and lon is not None else None
+        return await flood_zones.zone_for(lat, lon, where.get("country")) if lat is not None and lon is not None else None
 
     results = await asyncio.gather(
         _energy(), _sales(), _area_prices(), _flood(),
@@ -1668,6 +1676,7 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     # last sale where there is one, otherwise the middle of the
     # postcode's recent sales. England and Northern Ireland only.
     country = (where.get("country") or "England").strip()
+    out["flood_gap"] = flood_zones.outside_coverage(where.get("country"))
     basis_price = (home.get("sale_amount") if home else None) or ((out.get("sales") or {}).get("median_recent"))
     if basis_price and country in ("England", "Northern Ireland"):
         out["stamp_duty"] = {
@@ -2114,6 +2123,11 @@ except OSError:
 # whether a page gets its own canonical URL. A set so the check is O(1) on
 # a hot path rather than a 2,943-entry scan.
 KNOWN_OUTCODES: frozenset[str] = frozenset(o["outcode"] for o in ALL_OUTCODES)
+OUTCODE_COUNTRY: dict[str, str] = {o["outcode"]: o.get("country") or "" for o in ALL_OUTCODES}
+# Fourteen border districts carry an English postcode's country with a
+# Welsh or Scottish region (DG16 Gretna, TD9 Hawick, NP16 Chepstow), so a
+# question about the district as a whole reads both.
+OUTCODE_REGION: dict[str, str] = {o["outcode"]: o.get("region") or "" for o in ALL_OUTCODES}
 
 AREA_GUIDE_SEED_OUTCODES = [
     # Every entry here has been verified against postcodes.io's real
@@ -2373,7 +2387,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     seen_pairs = set()
     for oc in sorted(earned):
         for neighbour in _neighbour_outcodes(oc, limit=6):
-            if neighbour in earned:
+            if neighbour in earned and _versus_indexable(oc, neighbour):
                 pair = tuple(sorted((oc, neighbour)))
                 if pair not in seen_pairs:
                     seen_pairs.add(pair)
@@ -3774,7 +3788,7 @@ async def _full_property_gather(
             _timed("rental-rental-for-laua, codes-get", asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", ""))),
             _timed("designations-check-all", designations.check_all(lat, lon)),
             _timed("food-hygiene-nearby-ratings", food_hygiene.nearby_ratings(lat, lon)),
-            _timed("flood-zones-zone-for", flood_zones.zone_for(lat, lon)),
+            _timed("flood-zones-zone-for", flood_zones.zone_for(lat, lon, location.get("country"))),
             _timed("google-places-nearby-food-ratings", google_places.nearby_food_ratings(lat, lon)),
             _timed("orientation-orientation-for", orientation.orientation_for(lat, lon)),
             _timed("air-quality-for-location, location-get", asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings"))),
@@ -3785,7 +3799,7 @@ async def _full_property_gather(
             _timed("clay-risk-risk-near", clay_risk.risk_near(lat, lon)),
             _timed("sewage-discharge-nearby-outfalls", sewage_discharge.nearby_outfalls(lat, lon)),
             _timed("coal-mining-check-near", coal_mining.check_near(lat, lon)),
-            _timed("surface-water-risk-risk-for", surface_water_risk.risk_for(lat, lon)),
+            _timed("surface-water-risk-risk-for", surface_water_risk.risk_for(lat, lon, location.get("country"))),
             _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
             _timed("brownfield-sites-near", brownfield.sites_near(lat, lon, codes.get("admin_district", ""), location.get("country", ""))),
             _timed("bus-service-stops-near", asyncio.to_thread(bus_service.stops_near, lat, lon)),
@@ -3836,9 +3850,12 @@ async def _full_property_gather(
     else:
         context["flood_warnings"] = flood_result
 
-    if isinstance(flood_zone_result, Exception) or flood_zone_result is None:
+    # Outside England the EA maps hold nothing, and None there is a known
+    # gap, not a service that failed (flood_zones.outside_coverage).
+    context["flood_not_covered"] = flood_zones.outside_coverage(location.get("country"))
+    if isinstance(flood_zone_result, Exception) or (flood_zone_result is None and not context["flood_not_covered"]):
         context["flood_zone_error"] = True
-    else:
+    elif flood_zone_result is not None:
         context["flood_zone"] = flood_zone_result
 
     if isinstance(noise_result, Exception):
@@ -3976,9 +3993,9 @@ async def _full_property_gather(
     else:
         context["coal_mining"] = coal_mining_result
 
-    if isinstance(surface_water_result, Exception) or surface_water_result is None:
+    if isinstance(surface_water_result, Exception) or (surface_water_result is None and not context["flood_not_covered"]):
         context["surface_water_error"] = True
-    else:
+    elif surface_water_result is not None:
         context["surface_water"] = surface_water_result
 
     if not isinstance(cqc_result, Exception) and cqc_result:
@@ -4205,7 +4222,7 @@ async def api_lookup(postcode: str = ""):
 
     tx_result, flood_zone_result, crime_result, landscape_result, hpi_result = await asyncio.gather(
         sold_prices_for_postcode(canonical),
-        flood_zones.zone_for(lat, lon),
+        flood_zones.zone_for(lat, lon, location.get("country")),
         crime.summary_near(lat, lon),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
@@ -4219,6 +4236,8 @@ async def api_lookup(postcode: str = ""):
         payload["avg_price"] = _average_amount(tx_result)
     if not isinstance(flood_zone_result, Exception) and flood_zone_result:
         payload["flood_zone"] = flood_zone_result["label"]
+    elif flood_zones.not_mapped_label(location.get("country")):
+        payload["flood_zone"] = flood_zones.not_mapped_label(location.get("country"))
     if not isinstance(crime_result, Exception) and crime_result:
         payload["crime_total"] = crime_result.get("total")
     if not isinstance(landscape_result, Exception) and landscape_result:
@@ -4501,7 +4520,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
         # are skipped entirely rather than fetched and discarded.
         _immediate([]) if area_level else sold_prices_for_postcode(canonical),
         _comparables_for_extension(lat, lon),
-        flood_zones.zone_for(lat, lon),
+        flood_zones.zone_for(lat, lon, location.get("country")),
         crime.summary_near(lat, lon),
         crime.summary_for_outcode(location["outcode"]),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
@@ -4572,7 +4591,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
 
     payload["summary"] = {
         "avg_price": _average_amount(tx_result),
-        "flood_zone": ok(flood_zone_result)["label"] if ok(flood_zone_result) else None,
+        "flood_zone": ok(flood_zone_result)["label"] if ok(flood_zone_result) else flood_zones.not_mapped_label(location.get("country")),
         "crime_total": ok(crime_result)["total"] if ok(crime_result) else None,
         "schools_good_pct": landscape_result.get("good_or_better_pct") if landscape_result else None,
         "epc_rating": certs_result[0]["rating"] if certs_result else None,
@@ -4735,7 +4754,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         # skip it rather than show a different building's aspect
         # mislabelled as this property's.
         _immediate(None) if area_level else orientation.orientation_for(lat, lon),
-        surface_water_risk.risk_for(lat, lon),
+        surface_water_risk.risk_for(lat, lon, location.get("country")),
         sewage_discharge.nearby_outfalls(lat, lon),
         noise.noise_near(lat, lon),
         radon.risk_near(lat, lon),
@@ -4752,7 +4771,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         # signal set property_search uses for a logged-in user, instead
         # of leaving it at the lighter free-tier score even after a
         # Premium user has paid for the full gather.
-        flood_zones.zone_for(lat, lon),
+        flood_zones.zone_for(lat, lon, location.get("country")),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         _immediate([]) if area_level else epc.certificates_for_postcode(canonical),
         crime.summary_near(lat, lon),
@@ -4923,8 +4942,9 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     broadband_status = "muted" if not broadband_data else ("attn" if broadband_data.get("below_uso_pct") and broadband_data["below_uso_pct"] >= 5 else "ok")
     mobile_status = "muted" if not mobile_data else ("attn" if mobile_data.get("no_4g_outdoor_pct") and mobile_data["no_4g_outdoor_pct"] >= 5 else "ok")
     flood_zone_data = ok(flood_zone_result)
+    flood_gap_label = flood_zones.not_mapped_label(location.get("country"))
     flood_status = (
-        "muted" if (isinstance(flood_zone_result, Exception) and isinstance(flood_warnings_result, Exception))
+        "muted" if flood_gap_label or (isinstance(flood_zone_result, Exception) and isinstance(flood_warnings_result, Exception))
         else ("attn" if (flood_warnings or (flood_zone_data and flood_zone_data.get("zone", 0) >= 3)) else "ok")
     )
     crime_data = ok(crime_result)
@@ -5163,7 +5183,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         {
             "heading": "Risk & Safety",
             "cards": [
-                card("Flood Risk", flood_zone_data["label"] if flood_zone_data else "Zone 1 (low probability)", flood_status, detail=flood_detail),
+                card("Flood Risk", flood_zone_data["label"] if flood_zone_data else (flood_gap_label or "No data"), flood_status, detail=flood_detail),
                 card(
                     "Crime & Safety",
                     f"{crime_data['total']} crimes recorded" if crime_data and crime_data.get("total") else "No data",
@@ -5173,7 +5193,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                         [[r["category"].title(), r["here"], r["area"], {"higher": "Higher", "lower": "Lower", "same": "About the same"}[r["trend"]]] for r in _crime_comparison(crime_data, crime_outcode_data)],
                     ) if crime_data and crime_outcode_data else None,
                 ),
-                card("Surface Water Risk", surface_water["label"] if surface_water else "No data", surface_water_status),
+                card("Surface Water Risk", surface_water["label"] if surface_water else (flood_gap_label or "No data"), surface_water_status),
                 # Matches property.html's own card text exactly - the
                 # nearest outfall's own spill count for its most recent
                 # reported year, not a count of how many outfalls are
@@ -5727,6 +5747,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
         return result
 
     context["nearby_outcodes"] = _nearest()
+    context["versus_links"] = [n for n in context["nearby_outcodes"][:3] if _versus_indexable(outcode, n["outcode"])]
 
     # Which regional price league this district belongs to, so the
     # guide's price section can link its reader (and its link equity)
@@ -5790,11 +5811,19 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             f"{crime_data['total']} crimes were recorded within roughly a mile of central {outcode}{month}{common} (Police.uk).",
         ))
     flood = context.get("flood_zone")
-    if flood and flood.get("label") and not context.get("is_scotland"):
+    gap = context.get("flood_not_covered")
+    if flood and flood.get("label") and not gap:
         faqs.append((
             f"Is {outcode} at risk of flooding?",
             f"Central {outcode} sits in {flood['label']} for river and sea flooding (Environment Agency). "
             "Individual addresses vary, so check the full report for a specific property.",
+        ))
+    elif gap and gap.get("body"):
+        faqs.append((
+            f"Is {outcode} at risk of flooding?",
+            f"The flood maps this site reads are the Environment Agency's, which cover England only, "
+            f"so they say nothing about {outcode}. For {gap['country']}, {gap['body']} publishes "
+            f"the {gap['map']}, which shows the risk at a specific address.",
         ))
     # Two questions people actually type, taken from this site's own
     # Search Console: "is eh12 a good place to live", "is doncaster
@@ -6053,7 +6082,7 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         _timed("hpi", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
         _timed("crime", crime.summary_for_outcode(outcode)),
         _timed("school-landscape", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
-        _timed("flood-zone", flood_zones.zone_for(lat, lon)),
+        _timed("flood-zone", flood_zones.zone_for(lat, lon, location.get("country"))),
         _timed("deprivation", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
         _timed("amenities", _bounded(amenities.nearby_amenities_and_station(lat, lon, lite=True), 3.0)),
         # Actual sales on the streets of this district, not the council's
@@ -6234,7 +6263,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
     return out
 
 
-def _area_figures(outcode: str, payload: dict) -> list[dict]:
+def _area_figures(outcode: str, payload: dict, country: str | None = None) -> list[dict]:
     """A district's headline figures as label, value and source, in one
     fixed order, so two districts line up row for row (16 Sep 2026).
     Every value is one the guide already prints; a source with nothing
@@ -6255,14 +6284,15 @@ def _area_figures(outcode: str, payload: dict) -> list[dict]:
         price = "Not held"
     if la.get("annual_change_pct") is not None and la.get("name"):
         pct = la["annual_change_pct"]
-        change = f"{'+' if pct >= 0 else ''}{pct:.1f}% ({la['name']})"
+        month = f", {_month_label(la['period'])}" if la.get("period") else ""
+        change = f"{'+' if pct >= 0 else ''}{pct:.1f}% ({la['name']}{month})"
     else:
         change = "Not held"
     if landscape.get("good_or_better_pct") is not None and landscape.get("total_schools"):
         schools = f"{landscape['good_or_better_pct']}% of {landscape['total_schools']} within {landscape.get('radius_miles', 3)} miles"
     else:
         schools = "Not held"
-    zone = flood.get("label") or "Not held"
+    zone = flood_zones.not_mapped_label(country) or flood.get("label") or "Not held"
     if history and history[-1].get("band_d") and finance.get("name"):
         band_d = f"£{history[-1]['band_d']:,.0f} a year ({finance['name']}, {finance.get('latest_label', '')})".replace(", )", ")")
     else:
@@ -6313,15 +6343,15 @@ async def _area_compare(context: dict, outcode: str, compare: str) -> None:
         logging.getLogger(__name__).exception("area compare %s against %s failed", outcode, other)
         context["compare_error"] = f"The figures for {other} could not be gathered just now. Try again in a moment."
         return
-    here = _area_figures(outcode, context)
-    there = _area_figures(other, payload)
+    here = _area_figures(outcode, context, (context.get("flood_not_covered") or {}).get("country"))
+    there = _area_figures(other, payload, location.get("country"))
     pair = sorted([outcode, other])
     context["compare"] = {
         "outcode": other,
         "admin_district": location.get("admin_district") or "",
         "rows": [{"label": h["label"], "source": h["source"], "here": h["value"], "there": t["value"]} for h, t in zip(here, there)],
         # The linkable page exists only for genuine neighbours.
-        "versus_href": f"/compare/{pair[0]}/vs/{pair[1]}" if _are_neighbours(outcode, other) else "",
+        "versus_href": f"/compare/{pair[0]}/vs/{pair[1]}" if _are_neighbours(outcode, other) and _versus_indexable(outcode, other) else "",
     }
 
 
@@ -6395,6 +6425,11 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
         context.update(await _build_area_payload(outcode, location, cache_key))
         outcome = _cache.last_outcome
         timing = _server_timing_header()
+    # At render, not in the payload: the warm guides still hold the Zone 1
+    # the EA map returned for every point outside England (17 Sep 2026).
+    context["flood_not_covered"] = flood_zones.outside_coverage(location.get("country"))
+    if context["flood_not_covered"]:
+        context["flood_zone"] = None
     _area_guide_extras(context, outcode, lat, lon)
     _set_page_date(context, cache_key)
     await _area_compare(context, outcode, compare)
@@ -7201,6 +7236,75 @@ def _process_memory() -> dict:
     return out
 
 
+RETURNING_WALL_DAYS = 30
+
+
+def _returning_paywall_accounts(session, now: datetime.datetime, limit: int = 20) -> list[dict]:
+    """Accounts that reached the paywall on a later day than the one they
+    joined, with what they had open and what they did next (17 Sep 2026).
+
+    Conversion here has always been a return visit, and paywall moments
+    are rare: two in the four days to 17 Sep. One of them was an account
+    on its third separate day (5, 13 and 17 Sep) that read comparables for
+    three minutes and left, and the funnel's count of accounts at the
+    wall could not show that it was a return at all. Few enough to read
+    one by one, so they are listed rather than counted. Four statements,
+    only when /admin is opened; nothing is sent to anyone.
+    """
+    since = now - datetime.timedelta(days=RETURNING_WALL_DAYS)
+    test_ids = _test_account_ids(session)
+    walls = session.execute(
+        select(PageView.user_id, PageView.created_at)
+        .where(PageView.path == PAYWALL_PATH, PageView.created_at >= since, PageView.user_id.is_not(None))
+    ).all()
+    ids = {uid for uid, _ in walls if uid not in test_ids}
+    if not ids:
+        return []
+    users = {u.id: u for u in session.scalars(select(User).where(User.id.in_(ids))).all()}
+    views = session.execute(
+        select(PageView.user_id, PageView.path, PageView.created_at)
+        .where(PageView.user_id.in_(ids), PageView.created_at >= since)
+        .order_by(PageView.created_at)
+    ).all()
+    homes: dict[int, list[str]] = {}
+    for item in session.scalars(
+        select(WatchlistItem).where(WatchlistItem.user_id.in_(ids)).order_by(WatchlistItem.created_at)
+    ).all():
+        homes.setdefault(item.user_id, []).append(f"{item.house_number} {item.postcode}".strip())
+
+    by_user: dict[int, list[tuple[str, datetime.datetime]]] = {}
+    for uid, path, at in views:
+        by_user.setdefault(uid, []).append((path, _as_utc(at)))
+    rows = []
+    for uid in ids:
+        user = users.get(uid)
+        if user is None:
+            continue
+        joined = _as_utc(user.created_at)
+        mine = by_user.get(uid, [])
+        wall_times = [at for path, at in mine if path == PAYWALL_PATH]
+        if not wall_times or not joined or all(at.date() == joined.date() for at in wall_times):
+            continue
+        last_wall = max(wall_times)
+        after = []
+        for path, at in mine:
+            if last_wall < at <= last_wall + datetime.timedelta(minutes=30) and path not in (PAYWALL_PATH, BUILDING_PATH):
+                if path not in after:
+                    after.append(path)
+        rows.append({
+            "email": user.email,
+            "joined": joined,
+            "days_seen": len({at.date() for _, at in mine}),
+            "walls": len(wall_times),
+            "last_wall": last_wall,
+            "homes": homes.get(uid, []),
+            "after": after[:6],
+            "is_premium": bool(user.is_premium),
+        })
+    rows.sort(key=lambda r: r["last_wall"], reverse=True)
+    return rows[:limit]
+
+
 @app.get("/admin")
 def admin_dashboard(request: Request):
     """A single daily-review page, not a full admin panel - traffic,
@@ -7225,6 +7329,9 @@ def admin_dashboard(request: Request):
             ).limit(50)
         ).all()
     context["figure_statuses"] = FIGURE_STATUSES
+    with db.get_session() as session:
+        context["returning_walls"] = _returning_paywall_accounts(session, datetime.datetime.now(datetime.timezone.utc))
+    context["returning_wall_days"] = RETURNING_WALL_DAYS
     context["process_memory"] = _process_memory()
     # What has 404d on this worker since it started, commonest first.
     # Search Console says 1,161 pages are missing and will not say
@@ -9131,14 +9238,25 @@ async def area_versus(request: Request, left: str, right: str):
     context["canonical_url"] = f"{_public_base_url(request)}/compare/{left}/vs/{right}"
     _set_page_date(context, cache_key)
     context["left_code"], context["right_code"] = left, right
+    sides = []
+    for code, summary in ((left, cached["left"]), (right, cached["right"])):
+        # Summaries cached before 17 Sep 2026 carry the EA's Zone 1 for
+        # places it does not map; the label is decided here, at render.
+        summary = dict(summary)
+        gap_label = flood_zones.not_mapped_label(OUTCODE_COUNTRY.get(code))
+        if gap_label:
+            summary["flood_zone"] = gap_label
+        sides.append(summary)
     context["columns"] = [
-        {"postcode": left, "house_number": "", "summary": cached["left"], "outcode": left},
-        {"postcode": right, "house_number": "", "summary": cached["right"], "outcode": right},
+        {"postcode": left, "house_number": "", "summary": sides[0], "outcode": left},
+        {"postcode": right, "house_number": "", "summary": sides[1], "outcode": right},
     ]
+    has_price = all(s.get("local_median") or s.get("avg_price") for s in sides)
+    context["versus_noindex"] = not (_versus_indexable(left, right) and has_price)
     context["versus"] = True
     context["anonymous_compare"] = False
-    context["differences"] = _versus_differences(left, right, cached["left"], cached["right"])
-    context["versus_faqs"] = _versus_faqs(left, right, cached["left"], cached["right"])
+    context["differences"] = _versus_differences(left, right, sides[0], sides[1])
+    context["versus_faqs"] = _versus_faqs(left, right, sides[0], sides[1])
     context["versus_faqs_jsonld"] = _faq_jsonld(context["versus_faqs"])
     return templates.TemplateResponse(request, "compare.html", context)
 
@@ -9207,6 +9325,22 @@ def _are_neighbours(left: str, right: str) -> bool:
     list, so the page exists when either side counts the other (5 Sep
     2026: /compare/M43/vs/SK16 was advertised and answered 404)."""
     return right in _neighbour_outcodes(left) or left in _neighbour_outcodes(right)
+
+
+# Land Registry prices and the EPC register stop at England and Wales.
+# On 16 Sep 2026 a crawler read 4,965 district comparisons, and one with
+# Scotland or Northern Ireland on either side is mostly "No sales
+# recorded" and "No certificate": EH15 or EH7 held 8 empty rows of 11.
+# Those pages stay up for anyone who follows a link, but are not offered
+# to search engines, linked from a guide or listed in the sitemap.
+VERSUS_NATIONS = ("England", "Wales")
+
+
+def _versus_indexable(left: str, right: str) -> bool:
+    return all(
+        OUTCODE_COUNTRY.get(o) in VERSUS_NATIONS and OUTCODE_REGION.get(o) not in ("Scotland", "Northern Ireland")
+        for o in (left, right)
+    )
 
 
 def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:

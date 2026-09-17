@@ -1544,7 +1544,7 @@ def test_running_costs_page_answers_a_postcode_on_the_spot(client, monkeypatch):
     async def _hpi(*_a):
         return {"local_authority": {"name": "Adur", "average_price": 350000.0, "annual_change_pct": 2.5, "period": "2026-06-01"}}
 
-    async def _zone(_lat, _lon):
+    async def _zone(_lat, _lon, _country=None):
         return {"zone": 1, "label": "Flood zone 1: low risk"}
     monkeypatch.setattr(app_main.hpi, "area_comparison", _hpi)
     monkeypatch.setattr(app_main.flood_zones, "zone_for", _zone)
@@ -1675,7 +1675,9 @@ def test_the_area_lead_drops_a_sentence_rather_than_inventing_one(client):
 def test_the_area_guide_renders_its_lead(client):
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
-    body = client.get("/area/AB12").text
+    # An English district: AB12 carried only the flood sentence in the fake
+    # world, and outside England that sentence is rightly gone (17 Sep 2026).
+    body = client.get("/area/M14").text
     assert 'class="area-lead"' in body
     # Above the first heading, which is what the whole point was.
     assert body.index('class="area-lead"') < body.index("<h2>House prices</h2>")

@@ -6,6 +6,54 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All seven ideas of the 17 Sep 2026 morning brainstorm, built the same
+  day. Michael said "Do all in detail", which is the approval ideas 4
+  and 5 needed. The day's reading: 3 real sign-ups and 3 free unlocks
+  from 14 to 16 Sep, no Premium since 6 Sep, 2 paywall views in four
+  days, and 16 Sep almost wholly crawl (5,101 views of 4,965 district
+  comparisons).
+  1. Flood outside England. The Environment Agency's maps stop at the
+  border and an empty answer was read as Zone 1, so 720 area guides
+  (449 Scotland, 191 Wales, 80 Northern Ireland), every report, the
+  comparisons, the running-costs table, the PDF and the extension said
+  "Zone 1 (low probability), Environment Agency" there, central Cardiff
+  and Belfast included. flood_zones.outside_coverage(country) now
+  answers first: zone_for and surface_water_risk.risk_for return None
+  without asking, and every surface says "Not mapped for Wales" and
+  names the body that maps it (Natural Resources Wales Flood Map for
+  Planning, SEPA flood maps, DfI Flood Maps NI, URLs checked 17 Sep).
+  Guides and comparisons decide it at render, so warm payloads are
+  corrected without a re-warm. A change alert never reads Zone 1 to
+  "Not mapped" as a change. The extension gets the label from the API,
+  so no store release. A missing zone in England on the Premium
+  extension card now reads "No data" rather than Zone 1. Reading the
+  three nations' own maps is not built: DataMapWales did not answer on
+  17 Sep, so whether it can be queried is unknown.
+  2. Removal: district comparisons with Scotland or Northern Ireland on
+  either side (country or region, for the 14 border districts), or
+  without a price on both sides, are noindex, left out of the sitemap
+  and not linked from guides. The pages still answer.
+  3. An account's first saved home offers the Chrome extension, linked
+  to /browser-extension; a second home gets the comparison instead, and
+  a phone gets neither extension line. Judge it by signed-in views of
+  /browser-extension and by "Came back".
+  4. /admin "Returning accounts at the paywall": accounts that hit the
+  wall on a later day than they joined, last 30 days, with saved homes
+  and the pages opened in the half hour after. Four statements, only
+  when /admin is opened; nothing is sent to anyone.
+  5. /premium's signed-out plan buttons read "Start free, choose a plan
+  later". They still go to sign-up then search, on purpose; carrying
+  the plan to checkout was the alternative and was not built.
+  6. Price growth names its month on comparisons and the guide's
+  two-district table ("+3.3% (City of Edinburgh, June 2026)").
+  Comparisons cached before today gain it as their week runs out.
+  7. Three literal titles over 60 characters shortened:
+  /browser-extension, /areas, /methodology. The extension's share title
+  lost a stray full stop for the middot.
+  No dev server could be started from the unattended session, so the
+  pages were rendered through the test client and screenshotted at 1280
+  and 375 px; smoke and the audit ran against production after deploy.
+
 - Seven of the eight ideas of the 16 Sep 2026 brainstorm, built on 17
   Sep. Michael said "Do 1,2,3,5,6,7,8"; that is the approval idea 1's
   row tidy needed. Idea 4, taking the 684 /schools/guide?q= URLs out of

@@ -224,11 +224,20 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Risk and safety", "Flood insurance (Flood Re)", note["headline"] + (". Get a quote before an offer" if note["action_needed"] else ""),
             "warn" if note["action_needed"] else ("good" if note["standing"] == "eligible" else "neutral"), "Flood Re eligibility criteria; EPC Register")
     fz = report.get("flood_zone")
-    fz_label = fz.get("label") if fz else "Zone 1 (low probability)"
-    add("Risk and safety", "Flood zone, rivers and sea", fz_label + ("; " + f"{len(report['flood_warnings'])} active warning(s)" if report.get("flood_warnings") else ""),
-        _status(fz_label, RISK_GOOD, RISK_BAD, RISK_WARN), "Environment Agency")
+    gap = report.get("flood_not_covered")
+    if gap:
+        # Outside England the EA map holds nothing; saying Zone 1 there
+        # was the defect of 17 Sep 2026.
+        add("Risk and safety", "Flood zone, rivers and sea", f"Not mapped for {gap['country']}", "warn",
+            f"{gap['body'][0].upper()}{gap['body'][1:]}, {gap['map']}" if gap.get("body") else "Environment Agency (England only)")
+    else:
+        fz_label = fz.get("label") if fz else "Could not be read"
+        add("Risk and safety", "Flood zone, rivers and sea", fz_label + ("; " + f"{len(report['flood_warnings'])} active warning(s)" if report.get("flood_warnings") else ""),
+            _status(fz_label, RISK_GOOD, RISK_BAD, RISK_WARN) if fz else "warn", "Environment Agency")
     sw = report.get("surface_water")
-    if sw:
+    if gap and not sw:
+        add("Risk and safety", "Surface water flooding", f"Not mapped for {gap['country']}", "warn", "Environment Agency (England only)")
+    elif sw:
         add("Risk and safety", "Surface water flooding", sw.get("label", "") + (f", {sw['probability']}" if sw.get("probability") else ""), _status(sw.get("label"), RISK_GOOD, RISK_BAD, RISK_WARN), "Environment Agency")
     else:
         add("Risk and safety", "Surface water flooding", "No mapped risk band at this point", "neutral", "Environment Agency")

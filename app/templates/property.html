@@ -158,12 +158,12 @@
                     <li><strong>Sold prices &amp; comparables</strong>: from HM Land Registry, England &amp; Wales only. Not shown for this address.</li>
                     <li><strong>EPC rating</strong>: from the England &amp; Wales EPC register. Scotland runs a separate register we don't query yet. Not shown.</li>
                     <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland. Not shown.</li>
-                    <li><strong>Flood risk</strong>: from the Environment Agency (England only). The "Zone 1 (low probability)" reading below is what we get when no data covers a point at all, not a verified assessment. Treat it as unknown, not low risk.</li>
+                    <li><strong>Flood risk</strong>: the Environment Agency maps England only, so this report gives no flood zone or surface water reading here. SEPA's flood maps cover Scotland.</li>
                     <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count below will read far lower than actual local crime levels.</li>
                 </ul>
                 <p class="notice">
-                    Flood risk and crime in particular can look reassuring here when they're really
-                    just missing, so please don't rely on either for this property.
+                    Crime in particular can look reassuring here when it is really just missing,
+                    so please don't rely on it for this property.
                 </p>
             </section>
         </div>
@@ -340,6 +340,24 @@
                     </form>
                 </p>
                 {% endif %}
+                {# The extension, offered on an account's first home (17 Sep
+                   2026). Every paying account came back on another day, and
+                   the new accounts of 14 to 16 Sep each opened one home and
+                   did not. The extension brings the report to the next
+                   listing without an email, and no report linked to it. A
+                   second home gets the comparison instead: one offer at a
+                   time. Hidden on a phone, where Chrome cannot take it. #}
+                {% if auto_saved and not compare_offer and not shared %}
+                <div class="compare-offer extension-offer" data-animate>
+                    <p class="compare-offer-lead">The next listing you open can show this too.</p>
+                    <p class="section-sub">
+                        The free Chrome extension puts sold prices, the flood zone and each nearby
+                        school's Likely, Borderline or Unlikely reading on Rightmove, Zoopla and
+                        OnTheMarket listings, from the same sources as this report.
+                    </p>
+                    <p><a class="compare-offer-link" href="/browser-extension">Add it to Chrome &rarr;</a></p>
+                </div>
+                {% endif %}
                 {# Two homes on the go is the moment this stops being a
                    lookup and becomes a decision. See _compare_offer in
                    main.py for the accounts behind that. The link carries
@@ -419,8 +437,8 @@
     {% set finance = council_finance((location.codes.admin_district if location.codes else '') or '', location.admin_district or '', (location.admin_county if location.admin_county is defined and location.admin_county else '') or '') %}
     {% set council_status = 'attn' if (finance and finance.flag) else ('ok' if council_tax else 'muted') %}
     {% set flood_re_note = flood_re(property_detail.year_built if property_detail else none, property_detail.dwelling_type if property_detail else '', flood_zone if flood_zone else none, surface_water if surface_water else none) %}
-    {% set flood_status = 'muted' if (flood_error and flood_zone_error) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3) or (flood_re_note and flood_re_note.action_needed)) else 'ok') %}
-    {% set surface_water_status = 'muted' if surface_water_error else ('attn' if surface_water and surface_water.label == 'High risk' else 'ok') %}
+    {% set flood_status = 'muted' if (flood_not_covered or (flood_error and flood_zone_error)) else ('attn' if (flood_warnings or (flood_zone and flood_zone.zone >= 3) or (flood_re_note and flood_re_note.action_needed)) else 'ok') %}
+    {% set surface_water_status = 'muted' if (surface_water_error or flood_not_covered) else ('attn' if surface_water and surface_water.label == 'High risk' else 'ok') %}
     {% set noise_max = [(noise.road_db or 0), (noise.rail_db or 0), (noise.airport_db or 0)] | max if noise else none %}
     {% set noise_status = 'muted' if not noise else ('attn' if noise_max >= 65 else 'ok') %}
     {% set radon_status = 'muted' if not radon else ('attn' if radon.class | int >= 4 else 'ok') %}
@@ -776,10 +794,12 @@
             <span class="dashboard-card-title">Flood Risk</span>
             <span class="dashboard-card-status">
                 {% if flood_zone %}{{ flood_zone.label }}
-                {% elif flood_zone_error %}Zone data unavailable
-                {% else %}Zone 1 (low probability){% endif %}
+                {% elif flood_not_covered %}Not mapped for {{ flood_not_covered.country }}
+                {% else %}Zone data unavailable{% endif %}
             </span>
-            {% if flood_warnings %}
+            {% if flood_not_covered %}
+            <span class="dashboard-card-substat">{% if flood_not_covered.body %}{{ flood_not_covered.body[0] | upper }}{{ flood_not_covered.body[1:] }} maps it{% else %}England-only map{% endif %}</span>
+            {% elif flood_warnings %}
             <span class="dashboard-card-substat">{{ flood_warnings|length }} active alert{{ "s" if flood_warnings|length != 1 else "" }}</span>
             {% elif flood_re_note and flood_re_note.action_needed %}
             <span class="dashboard-card-substat">Flood Re {{ 'not available' if flood_re_note.standing == 'excluded' else 'uncertain' }}: built {{ flood_re_note.year_built }}</span>
@@ -794,6 +814,7 @@
             <span class="dashboard-card-title">Surface Water Risk</span>
             <span class="dashboard-card-status">
                 {% if surface_water %}{{ surface_water.label }}
+                {% elif flood_not_covered %}Not mapped for {{ flood_not_covered.country }}
                 {% elif surface_water_error %}Data unavailable
                 {% else %}No data available{% endif %}
             </span>
@@ -2465,6 +2486,18 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Flood risk</h2>
+        {% if flood_not_covered %}
+        <p class="notice">
+            <strong>Not mapped here for {{ flood_not_covered.country }}.</strong>
+            The flood zone, surface water and live warning checks on this report come from the
+            Environment Agency, whose maps cover England only, so they hold nothing for this address.
+            {% if flood_not_covered.body %}{{ flood_not_covered.body[0] | upper }}{{ flood_not_covered.body[1:] }} publishes the
+            <a href="{{ flood_not_covered.url }}" rel="noopener" target="_blank">{{ flood_not_covered.map }}</a>
+            for {{ flood_not_covered.country }}: look the address up there before an offer, and ask the seller
+            whether the home has ever flooded.{% endif %}
+        </p>
+        {% endif %}
+        {% if not flood_not_covered %}
         <h3 class="subsection-heading">Flood zone</h3>
         <p class="section-sub">
             The Environment Agency's long-term planning flood risk classification (rivers and sea) . Zone 3 is high probability (1% or greater annual river risk, or 0.5%+ from the sea), Zone
@@ -2481,13 +2514,14 @@
         {% else %}
             <p class="notice">No flood zone data available for this location.</p>
         {% endif %}
+        {% endif %}
 
         {# Flood Re: the government-backed scheme's fixed rules, checked
            against the EPC's build date and dwelling type. #}
         {% if flood_re_note %}
         <h3 class="subsection-heading">Insurance: Flood Re</h3>
         <p class="{{ 'notice' if flood_re_note.action_needed else 'section-sub' }}"><strong>{{ flood_re_note.headline }}.</strong>
-            {% if flood_re_note.standing == 'excluded' %}Insurers cannot pass this home's flood risk to the scheme, so a quote prices the risk in full or declines it.{% if flood_re_note.at_risk %} With the risk shown above, get a buildings insurance quote in writing before making an offer, and ask the seller for their current insurer and premium.{% else %}The risk shown above is low, so this usually matters little; still check that any quote includes flood cover.{% endif %}
+            {% if flood_re_note.standing == 'excluded' %}Insurers cannot pass this home's flood risk to the scheme, so a quote prices the risk in full or declines it.{% if flood_re_note.at_risk %} With the risk shown above, get a buildings insurance quote in writing before making an offer, and ask the seller for their current insurer and premium.{% elif flood_not_covered %} The flood risk here is not mapped on this report, so check it on the map named above and get a quote that includes flood cover before an offer.{% else %}The risk shown above is low, so this usually matters little; still check that any quote includes flood cover.{% endif %}
             {% elif flood_re_note.standing == 'uncertain' %}The certificate's age band ({{ flood_re_note.year_built }}) runs across 1 January 2009. The completion certificate or the seller's solicitor gives the exact date; if it is 2009 or later, the scheme does not apply.{% if flood_re_note.at_risk %} With the risk shown above, settle this before an offer.{% endif %}
             {% elif flood_re_note.standing == 'block' %}A flat is covered by the building's insurance, arranged by the freeholder or managing agent, and the scheme backs buildings of three homes or fewer. Ask the managing agent whether the block policy includes flood cover and what the excess is.
             {% elif flood_re_note.standing == 'eligible' %}Built before 2009, so an insurer can pass the flood risk to the scheme, which caps the flood part of the premium and excess. That does not make cover automatic: ask the seller what they pay.
@@ -2496,6 +2530,7 @@
         <p class="property-detail-note">Flood Re is the government-backed reinsurance scheme, set up under the Water Act 2014, that lets insurers offer flood cover at a capped price on homes at risk. It excludes homes built on or after 1 January 2009, buildings of four or more residential units, company-owned homes and commercial premises. Build date and dwelling type are from the EPC. Source: Flood Re eligibility criteria.</p>
         {% endif %}
 
+        {% if not flood_not_covered %}
         <h3 class="subsection-heading">Active warnings</h3>
         <p class="section-sub">Active warnings and alerts within 6 miles right now. Not the long-term zone above.</p>
         {% if flood_error %}
@@ -2524,6 +2559,7 @@
         {% else %}
             <p class="notice">No active flood warnings or alerts nearby.</p>
         {% endif %}
+        {% endif %}
             </section>
         </div>
     </dialog>
@@ -2540,7 +2576,14 @@
             can be Flood Zone 1 (low river/sea risk) and still have a real surface water flood risk, or
             the other way round, the two don't move together.
         </p>
-        {% if surface_water_error %}
+        {% if flood_not_covered %}
+            <p class="notice">
+                Not mapped here for {{ flood_not_covered.country }}: this map covers England only.{% if flood_not_covered.body %}
+                {{ flood_not_covered.body[0] | upper }}{{ flood_not_covered.body[1:] }} publishes the
+                <a href="{{ flood_not_covered.url }}" rel="noopener" target="_blank">{{ flood_not_covered.map }}</a>
+                for {{ flood_not_covered.country }}, rainfall flooding included.{% endif %}
+            </p>
+        {% elif surface_water_error %}
             <p class="notice notice-error">
                 The Environment Agency's surface water data service didn't respond. Try again in a
                 moment.

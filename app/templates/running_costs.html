@@ -278,6 +278,12 @@
                     <td><strong>{{ checked.flood.label }}</strong></td>
                     <td>Environment Agency</td>
                 </tr>
+                {% elif checked.flood_gap %}
+                <tr>
+                    <td><strong>Flood zone</strong><span class="school-table-type">what an insurer will ask about first</span></td>
+                    <td><strong>Not mapped for {{ checked.flood_gap.country }}</strong>: the Environment Agency maps England only</td>
+                    <td>{% if checked.flood_gap.body %}<a href="{{ checked.flood_gap.url }}" rel="noopener" target="_blank">{{ checked.flood_gap.body[0] | upper }}{{ checked.flood_gap.body[1:] }}</a>{% endif %}</td>
+                </tr>
                 {% endif %}
                 {% if checked.broadband %}
                 <tr>

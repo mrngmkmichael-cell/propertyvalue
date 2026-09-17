@@ -2032,6 +2032,13 @@ button:not([class]):hover { background: var(--accent-hover); }
     margin-top: 0.5rem;
 }
 
+/* A Chrome extension is no use on a phone, so the offer is not made there. */
+@media (max-width: 767px) {
+    .extension-offer {
+        display: none;
+    }
+}
+
 .inline-undo {
     display: inline;
 }

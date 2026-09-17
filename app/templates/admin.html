@@ -496,6 +496,32 @@
 </section>
 {% endif %}
 
+<section class="landing-section" id="returning-walls">
+    <h2 class="landing-heading">Returning accounts at the paywall</h2>
+    <p class="landing-subheading">Accounts that opened a property they had not unlocked, with no free report left, on a later day than the one they joined. Last {{ returning_wall_days }} days, newest first. Every account that has paid came back on another day first, so these are the moments worth reading one at a time. "After" is the pages the account opened in the half hour after its last paywall.</p>
+    <table class="tx-table">
+        <thead>
+            <tr><th>Email</th><th>Joined</th><th>Days seen</th><th>Paywalls</th><th>Last paywall</th><th>Saved homes</th><th>After</th><th>Premium</th></tr>
+        </thead>
+        <tbody>
+            {% for r in returning_walls %}
+            <tr>
+                <td>{{ r.email }}</td>
+                <td>{{ r.joined.strftime("%d %b %Y") }}</td>
+                <td>{{ r.days_seen }}</td>
+                <td>{{ r.walls }}</td>
+                <td>{{ r.last_wall.strftime("%d %b %H:%M") }}</td>
+                <td>{{ r.homes | join(", ") if r.homes else "None saved" }}</td>
+                <td>{{ r.after | join(", ") if r.after else "Nothing within half an hour" }}</td>
+                <td>{{ "Yes" if r.is_premium else "No" }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8">No returning account has reached the paywall in the last {{ returning_wall_days }} days.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</section>
+
 <section class="landing-section" id="premium">
     <h2 class="landing-heading">Premium accounts</h2>
     <p class="landing-subheading">Everyone who is Premium today, newest conversion first. "Converted" is the first moment the account became Premium by any route and never moves; the days column is the time from joining to that moment.</p>

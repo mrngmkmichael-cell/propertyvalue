@@ -38,6 +38,49 @@ ZONE_LABELS = {
 }
 
 
+# The Environment Agency's maps (this one, surface water in
+# surface_water_risk.py, the live warnings in flood.py) stop at the
+# English border. Outside it the bbox comes back empty, and an empty
+# answer is how Zone 1 is defined above, so until 17 Sep 2026 every
+# report, area guide and comparison in Wales, Scotland and Northern
+# Ireland said "Zone 1 (low probability), Environment Agency": 720 area
+# guides, central Cardiff and Belfast among them. Each nation publishes
+# its own map; the site does not read them, so it names them instead.
+OTHER_NATION_MAPS = {
+    "Wales": {
+        "body": "Natural Resources Wales",
+        "map": "Flood Map for Planning",
+        "url": "https://flood-map-for-planning.naturalresources.wales/",
+    },
+    "Scotland": {
+        "body": "SEPA",
+        "map": "flood maps",
+        "url": "https://map.sepa.org.uk/floodmaps",
+    },
+    "Northern Ireland": {
+        "body": "the Department for Infrastructure",
+        "map": "Flood Maps NI",
+        "url": "https://www.infrastructure-ni.gov.uk/topics/flood-maps-ni",
+    },
+}
+
+
+def outside_coverage(country: str | None) -> dict | None:
+    """None where the Environment Agency maps apply (England, or a
+    country we were not told). Otherwise what to say instead: the
+    country, and the body and map that do cover it where we know them."""
+    name = (country or "").strip()
+    if not name or name == "England":
+        return None
+    return {"country": name, **OTHER_NATION_MAPS.get(name, {})}
+
+
+def not_mapped_label(country: str | None) -> str | None:
+    """The short value a card or table cell shows in place of a zone."""
+    gap = outside_coverage(country)
+    return f"Not mapped for {gap['country']}" if gap else None
+
+
 def _point_in_ring(x: float, y: float, ring: list) -> bool:
     inside = False
     n = len(ring)
@@ -69,7 +112,10 @@ def _point_in_geometry(x: float, y: float, geometry: dict) -> bool:
     return False
 
 
-async def zone_for(lat: float, lon: float) -> dict | None:
+async def zone_for(lat: float, lon: float, country: str | None = None) -> dict | None:
+    """None outside England, without asking: see outside_coverage."""
+    if outside_coverage(country):
+        return None
     key = _cache.coord_key("flood_zone", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:

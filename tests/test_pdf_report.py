@@ -147,3 +147,17 @@ def test_the_checklist_reads_the_full_report():
     assert "£36,550 moving home" in by_check["Stamp duty, one-off"]["result"]
     assert by_check["Admission distances"]["result"].startswith("1 schools with a published") or "1 school" in by_check["Admission distances"]["result"]
     assert len(rows) >= 40
+
+
+def test_the_pdf_does_not_print_zone_1_where_the_ea_map_does_not_reach():
+    """17 Sep 2026: outside England the cover figure, the Worth knowing
+    line, Part 5 and the checklist all fell back to Zone 1."""
+    report = _report()
+    report.pop("flood_zone", None)
+    report.pop("surface_water", None)
+    report["flood_not_covered"] = {"country": "Scotland", "body": "SEPA", "map": "flood maps",
+                                   "url": "https://map.sepa.org.uk/floodmaps"}
+    ctx = app_main._pdf_context(report, _running_costs(), dict(LOCATION, country="Scotland"), "36")
+    html = app_main.templates.get_template("pdf_report_full.html").render(ctx)
+    assert "Zone 1" not in html
+    assert "Not mapped for Scotland" in html and "map.sepa.org.uk/floodmaps" in html

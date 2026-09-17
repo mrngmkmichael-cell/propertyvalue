@@ -122,7 +122,11 @@
                 <button type="submit">{{ "Start free trial" if plan.trial_days else "Subscribe" }}</button>
             </form>
             {% else %}
-            <a href="/signup?next=/" class="pricing-card-cta">{{ "Sign up to start trial" if plan.trial_days else "Sign up to subscribe" }}</a>
+            {# Signed out, this goes to sign-up and then search, on purpose:
+               the first full report is free, so nobody pays before seeing
+               one. Until 17 Sep 2026 it read "Sign up to subscribe", which
+               promised a checkout the click never reached. #}
+            <a href="/signup?next=/" class="pricing-card-cta">Start free, choose a plan later</a>
             {% endif %}
         {% else %}
             <p class="notice">Not available yet.</p>

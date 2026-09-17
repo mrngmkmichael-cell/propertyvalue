@@ -94,19 +94,19 @@
     <div class="report-modal-inner">
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
         <section class="report-section">
-            <h2>Two figures on this page aren't reliable for Scotland</h2>
+            <h2>Parts of this page do not cover Scotland</h2>
             <p class="section-sub">
                 House prices below are genuine (the UK House Price Index covers all four nations),
                 but two other sources are England-only infrastructure with no Scottish equivalent
                 wired up yet:
             </p>
             <ul class="notice-list">
-                <li><strong>Flood risk</strong>: from the Environment Agency (England only). The "Zone 1 (low probability)" reading is what we get when no data covers a point at all, not a verified assessment.</li>
+                <li><strong>Flood risk</strong>: the Environment Agency maps England only, so this page does not give a flood zone for Scotland. SEPA's flood maps cover it.</li>
                 <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count will read far lower than actual local crime levels.</li>
                 <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland, so "no schools found" reflects that gap, not an actual absence of schools nearby.</li>
             </ul>
             <p class="notice">
-                Please don't rely on the flood or crime figures on this page for a Scottish area.
+                Please don't rely on the crime figure on this page for a Scottish area.
             </p>
         </section>
     </div>
@@ -395,14 +395,22 @@
 
 <section class="report-section">
     <h2>Flood risk</h2>
-    {% if flood_zone %}
+    {% if flood_not_covered %}
+    <p class="notice">
+        Not mapped here for {{ flood_not_covered.country }}. The flood data on this site is the
+        Environment Agency's, which covers England only.{% if flood_not_covered.body %}
+        {{ flood_not_covered.body[0] | upper }}{{ flood_not_covered.body[1:] }} publishes the
+        <a href="{{ flood_not_covered.url }}" rel="noopener" target="_blank">{{ flood_not_covered.map }}</a>
+        for {{ flood_not_covered.country }}, where an address in {{ outcode }} can be looked up.{% endif %}
+    </p>
+    {% elif flood_zone %}
     <p class="section-sub{{ ' notice-error' if flood_zone.zone >= 3 else '' }}">
         <strong>{{ flood_zone.label }}</strong>{% if flood_zone.source %}, {{ flood_zone.source }} flooding{% endif %}.
         This is the Environment Agency's flood zone for the area's centre point, an individual
         property's own risk can differ, especially near a specific watercourse.
     </p>
     {% else %}
-    <p class="notice">{{ outcode }} is not in a mapped flood risk zone (Zone 1, low probability).</p>
+    <p class="notice">The flood zone for {{ outcode }} could not be read just now.</p>
     {% endif %}
 </section>
 
@@ -541,12 +549,14 @@
     </div>
     {# Choosing between two areas is the normal case, so offer the
        comparison directly rather than making someone open both. #}
+    {% if versus_links %}
     <p class="section-sub" style="margin-top: 0.9rem;">
         Weighing two up?
-        {% for n in nearby_outcodes[:3] %}
+        {% for n in versus_links %}
         <a href="/compare/{{ [outcode, n.outcode] | sort | first }}/vs/{{ [outcode, n.outcode] | sort | last }}">{{ outcode }} or {{ n.outcode }}</a>{% if not loop.last %}, {% endif %}
         {%- endfor %}.
     </p>
+    {% endif %}
 </section>
 {% endif %}
 

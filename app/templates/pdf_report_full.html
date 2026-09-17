@@ -159,7 +159,8 @@
 {% if council_tax and council_tax.band_d %}{% set _ = figs.append((council_tax.band_d | gbp ~ " a year", "Council tax, Band D")) %}{% endif %}
 {% if running_costs and running_costs.home and running_costs.home.energy_now %}{% set _ = figs.append((running_costs.home.energy_now | gbp ~ " a year", "Energy, the EPC's estimate")) %}
 {% elif running_costs and running_costs.energy and running_costs.energy.median %}{% set _ = figs.append((running_costs.energy.median | gbp ~ " a year", "Energy, postcode median")) %}{% endif %}
-{% set _ = figs.append(((flood_zone.label.split(" (")[0] if flood_zone else "Zone 1") ~ (", low" if (not flood_zone or flood_zone.zone == 1) else ""), "Flood zone")) %}
+{% if flood_zone %}{% set _ = figs.append((flood_zone.label.split(" (")[0] ~ (", low" if flood_zone.zone == 1 else ""), "Flood zone")) %}
+{% elif flood_not_covered %}{% set _ = figs.append(("Not mapped", "Flood zone, " ~ flood_not_covered.country)) %}{% endif %}
 {% if school_landscape and school_landscape.good_or_better_pct is not none %}{% set _ = figs.append((school_landscape.good_or_better_pct ~ "%", "Schools Good or better")) %}{% endif %}
 {% if crime and crime.total is not none %}{% set _ = figs.append((crime.total ~ "", "Crime, a month within a mile")) %}{% endif %}
 {% if figs %}
@@ -423,9 +424,15 @@
 {{ part("05", "Risk and safety", "The things a viewing cannot show: water, ground, air, noise and crime, each from the body that maps it.") }}
 <h2>Water</h2>
 <table class="kv">
-    {{ kv("Flood zone, rivers and sea", flood_zone.label if flood_zone else "Zone 1 (low probability)", "Environment Agency flood map for planning. Zone 1 is also what an unmapped point returns, so treat a Zone 1 outside England as unknown.", "good" if (not flood_zone or flood_zone.zone == 1) else ("warn" if flood_zone.zone == 2 else "bad")) }}
+    {% if flood_not_covered %}
+    {{ kv("Flood zone, rivers and sea", "Not mapped for " ~ flood_not_covered.country, "The Environment Agency maps England only." ~ ((" " ~ flood_not_covered.body[0] | upper ~ flood_not_covered.body[1:] ~ " publishes the " ~ flood_not_covered.map ~ ": " ~ flood_not_covered.url) if flood_not_covered.body else ""), "warn") }}
+    {% elif flood_zone %}
+    {{ kv("Flood zone, rivers and sea", flood_zone.label, "Environment Agency flood map for planning", "good" if flood_zone.zone == 1 else ("warn" if flood_zone.zone == 2 else "bad")) }}
+    {% else %}
+    {{ kv("Flood zone, rivers and sea", "Could not be read for this report", "Environment Agency flood map for planning", "warn") }}
+    {% endif %}
     {% if flood_warnings %}{{ kv("Active flood warnings", flood_warnings | length ~ " active at the time of this report", "Environment Agency", "bad") }}{% endif %}
-    {% if surface_water %}{{ kv("Surface water flooding", surface_water.label ~ (", " ~ surface_water.probability if surface_water.probability else ""), "Environment Agency risk of flooding from surface water", "good" if "low" in surface_water.label | lower else "warn") }}{% else %}{{ kv("Surface water flooding", "No mapped risk band at this point", "Environment Agency") }}{% endif %}
+    {% if surface_water %}{{ kv("Surface water flooding", surface_water.label ~ (", " ~ surface_water.probability if surface_water.probability else ""), "Environment Agency risk of flooding from surface water", "good" if "low" in surface_water.label | lower else "warn") }}{% elif flood_not_covered %}{{ kv("Surface water flooding", "Not mapped for " ~ flood_not_covered.country, "The Environment Agency maps England only", "warn") }}{% else %}{{ kv("Surface water flooding", "No mapped risk band at this point", "Environment Agency") }}{% endif %}
 </table>
 {% if sewage_outfalls %}
 <table class="keep"><tr><td style="padding: 0pt">
