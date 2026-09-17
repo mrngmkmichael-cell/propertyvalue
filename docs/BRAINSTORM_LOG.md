@@ -23,7 +23,12 @@ the local Claude session as things ship. Newest first.
   used only where two rows would be put side by side. remember,
   save_item, get_item and the report's own lookup use it; the offer
   leaves out every row at this place and names a home saved twice once.
-  The stored key and PremiumUnlock are unchanged.
+  The stored key and PremiumUnlock are unchanged. The one-off tidy of
+  the two live duplicate rows (watchlist_items 29 of account 80 and 34
+  of account 81, both without a note; the unlocked flat, 30, and 35
+  are kept) was refused by the session's permission check and is not
+  done. Until it is, those two accounts still see the home twice in My
+  properties, though the report and the offer treat it as one.
   2. The anonymous HTML cache, the /property page cache and the sitemap
   keep their bodies zlib-compressed (_cache.pack_text). A guide page was
   452,640 bytes, 197,211 of them the same inlined stylesheet, so 108
