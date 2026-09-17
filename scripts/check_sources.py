@@ -64,12 +64,13 @@ PACE_S = 20
 # below, which fails loudly if main.py grows or loses one.
 SOURCES = [
     "age_profile", "air_quality", "amenities", "background", "broadband",
-    "catchment", "clay_risk", "coal_mining", "crime", "deprivation",
-    "designations", "epc", "flood", "flood_zone", "food_hygiene",
-    "google_ratings", "heritage", "historic_landfill", "household_income",
-    "housing", "mobile", "noise", "occupation", "orientation", "price_trend",
-    "qualification", "radon", "rental", "schools", "sewage", "surface_water",
-    "tx", "valuation", "wellbeing",
+    "brownfield", "bus_service", "catchment", "census_change", "clay_risk",
+    "coal_mining", "crime", "deprivation", "designations", "epc", "flood",
+    "flood_zone", "food_hygiene", "google_ratings", "health", "heritage",
+    "historic_landfill", "household_income", "housing", "hpi", "mobile",
+    "noise", "occupation", "orientation", "price_trend", "qualification",
+    "radon", "rental", "schools", "sewage", "surface_water", "tx",
+    "valuation", "wellbeing",
 ]
 
 # Where a source's result actually lands on the context, when the key is

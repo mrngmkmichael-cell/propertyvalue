@@ -949,3 +949,108 @@ def test_admin_daily_funnel_counts_accounts_that_came_back(client):
     assert after["signups"] == before["signups"] + 2
     assert after["came_back"] == before["came_back"] + 1
     assert after["came_back_open"] is True  # five days in, the week is not over
+
+
+# ---- coal mining: the difference between clear and not checked ----------
+# 17 Sep 2026: the old BGS WMS started answering 404, so every address read
+# as "could not be checked". These pin the three answers apart.
+
+def test_coal_mining_reads_a_hit_as_being_in_a_reporting_area(monkeypatch):
+    from app.services import coal_mining
+
+    _fake_query(monkeypatch, {"count": 1})
+    _cache._store.clear()
+    assert _run(coal_mining.check_near(51.7486, -3.3781)) == {"present": True, "area_name": None}
+
+
+def test_coal_mining_reads_a_count_of_nought_as_not_in_one(monkeypatch):
+    from app.services import coal_mining
+
+    _fake_query(monkeypatch, {"count": 0})
+    _cache._store.clear()
+    assert _run(coal_mining.check_near(51.4016, -0.2578)) == {"present": False, "area_name": None}
+
+
+def test_coal_mining_calls_an_error_not_checked_rather_than_clear(monkeypatch):
+    """ArcGIS answers a bad query with HTTP 200 and an error object, a dead
+    host with an exception, and a changed service with a shape we cannot
+    read. None of the three may come out as "no coal here"."""
+    from app.services import coal_mining
+
+    for payload in ({"error": {"code": 400, "message": "Invalid query parameters."}},
+                    {"features": []},  # the old shape, if the service ever changes back
+                    "not json at all"):
+        _fake_query(monkeypatch, payload)
+        _cache._store.clear()
+        assert _run(coal_mining.check_near(53.4808, -2.2426)) is None
+
+    _fake_query(monkeypatch, None, raise_http=True)
+    _cache._store.clear()
+    assert _run(coal_mining.check_near(53.4808, -2.2426)) is None
+
+
+def test_coal_mining_asks_the_authoritys_own_service(monkeypatch):
+    """The BGS-hosted copy of this dataset is gone. If the URL ever points
+    back at it, this fails rather than every report quietly losing a check."""
+    from app.services import coal_mining
+
+    assert "services-eu1.arcgis.com" in coal_mining.QUERY_URL
+    assert "map.bgs.ac.uk" not in coal_mining.QUERY_URL
+
+
+def test_check_sources_still_knows_every_source_the_gather_has():
+    """scripts/check_sources.py keeps its source list by hand and refuses to
+    run when it drifts, which it did from 7 to 17 Sep 2026, which is why a
+    dead coal service went unnoticed for ten days. The suite runs on every
+    push, so the drift is caught here instead."""
+    import importlib.util
+    import pathlib
+
+    path = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "check_sources.py"
+    spec = importlib.util.spec_from_file_location("check_sources_for_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module._check_list_is_current() == []
+
+
+def _run(coro):
+    import asyncio
+
+    return asyncio.run(coro)
+
+
+def _fake_query(monkeypatch, payload, raise_http=False):
+    """Stand in for the Authority's FeatureServer, without a network."""
+    import httpx
+
+    from app.services import coal_mining
+
+    class _Response:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            if isinstance(payload, str):
+                raise ValueError("not json")
+            return payload
+
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url, params=None):
+            assert url == coal_mining.QUERY_URL
+            assert params["geometryType"] == "esriGeometryPoint"
+            if raise_http:
+                raise httpx.ConnectError("no route to host")
+            return _Response()
+
+    monkeypatch.setattr(coal_mining.httpx, "AsyncClient", _Client)
