@@ -657,4 +657,37 @@
     <p class="notice">Nothing has 404d on this worker yet.</p>
     {% endif %}
 </section>
+
+{# Who is fetching pages, by name (18 Sep 2026). The crawl floods of
+   11, 15, 16 and 17 Sep could only be read from their shape, because a
+   pageview keeps a path and a time. A coarse family per request, never
+   the user agent, counted per hour in memory for a day: gone on every
+   deploy, like the list above. Our own checks are not in it. #}
+<section class="landing-section" id="agents">
+    <h2 class="landing-heading">Who is fetching pages</h2>
+    {% if agents.rows %}
+    <p class="section-sub">
+        {{ "{:,}".format(agents.total) }} page request{{ "s" if agents.total != 1 }} in the last 24 hours on this
+        worker, by who said they were asking. "Looks like a browser" is everything that names no
+        bot, which includes any bot dressed as a browser. In memory only, so a deploy resets it,
+        and there are two workers.
+    </p>
+    <div class="tablewrap">
+    <table class="tx-table">
+        <thead><tr><th>Who</th><th class="num">Requests</th><th>Busiest pages</th></tr></thead>
+        <tbody>
+        {% for row in agents.rows %}
+        <tr>
+            <td>{{ row.family }}</td>
+            <td class="num">{{ "{:,}".format(row.total) }}</td>
+            <td>{% for page, count in row.pages %}<code>{{ page }}</code> {{ "{:,}".format(count) }}{% if not loop.last %}, {% endif %}{% endfor %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="notice">No page requests on this worker in the last 24 hours.</p>
+    {% endif %}
+</section>
 {% endblock %}

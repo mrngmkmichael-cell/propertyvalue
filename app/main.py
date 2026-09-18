@@ -349,6 +349,12 @@ async def capture_pageview(request: Request, call_next):
     privacy policy explicitly promises not to do)."""
     response = await call_next(request)
     path = request.url.path
+    if (request.method == "GET" and response.status_code == 200
+            and path not in _PAGEVIEW_EXCLUDE_PATHS
+            and not path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)
+            and request.headers.get("x-internal-check") != "1"
+            and request.cookies.get(PAGEVIEW_EXCLUDE_COOKIE) != "1"):
+        _record_agent(request.headers.get("user-agent"), path, bool(request.url.query))
     # Every 404, however it was produced: most routes here return a
     # TemplateResponse with status_code=404 rather than raising, so the
     # exception handler alone would miss them.
@@ -410,6 +416,97 @@ def _record_missing(path: str) -> None:
         # Capped rather than evicting: a scanner walking /wp-admin/... must
         # not be able to push the real 404s out of a list read by eye.
         _missing_paths[path] = 1
+
+
+# Who is fetching pages, by name, over the last day (18 Sep 2026). From
+# 15 to 17 Sep the site served 10,000 to 13,000 page views a day, almost
+# all of them crawl-shaped (4,965 distinct district comparisons on 16 Sep,
+# 4,501 views of /running-costs on 17 Sep), and /admin could only say so
+# from the shape of each hour, because a pageview row keeps a path and a
+# time and nothing about who asked. This keeps the least that answers
+# "who": a coarse family such as "Googlebot" or "Looks like a browser",
+# never the user agent string, counted per hour against a page family,
+# in memory on this worker for 24 hours and gone on restart, like the
+# 404 list. Our own checks and the owner's browsers are left out.
+_AGENT_FAMILIES = (
+    ("googleother", "GoogleOther"), ("google-inspectiontool", "Google inspection tool"),
+    ("googlebot", "Googlebot"), ("bingbot", "Bingbot"), ("applebot", "Applebot"),
+    ("yandex", "YandexBot"), ("baiduspider", "Baiduspider"), ("duckduckbot", "DuckDuckBot"),
+    ("petalbot", "PetalBot"), ("seznambot", "SeznamBot"), ("oai-searchbot", "OAI-SearchBot"),
+    ("chatgpt-user", "ChatGPT-User"), ("gptbot", "GPTBot"), ("claude-searchbot", "Claude-SearchBot"),
+    ("claudebot", "ClaudeBot"), ("perplexitybot", "PerplexityBot"), ("bytespider", "Bytespider"),
+    ("amazonbot", "Amazonbot"), ("meta-externalagent", "Meta"), ("facebookexternalhit", "Facebook"),
+    ("ahrefsbot", "AhrefsBot"), ("semrushbot", "SemrushBot"), ("mj12bot", "MJ12bot"),
+    ("dotbot", "DotBot"), ("dataforseobot", "DataForSEO"), ("ccbot", "CCBot"),
+    ("barkrowler", "Barkrowler"), ("headless", "Headless browser"), ("python", "Python script"),
+    ("curl/", "curl"), ("wget/", "Wget"),
+)
+# Second path segments that name a page rather than a record, so
+# /schools/guide and /schools/admissions/kent stay apart.
+_PAGE_FAMILY_SUBPAGES = frozenset({
+    "guide", "admissions", "council-tax", "independent", "grammar", "outstanding",
+    "tightest-catchments", "catchment-house-prices", "how-admissions-work", "house-prices",
+    "private-schools", "comparables", "checklist", "full",
+})
+_AGENT_WINDOW_H = 24
+_AGENT_COUNTS_CAP = 3000
+_agent_counts: dict[tuple[int, str, str], int] = {}
+_agent_counts_hour = 0
+
+
+def _agent_family(user_agent: str | None) -> str:
+    if not user_agent:
+        return "No user agent"
+    ua = user_agent.lower()
+    for marker, name in _AGENT_FAMILIES:
+        if marker in ua:
+            return name
+    return "Other bot or script" if _is_crawler(user_agent) else "Looks like a browser"
+
+
+def _page_family(path: str, has_query: bool) -> str:
+    """/area/M1 as "/area/…", /schools/guide?q=LS6 as "/schools/guide?…".
+    A family, never the page itself: the query and the record stay out."""
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        family = "/"
+    else:
+        family, rest = "/" + parts[0], parts[1:]
+        if rest and rest[0] in _PAGE_FAMILY_SUBPAGES:
+            family, rest = family + "/" + rest[0], rest[1:]
+        if rest:
+            family += "/…"
+    return family + ("?…" if has_query else "")
+
+
+def _record_agent(user_agent: str | None, path: str, has_query: bool) -> None:
+    global _agent_counts_hour
+    hour = int(time.time() // 3600)
+    if hour != _agent_counts_hour:
+        _agent_counts_hour = hour
+        for key in [k for k in _agent_counts if k[0] <= hour - _AGENT_WINDOW_H]:
+            del _agent_counts[key]
+    key = (hour, _agent_family(user_agent), _page_family(path, has_query))
+    if key in _agent_counts:
+        _agent_counts[key] += 1
+    elif len(_agent_counts) < _AGENT_COUNTS_CAP:
+        _agent_counts[key] = 1
+
+
+def _agent_summary(now: float | None = None) -> dict:
+    """The last 24 hours by family, busiest first, each with its three
+    busiest page families."""
+    hour = int((now if now is not None else time.time()) // 3600)
+    families: dict[str, collections.Counter] = {}
+    for (h, family, page), count in _agent_counts.items():
+        if h > hour - _AGENT_WINDOW_H:
+            families.setdefault(family, collections.Counter())[page] += count
+    rows = sorted(
+        ({"family": family, "total": sum(pages.values()), "pages": pages.most_common(3)}
+         for family, pages in families.items()),
+        key=lambda row: (-row["total"], row["family"]),
+    )
+    return {"rows": rows, "total": sum(row["total"] for row in rows)}
 
 
 def _record_pageview(path: str, user_id: int | None) -> None:
@@ -7763,6 +7860,7 @@ def admin_dashboard(request: Request):
     )[:40]
     context["missing_paths_total"] = sum(_missing_paths.values())
     context["missing_paths_distinct"] = len(_missing_paths)
+    context["agents"] = _agent_summary()
     return templates.TemplateResponse(request, "admin.html", context)
 
 

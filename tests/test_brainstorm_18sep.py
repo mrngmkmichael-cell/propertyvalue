@@ -381,3 +381,61 @@ def test_a_person_still_gets_the_answer_on_a_noindex_url(client, monkeypatch):
     assert "What it costs to live in M14 5TG" in body and _NOINDEX in body
     plain = client.get("/running-costs").text
     assert _NOINDEX not in plain
+
+
+# ---- 5. /admin names who is fetching pages ------------------------------------
+
+def test_an_agent_is_named_by_family_never_by_its_string():
+    from app import main as app_main
+
+    family = app_main._agent_family
+    assert family("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)") == "Googlebot"
+    assert family("Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.2; +https://openai.com/gptbot)") == "GPTBot"
+    assert family("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0 Safari/537.36") == "Looks like a browser"
+    assert family("python-requests/2.32") == "Python script"
+    assert family("") == "No user agent" and family(None) == "No user agent"
+    assert family("SomeCrawler/1.0 (+crawler)") == "Other bot or script"
+
+
+def test_a_page_is_counted_by_family_never_by_its_address():
+    from app import main as app_main
+
+    page = app_main._page_family
+    assert page("/", False) == "/"
+    assert page("/area/M1", False) == "/area/…"
+    assert page("/compare/M14/vs/M20", False) == "/compare/…"
+    assert page("/schools/guide", True) == "/schools/guide?…"
+    assert page("/schools/admissions/kent", False) == "/schools/admissions/…"
+    assert page("/running-costs", True) == "/running-costs?…"
+    assert page("/running-costs/council-tax/leeds", False) == "/running-costs/council-tax/…"
+
+
+def test_the_counter_keeps_a_day_and_leaves_our_own_checks_out(client, monkeypatch):
+    from app import main as app_main
+
+    monkeypatch.setattr(app_main, "_agent_counts", {})
+    googlebot = {"User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"}
+    client.get("/running-costs", headers=googlebot)
+    client.get("/running-costs", headers=dict(googlebot, **{"X-Internal-Check": "1"}))
+    client.get("/static/css/style.css", headers=googlebot)
+    rows = app_main._agent_summary()["rows"]
+    assert [(r["family"], r["total"]) for r in rows] == [("Googlebot", 1)]
+    assert rows[0]["pages"] == [("/running-costs", 1)]
+    # A day later the hour has left the window.
+    later = app_main._agent_summary(now=__import__("time").time() + 25 * 3600)
+    assert later["rows"] == [] and later["total"] == 0
+
+
+def test_admin_shows_who_is_fetching(client, monkeypatch):
+    from app import main as app_main
+
+    monkeypatch.setattr(app_main, "_agent_counts", {})
+    client.get("/running-costs", headers={"User-Agent": "Mozilla/5.0 (compatible; bingbot/2.0)"})
+    monkeypatch.setenv("ADMIN_EMAIL", "boss-agents@example.test")
+    client.post("/signup", data={"email": "boss-agents@example.test", "password": "correct horse battery staple"},
+                follow_redirects=False)
+    body = client.get("/admin").text
+    section = body[body.index('id="agents"'):]
+    section = section[:section.index("</section>")]
+    assert "Who is fetching pages" in section and "Bingbot" in section
+    assert "<code>/running-costs</code> 1" in section
