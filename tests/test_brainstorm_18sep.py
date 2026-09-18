@@ -519,3 +519,98 @@ def test_the_share_card_counts_the_checks_the_site_counts():
     assert 'f"{check_count} CHECKS  ·  "' in source
     assert "check_count=CHECK_COUNT" in pathlib.Path("app/main.py").read_text(encoding="utf-8")
     assert app_main.CHECK_COUNT == 44
+
+
+# ---- 8. What Premium covers outside England ----------------------------------
+
+def test_every_premium_check_says_where_its_source_reaches():
+    from app import main as app_main
+
+    titles = [title for _, title, _, _ in app_main.PREMIUM_CHECKS]
+    assert sorted(app_main.PREMIUM_REACH) == sorted(titles)
+    assert app_main.premium_reach("England") is None and app_main.premium_reach(None) is None
+    wales = app_main.premium_reach("Wales")
+    assert (wales["reach"], wales["total"]) == (10, 15)
+    assert wales["missing"] == ["Sewage Discharge", "Historic Contamination", "School Catchment Areas",
+                                "Development Nearby", "Health Services"]
+    assert app_main.premium_reach("Scotland")["reach"] == 7
+    assert app_main.premium_reach("Northern Ireland")["reach"] == 4
+    # A name with its own comma is never read as two checks.
+    assert "Health, Relationships & Social Grade; Development Nearby" in app_main.premium_reach_sentence("Scotland")
+
+
+def test_the_three_england_only_sources_are_not_asked_elsewhere():
+    from app import main as app_main
+
+    async def _boom():
+        raise AssertionError("asked about a place its source does not cover")
+
+    for country in ("Wales", "Scotland", "Northern Ireland"):
+        assert asyncio.run(app_main._in_england_only(country, _boom, [])) == []
+        assert asyncio.run(app_main._in_england_only(country, _boom)) is None
+
+    async def _answer():
+        return {"status": "clear"}
+
+    assert asyncio.run(app_main._in_england_only("England", _answer)) == {"status": "clear"}
+
+
+def _welsh():
+    location = fake_location(country="Wales", postcode="CF63 4AA", outcode="CF63")
+    location["admin_district"] = "Vale of Glamorgan"
+    return location
+
+
+def test_the_wall_names_what_premium_cannot_read_in_wales(client, fake_report):
+    fake_report(location=_welsh())
+    body = " ".join(client.get("/property?postcode=CF63%204AA").text.split())
+    assert "In Wales, 10 of the 15 Premium checks have a source to read." in body
+    assert "Development Nearby and Health Services draw on records that do not cover Wales." in body
+    fake_report()
+    assert "Premium checks have a source to read" not in client.get("/property?postcode=M14%205TG").text
+
+
+def test_a_welsh_subscriber_is_told_not_covered_rather_than_none(client, fake_report):
+    _subscriber(client, "cf63-subscriber@customer.test")
+    gather = fake_gather(sewage=None, sewage_outfalls=[], historic_landfill=None, health=None)
+    fake_report(location=_welsh(), gather=gather)
+    body = client.get("/property?postcode=CF63%204AA").text
+    for title in ("Sewage Discharge", "Historic Contamination", "Health Services"):
+        card = body[body.index(f'dashboard-card-title">{title}'):]
+        card = card[:card.index("</button>")]
+        assert "Not covered in Wales" in card, title
+    for gone in ("No outfalls found nearby", "No GP practice within 3 km"):
+        assert gone not in body
+    assert "This is not a finding that there is no former landfill here." in body
+    assert "This is not a finding that there are no overflows here." in body
+    assert "This is not a finding that there is no practice nearby." in body
+
+
+def test_the_pdf_says_not_covered_and_never_calls_no_answer_good():
+    from app.services import pdf_checklist
+
+    rows = pdf_checklist.build({"location": {"country": "Wales"}, "sewage_outfalls": [],
+                                "historic_landfill": None, "health": None}, {})
+    by_check = {r["check"]: r for r in rows}
+    for check in ("Storm overflows nearby", "Historic landfill", "GP practices and A&E"):
+        assert by_check[check]["result"] == "Not covered in Wales", check
+        assert by_check[check]["status"] == "neutral"
+    # In England, a landfill check with no answer is "Not available", not "None nearby".
+    rows = pdf_checklist.build({"location": {"country": "England"}, "historic_landfill": None}, {})
+    assert {r["check"]: r for r in rows}["Historic landfill"]["result"] == "Not available"
+
+
+def test_premium_says_where_each_check_reaches(client, monkeypatch):
+    from app import main as app_main
+
+    # The check list shows once billing is configured, as in production.
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_placeholder")
+    monkeypatch.setenv("STRIPE_PRICE_ID_MONTHLY", "price_m")
+    monkeypatch.setenv("STRIPE_PRICE_ID_QUARTERLY", "price_q")
+    monkeypatch.delenv("STRIPE_PRICE_ID_PASS", raising=False)
+    _forget_html()
+    body = " ".join(client.get("/premium").text.split())
+    assert "Council admissions data &middot; England only" in body
+    assert "UK House Price Index &middot; All four nations" in body
+    assert "I am buying outside England. What does Premium cover there?" in body
+    assert app_main.premium_reach_summary() in body.replace("&amp;", "&")

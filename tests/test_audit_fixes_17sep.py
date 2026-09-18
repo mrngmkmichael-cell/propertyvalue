@@ -325,7 +325,8 @@ def test_a3_the_visible_faq_is_word_for_word_the_structured_data(client, monkeyp
             monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
             monkeypatch.delenv("STRIPE_PRICE_ID_PASS", raising=False)
         visible, structured = _faq(_fresh_premium(client))
-        assert len(visible) == 5, (configured, pass_on)
+        # Six since 18 Sep 2026: what Premium covers outside England.
+        assert len(visible) == 6, (configured, pass_on)
         assert visible == structured, (configured, pass_on)
         questions = [q for q, _ in visible]
         assert ("What is the difference between the pass and the subscription?" in questions) is pass_on
@@ -2222,7 +2223,7 @@ def test_c2_before_you_pay_sits_under_the_prices_not_below_every_check(client, m
     assert body.count("Before you pay") == 1
     assert body.count('"FAQPage"') == 1
     visible, structured = _faq(body)
-    assert visible == structured and len(visible) == 5
+    assert visible == structured and len(visible) == 6  # outside England, 18 Sep 2026
 
     # The one answer that states a price states the plans' price.
     prices = stripe_billing.plan_prices()

@@ -724,6 +724,12 @@
     {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium"))) %}
 
     {% if not premium_unlocked %}
+    {# Outside England, how many Premium checks have a source to read here
+       (18 Sep 2026). A buyer in Barry reached this wall three times in
+       twelve days while six of the fifteen read records kept for England
+       only, and nothing on it said so. Coverage, never a finding; the
+       same sentence /premium gives (premium_reach_sentence in main.py). #}
+    {% set reach_aside %}{% if premium_reach %}<span class="paywall-banner-aside">{{ premium_reach_sentence(premium_reach.country) }}</span>{% endif %}{% endset %}
     <div class="paywall-banner" data-animate>
         {% if not current_user %}
         <div class="paywall-banner-copy">
@@ -736,6 +742,7 @@
                CHECK_COUNT from the route; the 28 websites and the date are
                that run's own figures and stay written out. #}
             <span class="paywall-banner-by-hand">By hand, these {{ check_count }} checks are 28 websites for one house, and nothing to compare at the end. <a href="/methodology#by-hand">We timed it on 16 September 2026</a>.</span>
+            {{ reach_aside }}
         </div>
         <a class="paywall-banner-cta" href="/signup?next={{ ("/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "")) | urlencode }}">Unlock this report free</a>
         {# 17 Sep 2026: a new account was told "You've used your free
@@ -750,6 +757,7 @@
         <div class="paywall-banner-copy">
             <strong>The locked cards below open with your free full report.</strong>
             It is only used when you choose &ldquo;Yes, unlock every card&rdquo; <a href="#use-free-report">at the top of this report</a>.
+            {{ reach_aside }}
         </div>
         {% elif needs_confirmation %}
         <div class="paywall-banner-copy">
@@ -789,6 +797,7 @@
             {% if paywall_history and paywall_history.free_report %}
             <span class="paywall-banner-aside">Your free report went on <a href="{{ paywall_history.free_report.url }}">{{ paywall_history.free_report.label }}</a>, and it stays open for good.</span>
             {% endif %}
+            {{ reach_aside }}
         </div>
         {# Carries this house to Premium (17 Sep 2026): premium_home_url
            from the route, so the price page opens naming the home being
@@ -1012,6 +1021,7 @@
             <span class="dashboard-card-status">
                 {% if sewage_error %}Data unavailable
                 {% elif sewage_outfalls %}{{ sewage_outfalls[0].spill_count }} spill{{ '' if sewage_outfalls[0].spill_count == 1 else 's' }} nearby in {{ sewage_outfalls[0].year }}
+                {% elif england_only_gap %}Not covered in {{ england_only_gap }}
                 {% else %}No outfalls found nearby{% endif %}
             </span>
             {% endif %}
@@ -1107,6 +1117,7 @@
                 {% if historic_landfill_error %}Data unavailable
                 {% elif historic_landfill and historic_landfill.status == 'on_site' %}On a former landfill
                 {% elif historic_landfill and historic_landfill.status == 'nearby' %}Former landfill nearby
+                {% elif england_only_gap %}Not covered in {{ england_only_gap }}
                 {% elif historic_landfill %}None nearby
                 {% else %}No data available{% endif %}
             </span>
@@ -1281,6 +1292,7 @@
             {% if not premium_unlocked %}{{ locked.locked_status('Health Services', health_error) }}{% else %}
             <span class="dashboard-card-status">
                 {% if health_error %}Data unavailable
+                {% elif england_only_gap %}Not covered in {{ england_only_gap }}
                 {% elif health is not defined or not health %}No data available
                 {% elif not health.count %}No GP practice within 3 km
                 {% elif health.nearest.patients_per_qualified_gp %}{{ "{:,}".format(health.nearest.patients_per_qualified_gp) }} patients per GP at the nearest practice
@@ -2910,6 +2922,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+        {% elif england_only_gap %}
+            {{ sewage_method }}
+            <p class="notice">The Environment Agency's storm overflow returns cover England, so they hold nothing for an address in {{ england_only_gap }}. This is not a finding that there are no overflows here.</p>
         {% else %}
             <p class="notice">No monitored storm overflow found within 1.5 miles of this property.</p>
         {% endif %}
@@ -3824,6 +3839,8 @@
             {{ locked.locked_body(lock_label, lock_redirect) }}
         {% elif health_error %}
             <p class="notice notice-error">The NHS practice data didn't load. Try again in a moment.</p>
+        {% elif england_only_gap %}
+            <p class="notice">NHS England's practice and A&amp;E figures cover England only, so they say nothing about GP practices in {{ england_only_gap }}. This is not a finding that there is no practice nearby.</p>
         {% elif health is not defined or not health %}
             <p class="notice">No practice data is loaded for this address yet.</p>
         {% elif not health.count %}
@@ -4194,6 +4211,8 @@
                 <strong>A former landfill site is nearby</strong> &middot; "{{ historic_landfill.site_name }}",
                 about {{ historic_landfill.distance_m | distance }} away.
             </p>
+        {% elif england_only_gap %}
+            <p class="notice">The Environment Agency's register covers England only, so it holds nothing for an address in {{ england_only_gap }}. This is not a finding that there is no former landfill here.</p>
         {% elif historic_landfill %}
             <p class="notice">No historic landfill sites found nearby.</p>
         {% else %}

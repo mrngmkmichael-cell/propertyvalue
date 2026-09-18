@@ -51,6 +51,8 @@
      "Yes, any time, from this page once you have subscribed. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
     ("What do I get that the free report does not show?",
      "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
+    ("I am buying outside England. What does Premium cover there?",
+     premium_reach_summary()),
     ("Where does the data come from?",
      "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
 ] %}
@@ -382,12 +384,15 @@
         </div>
         <p class="lx-tier-note">Free on your first property. No card required.</p>
         <div class="lx-check-grid">
+            {# Where each one's source reaches (18 Sep 2026): six stop at
+               the English border, which a buyer in Wales could not tell
+               from this list. PREMIUM_REACH in main.py. #}
             {% for icon, title, value, source in premium_checks %}
             <div class="lx-check">
                 <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
                 <p class="lx-check-title">{{ title }}</p>
                 <p class="lx-check-value">{{ value }}</p>
-                <p class="lx-check-source">{{ source }}</p>
+                <p class="lx-check-source">{{ source }} &middot; {{ premium_reach_label(title) }}</p>
             </div>
             {% endfor %}
         </div>

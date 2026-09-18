@@ -255,8 +255,14 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Risk and safety", "Surface water flooding", sw.get("label", "") + (f", {sw['probability']}" if sw.get("probability") else ""), _status(sw.get("label"), RISK_GOOD, RISK_BAD, RISK_WARN), "Environment Agency")
     else:
         add("Risk and safety", "Surface water flooding", "No mapped risk band at this point", "neutral", "Environment Agency")
+    # Three sources stop at the English border (18 Sep 2026): outside it
+    # the row says so, where it used to say "None" and mark it good.
+    country = ((report.get("location") or {}).get("country") or "").strip()
+    gap = country if country and country != "England" else ""
     so = report.get("sewage_outfalls")
-    if so:
+    if gap:
+        add("Risk and safety", "Storm overflows nearby", f"Not covered in {gap}", "neutral", "Environment Agency, England only")
+    elif so:
         spills = sum(int(o.get("spill_count") or 0) for o in so)
         add("Risk and safety", "Storm overflows nearby", f"{len(so)} within range, {spills} spill(s) in {so[0].get('year', 'the last reported year')}", "warn" if spills else "neutral", "Environment Agency event duration monitoring")
     else:
@@ -295,12 +301,17 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     else:
         add("Risk and safety", "Coal mining reporting area", "Not in a reporting area", "good", "Mining Remediation Authority")
     hl = report.get("historic_landfill")
-    if hl and hl.get("status") == "on_site":
+    if gap:
+        add("Risk and safety", "Historic landfill", f"Not covered in {gap}", "neutral", "Environment Agency, England only")
+    elif hl and hl.get("status") == "on_site":
         add("Risk and safety", "Historic landfill", f"On the site itself: {hl.get('site_name', '')}", "bad", "Environment Agency")
     elif hl and hl.get("status") and hl["status"] != "clear":
         add("Risk and safety", "Historic landfill", f"{hl.get('distance_m', '')} m away: {hl.get('site_name', '')}", "warn", "Environment Agency")
-    else:
+    elif hl:
         add("Risk and safety", "Historic landfill", "None nearby", "good", "Environment Agency")
+    else:
+        # No answer at all (the register did not respond) was "None nearby".
+        add("Risk and safety", "Historic landfill", "Not available", "neutral", "Environment Agency")
     aq = report.get("air_quality")
     if aq and aq.get("pollutants"):
         worst = max(aq["pollutants"], key=lambda p: p.get("times_guideline") or 0)
@@ -403,7 +414,9 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Area and community", "Since 2011", "No comparable 2011 figure for this small area", "neutral", "ONS Census 2011 and 2021")
     health = report.get("health")
     health_source = "NHS England Digital practice statistics; NHS England A&E statistics"
-    if report.get("health_error"):
+    if gap:
+        add("Area and community", "GP practices and A&E", f"Not covered in {gap}", "neutral", "NHS England, England only")
+    elif report.get("health_error"):
         add("Area and community", "GP practices and A&E", "The NHS practice data did not load", "neutral", health_source)
     elif health is None:
         add("Area and community", "GP practices and A&E", "No practice data loaded for this address", "neutral", health_source)

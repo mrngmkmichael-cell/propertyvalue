@@ -2366,6 +2366,111 @@ templates.env.globals["locked_check_count"] = len(PREMIUM_CHECKS)
 # the same thing on one screen, with both counts read from PREMIUM_CHECKS
 # rather than typed. It stops at the count on purpose: which check raised
 # it is what LOCKED_CARD_LINES above keeps back.
+# Where each Premium check has a source to read (18 Sep 2026). A buyer
+# in Barry came back on 5, 13 and 17 Sep and reached the wall three
+# times without paying, while five of these fifteen read records kept
+# for England only and neither the wall nor /premium said so. From each
+# source's own coverage, checked against the real gather at M1 1AE,
+# SW1A 1AA, LS1 4DY, EH1 1YZ, CF10 1EP and BT1 5GS the same day, because
+# a source's name is not its reach: the bus timetables, taken to be
+# England's alone, hold Lothian's routes in Edinburgh and stops at the
+# Cardiff interchange, and none in Belfast. HM Land Registry and the EPC
+# register we read cover England and Wales, as do the ONS 2021 Census
+# tables; BGS GeoClimate, the Mining Remediation Authority's coalfield
+# areas and the bus feed cover Great Britain; the UK House Price Index,
+# OpenStreetMap and Defra's pollution grid cover the UK; the Environment
+# Agency's storm overflow and landfill registers, the brownfield
+# register, NHS England and the councils whose admission distances we
+# hold are England only. A test keeps every Premium check in this map.
+_REACH_ENGLAND = ("England",)
+_REACH_ENGLAND_WALES = ("England", "Wales")
+_REACH_GB = ("England", "Wales", "Scotland")
+_REACH_UK = ("England", "Wales", "Scotland", "Northern Ireland")
+PREMIUM_REACH = {
+    "Valuation Estimate": _REACH_ENGLAND_WALES,
+    "Price Trend & Forecast": _REACH_UK,
+    "Extended or Modified": _REACH_ENGLAND_WALES,
+    "Aspect": _REACH_UK,
+    "Sewage Discharge": _REACH_ENGLAND,
+    "Subsidence Risk": _REACH_GB,
+    "Air Quality": _REACH_UK,
+    "Historic Contamination": _REACH_ENGLAND,
+    "Mining Risk": _REACH_GB,
+    "School Catchment Areas": _REACH_ENGLAND,
+    "Getting Around": _REACH_UK,
+    "Health, Relationships & Social Grade": _REACH_ENGLAND_WALES,
+    "Development Nearby": _REACH_ENGLAND,
+    "Bus Service": _REACH_GB,
+    "Health Services": _REACH_ENGLAND,
+}
+_REACH_LABELS = {
+    _REACH_ENGLAND: "England only",
+    _REACH_ENGLAND_WALES: "England and Wales",
+    _REACH_GB: "Great Britain",
+    _REACH_UK: "All four nations",
+}
+
+
+# The three whose sources stop at the English border and used to answer
+# as if they had looked (18 Sep 2026): "None nearby" for former landfill,
+# "No outfalls found nearby" for storm overflows and "No GP practice
+# within 3 km" for central Cardiff, Edinburgh and Belfast. Outside England
+# they are not asked, and every surface says the check does not cover the
+# nation, as flood has since 17 Sep.
+async def _in_england_only(country: str | None, make, outside=None):
+    if country and country != "England":
+        return outside
+    return await make()
+
+
+def premium_reach_label(title: str) -> str:
+    return _REACH_LABELS[PREMIUM_REACH[title]]
+
+
+def premium_reach(country: str | None) -> dict | None:
+    """For an address outside England, how many Premium checks have a
+    source there and which do not. Coverage, never a finding."""
+    if not country or country == "England":
+        return None
+    missing = [title for _, title, _, _ in PREMIUM_CHECKS if country not in PREMIUM_REACH[title]]
+    return {"country": country, "total": len(PREMIUM_CHECKS),
+            "reach": len(PREMIUM_CHECKS) - len(missing), "missing": missing}
+
+
+def _check_names(names: list[str]) -> str:
+    """A list of check names for a sentence. Semicolons once any name
+    carries its own comma, as "Health, Relationships & Social Grade"
+    does, or the reader cannot tell where one check ends."""
+    joiner = "; " if any("," in name for name in names) else ", "
+    return joiner.join(names[:-1]) + (" and " if len(names) > 1 else "") + names[-1]
+
+
+def premium_reach_sentence(country: str) -> str:
+    """One sentence for a nation, the same on the wall and on /premium."""
+    reach = premium_reach(country)
+    listed = _check_names(reach["missing"])
+    return (f"In {country}, {reach['reach']} of the {reach['total']} Premium checks have a source to "
+            f"read. {listed} draw on records that do not cover {country}.")
+
+
+def premium_reach_summary() -> str:
+    """The /premium answer for a buyer outside England: the three counts,
+    then the checks that stop at the English border, named once."""
+    wales, scotland, ni = (premium_reach(c)["reach"] for c in ("Wales", "Scotland", "Northern Ireland"))
+    england_only = [title for _, title, _, _ in PREMIUM_CHECKS if PREMIUM_REACH[title] == _REACH_ENGLAND]
+    listed = _check_names(england_only)
+    return (f"Less than in England, because some sources stop at the border: {wales} of the "
+            f"{len(PREMIUM_CHECKS)} Premium checks have a source to read in Wales, {scotland} in "
+            f"Scotland and {ni} in Northern Ireland. {listed} read records kept for England only. "
+            "Each check in the list at the foot of this page says where its source reaches, and a "
+            "report outside England names the ones missing there before you pay.")
+
+
+templates.env.globals["premium_reach_label"] = premium_reach_label
+templates.env.globals["premium_reach_summary"] = premium_reach_summary
+templates.env.globals["premium_reach_sentence"] = premium_reach_sentence
+
+
 def locked_found_sentence(found: int) -> str:
     return (f"{found} of the {len(PREMIUM_CHECKS)} locked checks found "
             "something worth checking on this home")
@@ -3514,6 +3619,9 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # "The N locked checks are not included" (17 Sep 2026). A length,
     # never typed: the free and locked lists are due to change.
     context["premium_check_count"] = len(PREMIUM_CHECKS)
+    # How many Premium checks have a source in this nation (18 Sep 2026).
+    context["premium_reach"] = premium_reach(location.get("country"))
+    context["england_only_gap"] = (location.get("country") or None) if location.get("country") not in (None, "", "England") else None
     # The wall's "By hand, these N checks are 28 websites" was a typed 44
     # until 17 Sep 2026, on the one page a reader can count the cards on.
     context["check_count"] = CHECK_COUNT
@@ -4264,18 +4372,18 @@ async def _full_property_gather(
             _timed("google-places-nearby-food-ratings", google_places.nearby_food_ratings(lat, lon)),
             _timed("orientation-orientation-for", orientation.orientation_for(lat, lon)),
             _timed("air-quality-for-location, location-get", asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings"), location.get("latitude"), location.get("longitude"), location.get("country"))),
-            _timed("historic-landfill-check-near", historic_landfill.check_near(lat, lon)),
+            _timed("historic-landfill-check-near", _in_england_only(location.get("country"), lambda: historic_landfill.check_near(lat, lon))),
             _timed("catchment-catchments-for", catchment.catchments_for(lat, lon)),
             _timed("schools-db-school-landscape, lat, lon)", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
             _timed("hpi-price-trend", hpi.price_trend(location["admin_district"])),
             _timed("clay-risk-risk-near", clay_risk.risk_near(lat, lon)),
-            _timed("sewage-discharge-nearby-outfalls", sewage_discharge.nearby_outfalls(lat, lon)),
+            _timed("sewage-discharge-nearby-outfalls", _in_england_only(location.get("country"), lambda: sewage_discharge.nearby_outfalls(lat, lon), [])),
             _timed("coal-mining-check-near", coal_mining.check_near(lat, lon)),
             _timed("surface-water-risk-risk-for", surface_water_risk.risk_for(lat, lon, location.get("country"))),
             _timed("cqc-ratings-nearby-ratings", cqc_ratings.nearby_ratings(lat, lon, canonical)),
             _timed("brownfield-sites-near", brownfield.sites_near(lat, lon, codes.get("admin_district", ""), location.get("country", ""))),
             _timed("bus-service-stops-near", asyncio.to_thread(bus_service.stops_near, lat, lon)),
-            _timed("health-services-near", asyncio.to_thread(health_services.near, lat, lon)),
+            _timed("health-services-near", _in_england_only(location.get("country"), lambda: asyncio.to_thread(health_services.near, lat, lon))),
             _timed("census-change-for-lsoa, codes-get", asyncio.to_thread(census_change.for_lsoa, codes.get("lsoa", ""))),
             _timed("grammar-schools-near", asyncio.to_thread(grammar.schools_near, lat, lon)),
             return_exceptions=True,
@@ -5238,12 +5346,12 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         # mislabelled as this property's.
         _immediate(None) if area_level else orientation.orientation_for(lat, lon),
         surface_water_risk.risk_for(lat, lon, location.get("country")),
-        sewage_discharge.nearby_outfalls(lat, lon),
+        _in_england_only(location.get("country"), lambda: sewage_discharge.nearby_outfalls(lat, lon), []),
         noise.noise_near(lat, lon),
         radon.risk_near(lat, lon),
         clay_risk.risk_near(lat, lon),
         asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings"), location.get("latitude"), location.get("longitude"), location.get("country")),
-        historic_landfill.check_near(lat, lon),
+        _in_england_only(location.get("country"), lambda: historic_landfill.check_near(lat, lon)),
         coal_mining.check_near(lat, lon),
         designations.check_all(lat, lon),
         heritage.nearby_listed_buildings(lat, lon),
@@ -5688,7 +5796,8 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card(
                     "Sewage Discharge",
                     "Data unavailable" if isinstance(sewage_result, Exception)
-                    else (f"{sewage_outfalls[0]['spill_count']} spill{'' if sewage_outfalls[0]['spill_count'] == 1 else 's'} nearby in {sewage_outfalls[0]['year']}" if sewage_outfalls else "No outfalls found nearby"),
+                    else (f"{sewage_outfalls[0]['spill_count']} spill{'' if sewage_outfalls[0]['spill_count'] == 1 else 's'} nearby in {sewage_outfalls[0]['year']}" if sewage_outfalls
+                          else (f"Not covered in {location.get('country')}" if location.get("country") not in (None, "", "England") else "No outfalls found nearby")),
                     sewage_status,
                     detail=sewage_detail,
                 ),
@@ -5696,7 +5805,8 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card("Radon Gas", radon_data["label"] if radon_data else "No data", radon_status),
                 card("Subsidence Risk", (f"{clay_data['label_2030']} by 2030" if clay_data else "No data"), clay_risk_status),
                 card("Air Quality", (f"{aq_worst}× WHO guideline at worst" if aq_worst is not None else "No data"), aq_status),
-                card("Historic Contamination", ({"on_site": "On a former landfill", "nearby": "Former landfill nearby", "clear": "None nearby"}.get(landfill["status"], "No data") if landfill else "No data"), landfill_status),
+                card("Historic Contamination", ({"on_site": "On a former landfill", "nearby": "Former landfill nearby", "clear": "None nearby"}.get(landfill["status"], "No data") if landfill
+                                                else (f"Not covered in {location.get('country')}" if location.get("country") not in (None, "", "England") else "No data")), landfill_status),
                 card("Mining Risk", ("In a Coal Mining Reporting Area" if coal and coal.get("present") else ("Not in a reporting area" if coal else "No data")), coal_mining_status),
             ],
         },
