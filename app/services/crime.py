@@ -3,6 +3,7 @@ Summarized by category for the latest available month, within
 roughly a 1-mile radius of the given coordinates (fixed by the API).
 """
 import asyncio
+import calendar
 from collections import Counter
 
 import httpx
@@ -81,6 +82,85 @@ def with_coverage(result: dict | None, district: str | None, country: str | None
     never shown where Police.uk cannot give a true one."""
     gap = coverage_gap(district, country)
     return gap_summary(gap) if gap else result
+
+
+# When the report may call crime here lower or higher than the area
+# around it (18 Sep 2026, first-visitor audit item D3). KT3 4HX read
+# "Lower crime than the surrounding area" on 229 crimes against 230, one
+# crime in one month, and that sentence added to the score; central York
+# compared 2 with 2. The report used to count the categories that were
+# lower and higher and call whichever had more, so a difference of one
+# in the totals could still read as lower. One rule now decides it for
+# every surface of the report that says lower or higher: the score's
+# reason, What stands out, the card, the pop-up and its table, the PDF,
+# its checklist and the extension's rows. Anything new that sets a crime
+# count against another asks compare_counts rather than < or >. The
+# district comparison pages (/compare/X/vs/Y, _versus_differences and
+# _versus_faqs in main.py) still name the district with fewer crimes on
+# any difference, both counts beside it; they were outside this item.
+MARGIN_SHARE = 0.10   # of the larger count
+MARGIN_CRIMES = 5
+FEW_RECORDS = 10      # both counts under this, single figures: no comparison
+
+
+def compare_counts(here: int | None, area: int | None) -> str | None:
+    """Whether a crime count here is lower than, higher than or about the
+    same as the count for the area it is compared with.
+
+    "lower" or "higher" only when the two differ by at least 10 per cent
+    of the larger count AND by at least 5 crimes; "same" otherwise.
+    "few" when both counts are in single figures: Police.uk holds too few
+    records for that month for a comparison to mean anything, so none is
+    drawn. None when either count is missing.
+
+    229 against 230 is "same", 229 against 300 is "lower", 2 against 2
+    is "few".
+    """
+    if here is None or area is None:
+        return None
+    if here < FEW_RECORDS and area < FEW_RECORDS:
+        return "few"
+    difference = abs(here - area)
+    if difference >= MARGIN_CRIMES and difference >= MARGIN_SHARE * max(here, area):
+        return "lower" if here < area else "higher"
+    return "same"
+
+
+def month_label(month: str | None) -> str:
+    """"2026-07" as "July 2026"; empty when there is no month."""
+    try:
+        year, number = str(month)[:7].split("-")
+        return f"{calendar.month_name[int(number)]} {int(year)}"
+    except (ValueError, IndexError, TypeError):
+        return ""
+
+
+def versus_area(local: dict | None, district: dict | None) -> dict | None:
+    """The address's total against the wider postcode area's, decided by
+    compare_counts. None when there is no count here to speak of.
+
+    {"here", "area", "month", "month_label", "area_month_label",
+    "verdict"}: verdict is compare_counts' answer, or None when there is
+    no area count, or when the two counts are for different months (a
+    force that has not published this month is walked back to an earlier
+    one, and a July count against a May one is no comparison at all)."""
+    if not local or local.get("total") is None:
+        return None
+    here = local["total"]
+    month = local.get("month")
+    area = district.get("total") if district else None
+    area_month = district.get("month") if district else None
+    verdict = None
+    if area is not None and (not month or not area_month or month[:7] == area_month[:7]):
+        verdict = compare_counts(here, area)
+    return {
+        "here": here,
+        "area": area,
+        "month": month,
+        "month_label": month_label(month),
+        "area_month_label": month_label(area_month),
+        "verdict": verdict,
+    }
 
 
 async def summary_for_outcode(outcode: str) -> dict | None:

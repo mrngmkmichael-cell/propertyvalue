@@ -42,6 +42,21 @@ ORDER BY DESC(?refMonth)
 _LATEST_LOOKBACK_MONTHS = 8
 
 
+def _city_forms(wanted: str) -> tuple[str, ...]:
+    """The labels a city goes by in the index, lower case: "City of
+    Nottingham", "Aberdeen City", and the "Bristol, City of" form."""
+    return (f"city of {wanted}", f"{wanted} city", f"{wanted}, city of")
+
+
+def is_the_place_asked_for(label: str, name: str) -> bool:
+    """Whether an area's published label is the place that was asked for,
+    by its own name or as that city, rather than a county or region that
+    only contains the name. The market report calls its list cities only
+    while every entry passes this."""
+    wanted = name.strip().lower()
+    return label.strip().lower() in (wanted, *_city_forms(wanted))
+
+
 def _pick_area(labels, name: str) -> str | None:
     """Which of the areas the CONTAINS filter matched is the one that
     was actually asked for.
@@ -54,15 +69,26 @@ def _pick_area(labels, name: str) -> str | None:
     the HPI label ("City of Westminster") - so the choice is made here
     instead of being left to whichever row the endpoint returned first.
 
-    Exact match wins. Failing that the shortest containing label wins,
-    which resolves "Manchester" over "Greater Manchester" and still
-    picks "City of Westminster" when that is the only candidate.
+    Exact match wins. Next comes the city's own label, the name with
+    "City of" before it or "City" after it. Failing both the shortest
+    containing label wins, which resolves "Manchester" over "Greater
+    Manchester".
+
+    The city step is from 18 Sep 2026 (first-visitor audit item D6).
+    Shortest-first picked "Nottinghamshire" over "City of Nottingham" and
+    "Aberdeenshire" over "City of Aberdeen", so the market report listed
+    two counties among its "major UK cities" and a report for an NG1
+    address quoted the county's average under the county's name.
     """
     wanted = name.strip().lower()
     labels = list(labels)
     for label in labels:
         if label.strip().lower() == wanted:
             return label
+    for form in _city_forms(wanted):
+        for label in labels:
+            if label.strip().lower() == form:
+                return label
     containing = sorted(
         (l for l in labels if wanted in l.strip().lower()),
         key=lambda l: (len(l), l),
@@ -138,28 +164,59 @@ ORDER BY ASC(?refMonth)
 """
 
 MIN_TREND_POINTS = 24  # need at least 2 years of monthly data for a trend worth showing
-PROJECTION_MONTHS = (12, 24)
+
+# The spans the index's own history is read over (18 Sep 2026,
+# first-visitor audit item D3). Until then this module fitted a straight
+# line to five years of the series and projected it one and two years on.
+# The line's starting point sat about £12,000 under the latest index, so
+# KT3 4HX's locked card showed "Now £591,555" beside "Projected, +1 year
+# £579,490", a fall, on the same page as the index's own "+3.3% year on
+# year". A projection is not a published figure, so it is gone: the card
+# shows the index and how far it moved over one, five and ten years,
+# each only where the series reaches back that far.
+CHANGE_YEARS = (1, 5, 10)
 
 
-def _linear_regression(points: list[tuple[int, float]]) -> tuple[float, float]:
-    """Least-squares slope/intercept for (x, y) pairs - pure Python, no numpy."""
-    n = len(points)
-    sum_x = sum(p[0] for p in points)
-    sum_y = sum(p[1] for p in points)
-    sum_xy = sum(p[0] * p[1] for p in points)
-    sum_xx = sum(p[0] * p[0] for p in points)
-    denom = n * sum_xx - sum_x * sum_x
-    if denom == 0:
-        return 0.0, sum_y / n
-    slope = (n * sum_xy - sum_x * sum_y) / denom
-    intercept = (sum_y - slope * sum_x) / n
-    return slope, intercept
+def _months_before(period: str, months: int) -> str:
+    """"2026-06" and 12 as "2025-06"."""
+    year, month = int(period[:4]), int(period[5:7])
+    total = year * 12 + (month - 1) - months
+    return f"{total // 12:04d}-{total % 12 + 1:02d}"
 
 
-async def price_trend(admin_district: str, years: int = 5) -> dict | None:
+def _changes(series: list[dict]) -> list[dict]:
+    """How far the index moved to its latest month over each span in
+    CHANGE_YEARS, from the same month that many years earlier. A span the
+    series does not reach, or whose month is missing from it, is left out
+    rather than taken from the nearest month."""
+    if not series:
+        return []
+    latest = series[-1]
+    by_period = {p["period"]: p["average_price"] for p in series}
+    out = []
+    for years in CHANGE_YEARS:
+        period = _months_before(latest["period"], 12 * years)
+        then = by_period.get(period)
+        if not then:
+            continue
+        out.append({
+            "years": years,
+            "period": period,
+            "price": then,
+            "pct": (latest["average_price"] - then) / then * 100,
+        })
+    return out
+
+
+async def price_trend(admin_district: str, years: int = max(CHANGE_YEARS)) -> dict | None:
     if not admin_district:
         return None
-    cutoff = (date.today() - timedelta(days=365 * years)).strftime("%Y-%m")
+    # Half a year further back than the span itself: the index is
+    # published a couple of months in arrears, so a cutoff exactly ten
+    # years before today stops short of ten years before the latest month
+    # and the ten-year change would never be found. The series is cut
+    # back to the span below.
+    cutoff = (date.today() - timedelta(days=365 * years + 183)).strftime("%Y-%m")
     query = _SERIES_QUERY_TEMPLATE.format(name=admin_district.replace('"', ""), cutoff=cutoff)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -188,21 +245,14 @@ async def price_trend(admin_district: str, years: int = 5) -> dict | None:
         for row in bindings
         if row["label"]["value"] == chosen
     ]
+    if series:
+        start = _months_before(series[-1]["period"], 12 * years)
+        series = [p for p in series if p["period"] >= start]
     if len(series) < MIN_TREND_POINTS:
         return None
 
-    points = [(i, p["average_price"]) for i, p in enumerate(series)]
-    slope, intercept = _linear_regression(points)
-    last_index = len(series) - 1
-
-    projections = [
-        {"months_ahead": m, "price": intercept + slope * (last_index + m)}
-        for m in PROJECTION_MONTHS
-    ]
-
-    start_price = series[0]["average_price"]
-    current_price = series[-1]["average_price"]
-    pct_change = ((current_price - start_price) / start_price) * 100 if start_price else None
+    changes = _changes(series)
+    five = next((c for c in changes if c["years"] == 5), None)
 
     return {
         # The area the figures actually describe, which is not always
@@ -210,9 +260,14 @@ async def price_trend(admin_district: str, years: int = 5) -> dict | None:
         # "City of Westminster").
         "area_name": chosen,
         "series": series,
-        "start_price": start_price,
-        "current_price": current_price,
-        "pct_change": pct_change,
-        "monthly_trend": slope,
-        "projections": projections,
+        "current_price": series[-1]["average_price"],
+        "current_period": series[-1]["period"],
+        # The one, five and ten year changes the series has (see
+        # CHANGE_YEARS). start_price and pct_change are the five-year one,
+        # for the card and the PDF, and None when the series is shorter:
+        # they were the first point of the series, which read as "over 5
+        # years" for an authority with three years of index behind it.
+        "changes": changes,
+        "start_price": five["price"] if five else None,
+        "pct_change": five["pct"] if five else None,
     }

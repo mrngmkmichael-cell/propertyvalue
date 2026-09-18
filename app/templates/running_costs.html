@@ -300,16 +300,20 @@
         </table>
     </div>
     {% if checked.council_tax %}
+    {# 18 Sep 2026 (first-visitor audit D7, review): every pound on this
+       page goes through gbp, halves up as the report's pop-up and the
+       council pages round. Python's own format rounds halves to even,
+       so Bexley's Band B of 1,840.50 read £1,840 here and £1,841 there. #}
     <p class="section-sub" style="margin-top: 1rem;">Council tax at every band in {{ checked.council_tax.authority }}, {{ checked.council_tax.year }}:</p>
     <div class="tablewrap">
         <table class="tx-table">
             <thead><tr>{% for band in checked.council_tax.bands %}<th class="num">Band {{ band }}</th>{% endfor %}</tr></thead>
-            <tbody><tr>{% for band, amount in checked.council_tax.bands.items() %}<td class="num">&pound;{{ "{:,.0f}".format(amount) }}</td>{% endfor %}</tr></tbody>
+            <tbody><tr>{% for band, amount in checked.council_tax.bands.items() %}<td class="num">{{ amount | gbp }}</td>{% endfor %}</tr></tbody>
         </table>
     </div>
     {% endif %}
     <p class="section-sub">
-        For one address rather than the postcode, the <a href="/property?postcode={{ checked.postcode | urlencode }}#running-costs">full report</a> shows that home's own EPC figures and tenure alongside its forty-four other checks.
+        For one address rather than the postcode, the <a href="/property?postcode={{ checked.postcode | urlencode }}#running-costs">full report</a> shows that home's own EPC figures and tenure alongside the rest of its forty-four checks.
         To compare councils, <a href="/running-costs/council-tax">every council's council tax →</a>
     </p>
     {% endif %}
@@ -320,8 +324,8 @@
 {% if not checked %}
 <div class="scorecard-row">
     <div class="score-tile"><span class="score-tile-value">{{ ct.count }}</span><span class="score-tile-label">English councils with every band's bill for {{ ct.year }}</span></div>
-    {% if ct.median %}<div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(ct.median) }}</span><span class="score-tile-label">the middle council's Band D bill</span></div>{% endif %}
-    {% if ct.cheapest and ct.dearest %}<div class="score-tile"><span class="score-tile-value">&pound;{{ "{:,.0f}".format(ct.dearest[0].band_d - ct.cheapest[0].band_d) }}</span><span class="score-tile-label">a year between the cheapest and dearest council, same band</span></div>{% endif %}
+    {% if ct.median %}<div class="score-tile"><span class="score-tile-value">{{ ct.median | gbp }}</span><span class="score-tile-label">the middle council's Band D bill</span></div>{% endif %}
+    {% if ct.cheapest and ct.dearest %}<div class="score-tile"><span class="score-tile-value">{{ (ct.dearest[0].band_d - ct.cheapest[0].band_d) | gbp }}</span><span class="score-tile-label">a year between the cheapest and dearest council, same band</span></div>{% endif %}
 </div>
 
 <section class="report-section">
@@ -335,13 +339,13 @@
         <table class="tx-table">
             <thead><tr><th>Cheapest twenty</th><th class="num">Band D, {{ ct.year }}</th></tr></thead>
             <tbody>
-                {% for r in ct.cheapest %}<tr><td>{{ r.authority }}</td><td class="num">&pound;{{ "{:,.0f}".format(r.band_d) }}</td></tr>{% endfor %}
+                {% for r in ct.cheapest %}<tr><td>{{ r.authority }}</td><td class="num">{{ r.band_d | gbp }}</td></tr>{% endfor %}
             </tbody>
         </table>
         <table class="tx-table">
             <thead><tr><th>Dearest twenty</th><th class="num">Band D, {{ ct.year }}</th></tr></thead>
             <tbody>
-                {% for r in ct.dearest %}<tr><td>{{ r.authority }}</td><td class="num">&pound;{{ "{:,.0f}".format(r.band_d) }}</td></tr>{% endfor %}
+                {% for r in ct.dearest %}<tr><td>{{ r.authority }}</td><td class="num">{{ r.band_d | gbp }}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

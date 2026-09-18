@@ -3,7 +3,9 @@
 Checks, in order:
   1. Every internal href on every rendered page resolves (no 404/500).
   2. The project's copy rules: no em-dashes in user-facing text.
-  3. Stale numbers: every check count must match the hero's own figure.
+  3. Stale numbers: every check count must match the hero's own figure,
+     and every count of sources the homepage's, which must be the
+     number of bodies /methodology lists.
   4. Common typos and doubled words; dates in ISO form and counts
      without a thousands separator (copy_rules.py).
   5. Placeholder text that should never ship (lorem, TODO, FIXME, XXX).
@@ -24,7 +26,7 @@ from collections import defaultdict
 
 import httpx
 
-from copy_rules import date_and_count_problems
+from copy_rules import date_and_count_problems, headline_source_count, listed_source_count, source_count_problems
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8010"
 UA = {"User-Agent": "Googlebot/2.1 (+audit)", "X-Internal-Check": "1"}
@@ -160,6 +162,22 @@ TIER_COUNTS = set(
 if not HEADLINE_CHECKS:
     print("  WARNING: could not read the hero check count, so that rule is skipped")
 
+# The same for sources (18 Sep 2026, first-visitor audit item D6): the
+# homepage's "Official sources" figure, which has to be the number of
+# bodies /methodology lists, and which every "N sources" on the site has
+# to repeat. See copy_rules.py.
+HEADLINE_SOURCES = headline_source_count(_home)
+if not HEADLINE_SOURCES:
+    print("  WARNING: could not read the homepage's source count, so that rule is skipped")
+else:
+    _listed = listed_source_count(pages_html.get("/methodology", ""))
+    if _listed is None:
+        problems["source count"].append("/methodology: no list of sources found to count")
+    elif _listed != int(HEADLINE_SOURCES):
+        problems["source count"].append(
+            f"/methodology lists {_listed} official bodies but the homepage says {HEADLINE_SOURCES}"
+        )
+
 print("checking copy...")
 
 
@@ -265,6 +283,8 @@ for path, body in pages_html.items():
     for block in blocks:
         for rule, what in date_and_count_problems(block):
             found[rule].append(what)
+        for what in source_count_problems(block, HEADLINE_SOURCES):
+            problems["source count"].append(f"{path}: '{what}' but the homepage says {HEADLINE_SOURCES}")
     for rule, hits in found.items():
         examples = ", ".join(sorted(set(hits))[:3])
         problems[rule].append(f"{path}: {len(hits)}, e.g. {examples}")

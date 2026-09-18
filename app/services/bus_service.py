@@ -34,6 +34,50 @@ def per_hour(departures: int, band: str) -> float:
     return round(departures / BAND_HOURS[band], 1)
 
 
+# First and last bus in words, for every page that gives them (18 Sep
+# 2026, first-visitor audit item D7). The importer keeps the earliest
+# and latest weekday departure of the service day, and a departure after
+# midnight still belongs to that day (GTFS writes 24:14 or 28:24), so the
+# stored "last" can read earlier than "first": pages said "first bus
+# 00:19, last 00:14" (Fortismere) and "first bus 05:05, last 04:24" (LS6),
+# which looks like an error. Nothing is re-imported; the wording is
+# settled here at render time. When both times fall in the small hours
+# and the last bus leaves within an hour of the next day's first, the
+# timetable has no overnight gap to speak of and the page says it runs
+# through the night. Otherwise the last bus is named as after midnight:
+# a last bus at 00:40 and a first at 04:50 are both small-hours times,
+# but four hours without a bus is not "through the night".
+SMALL_HOURS_END_MIN = 6 * 60
+THROUGH_NIGHT_GAP_MIN = 60
+
+
+def _clock_minutes(text: str | None) -> int | None:
+    try:
+        hours, minutes = (text or "").strip().split(":")
+        return int(hours) * 60 + int(minutes)
+    except ValueError:
+        return None
+
+
+def service_hours(first: str | None, last: str | None) -> dict:
+    """The first and last weekday bus as the pages word them: "text" for
+    a sentence ("first bus 06:10, last 23:40"), and "first", "last" and
+    "overnight" for a table's two columns. Empty text when either time
+    is missing, so a page leaves the clause out rather than printing a
+    blank."""
+    first, last = (first or "").strip(), (last or "").strip()
+    start, end = _clock_minutes(first), _clock_minutes(last)
+    if start is None or end is None:
+        return {"text": "", "first": first, "last": last, "overnight": False}
+    if end >= start:
+        return {"text": f"first bus {first}, last {last}", "first": first, "last": last, "overnight": False}
+    if start < SMALL_HOURS_END_MIN and end < SMALL_HOURS_END_MIN and start - end <= THROUGH_NIGHT_GAP_MIN:
+        return {"text": "the service runs through the night", "first": "", "last": "",
+                "overnight": True, "cell": "Runs through the night"}
+    return {"text": f"first bus {first}, last {last} after midnight", "first": first,
+            "last": f"{last} after midnight", "overnight": False}
+
+
 def route_names(raw: str | None) -> list[str]:
     """The stored routes as names. Rows written before 7 Sep 2026 held
     [name, count] pairs; both shapes read the same way."""

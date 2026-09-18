@@ -10,9 +10,23 @@ already inside them). See scripts/import_council_tax.py for sources.
 """
 import json
 import re
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 _DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "council_tax.json"
+
+
+def whole_pounds(value) -> int:
+    """A money figure to the nearest pound, halves up: the one rounding
+    every page uses (18 Sep 2026, first-visitor audit item D7). The site's
+    gbp filter cut the pence off while the lead paragraphs, the PDF and
+    the council pages rounded, so Leeds's Band D of £2,283.73 read £2,283
+    in one section of the LS6 guide and £2,284 in two others, and one
+    Band F read £3,768 in the report's pop-up and £3,769 on running
+    costs. Read through str() so a float such as 2.675 rounds as written.
+    Raises ValueError, TypeError or ArithmeticError for anything that is
+    not a finite number."""
+    return int(Decimal(str(float(value))).quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 ENGLAND_NINTHS = {"A": 6, "B": 7, "C": 8, "D": 9, "E": 11, "F": 13, "G": 15, "H": 18}
 WALES_NINTHS = {"A": 6, "B": 7, "C": 8, "D": 9, "E": 11, "F": 13, "G": 15, "H": 18, "I": 21}

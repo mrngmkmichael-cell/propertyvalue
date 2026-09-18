@@ -37,8 +37,11 @@
 <section class="report-section">
     <h2>{{ group_name }}</h2>
     <p class="section-sub">{{ schools | length }} school{{ "s" if schools | length != 1 }}. {{ group_note }}</p>
+    {# data-stack (18 Sep 2026): below 600px each row stacks as the
+       school, then its ages, pupils and how full on one line, then faith
+       and pupils on roll, where at 375px the header was cut at "ON R". #}
     <div class="tablewrap">
-        <table class="tx-table school-table">
+        <table class="tx-table school-table" data-stack>
             <thead>
                 <tr>
                     <th data-sort="text" aria-sort="ascending">School</th>
@@ -52,16 +55,18 @@
             <tbody>
                 {% for s in schools %}
                 <tr>
-                    <td data-value="{{ s.name }}">
+                    <td data-value="{{ s.name }}" data-st="title">
                         {% if s.website %}<a href="{{ s.website | external_url }}" rel="noopener nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}
                         {% if s.town and s.town not in s.name %}<span class="school-table-type">{{ s.town }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</span>{% elif s.postcode %}<span class="school-table-type">{{ s.postcode }}</span>{% endif %}
                     </td>
-                    <td data-value="{{ s.age_low or 0 }}">{% if s.age_low is not none and s.age_high is not none %}{{ s.age_low }} to {{ s.age_high }}{% else %}Not stated{% endif %}</td>
-                    <td data-value="{{ s.gender }}">{{ s.gender or "Not stated" }}</td>
+                    {# The .st-only words name each value on the stacked
+                       line, where no header sits above it (18 Sep 2026). #}
+                    <td data-value="{{ s.age_low or 0 }}" data-st="lead">{% if s.age_low is not none and s.age_high is not none %}<span class="st-only">Ages </span>{{ s.age_low }} to {{ s.age_high }}{% else %}<span class="st-only">Ages: </span>Not stated{% endif %}</td>
+                    <td data-value="{{ s.gender }}" data-st="answer">{% if s.gender not in ("Boys", "Girls", "Mixed") %}<span class="st-only">Pupils: </span>{% endif %}{{ s.gender or "Not stated" }}</td>
                     {% set faith = s.religious_character if s.religious_character not in ("", "None", "Does not apply") else "Non-faith" %}
-                    <td data-value="{{ faith }}">{{ faith }}</td>
-                    <td class="num" data-value="{{ s.number_on_roll or 0 }}">{% if s.number_on_roll %}{{ "{:,}".format(s.number_on_roll) }}{% else %}Not reported{% endif %}</td>
-                    <td class="num" data-value="{{ s.occupancy_pct or 0 }}">{% if s.occupancy_pct %}{{ s.occupancy_pct }}%{% else %}Not reported{% endif %}</td>
+                    <td data-value="{{ faith }}" data-label="Faith">{{ faith }}</td>
+                    <td class="num" data-value="{{ s.number_on_roll or 0 }}" data-label="On roll">{% if s.number_on_roll %}{{ "{:,}".format(s.number_on_roll) }}{% else %}Not reported{% endif %}</td>
+                    <td class="num" data-value="{{ s.occupancy_pct or 0 }}" data-st="answer">{% if s.occupancy_pct %}{{ s.occupancy_pct }}%<span class="st-only"> full</span>{% else %}<span class="st-only">How full: </span>Not reported{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

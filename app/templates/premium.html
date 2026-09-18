@@ -36,7 +36,12 @@
    between free and Premium checks is going to move, and the price is
    plan_prices, the labels in stripe_billing.PLANS that the plan cards
    below show. Checkout charges the Price ID in the environment, so
-   PLANS must be edited whenever a Stripe Price changes. #}
+   PLANS must be edited whenever a Stripe Price changes.
+   "Where does the data come from?" said "Named official sources only"
+   until 18 Sep 2026 (first-visitor audit item D6), over Premium's Aspect
+   and Getting Around, which read OpenStreetMap. It now counts the bodies
+   from OFFICIAL_SOURCES in main.py, the list /methodology shows, and
+   names OpenStreetMap apart. #}
 {% set premium_faq = [
     ("Do I need a card for the free report?",
      "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running."),
@@ -54,7 +59,7 @@
     ("I am buying outside England. What does Premium cover there?",
      premium_reach_summary()),
     ("Where does the data come from?",
-     "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
+     "Named official bodies, " ~ (official_sources | length) ~ " of them, each listed with the checks it is read for on the methodology page: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk among them. Which way a home faces and the stations nearby also read OpenStreetMap, the map its volunteers draw, and say so. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
 ] %}
 
 {# The questions used to sit at the foot of the page, below every one of

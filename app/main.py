@@ -3,6 +3,7 @@ import html
 import bisect
 import collections
 import contextvars
+import functools
 import hashlib
 import datetime
 import hmac
@@ -14,6 +15,7 @@ import os
 import re
 import secrets
 import statistics
+import string
 import time
 from urllib.parse import parse_qs, quote, urlencode, urlparse
 from xml.sax.saxutils import escape
@@ -604,9 +606,12 @@ templates.env.globals["inline_css"] = inline_css
 
 
 def _format_gbp(value) -> str:
+    # To the nearest pound since 18 Sep 2026 (council_tax.whole_pounds):
+    # it cut the pence off, so £2,283.73 read £2,283 here and £2,284
+    # wherever a sentence rounded it.
     try:
-        return f"£{int(float(value)):,}"
-    except (TypeError, ValueError):
+        return f"£{council_tax.whole_pounds(value):,}"
+    except (TypeError, ValueError, ArithmeticError):
         return str(value)
 
 
@@ -638,11 +643,80 @@ def _median(sorted_values: list[float]) -> float | None:
     return sorted_values[mid] if n % 2 else (sorted_values[mid - 1] + sorted_values[mid]) / 2
 
 
+@functools.lru_cache(maxsize=8192)
+def _address_words(text: str) -> str:
+    """An address, or what someone typed for one, as bare lower-case
+    words: the EPC Register writes "Flat 2, 12 High Street" where HM Land
+    Registry writes "FLAT 2 12 HIGH STREET", and a comma is no reason for
+    the two not to meet. Kept for the last few thousand addresses (18 Sep
+    2026): "Which home is yours?" asks the house number filter about the
+    same records once per home."""
+    return " ".join(re.sub(r"[^\w']+", " ", (text or "").lower()).split())
+
+
 def _filter_by_address(records: list[dict], query: str) -> list[dict]:
-    if not query:
+    # 18 Sep 2026: matched from the start of a word, punctuation ignored on
+    # both sides, and a number never runs on into a longer one. It was a
+    # plain substring, so "5" or "5 Malden Hill Gardens" also took in 15,
+    # 25 and 55, and a report opened on one home through "Which home is
+    # yours?" read a neighbour's sale as its own: the stitching that row
+    # exists to end (first-visitor audit of 17 Sep 2026, item D1). "6"
+    # still finds "6A", and a street name still finds every home on it.
+    # Where some addresses start with what was asked, those are the homes
+    # meant, so "57 Malden Hill Gardens" is the house and not also the
+    # flats inside it; where none do, a number still finds its flats ("37"
+    # matches "Flat 2 37 Avalon Road"). Whitespace alone is still no
+    # filter.
+    #
+    # 18 Sep 2026, item D7: the house number or name is now taken as a
+    # whole token at the start of the address first, so where "9 Acacia
+    # Road" is recorded, house 9 is that home alone and not also 9A; "6"
+    # still finds "6A" where no plain 6 is recorded. And a number is a
+    # flat's own number only when the search names a flat: house 9 no
+    # longer takes in "Flat 9, 12 Acacia Road", whose home is number 12.
+    # This filter feeds "last sold here", the valuation, My properties
+    # and the change alert that says a sale of this home was recorded.
+    #
+    # 18 Sep 2026, D1 review: a search that names a home and its street
+    # but no flat ("57 Malden Hill Gardens", which is what every "Which
+    # home is yours?" link sets) no longer falls back to the flats inside
+    # that home. A converted house often has an old whole-house
+    # certificate beside sales of its flats only, so the house's report
+    # read the flat's £301,000 as "last sold here" and divided it by the
+    # house's 122 m². A bare "37" still finds "Flat 2 37 Avalon Road", and
+    # a street still finds the flats on it: "Flat 2 5 Malden Hill
+    # Gardens" names its own number 5 before the street.
+    q = _address_words(query)
+    if not q:
         return records
-    q = query.strip().lower()
-    return [r for r in records if q in r["address"].lower()]
+    q_words = q.split(" ")
+    names_flat = q_words[0] in _FLAT_WORDS
+    names_home = len(q_words) > 1 and not names_flat
+    pattern = re.compile(r"(?:^| )" + re.escape(q) + r"(?![0-9])")
+    exact, anchored, hits = [], [], []
+    for r in records:
+        words = _address_words(r["address"])
+        found = False
+        for m in pattern.finditer(words):
+            prefix = words[:m.start()].split()
+            if prefix and prefix[-1] in _FLAT_WORDS and not names_flat:
+                continue  # "flat 9": a flat's number, and no flat was asked for
+            if names_home and prefix and prefix[0] in _FLAT_WORDS and (len(prefix) == 2 or q[0].isdigit()):
+                continue  # "flat 1" + "57 malden hill gardens": a flat inside the home asked for
+            found = True
+            break
+        if not found:
+            continue
+        hits.append(r)
+        if pattern.match(words):
+            anchored.append(r)
+            if words == q or words.startswith(q + " "):
+                exact.append(r)
+    return exact or anchored or hits
+
+
+# Words that make the number after them a flat's own (18 Sep 2026).
+_FLAT_WORDS = frozenset({"flat", "flats", "apartment", "apt", "unit", "maisonette"})
 
 
 def _leading_token(address: str) -> str:
@@ -670,8 +744,8 @@ def _likely_pre_1970(year_built: str) -> bool | None:
 
 
 async def _epc_flow(
-    canonical: str, house_number: str, configured: bool
-) -> tuple[list[dict], dict | None, dict | None]:
+    canonical: str, house_number: str, configured: bool, postcode_energy: bool = False
+) -> tuple[list[dict], dict | None, dict | None, dict | None]:
     """Certificates + the extra-detail fetch for the first matching
     one, chained together as a single coroutine so the detail call
     (which depends on the search results) runs concurrently with
@@ -684,22 +758,45 @@ async def _epc_flow(
     with more than one certificate on file, also fetches detail for
     all of them (bounded to that one address's own history, typically
     2-4 certificates) to check for a floor-area jump suggesting a
-    probable extension - see epc.detect_extension."""
+    probable extension - see epc.detect_extension.
+
+    The fourth item is the postcode's own energy figures, asked for by
+    the report (postcode_energy) and read only without a house number
+    (18 Sep 2026, first-visitor audit item D1). The report's energy line
+    was the newest certificate's, one home's bill printed as the
+    postcode's; it now gives the middle and the range the running-costs
+    page gives, from the same helper. The newest certificate is one of
+    those calls, so its detail is not fetched twice. None otherwise."""
     if not configured:
-        return [], None, None
+        return [], None, None, None
     certs = await epc.certificates_for_postcode(canonical)
     filtered = _filter_by_address(certs, house_number)
     detail = None
     extension_signal = None
+    if postcode_energy and not house_number and certs:
+        chosen = _one_certificate_per_address(certs)
+        fetched = await asyncio.gather(
+            *(epc.certificate_detail(c["certificate_number"]) for c in chosen), return_exceptions=True,
+        )
+        newest = dict(zip((c["certificate_number"] for c in chosen), fetched)).get(certs[0]["certificate_number"])
+        # The newest certificate's own call fails as it always did: a
+        # dropped connection leaves the header without it, anything else
+        # is the EPC card's error. The other homes' calls only thin out
+        # the range.
+        if isinstance(newest, BaseException) and not isinstance(newest, httpx.HTTPError):
+            raise newest
+        detail = newest if isinstance(newest, dict) else None
+        return certs, detail, None, _postcode_energy_summary(certs, fetched)
     if filtered:
         try:
             detail = await epc.certificate_detail(filtered[0]["certificate_number"])
         except httpx.HTTPError:
             detail = None
         if house_number:
-            # The general substring filter above is deliberately loose
-            # (good for a human-reviewed table, where "6" matching "16"
-            # is a harmless extra row) - but this feeds an automated
+            # The general filter above is deliberately loose (good for a
+            # human-reviewed table, where "37" also finding "Flat 2, 37
+            # Avalon Road" is a harmless extra row; until 18 Sep 2026 "6"
+            # also found "16") - but this feeds an automated
             # floor-area comparison, so it needs a stricter same-address
             # match first, or it could silently compare two different
             # properties that happen to share a digit.
@@ -716,7 +813,7 @@ async def _epc_flow(
                     if not isinstance(d, Exception) and d
                 ]
                 extension_signal = epc.detect_extension(history)
-    return certs, detail, extension_signal
+    return certs, detail, extension_signal, None
 
 
 VALUATION_EPC_LOOKUP_CAP = 20  # bounds worst-case added EPC calls regardless of how many recent sales exist
@@ -858,7 +955,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         summary["tx_count"] = len(filtered_tx)
 
     if not isinstance(epc_flow_result, Exception) and epc_configured:
-        _, property_detail, _ = epc_flow_result
+        _, property_detail, _, _ = epc_flow_result
         if property_detail:
             summary["dwelling_type"] = property_detail.get("dwelling_type")
             summary["floor_area"] = property_detail.get("total_floor_area")
@@ -1153,17 +1250,36 @@ def _crime_comparison(local: dict | None, district: dict | None) -> list[dict]:
         set(local_counts) | set(district_counts),
         key=lambda cat: -local_counts.get(cat, 0),
     )
+    # Each row is decided by crime.compare_counts since 18 Sep 2026, the
+    # rule the totals use, rather than a ratio of its own: 1 against 0
+    # read "Higher" and 2 against 3 "Lower". Two counts for different
+    # months (a force walked back to an older month on one side) are not
+    # compared at all, trend None.
+    same_month = (local.get("month") or "")[:7] == (district.get("month") or "")[:7]
     rows = []
     for cat in categories:
         here = local_counts.get(cat, 0)
         area = district_counts.get(cat, 0)
-        if area == 0:
-            trend = "higher" if here > 0 else "same"
-        else:
-            ratio = here / area
-            trend = "higher" if ratio > 1.15 else ("lower" if ratio < 0.85 else "same")
+        trend = crime.compare_counts(here, area) if same_month else None
         rows.append({"category": cat, "here": here, "area": area, "trend": trend})
     return rows
+
+
+# The words each crime.compare_counts answer is shown as, in the pop-up's
+# table and the extension's card (18 Sep 2026). None is a pair of counts
+# for different months.
+CRIME_TREND_WORDS = {"higher": "Higher", "lower": "Lower", "same": "About the same",
+                     "few": "Too few to compare", None: "Not compared"}
+templates.env.globals["crime_trend_words"] = CRIME_TREND_WORDS
+templates.env.globals["crime_versus_area"] = crime.versus_area
+# The rule as the pop-up states it, read from the constants it runs on.
+templates.env.globals["crime_margin_share"] = crime.MARGIN_SHARE
+templates.env.globals["crime_margin_crimes"] = crime.MARGIN_CRIMES
+templates.env.globals["crime_few_records"] = crime.FEW_RECORDS
+# First and last bus in words, one helper for the report, the area guides,
+# the school pages and the PDF (18 Sep 2026): a service that runs past
+# midnight read "first bus 00:19, last 00:14".
+templates.env.globals["bus_hours"] = bus_service.service_hours
 
 
 def _price_position(reference_price: float | None, area_average: float | None) -> float | None:
@@ -1179,21 +1295,30 @@ def _price_position(reference_price: float | None, area_average: float | None) -
     return max(0, min(100, position))
 
 
+# The spans the pop-up says the index does not reach, read from the
+# service that computes the changes rather than typed (18 Sep 2026).
+templates.env.globals["price_trend_change_years"] = hpi.CHANGE_YEARS
+
 _TREND_CHART_W, _TREND_CHART_H = 640, 220
-_TREND_PAD_L, _TREND_PAD_R, _TREND_PAD_T, _TREND_PAD_B = 64, 84, 16, 28
+# The right margin holds the latest month's "Now: £591,555" since the
+# projection went (18 Sep 2026), so the line now ends at the plot's edge.
+_TREND_PAD_L, _TREND_PAD_R, _TREND_PAD_T, _TREND_PAD_B = 64, 110, 16, 28
 
 
 def _price_trend_chart(trend: dict) -> dict:
     """Precompute SVG geometry for the price-trend line chart - point
     scaling/path-building is much cleaner done here in Python than
-    inside Jinja, which has no real arithmetic-heavy loop support."""
-    series = trend["series"]
-    projections = trend["projections"]
-    n = len(series)
-    max_months_ahead = max(p["months_ahead"] for p in projections)
-    total_span = (n - 1) + max_months_ahead
+    inside Jinja, which has no real arithmetic-heavy loop support.
 
-    values = [p["average_price"] for p in series] + [p["price"] for p in projections]
+    The index's own months only, since 18 Sep 2026 (first-visitor audit
+    item D3): the dashed straight-line projection a year and two years
+    past the last month is gone, with the projected points and their
+    labels, because it drew a fall beside the index's own rise."""
+    series = trend["series"]
+    n = len(series)
+    total_span = max(n - 1, 1)
+
+    values = [p["average_price"] for p in series]
     min_val, max_val = min(values), max(values)
     val_pad = (max_val - min_val) * 0.08 or max_val * 0.05
     min_val, max_val = min_val - val_pad, max_val + val_pad
@@ -1210,11 +1335,6 @@ def _price_trend_chart(trend: dict) -> dict:
     actual_pts = [(x_for(i), y_for(p["average_price"])) for i, p in enumerate(series)]
     actual_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in actual_pts)
 
-    projected_pts = [actual_pts[-1]] + [
-        (x_for(n - 1 + p["months_ahead"]), y_for(p["price"])) for p in projections
-    ]
-    projected_path = "M " + " L ".join(f"{x:.1f},{y:.1f}" for x, y in projected_pts)
-
     gridlines = [
         {"y": y_for(v), "label": _format_gbp(v)}
         for v in (min_val + val_pad, (min_val + max_val) / 2, max_val - val_pad)
@@ -1226,14 +1346,6 @@ def _price_trend_chart(trend: dict) -> dict:
             x_labels.append({"x": x_for(i), "label": p["period"][:4]})
 
     end_point = {"x": actual_pts[-1][0], "y": actual_pts[-1][1], "label": _format_gbp(series[-1]["average_price"])}
-    projection_points = [
-        {
-            "x": x_for(n - 1 + p["months_ahead"]),
-            "y": y_for(p["price"]),
-            "label": f"{_format_gbp(p['price'])} in {p['months_ahead'] // 12}y",
-        }
-        for p in projections
-    ]
 
     return {
         "width": _TREND_CHART_W,
@@ -1243,11 +1355,9 @@ def _price_trend_chart(trend: dict) -> dict:
         "plot_right": _TREND_CHART_W - _TREND_PAD_R,
         "x_axis_y": _TREND_PAD_T + plot_h,
         "actual_path": actual_path,
-        "projected_path": projected_path,
         "gridlines": gridlines,
         "x_labels": x_labels,
         "end_point": end_point,
-        "projection_points": projection_points,
     }
 
 
@@ -1329,6 +1439,20 @@ def _month_label(value) -> str:
 
 
 templates.env.filters["month_label"] = _month_label
+
+
+def _thousands(value) -> str:
+    """1834 as "1,834"; anything that is not a number passes through as
+    text, and a missing value as nothing. Crime counts printed bare until
+    18 Sep 2026, and BN1 1EE's card read "1834"."""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float)):
+        return f"{value:,}"
+    return "" if value is None else str(value)
+
+
+templates.env.filters["thousands"] = _thousands
 
 
 def _day_label(value) -> str:
@@ -1614,7 +1738,8 @@ async def server_error_handler(request: Request, exc: Exception):
 DATA_SOURCE_GROUPS = [
     ("Queried live, per postcode", [
         {"name": "HM Land Registry Price Paid", "powers": "Sold price history, comparables, valuation inputs", "freshness": "Live; the Registry updates monthly", "url": "https://www.gov.uk/government/organisations/land-registry"},
-        {"name": "UK House Price Index", "powers": "Area averages, trends and forecasts", "freshness": "Live; published monthly", "url": "https://www.gov.uk/government/collections/uk-house-price-index-reports"},
+        # "trends and forecasts" until 18 Sep 2026: the report projects nothing now.
+        {"name": "UK House Price Index", "powers": "Area averages and their one, five and ten year changes", "freshness": "Live; published monthly", "url": "https://www.gov.uk/government/collections/uk-house-price-index-reports"},
         {"name": "EPC Register", "powers": "Energy ratings, floor area, extension detection, heating costs", "freshness": "Live; certificates appear as lodged", "url": "https://epc.opendatacommunities.org"},
         {"name": "Environment Agency", "powers": "Flood zones, live flood warnings, surface water risk", "freshness": "Live; warnings update continuously", "url": "https://environment.data.gov.uk"},
         {"name": "Police.uk", "powers": "Recorded crime by category near the address", "freshness": "Live; forces publish monthly, England and Wales", "url": "https://www.police.uk"},
@@ -1786,6 +1911,219 @@ def _median(values: list) -> float | None:
     return vals[len(vals) // 2] if vals else None
 
 
+# The postcode's own energy and sales figures, lifted out of
+# _running_costs_for_postcode on 18 Sep 2026 so a report searched without
+# a house number says what the running-costs page says, from the same
+# code, instead of one home's figures (first-visitor audit item D1). The
+# running-costs answer is unchanged; the sales summary gained the years
+# its recent sales span.
+
+def _one_certificate_per_address(certs: list[dict]) -> list[dict]:
+    """Newest first, one certificate per address, at most
+    RUNNING_COSTS_EPC_DETAILS of them: the ones whose detail is read."""
+    seen, chosen = set(), []
+    for c in certs:
+        if c.get("address") in seen or not c.get("certificate_number"):
+            continue
+        seen.add(c.get("address"))
+        chosen.append(c)
+        if len(chosen) >= RUNNING_COSTS_EPC_DETAILS:
+            break
+    return chosen
+
+
+def _postcode_energy_summary(certs: list[dict], details: list) -> dict:
+    """The middle, lowest and highest yearly energy estimate across the
+    details read for _one_certificate_per_address, and the bands. A
+    detail that failed (anything not a dict) is left out."""
+    now, later, bands = [], [], {}
+    for d in details:
+        if not isinstance(d, dict):
+            continue
+        cur = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
+        pot = [d.get("heating_cost_potential"), d.get("hot_water_cost_potential"), d.get("lighting_cost_potential")]
+        if any(isinstance(v, (int, float)) for v in cur):
+            now.append(int(sum(v for v in cur if isinstance(v, (int, float)))))
+        if any(isinstance(v, (int, float)) for v in pot):
+            later.append(int(sum(v for v in pot if isinstance(v, (int, float)))))
+        if d.get("current_band"):
+            bands[d["current_band"]] = bands.get(d["current_band"], 0) + 1
+    if not now:
+        return {"certificates": len(certs), "priced": 0}
+    return {"certificates": len(certs), "priced": len(now), "low": min(now), "high": max(now),
+            "median": _median(now), "median_potential": _median(later),
+            "bands": ", ".join(f"{b} x{n}" for b, n in sorted(bands.items()))}
+
+
+def _postcode_sales_summary(sales: list[dict]) -> dict:
+    """Tenure counts across every recorded sale at the postcode, the
+    latest sale, and the middle of the last ten with a price, with the
+    years those ten span."""
+    counts = {}
+    for t in sales:
+        k = (t.get("tenure") or "").strip().lower()
+        if k:
+            counts[k] = counts.get(k, 0) + 1
+    dated = sorted((t for t in sales if t.get("date")), key=lambda t: str(t["date"]), reverse=True)
+    recent = [t for t in dated[:10] if t.get("amount")]
+    amounts = [float(t["amount"]) for t in recent]
+    latest = dated[0] if dated else None
+    return {"sales": len(sales), "counts": counts,
+            "latest_year": str(latest["date"])[:4] if latest else "",
+            "latest_amount": float(latest["amount"]) if latest and latest.get("amount") else None,
+            "median_recent": _median(amounts), "recent_n": len(amounts),
+            "recent_from_year": str(recent[-1]["date"])[:4] if recent else "",
+            "recent_to_year": str(recent[0]["date"])[:4] if recent else ""}
+
+
+# "Which home is yours?" (18 Sep 2026, first-visitor audit item D1). A
+# report searched without a house number put the newest certificate's
+# home, its energy bill and a different home's last sale and tenure side
+# by side as "this property". The row offers every home the report
+# already holds for the postcode, each opening the report on that home.
+WHICH_HOME_SHOWN = 24  # addresses shown before "and N more", which opens the rest
+HOUSE_NUMBER_MAX_LEN = 32  # the house_number columns are String(32)
+
+
+def _tidy_case(text: str) -> str:
+    """HM Land Registry writes addresses in capitals; the row does not."""
+    return string.capwords(text.lower()) if text.isupper() else text
+
+
+def _epc_home_label(address: str, streets: set[str]) -> str:
+    """The number or name and street of an EPC address, from its comma
+    parts: up to the part that ends in a street the Land Registry names
+    at this postcode, or the whole address where none does. "57, Malden
+    Hill Gardens" reads "57 Malden Hill Gardens"."""
+    parts = [p.strip() for p in (address or "").split(",") if p.strip()]
+    kept = parts
+    for i in range(len(parts)):
+        words = _address_words(" ".join(parts[: i + 1]))
+        if any(words == s or words.endswith(" " + s) for s in streets):
+            kept = parts[: i + 1]
+            break
+    label = ""
+    for part in kept:
+        joiner = " " if re.fullmatch(r"\d+[A-Za-z]?", label) else ", "
+        label = f"{label}{joiner}{part}" if label else part
+    return _tidy_case(label)
+
+
+def _house_number_for(label: str) -> str:
+    """What the row's link sets as house_number: the label, cut at a word
+    to fit the column. A cut label still finds its home, since
+    _filter_by_address matches from the start of a word."""
+    if len(label) <= HOUSE_NUMBER_MAX_LEN:
+        return label
+    cut = label[: HOUSE_NUMBER_MAX_LEN + 1].rsplit(" ", 1)[0].rstrip(" ,")
+    return cut or label[:HOUSE_NUMBER_MAX_LEN]
+
+
+def _natural_key(text: str) -> list:
+    return [(0, int(t), "") if t.isdigit() else (1, 0, t) for t in re.split(r"(\d+)", text) if t]
+
+
+def _sale_streets(transactions: list[dict]) -> set[str]:
+    """The streets HM Land Registry names at this postcode, as words."""
+    return {_address_words(t.get("street") or "") for t in transactions} - {""}
+
+
+def _without_street(label: str, street: str) -> str:
+    """"Flat 2, 12 Malden Hill Gardens" less its street, "Flat 2, 12"."""
+    pattern = r"[\W_]+".join(re.escape(w) for w in street.split())
+    return re.sub(r"[\s,]*\b" + pattern + r"\s*$", "", label, flags=re.IGNORECASE).strip(" ,")
+
+
+def _postcode_homes(certificates: list[dict], transactions: list[dict]) -> list[dict]:
+    """Every distinct home in a postcode's EPC certificates and Land
+    Registry sales, once each, street by street in number order: its
+    label, the house_number that opens the report on it, the street it
+    is on as the Land Registry names it ("" where no sale names one) and
+    the label without that street, so the row names each street once.
+    The same home in both sources meets on its words, so "Flat 2, 12
+    High Street" and "FLAT 2 12 HIGH STREET" are one entry."""
+    streets = _sale_streets(transactions)
+    street_names: dict[str, str] = {}
+    for t in transactions:
+        words = _address_words(t.get("street") or "")
+        if words and words not in street_names:
+            street_names[words] = _tidy_case(t["street"].strip())
+    labels = [_epc_home_label(c.get("address", ""), streets) for c in certificates]
+    labels += [_sale_label(t.get("address") or "") for t in transactions if t.get("address") != "Address not available"]
+    homes: dict[str, dict] = {}
+    for label in labels:
+        key = _address_words(label)
+        if key and key not in homes:
+            street = max((s for s in streets if key.endswith(" " + s)), key=len, default="")
+            short = _without_street(label, street) if street else label
+            if not short:
+                street, short = "", label
+            homes[key] = {"label": label, "house_number": _house_number_for(label),
+                          "street": street_names.get(street, ""), "short": short,
+                          "sort": (street == "", street, _natural_key(key))}
+    # 18 Sep 2026, D1 review: the link sets the number or name alone ("57")
+    # where it opens exactly the records the whole label opens. Unlocks
+    # and saved homes are kept against the house number as typed, so a
+    # reader who unlocked "57" reached a locked copy of the same report
+    # through "57 Malden Hill Gardens". Where the two differ (a bare
+    # number also finds the flats inside a house, or the postcode has a
+    # 57 on two streets) the whole label stays. Every record either search
+    # finds has a word starting with each word it asked for, so only the
+    # records with a word starting with the narrowest word both share are
+    # compared: the answers are the same, and a block of 150 flats is not
+    # 150 passes over every record.
+    indexed = []
+    for src in (certificates, transactions):
+        index: dict[str, list[int]] = {}
+        for i, r in enumerate(src):
+            for w in set(_address_words(r.get("address")).split()):
+                index.setdefault(w, []).append(i)
+        indexed.append((src, index))
+    for home in homes.values():
+        short = home["short"]
+        if short == home["label"] or len(short) > HOUSE_NUMBER_MAX_LEN:
+            continue
+        shared = set(_address_words(short).split()) & set(_address_words(home["house_number"]).split())
+        if not shared:
+            continue
+        narrowest = max(sorted(shared), key=lambda w: (any(c.isdigit() for c in w), len(w)))
+        for src, index in indexed:
+            near = [src[i] for i in sorted({i for w, ids in index.items() if w.startswith(narrowest) for i in ids})]
+            if _filter_by_address(near, short) != _filter_by_address(near, home["house_number"]):
+                break
+        else:
+            home["house_number"] = short
+    ordered = sorted(homes.values(), key=lambda h: h["sort"])
+    return [{k: h[k] for k in ("label", "house_number", "street", "short")} for h in ordered]
+
+
+def _sale_label(address: str) -> str:
+    """A Land Registry address for the row, in ordinary case, with the EPC
+    Register's comma between a flat and its building's number (18 Sep
+    2026, D1 review). HM Land Registry joins the two with a space, and
+    "Flat 1 2" was hard to tell from "Flat 12" at 375px."""
+    label = _tidy_case(address)
+    words = label.split(" ")
+    if len(words) > 2 and words[0].lower() in _FLAT_WORDS and not words[1].endswith(",") and words[2][:1].isdigit():
+        return f"{words[0]} {words[1]}, {' '.join(words[2:])}"
+    return label
+
+
+def _which_home_sections(homes: list[dict]) -> list[dict]:
+    """The row in its two parts, each street by street: the first
+    WHICH_HOME_SHOWN homes, then the rest behind "and N more"."""
+    sections = []
+    for more, part in ((False, homes[:WHICH_HOME_SHOWN]), (True, homes[WHICH_HOME_SHOWN:])):
+        groups: list[dict] = []
+        for home in part:
+            if not groups or groups[-1]["street"] != home["street"]:
+                groups.append({"street": home["street"], "homes": []})
+            groups[-1]["homes"].append(home)
+        if groups:
+            sections.append({"more": more, "count": len(part), "groups": groups})
+    return sections
+
+
 # Six hours. Council tax is set once a year, the EPC register and the
 # Land Registry publish monthly, and nothing in this answer moves inside
 # a working day.
@@ -1831,32 +2169,9 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
                         "energy_now": int(sum(v for v in cur if isinstance(v, (int, float)))) if any(isinstance(v, (int, float)) for v in cur) else None,
                         "energy_potential": int(sum(v for v in pot if isinstance(v, (int, float)))) if any(isinstance(v, (int, float)) for v in pot) else None,
                     })
-        seen, chosen = set(), []
-        for c in certs:  # newest first; one certificate per address
-            if c.get("address") in seen or not c.get("certificate_number"):
-                continue
-            seen.add(c.get("address"))
-            chosen.append(c)
-            if len(chosen) >= RUNNING_COSTS_EPC_DETAILS:
-                break
+        chosen = _one_certificate_per_address(certs)
         details = await asyncio.gather(*(epc.certificate_detail(c["certificate_number"]) for c in chosen), return_exceptions=True)
-        now, later, bands = [], [], {}
-        for d in details:
-            if not isinstance(d, dict):
-                continue
-            cur = [d.get("heating_cost_current"), d.get("hot_water_cost_current"), d.get("lighting_cost_current")]
-            pot = [d.get("heating_cost_potential"), d.get("hot_water_cost_potential"), d.get("lighting_cost_potential")]
-            if any(isinstance(v, (int, float)) for v in cur):
-                now.append(int(sum(v for v in cur if isinstance(v, (int, float)))))
-            if any(isinstance(v, (int, float)) for v in pot):
-                later.append(int(sum(v for v in pot if isinstance(v, (int, float)))))
-            if d.get("current_band"):
-                bands[d["current_band"]] = bands.get(d["current_band"], 0) + 1
-        if not now:
-            return {"certificates": len(certs), "priced": 0}
-        return {"certificates": len(certs), "priced": len(now), "low": min(now), "high": max(now),
-                "median": _median(now), "median_potential": _median(later),
-                "bands": ", ".join(f"{b} x{n}" for b, n in sorted(bands.items()))}
+        return _postcode_energy_summary(certs, details)
 
     async def _sales():
         sales = await sold_prices_for_postcode(canonical)
@@ -1868,18 +2183,7 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
                     "sale_amount": float(mine[0]["amount"]) if mine[0].get("amount") else None,
                     "tenure": (mine[0].get("tenure") or "").strip().lower(), "sales_here": len(mine),
                 })
-        counts = {}
-        for t in sales:
-            k = (t.get("tenure") or "").strip().lower()
-            if k:
-                counts[k] = counts.get(k, 0) + 1
-        dated = sorted((t for t in sales if t.get("date")), key=lambda t: str(t["date"]), reverse=True)
-        amounts = [float(t["amount"]) for t in dated[:10] if t.get("amount")]
-        latest = dated[0] if dated else None
-        return {"sales": len(sales), "counts": counts,
-                "latest_year": str(latest["date"])[:4] if latest else "",
-                "latest_amount": float(latest["amount"]) if latest and latest.get("amount") else None,
-                "median_recent": _median(amounts), "recent_n": len(amounts)}
+        return _postcode_sales_summary(sales)
 
     async def _area_prices():
         return await hpi.area_comparison(where.get("admin_district") or "", where.get("region") or "", where.get("country") or "")
@@ -1921,7 +2225,9 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     ct, energy = out["council_tax"], out["energy"]
     # A typical year uses the home's own energy figure when there is one.
     energy_figure = (home.get("energy_now") if home else None) or (energy.get("median") if energy else None)
-    out["typical_year"] = int(round(ct["band_d"] + energy_figure)) if ct and energy_figure else None
+    # Halves up, as the band picker's Math.round and the gbp filter round
+    # (18 Sep 2026); round() sent a half to the even pound.
+    out["typical_year"] = council_tax.whole_pounds(ct["band_d"] + energy_figure) if ct and energy_figure else None
     # The page's band picker adds this to any band's bill (16 Sep 2026).
     out["energy_figure"] = energy_figure
     income = out.get("income") or {}
@@ -2263,7 +2569,10 @@ FREE_CHECKS = (
     ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping'),
     ('crime', 'Crime & Safety', 'By category, against the area', 'Police.uk'),
     ('radon', 'Radon Gas', 'Affected-area class', 'British Geological Survey'),
-    ('statistics', 'Council Tax', 'Band D for the authority', 'MHCLG, 2026-27'),
+    # 'MHCLG, 2026-27' until 18 Sep 2026 (item D6): Band D comes from the
+    # Welsh and Scottish Governments too (council_tax.py), and this
+    # column is where the list of publishing bodies below is read from.
+    ('statistics', 'Council Tax', 'Band D for the authority', 'MHCLG, Welsh and Scottish Governments'),
     ('broadband', 'Broadband', 'Speeds available at the address', 'Ofcom'),
     ('mobile', 'Mobile Signal', '4G and 5G coverage', 'Ofcom'),
     ('planning', 'Planning Constraints', 'Protected and designated areas', 'Natural England, Historic England'),
@@ -2273,7 +2582,9 @@ FREE_CHECKS = (
     ('schools', 'State Schools', 'Primary and secondary, counted', 'DfE Get Information About Schools'),
     ('schools', 'Private Schools', 'Fee-paying, prep and senior', 'DfE Get Information About Schools'),
     ('schools', 'Universities', 'Higher education institutions nearby', 'DfE Get Information About Schools'),
-    ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap'),
+    # 'OpenStreetMap' alone until 18 Sep 2026 (item D6): the card opens on
+    # the Food Standards Agency's hygiene ratings as well.
+    ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap, Food Standards Agency'),
     ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
     ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
     ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
@@ -2285,7 +2596,10 @@ FREE_CHECKS = (
 )
 PREMIUM_CHECKS = (
     ('valuation', 'Valuation Estimate', 'Estimate with a range', 'Modelled from nearby sales'),
-    ('statistics', 'Price Trend & Forecast', 'Five-year history and trend', 'UK House Price Index'),
+    # "Price Trend & Forecast" and "Five-year history and trend" until 18
+    # Sep 2026 (first-visitor audit item D3): the forecast was a straight
+    # line fitted to the index, and it is gone.
+    ('statistics', 'Price Trend', 'Changes over 1, 5 and 10 years', 'UK House Price Index'),
     ('extension', 'Extended or Modified', 'Floor area changes over time', 'EPC history'),
     ('orientation', 'Aspect', 'Which way garden and rooms face', 'Derived from OpenStreetMap'),
     ('flood', 'Sewage Discharge', 'Storm overflows, spills and hours', 'Environment Agency'),
@@ -2301,6 +2615,107 @@ PREMIUM_CHECKS = (
     ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
 )
 
+# Who publishes what the checks read, as one list (18 Sep 2026,
+# first-visitor audit item D6). The homepage said "13 official sources",
+# typed, with OpenStreetMap among them; the wait page counted "0 of 19
+# sources back"; /methodology's "Every source we query" named 14 bodies
+# and left out ones Premium names, NHS England, the Bus Open Data
+# Service, MHCLG's planning data, HMRC and the Bank of England among
+# them. The list is read from the source column of FREE_CHECKS and
+# PREMIUM_CHECKS: each source, exactly as the lists write it, maps to the
+# bodies that publish it, so a source naming two bodies counts both and a
+# body read by five checks counts once. A test holds every source in the
+# two lists to an entry here, so a new check cannot bring a body the
+# count misses. OpenStreetMap is the map its volunteers draw, open data
+# rather than an official body, so it is kept apart and said separately.
+# The wait page's 19 are lookups, several to one body, and say so.
+_SOURCE_BODIES = {
+    'HM Land Registry': ('HM Land Registry',),
+    'UK House Price Index': ('HM Land Registry',),
+    'Modelled from nearby sales': ('HM Land Registry',),
+    'HMRC rates, Bank of England': ('HMRC', 'Bank of England'),
+    'ONS private rents': ('Office for National Statistics',),
+    'ONS': ('Office for National Statistics',),
+    'Census 2021': ('Office for National Statistics',),
+    'ONS Census 2011 and 2021': ('Office for National Statistics',),
+    # The EPC register's open data is MHCLG's (get-energy-performance-data
+    # .communities.gov.uk), as are the deprivation index and the brownfield
+    # layer of the planning data platform.
+    'EPC Register': ('MHCLG',),
+    'EPC history': ('MHCLG',),
+    'MHCLG, 2025': ('MHCLG',),
+    'MHCLG planning data platform': ('MHCLG',),
+    'MHCLG, Welsh and Scottish Governments': ('MHCLG', 'Welsh Government', 'Scottish Government'),
+    'Environment Agency': ('Environment Agency',),
+    'Defra noise mapping': ('Defra',),
+    'Defra Pollution Climate Mapping': ('Defra',),
+    'Police.uk': ('Police.uk',),
+    'British Geological Survey': ('British Geological Survey',),
+    'Ofcom': ('Ofcom',),
+    'Natural England, Historic England': ('Natural England', 'Historic England'),
+    'Natural England': ('Natural England',),
+    'Historic England': ('Historic England',),
+    'Ofsted, DfE': ('Ofsted', 'Department for Education'),
+    'DfE Get Information About Schools': ('Department for Education',),
+    'OpenStreetMap, Food Standards Agency': ('OpenStreetMap', 'Food Standards Agency'),
+    'Derived from OpenStreetMap': ('OpenStreetMap',),
+    'Mining Remediation Authority': ('Mining Remediation Authority',),
+    'Council admissions data': ('Local councils',),
+    'National Rail, OpenStreetMap': ('National Rail', 'OpenStreetMap'),
+    'DfT Bus Open Data Service': ('Department for Transport',),
+    'NHS England': ('NHS England',),
+}
+
+# Each body once: (link, icon, name in full where the lists abbreviate
+# it, official). Only OpenStreetMap is not official.
+_BODY_DETAILS = {
+    'HM Land Registry': ('https://www.gov.uk/government/organisations/land-registry', 'land_registry', '', True),
+    'HMRC': ('https://www.gov.uk/government/organisations/hm-revenue-customs', 'income', 'HM Revenue & Customs', True),
+    'Bank of England': ('https://www.bankofengland.co.uk', 'prosperity', '', True),
+    'Office for National Statistics': ('https://www.ons.gov.uk', 'statistics', '', True),
+    'MHCLG': ('https://www.gov.uk/government/organisations/ministry-of-housing-communities-local-government', 'housing',
+              'Ministry of Housing, Communities and Local Government', True),
+    'Welsh Government': ('https://www.gov.wales', 'details', '', True),
+    'Scottish Government': ('https://www.gov.scot', 'details', '', True),
+    'Environment Agency': ('https://www.gov.uk/government/organisations/environment-agency', 'flood', '', True),
+    'Defra': ('https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs', 'noise',
+              'Department for Environment, Food & Rural Affairs', True),
+    'Police.uk': ('https://www.police.uk', 'crime', '', True),
+    'British Geological Survey': ('https://www.bgs.ac.uk', 'geology', '', True),
+    'Ofcom': ('https://www.ofcom.org.uk', 'broadband', '', True),
+    'Natural England': ('https://www.gov.uk/government/organisations/natural-england', 'environmental', '', True),
+    'Historic England': ('https://historicengland.org.uk', 'heritage', '', True),
+    'Ofsted': ('https://www.gov.uk/government/organisations/ofsted', 'ofsted', '', True),
+    'Department for Education': ('https://www.gov.uk/government/organisations/department-for-education', 'schools', '', True),
+    'OpenStreetMap': ('https://www.openstreetmap.org', 'map', '', False),
+    'Food Standards Agency': ('https://www.food.gov.uk', 'food', '', True),
+    'Mining Remediation Authority': ('https://www.gov.uk/government/organisations/mining-remediation-authority', 'mining', '', True),
+    'Local councils': ('https://www.gov.uk/find-local-council', 'pupils', '', True),
+    'National Rail': ('https://www.nationalrail.co.uk', 'transport', '', True),
+    'Department for Transport': ('https://www.gov.uk/government/organisations/department-for-transport', 'bus', '', True),
+    'NHS England': ('https://www.england.nhs.uk', 'wellbeing', '', True),
+}
+
+
+def _publishing_bodies(official: bool) -> tuple[dict, ...]:
+    """The bodies behind the check lists, in the order the lists first
+    name them, each with the checks that read it."""
+    checks: dict[str, list[str]] = {}
+    for _, title, _, source in FREE_CHECKS + PREMIUM_CHECKS:
+        for body in _SOURCE_BODIES[source]:
+            checks.setdefault(body, []).append(title)
+    return tuple(
+        {"name": body, "url": _BODY_DETAILS[body][0], "icon": _BODY_DETAILS[body][1],
+         "full_name": _BODY_DETAILS[body][2] or body, "checks": tuple(titles)}
+        for body, titles in checks.items() if _BODY_DETAILS[body][3] == official
+    )
+
+
+OFFICIAL_SOURCES = _publishing_bodies(official=True)
+OPEN_DATA_SOURCES = _publishing_bodies(official=False)
+templates.env.globals["official_sources"] = OFFICIAL_SOURCES
+templates.env.globals["open_data_sources"] = OPEN_DATA_SOURCES
+
 # One line per locked check: what the check answers and who publishes
 # it, never what it found (owner's decision 8, first-visitor audit of
 # 17 Sep 2026). Until then a locked card rendered its own finding and
@@ -2315,7 +2730,7 @@ PREMIUM_CHECKS = (
 # fact and its source.
 LOCKED_CARD_LINES = {
     'Valuation Estimate': 'A price range from recorded sales nearby · HM Land Registry',
-    'Price Trend & Forecast': 'How local prices moved over five years · UK House Price Index',
+    'Price Trend': 'How local prices moved over one, five and ten years · UK House Price Index',
     'Extended or Modified': 'Whether the floor area changed between certificates · EPC register',
     'Aspect': 'Which way the garden and main rooms face · OpenStreetMap outlines',
     'Sewage Discharge': 'Storm overflow spills nearby, and for how long · Environment Agency',
@@ -2388,7 +2803,7 @@ _REACH_GB = ("England", "Wales", "Scotland")
 _REACH_UK = ("England", "Wales", "Scotland", "Northern Ireland")
 PREMIUM_REACH = {
     "Valuation Estimate": _REACH_ENGLAND_WALES,
-    "Price Trend & Forecast": _REACH_UK,
+    "Price Trend": _REACH_UK,  # "Price Trend & Forecast" until the projection went, 18 Sep 2026
     "Extended or Modified": _REACH_ENGLAND_WALES,
     "Aspect": _REACH_UK,
     "Sewage Discharge": _REACH_ENGLAND,
@@ -2469,6 +2884,9 @@ def premium_reach_summary() -> str:
 templates.env.globals["premium_reach_label"] = premium_reach_label
 templates.env.globals["premium_reach_summary"] = premium_reach_summary
 templates.env.globals["premium_reach_sentence"] = premium_reach_sentence
+# /methodology names the checks each publishing body is read for, and two
+# of those names carry commas of their own (18 Sep 2026).
+templates.env.globals["check_names"] = _check_names
 
 
 def locked_found_sentence(found: int) -> str:
@@ -2578,10 +2996,16 @@ def index(request: Request):
          "Those are listings portals. They show homes currently for sale. We don't list anything and aren't "
          "affiliated with any agent or portal. We show the due-diligence data behind any address, listed or not: "
          "sold prices, EPC history, official risk designations and area statistics."),
+        # "Named official sources only, shown below: HM Land Registry, the
+        # EPC Register, ..." until 18 Sep 2026 (first-visitor audit item
+        # D6). The strip below it now lists OFFICIAL_SOURCES, which names
+        # the EPC register's publisher rather than the register, and keeps
+        # OpenStreetMap apart, so "only" was no longer true of it.
         ("Where does the data come from?",
-         "Named official sources only, shown below: HM Land Registry, the EPC Register, the Environment Agency, "
-         "ONS, the Department for Education, Ofsted, Police.uk and more. Nothing scraped, nothing guessed. Every "
-         "figure traces back to a source."),
+         f"{len(OFFICIAL_SOURCES)} official bodies, shown below, among them HM Land Registry, the Environment "
+         "Agency, ONS, the Department for Education, Ofsted and Police.uk. What is nearby and which way a home "
+         "faces come from OpenStreetMap, the map its volunteers draw, and say so. Nothing scraped, nothing "
+         "guessed. Every figure traces back to a source."),
         ("Will my child get into the school near a house I am looking at?",
          "Every report and every school page measures an address against how far the school admitted from in its "
          "last published round, using the figure the council itself published, and says Likely, Borderline or "
@@ -3075,12 +3499,27 @@ def embed_generator(request: Request, postcode: str = "", ref: str = ""):
     return templates.TemplateResponse(request, "embed.html", context)
 
 
+# Every name here is a city. Each carries the postcode district its row
+# links to (18 Sep 2026, first-visitor audit item D6): the guide for a
+# district at the city's centre, since the site's guides are by district
+# and the row is the whole council area's average. The page says both.
+# A test holds each district to the city's own council in outcodes.json.
 MARKET_REPORT_AREAS = [
-    "Westminster", "Manchester", "Birmingham", "Leeds", "Liverpool", "Sheffield", "Bristol",
-    "Newcastle upon Tyne", "Nottingham", "Leicester", "Brighton and Hove", "Oxford", "Cambridge",
-    "Cardiff", "Edinburgh", "Glasgow", "Aberdeen", "Belfast",
+    ("Westminster", "SW1A"), ("Manchester", "M1"), ("Birmingham", "B1"), ("Leeds", "LS1"),
+    ("Liverpool", "L1"), ("Sheffield", "S1"), ("Bristol", "BS1"), ("Newcastle upon Tyne", "NE1"),
+    ("Nottingham", "NG1"), ("Leicester", "LE1"), ("Brighton and Hove", "BN1"), ("Oxford", "OX1"),
+    ("Cambridge", "CB2"), ("Cardiff", "CF10"), ("Edinburgh", "EH1"), ("Glasgow", "G1"),
+    ("Aberdeen", "AB10"), ("Belfast", "BT1"),
 ]
 MARKET_REPORT_CACHE_TTL_S = 86400  # HPI itself only updates monthly - a day's staleness costs nothing real
+# 2 from 18 Sep 2026: every stored snapshot before it was built by the
+# area match that took Nottinghamshire and Aberdeenshire for the cities,
+# and none records which city each row was asked for.
+MARKET_REPORT_CACHE_KEY = ("market_report", 2)
+# A move this large over a year gets a line saying a small area with few
+# sales can swing (18 Sep 2026). "Steepest falling: City of Westminster
+# (-20.7%)" stood with nothing beside it on 17 Sep.
+MARKET_REPORT_SWING_PCT = 10
 # Every area here resolves individually (confirmed live), but firing all
 # 18 through the shared Land Registry SPARQL endpoint at once (each one
 # is itself 3 concurrent sub-queries - 54 total) started silently
@@ -3091,9 +3530,41 @@ MARKET_REPORT_CACHE_TTL_S = 86400  # HPI itself only updates monthly - a day's s
 _MARKET_REPORT_CONCURRENCY = asyncio.Semaphore(4)
 
 
-async def _market_report_area(name: str) -> dict | None:
+async def _market_report_area(name: str, outcode: str) -> dict | None:
     async with _MARKET_REPORT_CONCURRENCY:
-        return await hpi.area_comparison(name, "", "")
+        result = await hpi.area_comparison(name, "", "")
+    local = (result or {}).get("local_authority")
+    # Which city the row was asked for and where it links, kept with the
+    # figures so a stored snapshot can still say both (18 Sep 2026).
+    return {**local, "asked": name, "outcode": outcode} if local else None
+
+
+def _market_report_view(page_data: dict) -> dict:
+    """What the page says about its rows, worked out at render so a
+    stored snapshot and a fresh one read alike (18 Sep 2026, item D6).
+
+    The title named the day it was built ("17 September 2026") over
+    figures for July, the list was "major UK cities" with two counties in
+    it, no row led anywhere, and a fall of 20.7% stood without a word.
+    Now the title names the month the figures are for, the one most rows
+    share; the list is called cities only while every row is the city it
+    was asked for; each row links to its district's guide where that
+    guide exists; and a move over MARKET_REPORT_SWING_PCT carries a line."""
+    areas = [dict(a) for a in page_data.get("areas") or []]
+    for a in areas:
+        a["is_city"] = bool(a.get("asked")) and hpi.is_the_place_asked_for(a.get("name", ""), a["asked"])
+        a["guide"] = a.get("outcode") if a.get("outcode") in KNOWN_OUTCODES else None
+        a["swing"] = abs(a.get("annual_change_pct") or 0) > MARKET_REPORT_SWING_PCT
+    months = collections.Counter(str(a.get("period") or "")[:7] for a in areas if a.get("period"))
+    # The month most rows share, the later one on a tie.
+    data_month = max(months.items(), key=lambda kv: (kv[1], kv[0]))[0] if months else ""
+    return {
+        "areas": areas,
+        "data_month": data_month,
+        "other_month_count": sum(n for m, n in months.items() if m != data_month),
+        "area_noun": "cities" if areas and all(a["is_city"] for a in areas) else "areas",
+        "swing_pct": MARKET_REPORT_SWING_PCT,
+    }
 
 
 @app.get("/market-report")
@@ -3109,29 +3580,30 @@ async def market_report(request: Request):
     # Tier 2 as well as memory: the page is 20-odd HPI lookups (4 to
     # 5 s cold) and the process restarts on every deploy, so with a
     # memory-only cache the first visitor after each deploy paid it.
-    cached = await asyncio.to_thread(_cache.get_persistent, ("market_report", 1), MARKET_REPORT_CACHE_TTL_S)
+    cached = await asyncio.to_thread(_cache.get_persistent, MARKET_REPORT_CACHE_KEY, MARKET_REPORT_CACHE_TTL_S)
     if cached is not None:
         context.update(cached)
-        _set_page_date(context, ("market_report", 1))
+        context.update(_market_report_view(cached))
+        _set_page_date(context, MARKET_REPORT_CACHE_KEY)
         return templates.TemplateResponse(request, "market_report.html", context)
 
     results = await asyncio.gather(
-        *(_market_report_area(name) for name in MARKET_REPORT_AREAS),
+        *(_market_report_area(name, outcode) for name, outcode in MARKET_REPORT_AREAS),
         return_exceptions=True,
     )
-    areas = [
-        r["local_authority"] for r in results
-        if not isinstance(r, Exception) and r and r.get("local_authority")
-    ]
+    areas = [r for r in results if not isinstance(r, Exception) and r]
     areas.sort(key=lambda a: a["annual_change_pct"], reverse=True)
 
     page_data = {
         "areas": areas,
-        "generated_date": datetime.date.today().strftime("%d %B %Y"),
+        # The day the index was read, as a date for day_label ("18 Sep
+        # 2026"). It was "17 September 2026", from strftime, in the title.
+        "generated_on": datetime.date.today().isoformat(),
     }
-    await asyncio.to_thread(_cache.set_persistent, ("market_report", 1), page_data)
+    await asyncio.to_thread(_cache.set_persistent, MARKET_REPORT_CACHE_KEY, page_data)
     context.update(page_data)
-    _set_page_date(context, ("market_report", 1))
+    context.update(_market_report_view(page_data))
+    _set_page_date(context, MARKET_REPORT_CACHE_KEY)
     return templates.TemplateResponse(request, "market_report.html", context)
 
 
@@ -3505,6 +3977,22 @@ async def property_search(request: Request, postcode: str = "", house_number: st
     return response
 
 
+def _buyer_questions(context: dict, premium_unlocked: bool) -> dict:
+    """The questions to ask for one reader of one home, the list the
+    report's "Before you offer" section and the viewing checklist both
+    print (18 Sep 2026, first-visitor audit item D4), so the two cannot
+    disagree. solicitor_questions.for_reader says what it holds.
+
+    The school question reads school_verdicts. It is normally built inside
+    the gather; it is computed here too so a gather result cached before
+    it existed, or a test's faked gather, still gives the schools card its
+    headline and the questions their school. context needs house_number,
+    which decides whose certificate the EPC question describes."""
+    if "school_verdicts" not in context:
+        context["school_verdicts"] = _school_verdict_summary(context.get("school_landscape"))
+    return solicitor_questions.for_reader(context, premium_unlocked)
+
+
 async def _render_property(request: Request, postcode: str, house_number: str, _share=None):
     postcode = postcode.strip()
     house_number = house_number.strip()
@@ -3639,6 +4127,40 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
 
     context.update(await _full_property_gather(location, house_number, premium_unlocked))
 
+    # The banner's "N things worth checking" is the verdict's own list
+    # (18 Sep 2026, first-visitor audit item D3): overview_score's
+    # attention_items, the function the gather built the score's concerns
+    # from, read from the same context for the same reader. The template
+    # assembled a second list of its own, which had drifted, so YO1 7HH
+    # read 2 things worth checking in the verdict and 3 a line below.
+    context["attention_items"] = overview_score.attention_items(context, premium_unlocked=premium_unlocked)
+
+    # A report searched without a house number describes the postcode,
+    # not one home (18 Sep 2026, first-visitor audit item D1). Its top
+    # read as one house but was stitched from two: KT3 4HX's "Semi-detached
+    # house, 122 m²" and energy bill were 57 Malden Hill Gardens' newest
+    # certificate, its "£823,500 last sold here" and "Freehold" were 55's
+    # sale, on a postcode whose recorded sales are 13 freehold and 16
+    # leasehold. Without a number the gather's certificates and sales are
+    # the whole postcode's, so the homes to choose from and the sales
+    # summary come from what it already holds, at no extra fetch.
+    context["which_homes"] = []
+    context["which_home_sections"] = []
+    context["postcode_sales"] = None
+    context["newest_certificate_home"] = ""
+    if not house_number:
+        postcode_certs = context.get("certificates") or []
+        postcode_sales = context.get("transactions") or []
+        context["which_homes"] = _postcode_homes(postcode_certs, postcode_sales)
+        context["which_home_sections"] = _which_home_sections(context["which_homes"])
+        # The home the property line and, short of a range, the energy
+        # figure describe: the gather's detail is the newest certificate's.
+        if postcode_certs:
+            context["newest_certificate_home"] = _epc_home_label(
+                postcode_certs[0].get("address", ""), _sale_streets(postcode_sales))
+        if not context.get("tx_error"):
+            context["postcode_sales"] = _postcode_sales_summary(postcode_sales)
+
     if context["current_user"]:
         # Opening a report puts the property in My properties. See
         # watchlist.remember for the numbers behind that: the return
@@ -3689,22 +4211,19 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["area_reviews"] = {"average": None, "count": 0, "reviews": []}
 
     # Questions to ask before you buy - rules over this report's own
-    # findings (see services/solicitor_questions.py). Premium content;
-    # the template shows one sample question and the other triggers
-    # when locked.
-    _questions = solicitor_questions.build(context)
-    context["buyer_questions"] = solicitor_questions.grouped(_questions)
-    context["buyer_questions_count"] = sum(len(qs) for _, qs in context["buyer_questions"])
-    # 17 Sep 2026: the locked teaser draws on a shorter list. A question
+    # findings (see services/solicitor_questions.py).
+    # 17 Sep 2026: the locked teaser drew on a shorter list. A question
     # triggered by a locked check states that check's finding in its own
     # trigger ("Coal Mining Reporting Area", "Floor area grew about
     # +22%..."), which put five locked answers back into the page as
     # plain body text on the same screen where their cards say only what
-    # the check answers. The count below stays the full count: how many
+    # the check answers. The count stays the full count: how many
     # questions were generated is not a finding.
-    context["buyer_questions_teaser"] = solicitor_questions.grouped(
-        solicitor_questions.without_locked(_questions)
-    )
+    # 18 Sep 2026 (first-visitor audit item D4): one list for the reader,
+    # from _buyer_questions, the list the viewing checklist prints too.
+    # Every question a free card raised is shown in full to everyone; a
+    # signed-out reader used to get one sample and the others' triggers.
+    context["buyer_questions_page"] = _buyer_questions(context, premium_unlocked)
 
     # JSON-safe school points for the map layers: only the fields the
     # pins need, so no date objects reach | tojson.
@@ -3732,11 +4251,9 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             )
             if existing is not None:
                 context["share_link"] = f"{_public_base_url(request)}/s/{existing.token}"
-    # Normally built inside the gather; computed here too so a gather
-    # result cached before this existed, or a test's faked gather,
-    # still gives the schools card its headline.
-    if "school_verdicts" not in context:
-        context["school_verdicts"] = _school_verdict_summary(context.get("school_landscape"))
+    # school_verdicts' fallback for a gather without it moved into
+    # _buyer_questions above on 18 Sep 2026 (D4): the questions read it,
+    # and they are built before this point.
     response = templates.TemplateResponse(request, "property.html", context)
     timing = _server_timing_header()
     if timing:
@@ -3803,6 +4320,12 @@ _PROGRESS_TTL_S = 300
 # the next poll start a fresh one. Comfortably longer than the slowest
 # real member (Overpass amenities, 7-10 s cold).
 STALLED_GATHER_S = 30
+# The ready endpoint and the page route both look for the finished gather
+# in the cache, and nowhere else. Until 18 Sep 2026 a result over the
+# cache's 4 MB entry limit was built, refused and never found, so the wait
+# page restarted the build every STALLED_GATHER_S for as long as it stayed
+# open. Normal reports are 1 to 2.5 MB; the one that is not must still end.
+_cache.keep_oversized("property_search_gather")
 _gather_progress: dict[tuple[str, str], dict] = {}
 _progress_sink: contextvars.ContextVar = contextvars.ContextVar("gather_progress_sink", default=None)
 
@@ -3840,9 +4363,39 @@ def _release_memory() -> None:
         pass
 
 
-async def _gather_with_cap(location: dict, house_number: str) -> None:
-    async with _GATHER_CONCURRENCY:
+# How often a gather queued behind both build slots re-stamps its claim.
+# Well inside STALLED_GATHER_S, so a queue never reads as a dead build.
+_QUEUED_TOUCH_S = 10
+
+
+async def _keep_claim_fresh(claim: dict) -> None:
+    while True:
+        await asyncio.sleep(_QUEUED_TOUCH_S)
+        claim["touched"] = time.time()
+
+
+async def _gather_with_cap(location: dict, house_number: str, claim: dict | None = None) -> None:
+    """One background gather, run when a build slot is free.
+
+    While it waits for a slot it keeps its claim fresh (18 Sep 2026). The
+    claim was stamped once, in _spawn_gather, and nothing ticks it until a
+    source reports in, so a build queued more than STALLED_GATHER_S behind
+    two others read as dead: the next poll queued a second build for the
+    same address, and thirty seconds later a third. The acquire is never
+    cancelled, so a slot cannot be lost to a timeout; a small task stamps
+    the claim beside it and is stopped the moment the slot is ours."""
+    keeper = None
+    if claim is not None and _GATHER_CONCURRENCY.locked():
+        keeper = asyncio.create_task(_keep_claim_fresh(claim))
+    try:
+        await _GATHER_CONCURRENCY.acquire()
+    finally:
+        if keeper is not None:
+            keeper.cancel()
+    try:
         await _full_property_gather(location, house_number, premium_unlocked=False)
+    finally:
+        _GATHER_CONCURRENCY.release()
     _release_memory()
 
 
@@ -3873,8 +4426,9 @@ def _spawn_gather(location: dict, house_number: str) -> asyncio.Task | None:
     live = _gather_progress.get(key)
     if live is not None and time.time() - live["touched"] <= STALLED_GATHER_S:
         return None
-    _gather_progress[key] = _new_progress_sink()
-    task = asyncio.create_task(_gather_with_cap(location, house_number))
+    claim = _new_progress_sink()
+    _gather_progress[key] = claim
+    task = asyncio.create_task(_gather_with_cap(location, house_number, claim))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
     return task
@@ -3960,6 +4514,11 @@ async def _building_context(request: Request, canonical: str, house_number: str)
     ctx["building_postcode"] = canonical
     ctx["building_house_number"] = house_number
     ctx["build_sources"] = GATHER_SOURCE_ORDER
+    # The way out offered after a minute's wait (18 Sep 2026, first-visitor
+    # audit D5): a link, not the box, and only to a district that has a
+    # guide, so the page never sends anyone to a 404.
+    outcode = canonical.split(" ", 1)[0]
+    ctx["building_outcode"] = outcode if outcode in KNOWN_OUTCODES else ""
     return ctx
 
 
@@ -4096,6 +4655,12 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
             if premium_unlocked else ""
         ),
         "stations_list": ctx["stations_list"] if premium_unlocked else {},
+        # Whether the lookup failed, so the page can ask once more before
+        # it shows "Data unavailable" (18 Sep 2026): the same address read
+        # "Data unavailable" on one walk and "52 nearby" on another that
+        # day. It says only that OpenStreetMap did not answer, nothing a
+        # locked card holds.
+        "error": bool(ctx["amenities_error"]),
     })
 
 @app.get("/api/property/valuation")
@@ -4131,7 +4696,7 @@ async def property_valuation(request: Request, postcode: str = "", house_number:
         subject_floor_area = (report.get("property_detail") or {}).get("total_floor_area")
         growth_area = (report.get("hpi") or {}).get("local_authority") or (report.get("hpi") or {}).get("region")
         _apply_valuation(context, comparables, subject_floor_area,
-                         growth_area["annual_change_pct"] if growth_area else None)
+                         growth_area["annual_change_pct"] if growth_area else None, house_number)
     except Exception:  # noqa: BLE001 - the card says "unavailable", never a broken page
         logging.warning("valuation fetch failed for %s", location["postcode"], exc_info=True)
         context["valuation_error"] = True
@@ -4238,14 +4803,25 @@ def _warm_comparables(lat: float, lon: float) -> None:
     task.add_done_callback(_background_tasks.discard)
 
 
-def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct) -> None:
+def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct, house_number: str = "") -> None:
     """Everything the valuation card and its modal read, from one
     comparables list. Shared by the gather and /api/property/valuation so
     the two cannot drift."""
     context["valuation_floor_area_known"] = bool(subject_floor_area)
     context["valuation"] = valuation.estimate_value(comparables, subject_floor_area, growth_pct)
+    # "This home last sold at £X per m²" only with a house number (18 Sep
+    # 2026, first-visitor audit item D1). Without one, the floor area is
+    # the newest certificate's home and the sales are the whole
+    # postcode's, newest first, so the line divided one home's price by
+    # another home's floor area: 55 Malden Hill Gardens' £823,500 over
+    # 57's 122 m² on KT3 4HX. The local rate and its table stay.
+    # 18 Sep 2026, D1 review: "At that rate this home's 122 m² would be
+    # worth about £X" goes with it, since that floor area is the newest
+    # certificate's home too; the floor area is passed only for a chosen home.
+    own = bool(house_number.strip())
     context["price_per_sqm"] = valuation.price_per_sqm(
-        comparables, subject_floor_area, context.get("transactions") or [], growth_pct,
+        comparables, subject_floor_area if own else None,
+        (context.get("transactions") or []) if own else [], growth_pct,
     )
     context["new_build_stat"] = _new_build_stat(comparables)
     # For the "Keep exploring" tile at the foot of the report. The
@@ -4340,7 +4916,7 @@ async def _full_property_gather(
         _last_gather_timings.clear()
         gather_results_inner = await asyncio.gather(
             _timed("sold-prices-for-postcode", sold_prices_for_postcode(canonical)),
-            _timed("-epc-flow", _epc_flow(canonical, house_number, context["epc_configured"])),
+            _timed("-epc-flow", _epc_flow(canonical, house_number, context["epc_configured"], postcode_energy=True)),
             # Belt and braces over flood.py's own budget: a live report
             # once spent 301 seconds inside this call. No single check
             # is worth holding the whole page for, and the card copes
@@ -4417,13 +4993,18 @@ async def _full_property_gather(
         if isinstance(epc_flow_result, Exception):
             context["epc_error"] = True
         else:
-            epc_result, property_detail, extension_signal = epc_flow_result
+            epc_result, property_detail, extension_signal, postcode_energy = epc_flow_result
             context["certificates"] = _filter_by_address(epc_result, house_number)
             context["postcode_has_certificates"] = bool(epc_result)
             if property_detail:
                 context["property_detail"] = property_detail
             if extension_signal:
                 context["extension_signal"] = extension_signal
+            # Without a house number only (18 Sep 2026, D1): the middle
+            # and range of the postcode's energy estimates, for the
+            # report's cost line. See _epc_flow.
+            if postcode_energy:
+                context["postcode_energy"] = postcode_energy
 
     if isinstance(flood_result, Exception):
         context["flood_error"] = True
@@ -4605,11 +5186,11 @@ async def _full_property_gather(
         # landed since, in which case use it now.
         cached_now = _comparables_cached(lat, lon)
         if cached_now is not None:
-            _apply_valuation(context, cached_now, subject_floor_area, growth_pct)
+            _apply_valuation(context, cached_now, subject_floor_area, growth_pct, house_number)
         else:
             context["valuation_pending"] = True
     else:
-        _apply_valuation(context, comparables_result, subject_floor_area, growth_pct)
+        _apply_valuation(context, comparables_result, subject_floor_area, growth_pct, house_number)
 
     if isinstance(age_profile_result, Exception):
         context["age_profile_error"] = True
@@ -4736,6 +5317,10 @@ async def _full_property_gather(
                 "ofsted_rating": s.get("ofsted_rating"),
                 "ofsted_rating_label": s.get("ofsted_rating_label"),
                 "radius_miles": radius_miles,
+                # The map's pop-ups print this, in both map branches: the
+                # council's figure to two decimals, as the school page
+                # gives it (18 Sep 2026), not "1.883 mi".
+                "radius_label": _miles_label(radius_miles),
                 "is_real": is_real,
                 "academic_year": academic_year,
                 "source_authority": source_authority,
@@ -5173,7 +5758,12 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "school_landscape": landscape_result,
         "certificates": certs_result,
         "deprivation": ok(deprivation_result),
-        "crime_comparison": crime_comparison_rows,
+        # The totals rather than the category rows, and the location for
+        # the council finance flag, as the site's own score reads them
+        # (18 Sep 2026).
+        "crime": ok(crime_result),
+        "district_crime": ok(crime_outcode_result),
+        "location": location,
     }
     payload["overview"] = overview_score.compute(score_context, premium_unlocked=False)
 
@@ -5260,7 +5850,14 @@ async def api_extension_report(request: Request, postcode: str = ""):
         # comparison the main site's own Crime modal shows - reuses
         # that exact function rather than a simplified copy, so the
         # extension's numbers can never quietly drift from the site's.
-        "comparison": crime_comparison_rows,
+        # A row too small to compare, or for two different months, goes
+        # out with trend None (18 Sep 2026): the published extension
+        # knows only higher, lower and same, and shows None as no
+        # comparison, which is what the site says of those rows.
+        "comparison": [
+            dict(r, trend=r["trend"] if r["trend"] in ("higher", "lower", "same") else None)
+            for r in crime_comparison_rows
+        ],
     }
 
     _cache.set(cache_key, payload)
@@ -5580,16 +6177,22 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         except (TypeError, ValueError):
             pass
 
+    # The index's own months and changes, as the report's pop-up gives
+    # them (18 Sep 2026, first-visitor audit item D3): the "+1 yr
+    # projected" and "+2 yr projected" rows were a straight line fitted to
+    # the index, and they are gone.
+    trend_changes = (hpi_trend or {}).get("changes") or []
     price_trend_detail = table_detail(
-        ["", "Price"],
+        ["", "Price", "Change to now"],
         [
-            ["5 years ago", _format_gbp(hpi_trend["start_price"])],
-            ["Now", _format_gbp(hpi_trend["current_price"])],
+            [f"{c['years']} year{'s' if c['years'] != 1 else ''} ago, {_month_label(c['period'])}",
+             _format_gbp(c["price"]), f"{c['pct']:+.1f}%"]
+            for c in reversed(trend_changes)
         ] + [
-            [f"+{p['months_ahead'] // 12} yr projected", _format_gbp(round(p["price"]))]
-            for p in (hpi_trend.get("projections") or [])
+            [f"Now, {_month_label(hpi_trend.get('current_period'))}".rstrip(", "), _format_gbp(hpi_trend["current_price"]), ""],
         ],
-    ) if hpi_trend and hpi_trend.get("start_price") is not None else None
+    ) if hpi_trend and trend_changes else None
+    trend_card_change = next((c for c in trend_changes if c["years"] == 5), trend_changes[-1] if trend_changes else None)
 
     noise_detail = table_detail(
         ["Source", "Level", "Band"],
@@ -5745,9 +6348,11 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                     detail=None if area_level else sold_price_detail,
                 ),
                 card(
-                    "Price Trend & Forecast",
-                    (f"{hpi_trend['pct_change']:+.1f}% over 5 years" if hpi_trend and hpi_trend.get("pct_change") is not None else "No data"),
-                    "ok" if hpi_trend and hpi_trend.get("pct_change") is not None else "muted",
+                    # "Price Trend & Forecast" until 18 Sep 2026; the site's card title.
+                    "Price Trend",
+                    (f"{trend_card_change['pct']:+.1f}% over {trend_card_change['years']} year{'s' if trend_card_change['years'] != 1 else ''}"
+                     if trend_card_change else "No data"),
+                    "ok" if trend_card_change else "muted",
                     detail=price_trend_detail,
                 ),
                 card("Rental Analysis", (f"£{rental_data['price_all']:,}/month typical" if rental_data else "No data"), "ok" if rental_data else "muted"),
@@ -5777,12 +6382,15 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card("Flood Risk", flood_zone_data["label"] if flood_zone_data else (flood_gap_label or "No data"), flood_status, detail=flood_detail),
                 card(
                     "Crime & Safety",
-                    f"{crime_data['total']:,} crimes recorded" if crime_data and crime_data.get("total")
-                    else (((crime_data or {}).get("incomplete") or {}).get("status") or "No data"),
+                    # The site card's words, month and radius included (18 Sep 2026),
+                    # and the coverage wording where a force publishes too little.
+                    (f"{crime_data['total']:,} within about a mile, {crime.month_label(crime_data.get('month'))}".rstrip(", ")
+                     if crime_data and crime_data.get("total")
+                     else (((crime_data or {}).get("incomplete") or {}).get("status") or "No data")),
                     crime_status,
                     detail=table_detail(
                         ["Category", "Here", crime_outcode_data and location.get("outcode") or "Area", "Versus area"],
-                        [[r["category"].title(), r["here"], r["area"], {"higher": "Higher", "lower": "Lower", "same": "About the same"}[r["trend"]]] for r in _crime_comparison(crime_data, crime_outcode_data)],
+                        [[r["category"].title(), f"{r['here']:,}", f"{r['area']:,}", CRIME_TREND_WORDS[r["trend"]]] for r in _crime_comparison(crime_data, crime_outcode_data)],
                     ) if _crime_comparison(crime_data, crime_outcode_data) else None,
                 ),
                 card("Surface Water Risk", surface_water["label"] if surface_water else (flood_gap_label or "No data"), surface_water_status),
@@ -5889,7 +6497,12 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         "deprivation": deprivation_data,
         "school_landscape": landscape_data,
         "certificates": certs_list,
-        "crime_comparison": _crime_comparison(crime_data, crime_outcode_data) if crime_data and crime_outcode_data else [],
+        # The two totals, not the category rows (18 Sep 2026): the score's
+        # crime reason is crime.versus_area's, as on the site. And the
+        # location, for the council finance flag the site's verdict counts.
+        "crime": crime_data,
+        "district_crime": crime_outcode_data,
+        "location": location,
     }
 
     payload = {
@@ -5973,11 +6586,62 @@ async def property_checklist(request: Request, postcode: str = "", house_number:
 
     gather = await _full_property_gather(location, hn, premium_unlocked=premium_unlocked)
     context.update(gather)
-    context["checklist"] = viewing_checklist.build(gather, premium_unlocked=premium_unlocked)
     context["premium_unlocked"] = premium_unlocked
     context["house_number"] = hn
+    # The questions are the report's own list for the same reader (18 Sep
+    # 2026, first-visitor audit item D4), built after house_number is set
+    # because the EPC question depends on it.
+    context["checklist"] = viewing_checklist.build(
+        context, premium_unlocked=premium_unlocked, questions=_buyer_questions(context, premium_unlocked)
+    )
     context["query"] = location["postcode"]
     return templates.TemplateResponse(request, "viewing_checklist.html", context)
+
+
+# The Comparables page fetched nearby postcodes and their sales on every
+# request, with no cache: 2.61 s and then 2.26 s to first byte for KT3
+# 4HX on consecutive requests, 17 Sep 2026, against 0.4 to 0.6 s for the
+# report beside it, which had already fetched the same sales. It is where
+# people land from "What sold nearby", just as they get interested. Since
+# 18 Sep 2026 (first-visitor audit D5) the page's rows are cached by the
+# point they were measured from, for as long as the report keeps its own,
+# and a report that has already fetched the sales lends them to the page,
+# which then asks only for the postcodes' coordinates. Land Registry
+# publishes monthly, so an hour's reuse on top of the report's hour hides
+# nothing a reader could have seen.
+def _comparables_page_key(lat: float, lon: float) -> tuple:
+    # Six decimals, as _comparables_key: every distance on the page is
+    # measured from this point, so a coarser key would serve one
+    # postcode's distances to its neighbour.
+    return ("comparables_page", round(lat, 6), round(lon, 6))
+
+
+async def _comparables_page_rows(lat: float, lon: float) -> list[dict]:
+    """Nearby sales with their distance and coordinates, nearest first:
+    the Comparables page's table and both of its maps."""
+    async def build() -> list[dict]:
+        nearby = await nearby_postcodes(lat, lon)
+        distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
+        coords_by_postcode = {p["postcode"]: (p["latitude"], p["longitude"]) for p in nearby}
+        report_rows = _comparables_cached(lat, lon)
+        if report_rows is not None:
+            # The report's rows are the same Land Registry query over the
+            # same postcodes, plus the floor area it looked up for its
+            # estimate. Copied, so the report's cached rows are never
+            # changed, and without floor_area, so the page (which embeds
+            # its rows whole for the maps) reads exactly as a fresh fetch.
+            transactions = [{k: v for k, v in tx.items() if k != "floor_area"} for tx in report_rows]
+        else:
+            transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
+
+        for tx in transactions:
+            tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
+            coords = coords_by_postcode.get(tx["postcode"])
+            tx["latitude"], tx["longitude"] = coords if coords else (None, None)
+        transactions.sort(key=lambda t: (t["distance_m"] is None, t["distance_m"]))
+        return transactions
+
+    return await _deduped(_comparables_page_key(lat, lon), COMPARABLES_CACHE_TTL_S, build)
 
 
 @app.get("/property/comparables")
@@ -6007,16 +6671,8 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
     lat, lon = location["latitude"], location["longitude"]
 
     try:
-        nearby = await nearby_postcodes(lat, lon)
-        distance_by_postcode = {p["postcode"]: p["distance_m"] for p in nearby}
-        coords_by_postcode = {p["postcode"]: (p["latitude"], p["longitude"]) for p in nearby}
-        transactions = await sold_prices_for_postcodes([p["postcode"] for p in nearby])
-
-        for tx in transactions:
-            tx["distance_m"] = distance_by_postcode.get(tx["postcode"])
-            coords = coords_by_postcode.get(tx["postcode"])
-            tx["latitude"], tx["longitude"] = coords if coords else (None, None)
-        transactions.sort(key=lambda t: (t["distance_m"] is None, t["distance_m"]))
+        # Shared rows, read and never changed below: they are the cache's.
+        transactions = await _comparables_page_rows(lat, lon)
 
         amounts = sorted(float(t["amount"]) for t in transactions if t.get("amount"))
         context["comparables"] = transactions
@@ -6030,7 +6686,10 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
             reference_price = None
             subject_sales = [t for t in transactions if t["postcode"] == canonical]
             if house_number:
-                subject_sales = [t for t in subject_sales if house_number.lower() in t["address"].lower()]
+                # The report's own matcher since 18 Sep 2026 (first-visitor
+                # audit D7, review). A substring match took 19 Acacia
+                # Road's £410,000 as house 9's sale in the caption.
+                subject_sales = _filter_by_address(subject_sales, house_number)
             if subject_sales:
                 try:
                     reference_price = float(subject_sales[0]["amount"])
@@ -6053,7 +6712,11 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
     fixture without a network."""
     rc = running_costs or {}
     report = dict(report)
-    report["buyer_questions"] = solicitor_questions.grouped(solicitor_questions.build(report))
+    # The house number decides whose certificate the EPC question
+    # describes (18 Sep 2026, D4); the gather does not carry it.
+    report["buyer_questions"] = solicitor_questions.grouped(
+        solicitor_questions.build({**report, "house_number": house_number})
+    )
     valuation = report.get("valuation") or {}
     stamp_duty_valuation = None
     if valuation.get("estimate") and (location.get("country") or "England") in ("England", "Northern Ireland"):
@@ -6866,7 +7529,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
     if history and history[-1].get("band_d") and finance.get("name"):
         out.append(
             f"A Band D household in {finance['name']} pays "
-            f"\u00a3{history[-1]['band_d']:,.0f} in council tax for {finance['latest_label']}, "
+            f"{_format_gbp(history[-1]['band_d'])} in council tax for {finance['latest_label']}, "
             f"every precept included (MHCLG)."
         )
 
@@ -6894,7 +7557,9 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
     la = (payload.get("hpi") or {}).get("local_authority") or {}
     landscape = payload.get("landscape") or {}
     flood = payload.get("flood_zone") or {}
-    finance = payload.get("finance") or {}
+    # The latest Band D from the council tax file (18 Sep 2026), as the
+    # guide itself now gives it; the other district's payload may be warm.
+    finance = council_finance.with_council_tax_band_d(payload.get("finance")) or {}
     history = finance.get("history") or []
     crime = payload.get("crime") or {}
 
@@ -6916,7 +7581,7 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
         schools = "Not held"
     zone = flood_zones.not_mapped_label(country) or flood.get("label") or "Not held"
     if history and history[-1].get("band_d") and finance.get("name"):
-        band_d = f"£{history[-1]['band_d']:,.0f} a year ({finance['name']}, {finance.get('latest_label', '')})".replace(", )", ")")
+        band_d = f"{_format_gbp(history[-1]['band_d'])} a year ({finance['name']}, {finance.get('latest_label', '')})".replace(", )", ")")
     else:
         band_d = "Not held"
     if crime.get("total") is not None:
@@ -7059,6 +7724,11 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
     # The same for crime: warm guides still hold the trickle Police.uk
     # carries for Greater Manchester and Scotland (18 Sep 2026).
     context["crime"] = crime.with_coverage(context.get("crime"), location.get("admin_district"), location.get("country"))
+    # And for the Band D bill (18 Sep 2026): warm guides hold the whole-
+    # pound figure from the council finance file, and House prices reads
+    # council_tax.json, so LS6 said £2,284 and £2,283. The latest year is
+    # now the council tax file's everywhere on the page.
+    context["finance"] = council_finance.with_council_tax_band_d(context.get("finance"))
     _area_guide_extras(context, outcode, lat, lon)
     _set_page_date(context, cache_key)
     await _area_compare(context, outcode, compare)
@@ -7256,7 +7926,7 @@ def _trend_chart(rows: list[dict]) -> dict | None:
 
     line = " ".join(f"{x(i):.1f},{y(p['value']):.1f}" for i, p in enumerate(points))
     shaped = [{"x": round(x(i), 1), "y": round(y(p["value"]), 1),
-               "value": f"£{p['value']:,.0f}", "period": p.get("period", ""), "note": p.get("note", "")}
+               "value": _format_gbp(p["value"]), "period": p.get("period", ""), "note": p.get("note", "")}
               for i, p in enumerate(points)]
     return {
         "w": width, "h": height, "left": left, "right": right, "top": top_pad,
@@ -10089,10 +10759,20 @@ def _versus_faqs(left: str, right: str, a: dict, b: dict):
         faqs.append((f"Is {left} or {right} cheaper?", answer))
     ca, cb = a.get("crime_total"), b.get("crime_total")
     if ca is not None and cb is not None:
+        # Fewer only on crime.compare_counts' margin, the rule the report
+        # uses (18 Sep 2026, D3 review): 229 against 230 read "recorded
+        # fewer crimes".
+        verdict = crime.compare_counts(ca, cb)
         if ca == cb:
             lead = f"Neither. Both recorded {ca:,} crimes in the same period (Police.uk)."
+        elif verdict == "few":
+            lead = (f"Too few records to say. Police.uk holds {ca:,} in {left} and {cb:,} in {right} "
+                    "for the same period.")
+        elif verdict == "same":
+            lead = (f"About the same. {left} recorded {ca:,} crimes in the same period and {right} "
+                    f"{cb:,} (Police.uk).")
         else:
-            quieter = left if ca < cb else right
+            quieter = left if verdict == "lower" else right
             lead = (f"{quieter} recorded fewer crimes in the same period ({ca:,} in {left} "
                     f"against {cb:,} in {right}, Police.uk).")
         faqs.append((
@@ -10169,9 +10849,11 @@ def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
         gap = abs(la - lb) / max(la, lb) * 100
         out.append(f"Homes sell for about {gap:.0f}% less in {cheaper} than in {dearer}.")
 
-    ca, cb = a.get("crime_total"), b.get("crime_total")
-    if ca is not None and cb is not None and ca != cb:
-        quieter = left if ca < cb else right
+    # A difference inside crime.compare_counts' margin, or between counts
+    # too small to compare, is not a finding (18 Sep 2026, D3 review).
+    crime_verdict = crime.compare_counts(a.get("crime_total"), b.get("crime_total"))
+    if crime_verdict in ("lower", "higher"):
+        quieter = left if crime_verdict == "lower" else right
         out.append(f"{quieter} recorded fewer crimes in the same period, though busier places always record more.")
 
     da, db = a.get("imd_decile"), b.get("imd_decile")
@@ -10269,7 +10951,7 @@ def _admission_verdict(distance_miles: float, radius_miles: float, no_limit: boo
         # puts the furthest offer beyond any commute.
         return {
             "level": "likely", "label": "Very likely", "no_limit": True,
-            "why": "distance did not limit entry",
+            "why": "distance did not limit entry", "why_sentence": "Distance did not limit entry",
             "distance_miles": round(distance_miles, 2), "radius_miles": radius_miles, "margin_miles": None,
         }
     ratio = distance_miles / radius_miles if radius_miles else 99
@@ -10282,8 +10964,14 @@ def _admission_verdict(distance_miles: float, radius_miles: float, no_limit: boo
     else:
         level, label = "unlikely", "Unlikely"
         why = "outside the distance the school admitted from last time"
+    # 18 Sep 2026, first-visitor audit item D7: the school page printed
+    # "why" straight after a full stop, so the verdict read "... from
+    # Fortismere School. comfortably inside the distance ...". "why" stays
+    # lower case for use inside a sentence; "why_sentence" is the same
+    # words starting one, and the pages that begin a sentence with it
+    # use that.
     return {
-        "level": level, "label": label, "why": why,
+        "level": level, "label": label, "why": why, "why_sentence": why[:1].upper() + why[1:],
         "distance_miles": round(distance_miles, 2), "radius_miles": radius_miles,
         "margin_miles": round(radius_miles - distance_miles, 2),
     }
@@ -10335,6 +11023,19 @@ _YEAR_LIKE = re.compile(r"^(20\d\d)([/-]\d\d)?$")
 NO_DISTANCE_LIMIT_MILES = 20
 
 
+def _miles_label(miles) -> str:
+    """Miles to two decimals with no trailing zeros, "1.883" as "1.88" and
+    0.4 as "0.4": the school page's tile, title and badge formatter, and
+    its "miles" filter since 18 Sep 2026, when the postcode check under
+    the same tile printed the council's figure to three decimals."""
+    if isinstance(miles, bool) or not isinstance(miles, (int, float)):
+        return ""
+    return f"{miles:.2f}".rstrip("0").rstrip(".")
+
+
+templates.env.filters["miles"] = _miles_label
+
+
 def _school_labels(profile: dict) -> dict:
     """Wording every surface shares: the year only when the source gives
     a year (832 profiles say "varies", which is what the council
@@ -10346,7 +11047,7 @@ def _school_labels(profile: dict) -> dict:
     profile["year_or_latest"] = profile["year_label"] or "latest published year"
     profile["in_year"] = f"in {profile['year_label']}" if profile["year_label"] else "in the latest published year"
     miles = profile.get("miles")
-    profile["miles_label"] = (f"{miles:.2f}".rstrip("0").rstrip(".")) if isinstance(miles, (int, float)) else ""
+    profile["miles_label"] = _miles_label(miles)
     profile["no_distance_limit"] = isinstance(miles, (int, float)) and miles > NO_DISTANCE_LIMIT_MILES
     return profile
 
@@ -10867,7 +11568,9 @@ def _guide_rows(landscape: dict | None, verdict_from: dict | None = None) -> lis
             "no_distance_limit": no_limit,
             "verdict_level": verdict["level"] if verdict else None,
             "verdict_label": verdict["label"] if verdict else None,
-            "verdict_why": verdict["why"] if verdict else None,
+            # The tooltip starts with it, so it starts with a capital
+            # (18 Sep 2026, _admission_verdict's why_sentence).
+            "verdict_why": verdict["why_sentence"] if verdict else None,
             "urn": s["urn"], "name": s["name"],
             "phase": s.get("phase_group") or "Special",
             "type": s.get("type") or "",
@@ -11319,11 +12022,16 @@ async def admission_distances_csv(request: Request):
 async def llms_txt(request: Request):
     """What this site is, for the AI search crawlers that read it (the
     llmstxt.org convention): the data pages and what each one answers,
-    so an assistant citing a figure can link the page it came from."""
+    so an assistant citing a figure can link the page it came from.
+
+    "from official sources only" until 18 Sep 2026 (first-visitor audit
+    item D6): the reports read OpenStreetMap for what is nearby and which
+    way a home faces, and /methodology now keeps it apart from the
+    official bodies it counts (OFFICIAL_SOURCES)."""
     base = _public_base_url(request)
     text = f"""# UKPropertyInsight
 
-> Free due-diligence reports for UK home buyers, from official sources only: sold prices, flood risk, crime, schools and, uniquely, how far each state school admitted from (the council's published "last distance offered"). Every figure names its source; nothing is modelled where a real figure exists.
+> Free due-diligence reports for UK home buyers, from {len(OFFICIAL_SOURCES)} official bodies, with OpenStreetMap for what is nearby: sold prices, flood risk, crime, schools and, uniquely, how far each state school admitted from (the council's published "last distance offered"). Every figure names its source; nothing is modelled where a real figure exists.
 
 ## Data pages
 

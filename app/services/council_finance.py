@@ -13,10 +13,13 @@ that the council cannot balance its budget, which freezes new spending.
 Neither changes a home; both tend to mean service cuts and the largest
 council tax rises the rules allow.
 """
+import calendar
 import datetime
 import json
 import pathlib
 import re
+
+from app.services import council_tax
 
 _PATH = pathlib.Path(__file__).resolve().parents[1] / "data" / "council_finance.json"
 _DATA: dict | None = None
@@ -46,18 +49,52 @@ def _efs_year_matches(efs_year: str, latest: str) -> bool:
     return efs_year[:4] == latest[:4]
 
 
+def _band_d_from_council_tax(history: list[dict], code: str) -> list[dict]:
+    """The latest year's Band D as app/data/council_tax.json gives it,
+    where that file covers the same council and the same year.
+
+    18 Sep 2026, first-visitor audit item D7: this file holds MHCLG's live
+    table to the whole pound and council_tax.json holds the same year's
+    Band D to the penny, so the LS6 guide gave Leeds's Band D as £2,284 in
+    its lead and council section and £2,283 in House prices. One figure,
+    one source: the council tax file, which the report's band table, the
+    running-costs page and the council pages already read. Earlier years
+    and the published rises are this file's, as before. A new list is
+    returned; the one passed in may belong to a cached payload."""
+    if not history or not code:
+        return history
+    ct = council_tax.for_district(code)
+    latest = history[-1]
+    if (not ct or ct.get("nation") != "England" or not ct.get("band_d")
+            or str(ct.get("year") or "")[:4] != str(latest.get("year") or "")[:4]):
+        return history
+    return history[:-1] + [dict(latest, band_d=ct["band_d"])]
+
+
+def with_council_tax_band_d(finance: dict | None) -> dict | None:
+    """for_council's answer with its latest Band D from the council tax
+    file, for an answer cached before 18 Sep 2026 (the area guides keep
+    theirs in a payload for a week)."""
+    if not finance or not finance.get("history"):
+        return finance
+    history = _band_d_from_council_tax(finance["history"], finance.get("code") or "")
+    return finance if history is finance["history"] else dict(finance, history=history)
+
+
 def for_council(district_code: str, district_name: str = "", county_name: str = "") -> dict | None:
     data = _load()
     councils = data.get("councils") or {}
     c = councils.get(district_code or "")
+    code = district_code if c is not None else ""
     if c is None and district_name:
         key = _norm(district_name)
-        c = next((v for v in councils.values() if _norm(v["name"]) == key), None)
+        code, c = next(((k, v) for k, v in councils.items() if _norm(v["name"]) == key), ("", None))
     if c is None:
         return None
     latest = data.get("latest_year") or max(c["band_d"])
     years = sorted(c["band_d"])[-YEARS_SHOWN:]
     history = [{"year": y, "label": y[:4] + "-" + y[-2:], "band_d": c["band_d"][y], "rise": c["rises"].get(y)} for y in years]
+    history = _band_d_from_council_tax(history, code)
     efs = list(c.get("efs") or [])
     county_efs = list((data.get("efs_by_name") or {}).get(_norm(county_name), [])) if county_name and _norm(county_name) != _norm(c["name"]) else []
     s114 = list(c.get("s114") or [])
@@ -85,3 +122,44 @@ def for_council(district_code: str, district_name: str = "", county_name: str = 
         "flag": efs_current or county_efs_current or s114_recent,
         "as_of": as_of,
     }
+
+
+def _month_year(iso_date: str) -> str:
+    """"2023-09-22" as "September 2023"."""
+    try:
+        return f"{calendar.month_name[int(iso_date[5:7])]} {int(iso_date[:4])}"
+    except (ValueError, IndexError, TypeError):
+        return iso_date
+
+
+def flag_sentence(finance: dict | None) -> str | None:
+    """What the flag is, in plain words, for the report's list of things
+    worth checking and its verdict. None when there is no flag.
+
+    18 Sep 2026, first-visitor audit item D3: the chip read "Council under
+    exceptional financial support or a section 114 notice", the two
+    possible reasons joined by "or" and neither one explained, so a reader
+    in York could not tell which applied or what either meant. It now
+    names the council, what happened and the year, taking this year's
+    exceptional support first (it is current), then a county council's,
+    then a recent section 114 notice, the order for_council's flag reads.
+    The council's name is the dataset's, "York UA" shortened to "York",
+    and a name that already says it, "Dorset Council", is not followed by
+    a second "council".
+    """
+    if not finance or not finance.get("flag"):
+        return None
+    name = re.sub(r"\s+UA$", "", finance.get("name") or "").strip() or "The"
+    council = name if name.lower().endswith("council") else f"{name} council"
+    latest = finance.get("latest_year") or ""
+    if finance.get("efs_current"):
+        year = next((e["year"] for e in finance.get("efs") or [] if _efs_year_matches(e["year"], latest)), finance.get("latest_label"))
+        return f"{council} needed exceptional government support for {year}"
+    if finance.get("county_efs_current"):
+        year = next((e["year"] for e in finance.get("county_efs") or [] if _efs_year_matches(e["year"], latest)), finance.get("latest_label"))
+        return f"{finance.get('county_name')} County Council needed exceptional government support for {year}"
+    notices = sorted(n["date"] for n in finance.get("s114") or [] if n.get("date"))
+    if notices:
+        return (f"{council} issued a section 114 notice in {_month_year(notices[-1])}, "
+                "saying it could not balance its budget")
+    return None

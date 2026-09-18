@@ -12,10 +12,19 @@ site's rule everywhere else too.
 """
 from __future__ import annotations
 
+from app.services import bus_service
+from app.services import council_tax
+from app.services import crime as crime_service
+
 
 def _fmt_gbp(value, decimals: int = 0) -> str:
     if value is None:
         return ""
+    # Whole pounds round as the site's gbp filter does (18 Sep 2026,
+    # council_tax.whole_pounds), halves up, so a bill reads the same
+    # here as on the report and the council tax pages.
+    if not decimals:
+        return f"£{council_tax.whole_pounds(value):,}"
     return f"£{value:,.{decimals}f}"
 
 
@@ -98,11 +107,19 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Value and market", "Valuation estimate", "Not enough comparable sales nearby to estimate", "neutral", "HM Land Registry")
 
     pt = report.get("price_trend")
-    if pt and pt.get("pct_change") is not None:
-        pct = pt["pct_change"]
-        add("Value and market", f"Price trend, five years, {pt.get('area_name', '')}".strip(", "),
-            f"{pct:+.1f}%: {_fmt_gbp(pt.get('start_price'))} to {_fmt_gbp(pt.get('current_price'))}",
-            "good" if pct >= 0 else "warn", "HM Land Registry house price index")
+    # The five-year change, or the longest the index has here, with its
+    # span named (18 Sep 2026): a shorter series was called five years.
+    changes = (pt or {}).get("changes") or []
+    change = next((c for c in changes if c["years"] == 5), changes[-1] if changes else None)
+    if pt and not change and pt.get("pct_change") is not None:
+        change = {"years": 5, "pct": pt["pct_change"], "price": pt.get("start_price")}
+    if pt and change:
+        span = {1: "one year", 5: "five years", 10: "ten years"}.get(change["years"], f"{change['years']} years")
+        add("Value and market", f"Price trend, {span}, {pt.get('area_name', '')}".strip(", "),
+            f"{change['pct']:+.1f}%: {_fmt_gbp(change['price'])} to {_fmt_gbp(pt.get('current_price'))}",
+            "good" if change["pct"] >= 0 else "warn", "HM Land Registry house price index")
+    elif pt:
+        add("Value and market", "Price trend", "The index series here is too short for a change", "neutral", "HM Land Registry house price index")
     else:
         add("Value and market", "Price trend, five years", "No index series for this authority", "neutral", "HM Land Registry house price index")
 
@@ -276,12 +293,19 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Risk and safety", "Noise", "Outside Defra's mapped area; not a zero reading", "neutral", "Defra")
     crime = report.get("crime")
     if crime and crime.get("total") is not None:
-        dc = report.get("district_crime") or {}
-        comp = ""
-        if dc.get("total"):
-            comp = ", lower than the wider district" if crime["total"] < dc["total"] else (", higher than the wider district" if crime["total"] > dc["total"] else ", in line with the wider district")
-        month = _month(crime["month"]) if crime.get("month") else "the latest month"
-        add("Risk and safety", "Crime within about a mile", f"{crime['total']:,} recorded in {month}{comp}", "good" if "lower" in comp else ("warn" if "higher" in comp else "neutral"), "Police.uk")
+        # Lower or higher by crime_service.compare_counts, the report's own
+        # rule, since 18 Sep 2026: this called any difference lower or
+        # higher, 229 against 230 included.
+        versus = crime_service.versus_area(crime, report.get("district_crime"))
+        comp = {
+            "lower": ", lower than the wider district",
+            "higher": ", higher than the wider district",
+            "same": ", about the same as the wider district",
+            "few": ": Police.uk holds few records here that month, too few to compare",
+        }.get(versus["verdict"], "")
+        month = versus["month_label"] or "the latest month"
+        add("Risk and safety", "Crime within about a mile", f"{crime['total']:,} recorded in {month}{comp}",
+            "good" if versus["verdict"] == "lower" else ("warn" if versus["verdict"] == "higher" else "neutral"), "Police.uk")
     elif crime and crime.get("incomplete"):
         add("Risk and safety", "Crime within about a mile", crime["incomplete"]["status"], "neutral", "Police.uk")
     else:
@@ -381,8 +405,13 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Getting around", "Bus service", f"No stop with a scheduled departure within {bus.get('radius_m', 500)} m", "warn", bus_source)
     else:
         b = bus["best"]
+        # First and last bus in the pages' own words (18 Sep 2026,
+        # bus_service.service_hours): "first 05:05, last 04:24" read as
+        # an error where the service runs past midnight.
+        hours = bus_service.service_hours(b.get("weekday_first"), b.get("weekday_last"))["text"]
         add("Getting around", "Bus service",
-            f"{b['weekday_day_per_hour']} an hour weekday daytime, {b['weekday_eve_per_hour']} evening, {b['sunday_day_per_hour']} Sunday, at {b['name']} ({b['distance_m']} m); first {b['weekday_first']}, last {b['weekday_last']}",
+            f"{b['weekday_day_per_hour']} an hour weekday daytime, {b['weekday_eve_per_hour']} evening, {b['sunday_day_per_hour']} Sunday, at {b['name']} ({b['distance_m']} m)"
+            + (f"; {hours}" if hours else ""),
             "warn" if b["weekday_day"] < 12 else "good", bus_source)
     stations = (report.get("stations_list") or {}).get("rail") or []
     if stations:

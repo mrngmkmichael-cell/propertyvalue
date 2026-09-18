@@ -1,24 +1,39 @@
 {% extends "base.html" %}
 
-{% block title %}UK house price snapshot: {{ generated_date }} | UKPropertyInsight{% endblock %}
+{# 18 Sep 2026 (first-visitor audit item D6): the title said the day the
+   page was built ("17 September 2026") over figures for July, the list was
+   "major UK cities" with Nottinghamshire and Aberdeenshire in it, no row led
+   anywhere, and "Steepest falling: City of Westminster (-20.7%)" stood with
+   no word on how a small area swings. The title now names the month the
+   figures are for, the noun is "cities" only while every row is one
+   (_market_report_view in main.py), each row links to its district's guide,
+   and a move over swing_pct carries a line. #}
+{% set month_words = data_month | month_label %}
+{% set noun_phrase = "major UK cities" if area_noun == "cities" else "UK areas" %}
+{% set swing_line = "Small areas with few sales can swing this much in a year." %}
 
-{% block meta_description %}Average house prices and annual price growth across {{ areas|length }} major UK cities, from HM Land Registry's House Price Index, updated {{ generated_date }}.{% endblock %}
+{% block title %}House prices by {{ "city" if area_noun == "cities" else "area" }}{% if month_words %}: {{ month_words }} figures{% endif %} | UKPropertyInsight{% endblock %}
+
+{% block meta_description %}Average house prices and annual price growth across {{ areas|length }} {{ noun_phrase }}, from HM Land Registry's House Price Index{% if month_words %}: {{ month_words }} figures{% endif %}.{% endblock %}
 {% block extra_head %}
 {% endblock %}
 
 {% block content %}
 <span class="kicker">Market snapshot</span>
-<h1>UK house prices by city</h1>
+<h1>UK house prices by {{ "city" if area_noun == "cities" else "area" }}{% if month_words %}, {{ month_words }} figures{% endif %}</h1>
 <p class="dek">
-    Average price and annual change across {{ areas|length }} major UK cities, straight from HM Land
+    Average price and annual change across {{ areas|length }} {{ noun_phrase }}, straight from HM Land
     Registry's House Price Index, the same source every property report on this site uses, not a
-    press release or a one-off article. Updated {{ generated_date }}.
+    press release or a one-off article.{% if month_words %} These are {{ month_words }} figures, the latest
+    month the index had published{% if generated_on %} when it was read on {{ generated_on | day_label }}{% endif %}.{% endif %}
+    {% if other_month_count %}For {{ other_month_count }} of them the latest month is a different one, and each row gives its own.{% endif %}
     {# The answer in figures, before the table (16 Sep 2026): the table
        is sorted by annual change, so its ends are the extremes. #}
     {% if areas and areas|length > 1 %}{% set rising = areas | selectattr('annual_change_pct', 'gt', 0) | list %}
-    Prices rose over the year in {{ rising|length }} of the {{ areas|length }} cities. The strongest was
+    Prices rose over the year in {{ rising|length }} of the {{ areas|length }} {{ area_noun }}. The strongest was
     {{ areas[0].name }} at {{ '%+.1f'|format(areas[0].annual_change_pct) }}%, and the weakest
     {{ areas[-1].name }} at {{ '%+.1f'|format(areas[-1].annual_change_pct) }}%.
+    {% if areas[0].swing or areas[-1].swing %}{{ swing_line }}{% endif %}
     {% endif %}
 </p>
 
@@ -35,7 +50,7 @@
     <tbody>
         {% for a in areas %}
         <tr>
-            <td>{{ a.name }}</td>
+            <td>{% if a.guide %}<a href="/area/{{ a.guide }}">{{ a.name }}</a>{% else %}{{ a.name }}{% endif %}</td>
             <td class="num">{{ a.average_price | gbp }}</td>
             {# Was an inline hex pair. An inline style cannot be themed,
                and the red measured 3.87:1 once the page went dark. The
@@ -45,15 +60,27 @@
             </td>
             <td>{{ a.period | month_label }}</td>
         </tr>
+        {% if a.swing %}
+        <tr class="market-swing"><td colspan="4">{{ swing_line }}</td></tr>
+        {% endif %}
         {% endfor %}
     </tbody>
 </table>
+
+{% set linked = areas | selectattr('guide') | list %}
+{% if linked %}
+<p class="section-sub">
+    Each linked name opens the area guide for a postcode district at its centre ({{ linked[0].guide }} for
+    {{ linked[0].asked }}). The figures in the row are for the whole council area.
+</p>
+{% endif %}
 
 <p class="section-sub">
     {% set biggest_riser = areas | sort(attribute="annual_change_pct", reverse=True) | first %}
     {% set biggest_faller = areas | sort(attribute="annual_change_pct") | first %}
     Fastest growing: <strong>{{ biggest_riser.name }}</strong> ({{ "%+.1f"|format(biggest_riser.annual_change_pct) }}%).
     Steepest falling: <strong>{{ biggest_faller.name }}</strong> ({{ "%+.1f"|format(biggest_faller.annual_change_pct) }}%).
+    {% if biggest_riser.swing or biggest_faller.swing %}{{ swing_line }}{% endif %}
 </p>
 {% else %}
 <p class="notice notice-error">Couldn't load house price data right now. Try again shortly.</p>
@@ -62,7 +89,7 @@
 <section class="report-section">
     <h2>Check a specific area</h2>
     <p class="section-sub">
-        This snapshot covers city-wide averages. For a specific postcode's own sold price history,
+        This snapshot covers averages for whole council areas. For a specific postcode's own sold price history,
         schools, crime and flood risk, <a href="/">search it directly</a>, or browse an
         <a href="/area/SW1A">area guide</a> for any UK postcode district.
     </p>

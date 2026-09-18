@@ -57,6 +57,21 @@ MAX_BYTES = 48 * 1024 * 1024
 MAX_ENTRY_BYTES = 4 * 1024 * 1024
 _bytes = 0
 
+# Key families kept whatever their size (18 Sep 2026, first-visitor audit
+# item D5). The entry limit is right for a page that can be rebuilt on the
+# next request, and wrong for a value something is waiting to find: the
+# report's wait page asks every 900 ms whether the gather for its address
+# is here, so a gather over the limit was built, refused, never found, and
+# rebuilt every 30 seconds for as long as the page stayed open. A family
+# named here still counts against MAX_BYTES and is evicted like any other
+# entry; only the per-entry refusal is waived. Callers register the first
+# element of their tuple keys with keep_oversized().
+_KEEP_OVERSIZED: "builtins.set[str]" = builtins.set()
+
+
+def keep_oversized(prefix: str) -> None:
+    _KEEP_OVERSIZED.add(prefix)
+
 # Deep enough for a gather result (dict -> service -> list -> row -> value)
 # with room to spare. Anything deeper is charged at the cap rather than
 # walked forever: a cache sizer must never be the thing that hangs.
@@ -173,7 +188,14 @@ def _put(key, stored_at: float, value) -> None:
     _evict(key)
     size = _approx_size(value)
     if size > MAX_ENTRY_BYTES:
-        return
+        family = key[0] if isinstance(key, tuple) and key else key
+        if family not in _KEEP_OVERSIZED:
+            # Said out loud since 18 Sep 2026: a refused value is a
+            # rebuild on every request for it, and until then nothing
+            # anywhere recorded that it had happened.
+            logging.warning("cache: not keeping %s, %d bytes is over the %d-byte entry limit",
+                            _db_key(key), size, MAX_ENTRY_BYTES)
+            return
     _store[key] = (stored_at, value, size)
     _bytes += size
     while _store and (len(_store) > MAX_ENTRIES or _bytes > MAX_BYTES):

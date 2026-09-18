@@ -41,9 +41,13 @@
                 The comparables data service didn't respond. Try again in a moment.
             </p>
         {% elif comparables %}
+            {# Said "most recent first" until 18 Sep 2026, over rows the
+               route sorts by distance: nearest first, and newest first
+               only among sales at the same postcode. #}
             <p class="section-sub">
-                {{ comparables_count }} sold prices recorded nearby (up to 0.6 miles, most recent first), from
-                HM Land Registry, the same source as the Sold Price History section. Not "for sale" or
+                {{ comparables_count }} sold prices recorded nearby (up to 0.6 miles), from
+                HM Land Registry, the same source as the Sold Price History section. Listed nearest first,
+                and newest first within each postcode. Not "for sale" or
                 "to let" listings. That's licensed data (Rightmove/Zoopla) we don't have free access to,
                 so it can't appear here or anywhere on this site.
             </p>
@@ -83,7 +87,12 @@
                 <button type="button" data-years="2" aria-pressed="false">Last 2 years</button>
                 <span class="comp-range-count" id="comp-range-count" aria-live="polite"></span>
             </div>
-            <table class="tx-table" id="comparables-table">
+            {# data-stack (18 Sep 2026): below 600px each sale stacks as
+               "£823,500 · 2025-12-08 · 0 yd", then its address and
+               postcode, then type and tenure, where at 375px price, date
+               and distance were off the edge for every row. The postcode
+               joins the address line there, so its own cell is skipped. #}
+            <table class="tx-table" id="comparables-table" data-stack>
                 <thead>
                     <tr>
                         <th>Address</th>
@@ -98,17 +107,27 @@
                 <tbody>
                     {% for tx in comparables %}
                     <tr data-date="{{ tx.date }}">
-                        <td>{{ tx.address }}</td>
-                        <td>{{ tx.postcode }}</td>
-                        <td class="capitalize">{{ tx.property_type or "Not recorded" }}</td>
-                        <td>{{ tx.tenure or "Not recorded" }}</td>
-                        <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.date | day_label }}</td>
-                        <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "Not recorded" }}</td>
+                        <td data-st="sub">{{ tx.address }}{% if tx.postcode %}<span class="st-only">, {{ tx.postcode }}</span>{% endif %}</td>
+                        <td data-st="skip">{{ tx.postcode }}</td>
+                        <td class="capitalize" data-st="half" data-label="Type">{{ tx.property_type or "Not recorded" }}</td>
+                        <td data-st="half" data-label="Tenure">{{ tx.tenure or "Not recorded" }}</td>
+                        <td class="num" data-st="lead">{{ tx.amount | gbp }}</td>
+                        <td data-st="answer">{{ tx.date | day_label }}</td>
+                        <td class="num" data-st="answer">{{ tx.distance_m | distance if tx.distance_m is not none else "Not recorded" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {# Show 25 more (18 Sep 2026). The audit's 300 sales ran to 29.5
+               phone screens, so a phone lists 25 of the sales in the chosen
+               range at a time and this button reveals the next 25 in
+               place. Every row is in the page without JavaScript, the
+               script only marks the rows past the limit, and a wider
+               screen shows them all as it always did (style.css). #}
+            <div class="comp-more" id="comp-more" hidden>
+                <button type="button" class="comp-more-btn" id="comp-more-btn">Show 25 more</button>
+                <span class="comp-more-count" id="comp-more-count" aria-live="polite"></span>
+            </div>
         {% else %}
             <p class="notice">No sold prices recorded nearby.</p>
         {% endif %}
@@ -149,6 +168,36 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
        map pins. Dates are ISO strings, so they compare as text. */
     var compMarkers = [];
     window.__compYears = 0;
+
+    /* Show 25 more (18 Sep 2026): of the rows the year filter keeps,
+       those past the limit are marked comp-beyond, which only a phone
+       hides (style.css), and the button raises the limit by 25. A new
+       range starts again at 25; the maps calling back with the same
+       range once they load leave the limit where the reader put it. */
+    var COMP_PAGE = 25;
+    var compLimit = COMP_PAGE;
+    function compPaginate() {
+        var inRange = 0;
+        document.querySelectorAll('#comparables-table tbody tr[data-date]').forEach(function (tr) {
+            if (tr.hidden) { tr.classList.remove('comp-beyond'); return; }
+            inRange++;
+            tr.classList.toggle('comp-beyond', inRange > compLimit);
+        });
+        var more = document.getElementById('comp-more');
+        if (!more) return;
+        var listed = Math.min(inRange, compLimit);
+        var left = inRange - listed;
+        more.hidden = left <= 0;
+        if (left <= 0) return;
+        document.getElementById('comp-more-btn').textContent = 'Show ' + Math.min(COMP_PAGE, left) + ' more';
+        document.getElementById('comp-more-count').textContent = listed + ' of ' + inRange + ' listed';
+    }
+    var compMoreBtn = document.getElementById('comp-more-btn');
+    if (compMoreBtn) compMoreBtn.addEventListener('click', function () {
+        compLimit += COMP_PAGE;
+        compPaginate();
+    });
+
     function compApplyRange(years) {
         var cutoff = null;
         if (years > 0) {
@@ -164,12 +213,17 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
             if (ok) shown++;
         });
         compMarkers.forEach(function (m) { m.show(!cutoff || (m.date || '') >= cutoff); });
+        /* Counts sales in the range, not rows on screen: said "shown"
+           until 18 Sep 2026, which a phone listing 25 at a time made
+           untrue. */
         var count = document.getElementById('comp-range-count');
-        if (count) count.textContent = shown === rows.length ? 'All ' + rows.length + ' sales shown' : shown + ' of ' + rows.length + ' sales shown';
+        if (count) count.textContent = shown === rows.length ? 'All ' + rows.length + ' sales' : shown + ' of ' + rows.length + ' sales';
         document.querySelectorAll('.comp-range button').forEach(function (b) {
             b.setAttribute('aria-pressed', String(parseInt(b.getAttribute('data-years'), 10) === years));
         });
+        if (years !== window.__compYears) compLimit = COMP_PAGE;
         window.__compYears = years;
+        compPaginate();
     }
     document.querySelectorAll('.comp-range button').forEach(function (b) {
         b.addEventListener('click', function () { compApplyRange(parseInt(b.getAttribute('data-years'), 10)); });

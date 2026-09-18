@@ -1797,6 +1797,89 @@ button:not([class]):hover { background: var(--accent-hover); }
     font-style: normal;
 }
 
+/* "Which home is yours?" under the postcode on a report searched without
+   a house number (18 Sep 2026, first-visitor audit item D1). Links, not
+   buttons: each opens the report on one home. Each street is named once
+   above its numbers. Tokens only, so the lamp recolours it with no rule
+   of its own, and a long address wraps inside its own pill rather than
+   pushing a 375px page sideways. A lone number keeps a finger-sized pill. */
+.which-home {
+    margin: 1rem 0 0.25rem;
+}
+
+.which-home-q {
+    margin: 0 0 0.5rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+
+.which-home-q strong {
+    color: var(--ink);
+}
+
+.which-home-street {
+    margin: 0.6rem 0 0.35rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--ink);
+}
+
+.which-home-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.which-home-list li {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.which-home-link {
+    display: inline-block;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 2.75rem;
+    padding: 0.4rem 0.75rem;
+    text-align: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.which-home-link:hover,
+.which-home-link:focus-visible {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.which-home-more {
+    margin-top: 0.4rem;
+}
+
+.which-home-more summary {
+    cursor: pointer;
+    color: var(--accent);
+    font-size: var(--text-sm);
+}
+
+.which-home-more[open] summary {
+    margin-bottom: 0.4rem;
+}
+
+.which-home-source {
+    margin: 0.5rem 0 0;
+    color: var(--ink-faint);
+    font-size: var(--text-xs);
+}
+
 .overview-score-card {
     display: flex;
     align-items: center;
@@ -2510,6 +2593,13 @@ button:not([class]):hover { background: var(--accent-hover); }
 .checklist-detail { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.55; max-width: 62ch; }
 .checklist-notes { display: grid; gap: 1.5rem; margin-top: 1rem; }
 .checklist-rule { display: block; border-bottom: 1px solid var(--border); }
+/* Who to ask, above each group of the report's questions (18 Sep 2026,
+   first-visitor audit item D4), in the report's own .bq-audience style. */
+.checklist-audience {
+    margin: 1.5rem 0 0;
+    font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--ink-faint);
+}
 
 /* Print: ink on paper, nothing that only works on a screen. */
 @media print {
@@ -2688,14 +2778,8 @@ button:not([class]):hover { background: var(--accent-hover); }
     stroke-linejoin: round;
 }
 
-.trend-chart-line-projected {
-    stroke: var(--accent);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 5 5;
-    opacity: 0.7;
-}
+/* The dashed projection and its points went on 18 Sep 2026 (first-visitor
+   audit item D3): the chart draws the published index only. */
 
 .trend-chart-dot {
     fill: var(--accent);
@@ -2703,20 +2787,11 @@ button:not([class]):hover { background: var(--accent-hover); }
     stroke-width: 2;
 }
 
-.trend-chart-dot-projected {
-    opacity: 0.7;
-}
-
 .trend-chart-point-label {
     font-family: var(--font-sans);
     font-size: 12px;
     font-weight: var(--weight-medium);
     fill: var(--ink);
-}
-
-.trend-chart-point-label-projected {
-    fill: var(--ink-soft);
-    font-weight: var(--weight-medium);
 }
 
 .trend-chart-caption {
@@ -2764,6 +2839,111 @@ button:not([class]):hover { background: var(--accent-hover); }
 .tx-table th:last-child,
 .tx-table td:last-child {
     padding-right: 0;
+}
+
+/* The tables a page exists for, on a phone (18 Sep 2026, first-visitor
+   audit item D2). At 375px the admissions hub cut its header to
+   "ADMITTED F" and read 0.14 miles as "0", the schools guide showed
+   School, Phase and Ofsted with the reading off screen, and comparables
+   hid price, date and distance for all 300 rows, each table scrolling
+   sideways inside its section with nothing to say so. Below 600px a
+   table marked data-stack becomes one block per row: the name
+   (data-st="title"), then the answer line (data-st="lead", then each
+   data-st="answer", joined by the table's separator), then a second line
+   (data-st="sub"), then every other cell as its data-label and its
+   value; data-st="half" puts two of those on one line and "skip" leaves
+   a cell out. The order is set here, not in the markup, because the
+   desktop columns stay as they were and each table's sort script reads
+   cells by column. .st-only words ("away", "full") show only in the
+   stacked row, where no header sits above them. Tokens only, so the
+   lamp needs no rule of its own. */
+.st-only { display: none; }
+
+@media (max-width: 600px) {
+    table[data-stack],
+    table[data-stack] tbody { display: block; width: 100%; }
+    table[data-stack] thead { display: none; }
+    table[data-stack] { --st-sep: " \00B7"; }
+    table[data-stack="comma"] { --st-sep: ","; }
+    table[data-stack] tr {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.3em;
+        padding: 0.85rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    /* The year filter on comparables hides rows with the hidden
+       attribute, which the flex display above would otherwise undo. */
+    table[data-stack] tr[hidden] { display: none; }
+    table[data-stack] td,
+    table[data-stack] td.num {
+        flex: 0 0 100%;
+        min-width: 0;
+        padding: 0.2rem 0 0;
+        border-bottom: none;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+    table[data-stack] .st-only { display: inline; }
+    table[data-stack] td[data-label]::before {
+        content: attr(data-label);
+        display: inline-block;
+        min-width: 7.5rem;
+        margin-right: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: var(--weight-normal);
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+    }
+    table[data-stack] td[data-st="title"] {
+        order: -4;
+        padding: 0 0 0.15rem;
+        font-size: var(--text-base);
+        font-weight: var(--weight-semi);
+    }
+    table[data-stack] td[data-st="lead"],
+    table[data-stack] td[data-st="answer"] {
+        flex: 0 1 auto;
+        order: -2;
+        padding-top: 0;
+        font-size: var(--text-base);
+        font-weight: var(--weight-semi);
+        color: var(--ink);
+    }
+    table[data-stack] td[data-st="lead"] { order: -3; }
+    /* The schools guide's reading cell. Its opening tag is read exactly
+       by the tests that pin the "est." mark beside a reading, so it
+       carries no attribute of its own: it is the cell straight after the
+       admitted-from one, which is the only data-st="sub" in that table,
+       and the distance always follows it on the line. */
+    table[data-stack].school-table td[data-st="sub"] + td:not([class]) {
+        flex: 0 1 auto;
+        order: -3;
+        padding-top: 0;
+        font-size: var(--text-base);
+    }
+    /* The separator trails each item that another follows, so a line that
+       wraps ends on it rather than opening the next line with it. Items
+       at the same order keep their column order, so "another follows" is
+       a later answer cell. Without :has() the gap alone divides them. */
+    table[data-stack] td[data-st="lead"]:has(~ td[data-st="answer"])::after,
+    table[data-stack] td[data-st="answer"]:has(~ td[data-st="answer"])::after,
+    table[data-stack].school-table td[data-st="sub"] + td:not([class])::after {
+        content: var(--st-sep);
+        white-space: pre;
+        font-weight: var(--weight-normal);
+        color: var(--ink-faint);
+    }
+    /* A year under a figure is a line of its own in a column; beside a
+       label it stays with its figure. */
+    table[data-stack] td[data-label] .school-table-type { display: inline; margin-left: 0.25rem; }
+    table[data-stack] td[data-st="sub"] { order: -1; }
+    table[data-stack] td[data-st="half"] { flex-basis: calc(50% - 0.15em); }
+    table[data-stack] td[data-st="half"]::before { min-width: 0; }
+    table[data-stack] td[data-st="skip"] { display: none; }
 }
 
 /* Notices */
@@ -4556,7 +4736,10 @@ a.report-preview-link:hover .report-preview-open {
     align-items: flex-start;
     gap: 3rem;
     width: max-content;
-    animation: sources-scroll 45s linear infinite;
+    /* 45s for the thirteen typed sources until 18 Sep 2026; the list is
+       now OFFICIAL_SOURCES in main.py, and the homepage sets --sources-n
+       to its length so each name passes at the same pace. */
+    animation: sources-scroll calc(var(--sources-n, 13) * 3.5s) linear infinite;
 }
 
 /* A keyboard user tabbing through the links, or anyone hovering to
@@ -5748,7 +5931,17 @@ main:focus { outline: none; }
 .myprops-opened-row button { padding: 0.3rem 0.9rem; font-size: var(--text-sm); }
 
 /* ---- Buyer questions ---- */
-.buyer-questions { margin-top: 3rem; }
+/* Under the attention banner since 18 Sep 2026 (first-visitor audit item
+   D4), in the top's rhythm rather than the 3rem that set it apart at the
+   foot of the report. The count line, the fold for the three asked on
+   every purchase and the checklist line are that change's. */
+.buyer-questions { margin-top: 1.25rem; }
+.bq-count { margin: 0.75rem 0 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.bq-every { margin-top: 1.5rem; }
+.bq-every > summary { cursor: pointer; font-size: var(--text-sm); font-weight: var(--weight-semi); color: var(--accent); }
+.bq-every[open] > summary { margin-bottom: 1rem; }
+.bq-foot { margin: 1.5rem 0 0; }
+.buyer-questions .bq-locked { margin: 1.5rem 0 0; }
 .bq-group { margin-top: 1.75rem; }
 .bq-audience {
     font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.06em;
@@ -6152,6 +6345,24 @@ main:focus { outline: none; }
     width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0;
     transform: rotate(45deg);
 }
+
+/* The wait's ending (18 Sep 2026, first-visitor audit D5): the sources
+   still out after 30 seconds, a way to try again and a way out after a
+   minute, and a plain stop at five. Words and one button, shown without
+   motion in every case, so the dial stays the page's one moving object. */
+.building-overtime { margin: 1.5rem 0 0; }
+.building-waiting { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--ink-soft); }
+.building-help { margin: 1rem 0 0; padding: 1rem 0 0; border-top: 1px solid var(--border); }
+.building-help-text { margin: 0 0 0.75rem; font-size: var(--text-sm); line-height: 1.5; color: var(--ink); }
+.building-help-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+.building-retry {
+    padding: 0.6rem 1.2rem; border: 0; border-radius: var(--radius-sm);
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+    font: inherit; font-size: var(--text-sm); font-weight: var(--weight-semi);
+}
+.building-retry:hover { background: var(--accent-hover); }
+.building-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.building-guide { font-size: var(--text-sm); color: var(--accent); }
 
 /* ---- Map layer control ---- */
 .leaflet-control-layers { border-radius: var(--radius-sm) !important; border: 1px solid var(--border) !important; box-shadow: 0 8px 24px -12px rgba(31,42,90,0.3) !important; }
@@ -6968,6 +7179,39 @@ body.theme-dark .map-district-label-g {
 .comp-range button[aria-pressed="true"]:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .comp-range-count { margin-left: auto; font-size: var(--text-sm); color: var(--ink-soft); }
 
+/* Show 25 more, on the comparables page (18 Sep 2026, audit item D2).
+   Only a phone pages the list: the script marks rows past the limit and
+   unhides the bar, and a wider screen ignores both, so the desktop table
+   still lists every sale. */
+.comp-more { display: none; }
+@media (max-width: 600px) {
+    #comparables-table tr.comp-beyond { display: none; }
+    .comp-more:not([hidden]) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        margin: 0.9rem 0 0;
+    }
+    .comp-more .comp-more-btn,
+    .comp-more .comp-more-btn:hover,
+    .comp-more .comp-more-btn:active {
+        flex: 1 1 12rem;
+        padding: 0.7rem 1rem;
+        background: var(--surface);
+        color: var(--accent);
+        border: 1px solid var(--border-strong);
+        border-radius: var(--radius-sm);
+        box-shadow: none;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: var(--weight-semi);
+        cursor: pointer;
+    }
+    .comp-more .comp-more-btn:hover { border-color: var(--accent); }
+    .comp-more-count { font-size: var(--text-sm); color: var(--ink-soft); }
+}
+
 /* Two districts side by side on an area guide (16 Sep 2026). */
 .compare-table th[scope="row"] { font-weight: var(--weight-medium); }
 .compare-table td, .compare-table th { vertical-align: top; }
@@ -7088,6 +7332,16 @@ body.theme-dark .map-district-label-g {
    value that clears 4.5:1 on its own background. */
 .num-up { color: var(--good); }
 .num-down { color: var(--bad); }
+
+/* The market report's line under a move of more than ten per cent (18
+   Sep 2026): read as part of the row above it, so that row loses its
+   rule and the line sits close under it, smaller and quieter. */
+.tx-table tr:has(+ tr.market-swing) td { border-bottom: 0; }
+.tx-table tr.market-swing td {
+    padding-top: 0;
+    font-size: var(--text-xs);
+    color: var(--ink-soft);
+}
 
 /* ========================================================================
    THE LANDING PAGE  (lx-*)

@@ -240,17 +240,22 @@
     {% endif %}
     {% if named_schools %}
     {# A count is the same sentence on every district in the city. The
-       names are what a parent is actually searching for. #}
-    <table class="tx-table">
+       names are what a parent is actually searching for. data-stack (18
+       Sep 2026): below 600px each row stacks as the school, then its
+       stage, grade and distance on one line, then what it admitted from;
+       at 375px the distance and admitted-from columns were off screen.
+       Where no stage is recorded the grade leads the line instead, and a
+       missing distance is left out rather than shown as a gap. #}
+    <table class="tx-table" data-stack>
         <thead><tr><th>Nearest well-rated schools</th><th>Stage</th><th>Ofsted</th><th class="num">Distance</th><th class="num">Admitted from</th></tr></thead>
         <tbody>
             {% for s in named_schools %}
             <tr>
-                <td>{% if s.slug %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
-                <td>{{ s.phase or "" }}</td>
-                <td>{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
-                <td class="num">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} mi{% endif %}</td>
-                <td class="num">{% if s.admitted_miles %}{{ s.admitted_miles }} mi{% if s.admitted_year %} <span class="school-table-type">{{ s.admitted_year }}</span>{% endif %}{% else %}<span class="ofsted-none">no figure</span>{% endif %}</td>
+                <td data-st="title">{% if s.slug %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}</td>
+                <td data-st="{{ 'lead' if s.phase else 'skip' }}">{{ s.phase or "" }}</td>
+                <td data-st="{{ 'answer' if s.phase else 'lead' }}">{% if s.rating and s.rating_code %}<span class="ofsted-badge ofsted-{{ s.rating_code }}">{{ s.rating }}</span>{% elif s.rating %}{{ s.rating }}{% else %}<span class="ofsted-none">Not rated</span>{% endif %}</td>
+                <td class="num" data-st="{{ 'answer' if s.distance_m is not none else 'skip' }}">{% if s.distance_m is not none %}{{ (s.distance_m / 1609.34) | round(1) }} mi<span class="st-only"> away</span>{% endif %}</td>
+                <td class="num" data-label="Admitted from">{% if s.admitted_miles %}{{ s.admitted_miles }} mi{% if s.admitted_year %} <span class="school-table-type">{{ s.admitted_year }}</span>{% endif %}{% else %}<span class="ofsted-none">no figure</span>{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -259,15 +264,17 @@
     {% if admission_schools_here %}
     <h3>Schools in {{ outcode }} with a published admission distance</h3>
     <p class="section-sub">How far away the last child offered a place lived, as the council published it. Tightest first; each name opens the school's page and its postcode checker.</p>
-    <table class="tx-table">
+    {# Stacked on a phone the same way as the admissions hub (18 Sep
+       2026): the school, then "0.59 mi, 2023/24", then its stage. #}
+    <table class="tx-table" data-stack="comma">
         <thead><tr><th>School</th><th>Stage</th><th class="num">Admitted from</th><th>Round</th></tr></thead>
         <tbody>
             {% for s in admission_schools_here %}
             <tr>
-                <td><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a></td>
-                <td>{{ s.phase }}</td>
-                <td class="num">{{ s.miles }} mi</td>
-                <td>{{ s.academic_year }}</td>
+                <td data-st="title"><a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a></td>
+                <td data-label="Stage">{{ s.phase }}</td>
+                <td class="num" data-st="lead">{{ s.miles }} mi</td>
+                <td data-st="answer">{{ s.academic_year }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -446,7 +453,7 @@
     <p>
         The best-served stop within {{ bus.radius_m }} m of the centre of {{ outcode }} is <strong>{{ best.name }}</strong>:
         <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
-        and {{ best.sunday_day_per_hour }} on Sunday daytime; first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.
+        and {{ best.sunday_day_per_hour }} on Sunday daytime{% set hours = bus_hours(best.weekday_first, best.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}.
         {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
         {{ bus.count }} stop{{ 's' if bus.count != 1 }} with a scheduled service within that distance.
     </p>

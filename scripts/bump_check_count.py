@@ -67,7 +67,10 @@ def main(argv: list[str]) -> int:
         (INDEX, f"/ {old} checks</p>", f"/ {new} checks</p>"),
         (INDEX, f"All <strong>{old} checks</strong>", f"All <strong>{new} checks</strong>"),
         (INDEX, f"{WORDS[old].capitalize()} checks on any UK address", f"{WORDS[new].capitalize()} checks on any UK address"),
-        (INDEX, f"{old} checks &middot; 13 official sources", f"{new} checks &middot; 13 official sources"),
+        # The source count beside it is the length of OFFICIAL_SOURCES in
+        # main.py since 18 Sep 2026, so only the check count moves here.
+        (INDEX, f"{old} checks &middot; {{{{ official_sources | length }}}} official sources",
+         f"{new} checks &middot; {{{{ official_sources | length }}}} official sources"),
         # The orbit heading, its "all forty-four." and the pricing link's
         # "full list of 44" left the landing page with the orbit on 17 Sep
         # 2026; the link now reads CHECK_COUNT, moved below.
@@ -76,7 +79,7 @@ def main(argv: list[str]) -> int:
         # council tax pages and the report wall's "By hand, these N
         # checks are 28 websites", none of which this script reached.
         (ROOT / "app" / "templates" / "area_guide.html", f"Run the {old} checks", f"Run the {new} checks"),
-        (ROOT / "app" / "templates" / "running_costs.html", f"its {WORDS[old]} other checks", f"its {WORDS[new]} other checks"),
+        (ROOT / "app" / "templates" / "running_costs.html", f"the rest of its {WORDS[old]} checks", f"the rest of its {WORDS[new]} checks"),
         # The hero pillar strip reads this constant. It was a literal in
         # main.py until 12 Sep 2026 and so was never moved by this script:
         # the live homepage said 40 checks in the strip and 44 in the trust

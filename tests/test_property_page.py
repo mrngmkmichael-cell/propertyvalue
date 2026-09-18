@@ -82,7 +82,7 @@ def test_highlights_strip_shows_real_unlocked_facts(client, fake_report):
     assert 2 <= len(values) <= 4
     assert "79%" in values          # schools
     assert "+4.1%" in values        # area prices
-    assert "Lower" in values        # crime comparison: 2 lower vs 1 higher
+    assert "Lower" in values        # crime: 120 against the area's 150 (18 Sep 2026: totals, not categories)
 
 
 def test_highlights_never_leak_locked_values(client, fake_report):
@@ -666,7 +666,12 @@ def test_the_wait_page_draws_the_sources_not_the_district(client, fake_report):
     assert r.status_code == 202
     body = r.text
     assert "M14 at a glance" not in body
-    assert "250,000" not in body and "Flood zone 1" not in body and 'href="/area/M14"' not in body
+    assert "250,000" not in body and "Flood zone 1" not in body
+    # The guide is linked once, as the way out offered after a minute's
+    # wait and hidden until then (18 Sep 2026, first-visitor audit D5),
+    # never as the box's footer.
+    assert body.count('href="/area/M14"') == 1
+    assert re.search(r'<div class="building-help" id="building-help"[^>]*hidden>.*?href="/area/M14"', body, re.S)
 
     expected = [html.escape(s) for s in app_main.GATHER_SOURCE_ORDER]
     assert re.findall(r'<rect class="dial-mark" data-source="([^"]+)"', body) == expected
@@ -886,7 +891,9 @@ def test_the_council_tax_card_carries_the_councils_finances(client, fake_report)
     fake_report(location=loc)
     body = client.get("/property?postcode=CR0%201AA").text
     assert "Exceptional Financial Support" in body and "Section 114 notices" in body
-    assert "Council under exceptional financial support or a section 114 notice" in body  # free card: the flag shows
+    # Free card: the flag shows, in plain words since 18 Sep 2026 (D3 in
+    # test_audit_fixes_17sep.py). Croydon's support for this year is current.
+    assert "Croydon council needed exceptional government support for " in body
 
 
 def test_since_2011_card_names_the_biggest_mover(client, fake_report):

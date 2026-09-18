@@ -1137,7 +1137,9 @@ def test_fix_counts_on_alternatives_sign_up_and_council_tax_come_from_the_consta
 
     compare = _flat(html.unescape(client.get("/alternatives").text))
     assert f"One full Premium report free on sign-up; {free} of {total} checks free on every address" in compare
-    assert f"One report per address: {total} checks from official sources" in compare
+    # Worded apart from OpenStreetMap since the batch D review (D6).
+    assert (f"One report per address: {total} checks from {len(app_main.OFFICIAL_SOURCES)} official bodies, "
+            "with OpenStreetMap for what is nearby") in compare
     assert f"The free report shows {free} checks on any UK address with no account." in compare
     assert f"UKPropertyInsight shows {free} of its {total} checks free on any address" in compare
 
@@ -1571,7 +1573,9 @@ B3_FINDINGS = dict(
 # on the page. Written as the page writes them.
 B3_ANSWERS = (
     "412,345", "401,111", "Estimate (median)", "5,111",          # Valuation Estimate
-    "17.3", "247,777", "255,555",                                # Price Trend & Forecast
+    # The projection's "255,555" left this list on 18 Sep 2026 with the
+    # projection itself (D3 below): nobody is shown it now, paid or not.
+    "17.3", "247,777",                                           # Price Trend
     "2 Mar 2011", "87 m", "Locked Lane",                         # Extended or Modified (day_label since 18 Sep 2026), Aspect
     "South-west", "Locked Outfall", "312.4",                     # Aspect, Sewage Discharge
     "Probable by 2030", "34.9", "3.49",                          # Subsidence Risk, Air Quality
@@ -1588,7 +1592,7 @@ B3_ANSWERS = (
 # which pop-up has to stay shut.
 B3_MODALS = {
     "Valuation Estimate": "modal-valuation",
-    "Price Trend & Forecast": "modal-price-trend",
+    "Price Trend": "modal-price-trend",   # "& Forecast" until D3, 18 Sep 2026
     "Extended or Modified": "modal-extension",
     "Aspect": "modal-orientation",
     "Sewage Discharge": "modal-sewage",
@@ -1815,9 +1819,13 @@ def test_b3_the_questions_teaser_names_no_locked_finding(client, fake_report, mo
 
     # The teaser still does its job, from the flood question a free check
     # raised: a real question in full, and where the rest came from.
+    # 18 Sep 2026 (D4): every question a free card raised is now shown in
+    # full, so both flood questions are here, where the teaser showed one
+    # and listed the other's trigger after "The others come from:".
     assert "questions</strong> were generated for this property." in teaser
     assert "Has the property ever flooded" in teaser
-    assert "The others come from: Flood: Zone 3 (high probability)." in teaser
+    assert "Order a flood risk report and check the insurer will offer cover under Flood Re." in teaser
+    assert "The others come from:" not in teaser
     # And it names none of the five findings behind the lock.
     for trigger in B3_LOCKED_TRIGGERS:
         assert trigger not in teaser, f"the teaser still names {trigger!r}"
@@ -3117,3 +3125,2647 @@ def test_c2_premium_types_no_price_the_plans_already_hold():
         assert typed not in template, f"premium.html types {typed} out by hand"
     lede = template.split('<p class="premium-lede">', 1)[1].split("</p>", 1)[0]
     assert lede.index("{{ plan_prices.quarterly }}") < lede.index("{{ plan_prices.monthly }}")
+
+
+# ---- D1. A search without a house number describes the postcode ---------
+# KT3 4HX searched without a house number read as one house stitched from
+# two: "Semi-detached house · 122 m²" and "£1,867 a year energy" were 57
+# Malden Hill Gardens' newest certificate, "£823,500 last sold here" and
+# "Freehold" were 55's sale, and the locked valuation divided one by the
+# other. The report now offers every home it holds for the postcode under
+# the heading ("Which home is yours?"), names the home the certificate
+# line describes, gives the postcode's own energy range and tenure split
+# from the running-costs page's helpers, keeps "last sold here" for a
+# chosen home, and leaves the per square metre line out until one is
+# chosen. With a house number the report is as it was.
+
+D1_CERTS = [
+    {"address": "57, Malden Hill Gardens, New Malden", "rating": "D", "date": "2025-11-04", "certificate_number": "D1-57"},
+    {"address": "59 Malden Hill Gardens, New Malden", "rating": "C", "date": "2019-03-12", "certificate_number": "D1-59"},
+]
+D1_SALE_55 = {"address": "55 MALDEN HILL GARDENS", "street": "MALDEN HILL GARDENS", "town": "NEW MALDEN",
+              "amount": "823500", "date": "2025-06-20", "tenure": "Freehold"}
+D1_DETAIL_57 = {
+    "dwelling_type": "Semi-detached house", "total_floor_area": 122, "habitable_room_count": 6,
+    "year_built": "1900–1929", "current_score": 58, "potential_score": 79, "current_band": "D",
+    "potential_band": "C", "inspection_date": "2025-11-04", "valid_until": "2035-11-04",
+    "heating_cost_current": 1500, "lighting_cost_current": 120, "hot_water_cost_current": 247,
+    "heating_cost_potential": None, "lighting_cost_potential": None, "hot_water_cost_potential": None,
+}
+
+
+def _d1_gather(**overrides):
+    from tests.conftest import fake_gather
+    base = {"certificates": D1_CERTS, "transactions": [D1_SALE_55], "property_detail": D1_DETAIL_57,
+            "council_tax": {"authority": "Kingston upon Thames", "year": "2026-27", "band_d": 2412.0, "bands": {"D": 2412.0}}}
+    base.update(overrides)
+    return fake_gather(**base)
+
+
+def _d1_report(client, fake_report, house_number="", **overrides):
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"), gather=_d1_gather(**overrides))
+    url = "/property?postcode=KT3+4HX" + (f"&house_number={house_number}" if house_number else "")
+    r = client.get(url)
+    assert r.status_code == 200
+    return r.text
+
+
+def _d1_row(body):
+    assert 'class="which-home"' in body, "no Which home row"
+    return body.split('class="which-home"', 1)[1].split("</nav>", 1)[0]
+
+
+def _d1_links(row):
+    """(href, full address, what the link shows) for each home in the row."""
+    # nofollow since the batch D review: each link costs a full gather.
+    found = re.findall(r'<a class="which-home-link" href="([^"]+)"(?: aria-label="([^"]+)")? rel="nofollow">([^<]+)</a>', row)
+    assert len(found) == row.count('class="which-home-link"'), "a link without rel=nofollow"
+    return [(href, full or shown, shown) for href, full, shown in found]
+
+
+def _d1_costs(body):
+    return " ".join(body.split('id="running-costs"', 1)[1].split("</div>", 1)[0].split())
+
+
+def _d1_highlights(body):
+    strip = body.split("What stands out", 1)[1].split("report-cards-hint", 1)[0]
+    return re.findall(r'<span class="highlight-value">(.*?)</span>\s*<span class="highlight-label">(.*?)</span>', strip)
+
+
+def test_d1_a_postcode_only_report_offers_each_home_it_holds_and_says_no_last_sold_here(client, fake_report):
+    body = _d1_report(client, fake_report)
+    row = _d1_row(body)
+    assert "Which home is yours?" in row and "covers every home at KT3 4HX" in row
+    links = _d1_links(row)
+    # Two certificates and a sale at a third home, in number order, each
+    # opening the same report on that home alone. The street is named
+    # once, and each number carries its whole address.
+    assert [full for _, full, _ in links] == ["55 Malden Hill Gardens", "57 Malden Hill Gardens", "59 Malden Hill Gardens"]
+    assert [shown for _, _, shown in links] == ["55", "57", "59"]
+    assert row.count('<p class="which-home-street">Malden Hill Gardens</p>') == 1
+    # The number alone, since "57" opens exactly the records the whole
+    # address opens (batch D review): an unlock kept against a typed "57"
+    # is the same report through the row.
+    assert links[1][0] == "/property?postcode=KT3%204HX&amp;house_number=57"
+    assert "EPC Register and HM Land Registry" in row
+    # Directly under the postcode, before the score and the cost line.
+    assert body.index("<h1>KT3 4HX</h1>") < body.index('class="which-home"') < body.index('id="running-costs"')
+
+    assert "last sold here" not in body
+    highlights = _d1_highlights(body)
+    assert ("£823,500", "the one recorded sale here, 2025") in highlights
+    # The property line names the home it describes.
+    assert "Newest certificate here: 57 Malden Hill Gardens, semi-detached house, 122 m², 6 habitable rooms, built 1900–1929" in body
+    assert "One home's certificate from the EPC Register, not a description of every home at KT3 4HX." in body
+    assert "may not exactly match a specific unit" not in body
+    # Too few estimates for a range: the bill is named for its home, and
+    # the tenure is the postcode's, not "at the last recorded sale".
+    costs = _d1_costs(body)
+    assert "&pound;1,867</strong> a year energy at 57 Malden Hill Gardens, the EPC's estimate on the newest certificate here" in costs
+    assert "<strong>Freehold</strong> at the one recorded sale here" in costs
+    assert "at the last recorded sale" not in costs
+    # The house number filter below the map is still there.
+    assert 'id="address-filter"' in body
+
+
+def test_d1_with_a_house_number_the_row_goes_and_last_sold_here_returns(client, fake_report):
+    body = _d1_report(client, fake_report, house_number="55+Malden+Hill+Gardens")
+    assert 'class="which-home"' not in body and "Which home is yours?" not in body
+    assert ("£823,500", "last sold here, 2025") in _d1_highlights(body)
+    costs = _d1_costs(body)
+    assert "&pound;1,867</strong> a year energy, the EPC's estimate" in costs
+    assert "<strong>Freehold</strong> at the last recorded sale (2025)" in costs
+    assert "Newest certificate here" not in body
+    assert "Based on the most recent EPC certificate for this postcode, so it may not exactly match a specific unit." in body
+    assert 'id="address-filter"' in body and 'value="55 Malden Hill Gardens"' in body
+
+
+def test_d1_the_cost_line_and_the_highlight_give_the_postcodes_own_figures(client, fake_report):
+    sales = [dict(D1_SALE_55, address=f"{n} MALDEN HILL GARDENS", amount=str(400000 + n * 1000),
+                  date=f"{2025 - i}-05-01", tenure="Freehold" if i % 2 else "Leasehold")
+             for i, n in enumerate(range(1, 30))]
+    energy = {"certificates": 12, "priced": 8, "low": 462, "high": 2192, "median": 974,
+              "median_potential": 700, "bands": "C x3, D x5"}
+    body = _d1_report(client, fake_report, transactions=sales, postcode_energy=energy)
+    costs = _d1_costs(body)
+    assert "£974</strong> a year energy, the middle of 8 homes' EPC estimates here, from £462 to £2,192" in costs
+    assert "<strong>15 leasehold, 14 freehold</strong> of 29 recorded sales here" in costs
+    assert "1,867" not in costs
+    # The middle of the last ten priced sales (2016 to 2025), and how many
+    # the postcode has, in place of one home's last sale.
+    middle = sorted(400000 + n * 1000 for n in range(1, 11))[5]
+    assert (f"£{middle:,}", "middle of the last 10 of 29 recorded sales here, 2016 to 2025") in _d1_highlights(body)
+    assert "last sold here" not in body
+    # 29 homes from the sales, two more from the certificates: 24 show and
+    # the other seven open from "and 7 more".
+    row = _d1_row(body)
+    first, more = row.split('<details class="which-home-more">', 1)
+    assert len(re.findall(r'class="which-home-link"', first)) == app_main.WHICH_HOME_SHOWN == 24
+    assert "<summary>and 7 more</summary>" in more and len(re.findall(r'class="which-home-link"', more)) == 7
+
+
+def test_d1_one_home_in_both_sources_is_one_link_and_every_link_fits_the_column():
+    certs = [{"address": "Flat 2, 12 High Street, Oldtown", "certificate_number": "A"},
+             {"address": "ROSE COTTAGE, CHURCH LANE", "certificate_number": "B"},
+             {"address": "10, High Street", "certificate_number": "C"}]
+    sales = [{"address": "FLAT 2 12 HIGH STREET", "street": "HIGH STREET"},
+             {"address": "9 HIGH STREET", "street": "HIGH STREET"},
+             {"address": "FLAT 14 THE VERY LONG NAMED BUILDING 120 HIGH STREET", "street": "HIGH STREET"},
+             {"address": "Address not available"}]
+    homes = app_main._postcode_homes(certs, sales)
+    # Street by street in number order; the named house whose street has
+    # no sale keeps the register's whole address, in ordinary case.
+    assert [h["label"] for h in homes] == [
+        "9 High Street", "10 High Street", "Flat 2, 12 High Street",
+        "Flat 14 The Very Long Named Building 120 High Street", "Rose Cottage, Church Lane"]
+    assert [(h["street"], h["short"]) for h in homes] == [
+        ("High Street", "9"), ("High Street", "10"), ("High Street", "Flat 2, 12"),
+        ("High Street", "Flat 14 The Very Long Named Building 120"), ("", "Rose Cottage, Church Lane")]
+    assert all(len(h["house_number"]) <= app_main.HOUSE_NUMBER_MAX_LEN for h in homes)
+    long_one = homes[3]["house_number"]
+    assert long_one == "Flat 14 The Very Long Named"
+    # A cut label still opens its own home, and only that one.
+    assert app_main._filter_by_address(sales, long_one) == [sales[2]]
+    # Two dozen shown, street by street, and the rest behind "and N more".
+    many = [{"address": f"{n} HIGH STREET", "street": "HIGH STREET"} for n in range(1, 31)]
+    sections = app_main._which_home_sections(app_main._postcode_homes(certs, many))
+    # 1 to 30 High Street, Flat 2 at 12 and Rose Cottage: 32 homes.
+    assert [(s["more"], s["count"]) for s in sections] == [(False, 24), (True, 8)]
+    assert [g["street"] for g in sections[1]["groups"]] == ["High Street", ""]
+
+
+def test_d1_the_house_number_filter_finds_the_home_asked_for_and_not_its_neighbours():
+    records = [{"address": a} for a in (
+        "5 MALDEN HILL GARDENS", "55 MALDEN HILL GARDENS", "15 MALDEN HILL GARDENS",
+        "FLAT 2 5 MALDEN HILL GARDENS", "5A MALDEN HILL GARDENS", "50 MALDEN HILL GARDENS")]
+    pick = lambda q: [r["address"] for r in app_main._filter_by_address(records, q)]  # noqa: E731
+    # 18 Sep 2026, item D7: where a plain 5 is recorded, "5" is that home
+    # and not also 5A; "5" still finds 5A where no plain 5 is recorded.
+    assert pick("5") == ["5 MALDEN HILL GARDENS"]
+    assert pick("5A") == ["5A MALDEN HILL GARDENS"]
+    assert pick("5 Malden Hill Gardens") == ["5 MALDEN HILL GARDENS"]
+    assert pick("Flat 2, 5 Malden") == ["FLAT 2 5 MALDEN HILL GARDENS"]
+    assert len(pick("Malden Hill")) == 6 and len(pick("   ")) == 6
+    # The EPC Register's commas do not keep a home from its own sale.
+    assert app_main._filter_by_address([{"address": "Flat 2, 12 High Street"}], "FLAT 2 12 HIGH STREET")
+    # Where no address starts with the number, it still finds its flats.
+    flats = [{"address": "Flat 1, 37 Avalon Road"}, {"address": "Flat 2, 37 Avalon Road"}, {"address": "137 Avalon Road"}]
+    assert [r["address"] for r in app_main._filter_by_address(flats, "37")] == ["Flat 1, 37 Avalon Road", "Flat 2, 37 Avalon Road"]
+
+
+def test_d1_the_per_square_metre_line_waits_for_a_house_number():
+    """55's price over 57's floor area was the locked valuation's "This
+    home last sold at £X per m²". Without a house number it is not made."""
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+    comparables = [{"address": f"{n} Near Road", "date": recent, "amount": str(500000 + n * 10000), "floor_area": 100 + n}
+                   for n in range(1, 6)]
+    sale = dict(D1_SALE_55, date=recent)
+    postcode_only = {"transactions": [sale]}
+    app_main._apply_valuation(postcode_only, comparables, 122, 2.0, "")
+    assert postcode_only["price_per_sqm"]["subject"] is None
+    assert postcode_only["price_per_sqm"]["median"]            # the local rate stays
+    chosen = {"transactions": [sale]}
+    app_main._apply_valuation(chosen, comparables, 122, 2.0, "55 Malden Hill Gardens")
+    assert chosen["price_per_sqm"]["subject"]["amount"] == 823500.0
+
+
+def test_d1_the_valuation_endpoint_passes_the_house_number_on(client, fake_report, monkeypatch):
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+
+    async def _comparables(_lat, _lon):
+        return [{"address": f"{n} Near Road", "date": recent, "amount": "600000", "floor_area": 110 + n} for n in range(4)]
+
+    seen = []
+    real = app_main._apply_valuation
+
+    def _spy(context, comparables, floor_area, growth, house_number=""):
+        real(context, comparables, floor_area, growth, house_number)
+        seen.append((house_number, bool((context.get("price_per_sqm") or {}).get("subject"))))
+
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"),
+                gather=_d1_gather(transactions=[dict(D1_SALE_55, date=recent)]))
+    monkeypatch.setattr(app_main, "_comparables_fetch", _comparables)
+    monkeypatch.setattr(app_main, "_apply_valuation", _spy)
+    assert client.get("/api/property/valuation?postcode=KT3+4HX").status_code == 200
+    assert client.get("/api/property/valuation?postcode=KT3+4HX&house_number=55").status_code == 200
+    assert seen == [("", False), ("55", True)]
+
+
+def test_d1_the_gather_reads_the_postcodes_energy_once_per_home_and_only_without_a_number(monkeypatch):
+    certs = [{"address": "57, Malden Hill Gardens", "rating": "D", "date": "2025-11-04", "certificate_number": "N57"},
+             {"address": "57, Malden Hill Gardens", "rating": "E", "date": "2015-01-01", "certificate_number": "O57"},
+             {"address": "59 Malden Hill Gardens", "rating": "C", "date": "2019-03-12", "certificate_number": "N59"},
+             {"address": "61 Malden Hill Gardens", "rating": "C", "date": "2018-03-12", "certificate_number": "N61"}]
+    bills = {"N57": 1867, "O57": 2500, "N59": 974, "N61": 462}
+    calls = []
+
+    async def _certs(_pc):
+        return [dict(c) for c in certs]
+
+    async def _detail(number):
+        calls.append(number)
+        return {**D1_DETAIL_57, "heating_cost_current": bills[number], "lighting_cost_current": 0,
+                "hot_water_cost_current": 0, "current_band": "C"}
+
+    monkeypatch.setattr(app_main.epc, "certificates_for_postcode", _certs)
+    monkeypatch.setattr(app_main.epc, "certificate_detail", _detail)
+
+    found, detail, _, energy = asyncio.run(app_main._epc_flow("KT3 4HX", "", True, postcode_energy=True))
+    assert len(found) == 4 and detail["heating_cost_current"] == 1867
+    # One call per home, the newest certificate's among them, never twice.
+    assert sorted(calls) == ["N57", "N59", "N61"]
+    assert energy["priced"] == 3 and energy["low"] == 462 and energy["high"] == 1867 and energy["median"] == 974
+    # The same figures the running-costs page computes from the same helper.
+    assert energy == app_main._postcode_energy_summary(certs, [asyncio.run(_detail(n)) for n in ("N57", "N59", "N61")])
+
+    calls.clear()
+    *_, energy = asyncio.run(app_main._epc_flow("KT3 4HX", "59", True, postcode_energy=True))
+    assert energy is None and calls == ["N59"]
+    calls.clear()
+    *_, energy = asyncio.run(app_main._epc_flow("KT3 4HX", "", True))
+    assert energy is None and calls == ["N57"]
+
+
+# ---- D2. On a phone the answer comes first in the tables that matter ------
+# At 375px the admissions hub cut its header to "ADMITTED F" and read 0.14
+# miles as "0", the schools guide showed School, Phase and Ofsted with the
+# reading off screen, comparables hid price, date and distance for all 300
+# rows, and the private schools and area guide tables were cut the same
+# way, each scrolling sideways inside its section with nothing to say so.
+# Below 600px a table marked data-stack now stacks each row: the name, the
+# answer line, then the rest as label and value. The desktop columns are
+# unchanged. Comparables lists 25 sales at a time on a phone, every row
+# still in the page, and its caption says the rows are nearest first. The
+# layout itself is checked by eye at 375px; these pin the markup and CSS.
+
+D2_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+def _d2_text(inner, phone):
+    """A cell's words as a phone or a desktop reads them: the .st-only
+    words are shown only in the stacked row."""
+    if not phone:
+        inner = re.sub(r'<span class="st-only">.*?</span>', "", inner, flags=re.S)
+    return " ".join(re.sub(r"<[^>]+>", "", inner).split())
+
+
+def _d2_cells(row):
+    """(attributes, phone text, desktop text) for each cell of a row."""
+    return [(attrs.strip(), _d2_text(inner, True), _d2_text(inner, False))
+            for attrs, inner in re.findall(r"<td([^>]*)>(.*?)</td>", row, re.S)]
+
+
+def _d2_roles(cells):
+    """Each cell's part in the stacked row: its data-st, else its
+    data-label, else "" for a cell with neither."""
+    return [(re.search(r'data-(?:st|label)="([^"]+)"', attrs) or [None, ""])[1] for attrs, _, _ in cells]
+
+
+def _d2_row(body, name):
+    return next(r for r in re.findall(r"<tr[^>]*>(.*?)</tr>", body, re.S) if name in r and "<td" in r)
+
+
+def _d2_first_line(cells, sep):
+    """The stacked answer line: the lead cell, then each answer cell."""
+    lead = [phone for attrs, phone, _ in cells if 'data-st="lead"' in attrs]
+    answers = [phone for attrs, phone, _ in cells if 'data-st="answer"' in attrs]
+    assert len(lead) == 1, cells
+    return sep.join(lead + answers)
+
+
+def _d2_comparables(client, monkeypatch, count=30):
+    from tests.test_ai_search_readiness import _forget_html
+
+    async def _lookup(_postcode):
+        return fake_location()
+
+    async def _nearby(lat, lon, **kwargs):
+        return [{"postcode": "M14 5TG", "distance_m": 0, "latitude": 53.45, "longitude": -2.22},
+                {"postcode": "M14 5TH", "distance_m": 400, "latitude": 53.452, "longitude": -2.221}]
+
+    async def _sold(postcodes):
+        # Newest first across both postcodes, as the Land Registry query
+        # returns them; the route then sorts by distance.
+        return [{"address": f"{i + 1} Stack Street", "postcode": "M14 5TH" if i % 2 == 0 else "M14 5TG",
+                 "amount": str(200000 + i * 1000), "date": f"{2025 - i // 12}-{12 - i % 12:02d}-01",
+                 "property_type": "flat", "tenure": "Leasehold"} for i in range(count)]
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    _forget_html()
+    r = client.get("/property/comparables?postcode=M14%205TG")
+    assert r.status_code == 200
+    return r.text.replace("\r\n", "\n")
+
+
+def test_d2_each_answer_table_carries_its_phone_markup():
+    templates = D2_ROOT / "app" / "templates"
+    for name, table, marks in (
+        ("schools_admissions_council.html", '<table class="tx-table school-table" data-stack="comma">',
+         ('data-st="title"', 'data-st="lead"', 'data-st="answer"', 'data-label="Ofsted"', 'data-label="How full"')),
+        ("schools_guide.html", 'id="school-table-{{ area_idx }}" data-stack>',
+         ('data-st="title"', 'data-label="Phase"', 'data-label="Ofsted"', 'data-st="sub" data-label="Admitted from"',
+          'data-label="Results"', '<span class="st-only"> away</span>')),
+        ("comparables.html", '<table class="tx-table" id="comparables-table" data-stack>',
+         ('data-st="sub"', 'data-st="skip"', 'data-label="Type"', 'data-label="Tenure"', 'data-st="lead"',
+          'data-st="answer"')),
+        ("area_guide.html", '<table class="tx-table" data-stack>',
+         ('data-st="title"', 'data-label="Admitted from"', 'data-label="Stage"')),
+        ("schools_independent_district.html", '<table class="tx-table school-table" data-stack>',
+         ('data-st="title"', 'data-st="lead"', 'data-label="Faith"', 'data-label="On roll"',
+          '<span class="st-only"> full</span>')),
+    ):
+        source = (templates / name).read_text(encoding="utf-8")
+        assert table in source, name
+        for mark in marks:
+            assert mark in source, f"{name} lacks {mark}"
+    # The area guide's second school table stacks the way the hub does.
+    assert '<table class="tx-table" data-stack="comma">' in (templates / "area_guide.html").read_text(encoding="utf-8")
+
+
+def test_d2_comparables_lead_each_sale_with_price_date_and_distance_nearest_first(client, monkeypatch):
+    body = _d2_comparables(client, monkeypatch)
+    table = body.split('<table class="tx-table" id="comparables-table" data-stack>', 1)[1].split("</table>", 1)[0]
+    rows = re.findall(r"<tr data-date=\"[^\"]+\">(.*?)</tr>", table, re.S)
+    assert len(rows) == 30, "every sale is in the page, with or without JavaScript"
+    # Nothing is hidden or paged by the server: only the script marks rows.
+    assert "comp-beyond" not in table and not re.search(r"<tr[^>]*\shidden", table)
+
+    first = _d2_cells(rows[0])
+    assert _d2_roles(first) == ["sub", "skip", "half", "half", "lead", "answer", "answer"]
+    # The nearest postcode's newest sale leads, as the caption now says.
+    # dates read "1 Nov 2025" since the day_label filter of 18 Sep 2026
+    assert _d2_first_line(first, " · ") == "£201,000 · 1 Nov 2025 · 0 yd"
+    assert first[0][1] == "2 Stack Street, M14 5TG" and first[0][2] == "2 Stack Street"
+    assert 'data-label="Type"' in first[2][0] and 'data-label="Tenure"' in first[3][0]
+    distances = [_d2_cells(r)[6][2] for r in rows]
+    assert distances == sorted(distances, key=lambda d: d != "0 yd")
+    dates = [_d2_cells(r)[5][2] for r in rows if _d2_cells(r)[6][2] == "0 yd"]
+    # compared as dates: they read "1 Nov 2025" since 18 Sep 2026, which
+    # does not sort as text
+    import datetime
+    as_dates = [datetime.datetime.strptime(d, "%d %b %Y") for d in dates]
+    assert as_dates == sorted(as_dates, reverse=True)
+
+    caption = body.split('id="comparables"', 1)[1].split("</p>", 1)[0]
+    assert "Listed nearest first, and newest first within each postcode." in " ".join(caption.split())
+    assert "most recent first" not in body
+
+
+def test_d2_comparables_show_25_more_and_keep_the_year_filter(client, monkeypatch):
+    body = _d2_comparables(client, monkeypatch)
+    assert ('<div class="comp-more" id="comp-more" hidden>\n'
+            '                <button type="button" class="comp-more-btn" id="comp-more-btn">Show 25 more</button>') in body
+    assert "var COMP_PAGE = 25;" in body and "function compPaginate()" in body
+    # The filter hides a row first; the page limit counts only rows in range.
+    assert "if (tr.hidden) { tr.classList.remove('comp-beyond'); return; }" in body
+    assert "tr.classList.toggle('comp-beyond', inRange > compLimit);" in body
+    # A new range starts at 25 again; the maps' callback with the same
+    # range leaves what the reader opened alone. Every call re-pages.
+    apply_range = body.split("function compApplyRange(years) {", 1)[1].split("\n    }\n", 1)[0]
+    assert "if (years !== window.__compYears) compLimit = COMP_PAGE;" in apply_range
+    assert apply_range.rstrip().endswith("compPaginate();")
+    # The count names sales in the range, which a phone listing 25 no longer "shows".
+    assert "sales shown" not in body and "' sales'" in body
+    # Production renders the Google branch: the paging lives above both.
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "test-key")
+    body = _d2_comparables(client, monkeypatch)
+    assert "var COMP_PAGE = 25;" in body and 'id="comp-more"' in body
+    assert "compApplyRange(window.__compYears || 0);" in body and "marker.setMap(visible ? map : null)" in body
+
+
+def _d2_page(client, monkeypatch, path, loader, data, cache_key=None):
+    """One page rendered from data handed to its loader, so no row is
+    written to the database the other tests share."""
+    from app.services import _cache
+    from tests.test_ai_search_readiness import _forget_html
+
+    monkeypatch.setattr(app_main.schools_db, loader, lambda slug: data if slug == "stackford" else None)
+    if cache_key:
+        _cache._evict(cache_key)
+    _forget_html()
+    try:
+        r = client.get(path)
+    finally:
+        if cache_key:
+            _cache._evict(cache_key)
+        _forget_html()
+    assert r.status_code == 200
+    return r.text
+
+
+def test_d2_the_admissions_hub_reads_school_then_distance_and_round(client, monkeypatch):
+    # The Birmingham rows the audit read as 0, 1 and 2.
+    schools = [{"urn": 991820 + i, "name": name, "slug": name.lower().replace(" ", "-"), "phase": "Primary",
+                "type": "Community school", "town": "Stackford", "ofsted_rating": 2, "ofsted_rating_label": "Good",
+                "ofsted_note": None, "miles": miles, "academic_year": "2023/24", "occupancy_pct": pct}
+               for i, (name, miles, pct) in enumerate((("Elm Row Primary", 0.14, 98), ("Birch Hill Primary", 1.16, None),
+                                                        ("Cedar Lane Primary", 2.59, 87)))]
+    council = {"name": "Stackford", "slug": "stackford", "count": 3, "schools": schools,
+               "by_phase": [("Primary", schools)], "median_miles": 1.16, "tightest": schools[0],
+               "widest": schools[-1], "years": ["2023/24"], "under_a_mile": 1}
+    body = _d2_page(client, monkeypatch, "/schools/admissions/stackford", "admission_council", council,
+                    cache_key=("admission_council", "stackford"))
+    tables = re.findall(r"<table[^>]*>", body)
+    assert tables == ['<table class="tx-table school-table" data-stack="comma">']
+    lines = []
+    for name in ("Elm Row Primary", "Birch Hill Primary", "Cedar Lane Primary"):
+        cells = _d2_cells(_d2_row(body, name))
+        assert _d2_roles(cells) == ["title", "Ofsted", "lead", "answer", "How full"]
+        assert cells[0][2].startswith(name)
+        lines.append(_d2_first_line(cells, ", "))
+    assert lines == ["0.14 mi, 2023/24", "1.16 mi, 2023/24", "2.59 mi, 2023/24"]
+
+
+def test_d2_the_schools_guide_reads_school_then_its_reading_and_distance(client, monkeypatch):
+    from tests.test_ai_search_readiness import _forget_html
+    from tests.test_brainstorm_17sep import _patch_guide
+
+    # The guide's own landscape fake: Published Primary is 400 m from the
+    # point and admitted from 1.5 miles, so the reading is Likely.
+    _patch_guide(monkeypatch, {"latitude": 53.4502, "longitude": -2.2202, "label": "M14 5TX", "kind": "postcode"})
+    _forget_html()
+    body = client.get("/schools/guide?q=M14+5TX").text
+    assert 'id="school-table-0" data-stack>' in body
+    cells = _d2_cells(_d2_row(body, "Published Primary"))
+    assert _d2_roles(cells) == ["title", "Phase", "Ofsted", "answer", "sub", "", "Results"]
+    distance, admitted, reading = cells[3], cells[4], cells[5]
+    assert distance[2] == "0.2 mi" and distance[1] == "0.2 mi away", "away is a phone-only word"
+    assert 'data-label="Admitted from"' in admitted[0] and admitted[2] == "1.5 mi 2025/26"
+    # The reading cell keeps its bare tag (other tests read it exactly) and
+    # the stylesheet finds it as the cell after the admitted-from one.
+    assert reading[0] == 'data-value="1"' and reading[2] == "Likely"
+    css = (D2_ROOT / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    rule = css.split('table[data-stack].school-table td[data-st="sub"] + td:not([class]) {', 1)[1].split("}", 1)[0]
+    assert "order: -3;" in rule
+
+    # A district search has no reading, so the distance leads the line.
+    _patch_guide(monkeypatch, {"latitude": 53.4502, "longitude": -2.2202, "label": "M14", "kind": "outcode"})
+    _forget_html()
+    body = client.get("/schools/guide?q=M14").text
+    cells = _d2_cells(_d2_row(body, "Published Primary"))
+    assert _d2_roles(cells) == ["title", "Phase", "Ofsted", "lead", "sub", "Results"]
+    assert _d2_first_line(cells, " · ") == "0.2 mi away"
+
+
+def test_d2_the_private_schools_table_reads_ages_pupils_and_how_full(client, monkeypatch):
+    whitworth = {"name": "Whitworth House School", "website": "https://example.org", "town": "Stackford",
+                 "postcode": "M1 3CC", "age_low": 3, "age_high": 18, "gender": "Girls", "religious_character": "None",
+                 "number_on_roll": 300, "occupancy_pct": 75}
+    unstated = {"name": "Rowan Tutorial College", "website": "", "town": "Stackford", "postcode": "M1 3CD",
+                "age_low": None, "age_high": None, "gender": "", "religious_character": "Church of England",
+                "number_on_roll": None, "occupancy_pct": None}
+    district = {"name": "Stackford", "slug": "stackford", "count": 2, "mainstream": 2, "special": 0,
+                "single_sex": 1, "with_sixth_form": 1, "pupils": 300,
+                "groups": [("Mainstream schools", "By their registered age ranges.", [whitworth, unstated])]}
+    body = _d2_page(client, monkeypatch, "/schools/independent/stackford", "independent_district", district)
+    assert re.findall(r"<table[^>]*>", body) == ['<table class="tx-table school-table" data-stack>']
+    cells = _d2_cells(_d2_row(body, "Whitworth House School"))
+    assert _d2_roles(cells) == ["title", "lead", "answer", "Faith", "On roll", "answer"]
+    assert _d2_first_line(cells, " · ") == "Ages 3 to 18 · Girls · 75% full"
+    # A desktop reads the columns exactly as before.
+    assert [desk for _, _, desk in cells[1:]] == ["3 to 18", "Girls", "Non-faith", "300", "75%"]
+    # Where the register is silent, the stacked line says which figure is missing.
+    cells = _d2_cells(_d2_row(body, "Rowan Tutorial College"))
+    assert _d2_first_line(cells, " · ") == "Ages: Not stated · Pupils: Not stated · How full: Not reported"
+    assert [desk for _, _, desk in cells[1:]] == ["Not stated", "Not stated", "Church of England", "Not reported", "Not reported"]
+
+
+def test_d2_the_area_guides_school_tables_stack_with_the_distance_on_the_first_line(client, monkeypatch):
+    import time
+    from app.services import _cache
+    from tests.test_ai_search_readiness import AREA_PAYLOAD, _forget_html
+
+    async def _resolve(outcode):
+        return fake_location(postcode=f"{outcode} 2AA", outcode=outcode), True
+
+    monkeypatch.setattr(app_main, "_resolve_extension_location", _resolve)
+    payload = dict(AREA_PAYLOAD)
+    payload["named_schools"] = [
+        {"urn": 991811, "slug": "oak-primary", "name": "Oak Primary", "phase": "Primary", "rating": "Good",
+         "rating_code": 2, "distance_m": 482.8, "admitted_miles": 0.59, "admitted_year": "2025/26"},
+        {"urn": 991812, "slug": "", "name": "Ash Nursery", "phase": "", "rating": "Outstanding",
+         "rating_code": 1, "distance_m": 900, "admitted_miles": None, "admitted_year": None},
+    ]
+    payload["admission_schools_here"] = [
+        {"urn": 991811, "slug": "oak-primary", "name": "Oak Primary", "phase": "Primary", "miles": 0.59,
+         "academic_year": "2025/26"}]
+    key = ("area_guide", app_main.AREA_GUIDE_PAYLOAD_VERSION, "AB14")
+    _cache._put(key, time.time(), payload)
+    _forget_html()
+    try:
+        body = client.get("/area/AB14").text.replace("\r\n", "\n")
+    finally:
+        _cache._evict(key)
+
+    before, nearest = body.split("Nearest well-rated schools", 1)
+    assert before.endswith('<table class="tx-table" data-stack>\n        <thead><tr><th>')
+    nearest = nearest.split("</table>", 1)[0]
+    oak = _d2_cells(_d2_row(nearest, "Oak Primary"))
+    assert _d2_roles(oak) == ["title", "lead", "answer", "answer", "Admitted from"]
+    assert _d2_first_line(oak, " · ") == "Primary · Good · 0.3 mi away"
+    assert oak[4][2] == "0.59 mi 2025/26"
+    # No stage recorded: the grade leads, so the line opens on no separator.
+    ash = _d2_cells(_d2_row(nearest, "Ash Nursery"))
+    assert _d2_roles(ash) == ["title", "skip", "lead", "answer", "Admitted from"]
+    assert _d2_first_line(ash, " · ") == "Outstanding · 0.6 mi away"
+
+    published = body.split("with a published admission distance</h3>", 1)[1].split("</table>", 1)[0]
+    assert '<table class="tx-table" data-stack="comma">' in published
+    cells = _d2_cells(_d2_row(published, "Oak Primary"))
+    assert _d2_roles(cells) == ["title", "Stage", "lead", "answer"]
+    assert _d2_first_line(cells, ", ") == "0.59 mi, 2025/26"
+
+
+def _d2_phone_blocks(css):
+    """Every @media (max-width: 600px) block, comments removed, as (start, end, text)."""
+    blocks = []
+    for m in re.finditer(r"@media \(max-width: 600px\) \{", css):
+        depth, i = 0, m.end() - 1
+        while True:
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            if depth == 0:
+                break
+            i += 1
+        blocks.append((m.start(), i, css[m.start():i]))
+    return blocks
+
+
+def test_d2_the_stacking_lives_only_below_600px_in_tokens_and_the_lamp_needs_no_rule():
+    css = re.sub(r"/\*.*?\*/", "", (D2_ROOT / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8"),
+                 flags=re.S)
+    blocks = _d2_phone_blocks(css)
+    phone_only = [m.start() for m in re.finditer(
+        r"table\[data-stack|comp-beyond|\.comp-more:not|\.comp-more \.comp-more-btn|\.comp-more-count", css)]
+    assert phone_only
+    for at in phone_only:
+        assert any(start < at < end for start, end, _ in blocks), css[at:at + 60]
+    # Outside the phone width the only new rules hide what is phone-only,
+    # so a desktop table and its page read as they did.
+    for rule in (".st-only { display: none; }", ".comp-more { display: none; }"):
+        at = css.index(rule)
+        assert not any(start < at < end for start, end, _ in blocks), rule
+    stacking = [text for _, _, text in blocks if "data-stack" in text or "comp-beyond" in text]
+    assert stacking
+    for text in stacking:
+        assert not re.search(r"#[0-9a-fA-F]{3,6}\b|rgba?\(", text), "a colour outside the tokens"
+    joined = "".join(stacking)
+    # The year filter's hidden rows stay hidden once a row is a flex box.
+    assert "table[data-stack] tr[hidden] { display: none; }" in joined
+    assert "table[data-stack] thead { display: none; }" in joined
+    assert "#comparables-table tr.comp-beyond { display: none; }" in joined
+    # Separators trail the item before them, so a wrapped answer line ends
+    # on one instead of opening the next line with it.
+    assert 'table[data-stack] td[data-st="answer"]:has(~ td[data-st="answer"])::after' in joined
+    assert 'td[data-st="answer"]::before' not in joined
+    assert not re.search(r"theme-dark[^{]*(data-stack|comp-more|st-only)", css)
+
+
+# ---- D3. Three findings that overstate or contradict ---------------------
+# (1) "Lower crime than the surrounding area" rested on 229 crimes against
+# 230, central York compared 2 with 2, and BN1 1EE printed "1834". Lower
+# or higher is now crime.compare_counts' answer on the two totals: at
+# least 10 per cent of the larger and at least 5 crimes apart, "about the
+# same" otherwise, and no comparison at all when both are in single
+# figures. The score's reason, What stands out, the card, the pop-up, the
+# PDF and its checklist all ask it.
+# (2) The locked Price Trend & Forecast pop-up projected a straight line a
+# year and two years on, and drew a fall beside the free "Area prices
+# rising". The projection is gone and the card is "Price Trend": the
+# index's own history with its one, five and ten year changes.
+# (3) The verdict counted 2 things worth checking and the banner under it
+# 3, because the banner also counted the council's finances. Both are now
+# overview_score.attention_items, and the council's chip says what
+# happened in plain words.
+
+def _d3_crime_gather(here, area, month="2026-07", **overrides):
+    from tests.conftest import fake_gather
+    return fake_gather(crime={"total": here, "month": month, "by_category": []},
+                       district_crime={"total": area, "month": month, "by_category": []},
+                       crime_comparison=[], **overrides)
+
+
+def _d3_highlights(body):
+    return re.findall(r'<span class="highlight-value">(.*?)</span>', body)
+
+
+def _d3_crime_card(body):
+    _tag, block = _b1_card(body, "Crime &amp; Safety")
+    status = _flat(re.sub(r"<[^>]+>", " ", re.search(r'<span class="dashboard-card-status">(.*?)</span>', block, re.S).group(1)))
+    sub = re.search(r'<span class="dashboard-card-substat">(.*?)</span>', block, re.S)
+    return status, (_flat(sub.group(1)) if sub else None)
+
+
+def test_d3_one_rule_decides_lower_or_higher_and_says_so_in_its_docstring():
+    from app.services import crime
+    assert crime.compare_counts(229, 230) == "same"
+    assert crime.compare_counts(229, 300) == "lower"
+    assert crime.compare_counts(300, 229) == "higher"
+    assert crime.compare_counts(2, 2) == "few" and crime.compare_counts(9, 0) == "few"
+    # Both conditions, not either: 5 crimes apart but under 10 per cent...
+    assert crime.compare_counts(100, 105) == "same"
+    # ...and over 10 per cent but under 5 crimes.
+    assert crime.compare_counts(10, 14) == "same"
+    assert crime.compare_counts(56, 50) == "higher"
+    assert crime.compare_counts(None, 230) is None and crime.compare_counts(229, None) is None
+    assert (crime.MARGIN_SHARE, crime.MARGIN_CRIMES, crime.FEW_RECORDS) == (0.10, 5, 10)
+    doc = crime.compare_counts.__doc__
+    assert "10 per cent" in doc and "5 crimes" in doc and "single" in doc
+
+    # Two different months are no comparison, whatever the counts.
+    walked_back = crime.versus_area({"total": 40, "month": "2026-05"}, {"total": 400, "month": "2026-07"})
+    assert walked_back["verdict"] is None and walked_back["month_label"] == "May 2026"
+    # The pop-up's table rows ask the same rule.
+    rows = app_main._crime_comparison(
+        {"month": "2026-07", "by_category": [{"category": "burglary", "count": 3}, {"category": "violent crime", "count": 60}]},
+        {"month": "2026-07", "by_category": [{"category": "burglary", "count": 1}, {"category": "violent crime", "count": 90}]},
+    )
+    assert {r["category"]: r["trend"] for r in rows} == {"burglary": "few", "violent crime": "lower"}
+
+
+def test_d3_the_scores_crime_reason_follows_the_rule():
+    from app.services import overview_score
+
+    def positives(here, area):
+        return overview_score.compute({"crime": {"total": here, "month": "2026-07"},
+                                       "district_crime": {"total": area, "month": "2026-07"}})["positives"]
+
+    assert "Lower crime than the surrounding area" not in positives(229, 230)
+    assert "Lower crime than the surrounding area" in positives(229, 300)
+    assert "Lower crime than the surrounding area" not in positives(2, 3)
+    # The category rows no longer decide it: a gather whose categories
+    # were mostly lower, on the same totals, gets no crime reason.
+    mostly_lower = [{"category": c, "here": 1, "area": 2, "trend": "lower"} for c in "abc"]
+    assert "Lower crime than the surrounding area" not in overview_score.compute({
+        "crime": {"total": 229, "month": "2026-07"}, "district_crime": {"total": 230, "month": "2026-07"},
+        "crime_comparison": mostly_lower})["positives"]
+
+
+def test_d3_229_against_230_reads_about_the_same_on_the_report(client, fake_report):
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"), gather=_d3_crime_gather(229, 230))
+    body = client.get("/property?postcode=KT3+4HX").text
+
+    assert "Lower" not in _d3_highlights(body) and "Higher" not in _d3_highlights(body)
+    status, sub = _d3_crime_card(body)
+    assert status == "229 within about a mile, July 2026"
+    assert sub == "About the same as the surrounding area"
+    modal = _flat(re.sub(r"<[^>]+>", " ", _b3_modal(body, "modal-crime")))
+    assert "229 crimes recorded within about a mile in July 2026, against 230 in the wider KT3 postcode area." in modal
+    assert "About the same as the surrounding area." in modal
+    assert "at least 10 per cent of the larger and by at least 5 crimes" in modal
+    assert "2026-07" not in modal and "~1 mile in" not in modal
+
+
+def test_d3_229_against_300_reads_lower_and_counts_carry_separators(client, fake_report):
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"), gather=_d3_crime_gather(229, 300))
+    body = client.get("/property?postcode=KT3+4HX").text
+    assert "Lower" in _d3_highlights(body)
+    assert _d3_crime_card(body)[1] == "Lower than the surrounding area"
+
+    # BN1 1EE's count, with its comma, and higher on a real margin.
+    fake_report(location=fake_location(postcode="BN1 1EE", outcode="BN1"), gather=_d3_crime_gather(1834, 1500))
+    body = client.get("/property?postcode=BN1+1EE").text
+    status, sub = _d3_crime_card(body)
+    assert status == "1,834 within about a mile, July 2026" and sub == "Higher than the surrounding area"
+    assert "Higher" in _d3_highlights(body)
+    assert "1834" not in body.split('id="modal-crime"', 1)[1].split("</dialog>", 1)[0]
+
+
+def test_d3_single_figures_say_police_uk_holds_few_records_and_compare_nothing(client, fake_report):
+    fake_report(location=fake_location(postcode="YO1 7HH", outcode="YO1"), gather=_d3_crime_gather(2, 2))
+    body = client.get("/property?postcode=YO1+7HH").text
+    status, sub = _d3_crime_card(body)
+    assert status == "2 within about a mile, July 2026"
+    assert sub == "Police.uk holds few records here for July 2026"
+    modal = _flat(re.sub(r"<[^>]+>", " ", _b3_modal(body, "modal-crime")))
+    assert "Police.uk holds few records here for July 2026, too few to compare." in modal
+    for word in ("About the same as", "Lower than", "Higher than"):
+        assert word not in modal, word
+    assert "Lower" not in _d3_highlights(body) and "Higher" not in _d3_highlights(body)
+
+
+def test_d3_the_pdf_and_its_checklist_ask_the_same_rule():
+    from app.services import pdf_checklist
+    from tests.test_pdf_report import _running_costs
+    report = _full_pdf_report()          # KT3 4HX: 229 against 230
+    ctx = app_main._pdf_context(report, _running_costs(), report["location"], "36")
+    page = app_main.templates.get_template("pdf_report_full.html").render(ctx)
+    crime_part = page.split("<h2>Crime</h2>", 1)[1].split("</table>", 1)[0]
+    assert "About the same" in crime_part and "Lower" not in crime_part
+    assert "July 2026" in crime_part and "2026-07" not in crime_part
+    rows = {r["check"]: r for r in pdf_checklist.build(report, _running_costs())}
+    crime_row = rows["Crime within about a mile"]
+    assert crime_row["result"] == "229 recorded in July 2026, about the same as the wider district"
+    assert crime_row["status"] == "neutral"
+
+
+# (2) Price trend.
+
+def _d3_series(months=121, last="2026-07"):
+    from app.services import hpi
+    return [{"period": hpi._months_before(last, months - 1 - i), "average_price": 400000.0 + 1500 * i}
+            for i in range(months)]
+
+
+def _d3_trend(months=121):
+    from app.services import hpi
+    series = _d3_series(months)
+    changes = hpi._changes(series)
+    five = next((c for c in changes if c["years"] == 5), None)
+    return {"area_name": "Kingston upon Thames", "series": series, "current_price": series[-1]["average_price"],
+            "current_period": series[-1]["period"], "changes": changes,
+            "start_price": five["price"] if five else None, "pct_change": five["pct"] if five else None}
+
+
+def test_d3_the_index_service_projects_nothing_and_reads_one_five_and_ten_years():
+    from app.services import hpi
+    changes = hpi._changes(_d3_series())
+    assert [(c["years"], c["period"]) for c in changes] == [(1, "2025-07"), (5, "2021-07"), (10, "2016-07")]
+    assert changes[0]["price"] == 400000.0 + 1500 * 108
+    # A series three years long has no five or ten year change, rather
+    # than one taken from its first month.
+    assert [c["years"] for c in hpi._changes(_d3_series(37))] == [1]
+    assert not hasattr(hpi, "PROJECTION_MONTHS") and not hasattr(hpi, "_linear_regression")
+
+    # The whole service, on a fake SPARQL answer eleven years long: no
+    # projection in what it returns, and the series cut to ten years.
+    rows = [{"refMonth": {"value": p["period"]}, "label": {"value": "Kingston upon Thames"},
+             "averagePrice": {"value": str(p["average_price"])}} for p in _d3_series(133)]
+
+    class _Response:
+        def raise_for_status(self): pass
+        def json(self): return {"results": {"bindings": rows}}
+
+    class _Client:
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, *a, **k): return _Response()
+
+    real = hpi.httpx.AsyncClient
+    hpi.httpx.AsyncClient = lambda *a, **k: _Client()
+    try:
+        trend = asyncio.run(hpi.price_trend("Kingston upon Thames"))
+    finally:
+        hpi.httpx.AsyncClient = real
+    assert "projections" not in trend and "monthly_trend" not in trend
+    assert trend["series"][0]["period"] == "2016-07" and len(trend["series"]) == 121
+    assert [c["years"] for c in trend["changes"]] == [1, 5, 10]
+    assert trend["pct_change"] == trend["changes"][1]["pct"]
+    chart = app_main._price_trend_chart(trend)
+    assert "projected_path" not in chart and "projection_points" not in chart
+
+
+def test_d3_the_card_is_price_trend_in_every_list_that_names_it():
+    titles = [t for _, t, _, _ in app_main.PREMIUM_CHECKS]
+    assert "Price Trend" in titles and not any("Forecast" in t for t in titles)
+    description = next(d for _, t, d, _ in app_main.PREMIUM_CHECKS if t == "Price Trend")
+    assert "Five-year" not in description and "10 years" in description
+    assert "five years ·" not in app_main.LOCKED_CARD_LINES["Price Trend"]
+    assert "Price Trend & Forecast" not in app_main.LOCKED_CARD_LINES
+    for group, sources in app_main.DATA_SOURCE_GROUPS:
+        for source in sources:
+            assert "forecast" not in source["powers"].lower(), source["name"]
+    template = _without_template_comments((ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8"))
+    assert "Forecast" not in template and "forecast</h2>" not in template
+    assert "trend-chart-line-projected" not in template and "projection_points" not in template
+    assert ".trend-chart-line-projected" not in STYLE_CSS
+    js = (ROOT / "browser-extension" / "content.js").read_text(encoding="utf-8")
+    assert "Price Trend & Forecast" not in js and '"Price Trend"' in js
+
+
+def test_d3_the_price_trend_popup_has_no_projected_row_or_line(client, fake_report, monkeypatch):
+    from tests.conftest import fake_gather
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    trend = _d3_trend()
+    gather = fake_gather(price_trend=trend, price_trend_chart=app_main._price_trend_chart(trend))
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"), gather=gather)
+
+    # Locked, the card says what the check answers, under its new name.
+    body = client.get("/property?postcode=KT3+4HX").text
+    assert _b2_line(body, "Price Trend") == _b2_escaped("Price Trend")
+    locked = _flat(_b3_modal(body, "modal-price-trend"))
+    assert "Projected" not in locked and "projection" not in locked.replace("no projection", "")
+
+    _b3_subscriber(client, "d3-trend@customer.test")
+    body = client.get("/property?postcode=KT3+4HX").text
+    assert _card_status(body, "Price Trend") == "+" + f"{trend['changes'][1]['pct']:.1f}" + "% over 5 years"
+    modal = _b3_modal(body, "modal-price-trend")
+    words = _flat(re.sub(r"<[^>]+>", " ", modal))
+    assert "<h2>Price trend</h2>" in modal
+    assert "Projected" not in words and "projected" not in modal and "stroke-dasharray" not in modal
+    assert modal.count("<path") == 1                     # the index's own line, and nothing after it
+    for row in ("10 years ago, July 2016", "5 years ago, July 2021", "1 year ago, July 2025", "Now, July 2026"):
+        assert row in words, row
+    assert f"{trend['changes'][2]['pct']:+.1f}%" in words
+    assert "does not reach back" not in words
+
+    # An authority with three years of index behind it (North Yorkshire,
+    # Cumberland) has a one-year change and says so, where the card used
+    # to call its first month "5 years".
+    short = _d3_trend(37)
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"),
+                gather=fake_gather(price_trend=short, price_trend_chart=app_main._price_trend_chart(short)))
+    body = client.get("/property?postcode=KT3+4HX").text
+    assert _card_status(body, "Price Trend") == f"{short['changes'][0]['pct']:+.1f}% over 1 year"
+    words = _flat(re.sub(r"<[^>]+>", " ", _b3_modal(body, "modal-price-trend")))
+    assert "5 years ago" not in words and "does not reach back 5 or 10 years from its latest month" in words
+
+
+def test_d3_the_pdf_carries_the_changes_and_no_projection():
+    from tests.test_pdf_report import _running_costs
+    report = dict(_full_pdf_report(), price_trend=_d3_trend())
+    ctx = app_main._pdf_context(report, _running_costs(), report["location"], "36")
+    page = app_main.templates.get_template("pdf_report_full.html").render(ctx)
+    part = page.split("<h2>Price trend and area comparison</h2>", 1)[1].split("</table>", 1)[0]
+    assert "If the trend holds" not in page and "straight-line projection" not in page
+    assert "Change over 10 years" in part and "Change over 1 year" in part and "Now, July 2026" in part
+    rows = {r["check"]: r for r in ctx["checklist"]}
+    assert "Price trend, five years, Kingston upon Thames" in rows
+
+
+# (3) One list of things worth checking.
+
+def _d3_york():
+    loc = fake_location(postcode="YO1 7HH", outcode="YO1")
+    loc.update(admin_district="York", region="Yorkshire and The Humber",
+               codes={"admin_district": "E06000014", "lsoa": "E01013400"})
+    return loc
+
+
+def _d3_count(text, tail):
+    m = re.search(r"(\d+) things? worth checking" + tail, text)
+    assert m, text[:400]
+    return int(m.group(1))
+
+
+def test_d3_the_verdict_and_the_banner_count_one_list_with_a_council_finance_flag(client, fake_report):
+    from app.services import council_finance, overview_score
+    from tests.conftest import fake_gather
+    loc = _d3_york()
+    finance = council_finance.for_council("E06000014", "York")
+    assert finance and finance["flag"], "York's exceptional support is the case the audit walked into"
+    sentence = council_finance.flag_sentence(finance)
+
+    # conftest's deprivation decile of 3 is one flag, the council the
+    # other, and a locked check (no buses) a third that a signed-out
+    # reader is told about only as a count. The score is computed from the
+    # gather, as the real gather does, never written into the fake.
+    gather = fake_gather(bus_service={"count": 0, "stops": [], "best": None, "radius_m": 500})
+    gather["overview"] = overview_score.compute({**gather, "location": loc}, premium_unlocked=False)
+    assert gather["overview"]["premium_extra_checks"] == 1
+    fake_report(location=loc, gather=gather)
+    body = client.get("/property?postcode=YO1+7HH").text
+
+    verdict = _flat(re.sub(r"<[^>]+>", " ", re.search(r'<p class="overview-score-verdict">(.*?)</p>', body, re.S).group(1)))
+    classes, banner = _a5_banner(body)
+    assert _d3_count(verdict, r" \(") == _d3_count(banner, " on this property") == 2
+    chips = [html.unescape(c) for c in re.findall(r'class="attention-banner-chip" data-modal-target="[^"]+">(.*?)</button>', body)]
+    reasons = [html.unescape(r) for r in re.findall(r'class="verdict-reason" data-modal-target="[^"]+">(.*?)</button>', body)]
+    # The same two, in the same order, in both places: the verdict's
+    # reasons end with its concerns.
+    assert chips == [sentence, "Among more deprived areas nationally"]
+    assert reasons[-len(chips):] == chips
+    assert sentence.startswith("York council needed exceptional government support for ")
+    assert "section 114" not in banner and "Few or no scheduled buses" not in body
+    assert 'data-modal-target="modal-council-tax">' + html.escape(sentence) in body
+
+
+def test_d3_the_list_is_the_banners_old_list_with_locked_checks_kept_back():
+    from app.services import overview_score
+    loc = _d3_york()
+    ctx = {
+        "location": loc,
+        "property_detail": {"year_built": "2012 onwards", "dwelling_type": "Semi-detached house"},
+        "flood_zone": {"zone": 2, "label": "Zone 2 (medium probability)"},
+        "brownfield": {"covered": True, "count": 2, "dwellings": 144, "hectares": 1.4, "permissioned": 1},
+        "bus_service": {"count": 1, "best": {"weekday_day": 6}},
+        "health": {"nearest": {"vs_median": 1.5}},
+    }
+    free = overview_score.attention_items(ctx, premium_unlocked=False)
+    assert [i["key"] for i in free] == ["council_finance", "flood"]
+    assert free[1]["text"] == "Flood Re insurance not available for this home"
+    assert [i["modal"] for i in free] == ["modal-council-tax", "modal-flood"]
+    opened = overview_score.attention_items(ctx, premium_unlocked=True)
+    assert [i["key"] for i in opened] == ["council_finance", "flood", "brownfield", "bus", "health"]
+    score = overview_score.compute(ctx, premium_unlocked=False)
+    assert score["concerns"] == [i["text"] for i in free] and score["premium_extra_checks"] == 3
+    assert [r["text"] for r in score["reasons"]["concerns"]] == score["concerns"]
+    # The locked keys a free reader is only counted for include the three
+    # the banner used to hold on its own.
+    assert {"brownfield", "bus", "health"} <= overview_score._PREMIUM_ONLY_CONCERNS
+
+
+def test_d3_the_council_chip_says_what_happened_in_plain_words():
+    from app.services import council_finance
+    base = {"flag": True, "name": "York UA", "latest_year": "2026-2027", "latest_label": "2026-27",
+            "efs": [{"year": "2025-26"}, {"year": "2026-27"}], "efs_current": True,
+            "county_efs": [], "county_efs_current": False, "county_name": "", "s114": [], "s114_recent": False}
+    assert council_finance.flag_sentence(base) == "York council needed exceptional government support for 2026-27"
+    county = dict(base, efs=[], efs_current=False, county_efs=[{"year": "2026-27"}], county_efs_current=True,
+                  county_name="Surrey")
+    assert council_finance.flag_sentence(county) == "Surrey County Council needed exceptional government support for 2026-27"
+    notice = dict(base, name="Birmingham", efs=[{"year": "2025-26"}], efs_current=False,
+                  s114=[{"date": "2023-09-05"}, {"date": "2023-09-22"}], s114_recent=True)
+    assert council_finance.flag_sentence(notice) == (
+        "Birmingham council issued a section 114 notice in September 2023, saying it could not balance its budget")
+    assert council_finance.flag_sentence(dict(base, flag=False)) is None
+    assert council_finance.flag_sentence(None) is None
+    # A name that already says "Council" gets no second one.
+    assert council_finance.flag_sentence(dict(base, name="Dorset Council")) == (
+        "Dorset Council needed exceptional government support for 2026-27")
+
+
+# ---- D3, finishing pass: what the first attempt left over ----------------
+# The pop-up stated the lower-or-higher rule under a count with nothing to
+# compare it against, and its table's caption still read "~1 mile". The
+# spans the price trend pop-up says the index does not reach were typed
+# into the template; they are now the service's own CHANGE_YEARS.
+
+def test_d3_the_crime_rule_is_stated_only_where_a_comparison_was_made(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"),
+                gather=fake_gather(crime={"total": 1834, "month": "2026-07", "by_category": []},
+                                   district_crime=None, crime_comparison=[]))
+    body = client.get("/property?postcode=KT3+4HX").text
+    modal = _flat(re.sub(r"<[^>]+>", " ", _b3_modal(body, "modal-crime")))
+    assert "1,834 crimes recorded within about a mile in July 2026." in modal
+    assert "Lower or higher is said only" not in modal
+    for word in ("About the same as", "Lower than", "Higher than", "too few to compare"):
+        assert word not in modal, word
+    status, sub = _d3_crime_card(body)
+    assert status == "1,834 within about a mile, July 2026" and sub is None
+
+    # With a comparison, the table's caption gives the radius in words.
+    rows = [{"category": "burglary", "here": 30, "area": 60, "trend": "lower"}]
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"),
+                gather=fake_gather(crime={"total": 229, "month": "2026-07", "by_category": []},
+                                   district_crime={"total": 300, "month": "2026-07", "by_category": []},
+                                   crime_comparison=rows))
+    modal = _flat(re.sub(r"<[^>]+>", " ", _b3_modal(client.get("/property?postcode=KT3+4HX").text, "modal-crime")))
+    assert "Lower or higher is said only" in modal
+    assert "The same radius of about a mile, centred on the KT3 postcode area instead." in modal
+    assert "~1 mile" not in modal
+
+
+def test_d3_the_spans_the_index_does_not_reach_come_from_the_service():
+    from app.services import hpi
+    assert app_main.templates.env.globals["price_trend_change_years"] == hpi.CHANGE_YEARS == (1, 5, 10)
+    template = _without_template_comments((ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8"))
+    assert "[1, 5, 10]" not in template and "price_trend_change_years" in template
+
+
+# ---- D4. The questions come from the report's findings, and come first ---
+# KT3 4HX said "4 questions were generated for this property", three of
+# them fixed for every purchase, while findings the page itself shows
+# raised none: listed buildings 9 yards away, Likely school readings, an
+# EPC D with a cost to reach C, a council under exceptional support, a
+# check that could not run. The section came after all six groups. Those
+# findings now raise questions, a free card's in full for every reader
+# and a locked check's counted and never shown; the section sits under the
+# banner; and the viewing checklist prints the same list
+# (solicitor_questions.for_reader, built once by main._buyer_questions).
+
+D4_SCHOOL = "Riverside Primary School"
+D4_LISTED = {"name": "Minster Yard Cottages", "grade": "II",
+             "url": "https://historicengland.org.uk/", "distance_m": 8}
+D4_QUESTIONS = (
+    "Ask your solicitor whether the home is listed or within the curtilage of a listed building.",
+    f"Check the distance {D4_SCHOOL} last offered places to in the council's allocation figures before relying on it.",
+    "Ask the seller which of the certificate's recommended improvements have been done.",
+)
+D4_TRIGGERS = (
+    "Listed building 9 yards away: Minster Yard Cottages, Grade II",
+    f"School places: Likely for {D4_SCHOOL}",
+    "EPC Band D, £8,400 to £12,200 to reach C",
+)
+D4_COAL_FAILED = "Ask your solicitor whether a CON29M coal mining search is needed, because the online check could not run."
+
+
+def _d4_plan():
+    """The certificate's own recommendation report, as epc.improvement_plan
+    reads it: two measures, Band C after the second."""
+    steps = [
+        {"sequence": 1, "number": "6", "name": "Cavity wall insulation", "description": "",
+         "cost_text": "£4,000 - £7,000", "cost_low": 4000, "cost_high": 7000, "saving": 180,
+         "rating_after": 64, "band_after": "D"},
+        {"sequence": 2, "number": "W1", "name": "Floor insulation", "description": "",
+         "cost_text": "£4,400 - £5,200", "cost_low": 4400, "cost_high": 5200, "saving": 130,
+         "rating_after": 70, "band_after": "C"},
+    ]
+    total = {"count": 2, "cost_low": 8400, "cost_high": 12200, "priced": 2, "saving": 310,
+             "rating_after": 70, "band_after": "C"}
+    return {"steps": steps, "to_c": total, "already_c": False, "all": total}
+
+
+def _d4_gather(**overrides):
+    """conftest's report with a listed building 9 yards from the postcode's
+    centre, a primary school the address reads Likely for, and an EPC D
+    with the certificate's £8,400 to £12,200 to reach C. conftest marks
+    the Coal Authority check, among others, as failed."""
+    from tests.conftest import fake_gather
+    base = fake_gather()
+    detail = dict(base["property_detail"], current_band="D", current_score=60, potential_band="C",
+                  potential_score=74, improvements=_d4_plan())
+    landscape = dict(base["school_landscape"], all_schools=[
+        {"urn": 990401, "name": D4_SCHOOL, "distance_m": 480, "phase_group": "Primary",
+         "admission_radius": {"last_distance_miles": 0.9, "academic_year": "2025/26"}},
+    ])
+    certificates = [dict(base["certificates"][0], rating="D")]
+    fields = dict(heritage=[D4_LISTED, *base["heritage"]], school_landscape=landscape,
+                  property_detail=detail, certificates=certificates)
+    fields.update(overrides)
+    return fake_gather(**fields)
+
+
+def _d4_section(body):
+    """The "Before you offer" section as a reader sees its words."""
+    return html.unescape(_b3_questions(body))
+
+
+def _d4_report_questions(body):
+    section = html.unescape(body).split('id="buyer-questions"', 1)[1].split("</section>", 1)[0]
+    return [_flat(q) for q in re.findall(r'<p class="bq-question">(.*?)</p>', section, re.S)]
+
+
+def _d4_checklist_questions(body):
+    return [_flat(q) for q in re.findall(r'<p class="checklist-heading checklist-question">(.*?)</p>',
+                                         html.unescape(body), re.S)]
+
+
+def test_d4_a_signed_out_reader_is_asked_about_the_listed_building_the_school_and_the_epc(client, fake_report):
+    fake_report(gather=_d4_gather())
+    body = client.get("/property?postcode=M14+5TG&house_number=41").text
+    section = _d4_section(body)
+
+    # Each one in full, with the finding that raised it, from a free card.
+    for question in D4_QUESTIONS:
+        assert question in section, question
+    for trigger in D4_TRIGGERS:
+        assert trigger in section, trigger
+    assert 'class="bq-locked"' not in section  # nothing here came from a locked check
+
+    # The figures are the cards' own: the listed buildings table rounds 8 m
+    # to 9 yd, and the energy card gives the same cost to reach C.
+    assert "9 yd" in _b3_modal(body, "modal-heritage")
+    assert "£8,400 to £12,200 to reach Band C" in html.unescape(body)
+
+    # The count says how many are this home's and how many every purchase gets.
+    total = int(re.search(r"<strong>(\d+) questions</strong>", section).group(1))
+    found = int(re.search(r"were generated for this property\. (\d+) come from what this report found, "
+                          r"and 3 are asked on every purchase\.", _flat(section)).group(1))
+    assert total == found + 3 == len(_d4_report_questions(body))
+    # The three asked on every purchase fold away under their own summary.
+    every = section.split('<details class="bq-every">', 1)[1].split("</details>", 1)[0]
+    assert "The 3 asked on every purchase" in every
+    assert every.count('class="bq-item"') == 3 and "Confirm the tenure." in every
+
+
+def test_d4_the_section_sits_under_the_banner_and_before_the_first_group(client, fake_report):
+    fake_report(gather=_d4_gather())
+    body = client.get("/property?postcode=M14+5TG&house_number=41").text
+    assert body.count('id="buyer-questions"') == 1  # moved, not copied, and the anchor kept
+    banner = body.index('class="attention-banner')
+    questions = body.index('<section class="report-section buyer-questions"')
+    groups = body.index('id="report-categories"')
+    first_group = body.index('<h3 class="dashboard-category-heading">Value &amp; Market</h3>')
+    assert banner < questions < groups < first_group
+    # Directly after the banner: every block of the report's top carries
+    # data-animate, and the banner's is the only one before the section.
+    assert body[banner:questions].count("data-animate") == 1
+    assert body[banner:questions].rstrip().endswith("</div>")
+    # And nothing of it is left at the foot of the report.
+    assert "Before you offer" not in body[groups:]
+
+
+def test_d4_the_viewing_checklist_prints_the_reports_own_questions(client, fake_report):
+    fake_report(gather=_d4_gather())
+    report = client.get("/property?postcode=M14+5TG&house_number=41").text
+    checklist = client.get("/property/checklist?postcode=M14+5TG&house_number=41").text
+
+    # The same questions in the same order, so the two never disagree.
+    on_report = _d4_report_questions(report)
+    assert _d4_checklist_questions(checklist) == on_report
+    for question in D4_QUESTIONS + (D4_COAL_FAILED,):
+        assert question in on_report, question
+    # What to look at in the room stays the checklist's own.
+    assert "Water pressure" in checklist and "Questions to ask" in checklist
+
+    # Built by one function for one reader, not two lists kept in step:
+    # the checklist module left to itself builds the report's list too.
+    from app.services import solicitor_questions, viewing_checklist
+    context = {"location": fake_location(), "house_number": "41", **_d4_gather()}
+    context["school_verdicts"] = app_main._school_verdict_summary(context["school_landscape"])
+    for opened in (False, True):
+        assert (viewing_checklist.build(context, premium_unlocked=opened)["questions"]
+                == solicitor_questions.for_reader(context, opened)
+                == app_main._buyer_questions(dict(context), opened))
+
+
+def test_d4_a_locked_checks_question_is_counted_and_never_shown_on_either(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    gather = _d4_gather(coal_mining={"present": True, "area_name": None})
+    fake_report(gather=gather)
+    body = client.get("/property?postcode=M14+5TG&house_number=43").text
+    section = _d4_section(body)
+    checklist = html.unescape(client.get("/property/checklist?postcode=M14+5TG&house_number=43").text)
+
+    for page in (section, checklist):
+        assert "Order a CON29M coal mining search." not in page
+        assert "Coal Mining Reporting Area" not in page
+    assert "1 more</strong> came from checks that open with a full report." in _flat(section)
+    assert "1 more came from checks that open with a full report" in _flat(checklist)
+    # The free cards' questions are still there in full beside the count.
+    for question in D4_QUESTIONS:
+        assert question in section
+
+    # A subscriber reads it on both, and the count the locked page gave
+    # was every question.
+    counted = int(re.search(r"<strong>(\d+) questions</strong>", section).group(1))
+    _b3_subscriber(client, "d4-questions@customer.test")
+    body = client.get("/property?postcode=M14+5TG&house_number=43").text
+    full = _d4_report_questions(body)
+    assert "Order a CON29M coal mining search." in full and len(full) == counted
+    assert 'class="bq-locked"' not in _d4_section(body)
+    checklist = client.get("/property/checklist?postcode=M14+5TG&house_number=43").text
+    assert _d4_checklist_questions(checklist) == full
+
+
+def test_d4_a_check_that_could_not_run_asks_for_the_search_instead(client, fake_report):
+    # conftest marks the Coal Authority check as failed. The locked Mining
+    # Risk card says so to a signed-out reader already, so the question,
+    # which says no more than the card, is theirs too.
+    fake_report(gather=_d4_gather())
+    body = client.get("/property?postcode=M14+5TG&house_number=41").text
+    section = _d4_section(body)
+    assert D4_COAL_FAILED in section
+    assert "Coal mining could not be checked just now · around £40" in _flat(section)
+    assert "Could not be checked just now · Mining Remediation Authority" in html.unescape(body)
+
+    # A check that answered raises no such question.
+    fake_report(gather=_d4_gather(coal_mining={"present": False, "area_name": None}))
+    section = _d4_section(client.get("/property?postcode=M14+5TG&house_number=41").text)
+    assert D4_COAL_FAILED not in section and "Coal mining could not be checked" not in section
+
+
+def test_d4_a_council_under_exceptional_support_asks_for_two_years_of_bills(client, fake_report):
+    from app.services import council_finance
+    fake_report(location=_d3_york(), gather=_d4_gather())
+    section = _d4_section(client.get("/property?postcode=YO1+7HH&house_number=41").text)
+    sentence = council_finance.flag_sentence(council_finance.for_council("E06000014", "York"))
+    assert "Ask the seller what the council tax bill was this year and last." in section
+    assert sentence in section  # the trigger is the banner's own chip
+
+
+def test_d4_the_triggers_hold_to_their_thresholds():
+    from app.services import solicitor_questions as sq
+
+    def asked(**context):
+        return {q["question"]: q for q in sq.build(context)}
+
+    listed, school, epc = D4_QUESTIONS
+    # A listed building within about 25 metres, and not beyond.
+    assert listed in asked(heritage=[dict(D4_LISTED, distance_m=25)])
+    assert listed not in asked(heritage=[dict(D4_LISTED, distance_m=26)])
+    # The nearest Likely or Borderline reading, named; an Unlikely one asks nothing.
+    rows = [{"name": "Far Academy", "level": "unlikely", "label": "Unlikely", "kind": "published"},
+            {"name": D4_SCHOOL, "level": "borderline", "label": "Borderline", "kind": "estimated"}]
+    q = asked(school_verdicts={"schools": rows})[school]
+    assert q["trigger"] == f"School places: Borderline for {D4_SCHOOL} (estimated distance)"
+    assert "modelled estimate" in q["why"] and q["check"] == ""
+    assert school not in asked(school_verdicts={"schools": rows[:1]})
+    # An EPC of D to G with the certificate's cost to reach C; C asks nothing.
+    detail = {"current_band": "D", "improvements": _d4_plan()}
+    assert asked(property_detail=detail, house_number="41")[epc]["trigger"] == D4_TRIGGERS[2]
+    # Without a house number the certificate is the postcode's newest.
+    q = asked(property_detail=detail)[epc]
+    assert q["trigger"] == "EPC Band D on the newest certificate at this postcode, £8,400 to £12,200 to reach C"
+    assert "first check the certificate is for the home you are buying" in q["why"]
+    assert epc not in asked(property_detail=dict(detail, current_band="C"))
+    assert epc not in asked(property_detail={"current_band": "E", "improvements": dict(_d4_plan(), to_c=None)})
+    # Every failed-check question is a free one: a failure is not a finding.
+    failed = sq.build({"coal_mining_error": True, "flood_zone_error": True, "historic_landfill_error": True,
+                       "heritage_error": True, "designations_error": True})
+    assert len([x for x in failed if x["trigger"].endswith("could not be checked just now")]) == 5
+    assert sq.without_locked(failed) == failed
+    # Outside England's flood maps nothing failed, so nothing is asked.
+    assert not any("flood zone" in x["question"] for x in sq.build({"flood_zone_error": True, "flood_not_covered": {"country": "Wales"}}))
+
+
+def test_d4_for_reader_counts_what_it_holds_back():
+    from app.services import solicitor_questions as sq
+    context = {"coal_mining": {"present": True}, "heritage": [D4_LISTED]}
+    locked = sq.for_reader(context, premium_unlocked=False)
+    opened = sq.for_reader(context, premium_unlocked=True)
+    assert locked["total"] == opened["total"] == 5
+    assert locked["from_findings"] == opened["from_findings"] == 2
+    assert locked["locked"] == 1 and opened["locked"] == 0
+    assert len(locked["every_purchase"]) == len(opened["every_purchase"]) == 3
+    shown = [q["question"] for _, qs in locked["found"] for q in qs]
+    assert shown == [D4_QUESTIONS[0]]
+    assert "Order a CON29M coal mining search." in [q["question"] for _, qs in opened["found"] for q in qs]
+
+
+def test_d4_the_pdf_describes_the_home_its_house_number_chose():
+    location = fake_location()
+    for house_number, own in (("41", True), ("", False)):
+        context = app_main._pdf_context(_d4_gather(), None, location, house_number)
+        triggers = [q["trigger"] for _, qs in context["buyer_questions"] for q in qs]
+        assert (D4_TRIGGERS[2] in triggers) is own
+        assert any(t.startswith("EPC Band D on the newest certificate at this postcode") for t in triggers) is not own
+
+
+# ---- D5. The wait page gets an ending, and comparables gets a cache -------
+# The wait page asked every 900 ms with no limit and, once every source was
+# in, said "All sources back, putting the report together" for ever. A
+# gather over the cache's 4 MB entry limit was never stored, so the page
+# would restart the build every 30 seconds for as long as it stayed open,
+# and a build queued behind both slots read as dead after 30 seconds too.
+# The report's gather is now kept whatever its size (and a refusal of
+# anything else is logged); a queued build keeps its claim fresh; and the
+# page names what is missing after 30 seconds, offers "Try again" and the
+# district's guide after 60, and stops asking after five minutes. The
+# Comparables page, 2.61 s and 2.26 s on consecutive requests for KT3 4HX,
+# caches its rows and borrows the report's sales when it has them.
+
+D5_BROWSER = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                            "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"}
+
+
+def test_d5_a_gather_over_the_entry_limit_is_kept_and_the_wait_page_is_told_it_is_ready(client, monkeypatch, caplog):
+    """The real gather, every member failed so nothing reaches the network,
+    against an entry limit smaller than its result."""
+    import logging
+
+    from fastapi.responses import HTMLResponse
+
+    from app.services import _cache
+
+    async def _failed(name, coro):
+        close = getattr(coro, "close", None)
+        if close:
+            close()  # never awaited, so never sent
+        return RuntimeError(f"{name} down")
+
+    async def _report(request, postcode, house_number, _share=None):
+        return HTMLResponse("the finished report")
+
+    location = fake_location(postcode="M34 9ZX", outcode="M34")
+    key = ("property_search_gather", "M34 9ZX", "5")
+
+    async def _lookup(_postcode):
+        return location
+
+    monkeypatch.setattr(_cache, "MAX_ENTRY_BYTES", 200)
+    monkeypatch.setattr(app_main, "_timed", _failed)
+    monkeypatch.setattr(app_main, "_bounded", lambda coro, seconds: coro)
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "_render_property", _report)
+    _cache._evict(key)
+    try:
+        asyncio.run(app_main._full_property_gather(location, "5", premium_unlocked=False))
+        assert _cache._store[key][2] > _cache.MAX_ENTRY_BYTES, "the fixture must be over the limit"
+        assert _cache.get(key, app_main.PROPERTY_SEARCH_CACHE_TTL_S) is not None
+
+        # The endpoint the page polls, and the page it then reloads.
+        assert client.get("/api/report-ready?postcode=M34+9ZX&house_number=5").json()["ready"] is True
+        r = client.get("/property?postcode=M34+9ZX&house_number=5", headers=D5_BROWSER)
+        assert r.status_code == 200 and r.text == "the finished report"
+    finally:
+        _cache._evict(key)
+        app_main._gather_progress.pop(("M34 9ZX", "5"), None)
+
+    # Any other value over the limit is still refused, and now says so.
+    with caplog.at_level(logging.WARNING):
+        _cache.set(("d5_page", "M34"), ["x" * 50 for _ in range(20)])
+    assert _cache.get(("d5_page", "M34"), 60) is None
+    assert any("not keeping d5_page:M34" in rec.getMessage() for rec in caplog.records)
+
+
+def test_d5_a_build_queued_behind_both_slots_is_not_taken_for_dead(monkeypatch):
+    import time
+
+    location = fake_location(postcode="M34 9ZW", outcode="M34")
+    ran = []
+
+    async def _gather(location, house_number, premium_unlocked):
+        ran.append(house_number)
+
+    monkeypatch.setattr(app_main, "_full_property_gather", _gather)
+    monkeypatch.setattr(app_main, "_release_memory", lambda: None)
+    monkeypatch.setattr(app_main, "_QUEUED_TOUCH_S", 0.02)
+
+    async def go():
+        # A semaphore of this loop's own, so the app's is never bound to it.
+        slots = asyncio.Semaphore(2)
+        monkeypatch.setattr(app_main, "_GATHER_CONCURRENCY", slots)
+        await slots.acquire()
+        await slots.acquire()
+        task = app_main._spawn_gather(location, "")
+        claim = app_main._gather_progress[("M34 9ZW", "")]
+        claim["touched"] = time.time() - 10 * app_main.STALLED_GATHER_S
+        await asyncio.sleep(0.15)
+        assert time.time() - claim["touched"] < app_main.STALLED_GATHER_S, "a queued claim must stay fresh"
+        # So the next poll leaves it alone rather than queueing a second build.
+        assert app_main._spawn_gather(location, "") is None
+        assert ran == []
+        slots.release()
+        await task
+        assert ran == [""]
+        # Once it has its slot the stamping stops.
+        claim["touched"] = 0
+        await asyncio.sleep(0.1)
+        assert claim["touched"] == 0
+
+    try:
+        asyncio.run(go())
+    finally:
+        app_main._gather_progress.pop(("M34 9ZW", ""), None)
+
+
+def _d5_css_rule(css, selector):
+    return re.search(r"(?m)^" + re.escape(selector) + r" \{(.*?)\}", css, re.S).group(1)
+
+
+def test_d5_the_wait_page_names_what_is_missing_then_offers_a_way_out_then_stops(client, fake_report):
+    fake_report()
+    r = client.get("/property?postcode=M14%205TG", headers=D5_BROWSER)
+    assert r.status_code == 202
+    body = r.text
+
+    # The three times, from when the page opened.
+    assert "var NAME_MISSING_AFTER_MS = 30000;" in body
+    assert "var OFFER_EXIT_AFTER_MS = 60000;" in body
+    assert "var STOP_AFTER_MS = 300000;" in body
+    assert "if (waited >= NAME_MISSING_AFTER_MS) nameMissing();" in body
+    assert "if (waited >= OFFER_EXIT_AFTER_MS) helpEl.hidden = false;" in body
+    # 30 s: the sources the endpoint has not reported back, by name.
+    assert "return !seen[src];" in body and "'Still waiting on: ' + listed(missing)" in body
+    assert re.search(r'<p class="building-waiting" id="building-waiting" aria-live="polite" hidden></p>', body)
+    # 60 s: a way to try again, and the district's guide.
+    help_block = re.search(r'<div class="building-help" id="building-help" aria-live="polite" hidden>(.*?)\n    </div>',
+                           body, re.S).group(1)
+    assert '<button type="button" class="building-retry" id="building-retry">Try again</button>' in help_block
+    assert '<a class="building-guide" href="/area/M14">Read the M14 area guide</a>' in help_block
+    assert "retryEl.addEventListener('click', function () { window.location.reload(); });" in body
+    # Five minutes: no more asking, and a plain sentence saying so.
+    assert re.search(r"function poll\(\) \{\s*if \(Date\.now\(\) - opened >= STOP_AFTER_MS\) \{ stop\(\); return; \}", body)
+    stopped = re.search(r'<p class="building-help-text" id="building-stopped" hidden>(.*?)</p>', body).group(1)
+    assert stopped == "This page has stopped checking after five minutes. Try again now, or come back in a few minutes."
+    for words in (stopped, "This is taking longer than usual.", "Still waiting on: "):
+        assert "—" not in words and "!" not in words
+    # The dial is untouched: a mark per source, as before.
+    assert len(re.findall(r'<rect class="dial-mark"', body)) == len(app_main.GATHER_SOURCE_ORDER)
+
+
+def test_d5_the_way_out_links_only_a_district_that_has_a_guide(client, fake_report):
+    fake_report(location=fake_location(postcode="ZZ9 9ZZ", outcode="ZZ9"))
+    body = client.get("/property?postcode=ZZ9+9ZZ", headers=D5_BROWSER).text
+    assert 'id="building-retry">Try again</button>' in body
+    assert 'class="building-guide"' not in body and 'href="/area/ZZ9"' not in body
+
+
+def test_d5_the_ending_appears_without_motion_and_the_dial_is_unchanged():
+    """Nothing added moves, so reduced motion has nothing to hold still;
+    the dial's own rules and their reduced-motion block are as they were."""
+    css = (ROOT / "app" / "static" / "css" / "style.css").read_text(encoding="utf-8")
+    for selector in (".building-overtime", ".building-waiting", ".building-help", ".building-help-text",
+                     ".building-help-actions", ".building-retry", ".building-guide"):
+        rule = _d5_css_rule(css, selector)
+        assert "animation" not in rule and "transition" not in rule, selector
+    assert "animation: dial-wave 2.85s ease-in-out infinite;" in _d5_css_rule(css, ".dial-mark")
+    assert ".dial-mark, .dial-mark.is-done, .dial-lens, .building-latest.is-fresh { animation: none; }" in css
+
+
+def _d5_comparables(monkeypatch, calls, sold_fails=False):
+    location = fake_location()
+
+    async def _lookup(_postcode):
+        return location
+
+    async def _nearby(lat, lon, **kwargs):
+        calls.append("nearby")
+        return [{"postcode": "M14 5TG", "distance_m": 0, "latitude": 53.45, "longitude": -2.22},
+                {"postcode": "M14 5TH", "distance_m": 400, "latitude": 53.452, "longitude": -2.221}]
+
+    async def _sold(postcodes):
+        calls.append("sold")
+        if sold_fails:
+            raise RuntimeError("Land Registry down")
+        return [
+            {"address": "3 Far Street", "postcode": "M14 5TH", "amount": "300000", "date": "2025-02-01",
+             "property_type": "terraced", "tenure": "Freehold", "new_build": False},
+            {"address": "1 Test Street", "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01",
+             "property_type": "flat", "tenure": "Leasehold", "new_build": False},
+        ]
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    return location, _sold
+
+
+def test_d5_two_comparables_requests_fetch_the_nearby_sales_once(client, monkeypatch):
+    from app.services import _cache
+
+    calls = []
+    _d5_comparables(monkeypatch, calls, sold_fails=True)
+    # A failed fetch is not kept: the page says so, and the next asks again.
+    first = client.get("/property/comparables?postcode=M14%205TG")
+    assert "The comparables data service didn't respond" in first.text
+    assert calls == ["nearby", "sold"]
+
+    calls.clear()
+    _d5_comparables(monkeypatch, calls)
+    one = client.get("/property/comparables?postcode=M14%205TG")
+    two = client.get("/property/comparables?postcode=M14%205TG&house_number=9")
+    assert one.status_code == two.status_code == 200
+    assert calls == ["nearby", "sold"], "the second request must be served from the cache"
+    assert _cache.get(app_main._comparables_page_key(53.45, -2.22), app_main.COMPARABLES_CACHE_TTL_S) is not None
+    # Nearest first, as the page always listed them.
+    for body in (one.text, two.text):
+        assert body.index('data-date="2024-06-01"') < body.index('data-date="2025-02-01"')
+    # What depends on the house number is still worked out per request:
+    # the postcode's own last sale places it without one, and no home
+    # numbered 9 has sold, so that page places nothing.
+    assert "sits above 0% of the 2 nearby sold prices" in _flat(one.text)
+    assert "sits above" not in two.text
+
+
+def test_d5_comparables_borrows_the_reports_sales_and_reads_exactly_the_same(client, monkeypatch):
+    from app.services import _cache
+
+    calls = []
+    _, sold = _d5_comparables(monkeypatch, calls)
+    fresh = client.get("/property/comparables?postcode=M14%205TG").text
+    assert calls == ["nearby", "sold"]
+
+    # The report's own copy: the same rows with their distance and the
+    # floor area its estimate looked up.
+    report_rows = [dict(tx, distance_m=0 if tx["postcode"] == "M14 5TG" else 400, floor_area=61)
+                   for tx in asyncio.run(sold([]))]
+    _cache._evict(app_main._comparables_page_key(53.45, -2.22))
+    _cache.set(app_main._comparables_key(53.45, -2.22), report_rows)
+    calls.clear()
+    borrowed = client.get("/property/comparables?postcode=M14%205TG").text
+    assert calls == ["nearby"], "Land Registry is not asked again for sales the report holds"
+    assert borrowed == fresh
+    assert "floor_area" not in borrowed
+    assert all("latitude" not in tx and tx["floor_area"] == 61 for tx in report_rows), \
+        "the report's cached rows are never changed"
+
+
+# ---- D6. Numbers and claims that disagree across pages --------------------
+# The homepage said "13 official sources", typed, with OpenStreetMap among
+# them; the wait page counted "0 of 19 sources back"; /methodology listed
+# 14 bodies and left out ones Premium names. /methodology called the VOA's
+# banding list a paid product beside its own timed "VOA band lookup", and
+# listed brownfield land as something the site cannot show while Premium's
+# Development Nearby shows register sites. /areas promised every guide a
+# flood zone and "Band D council tax from MHCLG". The market report called
+# Nottinghamshire and Aberdeenshire "major UK cities", because the index's
+# area match took the shortest label containing the name, and its title
+# carried the day it was built over July's figures.
+
+def _d6_names(bodies):
+    return [body["name"] for body in bodies]
+
+
+def _d6_text(body):
+    """What a reader sees: inline tags go without a trace, so a link
+    followed by a comma reads as it does on the page."""
+    body = re.sub(r"</?(?:a|strong|em|b|i|span)\b[^>]*>", "", body)
+    return _flat(html.unescape(re.sub(r"<[^>]+>", " ", body)))
+
+
+_D6_BLOCK_TAGS = ("address|article|aside|blockquote|br|button|caption|dd|details|dialog|div|dl|dt|fieldset|"
+                  "figcaption|figure|footer|form|h1|h2|h3|h4|h5|h6|header|hr|label|legend|li|main|nav|ol|"
+                  "option|p|pre|section|select|summary|table|tbody|td|textarea|tfoot|th|thead|tr|ul")
+
+
+def _d6_blocks(body):
+    """A page's visible text a block at a time, the way
+    scripts/audit_site.py reads it."""
+    body = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", body, flags=re.S | re.I)
+    body = re.sub(rf"</?(?:{_D6_BLOCK_TAGS})\b[^>]*>", "\x00", body, flags=re.I)
+    body = html.unescape(re.sub(r"<[^>]+>", " ", body))
+    return [block for block in body.split("\x00") if block.strip()]
+
+
+def test_d6_one_list_of_publishing_bodies_is_read_from_the_check_lists():
+    sources = {source for _, _, _, source in app_main.FREE_CHECKS + app_main.PREMIUM_CHECKS}
+    # Every source a check names maps to the bodies that publish it, so a
+    # new check cannot bring a body the count misses.
+    assert sources <= set(app_main._SOURCE_BODIES), sources - set(app_main._SOURCE_BODIES)
+    named = {body for source in sources for body in app_main._SOURCE_BODIES[source]}
+    assert named <= set(app_main._BODY_DETAILS), named - set(app_main._BODY_DETAILS)
+
+    official = _d6_names(app_main.OFFICIAL_SOURCES)
+    assert len(official) == len(set(official)), "a body read by several checks is counted once"
+    assert _d6_names(app_main.OPEN_DATA_SOURCES) == ["OpenStreetMap"] and "OpenStreetMap" not in official
+    assert set(official) == named - {"OpenStreetMap"}
+    # The bodies the audit found Premium naming and /methodology leaving out.
+    for body in ("Mining Remediation Authority", "NHS England", "Department for Transport", "MHCLG",
+                 "HMRC", "Bank of England", "Defra", "National Rail"):
+        assert body in official, body
+
+    # A source naming two bodies counts both, each with the check it serves.
+    by_name = {b["name"]: b for b in app_main.OFFICIAL_SOURCES + app_main.OPEN_DATA_SOURCES}
+    for body in ("Natural England", "Historic England"):
+        assert "Planning Constraints" in by_name[body]["checks"], body
+    for body in ("MHCLG", "Welsh Government", "Scottish Government"):
+        assert "Council Tax" in by_name[body]["checks"], body
+    assert by_name["NHS England"]["checks"] == ("Health Services",)
+    assert set(by_name["OpenStreetMap"]["checks"]) == {"Nearby Essentials", "Aspect", "Getting Around"}
+    assert all(b["url"].startswith("https://") for b in by_name.values())
+    assert app_main.templates.env.globals["official_sources"] is app_main.OFFICIAL_SOURCES
+    assert app_main.templates.env.globals["open_data_sources"] is app_main.OPEN_DATA_SOURCES
+
+
+def test_d6_the_homepage_gives_the_lists_length_wherever_it_counts_sources(client):
+    body = _fresh_home(client)
+    n = len(app_main.OFFICIAL_SOURCES)
+    stat = re.search(r'data-target="(\d+)"[^>]*>(\d+)</span></p>\s*<p class="lx-about-stat-l">Official sources', body)
+    assert stat and stat.groups() == (str(n), str(n))
+    assert f"{app_main.CHECK_COUNT} checks &middot; {n} official sources &middot; no card needed" in body
+
+    # The strip is the list, twice for the loop, and its belt runs at a
+    # pace set by the list's length.
+    strip = body[body.index('class="sources-strip"'):]
+    strip = strip[:strip.index("</section>")]
+    names = [html.unescape(name) for name in re.findall(r'class="sources-strip-name">([^<]+)<', strip)]
+    assert names == _d6_names(app_main.OFFICIAL_SOURCES) * 2
+    assert f'style="--sources-n: {n}"' in strip
+    assert "var(--sources-n, 13) * 3.5s" in STYLE_CSS
+
+    # No other count of sources or bodies anywhere on the page.
+    counts = set(re.findall(r"(\d+) official (?:sources|bodies)", _d6_text(body), re.I))
+    assert counts == {str(n)}, counts
+
+    # The FAQ answer counts the same list and names OpenStreetMap apart,
+    # on the page and in its structured data alike.
+    visible, structured = _home_faq(body)
+    answer = dict(visible)["Where does the data come from?"]
+    assert answer.startswith(f"{n} official bodies, shown below, among them HM Land Registry")
+    assert "OpenStreetMap, the map its volunteers draw" in answer and " only" not in answer
+    assert "the EPC Register" not in answer
+    assert dict(structured)["Where does the data come from?"] == answer
+    description = html.unescape(re.search(r'<meta name="description" content="([^"]*)"', body).group(1))
+    assert "entirely from official" not in description
+    assert description.endswith("One free report from official government data, every figure naming its source.")
+
+
+def test_d6_methodology_lists_every_body_the_homepage_counts_and_keeps_openstreetmap_apart(client):
+    body = client.get("/methodology").text
+    n = len(app_main.OFFICIAL_SOURCES)
+    section = body[body.index('<section class="landing-section" id="sources">'):]
+    section = section[:section.index("</section>")]
+    rows = re.findall(r'<tr><td><a href="([^"]+)" target="_blank" rel="noopener">([^<]+)</a></td><td>([^<]*)</td></tr>',
+                      section)
+    assert [html.unescape(name) for _, name, _ in rows] == [b["full_name"] for b in app_main.OFFICIAL_SOURCES]
+    assert len(rows) == n and f"{n} official bodies publish what the checks read." in section
+    assert ("https://www.england.nhs.uk", "NHS England", "Health Services") in rows
+    defra = next(r for r in rows if "Rural Affairs" in r[1])
+    assert html.unescape(defra[1]) == "Department for Environment, Food & Rural Affairs"
+    assert html.unescape(defra[2]) == "Noise and Air Quality"
+
+    table = section[section.index("<table"):section.index("</table>")]
+    assert "OpenStreetMap" not in table
+    assert ("Not an official body, and not counted above: OpenStreetMap, the open map its volunteers draw, "
+            "read for Nearby Essentials, Aspect and Getting Around.") in _d6_text(section)
+
+    dek = _d6_text(re.search(r'<p class="dek">(.*?)</p>', body, re.S).group(1))
+    assert "Every figure has a named official source" not in dek
+    assert "apart from what is nearby and which way a home faces, which come from OpenStreetMap" in dek
+
+
+def test_d6_the_wait_page_counts_lookups_not_sources(client, fake_report):
+    fake_report()
+    r = client.get("/property?postcode=M14%205TG&house_number=606", headers=D5_BROWSER)
+    assert r.status_code == 202
+    n = len(app_main.GATHER_SOURCE_ORDER)
+    assert f'<span id="building-done">0</span> of {n} lookups back</p>' in r.text
+    assert "Waiting for the first lookup to come back" in r.text
+    assert "countEl.textContent = 'All lookups back, putting the report together';" in r.text
+    assert "sources back" not in r.text
+    # Several lookups go to one body, which is why the two counts differ.
+    assert n != len(app_main.OFFICIAL_SOURCES)
+
+
+def test_d6_other_pages_give_the_same_count_and_never_say_official_sources_only(client):
+    n = len(app_main.OFFICIAL_SOURCES)
+    premium = _d6_text(client.get("/premium").text)
+    assert (f"Named official bodies, {n} of them, each listed with the checks it is read for on the "
+            "methodology page") in premium
+    assert "the stations nearby also read OpenStreetMap, the map its volunteers draw, and say so" in premium
+
+    data = client.get("/data").text
+    rule = _d6_text(re.search(r"<li><strong>Official sources, and one open map\.</strong>(.*?)</li>", data, re.S).group(1))
+    assert rule == ("Every figure traces to a named government or public body, apart from what is nearby and which "
+                    f"way a home faces, which come from OpenStreetMap and say so. The {n} bodies are listed with the "
+                    "checks each is read for. Nothing is scraped from listings sites.")
+    assert '<a href="/methodology#sources">' in data
+
+    llms = client.get("/llms.txt").text
+    assert f"from {n} official bodies, with OpenStreetMap for what is nearby:" in llms
+
+    pages = {"/": _fresh_home(client), "/premium": client.get("/premium").text, "/data": data,
+             "/methodology": client.get("/methodology").text, "/llms.txt": llms}
+    for path, text in pages.items():
+        assert "official sources only" not in _d6_text(text).lower(), path
+
+
+def test_d6_the_audit_holds_every_count_of_sources_to_the_homepages(client):
+    from tests.test_brainstorm_18sep import _copy_rules
+    rules = _copy_rules()
+    n = str(len(app_main.OFFICIAL_SOURCES))
+    home = _fresh_home(client)
+    methodology = client.get("/methodology").text
+
+    # The two figures the audit reads, and what it does without them.
+    assert rules.headline_source_count(home) == n
+    assert rules.listed_source_count(methodology) == int(n)
+    assert rules.headline_source_count("<p>No figure here</p>") == ""
+    assert rules.listed_source_count("<p>No table here</p>") is None
+
+    found = rules.source_count_problems
+    assert found("Built on 13 official sources.", n) == ["13 official sources"]
+    assert found("0 of 19 sources back", n) == ["19 sources"]
+    assert found("from 14 official data sources", n) == ["14 official data sources"]
+    # The headline itself, small per-card counts, a rival's figure in
+    # quotation marks, and a rule with no headline to hold to.
+    for fine in (f"{n} official sources", f"{n} sources", "two sources", "3 sources",
+                 '"47 risk checks" from "14 official data sources"', "from “14 official data sources”"):
+        assert found(fine, n) == [], fine
+    assert found("13 official sources", "") == []
+
+    # The pages as rendered today pass it, /alternatives's quote included.
+    for path in ("/premium", "/data", "/alternatives", "/areas"):
+        for block in _d6_blocks(client.get(path).text):
+            assert found(block, n) == [], (path, block)
+    for path, body in (("/", home), ("/methodology", methodology)):
+        for block in _d6_blocks(body):
+            assert found(block, n) == [], (path, block)
+
+    # And the audit runs it, beside the check count rule.
+    audit = (ROOT / "scripts" / "audit_site.py").read_text(encoding="utf-8")
+    assert "HEADLINE_SOURCES = headline_source_count(_home)" in audit
+    assert 'listed_source_count(pages_html.get("/methodology", ""))' in audit
+    assert "source_count_problems(block, HEADLINE_SOURCES)" in audit
+    assert re.search(r'"/data", "/methodology"', audit), "the audit fetches /methodology"
+
+
+def test_d6_methodology_says_precisely_what_is_still_not_shown(client):
+    body = client.get("/methodology").text
+    start = body.index("What we deliberately don't show")
+    section = _d6_text(body[start:body.index("</section>", start)])
+    # Development Nearby shows brownfield register sites, so brownfield
+    # land is no longer among what the site cannot show.
+    assert "Brownfield" not in section and "brownfield" not in section
+    assert any("Brownfield" in what for _, title, what, _ in app_main.PREMIUM_CHECKS if title == "Development Nearby")
+    # A home's band: free to look up one address at a time, with no free
+    # bulk data, which agrees with the timed "VOA band lookup" below it.
+    assert "paid product" not in section
+    assert ("It can be looked up free, one address at a time, at gov.uk/council-tax-bands (in Scotland, on the "
+            "Scottish Assessors' site), but no free bulk data exists, so reports cannot show it.") in section
+    assert "No free official source gives these for every address." in section
+    assert "<td>VOA band lookup, then the council's charges table</td>" in body
+    assert 'href="https://www.gov.uk/council-tax-bands"' in body
+
+
+def test_d6_the_areas_page_says_where_each_guide_figure_holds(client):
+    body = client.get("/areas").text
+    dek = _d6_text(re.search(r'<p class="dek">(.*?)</p>', body, re.S).group(1))
+    assert ("the Environment Agency maps England only, so guides in Wales, Scotland and Northern Ireland say "
+            "the zone is not mapped here and name the body that maps it.") in dek
+    assert ("Band D council tax comes from MHCLG in England, the Welsh Government in Wales and the Scottish "
+            "Government in Scotland; Northern Ireland has domestic rates, not council tax.") in dek
+    assert "Band D council tax from MHCLG" not in dek
+    assert "Every guide gives the district's recorded sold prices" not in dek
+    # What the page promises is what the guide and the council tax
+    # service do.
+    guide = (ROOT / "app" / "templates" / "area_guide.html").read_text(encoding="utf-8")
+    assert "Not mapped here for {{ flood_not_covered.country }}." in _flat(guide)
+    council_tax = (ROOT / "app" / "services" / "council_tax.py").read_text(encoding="utf-8")
+    for body_name in ("MHCLG", "Welsh Government", "Scottish Government"):
+        assert f'"source_short": "{body_name}"' in council_tax, body_name
+
+
+def test_d6_the_index_prefers_the_city_after_an_exact_match():
+    from app.services.hpi import _pick_area, is_the_place_asked_for
+
+    # The two the market report got wrong, and the other forms a city's
+    # label takes.
+    assert _pick_area({"City of Nottingham", "Nottinghamshire"}, "Nottingham") == "City of Nottingham"
+    assert _pick_area({"Aberdeenshire", "City of Aberdeen"}, "Aberdeen") == "City of Aberdeen"
+    assert _pick_area({"Aberdeenshire", "Aberdeen City"}, "Aberdeen") == "Aberdeen City"
+    assert _pick_area({"Derbyshire", "City of Derby"}, "Derby") == "City of Derby"
+    # An exact match still comes first, and the rest is as it was.
+    assert _pick_area({"Nottingham", "City of Nottingham", "Nottinghamshire"}, "Nottingham") == "Nottingham"
+    assert _pick_area({"Manchester", "Greater Manchester"}, "Manchester") == "Manchester"
+    assert _pick_area({"City of Westminster"}, "Westminster") == "City of Westminster"
+    assert _pick_area({"York", "North Yorkshire", "Yorkshire and The Humber", "South Yorkshire"}, "York") == "York"
+    assert _pick_area({"Greater Manchester"}, "Leeds") is None
+
+    for label, name in (("City of Nottingham", "Nottingham"), ("Aberdeen City", "Aberdeen"),
+                        ("Bristol, City of", "Bristol"), ("Leeds", "Leeds"), ("city of westminster", "Westminster")):
+        assert is_the_place_asked_for(label, name), (label, name)
+    for label, name in (("Nottinghamshire", "Nottingham"), ("Aberdeenshire", "Aberdeen"),
+                        ("Greater Manchester", "Manchester"), ("North Yorkshire", "York")):
+        assert not is_the_place_asked_for(label, name), (label, name)
+
+
+def _d6_index(monkeypatch):
+    """The Land Registry SPARQL endpoint, faked: the county's rows come
+    back first, and the CONTAINS filter is applied as the endpoint would."""
+    from app.services import hpi
+
+    areas = {"Nottinghamshire": (268000.0, 1.9), "City of Nottingham": (187500.0, 4.6),
+             "Aberdeenshire": (201000.0, -1.2), "City of Aberdeen": (139000.0, -3.8)}
+    months = [f"{y:04d}-{m:02d}" for y in range(2016, 2027) for m in range(1, 13)]
+    months = [m for m in months if "2016-07" <= m <= "2026-07"]
+
+    def bindings(query):
+        wanted = re.search(r'LCASE\("([^"]*)"\)', query).group(1).lower()
+        matched = [label for label in areas if wanted in label.lower()]
+        if "percentageAnnualChange" in query:
+            return [{"label": {"value": label}, "refMonth": {"value": "2026-07"},
+                     "averagePrice": {"value": str(areas[label][0])},
+                     "percentageAnnualChange": {"value": str(areas[label][1])}} for label in matched]
+        return [{"label": {"value": label}, "refMonth": {"value": month},
+                 "averagePrice": {"value": str(areas[label][0] - 500 * (len(months) - 1 - i))}}
+                for i, month in enumerate(months) for label in matched]
+
+    class _Response:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"results": {"bindings": self.rows}}
+
+    class _Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def get(self, url, params=None, **k):
+            return _Response(bindings(params["query"]))
+
+    monkeypatch.setattr(hpi.httpx, "AsyncClient", lambda *a, **k: _Client())
+
+
+def test_d6_an_ng1_report_and_the_nottingham_rows_read_the_city(monkeypatch):
+    from app.services import hpi
+    _d6_index(monkeypatch)
+    monkeypatch.setattr(app_main, "_MARKET_REPORT_CONCURRENCY", asyncio.Semaphore(4))
+
+    # A report passes the index its council's name as postcodes.io gives
+    # it, which for NG1 is "Nottingham": the area price line and the
+    # price trend both read the city now, not the county.
+    ng1 = next(o for o in app_main.ALL_OUTCODES if o["outcode"] == "NG1")
+    assert ng1["district"] == "Nottingham"
+    local = asyncio.run(hpi.area_comparison(ng1["district"], "", ""))["local_authority"]
+    assert local == {"name": "City of Nottingham", "average_price": 187500.0, "annual_change_pct": 4.6,
+                     "period": "2026-07"}
+    trend = asyncio.run(hpi.price_trend(ng1["district"]))
+    assert trend["area_name"] == "City of Nottingham" and trend["current_price"] == 187500.0
+
+    # The market report's rows for both cities, each keeping what it was
+    # asked for and where it links.
+    for asked, outcode, label in (("Nottingham", "NG1", "City of Nottingham"), ("Aberdeen", "AB10", "City of Aberdeen")):
+        assert (asked, outcode) in app_main.MARKET_REPORT_AREAS
+        row = asyncio.run(app_main._market_report_area(asked, outcode))
+        assert (row["name"], row["asked"], row["outcode"]) == (label, asked, outcode)
+        assert app_main._market_report_view({"areas": [row]})["area_noun"] == "cities"
+
+
+def test_d6_each_market_report_row_links_its_own_citys_district():
+    from app.services.hpi import is_the_place_asked_for
+    districts = {o["outcode"]: o["district"] for o in app_main.ALL_OUTCODES}
+    assert len(app_main.MARKET_REPORT_AREAS) == 18
+    for city, outcode in app_main.MARKET_REPORT_AREAS:
+        assert outcode in app_main.KNOWN_OUTCODES, outcode
+        assert is_the_place_asked_for(districts[outcode], city), (city, outcode, districts[outcode])
+
+
+D6_MARKET_ROWS = (
+    {"name": "Leeds", "asked": "Leeds", "outcode": "LS1", "average_price": 250000.0,
+     "annual_change_pct": 3.2, "period": "2026-07"},
+    {"name": "City of Nottingham", "asked": "Nottingham", "outcode": "NG1", "average_price": 187500.0,
+     "annual_change_pct": 2.1, "period": "2026-07"},
+    {"name": "Belfast", "asked": "Belfast", "outcode": "BT1", "average_price": 190000.0,
+     "annual_change_pct": 1.0, "period": "2026-06"},
+    {"name": "City of Westminster", "asked": "Westminster", "outcode": "SW1A", "average_price": 1020000.0,
+     "annual_change_pct": -20.7, "period": "2026-07"},
+)
+D6_SWING = "Small areas with few sales can swing this much in a year."
+
+
+def _d6_market_report(client, monkeypatch, areas):
+    import time
+    from app.services import _cache
+    from tests.test_ai_search_readiness import _forget_html
+
+    async def _nothing(*a, **k):
+        return {}
+
+    # Never the network: the snapshot below is what the page reads.
+    monkeypatch.setattr(app_main.hpi, "area_comparison", _nothing)
+    key = app_main.MARKET_REPORT_CACHE_KEY
+    _cache._put(key, time.time(), {"generated_on": "2026-09-16", "areas": [dict(a) for a in areas]})
+    _forget_html()
+    try:
+        return client.get("/market-report").text
+    finally:
+        _cache._evict(key)
+
+
+def test_d6_the_market_report_names_its_month_links_each_row_and_flags_big_moves(client, monkeypatch):
+    body = _d6_market_report(client, monkeypatch, D6_MARKET_ROWS)
+    title = html.unescape(re.search(r"<title>(.*?)</title>", body, re.S).group(1))
+    assert title.startswith("House prices by city: July 2026 figures")
+    assert "<h1>UK house prices by city, July 2026 figures</h1>" in body
+    dek = _d6_text(re.search(r'<p class="dek">(.*?)</p>', body, re.S).group(1))
+    assert dek.startswith("Average price and annual change across 4 major UK cities, straight from HM Land")
+    assert ("These are July 2026 figures, the latest month the index had published when it was read on "
+            "16 Sep 2026.") in dek
+    assert "For 1 of them the latest month is a different one, and each row gives its own." in dek
+    assert "September" not in title and "Updated" not in dek
+    assert f"the weakest City of Westminster at -20.7%. {D6_SWING}" in dek
+
+    # Each row leads to its district's guide, and the page says the row
+    # is the whole council area.
+    for row in D6_MARKET_ROWS:
+        assert f'<a href="/area/{row["outcode"]}">{row["name"]}</a>' in body
+    assert ("Each linked name opens the area guide for a postcode district at its centre (LS1 for Leeds). "
+            "The figures in the row are for the whole council area.") in _d6_text(body)
+    assert "June 2026" in body
+
+    # Only the move of more than ten per cent carries the line, in the
+    # row under it.
+    table = body[body.index('<table class="tx-table">'):body.index("</table>")]
+    assert table.count('<tr class="market-swing">') == 1
+    assert table.index(f'<tr class="market-swing"><td colspan="4">{D6_SWING}</td></tr>') > table.index("City of Westminster")
+    assert app_main.MARKET_REPORT_SWING_PCT == 10
+    view = app_main._market_report_view({"areas": [dict(D6_MARKET_ROWS[0], annual_change_pct=10.0),
+                                                   dict(D6_MARKET_ROWS[1], annual_change_pct=-10.1)]})
+    assert [a["swing"] for a in view["areas"]] == [False, True]
+
+
+def test_d6_the_market_report_calls_its_list_areas_once_any_row_is_not_the_city(client, monkeypatch):
+    rows = [dict(r) for r in D6_MARKET_ROWS]
+    rows[1]["name"] = "Nottinghamshire"
+    body = _d6_market_report(client, monkeypatch, rows)
+    title = html.unescape(re.search(r"<title>(.*?)</title>", body, re.S).group(1))
+    assert title.startswith("House prices by area: July 2026 figures")
+    assert "<h1>UK house prices by area, July 2026 figures</h1>" in body
+    dek = _d6_text(re.search(r'<p class="dek">(.*?)</p>', body, re.S).group(1))
+    assert dek.startswith("Average price and annual change across 4 UK areas,")
+    assert "Prices rose over the year in 3 of the 4 areas." in dek
+    description = re.search(r'<meta name="description" content="([^"]*)"', body).group(1)
+    assert "4 UK areas" in description and "major UK cities" not in description
+    assert "major UK cities" not in dek
+
+
+def test_d6_a_market_snapshot_stored_before_the_city_match_is_never_read(client, monkeypatch):
+    import time
+    from app.models import PageCache
+    from app.services import _cache
+    from tests.test_ai_search_readiness import _forget_html
+
+    assert app_main.MARKET_REPORT_CACHE_KEY == ("market_report", 2)
+    old = ("market_report", 1)
+    _cache._put(old, time.time(), {"generated_date": "17 September 2026", "areas": [
+        {"name": "Nottinghamshire", "average_price": 268000.0, "annual_change_pct": 1.9, "period": "2026-07"}]})
+
+    async def _index(name, region, country):
+        label = {"Nottingham": "City of Nottingham", "Aberdeen": "City of Aberdeen"}.get(name, name)
+        return {"local_authority": {"name": label, "average_price": 200000.0, "annual_change_pct": 2.0,
+                                    "period": "2026-07"}}
+
+    monkeypatch.setattr(app_main.hpi, "area_comparison", _index)
+    monkeypatch.setattr(app_main, "_MARKET_REPORT_CONCURRENCY", asyncio.Semaphore(4))
+    _cache._evict(app_main.MARKET_REPORT_CACHE_KEY)
+    _forget_html()
+    try:
+        body = client.get("/market-report").text
+    finally:
+        _cache._evict(old)
+        _cache._evict(app_main.MARKET_REPORT_CACHE_KEY)
+        with db.get_session() as session:
+            row = session.get(PageCache, "market_report:2")
+            if row is not None:
+                session.delete(row)
+                session.commit()
+    assert "Nottinghamshire" not in body and "17 September 2026" not in body
+    assert '<a href="/area/NG1">City of Nottingham</a>' in body
+    assert '<a href="/area/AB10">City of Aberdeen</a>' in body
+    assert "across 18 major UK cities" in _d6_text(body)
+
+
+# ---- D7. Small fixes a careful reader catches -------------------------------
+# (1) Bus times read "first bus 00:19, last 00:14" (Fortismere) and "first
+# bus 05:05, last 04:24" (LS6): the importer's last departure of the
+# service day runs past midnight. One helper, bus_service.service_hours,
+# words it for the report, the area guides, the school pages and the PDF.
+# (2) The school page's verdict read "... from Fortismere School.
+# comfortably inside the distance ... (1.883 miles" under a 1.88 mi tile.
+# (3) LS6 gave Leeds's Band D as £2,284 and £2,283, and KT3 4HX's Band F
+# was £3,768 in the report's pop-up and £3,769 on running costs: one
+# source for the latest Band D (council_tax.json) and one rounding
+# (council_tax.whole_pounds). (4) Every council tax page suggested
+# "e.g. S11 8XZ", in Sheffield. (5) The Nearby Essentials pop-up showed
+# "Not set up on this deployment". (6) The same card read "Data
+# unavailable" on one walk and "52 nearby" on another: the page asks once
+# more first. (7) House 9 counted "Flat 9, 12 Acacia Road" as its own.
+
+D7_BUS_STOP = {"atco_code": "D7A", "name": "Muswell Hill Broadway", "distance_m": 140, "latitude": 53.45,
+               "longitude": -2.22, "weekday_day": 96, "weekday_eve": 16, "sunday_day": 36,
+               "weekday_day_per_hour": 8.0, "weekday_eve_per_hour": 4.0, "sunday_day_per_hour": 4.0,
+               "weekday_first": "05:30", "weekday_last": "00:30", "routes": ["43", "134"]}
+D7_NIGHT_STOP = dict(D7_BUS_STOP, atco_code="D7B", name="Fortis Green", distance_m=260,
+                     weekday_day=60, weekday_first="00:19", weekday_last="00:14", routes=["N43"])
+
+
+def _d7_bus(best, *others):
+    stops = [best, *others]
+    return {"radius_m": 500, "stops": stops, "count": len(stops), "nearest": best, "best": best,
+            "routes": ["43", "134", "N43"], "feed_date": "2026-09-07", "ref_weekday": "2026-09-08",
+            "ref_sunday": "2026-09-13"}
+
+
+def _d7_unlocked(client, fake_report, monkeypatch, email, house, gather):
+    """The report read by an account that has unlocked this house number
+    (each test its own number: the tests share one database)."""
+    from app.db import get_session
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    fake_report(gather=gather)
+    with get_session() as session:
+        known = auth.find_user_by_email(session, email) is not None
+    if not known:
+        assert _signup(client, email).status_code == 303
+    with get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        auth.claim_unlock(session, user.id, "M14 5TG", house)
+    r = client.get(f"/property?postcode=M14%205TG&house_number={house}")
+    assert r.status_code == 200
+    return r.text
+
+
+def test_d7_a_bus_service_past_midnight_is_worded_not_printed_backwards():
+    from app.services import bus_service
+    hours = bus_service.service_hours
+    assert hours("06:10", "23:40") == {"text": "first bus 06:10, last 23:40", "first": "06:10", "last": "23:40",
+                                       "overnight": False}
+    # Fortismere and LS6 as the audit read them: the last bus leaves
+    # within the hour before the next day's first, in the small hours.
+    for first, last in (("00:19", "00:14"), ("05:05", "04:24")):
+        h = hours(first, last)
+        assert h["text"] == "the service runs through the night"
+        assert h["overnight"] and h["cell"] == "Runs through the night"
+    # A last bus after midnight with a night's gap before the first.
+    h = hours("05:30", "00:30")
+    assert h["text"] == "first bus 05:30, last 00:30 after midnight" and h["last"] == "00:30 after midnight"
+    # Both in the small hours, but four hours without a bus is not
+    # "through the night".
+    assert hours("04:50", "00:40")["text"] == "first bus 04:50, last 00:40 after midnight"
+    # A missing time leaves the clause out rather than printing a blank.
+    assert hours("", "")["text"] == "" and hours("06:10", None)["text"] == ""
+    assert bus_service.SMALL_HOURS_END_MIN == 360 and bus_service.THROUGH_NIGHT_GAP_MIN == 60
+
+
+def test_d7_the_report_and_its_pdf_word_the_first_and_last_bus_the_same_way(client, fake_report, monkeypatch):
+    from app.services import pdf_checklist
+    from tests.conftest import fake_gather
+    from tests.test_pdf_report import _running_costs
+    data = _d7_bus(D7_BUS_STOP, D7_NIGHT_STOP)
+    body = _d7_unlocked(client, fake_report, monkeypatch, "d7-buses@customer.test", "7101",
+                        fake_gather(bus_service=data))
+    modal = body.split('id="modal-bus"', 1)[1].split("</dialog>", 1)[0]
+    assert "(09:00 to 18:00); first bus 05:30, last 00:30 after midnight." in _flat(modal)
+    assert '<td class="num">05:30</td>' in modal and '<td class="num">00:30 after midnight</td>' in modal
+    # The stop with no overnight gap says so across both columns.
+    assert '<td class="num" colspan="2">Runs through the night</td>' in modal
+    assert "00:14" not in modal and "00:19" not in modal and "last 00:30." not in modal
+
+    # The PDF: its bus paragraph and its checklist row, from the same helper.
+    report = dict(_full_pdf_report(), bus_service=_d7_bus(D7_NIGHT_STOP))
+    ctx = app_main._pdf_context(report, _running_costs(), report["location"], "36")
+    page = app_main.templates.get_template("pdf_report_full.html").render(ctx)
+    assert "Fortis Green, 260 m away; the service runs through the night; routes" in page
+    assert "00:14" not in page
+    rows = {r["check"]: r for r in pdf_checklist.build(report, _running_costs())}
+    assert rows["Bus service"]["result"].endswith("at Fortis Green (260 m); the service runs through the night")
+    report = dict(report, bus_service=_d7_bus(D7_BUS_STOP))
+    rows = {r["check"]: r for r in pdf_checklist.build(report, _running_costs())}
+    assert rows["Bus service"]["result"].endswith("(140 m); first bus 05:30, last 00:30 after midnight")
+
+
+def test_d7_the_area_guide_says_a_night_service_runs_through_the_night(client, monkeypatch):
+    from tests.test_pages import V20_STUBS, _fresh_guide
+    ls6 = dict(V20_STUBS["bus"], best=dict(V20_STUBS["bus"]["best"], weekday_first="05:05", weekday_last="04:24"))
+    body = _fresh_guide(client, monkeypatch, "AB12", dict(V20_STUBS, bus=ls6))
+    section = _flat(body.split("Buses from the centre of AB12", 1)[1].split("</section>", 1)[0])
+    assert "and 12.0 on Sunday daytime; the service runs through the night." in section
+    assert "04:24" not in section and "first bus 05:05" not in section
+
+
+def _d7_school(urn, name, lat, lon, miles):
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    with db.get_session() as session:
+        session.merge(School(urn=urn, name=name, phase="Secondary", type_name="Academy converter",
+                             postcode="PL4 8AA", latitude=lat, longitude=lon, ofsted_rating=2, ofsted_rating_label="Good"))
+        session.merge(SchoolDetail(urn=urn, town="Plymouth", admissions_policy="Not applicable", local_authority="Plymouth"))
+        session.merge(SchoolAdmissionRadius(urn=urn, last_distance_miles=miles, academic_year="2025/26",
+                                            source_authority="Plymouth"))
+        session.commit()
+
+
+def test_d7_the_school_page_starts_its_why_sentence_with_a_capital_and_gives_miles_to_two_places(client, monkeypatch):
+    from app.models import BusStop
+    from app.services import _cache
+    lat, lon = 50.3700, -4.1400                 # a corner of the test database no other test uses
+    _d7_school(990711, "Hoe Park Academy", lat, lon, 1.8826)
+    with db.get_session() as session:
+        session.merge(BusStop(atco_code="D7NIGHT", name="Hoe Road", latitude=lat + 0.0009, longitude=lon,
+                              weekday_day=60, weekday_eve=12, sunday_day=27, weekday_first="00:19", weekday_last="00:14",
+                              routes='["N1"]', feed_date=datetime.date(2026, 9, 7), ref_weekday=datetime.date(2026, 9, 8),
+                              ref_sunday=datetime.date(2026, 9, 13)))
+        session.commit()
+    _cache._store.clear(); _cache._bytes = 0
+
+    async def _lookup(_pc):
+        return {"postcode": "PL1 2AA", "latitude": lat + 0.0058, "longitude": lon}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    try:
+        body = client.get("/school/990711/hoe-park-academy?check=PL1+2AA").text
+    finally:
+        with db.get_session() as session:
+            session.query(BusStop).filter(BusStop.atco_code == "D7NIGHT").delete()
+            session.commit()
+    verdict = _flat(re.sub(r"<[^>]+>", "", body.split('class="admission-verdict-detail">', 1)[1].split("</span>", 1)[0]))
+    miles = app_main._miles_label(round(app_main._haversine_km(lat, lon, lat + 0.0058, lon) / 1.60934, 2))
+    assert verdict.startswith(f"PL1 2AA is {miles} miles from Hoe Park Academy. Comfortably inside the distance the "
+                              "school admitted from last time (1.88 miles in 2025/26).")
+    assert "1.8826" not in verdict and ". comfortably" not in verdict
+    assert re.search(r"That is 1\.\d\d? miles inside it\.", verdict)
+    assert '<span class="score-tile-value">1.88 mi</span>' in body
+    # And its bus paragraph, for a stop whose last bus leaves after midnight.
+    buses = _flat(body.split("Getting to Hoe Park Academy by bus", 1)[1].split("</p>", 1)[0])
+    assert "on Sunday daytime; the service runs through the night." in buses
+    assert "00:14" not in buses
+
+
+def test_d7_the_why_phrase_is_lower_case_inside_a_sentence_and_capitalised_to_start_one():
+    for distance, radius, why in ((0.4, 1.8826, "Comfortably inside the distance the school admitted from last time"),
+                                  (1.9, 1.8826, "Close to last time's distance, which moves every year with demand"),
+                                  (3.0, 1.8826, "Outside the distance the school admitted from last time")):
+        v = app_main._admission_verdict(distance, radius)
+        assert v["why_sentence"] == why and v["why"] == why[0].lower() + why[1:]
+    assert app_main._admission_verdict(0.4, 621.37, no_limit=True)["why_sentence"] == "Distance did not limit entry"
+    # The schools guide's tooltip starts with it.
+    school = {"urn": 102156, "name": "Fortismere School", "latitude": 51.59, "longitude": -0.15, "distance_m": 644,
+              "admission_radius": {"last_distance_miles": 1.8826, "academic_year": "varies"}}
+    row = app_main._guide_rows({"all_schools": [school]}, verdict_from={"postcode": "N10 3JA"})[0]
+    assert row["verdict_why"] == "Comfortably inside the distance the school admitted from last time"
+    # The miles formatter the tile uses, and now the check and the report.
+    assert [app_main._miles_label(v) for v in (1.8826, 0.4, 1.5, 2.0, None)] == ["1.88", "0.4", "1.5", "2", ""]
+    assert app_main.templates.env.filters["miles"] is app_main._miles_label
+
+
+def test_d7_the_reports_catchment_table_and_both_maps_give_the_radius_to_two_places():
+    source = (pathlib.Path(app_main.__file__).parent / "templates" / "property.html").read_text(encoding="utf-8")
+    assert '<td class="num">{{ s.radius_miles | miles }} mi</td>' in source
+    # Both map branches, Google (production) and Leaflet (dev), print the label.
+    assert source.count("' · published admission distance ' + s.radius_label + ' mi ('") == 2
+    assert source.count("' · estimated admission distance ' + s.radius_label + ' mi (modelled") == 2
+    assert "+ s.radius_miles + ' mi" not in source
+
+
+# (3) One Band D, one rounding.
+
+def test_d7_money_rounds_to_the_nearest_pound_the_same_way_everywhere():
+    from app.services import council_tax, pdf_checklist
+    for value, words in ((2283.73, "£2,284"), (3768.84, "£3,769"), (3768.5, "£3,769"), (3768.49, "£3,768"),
+                         (2.675, "£3"), (250000, "£250,000"), ("412345", "£412,345")):
+        assert app_main._format_gbp(value) == words
+        assert pdf_checklist._fmt_gbp(value) == words
+        assert f"£{council_tax.whole_pounds(value):,}" == words
+    assert app_main._format_gbp(None) == "None" and app_main._format_gbp("Not held") == "Not held"
+    assert app_main._format_gbp(float("nan")) == "nan"
+    # The area guide's sentences and the trend chart's labels use it too.
+    chart = app_main._trend_chart([{"value": v, "period": str(i), "note": ""} for i, v in enumerate((2100.5, 2200.49, 2283.73))])
+    assert [p["value"] for p in chart["points"]] == ["£2,101", "£2,200", "£2,284"]
+    page = (pathlib.Path(app_main.__file__).parent / "templates" / "council_tax_table.html").read_text(encoding="utf-8")
+    assert "\"{:,.0f}\"" not in page
+    assert page.count("{{ r.band_a | gbp }}") == 3 and page.count("{{ r.band_d | gbp }}") == 3
+
+
+def test_d7_the_latest_band_d_is_the_council_tax_files_figure():
+    from app.services import council_finance, council_tax
+    ct = council_tax.for_district("E08000035")
+    finance = council_finance.for_council("E08000035", "Leeds")
+    assert ct["authority"] == "Leeds" and finance["history"][-1]["year"][:4] == ct["year"][:4]
+    assert finance["history"][-1]["band_d"] == ct["band_d"]
+    # Found by name, the same.
+    assert council_finance.for_council("", "Leeds")["history"][-1]["band_d"] == ct["band_d"]
+    # A payload cached before today is settled at render, without
+    # touching the cached copy.
+    cached = dict(finance, history=finance["history"][:-1] + [dict(finance["history"][-1], band_d=2284.0)])
+    settled = council_finance.with_council_tax_band_d(cached)
+    assert settled["history"][-1]["band_d"] == ct["band_d"] and cached["history"][-1]["band_d"] == 2284.0
+    assert settled["history"][:-1] == cached["history"][:-1]
+    # A year the council tax file does not hold, or no code, is left as it is.
+    other_year = dict(cached, history=cached["history"][:-1] + [dict(cached["history"][-1], year="2027-2028")])
+    assert council_finance.with_council_tax_band_d(other_year) is other_year
+    assert council_finance.with_council_tax_band_d(dict(cached, code=""))["history"][-1]["band_d"] == 2284.0
+    assert council_finance.with_council_tax_band_d(None) is None
+
+
+def test_d7_the_ls6_guide_gives_one_band_d_in_every_section(client, monkeypatch):
+    import time
+    from app.services import _cache, council_finance, council_tax
+    from tests.test_ai_search_readiness import AREA_PAYLOAD, _forget_html
+
+    ct = council_tax.for_district("E08000035")
+    rounded, cut = app_main._format_gbp(ct["band_d"]), f"£{int(ct['band_d']):,}"
+    finance = council_finance.for_council("E08000035", "Leeds")
+    # As the warm guides hold it: the finance file's whole-pound figure.
+    warm = dict(finance, history=finance["history"][:-1] + [dict(finance["history"][-1], band_d=float(round(ct["band_d"])))])
+
+    async def _resolve(outcode):
+        where = fake_location(postcode=f"{outcode} 2AA", outcode=outcode)
+        where.update(admin_district="Leeds", codes={"admin_district": "E08000035", "lsoa": "E01011352"})
+        return where, True
+
+    monkeypatch.setattr(app_main, "_resolve_extension_location", _resolve)
+    key = ("area_guide", app_main.AREA_GUIDE_PAYLOAD_VERSION, "LS6")
+    _cache._put(key, time.time(), dict(AREA_PAYLOAD, finance=warm))
+    _forget_html()
+    try:
+        body = client.get("/area/LS6").text
+    finally:
+        _cache._evict(key)
+    flat = _flat(re.sub(r"<[^>]+>", " ", body))
+    assert f"Council tax at Band D in Leeds: {rounded} a year" in flat                      # House prices
+    assert f"A Band D household in Leeds pays {rounded} in council tax for 2026-27" in flat  # the lead
+    assert f"A Band D household in Leeds pays {rounded} for 2026-27" in flat                # the council section
+    assert rounded == "£2,284" and cut == "£2,283"
+    assert cut not in body
+
+
+def test_d7_a_band_reads_the_same_in_the_reports_pop_up_and_on_the_council_page(client, fake_report):
+    from app.services import council_tax
+    from tests.conftest import fake_gather
+    ct = council_tax.for_district(None, "Kingston upon Thames")
+    band_f = app_main._format_gbp(ct["bands"]["F"])
+    assert band_f == "£3,769"                   # 3,768.84, which the pop-up cut to £3,768
+    fake_report(gather=fake_gather(council_tax=ct))
+    body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
+    popup = body.split('id="modal-council-tax"', 1)[1].split("</dialog>", 1)[0]
+    assert f'<tr><td>Band F</td><td class="num">{band_f}</td>' in popup and "£3,768" not in popup
+    page = client.get(f"/running-costs/council-tax/{ct['slug']}").text
+    description = html.unescape(re.search(r'<meta name="description" content="([^"]*)"', page).group(1))
+    assert f"F {band_f}," in description
+    assert f"Band D {app_main._format_gbp(ct['band_d'])}," in html.unescape(re.search(r"<title>(.*?)</title>", page, re.S).group(1))
+
+
+# (4) The postcode box on a council's page suggests a district inside it.
+
+def test_d7_a_councils_postcode_box_suggests_a_district_inside_that_council(client, monkeypatch):
+    for slug, authority in (("basildon", "Basildon"), ("leeds", "Leeds")):
+        first = app_main._guides_in_council(authority)[0]
+        body = client.get(f"/running-costs/council-tax/{slug}").text
+        assert f'placeholder="e.g. a postcode in {first}"' in body
+        assert f'<a class="tag-link" href="/area/{first}">{first}</a>' in body
+        assert "S11 8XZ" not in body
+    # Inside the council by postcodes.io: Basildon's first is CM11, Billericay.
+    first = app_main._guides_in_council("Basildon")[0]
+    assert next(o for o in app_main.ALL_OUTCODES if o["outcode"] == first)["district"] == "Basildon"
+    # A council with no area guide listed asks for a full postcode.
+    from tests.test_ai_search_readiness import _forget_html
+    monkeypatch.setattr(app_main, "_guides_in_council", lambda authority: [])
+    _forget_html()                              # the page above is kept as HTML for ten minutes
+    body = client.get("/running-costs/council-tax/basildon").text
+    _forget_html()
+    assert 'placeholder="e.g. a full postcode"' in body and "S11 8XZ" not in body
+
+
+# (5) No developer note in the Nearby Essentials pop-up.
+
+def test_d7_the_nearby_essentials_pop_up_carries_no_developer_note(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report()                               # google_ratings_configured is False here
+    body = client.get("/property?postcode=M14+5TG").text
+    assert "Not set up on this deployment" not in body
+    assert '<h3 class="subsection-heading">Google ratings</h3>' not in body
+    assert "Public star ratings from Google" not in body
+    fake_report(gather=fake_gather(google_ratings_configured=True, google_ratings=[
+        {"name": "Cafe Uno", "type": "Cafe", "rating": 4.5, "rating_count": 120, "distance_m": 200}]))
+    body = client.get("/property?postcode=M14+5TG").text
+    assert '<h3 class="subsection-heading">Google ratings</h3>' in body and "Cafe Uno" in body
+
+
+# (6) One more try before "Data unavailable".
+
+def test_d7_the_amenities_reply_says_whether_the_lookup_failed(client, fake_report, monkeypatch):
+    from app.services import amenities as amenities_service
+    fake_report()
+
+    async def _down(lat, lon, lite=False):
+        raise RuntimeError("Overpass dropped the query")
+
+    async def _up(lat, lon, lite=False):
+        categories = {k: [] for k in ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging",
+                                      "gp", "dentist", "green_space", "wind_turbine", "solar_farm")}
+        return {"categories": categories, "stations": {}, "stations_list": {"rail": [], "tube": [], "tram": [], "bus": []}}
+
+    monkeypatch.setattr(amenities_service, "nearby_amenities_and_station", _down)
+    failed = client.get("/api/property/amenities?postcode=M14%205TG").json()
+    assert failed["error"] is True and "Data unavailable" in failed["essentials_card"]
+    monkeypatch.setattr(amenities_service, "nearby_amenities_and_station", _up)
+    answered = client.get("/api/property/amenities?postcode=M14%205TG").json()
+    assert answered["error"] is False and "0 nearby" in answered["essentials_card"]
+
+
+def _d7_amenities_script(client, fake_report):
+    from tests.conftest import fake_gather
+    fake_report(gather=fake_gather(amenities_pending=True, amenities_error=False))
+    body = client.get("/property?postcode=M14+5TG").text
+    scripts = [s for s in re.findall(r"<script>(.*?)</script>", body, re.S) if "/api/property/amenities?postcode=" in s]
+    assert len(scripts) == 1
+    return scripts[0]
+
+
+D7_NODE_HARNESS = r"""
+const script = require('fs').readFileSync(process.argv[2], 'utf8');
+const replies = JSON.parse(process.argv[3]);
+let calls = 0;
+const waits = [], swapped = {}, statuses = [];
+global.fetch = function () {
+    const reply = replies[Math.min(calls, replies.length - 1)];
+    calls += 1;
+    if (reply === 'network') return Promise.reject(new Error('network'));
+    return Promise.resolve({ ok: true, json: function () { return Promise.resolve(reply); } });
+};
+global.setTimeout = function (fn, ms) { waits.push(ms); fn(); return 0; };
+const classList = { add: function () {}, remove: function () {}, contains: function () { return false; } };
+global.document = {
+    getElementById: function (id) {
+        return { classList: classList, dataset: {}, addEventListener: function () {},
+                 set outerHTML(v) { swapped[id] = v; } };
+    },
+    querySelectorAll: function (selector) {
+        if (selector.indexOf('dashboard-card-status') === -1) return [];
+        return [{ closest: function () { return { classList: classList }; },
+                  set textContent(v) { statuses.push(v); } }];
+    },
+};
+global.window = {};
+eval(script);
+setImmediate(function () {
+    console.log(JSON.stringify({ calls: calls, waits: waits, swapped: swapped, statuses: statuses }));
+});
+"""
+
+
+def test_d7_the_page_asks_once_more_before_it_says_data_unavailable(client, fake_report, tmp_path):
+    import shutil
+    import subprocess
+    import pytest
+    script = _d7_amenities_script(client, fake_report)
+    assert "const RETRY_AFTER_MS = 2500;" in script
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not installed; the retry is pinned by the source check above")
+    (tmp_path / "page.js").write_text(script, encoding="utf-8")
+    (tmp_path / "harness.js").write_text(D7_NODE_HARNESS, encoding="utf-8")
+
+    def run(*replies):
+        out = subprocess.run([node, str(tmp_path / "harness.js"), str(tmp_path / "page.js"), json.dumps(list(replies))],
+                             capture_output=True, text=True, timeout=60, check=True)
+        return json.loads(out.stdout)
+
+    good = {"error": False, "essentials_card": "<b>52 nearby</b>", "transport_card": "", "essentials_body": "list",
+            "transport_body": "", "stations_list": {}}
+    bad = dict(good, error=True, essentials_card="<b>Data unavailable</b>", essentials_body="none")
+    # Answered first time: one request, no wait.
+    first = run(good)
+    assert first["calls"] == 1 and first["waits"] == [] and first["swapped"]["card-amenities"] == "<b>52 nearby</b>"
+    # The lookup failed, then answered: the second reply is the one shown.
+    second = run(bad, good)
+    assert second["calls"] == 2 and second["waits"] == [2500]
+    assert second["swapped"]["card-amenities"] == "<b>52 nearby</b>" and second["statuses"] == []
+    # The request itself failed, then answered.
+    second = run("network", good)
+    assert second["calls"] == 2 and second["swapped"]["card-amenities"] == "<b>52 nearby</b>"
+    # Failed twice: once only, then the server's own "Data unavailable".
+    twice = run(bad, bad, good)
+    assert twice["calls"] == 2 and twice["swapped"]["card-amenities"] == "<b>Data unavailable</b>"
+    twice = run(bad, "network")
+    assert twice["calls"] == 2 and twice["swapped"]["card-amenities"] == "<b>Data unavailable</b>"
+    twice = run("network", "network", good)
+    assert twice["calls"] == 2 and twice["swapped"] == {} and set(twice["statuses"]) == {"Data unavailable"}
+
+
+# (7) A house number is a whole token at the start of the address.
+
+def test_d7_house_9_is_not_19_or_29_or_flat_9():
+    records = [{"address": a} for a in ("9 ACACIA ROAD", "19 ACACIA ROAD", "29 ACACIA ROAD", "9, Acacia Road",
+                                        "FLAT 9 12 ACACIA ROAD", "9A ACACIA ROAD")]
+    pick = lambda recs, q: [r["address"] for r in app_main._filter_by_address(recs, q)]  # noqa: E731
+    assert pick(records, "9") == ["9 ACACIA ROAD", "9, Acacia Road"]
+    assert pick(records, "9 Acacia Road") == ["9 ACACIA ROAD", "9, Acacia Road"]
+    assert pick(records, "19") == ["19 ACACIA ROAD"]
+    # A flat's own number counts only when the search names a flat.
+    assert pick(records, "Flat 9") == ["FLAT 9 12 ACACIA ROAD"]
+    assert pick([r for r in records if r["address"].startswith(("1", "2", "FLAT"))], "9") == []
+    assert pick([{"address": "Apartment 9, 30 Acacia Road"}, {"address": "UNIT 9 40 ACACIA ROAD"}], "9") == []
+    # The building's number still finds the flats inside it, and "9"
+    # still finds "9A" where no plain 9 is recorded.
+    assert pick([{"address": "Flat 1, 9 Acacia Road"}, {"address": "FLAT 9 12 ACACIA ROAD"}], "9") == ["Flat 1, 9 Acacia Road"]
+    assert pick([{"address": "9A ACACIA ROAD"}, {"address": "19 ACACIA ROAD"}], "9") == ["9A ACACIA ROAD"]
+    assert pick(records, "9a") == ["9A ACACIA ROAD"]
+    # The change alert: a sale at flat 9 at number 12, at 19 or at 9A is
+    # not a sale of house 9; a sale at 9 is.
+    before = _c1_sale_summary(C1_STREET, "9")
+    after = _c1_sale_summary(C1_STREET + _c1_sales("FLAT 9 30 ACACIA AVENUE", "19 ACACIA AVENUE", "9A ACACIA AVENUE"), "9")
+    assert app_main._alert_changes(before, after) == []
+    assert app_main._alert_changes(before, _c1_sale_summary(C1_STREET + _c1_sales("9 ACACIA AVENUE"), "9"))
+
+
+# ---- Batch D fix pass: what the review of D1 to D7 found left over -------
+# (1) D1: a converted house with a certificate of its own beside sales of
+# its flats only. The "57" link in "Which home is yours?" read Flat 1's
+# £301,000 as "last sold here, 2023" and "Leasehold at the last recorded
+# sale", and divided the flat's price by the house's 122 m². (2) D7(3):
+# /running-costs rounded Bexley's Band B of 1,840.50 to £1,840 where the
+# report's pop-up said £1,841. (3) D7(7): the Comparables caption placed
+# 19 Acacia Road's sale as house 9's.
+
+DFIX_CERTS = [
+    {"address": "57, Malden Hill Gardens, New Malden", "rating": "D", "date": "2025-11-04", "certificate_number": "DF-57"},
+    {"address": "Flat 1, 57, Malden Hill Gardens, New Malden", "rating": "C", "date": "2021-02-10",
+     "certificate_number": "DF-57-1"},
+]
+DFIX_FLAT_SALE = {"address": "FLAT 1 57 MALDEN HILL GARDENS", "street": "MALDEN HILL GARDENS", "town": "NEW MALDEN",
+                  "amount": "301000", "date": "2023-03-15", "tenure": "Leasehold"}
+
+
+def test_dfix_a_house_link_does_not_take_the_sale_of_a_flat_inside_it(client, fake_report):
+    homes = app_main._postcode_homes(DFIX_CERTS, [DFIX_FLAT_SALE])
+    house = next(h for h in homes if h["short"] == "57")
+    flat = next(h for h in homes if h["short"] != "57")
+    hn = house["house_number"]
+    assert hn == "57 Malden Hill Gardens"
+    # The house's link: its own certificate, and no sale of a flat inside it.
+    assert app_main._filter_by_address(DFIX_CERTS, hn) == [DFIX_CERTS[0]]
+    assert app_main._filter_by_address([DFIX_FLAT_SALE], hn) == []
+    # The flat's link finds the flat's certificate and its sale.
+    assert app_main._filter_by_address(DFIX_CERTS, flat["house_number"]) == [DFIX_CERTS[1]]
+    assert app_main._filter_by_address([DFIX_FLAT_SALE], flat["house_number"]) == [DFIX_FLAT_SALE]
+    # A bare number typed in the box still finds the flats inside it, a
+    # street still finds the flats on it, and a named house is not its flat.
+    assert app_main._filter_by_address([DFIX_FLAT_SALE], "57") == [DFIX_FLAT_SALE]
+    assert app_main._filter_by_address([DFIX_FLAT_SALE], "Malden Hill Gardens") == [DFIX_FLAT_SALE]
+    named = [{"address": "ROSE COTTAGE, CHURCH LANE"}, {"address": "FLAT 1 ROSE COTTAGE CHURCH LANE"}]
+    assert app_main._filter_by_address(named[1:], "Rose Cottage, Church Lane") == []
+    assert app_main._filter_by_address(named, "Flat 1 Rose Cottage") == [named[1]]
+
+    # The report on that link, gathered as the real gather filters.
+    body = _d1_report(client, fake_report, house_number="57+Malden+Hill+Gardens",
+                      certificates=app_main._filter_by_address(DFIX_CERTS, hn),
+                      transactions=app_main._filter_by_address([DFIX_FLAT_SALE], hn))
+    assert "last sold here" not in body and "301,000" not in body
+    assert "at the last recorded sale" not in body
+
+    # And no per square metre line from the flat's price over the house's floor area.
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+    comparables = [{"address": f"{n} Near Road", "date": recent, "amount": str(500000 + n * 10000), "floor_area": 100 + n}
+                   for n in range(1, 6)]
+    context = {"transactions": app_main._filter_by_address([dict(DFIX_FLAT_SALE, date=recent)], hn)}
+    app_main._apply_valuation(context, comparables, 122, 2.0, hn)
+    assert context["price_per_sqm"]["subject"] is None and context["price_per_sqm"]["median"]
+
+
+def test_dfix_running_costs_rounds_a_band_the_way_the_reports_pop_up_does(client, fake_report, monkeypatch):
+    from app.services import _cache, council_tax
+    from tests.conftest import fake_gather
+    ct = council_tax.for_district(None, "Bexley")
+    assert ct["bands"]["B"] == 1840.5                  # a real half: "{:,.0f}" made it £1,840
+    band_b = app_main._format_gbp(ct["bands"]["B"])
+    assert band_b == "£1,841"
+
+    fake_report(gather=fake_gather(council_tax=ct))
+    body = client.get("/property?postcode=M14+5TG", headers={"User-Agent": "Googlebot/2.1"}).text
+    popup = body.split('id="modal-council-tax"', 1)[1].split("</dialog>", 1)[0]
+    assert f'<tr><td>Band B</td><td class="num">{band_b}</td>' in popup
+
+    async def _lookup(_postcode):
+        return fake_location(postcode="DA6 7AT", outcode="DA6")
+
+    async def _answer(where, house_number):
+        return {"postcode": "DA6 7AT", "district": "Bexley", "outcode": "DA6", "house_number": "",
+                "latitude": 51.45, "longitude": 0.14, "council_tax": ct, "energy": None,
+                "home": None, "sales": None, "stamp_duty": None, "rent": None, "district_prices": None,
+                "area_prices": None, "broadband": None, "flood": None, "typical_year": None,
+                "energy_figure": None, "income_value": None, "income_la": None, "income_la_name": "",
+                "typical_share_pct": None}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "_running_costs_for_postcode", _answer)
+    _cache._store.clear()
+    _cache._bytes = 0
+    page = client.get("/running-costs?postcode=DA6%207AT").text
+    _cache._store.clear()
+    _cache._bytes = 0
+    bands = page.split("Council tax at every band in Bexley", 1)[1].split("</table>", 1)[0]
+    assert f'<td class="num">{band_b}</td>' in bands and "£1,840<" not in bands
+    assert all(f'<td class="num">{app_main._format_gbp(v)}</td>' in bands for v in ct["bands"].values())
+    # Every pound on the page goes through the one filter.
+    source = (pathlib.Path(app_main.__file__).parent / "templates" / "running_costs.html").read_text(encoding="utf-8")
+    assert "\"{:,.0f}\"" not in source and "&pound;{{" not in source
+
+
+def test_dfix_comparables_places_house_9s_own_sale_and_not_19s(client, monkeypatch):
+    from app.services import _cache
+    from tests.test_ai_search_readiness import _forget_html
+
+    async def _lookup(_postcode):
+        return fake_location()
+
+    async def _nearby(lat, lon, **kwargs):
+        return [{"postcode": "M14 5TG", "distance_m": 0, "latitude": 53.45, "longitude": -2.22},
+                {"postcode": "M14 5TH", "distance_m": 400, "latitude": 53.452, "longitude": -2.221}]
+
+    async def _sold(postcodes):
+        return [
+            {"address": "19 ACACIA ROAD", "postcode": "M14 5TG", "amount": "410000", "date": "2025-04-01",
+             "property_type": "terraced", "tenure": "Freehold", "new_build": False},
+            {"address": "3 FAR STREET", "postcode": "M14 5TH", "amount": "300000", "date": "2024-02-01",
+             "property_type": "terraced", "tenure": "Freehold", "new_build": False},
+            {"address": "9 ACACIA ROAD", "postcode": "M14 5TG", "amount": "250000", "date": "2019-05-01",
+             "property_type": "terraced", "tenure": "Freehold", "new_build": False},
+        ]
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "nearby_postcodes", _nearby)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcodes", _sold)
+    keys = (app_main._comparables_page_key(53.45, -2.22), app_main._comparables_key(53.45, -2.22))
+    for key in keys:
+        _cache._evict(key)
+    _forget_html()
+    try:
+        nine = _flat(client.get("/property/comparables?postcode=M14%205TG&house_number=9").text)
+        nineteen = _flat(client.get("/property/comparables?postcode=M14%205TG&house_number=19").text)
+    finally:
+        for key in keys:
+            _cache._evict(key)
+        _forget_html()
+    assert '£250,000 (for "9") sits above 0% of the 3 nearby sold prices' in nine
+    assert "£410,000 (for" not in nine
+    assert '£410,000 (for "19") sits above 67% of the 3 nearby sold prices' in nineteen
+    # The page reads the report's own matcher, not a substring.
+    source = (pathlib.Path(app_main.__file__)).read_text(encoding="utf-8")
+    assert "house_number.lower() in t[\"address\"].lower()" not in source
+
+
+# (4) The review's quicker suggestions. The row's links: the number alone
+# where it opens the same records, a comma after a flat's own number, and
+# nofollow, since each link costs a full gather on a noindex page.
+
+def test_dfix_the_row_sets_the_number_alone_only_where_it_opens_the_same_home():
+    certs = [{"address": "57, Malden Hill Gardens", "certificate_number": "A"},
+             {"address": "57 Acacia Road", "certificate_number": "B"},
+             {"address": "12 Acacia Road", "certificate_number": "C"}]
+    sales = [{"address": "FLAT 1 2 ACACIA ROAD", "street": "ACACIA ROAD"},
+             {"address": "12 ACACIA ROAD", "street": "ACACIA ROAD"},
+             {"address": "MALDEN HOUSE 3 MALDEN HILL GARDENS", "street": "MALDEN HILL GARDENS"}]
+    homes = {h["label"]: h for h in app_main._postcode_homes(certs, sales)}
+    # 57 is on two streets here, so each keeps its street; 12 is one home.
+    assert homes["57 Malden Hill Gardens"]["house_number"] == "57 Malden Hill Gardens"
+    assert homes["57 Acacia Road"]["house_number"] == "57 Acacia Road"
+    assert homes["12 Acacia Road"]["house_number"] == "12"
+    # HM Land Registry's "FLAT 1 2" reads with the register's comma, and
+    # still opens its own sale and nothing else.
+    flat = homes["Flat 1, 2 Acacia Road"]
+    assert flat["short"] == "Flat 1, 2" and flat["house_number"] == "Flat 1, 2"
+    assert app_main._filter_by_address(sales, flat["house_number"]) == [sales[0]]
+    assert app_main._filter_by_address(certs, flat["house_number"]) == []
+    # A building's name is not a flat's number: no comma there.
+    assert app_main._sale_label("FLAT 14 THE VERY LONG NAMED BUILDING 120 HIGH STREET") == \
+        "Flat 14 The Very Long Named Building 120 High Street"
+    assert app_main._sale_label("MALDEN HOUSE 3 MALDEN HILL GARDENS") == "Malden House 3 Malden Hill Gardens"
+
+
+def test_dfix_the_which_home_links_are_nofollow(client, fake_report):
+    row = _d1_row(_d1_report(client, fake_report))
+    links = _d1_links(row)                      # asserts every link carries rel="nofollow"
+    assert len(links) == 3 and row.count('rel="nofollow"') == 3
+
+
+# D1 follow-up: without a house number, the lines that called one home's
+# figures "this home" or "here" name what they describe or step aside.
+
+def test_dfix_without_a_house_number_no_line_prices_the_newest_certificates_floor_area():
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+    comparables = [{"address": f"{n} Near Road", "date": recent, "amount": str(500000 + n * 10000), "floor_area": 100 + n}
+                   for n in range(1, 6)]
+    postcode_only = {"transactions": [dict(D1_SALE_55, date=recent)]}
+    app_main._apply_valuation(postcode_only, comparables, 122, 2.0, "")
+    psqm = postcode_only["price_per_sqm"]
+    assert psqm["implied_value"] is None and psqm["subject"] is None and psqm["median"]
+    page = app_main.templates.get_template("_valuation.html").module.valuation_body(
+        postcode_only["valuation"], psqm, False, True, False, True)
+    assert "would be worth about" not in str(page) and "Price per square metre" in str(page)
+    chosen = {"transactions": [dict(D1_SALE_55, date=recent)]}
+    app_main._apply_valuation(chosen, comparables, 122, 2.0, "55 Malden Hill Gardens")
+    assert chosen["price_per_sqm"]["implied_value"] and chosen["price_per_sqm"]["subject_floor_area"] == 122
+
+
+def test_dfix_a_postcode_reports_leasehold_line_and_epc_highlight_name_what_they_describe(client, fake_report):
+    lease = dict(D1_SALE_55, tenure="Leasehold")
+    certs = [dict(D1_CERTS[0], rating="C"), D1_CERTS[1]]
+    # The strip shows four: the schools and prices fakes step aside for it.
+    quiet = {"hpi": None, "school_landscape": None}
+    body = _d1_report(client, fake_report, transactions=[lease], certificates=certs, **quiet)
+    flat = _flat(body)
+    assert "The most recent sale at KT3 4HX was recorded as <strong>leasehold</strong>." in flat
+    assert "If the home you are buying is leasehold too, expect a service charge and ground rent." in flat
+    assert "Most recent sale here" not in flat
+    assert ("EPC C", "on the newest certificate here, cheaper than most to run") in _d1_highlights(body)
+
+    body = _d1_report(client, fake_report, house_number="55+Malden+Hill+Gardens", transactions=[lease], certificates=certs, **quiet)
+    flat = _flat(body)
+    assert "Most recent sale here was recorded as <strong>leasehold</strong>. Expect a service charge and ground rent." in flat
+    assert ("EPC C", "energy rating, cheaper than most to run") in _d1_highlights(body)
+
+
+def test_dfix_the_pdfs_sale_figure_is_the_homes_own_or_named_as_the_postcodes():
+    from tests.test_pdf_report import _running_costs
+    report = dict(_full_pdf_report(), valuation=None)
+    fig = '<span class="fig-v">{}</span><br/><span class="fig-l">{}</span>'
+
+    def page(rc):
+        ctx = app_main._pdf_context(report, rc, report["location"], "36")
+        return app_main.templates.get_template("pdf_report_full.html").render(ctx)
+
+    # 36's own sale has a price: that is the figure, as its own.
+    own = dict(_running_costs(), home=dict(_running_costs()["home"], sale_amount=116000.0))
+    assert fig.format("£116,000", "Last sold, 1996") in page(own)
+    # Its sale has no price held: the postcode's latest, named as the postcode's.
+    text = page(_running_costs())
+    assert fig.format("£823,500", "Latest sale at this postcode, 2025") in text
+    assert "Last sale here" not in text
+
+
+# D4 and D3 follow-ups: one rounding for the EPC question, the banner's
+# words on the checklist, and the district comparison's crime margin.
+
+def test_dfix_the_epc_question_rounds_its_cost_as_the_energy_card_does():
+    from app.services import solicitor_questions
+    assert solicitor_questions._gbp(1240.5) == app_main._format_gbp(1240.5) == "£1,241"
+    assert solicitor_questions._gbp(8400) == "£8,400" and solicitor_questions._gbp("12200.49") == "£12,200"
+
+
+def test_dfix_the_checklist_names_a_flood_re_finding_as_the_banner_does():
+    from app.services import overview_score, viewing_checklist
+    ctx = {"property_detail": {"year_built": "2012 onwards", "dwelling_type": "Semi-detached house"},
+           "flood_zone": {"zone": 2, "label": "Zone 2 (medium probability)"}}
+    banner = overview_score.attention_items(ctx, premium_unlocked=False)
+    checklist = viewing_checklist.build(ctx, premium_unlocked=False, questions={})
+    flood = [i for i in checklist["flagged"] if i["heading"] == "Signs of past water"]
+    assert [i["text"] for i in banner if i["key"] == "flood"] == [i["finding"] for i in flood]
+    assert flood[0]["finding"] == "Flood Re insurance not available for this home"
+    # Zone 3 is still "Flood risk" in both.
+    ctx["flood_zone"] = {"zone": 3, "label": "Zone 3 (high probability)"}
+    assert viewing_checklist.build(ctx, questions={})["flagged"][0]["finding"] == "Flood risk"
+
+
+def test_dfix_a_district_comparison_calls_crime_fewer_only_past_the_margin():
+    side = {"local_median": 250000, "imd_decile": 5}
+    pair = lambda a, b: (dict(side, crime_total=a), dict(side, crime_total=b))  # noqa: E731
+    faq = lambda a, b: dict(app_main._versus_faqs("LS6", "LS7", *pair(a, b)))["Which has less crime, LS6 or LS7?"]  # noqa: E731
+    assert app_main._versus_differences("LS6", "LS7", *pair(229, 230)) == []
+    assert faq(229, 230).startswith("About the same. LS6 recorded 229 crimes in the same period and LS7 230 (Police.uk).")
+    assert "fewer" not in faq(229, 230)
+    assert app_main._versus_differences("LS6", "LS7", *pair(229, 300)) == [
+        "LS6 recorded fewer crimes in the same period, though busier places always record more."]
+    assert faq(1834, 1500).startswith("LS7 recorded fewer crimes in the same period (1,834 in LS6 against 1,500 in LS7")
+    assert app_main._versus_differences("LS6", "LS7", *pair(2, 3)) == []
+    assert faq(2, 3).startswith("Too few records to say. Police.uk holds 2 in LS6 and 3 in LS7")
+    assert faq(1330, 1330).startswith("Neither. Both recorded 1,330 crimes")
+
+
+def test_dfix_the_extensions_crime_panel_writes_the_month_and_counts_as_the_site_does():
+    js = (ROOT / "browser-extension" / "content.js").read_text(encoding="utf-8")
+    panel = js.split("crime: function (data) {", 1)[1].split("account: function", 1)[0]
+    assert "escapeHtml(c.month)" not in panel and "monthLabel(c.month)" in panel
+    assert "countText(c.total)" in panel and "countText(r.here)" in panel
+    assert 'toLocaleString("en-GB")' in js.split("function countText", 1)[1].split("}", 1)[0]

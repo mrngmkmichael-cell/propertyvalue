@@ -3,11 +3,14 @@
 
 {% block title %}Every Data Source We Use, Named | UKPropertyInsight{% endblock %}
 
-{% block meta_description %}Every figure traces back to a named government source. See which datasets UKPropertyInsight uses, how current each is, and what we deliberately don't estimate.{% endblock %}
+{# Both said every figure had an official source until 18 Sep 2026 (item
+   D6), above a list that named OpenStreetMap. The list below now keeps
+   it apart, so these say so too, in the homepage strip's words. #}
+{% block meta_description %}Every figure traces back to a named source, an official body for all but OpenStreetMap's map data. See which bodies UKPropertyInsight reads, for which checks, and what we deliberately don't estimate.{% endblock %}
 {% block content %}
 <span class="kicker">Methodology</span>
 <h1>Why trust this?</h1>
-<p class="dek">Every figure has a named official source. Here is how, what we leave out on purpose, and <a href="/accuracy">every time someone said we were wrong</a>.</p>
+<p class="dek">Every figure has a named source, and every source is an official body apart from what is nearby and which way a home faces, which come from OpenStreetMap. Here is how, what we leave out on purpose, and <a href="/accuracy">every time someone said we were wrong</a>.</p>
 
 <section class="landing-section">
     <h2 class="landing-heading">How each check works</h2>
@@ -32,11 +35,21 @@
 
 <section class="landing-section landing-section-tinted">
     <h2 class="landing-heading">What we deliberately don't show</h2>
-    <p class="landing-subheading">No free official source exists for these. We say so rather than estimate.</p>
+    {# 18 Sep 2026 (first-visitor audit item D6): "No free official source
+       exists for these" until the band card below said a free lookup
+       does. It said "The VOA's banding list is a paid product" beside the
+       by-hand record's own "VOA band lookup" at 1.3 minutes. The lookup
+       is free and one address at a time; there is no free bulk list,
+       which is why a report cannot show a home's band. A card for
+       "Brownfield land status" ("around 300 separate council registers,
+       no national feed") stood here too, while Premium's Development
+       Nearby shows register sites from MHCLG's planning data platform.
+       Where a council has not published there, that check says so. #}
+    <p class="landing-subheading">No free official source gives these for every address. We say so rather than estimate.</p>
     <div class="feature-grid">
         <div class="feature-card">
-            <span class="feature-card-title">Council Tax band</span>
-            <span class="feature-card-blurb">The VOA's banding list is a paid product.</span>
+            <span class="feature-card-title">A home's council tax band</span>
+            <span class="feature-card-blurb">It can be looked up free, one address at a time, at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a> (in Scotland, on the <a href="https://www.saa.gov.uk/" target="_blank" rel="noopener">Scottish Assessors' site</a>), but no free bulk data exists, so reports cannot show it. They show every band's bill at the council instead.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Live "for sale" listings</span>
@@ -49,10 +62,6 @@
         <div class="feature-card">
             <span class="feature-card-title">Service charge / ground rent amounts</span>
             <span class="feature-card-blurb">Private lease data, disclosed only to a solicitor. We show freehold or leasehold from Land Registry.</span>
-        </div>
-        <div class="feature-card">
-            <span class="feature-card-title">Brownfield land status</span>
-            <span class="feature-card-blurb">Around 300 separate council registers, no national feed.</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Full planning application history</span>
@@ -116,25 +125,28 @@
     <p class="section-sub" style="max-width: 46rem;">Totals: 28 websites, about 190 steps, 9 files needing a spreadsheet or GIS program, 12 answers that are colours on maps, 3 paid reports, 13 dead ends, 35.8 minutes. Five answers the websites cannot give at all: crimes within a mile, sales within 0.6 miles, buses an hour, patients per GP, and the chance of a school place. Three sites could not be opened in the browser used (the Environment Agency address check behind its robot check, Natural England's MAGIC map, the old Coal Authority map) and are described from their pages. And that is one house: the second is the same 28 websites again, with nothing to put side by side.</p>
 </section>
 
-<section class="landing-section">
+{# Read from OFFICIAL_SOURCES and OPEN_DATA_SOURCES in main.py since 18
+   Sep 2026 (first-visitor audit item D6). This was a typed list of 14
+   that counted OpenStreetMap as a source like the rest and left out
+   bodies Premium names, NHS England and the Bus Open Data Service among
+   them, while the homepage said 13. It is now the list the homepage
+   counts, taken from the source each check names, with the checks each
+   body is read for beside it. #}
+<section class="landing-section" id="sources">
     <h2 class="landing-heading">Every source we query</h2>
-    <div class="sources-strip" style="margin-top: 1.5rem;">
-        <div class="sources-strip-list">
-            <a href="https://www.gov.uk/government/organisations/land-registry" target="_blank" rel="noopener">HM Land Registry</a>
-            <a href="https://epc.opendatacommunities.org" target="_blank" rel="noopener">EPC Register</a>
-            <a href="https://www.gov.uk/government/organisations/environment-agency" target="_blank" rel="noopener">Environment Agency</a>
-            <a href="https://www.ons.gov.uk" target="_blank" rel="noopener">Office for National Statistics</a>
-            <a href="https://www.gov.uk/government/organisations/department-for-education" target="_blank" rel="noopener">Department for Education</a>
-            <a href="https://www.gov.uk/government/organisations/ofsted" target="_blank" rel="noopener">Ofsted</a>
-            <a href="https://www.ofcom.org.uk" target="_blank" rel="noopener">Ofcom</a>
-            <a href="https://www.gov.uk/government/organisations/natural-england" target="_blank" rel="noopener">Natural England</a>
-            <a href="https://historicengland.org.uk" target="_blank" rel="noopener">Historic England</a>
-            <a href="https://www.police.uk" target="_blank" rel="noopener">Police.uk</a>
-            <a href="https://www.food.gov.uk" target="_blank" rel="noopener">Food Standards Agency</a>
-            <a href="https://www.bgs.ac.uk" target="_blank" rel="noopener">British Geological Survey</a>
-            <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">OpenStreetMap</a>
-            <a href="https://uk-air.defra.gov.uk" target="_blank" rel="noopener">Defra</a>
-        </div>
+    <p class="section-sub" style="max-width: 46rem;">{{ official_sources | length }} official bodies publish what the checks read. A body read by several checks is counted once, and a check that reads two bodies names both.</p>
+    <div class="tablewrap">
+    <table class="tx-table sources-table">
+        <thead><tr><th>Published by</th><th>Read for</th></tr></thead>
+        <tbody>
+            {% for body in official_sources %}
+            <tr><td><a href="{{ body.url }}" target="_blank" rel="noopener">{{ body.full_name }}</a></td><td>{{ check_names(body.checks) }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
     </div>
+    {% for body in open_data_sources %}
+    <p class="section-sub" style="max-width: 46rem;">Not an official body, and not counted above: <a href="{{ body.url }}" target="_blank" rel="noopener">{{ body.name }}</a>, the open map its volunteers draw, read for {{ check_names(body.checks) }}.</p>
+    {% endfor %}
 </section>
 {% endblock %}

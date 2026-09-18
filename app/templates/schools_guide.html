@@ -121,9 +121,14 @@
             </p>
             {% endif %}
             {# Every school, visible. Sort by any column; tap a name for
-               its full profile, fetched on demand. #}
+               its full profile, fetched on demand. data-stack (18 Sep
+               2026): below 600px each row stacks as the school, then its
+               reading and distance ("Likely · 0.2 mi away"), then what it
+               admitted from, where at 375px only School, Phase and Ofsted
+               were on screen. The reading cell's tag is left bare on
+               purpose; style.css explains why. #}
             <div class="tablewrap">
-                <table class="tx-table school-table" id="school-table-{{ area_idx }}">
+                <table class="tx-table school-table" id="school-table-{{ area_idx }}" data-stack>
                     <thead>
                         <tr>
                             <th data-sort="text">School</th>
@@ -139,18 +144,18 @@
                     <tbody>
                         {% for r in area.rows %}
                         <tr>
-                            <td data-value="{{ r.name | lower }}">
+                            <td data-value="{{ r.name | lower }}" data-st="title">
                                 <button type="button" class="school-name-btn" data-school-urn="{{ r.urn }}">{{ r.name }}</button>
                                 <span class="school-table-type">{{ r.type }}</span>
                             </td>
-                            <td data-value="{{ r.phase }}">{{ r.phase }}{% if r.independent %} <span class="estimate-badge">fee-paying</span>{% endif %}</td>
-                            <td data-value="{{ r.rating_code or 9 }}">
+                            <td data-value="{{ r.phase }}" data-label="Phase">{{ r.phase }}{% if r.independent %} <span class="estimate-badge">fee-paying</span>{% endif %}</td>
+                            <td data-value="{{ r.rating_code or 9 }}" data-label="Ofsted">
                                 {% if r.rating %}<span class="ofsted-badge ofsted-{{ r.rating_code }}">{{ r.rating }}</span>
                                 {% elif r.independent %}<span class="section-sub">Not Ofsted-rated</span>
                                 {% else %}<span class="section-sub">{{ r.ofsted_note or "No current grade" }}</span>{% endif %}
                             </td>
-                            <td class="num" data-value="{{ r.distance_m }}">{{ r.distance_m | distance }}</td>
-                            <td class="num" data-value="{{ 998 if r.no_distance_limit else (r.admission_miles if r.admission_miles is not none else 999) }}">
+                            <td class="num" data-value="{{ r.distance_m }}" data-st="{{ 'answer' if area.verdict_postcode else 'lead' }}">{{ r.distance_m | distance }}<span class="st-only"> away</span></td>
+                            <td class="num" data-value="{{ 998 if r.no_distance_limit else (r.admission_miles if r.admission_miles is not none else 999) }}" data-st="sub" data-label="Admitted from">
                                 {# A published figure past the no-limit threshold is a
                                    sentinel, not a measurement: Brent's 621.37 is exactly
                                    1000 km. It sorts just inside "no figure" because it is
@@ -174,7 +179,7 @@
                                 {% else %}<span class="section-sub">No figure</span>{% endif %}
                             </td>
                             {% endif %}
-                            <td class="num" data-value="{{ r.result_value if r.result_value is not none else -999 }}">
+                            <td class="num" data-value="{{ r.result_value if r.result_value is not none else -999 }}" data-label="Results">
                                 {% if r.result_value is not none %}
                                     {{ r.result_value }}{{ '%' if r.result_label != 'Progress 8' }}
                                     <span class="school-table-note">{{ 'P8' if r.result_label == 'Progress 8' else 'KS2' }}</span>

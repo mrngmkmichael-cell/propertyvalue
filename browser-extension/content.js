@@ -127,6 +127,24 @@
     });
   }
 
+  // "2026-07" as "July 2026" and 1834 as "1,834", as the site writes
+  // them (18 Sep 2026, first-visitor audit D3 review): the crime panel
+  // printed the raw month and counts without a separator. Reaches
+  // readers with the next extension release.
+  const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December"];
+
+  function monthLabel(month) {
+    const m = /^(\d{4})-(\d{2})/.exec(String(month || ""));
+    const name = m ? MONTH_NAMES[parseInt(m[2], 10) - 1] : "";
+    return name ? name + " " + m[1] : "";
+  }
+
+  function countText(n) {
+    const v = typeof n === "string" ? parseFloat(n) : n;
+    return typeof v === "number" && isFinite(v) ? v.toLocaleString("en-GB") : String(n == null ? "" : n);
+  }
+
   // --- Token storage (chrome.storage.local, not the page's own
   // localStorage - keeps it inaccessible to the host page's JS and
   // shared across every listing site, not just the current one). ---
@@ -1003,7 +1021,7 @@
   // same "see the category exists, log in for the number" pattern the
   // main site's own dashboard grid uses.
   const PREMIUM_SECTIONS = [
-    { heading: "Value & Market", cards: ["Local Market", "Valuation Estimate", "Costs & Affordability", "Area Prosperity", "Price Trend & Forecast", "Rental Analysis"] },
+    { heading: "Value & Market", cards: ["Local Market", "Valuation Estimate", "Costs & Affordability", "Area Prosperity", "Price Trend", "Rental Analysis"] },
     { heading: "Property & Condition", cards: ["Energy Efficiency", "Extended or Modified", "Aspect"] },
     { heading: "Risk & Safety", cards: ["Flood Risk", "Crime & Safety", "Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
     { heading: "Planning & Heritage", cards: ["Planning Constraints", "Environmental Designations", "Listed Buildings"] },
@@ -1022,7 +1040,7 @@
     "Schools": ["🎓", "icon-schools"],
     "EPC rating": ["⚡", "icon-energy"],
     "Area Prosperity": ["📈", "icon-prosperity"],
-    "Price Trend & Forecast": ["📊", "icon-market"],
+    "Price Trend": ["📊", "icon-market"],
     "Rental Analysis": ["🏠", "icon-rental"],
     "Aspect": ["🧭", "icon-orientation"],
     "Surface Water Risk": ["💧", "icon-flood"],
@@ -1070,7 +1088,9 @@
     "Schools": "Nearest schools, each with this listing's distance against how far the school admitted from last time: Likely, Borderline or Unlikely. Published council figures where they exist, estimates marked as such. Not a catchment guarantee: the distance moves every year.",
     "EPC rating": "From the property's Energy Performance Certificate, checked against the Minimum Energy Efficiency Standard (England & Wales require at least an E rating to legally let).",
     "Area Prosperity": "5-year sold price trend for this area, from HM Land Registry's House Price Index.",
-    "Price Trend & Forecast": "A straight-line trend fitted to 5 years of HM Land Registry's House Price Index - not a guarantee, just where prices land if the recent trend continued.",
+    // No projection since 18 Sep 2026: the site dropped its straight-line
+    // forecast, which could draw a fall beside a rising index.
+    "Price Trend": "HM Land Registry's House Price Index for the local authority over ten years, with its one, five and ten year changes. Published figures only, no projection.",
     "Rental Analysis": "Typical private-rental price by bedroom count for this area, from ONS's Price Index of Private Rents.",
     "Aspect": "An estimated facing direction from building footprint and nearest road - not a measured sunlight survey, and doesn't account for trees or neighbouring buildings.",
     "Surface Water Risk": "Environment Agency's Risk of Flooding from Surface Water map - rainwater that can't drain away, a different risk from the river/sea flood zone above.",
@@ -1152,7 +1172,7 @@
       html += '<h3 class="pv-category-heading">At a glance</h3><div class="pv-dash-grid">' +
         dashCard("Avg sold price", data.area_level ? "Ask agent for address" : gbp(s.avg_price)) +
         dashCard("Flood risk", s.flood_zone) +
-        dashCard("Crime nearby", s.crime_total != null ? s.crime_total + " recorded" : null) +
+        dashCard("Crime nearby", s.crime_total != null ? countText(s.crime_total) + " recorded" : null) +
         dashCard("Schools", s.schools_good_pct != null ? s.schools_good_pct + "% Outstanding/Good" : null) +
         dashCard("EPC rating", data.area_level ? "Ask agent for address" : s.epc_rating) +
         "</div>";
@@ -1265,13 +1285,13 @@
       const rows = c.comparison && c.comparison.length
         ? c.comparison
         : c.by_category.map(function (cat) { return { category: cat.category, here: cat.count, area: null, trend: null }; });
-      let html = '<p class="pv-summary-verdict">' + c.total + " crimes recorded within ~1 mile" + (c.month ? " in " + escapeHtml(c.month) : "") +
-        (c.district_total != null ? ", versus " + c.district_total + " in the wider " + escapeHtml(c.outcode || "") + " postcode area." : ".") + "</p>";
+      let html = '<p class="pv-summary-verdict">' + escapeHtml(countText(c.total)) + " crimes recorded within ~1 mile" + (monthLabel(c.month) ? " in " + escapeHtml(monthLabel(c.month)) : "") +
+        (c.district_total != null ? ", versus " + escapeHtml(countText(c.district_total)) + " in the wider " + escapeHtml(c.outcode || "") + " postcode area." : ".") + "</p>";
       html += '<table class="pv-table"><thead><tr><th>Category</th><th class="pv-num">Here</th><th class="pv-num">' +
         escapeHtml(c.outcode || "Area") + '</th><th class="pv-num">Versus area</th></tr></thead><tbody>' +
         rows.map(function (r) {
-          return "<tr><td style=\"text-transform:capitalize\">" + escapeHtml(r.category) + "</td><td class=\"pv-num\">" + r.here +
-            "</td><td class=\"pv-num\">" + (r.area != null ? r.area : "—") + "</td><td class=\"pv-num\">" +
+          return "<tr><td style=\"text-transform:capitalize\">" + escapeHtml(r.category) + "</td><td class=\"pv-num\">" + escapeHtml(countText(r.here)) +
+            "</td><td class=\"pv-num\">" + (r.area != null ? escapeHtml(countText(r.area)) : "—") + "</td><td class=\"pv-num\">" +
             (r.trend ? '<span class="' + trendClass[r.trend] + '">' + trendLabel[r.trend] + "</span>" : "—") + "</td></tr>";
         }).join("") +
         "</tbody></table>";

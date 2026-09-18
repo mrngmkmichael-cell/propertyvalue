@@ -3,7 +3,10 @@
 
 {% block title %}Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime{% endblock %}
 
-{% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report, built entirely from official government data.{% endblock %}
+{# "built entirely from official government data" until 18 Sep 2026
+   (first-visitor audit item D6): what is nearby and which way a home
+   faces come from OpenStreetMap, as the sources strip on this page says. #}
+{% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report from official government data, every figure naming its source.{% endblock %}
 {# No Leaflet on this page. The hero backdrop is a fixed, non-interactive,
    blurred view, so it is baked into a single static image - see
    scripts/build_hero_map.py. #}
@@ -389,7 +392,8 @@
                 and <a href="/schools/independent">private schools by council</a>.
             </p>
             <div class="lx-about-stats">
-                {% set stat_rows = [('44', 'Checks per property'), ('13', 'Official sources'), ('2,943', 'Area guides')] %}
+                {# "Official sources" is the length of OFFICIAL_SOURCES in main.py since 18 Sep 2026 (item D6), not a typed 13. #}
+                {% set stat_rows = [('44', 'Checks per property'), ((official_sources | length) ~ '', 'Official sources'), ('2,943', 'Area guides')] %}
                 {% if admission_stats and admission_stats.schools %}{% set stat_rows = stat_rows + [("{:,}".format(admission_stats.schools), 'Published school admission distances')] %}{% endif %}
                 {% for n, label in stat_rows %}
                 <div>
@@ -524,35 +528,27 @@
     </span>
     {# OpenStreetMap stood in this list until 18 Sep 2026, under "official"
        and beside "every figure traces back to an official source". It is
-       the map its volunteers draw, so it left the list for Defra, which
-       the report reads for noise and air quality, and the note below says
-       what it supplies. The strip stays at thirteen, the figure quoted as
-       "13 official sources" further down this page.
+       the map its volunteers draw, so it left the list, and the note below
+       says what it supplies.
+       Later the same day (first-visitor audit item D6) the typed list of
+       thirteen gave way to OFFICIAL_SOURCES in main.py, read from the
+       source each check names, which is also what /methodology lists and
+       what "official sources" counts further down this page. The typed
+       list had left out bodies Premium names, NHS England and the Bus
+       Open Data Service among them. The belt's duration grows with the
+       list (--sources-n in style.css), so a longer list does not scroll
+       faster.
        A continuous ticker of the sources, the strongest content this
        site has. Two passes of the same list make the loop seamless;
        hover or keyboard focus pauses it; prefers-reduced-motion stops
        it entirely and falls back to a wrapped row. #}
     <div class="sources-marquee">
-        <div class="sources-marquee-track">
+        <div class="sources-marquee-track" style="--sources-n: {{ official_sources | length }}">
             {% for pass_num in range(2) %}
-            {% for icon_name, label, url in [
-                ('land_registry', 'HM Land Registry', 'https://www.gov.uk/government/organisations/land-registry'),
-                ('energy', 'EPC Register', 'https://epc.opendatacommunities.org'),
-                ('flood', 'Environment Agency', 'https://www.gov.uk/government/organisations/environment-agency'),
-                ('statistics', 'Office for National Statistics', 'https://www.ons.gov.uk'),
-                ('schools', 'Department for Education', 'https://www.gov.uk/government/organisations/department-for-education'),
-                ('ofsted', 'Ofsted', 'https://www.gov.uk/government/organisations/ofsted'),
-                ('broadband', 'Ofcom', 'https://www.ofcom.org.uk'),
-                ('environmental', 'Natural England', 'https://www.gov.uk/government/organisations/natural-england'),
-                ('heritage', 'Historic England', 'https://historicengland.org.uk'),
-                ('crime', 'Police.uk', 'https://www.police.uk'),
-                ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
-                ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
-                ('noise', 'Defra', 'https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs'),
-            ] %}
-            <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener"{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
-                <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
-                <span class="sources-strip-name">{{ label }}</span>
+            {% for body in official_sources %}
+            <a class="sources-strip-item" href="{{ body.url }}" target="_blank" rel="noopener"{% if body.full_name != body.name %} title="{{ body.full_name }}"{% endif %}{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
+                <span class="sources-strip-icon">{{ icons.icon(body.icon) }}</span>
+                <span class="sources-strip-name">{{ body.name }}</span>
             </a>
             {% endfor %}
             {% endfor %}
@@ -592,7 +588,8 @@
                 <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
             </div>
             <button type="submit">Run the checks</button>
-            <p class="lx-contact-note">44 checks &middot; 13 official sources &middot; no card needed</p>
+            {# The source count is the list's length since 18 Sep 2026 (item D6); it was a typed 13. #}
+            <p class="lx-contact-note">44 checks &middot; {{ official_sources | length }} official sources &middot; no card needed</p>
         </form>
     </div>
 </section>

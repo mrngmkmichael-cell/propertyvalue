@@ -22,8 +22,16 @@
 {# What a guide holds, said as an answer with its sources named (16 Sep
    2026): the page opened on a count and a list of 2,943 links. These are
    the six figures every guide leads with, the same six its comparison
-   table lines up. #}
-<p class="dek">{{ "{:,}".format(total) }} postcode districts across {{ regions|length }} regions and nations, one guide each. Every guide gives the district's recorded sold prices from HM Land Registry, the price trend from the UK House Price Index, the share of nearby schools Ofsted rates Good or Outstanding, the Environment Agency flood zone at its centre, the council's Band D council tax from MHCLG, and recorded crime from Police.uk, each figure naming its source.</p>
+   table lines up.
+   18 Sep 2026 (first-visitor audit item D6): it promised every guide all
+   six, a flood zone and "Band D council tax from MHCLG" included. The
+   Environment Agency maps England only, and the guides outside it say the
+   zone is not mapped here and name the body that maps it; Band D comes
+   from three governments, and Northern Ireland has rates instead. Land
+   Registry sales cover England and Wales, Ofsted inspects in England, and
+   a force that does not publish to Police.uk in full gets no count
+   (crime.coverage_gap), so each figure is now said for where it holds. #}
+<p class="dek">{{ "{:,}".format(total) }} postcode districts across {{ regions|length }} regions and nations, one guide each. Every guide gives the price trend from the UK House Price Index. Guides in England and Wales add recorded sold prices from HM Land Registry. Recorded crime comes from Police.uk, and where a police force does not publish there in full, as Police Scotland does not, the guide says so rather than give a count. English guides add the share of nearby schools Ofsted rates Good or Outstanding and the Environment Agency flood zone at the district's centre; the Environment Agency maps England only, so guides in Wales, Scotland and Northern Ireland say the zone is not mapped here and name the body that maps it. Band D council tax comes from MHCLG in England, the Welsh Government in Wales and the Scottish Government in Scotland; Northern Ireland has domestic rates, not council tax. Each figure names its source.</p>
 
 {# The Property section's own front door had 2,943 district links on it
    and no way to ask about an address (Michael, 12 Sep 2026). A district

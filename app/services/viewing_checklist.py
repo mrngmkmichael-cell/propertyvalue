@@ -13,8 +13,14 @@ told that plainly instead of being given filler.
 Locking is handled by reusing overview_score._find_concerns, which
 already knows which findings a free reader is allowed to see, so a
 checklist can never leak a Premium finding.
+
+18 Sep 2026 (first-visitor audit item D4): the checklist also prints the
+questions to ask, and they are the report's own list for the same reader
+(solicitor_questions.for_reader), not a second set. Until then the two
+were built apart, and a finding could raise a question on one and not
+the other. What to look at in the room stays this module's own.
 """
-from app.services import overview_score
+from app.services import overview_score, solicitor_questions
 
 # One entry per concern the score can raise. The wording is deliberately
 # about looking, not about judging: a buyer at a viewing can see whether
@@ -114,17 +120,27 @@ ALWAYS = [
 ]
 
 
-def build(context: dict, premium_unlocked: bool = False) -> dict:
-    """{"flagged": [...], "always": [...]}, with flagged driven by what
-    this property's report actually found."""
+def build(context: dict, premium_unlocked: bool = False, questions: dict | None = None) -> dict:
+    """{"flagged": [...], "always": [...], "questions": {...}}, with
+    flagged driven by what this property's report actually found.
+    "questions" is solicitor_questions.for_reader for this reader, the
+    list the report shows; the route passes the one it built for the
+    report's own context, and without it the same function builds it."""
+    if questions is None:
+        questions = solicitor_questions.for_reader(context, premium_unlocked)
     concerns = overview_score._find_concerns(context, premium_unlocked=premium_unlocked)
     flagged = []
     for key in concerns:
         item = LOOK_FOR.get(key)
         if item:
             flagged.append({
-                "finding": overview_score.CONCERN_LABELS.get(key, key),
+                # The report banner's own words for the finding (18 Sep
+                # 2026, D3 review): a zone 2 home built after 2009 read
+                # "Flood risk" here and "Flood Re insurance not available
+                # for this home" on the report.
+                "finding": overview_score._concern_text(key, context),
                 "heading": item[0],
                 "detail": item[1],
             })
-    return {"flagged": flagged, "always": [{"heading": h, "detail": d} for h, d in ALWAYS]}
+    return {"flagged": flagged, "always": [{"heading": h, "detail": d} for h, d in ALWAYS],
+            "questions": questions}

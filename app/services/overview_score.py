@@ -14,7 +14,20 @@ for the property page's "N things worth checking" attention banner
 (property.html's {% set %}_status blocks), just computed once here in
 Python so the same result can also feed the browser-extension JSON
 API without duplicating the logic in two places.
+
+18 Sep 2026 (first-visitor audit item D3): that mirroring had drifted.
+YO1 7HH's verdict said "balanced against 2 things worth checking" and the
+banner under it "3 things worth checking on this property", because the
+banner also counted the council's exceptional financial support, and
+BN1 1EE read 3 against 4. The template's list is gone: attention_items()
+below is the one list, the verdict and the score are built from it, and
+the report's banner is built from it too (property_search passes it to
+the page), so the two counts cannot differ. It now holds everything the
+banner held: the council finance flag, Flood Re, and the three locked
+checks (development nearby, buses, GP list sizes), those last three
+counted for a free reader and never named, like the other locked ones.
 """
+from app.services import council_finance, crime, flood_re
 
 CONCERN_LABELS = {
     "prosperity": "Area house prices falling",
@@ -33,7 +46,17 @@ CONCERN_LABELS = {
     "broadband": "Poor broadband availability",
     "mobile": "Poor mobile coverage",
     "deprivation": "Among more deprived areas nationally",
+    # Said in full by council_finance.flag_sentence, with the council and
+    # the year; this is only its fallback.
+    "council_finance": "Council under exceptional financial support",
+    "brownfield": "Development site on the brownfield register nearby",
+    "bus": "Few or no scheduled buses nearby",
+    "health": "Nearest GP practice well above the national list size per GP",
 }
+
+# The flood concern when the only reason is that Flood Re would not cover
+# this home, which is not the same as the home being in a flood zone.
+FLOOD_RE_LABEL = "Flood Re insurance not available for this home"
 
 # The card each concern's reason opens on the report (16 Sep 2026):
 # the verdict names its drivers, so each one is a way into its card.
@@ -54,6 +77,10 @@ CONCERN_MODALS = {
     "broadband": "modal-broadband",
     "mobile": "modal-mobile",
     "deprivation": "modal-deprivation",
+    "council_finance": "modal-council-tax",
+    "brownfield": "modal-brownfield",
+    "bus": "modal-bus",
+    "health": "modal-health",
 }
 
 GRADE_BANDS = [
@@ -82,10 +109,46 @@ _EFFICIENT_EPC_BANDS = {"A", "B", "C"}
 # quality well above WHO guideline" in a free verdict would leak the
 # gated card's actual finding without paying for it, undermining the
 # lock on that card. Premium users get the full set.
-_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill", "coal_mining", "sewage", "clay_risk"}
+_PREMIUM_ONLY_CONCERNS = {"extension", "air_quality", "landfill", "coal_mining", "sewage", "clay_risk",
+                          "brownfield", "bus", "health"}
+
+
+def _council_finance(context: dict) -> dict | None:
+    """The council's finances for this address, looked up the way the
+    report's council tax card looks them up (a local JSON read)."""
+    location = context.get("location") or {}
+    if not location:
+        return None
+    codes = location.get("codes") or {}
+    return council_finance.for_council(
+        codes.get("admin_district") or "",
+        location.get("admin_district") or "",
+        location.get("admin_county") or "",
+    )
+
+
+def _flood_re_action_needed(context: dict) -> bool:
+    """Whether Flood Re would not cover this home in a place at risk, the
+    flood card's own flood_re() reading."""
+    detail = context.get("property_detail") or {}
+    note = flood_re.assess(
+        detail.get("year_built"),
+        detail.get("dwelling_type") or "",
+        context.get("flood_zone") or None,
+        context.get("surface_water") or None,
+    )
+    return bool(note and note.get("action_needed"))
+
+
+def _flood_zone_3_or_warned(context: dict) -> bool:
+    flood_zone = context.get("flood_zone")
+    return bool(context.get("flood_warnings") or (flood_zone and (flood_zone.get("zone") or 0) >= 3))
 
 
 def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
+    """The keys of what is worth checking on this home, in the order the
+    report lists them. Thresholds are the card statuses' in property.html,
+    so a red-ringed card is always in the list and nothing else is."""
     concerns = []
 
     hpi = context.get("hpi")
@@ -99,8 +162,14 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     if ext and (ext.get("likely_extended") or (ext.get("change_pct") or 0) <= -15):
         concerns.append("extension")
 
-    flood_zone = context.get("flood_zone")
-    if context.get("flood_warnings") or (flood_zone and flood_zone.get("zone", 0) >= 3):
+    finance = _council_finance(context)
+    if finance and finance.get("flag"):
+        concerns.append("council_finance")
+
+    # A home the Flood Re scheme would not cover, in a place at risk, is a
+    # flood concern of its own, as it is on the flood card.
+    flood_unread = context.get("flood_not_covered") or (context.get("flood_error") and context.get("flood_zone_error"))
+    if not flood_unread and (_flood_zone_3_or_warned(context) or _flood_re_action_needed(context)):
         concerns.append("flood")
 
     surface_water = context.get("surface_water")
@@ -117,11 +186,40 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     if radon and int(radon.get("class") or 0) >= 4:
         concerns.append("radon")
 
+    # Both of these already flag their own card red on the report; they
+    # were missing here, so a Premium reader could see a red-ringed card
+    # the verdict never mentioned. Thresholds copied from the card
+    # statuses in property.html so the two can't drift.
+    clay = context.get("clay_risk")
+    if clay and clay.get("class_2030") == "Probable":
+        concerns.append("clay_risk")
+
+    outfalls = context.get("sewage_outfalls")
+    if outfalls and (outfalls[0].get("spill_count") or 0) >= 20:
+        concerns.append("sewage")
+
     air_quality = context.get("air_quality")
     if air_quality and air_quality.get("pollutants"):
         aq_worst = max(p["times_guideline"] for p in air_quality["pollutants"])
         if aq_worst >= 3:
             concerns.append("air_quality")
+
+    brownfield = context.get("brownfield")
+    if brownfield and brownfield.get("covered") and brownfield.get("count") and (
+        (brownfield.get("dwellings") or 0) >= 10
+        or (brownfield.get("hectares") or 0) >= 0.5
+        or brownfield.get("permissioned")
+    ):
+        concerns.append("brownfield")
+
+    bus = context.get("bus_service")
+    if bus and (not bus.get("count") or ((bus.get("best") or {}).get("weekday_day") or 0) < 12):
+        concerns.append("bus")
+
+    health = context.get("health")
+    nearest = (health or {}).get("nearest") or {}
+    if nearest.get("vs_median") and nearest["vs_median"] >= 1.3:
+        concerns.append("health")
 
     landfill = context.get("historic_landfill")
     if landfill and landfill.get("status") != "clear":
@@ -130,18 +228,6 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     coal_mining = context.get("coal_mining")
     if coal_mining and coal_mining.get("present"):
         concerns.append("coal_mining")
-
-    # Both of these already flag their own card red on the report; they
-    # were missing here, so a Premium reader could see a red-ringed card
-    # the verdict never mentioned. Thresholds copied from the card
-    # statuses in property.html so the two can't drift.
-    outfalls = context.get("sewage_outfalls")
-    if outfalls and (outfalls[0].get("spill_count") or 0) >= 20:
-        concerns.append("sewage")
-
-    clay = context.get("clay_risk")
-    if clay and clay.get("class_2030") == "Probable":
-        concerns.append("clay_risk")
 
     if context.get("planning_flags"):
         concerns.append("planning")
@@ -167,6 +253,27 @@ def _find_concerns(context: dict, premium_unlocked: bool) -> list[str]:
     return concerns
 
 
+def _concern_text(key: str, context: dict) -> str:
+    """The words for one concern, the same in the verdict and the banner."""
+    if key == "council_finance":
+        return council_finance.flag_sentence(_council_finance(context)) or CONCERN_LABELS[key]
+    if key == "flood" and not _flood_zone_3_or_warned(context):
+        return FLOOD_RE_LABEL
+    return CONCERN_LABELS[key]
+
+
+def attention_items(context: dict, premium_unlocked: bool = False) -> list[dict]:
+    """The one list of things worth checking on this home: the verdict's
+    concerns and the report's banner, both. Each item is {"key", "text",
+    "modal"}, the modal being the card it opens. A locked check is left
+    out for a reader who has not opened it (compute() counts how many,
+    never which)."""
+    return [
+        {"key": key, "text": _concern_text(key, context), "modal": CONCERN_MODALS[key]}
+        for key in _find_concerns(context, premium_unlocked=premium_unlocked)
+    ]
+
+
 def _find_positives(context: dict) -> list[str]:
     positives = []
 
@@ -179,12 +286,12 @@ def _find_positives(context: dict) -> list[str]:
     if certificates and certificates[0].get("rating") in _EFFICIENT_EPC_BANDS:
         positives.append(f"Energy-efficient property (EPC {certificates[0]['rating']})")
 
-    comparison = context.get("crime_comparison")
-    if comparison:
-        lower = sum(1 for row in comparison if row["trend"] == "lower")
-        higher = sum(1 for row in comparison if row["trend"] == "higher")
-        if lower > higher:
-            positives.append("Lower crime than the surrounding area")
+    # Decided by crime.compare_counts on the two totals (18 Sep 2026),
+    # the rule every surface uses. It counted the categories that were
+    # lower and higher, and called 229 crimes against 230 lower.
+    versus = crime.versus_area(context.get("crime"), context.get("district_crime"))
+    if versus and versus["verdict"] == "lower":
+        positives.append("Lower crime than the surrounding area")
 
     hpi = context.get("hpi")
     prosperity_area = None
@@ -214,8 +321,10 @@ def _grade_for(score: int) -> str:
     return GRADE_BANDS[-1][1]
 
 
-def _verdict_sentence(grade: str, concerns: list[str], positives: list[str]) -> str:
-    concern_labels = [CONCERN_LABELS[c] for c in concerns]
+def _verdict_sentence(grade: str, concern_labels: list[str], positives: list[str]) -> str:
+    """The verdict in words. concern_labels are attention_items' texts,
+    the banner's chips, so the count here is the banner's count."""
+    concerns = concern_labels
     if not concerns and not positives:
         return "No major signals either way from the data available for this property."
     if not concerns:
@@ -233,7 +342,8 @@ def compute(context: dict, premium_unlocked: bool = False) -> dict:
     upsell hint, not a specific finding, so it can't leak what those checks
     found."""
     all_concerns = _find_concerns(context, premium_unlocked=True)
-    concerns = _find_concerns(context, premium_unlocked=premium_unlocked)
+    concerns = attention_items(context, premium_unlocked=premium_unlocked)
+    concern_texts = [c["text"] for c in concerns]
     positives = _find_positives(context)
 
     score = _BASE_SCORE - len(concerns) * _CONCERN_PENALTY + len(positives) * _POSITIVE_BONUS
@@ -243,15 +353,15 @@ def compute(context: dict, premium_unlocked: bool = False) -> dict:
     return {
         "score": score,
         "grade": grade,
-        "verdict": _verdict_sentence(grade, concerns, positives),
+        "verdict": _verdict_sentence(grade, concern_texts, positives),
         # The same sentence as parts, each with the card it came from,
         # so the report can make every reason a way into its card.
         "reasons": {
             "positives": [{"text": t, "modal": _positive_modal(t)} for t in positives],
-            "concerns": [{"text": CONCERN_LABELS[c], "modal": CONCERN_MODALS[c]} for c in concerns],
+            "concerns": [{"text": c["text"], "modal": c["modal"]} for c in concerns],
         },
         "positives": positives,
-        "concerns": [CONCERN_LABELS[c] for c in concerns],
+        "concerns": concern_texts,
         "premium_extra_checks": len(all_concerns) - len(concerns) if not premium_unlocked else 0,
     }
 

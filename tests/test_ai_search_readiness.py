@@ -176,13 +176,17 @@ def test_the_hub_answers_leave_out_what_the_data_does_not_say():
 # ---- 3. Figure answers at the top of the hub pages ----------------------------
 
 def test_the_market_report_opens_on_its_strongest_and_weakest_city(client):
+    from app import main as app_main
     from app.services import _cache
 
-    key = ("market_report", 1)
-    payload = {"generated_date": "16 September 2026", "areas": [
-        {"name": "Leeds", "average_price": 250000, "annual_change_pct": 3.2, "period": "2026-07"},
-        {"name": "Bristol", "average_price": 340000, "annual_change_pct": 0.4, "period": "2026-07"},
-        {"name": "York", "average_price": 300000, "annual_change_pct": -1.4, "period": "2026-07"},
+    # The key moved to 2 and each row records the city it was asked for
+    # on 18 Sep 2026 (first-visitor audit item D6); "cities" is said only
+    # while every row is the city asked for.
+    key = app_main.MARKET_REPORT_CACHE_KEY
+    payload = {"generated_on": "2026-09-16", "areas": [
+        {"name": "Leeds", "asked": "Leeds", "outcode": "LS1", "average_price": 250000, "annual_change_pct": 3.2, "period": "2026-07"},
+        {"name": "City of Bristol", "asked": "Bristol", "outcode": "BS1", "average_price": 340000, "annual_change_pct": 0.4, "period": "2026-07"},
+        {"name": "York", "asked": "York", "outcode": "YO1", "average_price": 300000, "annual_change_pct": -1.4, "period": "2026-07"},
     ]}
     _cache._put(key, time.time(), payload)
     _forget_html()

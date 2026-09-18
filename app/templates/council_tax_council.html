@@ -1,12 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Council Tax in {{ ct.authority }} {{ ct.year }}: Band D £{{ "{:,.0f}".format(ct.band_d) }}, Every Band A to {{ ct.top_band }}{% endblock %}
+{% block title %}Council Tax in {{ ct.authority }} {{ ct.year }}: Band D {{ ct.band_d | gbp }}, Every Band A to {{ ct.top_band }}{% endblock %}
 {# Every band's amount leads the description (16 Sep 2026). People search
    "basildon council tax band c" and this page ranked 6th, but the result
    showed only Band D, so the council's own site got the click. The bands
    come first so Google's truncation cuts the rank and source, never a
-   band. Rounded to the pound here; the page carries the pence. #}
-{% block meta_description %}{{ ct.authority }} council tax {{ ct.year }}: {% for band in "ABCDEFGHI" if band in ct.bands %}{% if loop.first %}Band {% endif %}{{ band }} £{{ "{:,.0f}".format(ct.bands[band]) }}{{ ", " if not loop.last else "." }}{% endfor %} The {{ ct.rank_label }} highest Band D of {{ ct.of }} councils in {{ ct.nation }}. Source: {{ ct.source_short }}.{% endblock %}
+   band. Rounded to the pound here; the page carries the pence. The
+   rounding is the gbp filter's since 18 Sep 2026, halves up, the same
+   as every other page gives these bills. #}
+{% block meta_description %}{{ ct.authority }} council tax {{ ct.year }}: {% for band in "ABCDEFGHI" if band in ct.bands %}{% if loop.first %}Band {% endif %}{{ band }} {{ ct.bands[band] | gbp }}{{ ", " if not loop.last else "." }}{% endfor %} The {{ ct.rank_label }} highest Band D of {{ ct.of }} councils in {{ ct.nation }}. Source: {{ ct.source_short }}.{% endblock %}
 {% block og_title %}Council tax in {{ ct.authority }}, {{ ct.year }}{% endblock %}
 
 {% block content %}
@@ -32,7 +34,12 @@
     <input type="hidden" name="src" value="council-tax">
     <div class="search-form-field">
         <label for="ct-check-postcode">Check an address in {{ ct.authority }}</label>
-        <input type="text" id="ct-check-postcode" name="postcode" placeholder="e.g. S11 8XZ" autocomplete="postal-code" required>
+        {# The example is a district inside this council (18 Sep 2026): it
+           was "e.g. S11 8XZ", a Sheffield postcode, on all 350 pages. The
+           site holds no full postcode per council without a database
+           call, so it names the first area guide listed below, as a
+           district; a district typed here opens that guide. #}
+        <input type="text" id="ct-check-postcode" name="postcode" placeholder="{% if guides %}e.g. a postcode in {{ guides[0] }}{% else %}e.g. a full postcode{% endif %}" autocomplete="postal-code" required>
     </div>
     <div class="search-form-field">
         <label for="ct-check-house">House or flat number (optional)</label>

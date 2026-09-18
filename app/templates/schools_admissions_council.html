@@ -62,8 +62,11 @@
 {% for phase, schools in council.by_phase %}
 <section class="report-section">
     <h2>{{ phase }} schools</h2>
+    {# data-stack (18 Sep 2026): below 600px each row stacks with the
+       school first and its answer under it, "0.14 mi, 2023/24", where the
+       header had been cut to "ADMITTED F" and the miles read 0, 1, 2. #}
     <div class="tablewrap">
-        <table class="tx-table school-table">
+        <table class="tx-table school-table" data-stack="comma">
             <thead>
                 <tr>
                     <th data-sort="text">School</th>
@@ -76,18 +79,18 @@
             <tbody>
                 {% for s in schools %}
                 <tr>
-                    <td data-value="{{ s.name | lower }}">
+                    <td data-value="{{ s.name | lower }}" data-st="title">
                         <a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>
                         {% set sub = s.town or s.type %}
                         {% if sub and not s.name.lower().endswith(sub.split(' ')[0].lower()) %}<span class="school-table-type">{{ sub }}</span>{% endif %}
                     </td>
-                    <td data-value="{{ s.ofsted_rating or 9 }}">
+                    <td data-value="{{ s.ofsted_rating or 9 }}" data-label="Ofsted">
                         {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>
                         {% else %}<span class="section-sub">{{ s.ofsted_note or "No current grade" }}</span>{% endif %}
                     </td>
-                    <td class="num" data-value="{{ s.miles }}"><strong>{{ s.miles }} mi</strong></td>
-                    <td data-value="{{ s.academic_year }}">{{ s.academic_year }}</td>
-                    <td class="num" data-value="{{ s.occupancy_pct if s.occupancy_pct is not none else -1 }}">
+                    <td class="num" data-value="{{ s.miles }}" data-st="lead"><strong>{{ s.miles }} mi</strong></td>
+                    <td data-value="{{ s.academic_year }}" data-st="answer">{{ s.academic_year }}</td>
+                    <td class="num" data-value="{{ s.occupancy_pct if s.occupancy_pct is not none else -1 }}" data-label="How full">
                         {% if s.occupancy_pct is not none %}{{ s.occupancy_pct }}%{% else %}<span class="section-sub">not published</span>{% endif %}
                     </td>
                 </tr>

@@ -42,9 +42,62 @@
     <h2>Nothing specific was flagged here</h2>
     <p class="section-sub">
         This property's report raised no risk findings{% if not premium_unlocked %} in the checks
-        you can currently see{% endif %}, so there is nothing address-specific to add. The list
-        below is worth running through anyway.
+        you can currently see{% endif %}, so there is nothing address-specific to look for in the
+        room. The lists below are worth running through anyway.
     </p>
+</section>
+{% endif %}
+
+{# The report's own questions for this reader, the same list its "Before
+   you offer" section shows (18 Sep 2026, first-visitor audit item D4):
+   checklist.questions is solicitor_questions.for_reader, built by the
+   route that builds the report's. The two were built apart until then,
+   and a finding could raise a question on one and not the other. A
+   question a locked check raised is counted here, never shown, as on the
+   report. #}
+{% set bq = checklist.questions %}
+{% if bq and bq.total %}
+<section class="report-section">
+    <h2>Questions to ask</h2>
+    <p class="section-sub">
+        The same questions as the report's &ldquo;Before you offer&rdquo;, grouped by who to ask.
+        Tick each one off when you have the answer.
+    </p>
+    {% for audience, qs in bq.found %}
+    <h3 class="checklist-audience">{{ audience }}</h3>
+    <ul class="checklist">
+        {% for item in qs %}
+        <li class="checklist-item">
+            <span class="checklist-box" aria-hidden="true"></span>
+            <div>
+                <p class="checklist-trigger">{{ item.trigger }}{% if item.cost %} &middot; {{ item.cost }}{% endif %}</p>
+                <p class="checklist-heading checklist-question">{{ item.question }}</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+    {% if bq.locked %}
+    <p class="section-sub">
+        {{ bq.locked }} more came from checks that open with a full report, and
+        <a href="/property?postcode={{ query | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}#buyer-questions">the report</a>
+        shows them once it is open.
+    </p>
+    {% endif %}
+    {% if bq.every_purchase %}
+    <h3 class="checklist-audience">Asked on every purchase</h3>
+    <ul class="checklist">
+        {% for item in bq.every_purchase %}
+        <li class="checklist-item">
+            <span class="checklist-box" aria-hidden="true"></span>
+            <div>
+                <p class="checklist-trigger">{{ item.audience }}</p>
+                <p class="checklist-heading checklist-question">{{ item.question }}</p>
+            </div>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
 </section>
 {% endif %}
 

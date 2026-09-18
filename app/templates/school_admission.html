@@ -144,12 +144,16 @@
     <div class="admission-verdict admission-verdict-{{ check.level }}" id="verdict">
         <span class="admission-verdict-label">{{ check.label }}</span>
         <span class="admission-verdict-detail">
-            <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles }} miles</strong> from {{ school.name }}.
+            {# The why sentence starts with a capital and every distance goes
+               through the tile's miles formatter (18 Sep 2026): it read
+               "... Fortismere School. comfortably inside ... (1.883 miles"
+               under a tile that says 1.88 mi. #}
+            <strong>{{ check.postcode }}</strong> is <strong>{{ check.distance_miles | miles }} miles</strong> from {{ school.name }}.
             {% if check.no_limit %}Distance did not limit entry {{ school.in_year }}: the furthest offer the council recorded was
             {{ school.miles_label }} miles away, so no nearer applicant was refused on it.
-            {% else %}{{ check.why }} ({{ check.radius_miles }} miles {{ school.in_year }}).
-            {% if check.level == 'likely' %}That is {{ check.margin_miles }} miles inside it.
-            {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) }} miles outside it.{% endif %}{% endif %}
+            {% else %}{{ check.why_sentence }} ({{ check.radius_miles | miles }} miles {{ school.in_year }}).
+            {% if check.level == 'likely' %}That is {{ check.margin_miles | miles }} miles inside it.
+            {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) | miles }} miles outside it.{% endif %}{% endif %}
         </span>
         <span class="section-sub" style="flex-basis:100%; margin:0">
             Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
@@ -445,7 +449,7 @@
     <p class="section-sub">
         The best-served stop within 600 m of the school is <strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away:
         <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
-        and {{ best.sunday_day_per_hour }} on Sunday daytime; first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.
+        and {{ best.sunday_day_per_hour }} on Sunday daytime{% set hours = bus_hours(best.weekday_first, best.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}.
         {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
     </p>
     <div class="tablewrap">

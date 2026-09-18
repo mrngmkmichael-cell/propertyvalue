@@ -52,7 +52,12 @@ def _no_leaked_session(request):
     # under one test's environment (say, Stripe unconfigured) would be
     # served verbatim to the next test that expects the other.
     from app.services import _cache
-    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] in ("anon_html", "sitemap")]:
+    # The Comparables page's rows too (cached since 18 Sep 2026), and the
+    # report's nearby sales that the page borrows: every fake location
+    # sits on the same point, so one test's faked sales would otherwise
+    # be the next test's page.
+    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] in (
+            "anon_html", "sitemap", "comparables_page", "nearby_comparables")]:
         _cache._evict(key)
     # The two school-data summaries persist to tier 2 (the page_cache
     # table) since 4 Sep 2026, so a test that seeds a school would
@@ -110,6 +115,10 @@ def fake_gather(**overrides):
         "schools_total": 12,
         "crime_comparison": [{"category": "Burglary", "trend": "lower"}, {"category": "Violence", "trend": "higher"}, {"category": "Vehicle", "trend": "lower"}],
         "crime": {"total": 120, "month": "2026-06", "by_category": []},
+        # The real gather sets the area's count whenever it sets the
+        # comparison, and since 18 Sep 2026 lower or higher is decided on
+        # the two totals (crime.compare_counts): 120 against 150 is lower.
+        "district_crime": {"total": 150, "month": "2026-06", "by_category": []},
         "certificates": [{"address": "1 Test Street", "rating": "C", "date": "2025-12-16", "certificate_number": "0000"}],
         "postcode_has_certificates": True,
         "property_detail": {

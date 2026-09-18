@@ -269,6 +269,41 @@
             </div>
         </div>
 
+        {# Which home is yours? (18 Sep 2026, first-visitor audit item D1).
+           Searched without a house number, the report describes the whole
+           postcode, and its top used to read as one house stitched from
+           two: the newest certificate's home and energy bill beside a
+           different home's last sale and tenure. Here is every home the
+           report already holds for the postcode, from its EPC certificates
+           and its Land Registry sales (_postcode_homes in main.py), each
+           opening this same report on that home alone. Each street is
+           named once with its numbers under it, so two dozen homes fit a
+           phone without the street said two dozen times; a link's full
+           address is its accessible name. The first WHICH_HOME_SHOWN
+           show and the rest open from "and N more" without a script. The
+           house number filter below is unchanged. The links are nofollow
+           (18 Sep 2026, D1 review): each opens a full gather of about 28
+           upstream calls on a noindex page, and two dozen of them on every
+           postcode report was the 11 Sep crawl flood waiting to repeat. #}
+        {% if not house_number and which_homes %}
+        <nav class="which-home" aria-label="Which home is yours?">
+            <p class="which-home-q"><strong>Which home is yours?</strong> Choose it and this report reads that home's own certificate and sales. Until then it covers every home at {{ location.postcode }}.</p>
+            {% for section in which_home_sections %}
+            {% if section.more %}<details class="which-home-more"><summary>and {{ section.count }} more</summary>{% endif %}
+            {% for group in section.groups %}
+            {% if group.street %}<p class="which-home-street">{{ group.street }}</p>{% endif %}
+            <ul class="which-home-list">
+                {% for home in group.homes %}
+                <li><a class="which-home-link" href="/property?postcode={{ location.postcode | urlencode }}&amp;house_number={{ home.house_number | urlencode }}"{% if home.short != home.label %} aria-label="{{ home.label }}"{% endif %} rel="nofollow">{{ home.short }}</a></li>
+                {% endfor %}
+            </ul>
+            {% endfor %}
+            {% if section.more %}</details>{% endif %}
+            {% endfor %}
+            <p class="which-home-source">Addresses from the EPC Register and HM Land Registry price paid data.</p>
+        </nav>
+        {% endif %}
+
         {% if overview %}
         <div class="overview-score-card overview-grade-{{ overview.grade | lower | replace(' ', '-') }}" data-animate>
             <div class="overview-score-number">
@@ -341,18 +376,52 @@
         {% set rc_pd = property_detail or {} %}
         {% set rc_energy = (rc_pd.heating_cost_current or 0) + (rc_pd.lighting_cost_current or 0) + (rc_pd.hot_water_cost_current or 0) %}
         {% set rc_tenure = transactions[0].tenure if transactions and transactions[0].tenure else "" %}
-        {% if council_tax or rc_energy or rc_tenure %}
+        {# Without a house number the energy and the tenure describe the
+           postcode, not one home (18 Sep 2026, first-visitor audit item
+           D1). They were the newest certificate's bill and the latest
+           sale's tenure, two different homes, read as this one: KT3 4HX
+           said "Freehold" where 16 of its 29 recorded sales are leasehold.
+           Now the middle and range of the postcode's energy estimates and
+           the tenure of every recorded sale, the figures the running-costs
+           page gives from the same helpers in main.py. With too few
+           estimates for a range, the bill is named for the home it is. #}
+        {% set rc_postcode_energy = postcode_energy if (not house_number and postcode_energy is defined and postcode_energy and (postcode_energy.priced or 0) > 1) else none %}
+        {% set rc_split = postcode_sales if (not house_number and postcode_sales and postcode_sales.sales and postcode_sales.counts) else none %}
+        {% if council_tax or rc_energy or rc_tenure or rc_postcode_energy %}
         <div class="running-costs-line" id="running-costs" data-animate>
             <span class="running-costs-k">What it costs to live here</span>
             {% if council_tax %}<span class="running-costs-item"><strong>{{ council_tax.band_d | gbp }}</strong> a year council tax at Band D, {{ council_tax.authority }}</span>{% endif %}
+            {% if house_number %}
             {% if rc_energy %}<span class="running-costs-item"><strong>&pound;{{ "{:,}".format(rc_energy | int) }}</strong> a year energy, the EPC's estimate</span>{% endif %}
             {% if rc_tenure %}<span class="running-costs-item"><strong>{{ rc_tenure | capitalize }}</strong> at the last recorded sale{% if transactions[0].date %} ({{ transactions[0].date | string | truncate(4, true, "") }}){% endif %}</span>{% endif %}
+            {% else %}
+            {% if rc_postcode_energy %}<span class="running-costs-item"><strong>{{ rc_postcode_energy.median | gbp }}</strong> a year energy, the middle of {{ rc_postcode_energy.priced }} homes' EPC estimates here, from {{ rc_postcode_energy.low | gbp }} to {{ rc_postcode_energy.high | gbp }}</span>
+            {% elif rc_energy and newest_certificate_home %}<span class="running-costs-item"><strong>&pound;{{ "{:,}".format(rc_energy | int) }}</strong> a year energy at {{ newest_certificate_home }}, the EPC's estimate on the newest certificate here</span>{% endif %}
+            {% if rc_split %}
+            {% set split_kinds = rc_split.counts | length %}
+            {% set split_first = (rc_split.counts.items() | list)[0] %}
+            {% if split_kinds == 1 and split_first[1] == rc_split.sales %}<span class="running-costs-item"><strong>{{ split_first[0] | capitalize }}</strong> at {{ "the one recorded sale" if rc_split.sales == 1 else "all " ~ rc_split.sales ~ " recorded sales" }} here</span>
+            {% else %}<span class="running-costs-item"><strong>{% for kind, n in rc_split.counts.items() %}{{ n }} {{ kind }}{% if not loop.last %}, {% endif %}{% endfor %}</strong> of {{ rc_split.sales }} recorded sale{{ "s" if rc_split.sales != 1 }} here</span>{% endif %}
+            {% endif %}
+            {% endif %}
             <a href="/running-costs?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}">The full running-costs table for {{ location.postcode }}: every year, and once when you buy →</a>
             {% if estate_directory_enabled %}<a href="/estate-charges/managing-agents">On a managed estate? Find the company behind it →</a>{% endif %}
         </div>
         {% endif %}
 
-        {% if property_detail and (property_detail.dwelling_type or property_detail.total_floor_area) %}
+        {% if property_detail and (property_detail.dwelling_type or property_detail.total_floor_area) and not house_number and newest_certificate_home %}
+        {# Without a house number the line names the home it describes
+           (18 Sep 2026, first-visitor audit item D1). "Semi-detached
+           house · 122 m²" under KT3 4HX read as the home being bought; it
+           was 57 Malden Hill Gardens, the newest certificate there. #}
+        {% set pd_parts = [] %}
+        {% if property_detail.dwelling_type %}{% set _ = pd_parts.append(property_detail.dwelling_type | lower) %}{% endif %}
+        {% if property_detail.total_floor_area %}{% set _ = pd_parts.append(property_detail.total_floor_area ~ ' m²') %}{% endif %}
+        {% if property_detail.habitable_room_count %}{% set _ = pd_parts.append(property_detail.habitable_room_count ~ ' habitable rooms') %}{% endif %}
+        {% if property_detail.year_built %}{% set _ = pd_parts.append('built ' ~ property_detail.year_built) %}{% endif %}
+        <p class="property-detail-line">Newest certificate here: {{ newest_certificate_home }}, {{ pd_parts | join(', ') }}</p>
+        <p class="property-detail-note">One home's certificate from the EPC Register, not a description of every home at {{ location.postcode }}. Choose yours above to read its own.</p>
+        {% elif property_detail and (property_detail.dwelling_type or property_detail.total_floor_area) %}
         <p class="property-detail-line">
             {% if property_detail.dwelling_type %}{{ property_detail.dwelling_type }}{% endif %}
             {% if property_detail.total_floor_area %}· {{ property_detail.total_floor_area }} m²{% endif %}
@@ -517,36 +586,25 @@
         {% set bus_status = 'ok' if bus_status == 'attn' else bus_status %}
         {% set health_status = 'ok' if health_status == 'attn' else health_status %}
     {% endif %}
-    {% set attention_items = [] %}
-    {% if prosperity_status == 'attn' %}{% set _ = attention_items.append(('modal-sold-price-history', 'Area house prices falling')) %}{% endif %}
-    {% if ext_status == 'attn' %}{% set _ = attention_items.append(('modal-extension', 'Possible unrecorded extension/change')) %}{% endif %}
-    {% if council_status == 'attn' %}{% set _ = attention_items.append(('modal-council-tax', 'Council under exceptional financial support or a section 114 notice')) %}{% endif %}
-    {% if flood_status == 'attn' %}{% set _ = attention_items.append(('modal-flood', 'Flood Re insurance not available for this home' if (flood_re_note and flood_re_note.action_needed and not (flood_warnings or (flood_zone and flood_zone.zone >= 3))) else 'Flood risk')) %}{% endif %}
-    {% if surface_water_status == 'attn' %}{% set _ = attention_items.append(('modal-surface-water', 'High surface water flood risk')) %}{% endif %}
-    {% if noise_status == 'attn' %}{% set _ = attention_items.append(('modal-noise', 'High noise levels')) %}{% endif %}
-    {% if radon_status == 'attn' %}{% set _ = attention_items.append(('modal-radon', 'Elevated radon risk')) %}{% endif %}
-    {% if clay_risk_status == 'attn' %}{% set _ = attention_items.append(('modal-clay-risk', 'Rising subsidence risk from climate change')) %}{% endif %}
-    {% if sewage_status == 'attn' %}{% set _ = attention_items.append(('modal-sewage', 'Frequent sewage discharges nearby')) %}{% endif %}
-    {% if aq_status == 'attn' %}{% set _ = attention_items.append(('modal-air-quality', 'Air quality well above WHO guideline')) %}{% endif %}
-    {% if brownfield_status == 'attn' %}{% set _ = attention_items.append(('modal-brownfield', 'Development site on the brownfield register nearby')) %}{% endif %}
-    {% if bus_status == 'attn' %}{% set _ = attention_items.append(('modal-bus', 'Few or no scheduled buses nearby')) %}{% endif %}
-    {% if health_status == 'attn' %}{% set _ = attention_items.append(('modal-health', 'Nearest GP practice well above the national list size per GP')) %}{% endif %}
-    {% if landfill_status == 'attn' %}{% set _ = attention_items.append(('modal-historic-landfill', 'Historic landfill on/near site')) %}{% endif %}
-    {% if coal_mining_status == 'attn' %}{% set _ = attention_items.append(('modal-coal-mining', 'In a Coal Mining Reporting Area')) %}{% endif %}
-    {% if planning_count %}{% set _ = attention_items.append(('modal-planning', 'Planning constraints present')) %}{% endif %}
-    {% if environmental_count %}{% set _ = attention_items.append(('modal-environmental', 'Environmental designations present')) %}{% endif %}
-    {% if broadband_status == 'attn' %}{% set _ = attention_items.append(('modal-broadband', 'Poor broadband availability')) %}{% endif %}
-    {% if mobile_status == 'attn' %}{% set _ = attention_items.append(('modal-mobile', 'Poor mobile coverage')) %}{% endif %}
-    {% if deprivation_status == 'attn' %}{% set _ = attention_items.append(('modal-deprivation', 'Among more deprived areas nationally')) %}{% endif %}
-
+    {# The banner's list is the verdict's list (18 Sep 2026, first-visitor
+       audit item D3): attention_items from the route, which is
+       overview_score.attention_items, the function the score's concerns
+       come from. It was assembled here from the statuses above and had
+       drifted from the verdict: it counted the council's finances, Flood Re
+       and three locked checks the verdict did not, so YO1 7HH read "2
+       things worth checking" in the verdict and "3" a line below. The
+       statuses still draw the rings, the tags and the all-clear. The
+       council's chip now says what happened, to which council and for
+       which year, rather than "exceptional financial support or a section
+       114 notice". #}
     {% if attention_items %}
     <div class="attention-banner" data-animate>
         <span class="attention-banner-count">{{ attention_items | length }}</span>
         <div class="attention-banner-body">
             <strong>{{ attention_items | length }} thing{{ "s" if attention_items | length != 1 else "" }} worth checking on this property</strong>
             <div class="attention-banner-list">
-                {% for modal_id, label in attention_items %}
-                <button type="button" class="attention-banner-chip" data-modal-target="{{ modal_id }}">{{ label }}</button>
+                {% for item in attention_items %}
+                <button type="button" class="attention-banner-chip" data-modal-target="{{ item.modal }}">{{ item.text }}</button>
                 {% endfor %}
             </div>
         </div>
@@ -641,6 +699,64 @@
     </div>
     {% endif %}
 
+    {# "Before you offer", moved up from the foot of the report to sit
+       under the banner and before the six groups (18 Sep 2026,
+       first-visitor audit item D4): the list a buyer sends to the seller
+       and the solicitor is what turns the checks into an answer, and it
+       came after all of them. buyer_questions_page is
+       solicitor_questions.for_reader from the route, the list the
+       viewing checklist prints too. Every question a free card raised is
+       here in full for every reader, where a signed-out reader used to
+       get one sample and the others' triggers. A question a locked check
+       raised is counted and never shown, because its trigger states that
+       check's finding. The three asked on every purchase fold away under
+       their own summary, and the count says how many they are, so they
+       no longer pass for findings: KT3 4HX read "4 questions were
+       generated for this property" when three were those. #}
+    {% set bq = buyer_questions_page %}
+    {% if bq and bq.total %}
+    {% set bq_every_n = bq.total - bq.from_findings %}
+    <section class="report-section buyer-questions" data-animate id="buyer-questions">
+        <span class="kicker">Before you offer</span>
+        <h2>Questions to ask, from this report's findings</h2>
+        <p class="section-sub">Each one names the finding that raised it, grouped by who to ask. Send them before you make an offer.</p>
+        <p class="bq-count"><strong>{{ bq.total }} questions</strong> were generated for this property.
+            {% if bq.from_findings %}{{ bq.from_findings }} {{ 'comes' if bq.from_findings == 1 else 'come' }} from what this report found{% if bq_every_n %}, and {{ bq_every_n }} {{ 'is' if bq_every_n == 1 else 'are' }} asked on every purchase{% endif %}.
+            {% else %}None comes from a finding here: {{ 'it is' if bq_every_n == 1 else 'they are' }} asked on every purchase.{% endif %}</p>
+        {% for audience, qs in bq.found %}
+        <div class="bq-group">
+            <h3 class="bq-audience">{{ audience }}</h3>
+            {% for item in qs %}
+            <div class="bq-item">
+                <span class="bq-trigger">{{ item.trigger }}{% if item.cost %} &middot; {{ item.cost }}{% endif %}</span>
+                <p class="bq-question">{{ item.question }}</p>
+                <p class="bq-why">{{ item.why }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        {% if bq.locked %}
+        <div class="bq-locked">
+            <p><strong>{{ bq.locked }} more</strong> came from checks that open with a full report. They are counted here and shown there, because each one says what its check found.</p>
+            <a class="pdf-download-btn" href="{{ lock_redirect }}">Unlock the full question list</a>
+        </div>
+        {% endif %}
+        {% if bq.every_purchase %}
+        <details class="bq-every"{% if not bq.found and not bq.locked %} open{% endif %}>
+            <summary>The {{ bq.every_purchase | length }} asked on every purchase</summary>
+            {% for item in bq.every_purchase %}
+            <div class="bq-item">
+                <span class="bq-trigger">{{ item.audience }}</span>
+                <p class="bq-question">{{ item.question }}</p>
+                <p class="bq-why">{{ item.why }}</p>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
+        <p class="section-sub bq-foot">The <a href="/property/checklist?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">viewing checklist</a> prints the same questions beside what to look at in the room.{% if premium_unlocked %} The PDF report includes them.{% endif %}</p>
+    </section>
+    {% endif %}
+
     {# The most notable findings for THIS property, pulled above the grid
        in larger type. The grid gives every check the same weight, so the
        genuinely interesting facts (a street that's 63% under-25s, prices
@@ -650,8 +766,21 @@
        here, or the lock is pointless. Candidates are in priority order
        and the first four that apply are shown. #}
     {% set highlights = [] %}
-    {% if transactions %}
+    {# "Last sold here" only once a house number has chosen the home (18
+       Sep 2026, first-visitor audit item D1). Without one it was the
+       postcode's newest sale, some other home's: BN1 1EE led with
+       "£3,000,000 last sold here", which was 2 to 3 Pavilion Buildings.
+       The postcode's own figure stands in: the middle of its last ten
+       priced sales, how many it has, and the years they span. #}
+    {% if house_number and transactions %}
         {% set _ = highlights.append((transactions[0].amount | gbp, 'last sold here, ' ~ transactions[0].date[:4], 'modal-sold-price-history', '')) %}
+    {% elif not house_number and postcode_sales and postcode_sales.median_recent %}
+        {% set ps = postcode_sales %}
+        {% set ps_years = ps.recent_to_year if ps.recent_from_year == ps.recent_to_year else ps.recent_from_year ~ ' to ' ~ ps.recent_to_year %}
+        {% if ps.recent_n == 1 and ps.sales == 1 %}{% set ps_label = 'the one recorded sale here, ' ~ ps_years %}
+        {% elif ps.recent_n == ps.sales %}{% set ps_label = 'middle of the ' ~ ps.sales ~ ' recorded sales here, ' ~ ps_years %}
+        {% else %}{% set ps_label = 'middle of the last ' ~ ps.recent_n ~ ' of ' ~ ps.sales ~ ' recorded sales here, ' ~ ps_years %}{% endif %}
+        {% set _ = highlights.append((ps.median_recent | gbp, ps_label, 'modal-sold-price-history', '')) %}
     {% endif %}
     {% if school_landscape and school_landscape.good_or_better_pct is not none and school_landscape.total_schools %}
         {% set _ = highlights.append((school_landscape.good_or_better_pct ~ '%', 'of nearby schools rated Good or Outstanding', 'modal-schools', 'good' if school_landscape.good_or_better_pct >= 70 else '')) %}
@@ -659,17 +788,20 @@
     {% if prosperity_area %}
         {% set _ = highlights.append(("%+.1f"|format(prosperity_area.annual_change_pct) ~ '%', 'house prices year on year, ' ~ prosperity_area.name, 'modal-sold-price-history', 'good' if prosperity_area.annual_change_pct >= 0 else 'warn')) %}
     {% endif %}
-    {% if crime_comparison %}
-        {% set lower = crime_comparison | selectattr('trend', 'equalto', 'lower') | list | length %}
-        {% set higher = crime_comparison | selectattr('trend', 'equalto', 'higher') | list | length %}
-        {% if lower > higher %}
-            {% set _ = highlights.append(('Lower', 'crime than the surrounding area', 'modal-crime', 'good')) %}
-        {% elif higher > lower %}
-            {% set _ = highlights.append(('Higher', 'crime than the surrounding area', 'modal-crime', 'warn')) %}
-        {% endif %}
+    {# Lower or higher only on crime.compare_counts' margin (18 Sep 2026):
+       it counted the categories that were lower and higher, and led with
+       "Lower crime" on 229 against 230. About the same, or too few records
+       to say, is not something that stands out, so it is not here. #}
+    {% set crime_vs = crime_versus_area(crime if crime is defined else none, district_crime if district_crime is defined else none) %}
+    {% if crime_vs and crime_vs.verdict == 'lower' %}
+        {% set _ = highlights.append(('Lower', 'crime than the surrounding area', 'modal-crime', 'good')) %}
+    {% elif crime_vs and crime_vs.verdict == 'higher' %}
+        {% set _ = highlights.append(('Higher', 'crime than the surrounding area', 'modal-crime', 'warn')) %}
     {% endif %}
+    {# Without a house number the certificate is the postcode's newest,
+       one home's, and the label says so (18 Sep 2026, D1 review). #}
     {% if certificates and certificates[0].rating in ['A', 'B', 'C'] %}
-        {% set _ = highlights.append(('EPC ' ~ certificates[0].rating, 'energy rating, cheaper than most to run', 'modal-epc', 'good')) %}
+        {% set _ = highlights.append(('EPC ' ~ certificates[0].rating, 'energy rating, cheaper than most to run' if house_number else 'on the newest certificate here, cheaper than most to run', 'modal-epc', 'good')) %}
     {% endif %}
     {% if broadband and broadband.label in ['Gigabit-capable', 'Ultrafast'] %}
         {% set _ = highlights.append((broadband.label, 'broadband available at this postcode', 'modal-broadband', 'good')) %}
@@ -910,13 +1042,20 @@
         <button type="button" class="dashboard-card status-{{ 'muted' if (price_trend_error or not price_trend) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-price-trend" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
             {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
             <span class="dashboard-card-icon icon-statistics">{{ icons.icon('statistics') }}</span>
-            <span class="dashboard-card-title">Price Trend &amp; Forecast</span>
+            {# "Price Trend", no longer "& Forecast" (18 Sep 2026, first-visitor
+               audit item D3): the forecast was a straight line fitted to the
+               index, and it is gone. The card gives the five-year change,
+               or the longest the index has here, with its span. #}
+            <span class="dashboard-card-title">Price Trend</span>
             {# A locked card says what the check answers and who publishes
                it, not what it found (17 Sep 2026); see _locked.html. #}
-            {% if not premium_unlocked %}{{ locked.locked_status('Price Trend & Forecast', price_trend_error) }}{% else %}
+            {% if not premium_unlocked %}{{ locked.locked_status('Price Trend', price_trend_error) }}{% else %}
+            {% set trend_card_change = (price_trend.changes | selectattr('years', 'equalto', 5) | first) or (price_trend.changes | last) if (price_trend and price_trend.changes) else none %}
             <span class="dashboard-card-status">
                 {% if price_trend_error %}Data unavailable
-                {% elif price_trend %}{{ "%+.1f"|format(price_trend.pct_change) }}% over 5 years
+                {% elif price_trend and trend_card_change %}{{ "%+.1f"|format(trend_card_change.pct) }}% over {{ trend_card_change.years }} year{{ 's' if trend_card_change.years != 1 }}
+                {% elif price_trend and price_trend.pct_change is not none %}{{ "%+.1f"|format(price_trend.pct_change) }}% over 5 years
+                {% elif price_trend %}Not enough history for a change
                 {% else %}Not enough historical data{% endif %}
             </span>
             {% endif %}
@@ -1047,9 +1186,14 @@
         <button type="button" class="dashboard-card status-{{ 'muted' if (crime_error or not (crime and crime.total)) else 'ok' }}" data-modal-target="modal-crime" data-animate>
             <span class="dashboard-card-icon icon-crime">{{ icons.icon('crime') }}</span>
             <span class="dashboard-card-title">Crime &amp; Safety</span>
+            {# The month and the radius on the card, the count with its
+               thousands separator, and how it compares in words (18 Sep
+               2026, first-visitor audit item D3). It read "229 crimes
+               recorded", with the month and the sample's size only in the
+               pop-up, and BN1 1EE's "1834" had no comma. #}
             <span class="dashboard-card-status">
                 {% if crime_error %}Data unavailable
-                {% elif crime and crime.total %}{{ "{:,}".format(crime.total) }} crimes recorded
+                {% elif crime and crime.total %}{{ crime.total | thousands }} within about a mile{% if crime_vs and crime_vs.month_label %}, {{ crime_vs.month_label }}{% endif %}
                 {# Greater Manchester and Scotland: Police.uk holds only a
                    trickle there, which read as a safe area (18 Sep 2026). #}
                 {% elif crime and crime.incomplete %}{{ crime.incomplete.status }}
@@ -1058,6 +1202,9 @@
                 {% elif crime and crime.unpublished %}Not published by the force recently
                 {% else %}No data available{% endif %}
             </span>
+            {% if not crime_error and crime and crime.total and crime_vs and crime_vs.verdict %}
+            <span class="dashboard-card-substat">{% if crime_vs.verdict == 'few' %}Police.uk holds few records here for {{ crime_vs.month_label or 'that month' }}{% elif crime_vs.verdict == 'same' %}About the same as the surrounding area{% else %}{{ crime_vs.verdict | capitalize }} than the surrounding area{% endif %}</span>
+            {% endif %}
         </button>
 
         {# Free, and never a figure: no source records deaths, crimes or
@@ -1969,51 +2116,9 @@
     })();
     </script>
 
-    {% if buyer_questions %}
-    <section class="report-section buyer-questions" data-animate id="buyer-questions">
-        <span class="kicker">Before you offer</span>
-        <h2>Questions to ask, from this report's findings</h2>
-        <p class="section-sub">Built from what the checks above actually found here, not a generic checklist. Grouped by who to ask.</p>
-        {% if premium_unlocked %}
-        {% for audience, qs in buyer_questions %}
-        <div class="bq-group">
-            <h3 class="bq-audience">{{ audience }}</h3>
-            {% for item in qs %}
-            <div class="bq-item">
-                <span class="bq-trigger">{{ item.trigger }}{% if item.cost %} &middot; {{ item.cost }}{% endif %}</span>
-                <p class="bq-question">{{ item.question }}</p>
-                <p class="bq-why">{{ item.why }}</p>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
-        <p class="section-sub">Take this list to your viewing and your conveyancer. The PDF report includes it.</p>
-        {% else %}
-        <div class="bq-locked">
-            {# One real question in full, then what the others came from.
-               Until 16 Sep 2026 this listed only the triggers ("Built
-               before 1970"), which read as a heading, not a question.
-               17 Sep 2026: drawn from buyer_questions_teaser, which drops
-               the questions a locked check triggered, because their
-               triggers state that check's finding. The count above is
-               still every question. #}
-            {% set bq = namespace(sample=none, others=[]) %}
-            {% for audience, qs in buyer_questions_teaser %}{% for item in qs %}{% if item.trigger != "Every purchase" %}
-                {% if bq.sample is none %}{% set bq.sample = item %}{% else %}{% set _ = bq.others.append(item.trigger) %}{% endif %}
-            {% endif %}{% endfor %}{% endfor %}
-            <p><strong>{{ buyer_questions_count }} questions</strong> were generated for this property.{% if bq.sample %} One of them, in full:{% endif %}</p>
-            {% if bq.sample %}
-            <div class="bq-item bq-sample">
-                <span class="bq-trigger">{{ bq.sample.trigger }}{% if bq.sample.cost %} &middot; {{ bq.sample.cost }}{% endif %}</span>
-                <p class="bq-question">{{ bq.sample.question }}</p>
-            </div>
-            {% endif %}
-            {% if bq.others %}<p class="section-sub">The others come from: {{ bq.others | join(", ") }}.</p>{% endif %}
-            <a class="pdf-download-btn" href="{{ lock_redirect }}">Unlock the full question list</a>
-        </div>
-        {% endif %}
-    </section>
-    {% endif %}
+    {# "Before you offer" stood here, after all six groups, until 18 Sep
+       2026. It now sits under the banner at the top (first-visitor audit
+       item D4). #}
 
     {# The report used to just stop at the last card. Pageview data
        showed that was where almost every visit ended too - 496 report
@@ -2200,10 +2305,14 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {# Without a house number the newest sale is the postcode's, any
+               home's, so the service charge is said of the home being
+               bought only if it is leasehold too (18 Sep 2026, D1 review). #}
             {% if transactions and transactions[0].tenure == "Leasehold" %}
             <p class="section-sub">
-                Most recent sale here was recorded as <strong>leasehold</strong>. Expect a service
-                charge and ground rent. We can't show the amount: that's private lease information,
+                {% if house_number %}Most recent sale here was recorded as <strong>leasehold</strong>. Expect a service
+                charge and ground rent.{% else %}The most recent sale at {{ location.postcode }} was recorded as <strong>leasehold</strong>.
+                If the home you are buying is leasehold too, expect a service charge and ground rent.{% endif %} We can't show the amount: that's private lease information,
                 not published anywhere as open data (only disclosed to a buyer's solicitor during an
                 actual purchase, via an LPE1 form from the managing agent).
             </p>
@@ -2281,18 +2390,26 @@
         <div class="report-modal-inner">
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
-        <h2>Price trend &amp; forecast</h2>
+        <h2>Price trend</h2>
         {# Locked, a pop-up gives the method and the source and no figure
            for this address (17 Sep 2026, item B3 of that day's audit).
            The chart, its five years of monthly points and the projection
            table were all in the HTML of a signed-out report. This
            paragraph is the method paragraph below with the area's name
            and its trend taken out. #}
+        {# No projection since 18 Sep 2026 (first-visitor audit item D3).
+           The pop-up drew a dashed straight line a year and two years on,
+           and listed "Now £591,555" over "Projected, +1 year £579,490": the
+           line was fitted to five years and started about £12,000 under the
+           latest index, so it drew a fall on a page whose free card said
+           "Area prices rising". The index's own history stays, over ten
+           years, with how far it moved over one, five and ten years where
+           the series reaches back that far. #}
         {% if not premium_unlocked %}
             <p class="section-sub">
-                A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
-                Price Index for the local authority this address sits in. Not a guarantee, just
-                where prices would land if the recent trend continued in a straight line.
+                HM Land Registry's monthly House Price Index for the local authority this
+                address sits in, over the last ten years, with how far the average price moved
+                over one, five and ten years. Published figures only: no projection.
             </p>
             {{ locked.locked_body(lock_label, lock_redirect) }}
         {% elif price_trend_error %}
@@ -2300,12 +2417,15 @@
                 The house price index data service didn't respond. Try again in a moment.
             </p>
         {% elif price_trend %}
+            {% set trend_first = price_trend.series | first %}
+            {% set trend_last = price_trend.series | last %}
             <p class="section-sub">
-                A simple straight-line trend fitted to 5 years of HM Land Registry's monthly House
-                Price Index for {{ price_trend.area_name }}. Not a guarantee, just where prices would
-                land if the recent trend continued in a straight line.
+                HM Land Registry's monthly House Price Index for {{ price_trend.area_name }},
+                {{ trend_first.period | month_label }} to {{ trend_last.period | month_label }}: the
+                index's average price for the authority each month, as HM Land Registry publishes
+                it. Published figures only: no projection of where prices go next.
             </p>
-            <svg class="trend-chart" viewBox="0 0 {{ price_trend_chart.width }} {{ price_trend_chart.height }}" role="img" aria-label="5-year house price trend for {{ price_trend.area_name }}, with a 1 and 2 year linear projection">
+            <svg class="trend-chart" viewBox="0 0 {{ price_trend_chart.width }} {{ price_trend_chart.height }}" role="img" aria-label="House Price Index for {{ price_trend.area_name }}, {{ trend_first.period | month_label }} to {{ trend_last.period | month_label }}">
                 {% for g in price_trend_chart.gridlines %}
                 <line class="trend-chart-grid" x1="{{ price_trend_chart.pad_l }}" y1="{{ g.y }}" x2="{{ price_trend_chart.plot_right }}" y2="{{ g.y }}"/>
                 <text class="trend-chart-axis-label" x="{{ price_trend_chart.pad_l - 8 }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle">{{ g.label }}</text>
@@ -2316,48 +2436,54 @@
                 {% endfor %}
 
                 <path class="trend-chart-line-actual" d="{{ price_trend_chart.actual_path }}" fill="none"/>
-                <path class="trend-chart-line-projected" d="{{ price_trend_chart.projected_path }}" fill="none"/>
 
                 <circle class="trend-chart-dot" cx="{{ price_trend_chart.end_point.x }}" cy="{{ price_trend_chart.end_point.y }}" r="4"/>
                 <text class="trend-chart-point-label" x="{{ price_trend_chart.end_point.x + 8 }}" y="{{ price_trend_chart.end_point.y - 6 }}" dominant-baseline="middle">Now: {{ price_trend_chart.end_point.label }}</text>
-
-                {% for pt in price_trend_chart.projection_points %}
-                <circle class="trend-chart-dot trend-chart-dot-projected" cx="{{ pt.x }}" cy="{{ pt.y }}" r="4"/>
-                <text class="trend-chart-point-label trend-chart-point-label-projected" x="{{ pt.x + 8 }}" y="{{ pt.y + (loop.index0 * 16) + 6 }}" dominant-baseline="middle">{{ pt.label }}</text>
-                {% endfor %}
             </svg>
             <p class="section-sub trend-chart-caption">
-                Solid line: actual monthly average. Dashed: simple linear projection continuing the
-                recent 5-year trend.
+                The line is the published monthly average, {{ trend_last.period | month_label }} the latest month.
             </p>
             <table class="tx-table">
                 <thead>
                     <tr>
-                        <th>Point</th>
+                        <th>Month</th>
                         <th class="num">Average price</th>
+                        <th class="num">Change to now</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {% if price_trend.changes is defined %}
+                    {% for c in price_trend.changes | reverse %}
+                    <tr>
+                        <td>{{ c.years }} year{{ 's' if c.years != 1 }} ago, {{ c.period | month_label }}</td>
+                        <td class="num">{{ c.price | gbp }}</td>
+                        <td class="num">{{ "%+.1f"|format(c.pct) }}%</td>
+                    </tr>
+                    {% endfor %}
+                    {% elif price_trend.start_price is not none %}
                     <tr>
                         <td>5 years ago</td>
                         <td class="num">{{ price_trend.start_price | gbp }}</td>
+                        <td class="num">{{ "%+.1f"|format(price_trend.pct_change) }}%</td>
                     </tr>
+                    {% endif %}
                     <tr>
-                        <td><strong>Now</strong></td>
+                        <td><strong>Now, {{ trend_last.period | month_label }}</strong></td>
                         <td class="num"><strong>{{ price_trend.current_price | gbp }}</strong></td>
+                        <td class="num"></td>
                     </tr>
-                    {% for p in price_trend.projections %}
-                    <tr>
-                        <td>Projected, +{{ p.months_ahead // 12 }} year{{ "s" if p.months_ahead // 12 != 1 else "" }}</td>
-                        <td class="num">{{ p.price | gbp }}</td>
-                    </tr>
-                    {% endfor %}
                 </tbody>
             </table>
+            {% set trend_missing = (price_trend_change_years | reject('in', price_trend.changes | map(attribute='years') | list) | list) if price_trend.changes is defined else [] %}
+            {% if trend_missing %}
+            <p class="section-sub">
+                The index for {{ price_trend.area_name }} does not reach back {{ trend_missing | join(' or ') }} year{{ 's' if trend_missing | last != 1 }} from its latest month, so there is no change over {{ 'that span' if trend_missing | length == 1 else 'those spans' }}.
+            </p>
+            {% endif %}
         {% else %}
             <p class="notice">
-                Not enough monthly HPI history for {{ location.admin_district if location else "this area" }}
-                to fit a meaningful trend.
+                Not enough monthly House Price Index history for {{ location.admin_district if location else "this area" }}
+                to show a trend.
             </p>
         {% endif %}
             </section>
@@ -3012,10 +3138,26 @@
                 suggest a crime-free area.
             </p>
         {% elif crime and crime.total %}
+            {# The comparison in words, by crime.compare_counts (18 Sep 2026,
+               first-visitor audit item D3): lower or higher only when the
+               totals differ by at least 10 per cent of the larger and at
+               least 5 crimes, and none drawn when both are in single
+               figures. The counts carry their thousands separators and the
+               month is a month, not "2026-07". #}
             <p class="section-sub">
-                {{ "{:,}".format(crime.total) }} crimes recorded within ~1 mile in {{ crime.month | month_label }}
-                {%- if district_crime %}, versus {{ "{:,}".format(district_crime.total) }} in the wider {{ location.outcode }} postcode area{% endif %}.
+                {{ crime.total | thousands }} crime{{ 's' if crime.total != 1 }} recorded within about a mile in {{ crime_vs.month_label if crime_vs and crime_vs.month_label else crime.month }}
+                {%- if district_crime and district_crime.total is not none %}, against {{ district_crime.total | thousands }} in the wider {{ location.outcode }} postcode area{% if crime_vs and crime_vs.area_month_label and crime_vs.area_month_label != crime_vs.month_label %} in {{ crime_vs.area_month_label }}{% endif %}{% endif %}.
+                {% if crime_vs and crime_vs.verdict == 'few' %}Police.uk holds few records here for {{ crime_vs.month_label or 'that month' }}, too few to compare.
+                {% elif crime_vs and crime_vs.verdict == 'same' %}About the same as the surrounding area.
+                {% elif crime_vs and crime_vs.verdict %}{{ crime_vs.verdict | capitalize }} than the surrounding area.
+                {% elif crime_vs and crime_vs.area is not none %}The two counts are for different months, so they are not compared.{% endif %}
             </p>
+            {# The rule only where there is a comparison for it to explain. #}
+            {% if crime_vs and crime_vs.area is not none %}
+            <p class="section-sub">
+                Lower or higher is said only when the two totals differ by at least {{ (crime_margin_share * 100) | int }} per cent of the larger and by at least {{ crime_margin_crimes }} crimes; smaller differences read as about the same. When both counts are under {{ crime_few_records }}, no comparison is drawn.
+            </p>
+            {% endif %}
             {% if crime_comparison %}
             <table class="tx-table">
                 <thead>
@@ -3030,15 +3172,15 @@
                     {% for c in crime_comparison %}
                     <tr>
                         <td class="capitalize">{{ c.category }}</td>
-                        <td class="num">{{ c.here }}</td>
-                        <td class="num">{{ c.area }}</td>
-                        <td><span class="crime-trend crime-trend-{{ c.trend }}">{{ {"higher": "Higher", "lower": "Lower", "same": "About the same"}[c.trend] }}</span></td>
+                        <td class="num">{{ c.here | thousands }}</td>
+                        <td class="num">{{ c.area | thousands }}</td>
+                        <td><span class="crime-trend crime-trend-{{ c.trend if c.trend in ('higher', 'lower') else 'same' }}">{{ crime_trend_words[c.trend] }}</span></td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
             <p class="section-sub">
-                Same ~1 mile radius sample as above, just centred on the {{ location.outcode }} postcode area instead. Not a population-weighted local authority crime rate, which isn't available as clean open data.
+                The same radius of about a mile, centred on the {{ location.outcode }} postcode area instead. Not a population-weighted local authority crime rate, which isn't available as clean open data.
             </p>
             {% else %}
             <table class="tx-table">
@@ -3052,7 +3194,7 @@
                     {% for c in crime.by_category %}
                     <tr>
                         <td class="capitalize">{{ c.category }}</td>
-                        <td class="num">{{ c.count }}</td>
+                        <td class="num">{{ c.count | thousands }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -3133,14 +3275,17 @@
         {% else %}
             <p class="notice">No rated establishments found nearby.</p>
         {% endif %}
+        {# Where Google ratings are not configured the subsection is left
+           out entirely (18 Sep 2026). It used to show visitors a developer
+           note, "Not set up on this deployment", in the Nearby Essentials
+           pop-up. #}
+        {% if google_ratings_configured %}
         <h3 class="subsection-heading">Google ratings</h3>
         <p class="section-sub">
             Public star ratings from Google for nearby restaurants and cafes, within half a mile. A
             "what's it like" signal, separate from the official hygiene scores above.
         </p>
-        {% if not google_ratings_configured %}
-            <p class="notice">Not set up on this deployment.</p>
-        {% elif google_ratings_error %}
+        {% if google_ratings_error %}
             <p class="notice notice-error">
                 The Google ratings service didn't respond. Try again in a moment.
             </p>
@@ -3167,6 +3312,7 @@
             </table>
         {% else %}
             <p class="notice">No rated establishments found nearby.</p>
+        {% endif %}
         {% endif %}
             </section>
         </div>
@@ -3580,7 +3726,7 @@
                             {% if s.ofsted_rating_label %}<span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span>{% endif %}
                         </td>
                         <td class="num">{{ s.property_distance_miles }} mi</td>
-                        <td class="num">{{ s.radius_miles }} mi</td>
+                        <td class="num">{{ s.radius_miles | miles }} mi</td>
                         <td>
                             {% set lvl = s.verdict.level if s.verdict else ('likely' if s.within_catchment else 'unlikely') %}
                             <span class="catchment-badge catchment-badge-{{ 'yes' if lvl == 'likely' else ('mid' if lvl == 'borderline' else 'no') }}">{{ s.verdict.label if s.verdict else ('Likely' if s.within_catchment else 'Unlikely') }}</span>
@@ -3913,7 +4059,7 @@
         {% else %}
             {% set best = bus_service.best %}
             <p class="section-sub">From the timetables bus operators publish to the Department for Transport's Bus Open Data Service: departures a passenger can board at each stop within {{ bus_service.radius_m }} m of this address, on {{ bus_service.ref_weekday }} (a Tuesday) and {{ bus_service.ref_sunday }} (a Sunday). Scheduled, not observed.</p>
-            <p class="section-sub"><strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away: <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> in the weekday daytime (07:00 to 19:00), {{ best.weekday_eve_per_hour }} an hour in the evening (19:00 to 23:00), {{ best.sunday_day_per_hour }} an hour on Sunday daytime (09:00 to 18:00); first bus {{ best.weekday_first }}, last {{ best.weekday_last }}.{% if bus_service.routes %} Routes at these stops: {{ bus_service.routes | join(", ") }}.{% endif %}</p>
+            <p class="section-sub"><strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away: <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> in the weekday daytime (07:00 to 19:00), {{ best.weekday_eve_per_hour }} an hour in the evening (19:00 to 23:00), {{ best.sunday_day_per_hour }} an hour on Sunday daytime (09:00 to 18:00){% set hours = bus_hours(best.weekday_first, best.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}.{% if bus_service.routes %} Routes at these stops: {{ bus_service.routes | join(", ") }}.{% endif %}</p>
             <div class="tablewrap">
             <table class="tx-table bus-table">
                 <thead><tr><th>Stop</th><th class="num">Distance</th><th class="num">Weekday daytime, an hour</th><th class="num">Evening</th><th class="num">Sunday</th><th class="num">First</th><th class="num">Last</th><th>Routes</th></tr></thead>
@@ -3925,8 +4071,13 @@
                     <td class="num">{{ s.weekday_day_per_hour }}</td>
                     <td class="num">{{ s.weekday_eve_per_hour }}</td>
                     <td class="num">{{ s.sunday_day_per_hour }}</td>
-                    <td class="num">{{ s.weekday_first or "" }}</td>
-                    <td class="num">{{ s.weekday_last or "" }}</td>
+                    {# First and last in bus_hours' words (18 Sep 2026): a last
+                       bus after midnight says so, and a stop with no overnight
+                       gap reads "Runs through the night" across both columns. #}
+                    {% set hours = bus_hours(s.weekday_first, s.weekday_last) %}
+                    {% if hours.overnight %}<td class="num" colspan="2">{{ hours.cell }}</td>
+                    {% else %}<td class="num">{{ hours.first }}</td>
+                    <td class="num">{{ hours.last }}</td>{% endif %}
                     <td>{{ s.routes | join(", ") }}</td>
                 </tr>
                 {% endfor %}
@@ -4886,8 +5037,30 @@ Listed building data from Historic England's
             return document.getElementById(id);
         }
 
-        fetch(url, { headers: { 'Accept': 'application/json' } })
-            .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        // One more try before "Data unavailable" (18 Sep 2026). The same
+        // address read "Data unavailable" on one visit and "52 nearby" on
+        // another that day: OpenStreetMap's server drops a query now and
+        // then and answers the next. A failed request, or a reply that
+        // says the lookup failed, is asked again once after a short wait;
+        // a second failure shows what the server sent, or the line below.
+        const RETRY_AFTER_MS = 2500;
+
+        function load() {
+            return fetch(url, { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); });
+        }
+
+        function wait(ms) {
+            return new Promise(function (resolve) { setTimeout(resolve, ms); });
+        }
+
+        load()
+            .then(function (data) {
+                if (!data.error) return data;
+                return wait(RETRY_AFTER_MS).then(load).catch(function () { return data; });
+            }, function () {
+                return wait(RETRY_AFTER_MS).then(load);
+            })
             .then(function (data) {
                 bindCard(swap('card-amenities', data.essentials_card));
                 bindCard(swap('card-transport', data.transport_card));
@@ -5168,8 +5341,8 @@ Listed building data from Historic England's
                 fillColor: color, fillOpacity: 0.06,
             }).addListener('click', function () {
                 const label = s.is_real
-                    ? s.name + ' · published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
-                    : s.name + ' · estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
+                    ? s.name + ' · published admission distance ' + s.radius_label + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
+                    : s.name + ' · estimated admission distance ' + s.radius_label + ' mi (modelled, no published figure for this council)';
                 new google.maps.InfoWindow({ content: label }).setPosition({ lat: s.latitude, lng: s.longitude });
             });
         });
@@ -5262,8 +5435,8 @@ Listed building data from Historic England's
     ({{ (catchment_distance_schools if premium_unlocked else []) | tojson }}).forEach(function (s) {
         const color = s.is_real ? '#d97706' : '#78716c';
         const label = s.is_real
-            ? s.name + ' · published admission distance ' + s.radius_miles + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
-            : s.name + ' · estimated admission distance ' + s.radius_miles + ' mi (modelled, no published figure for this council)';
+            ? s.name + ' · published admission distance ' + s.radius_label + ' mi (' + s.academic_year + ', ' + s.source_authority + ' council)'
+            : s.name + ' · estimated admission distance ' + s.radius_label + ' mi (modelled, no published figure for this council)';
         L.circle([s.latitude, s.longitude], {
             radius: s.radius_miles * 1609.34,
             color: color, weight: 2, opacity: s.is_real ? 0.8 : 0.6, fillOpacity: 0.06,

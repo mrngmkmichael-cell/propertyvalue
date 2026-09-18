@@ -117,11 +117,12 @@ def test_a_report_elsewhere_reads_its_count_and_month_properly(client, fake_repo
     ))
     body = client.get("/property?postcode=SE15%204QN").text
     card = body[body.index('dashboard-card-title">Crime &amp; Safety'):]
-    assert "1,330 crimes recorded" in card[:card.index("</button>")]
+    # batch D (18 Sep 2026) put the radius and month on the card itself
+    assert "1,330 within about a mile, July 2026" in card[:card.index("</button>")]
     modal = body[body.index('id="modal-crime"'):]
     modal = modal[:modal.index("</dialog>")]
-    assert "1,330 crimes recorded within ~1 mile in July 2026" in modal
-    assert "versus 2,104 in the wider SE15 postcode area" in modal
+    assert "1,330 crimes recorded within about a mile in July 2026" in modal
+    assert "against 2,104 in the wider SE15 postcode area" in modal
     assert "2026-07" not in modal
 
 
@@ -452,8 +453,12 @@ def test_the_official_strip_names_only_official_bodies(client):
     first_pass = names[:len(names) // 2]
     assert first_pass == names[len(names) // 2:]
     assert "OpenStreetMap" not in first_pass and "Defra" in first_pass
-    # The figure quoted on the same page is the strip's own length.
-    assert len(first_pass) == 13 and "13 official sources" in body
+    # The figure quoted on the same page is the strip's own length, which
+    # since 18 Sep 2026 (first-visitor audit item D6) is OFFICIAL_SOURCES
+    # in main.py rather than a typed thirteen.
+    from app import main as app_main
+    count = len(app_main.OFFICIAL_SOURCES)
+    assert len(first_pass) == count and f"{count} official sources" in body
     note = strip[strip.index('class="sources-strip-note"'):]
     assert "apart from what is nearby and which way a home faces" in " ".join(note.split())
     assert "OpenStreetMap, the map its volunteers draw" in " ".join(note.split())

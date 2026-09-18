@@ -155,14 +155,19 @@
 {{ sp("26pt") }}
 {% set figs = [] %}
 {% if valuation and valuation.estimate %}{% set _ = figs.append((valuation.estimate | gbp, "Estimated value")) %}
-{% elif running_costs and running_costs.sales and running_costs.sales.latest_amount %}{% set _ = figs.append((running_costs.sales.latest_amount | gbp, "Last sale here, " ~ running_costs.sales.latest_year)) %}{% endif %}
+{# 18 Sep 2026 (D1 review): the home's own last priced sale where there
+   is one, and otherwise the postcode's latest named as the postcode's.
+   "Last sale here" printed the postcode's latest for a home whose own
+   sale was another, 55's £823,500 on 36's document. #}
+{% elif running_costs and running_costs.home and running_costs.home.sale_amount %}{% set _ = figs.append((running_costs.home.sale_amount | gbp, "Last sold, " ~ running_costs.home.sale_year)) %}
+{% elif running_costs and running_costs.sales and running_costs.sales.latest_amount %}{% set _ = figs.append((running_costs.sales.latest_amount | gbp, "Latest sale at this postcode, " ~ running_costs.sales.latest_year)) %}{% endif %}
 {% if council_tax and council_tax.band_d %}{% set _ = figs.append((council_tax.band_d | gbp ~ " a year", "Council tax, Band D")) %}{% endif %}
 {% if running_costs and running_costs.home and running_costs.home.energy_now %}{% set _ = figs.append((running_costs.home.energy_now | gbp ~ " a year", "Energy, the EPC's estimate")) %}
 {% elif running_costs and running_costs.energy and running_costs.energy.median %}{% set _ = figs.append((running_costs.energy.median | gbp ~ " a year", "Energy, postcode median")) %}{% endif %}
 {% if flood_zone %}{% set _ = figs.append((flood_zone.label.split(" (")[0] ~ (", low" if flood_zone.zone == 1 else ""), "Flood zone")) %}
 {% elif flood_not_covered %}{% set _ = figs.append(("Not mapped", "Flood zone, " ~ flood_not_covered.country)) %}{% endif %}
 {% if school_landscape and school_landscape.good_or_better_pct is not none %}{% set _ = figs.append((school_landscape.good_or_better_pct ~ "%", "Schools Good or better")) %}{% endif %}
-{% if crime and crime.total is not none %}{% set _ = figs.append((crime.total ~ "", "Crime, a month within a mile")) %}{% endif %}
+{% if crime and crime.total is not none %}{% set _ = figs.append((crime.total | thousands, "Crime, a month within a mile")) %}{% endif %}
 {% if figs %}
 <p class="kicker">Six figures a buyer asks first</p>
 <table>
@@ -263,12 +268,14 @@
 {% endif %}
 
 <h2>Price trend and area comparison</h2>
-{% if price_trend %}
+{# The index's own changes over one, five and ten years, where the series
+   reaches that far, and no projection (18 Sep 2026, first-visitor audit
+   item D3). The "If the trend holds" rows were a straight line fitted to
+   five years of the index, and could show a fall beside a rising index. #}
+{% if price_trend and price_trend.changes %}
 <table class="kv">
-    {{ kv("Five years ago, " ~ price_trend.area_name, price_trend.start_price | gbp, "HM Land Registry house price index") }}
-    {{ kv("Now", price_trend.current_price | gbp) }}
-    {{ kv("Change over five years", ("%+.1f" | format(price_trend.pct_change)) ~ "%", "", "good" if price_trend.pct_change >= 0 else "warn") }}
-    {% for p in price_trend.projections %}{{ kv("If the trend holds, in " ~ (p.months_ahead // 12) ~ " year" ~ ("s" if p.months_ahead // 12 != 1 else ""), p.price | gbp, "a straight-line projection, not a forecast") }}{% endfor %}
+    {{ kv("Now, " ~ (price_trend.current_period | month_label) ~ ", " ~ price_trend.area_name, price_trend.current_price | gbp, "HM Land Registry house price index") }}
+    {% for c in price_trend.changes %}{{ kv("Change over " ~ c.years ~ " year" ~ ("s" if c.years != 1 else ""), ("%+.1f" | format(c.pct)) ~ "%", "from " ~ (c.price | gbp) ~ " in " ~ (c.period | month_label), "good" if c.pct >= 0 else "warn") }}{% endfor %}
 </table>
 {% endif %}
 {% if hpi %}
@@ -463,11 +470,15 @@
 </td></tr></table>
 
 <h2>Crime</h2>
+{# Lower or higher by crime.compare_counts, the report's own rule (18 Sep
+   2026, first-visitor audit item D3). This said "Lower" on any difference
+   at all, 229 against 230 included, and "2026-07" for the month. #}
 {% if crime and crime.total is not none %}
+{% set crime_vs = crime_versus_area(crime, district_crime if district_crime is defined else none) %}
 <table><tr>
-    <td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ "{:,}".format(crime.total) }}</span><br/><span class="fig-l">Recorded within about a mile{% if crime.month %}, {{ crime.month | month_label }}{% endif %}</span></td>
-    {% if district_crime and district_crime.total is not none %}<td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ "{:,}".format(district_crime.total) }}</span><br/><span class="fig-l">Wider {{ location.outcode }} district</span></td>{% endif %}
-    <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{% if district_crime and district_crime.total %}{{ "Lower" if crime.total < district_crime.total else ("Higher" if crime.total > district_crime.total else "In line") }}{% endif %}</span><br/><span class="fig-l">Against the district</span></td>
+    <td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ crime.total | thousands }}</span><br/><span class="fig-l">Recorded within about a mile{% if crime_vs and crime_vs.month_label %}, {{ crime_vs.month_label }}{% endif %}</span></td>
+    {% if district_crime and district_crime.total is not none %}<td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ district_crime.total | thousands }}</span><br/><span class="fig-l">Wider {{ location.outcode }} district{% if crime_vs and crime_vs.area_month_label and crime_vs.area_month_label != crime_vs.month_label %}, {{ crime_vs.area_month_label }}{% endif %}</span></td>{% endif %}
+    <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{% if crime_vs and crime_vs.verdict %}{{ {"lower": "Lower", "higher": "Higher", "same": "About the same", "few": "Too few to say"}[crime_vs.verdict] }}{% endif %}</span><br/><span class="fig-l">{% if crime_vs and crime_vs.verdict == "few" %}Police.uk holds few records here that month{% else %}Against the district{% endif %}</span></td>
 </tr></table>
 {% if crime.by_category %}
 {{ sp("6pt") }}
@@ -475,7 +486,7 @@
 <table class="data">
     <tr><th style="width: 40%">Category</th><th class="num" style="width: 16%">Count</th><th style="width: 44%"></th></tr>
     {% set topc = crime.by_category[0].count %}
-    {% for cat in crime.by_category[:9] %}<tr><td class="b">{{ cat.category | capitalize }}</td><td class="num">{{ cat.count }}</td><td>{{ bar(cat.count / (topc or 1) * 100, "bar-fill" if loop.first else "bar-fill-soft") }}</td></tr>{% endfor %}
+    {% for cat in crime.by_category[:9] %}<tr><td class="b">{{ cat.category | capitalize }}</td><td class="num">{{ cat.count | thousands }}</td><td>{{ bar(cat.count / (topc or 1) * 100, "bar-fill" if loop.first else "bar-fill-soft") }}</td></tr>{% endfor %}
 </table>
 </td></tr></table>
 {% endif %}
@@ -587,7 +598,7 @@
 
 {# ================= PART 8: GETTING AROUND ================= #}
 {{ part("08", "Getting around and staying connected", "Stations, the walk to them, and whether the house can hold a video call.") }}
-{% if bus_service is defined and bus_service and bus_service.count %}{% set b = bus_service.best %}<p class="why">Buses: {{ b.weekday_day_per_hour }} an hour in the weekday daytime, {{ b.weekday_eve_per_hour }} in the evening and {{ b.sunday_day_per_hour }} on Sunday daytime at {{ b.name }}, {{ b.distance_m }} m away; first bus {{ b.weekday_first }}, last {{ b.weekday_last }}{% if bus_service.routes %}; routes {{ bus_service.routes | join(", ") }}{% endif %}. Scheduled departures a passenger can board, from the timetables operators publish to the Bus Open Data Service (Department for Transport), for the week of {{ bus_service.ref_weekday }}.</p>{% elif bus_service is defined and bus_service %}<p class="why">Buses: no stop with a scheduled departure within {{ bus_service.radius_m }} m, in the timetables published to the Bus Open Data Service.</p>{% endif %}
+{% if bus_service is defined and bus_service and bus_service.count %}{% set b = bus_service.best %}<p class="why">Buses: {{ b.weekday_day_per_hour }} an hour in the weekday daytime, {{ b.weekday_eve_per_hour }} in the evening and {{ b.sunday_day_per_hour }} on Sunday daytime at {{ b.name }}, {{ b.distance_m }} m away{% set hours = bus_hours(b.weekday_first, b.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}{% if bus_service.routes %}; routes {{ bus_service.routes | join(", ") }}{% endif %}. Scheduled departures a passenger can board, from the timetables operators publish to the Bus Open Data Service (Department for Transport), for the week of {{ bus_service.ref_weekday }}.</p>{% elif bus_service is defined and bus_service %}<p class="why">Buses: no stop with a scheduled departure within {{ bus_service.radius_m }} m, in the timetables published to the Bus Open Data Service.</p>{% endif %}
 {% set rail = (stations_list.rail if stations_list else []) or [] %}
 {% if rail %}
 <table class="data">

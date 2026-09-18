@@ -2154,7 +2154,11 @@ def test_the_guide_carries_the_v20_sections(client, monkeypatch):
     assert "Buses from the centre of AB12" in body and "22.5 buses an hour" in body and "42, 43, 142" in body
     assert "GP practices and A&amp;E" in body and "2,610 patients per fully qualified GP" in body and "58.2%" in body
     assert "GP practice (1 August 2026)" in body and "workforce (31 July 2026)" in body   # the dates sit on the summary, not the practice
-    assert "Council tax and the council" in body and "2,252" in body and "No exceptional financial support" in body
+    # Band D 2,252.80 rounds to the pound, the same in every section since
+    # 18 Sep 2026 (audit item D7): the council section cut it to 2,252 while
+    # the lead rounded it to 2,253.
+    assert "Council tax and the council" in body and "£2,253" in body and "No exceptional financial support" in body
+    assert "£2,252" not in body
 
 
 def test_the_guide_stays_quiet_without_the_v20_sources(client, monkeypatch):

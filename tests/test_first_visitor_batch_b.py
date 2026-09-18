@@ -19,13 +19,15 @@ def test_card_lines_say_which_way_the_scale_runs(client, fake_report):
 
 
 def test_the_buyer_questions_teaser_shows_a_question_not_a_heading(client, fake_report):
+    # 18 Sep 2026 (first-visitor audit of 17 Sep, item D4): the one-sample
+    # teaser inside .bq-locked gave way to every question a free card
+    # raised, in full, for every reader, so the section is read whole.
     body = _report(client, fake_report)
-    teaser = body.split('class="bq-locked"', 1)[1].split("Unlock the full question list", 1)[0]
+    teaser = body.split('id="buyer-questions"', 1)[1].split("</section>", 1)[0]
     assert "were generated for this property." in teaser
     assert 'class="bq-locked-list"' not in teaser  # the bare list of triggers is gone
-    if 'class="bq-item bq-sample"' in teaser:
-        question = re.search(r'<p class="bq-question">(.*?)</p>', teaser, re.S)
-        assert question and len(question.group(1).strip()) > 20
+    questions = re.findall(r'<p class="bq-question">(.*?)</p>', teaser, re.S)
+    assert questions and all(len(q.strip()) > 20 for q in questions)
 
 
 def test_the_sign_up_page_names_the_property_it_will_unlock(client):

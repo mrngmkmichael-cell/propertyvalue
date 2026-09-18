@@ -33,8 +33,33 @@
             </svg>
         </svg>
         <div class="building-status">
-            <p class="building-count" id="building-count" aria-live="polite"><span id="building-done">0</span> of {{ n_sources }} sources back</p>
-            <p class="building-latest" id="building-latest">Waiting for the first source to answer</p>
+            {# "0 of 19 sources back" until 18 Sep 2026 (first-visitor audit
+               item D6), while the homepage said 13 official sources and
+               /methodology listed 14. These are lookups, several of them
+               to one body (Land Registry twice, the Environment Agency
+               three times), so they are counted as lookups; the bodies
+               are OFFICIAL_SOURCES in main.py. #}
+            <p class="building-count" id="building-count" aria-live="polite"><span id="building-done">0</span> of {{ n_sources }} lookups back</p>
+            <p class="building-latest" id="building-latest">Waiting for the first lookup to come back</p>
+        </div>
+    </div>
+
+    {# The wait's ending (18 Sep 2026, first-visitor audit D5). It used to
+       ask every 900 ms with no limit, and a full dial that never opened a
+       report said "putting the report together" for ever. After 30 seconds
+       the sources still out are named from the endpoint's own done list;
+       after a minute there is a way to try again and a way out to the
+       district's guide; after five minutes the page stops asking and says
+       so. Nothing here moves: the dial stays the wait's one moving object. #}
+    <div class="building-overtime">
+        <p class="building-waiting" id="building-waiting" aria-live="polite" hidden></p>
+        <div class="building-help" id="building-help" aria-live="polite" hidden>
+            <p class="building-help-text" id="building-help-text">This is taking longer than usual.</p>
+            <p class="building-help-text" id="building-stopped" hidden>This page has stopped checking after five minutes. Try again now, or come back in a few minutes.</p>
+            <div class="building-help-actions">
+                <button type="button" class="building-retry" id="building-retry">Try again</button>
+                {% if building_outcode %}<a class="building-guide" href="/area/{{ building_outcode }}">Read the {{ building_outcode }} area guide</a>{% endif %}
+            </div>
         </div>
     </div>
 
@@ -83,7 +108,7 @@
         if (landed >= total) {
             /* Every source is back but the page is still being put
                together. Saying so beats a full dial that appears stuck. */
-            countEl.textContent = 'All sources back, putting the report together';
+            countEl.textContent = 'All lookups back, putting the report together';
             say('The report opens here as soon as it is ready.');
             live.classList.add('is-complete');
         } else {
@@ -121,15 +146,58 @@
         if (live.classList.contains('is-complete')) lens.style.animation = 'none';
     });
 
+    /* The ending (18 Sep 2026). Times run from when this page opened. */
+    var NAME_MISSING_AFTER_MS = 30000;
+    var OFFER_EXIT_AFTER_MS = 60000;
+    var STOP_AFTER_MS = 300000;
+    var opened = Date.now();
+    var waitingEl = document.getElementById('building-waiting');
+    var helpEl = document.getElementById('building-help');
+    var retryEl = document.getElementById('building-retry');
+    var order = Object.keys(rows);
+
+    /* "A", "A and B", "A, B and C", "A, B, C and 4 more". */
+    function listed(names) {
+        if (names.length > 3) return names.slice(0, 3).join(', ') + ' and ' + (names.length - 3) + ' more';
+        if (names.length === 1) return names[0];
+        return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+    }
+
+    /* Only the sources the endpoint has not reported back. Once every
+       one is in, the count line already says so and this one goes. */
+    function nameMissing() {
+        var missing = order.filter(function (src) { return !seen[src]; });
+        var text = missing.length ? 'Still waiting on: ' + listed(missing) : '';
+        if (waitingEl.textContent !== text) waitingEl.textContent = text;
+        waitingEl.hidden = !text;
+    }
+
+    function overtime() {
+        var waited = Date.now() - opened;
+        if (waited >= NAME_MISSING_AFTER_MS) nameMissing();
+        if (waited >= OFFER_EXIT_AFTER_MS) helpEl.hidden = false;
+    }
+
+    function stop() {
+        nameMissing();
+        document.getElementById('building-help-text').hidden = true;
+        document.getElementById('building-stopped').hidden = false;
+        helpEl.hidden = false;
+    }
+
+    retryEl.addEventListener('click', function () { window.location.reload(); });
+
     function poll() {
+        if (Date.now() - opened >= STOP_AFTER_MS) { stop(); return; }
         fetch('/api/report-ready' + qs)
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 paint(d.done || [], d.ready);
-                if (d.ready) window.location.reload();
-                else setTimeout(poll, 900);
+                if (d.ready) { window.location.reload(); return; }
+                overtime();
+                setTimeout(poll, 900);
             })
-            .catch(function () { setTimeout(poll, 2500); });
+            .catch(function () { overtime(); setTimeout(poll, 2500); });
     }
     poll();
 })();
