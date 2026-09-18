@@ -5171,14 +5171,17 @@ html { scroll-behavior: smooth; }
     font-weight: var(--weight-semi);
     font-size: var(--text-sm);
     text-decoration: none;
-    animation: promo-banner-pulse 2.4s ease-in-out infinite;
+    /* No animation on the button itself (18 Sep 2026). It kept
+       promo-banner-pulse when the keyframes moved from a box-shadow
+       ring to the ::after ring's opacity and scale on 26 Aug, so the
+       homepage's "Sign up free" faded between 55% and nothing and
+       grew 14% every 2.4 s for three weeks. The ring alone pulses. */
     transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .promo-banner-btn:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
-    animation-play-state: paused;
 }
 
 .promo-banner-btn { position: relative; }
