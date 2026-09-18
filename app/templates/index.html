@@ -522,7 +522,13 @@
     <span class="sources-strip-heading">
         Powered by <em class="hl-warn">official</em> <em class="hl-accent">UK</em> data
     </span>
-    {# A continuous ticker of the sources, the strongest content this
+    {# OpenStreetMap stood in this list until 18 Sep 2026, under "official"
+       and beside "every figure traces back to an official source". It is
+       the map its volunteers draw, so it left the list for Defra, which
+       the report reads for noise and air quality, and the note below says
+       what it supplies. The strip stays at thirteen, the figure quoted as
+       "13 official sources" further down this page.
+       A continuous ticker of the sources, the strongest content this
        site has. Two passes of the same list make the loop seamless;
        hover or keyboard focus pauses it; prefers-reduced-motion stops
        it entirely and falls back to a wrapped row. #}
@@ -542,7 +548,7 @@
                 ('crime', 'Police.uk', 'https://www.police.uk'),
                 ('food', 'Food Standards Agency', 'https://www.food.gov.uk'),
                 ('geology', 'British Geological Survey', 'https://www.bgs.ac.uk'),
-                ('map', 'OpenStreetMap', 'https://www.openstreetmap.org'),
+                ('noise', 'Defra', 'https://www.gov.uk/government/organisations/department-for-environment-food-rural-affairs'),
             ] %}
             <a class="sources-strip-item" href="{{ url }}" target="_blank" rel="noopener"{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
                 <span class="sources-strip-icon">{{ icons.icon(icon_name) }}</span>
@@ -553,7 +559,9 @@
         </div>
     </div>
     <p class="sources-strip-note">
-        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly licensed source.
+        Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly
+        licensed source, apart from what is nearby and which way a home faces: those come from
+        OpenStreetMap, the map its volunteers draw, and say so where they appear.
     </p>
 </section>
 

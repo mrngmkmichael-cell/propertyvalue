@@ -439,3 +439,21 @@ def test_admin_shows_who_is_fetching(client, monkeypatch):
     section = section[:section.index("</section>")]
     assert "Who is fetching pages" in section and "Bingbot" in section
     assert "<code>/running-costs</code> 1" in section
+
+
+# ---- 6. The "official" strip lists only official bodies -----------------------
+
+def test_the_official_strip_names_only_official_bodies(client):
+    body = client.get("/").text
+    strip = body[body.index('class="sources-strip"'):]
+    strip = strip[:strip.index("</section>")]
+    names = re.findall(r'class="sources-strip-name">([^<]+)<', strip)
+    # Two passes of one list make the ticker loop.
+    first_pass = names[:len(names) // 2]
+    assert first_pass == names[len(names) // 2:]
+    assert "OpenStreetMap" not in first_pass and "Defra" in first_pass
+    # The figure quoted on the same page is the strip's own length.
+    assert len(first_pass) == 13 and "13 official sources" in body
+    note = strip[strip.index('class="sources-strip-note"'):]
+    assert "apart from what is nearby and which way a home faces" in " ".join(note.split())
+    assert "OpenStreetMap, the map its volunteers draw" in " ".join(note.split())
