@@ -6,6 +6,66 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- All eight ideas of the 18 Sep 2026 morning brainstorm, built the same
+  day in a separate worktree while the audit batches ran in the main
+  checkout. Michael said "Do all in sequence", which is the approval
+  ideas 1 and 8 needed. The day's reading: 10,210, 13,337 and 12,120
+  views on 15 to 17 Sep, almost all crawl; 3 real sign-ups; the first
+  subscription on an account's first day (account 87, paid within two
+  minutes of signing in, opened no report, saved nothing).
+  1. Crime where Police.uk cannot give a true count (3c2d40b). Greater
+  Manchester Police publishes a trickle: 5 records within a mile of
+  central Manchester for July 2026 against 493 in Headingley, and 0 to
+  2 at six other GM boroughs, while every other force read gave 25 to
+  4,728. The homepage's sample report said "6 crimes recorded". Police
+  Scotland does not publish at all. crime.coverage_gap names the ten
+  boroughs by council and Scotland by country, summary_near takes
+  district and country as required keywords, every surface says why
+  there is no count, guides and comparisons apply it at render. The
+  accuracy log gained its first self-found entry ("Found by our own
+  check"). check_sources.py reads central Manchester past the rule on
+  every run: take the boroughs off crime.GREATER_MANCHESTER_DISTRICTS
+  when it says the force publishes in full again.
+  2. District comparisons (514e365): a tie says "Neither" (it named the
+  right-hand district), and the five rows from one energy certificate,
+  the EPC line of the short version and the one-postcode "Average sold
+  price" are gone from district pages; price answers and indexing use
+  the district median only.
+  3. A subscriber with no home carried gets a first step on the success
+  page and a one-line banner on the homepage until something is saved
+  (ccf3ba8); report starts from it are marked "premium-success".
+  Found on the way and fixed separately (dacf1a8): since 26 Aug the
+  homepage's "Sign up free" button itself ran the ring's pulse, fading
+  between 0.55 opacity and nothing every 2.4 s.
+  4. A real crawler asking /running-costs for a postcode gets the page
+  without the answer, and answered URLs are noindex (17ef6f5).
+  5. /admin "Who is fetching pages": a coarse agent family against a
+  page family, per hour, in memory for 24 hours (0fe4dc5). Read it
+  before judging any crawl-shaped day.
+  6. OpenStreetMap left the homepage's "official" strip for Defra, and
+  the note says what OpenStreetMap supplies (4c80fae). The "13 official
+  sources" count is left to the audit's source-count work (D8).
+  7. Dates in words and counts with separators across about thirty
+  surfaces, the share image's "40 CHECKS" from CHECK_COUNT, and an
+  audit_site.py rule for both (scripts/copy_rules.py), clean on 52
+  production pages (14b8050).
+  8. PREMIUM_REACH says where each Premium check's source reaches,
+  checked against the real gather in all four nations: Wales 10 of 15,
+  Scotland 7, Northern Ireland 4. The wall names the missing checks
+  outside England, /premium labels every check and answers "buying
+  outside England"; storm overflows, former landfill and NHS England are
+  not asked outside England and say "Not covered in Wales" where they
+  said "None nearby", "No outfalls found nearby" and "No GP practice
+  within 3 km" (414afb2). The bus timetables turned out to cover Great
+  Britain, not England alone. Found on the way (77f8ffd): Northern
+  Ireland's air quality was read from a cell near Chester, because
+  postcodes.io's Irish Grid numbers were used as British ones; it is
+  now converted from latitude and longitude.
+  No dev server could be started from the session (it began as a
+  scheduled run), so pages were rendered in-process with real data and
+  screenshotted through a static server; smoke and the audit ran
+  against production after each deploy.
+
 - All seven ideas of the 17 Sep 2026 morning brainstorm, built the same
   day. Michael said "Do all in detail", which is the approval ideas 4
   and 5 needed. The day's reading: 3 real sign-ups and 3 free unlocks
