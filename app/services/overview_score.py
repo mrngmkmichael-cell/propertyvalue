@@ -27,6 +27,8 @@ banner held: the council finance flag, Flood Re, and the three locked
 checks (development nearby, buses, GP list sizes), those last three
 counted for a free reader and never named, like the other locked ones.
 """
+import re
+
 from app.services import council_finance, crime, flood_re
 
 CONCERN_LABELS = {
@@ -102,6 +104,12 @@ _BASE_SCORE = 70
 # page load.
 _STRONG_SCHOOLS_THRESHOLD_PCT = 68
 _EFFICIENT_EPC_BANDS = {"A", "B", "C"}
+_EPC_BANDS = {"A", "B", "C", "D", "E", "F", "G"}
+# The fewest homes with a certificate a postcode needs before the score
+# says anything about "most homes here" (18 Sep 2026, first-visitor audit
+# item E7). Below three, most is one or two homes, and one home's band
+# standing for the postcode is what that item took out.
+_POSTCODE_EPC_MIN_HOMES = 3
 
 # Concern keys whose underlying dashboard card is Premium-gated
 # (Extended or Modified, Air Quality, Historic Contamination). A
@@ -274,7 +282,30 @@ def attention_items(context: dict, premium_unlocked: bool = False) -> list[dict]
     ]
 
 
-def _find_positives(context: dict) -> list[str]:
+def _home_key(address) -> str:
+    """An address as bare lower-case words, so "57, Malden Hill Gardens"
+    and "57 Malden Hill Gardens" are one home (main._address_words, which
+    this module cannot import without a cycle)."""
+    return " ".join(re.sub(r"[^\w']+", " ", (address or "").lower()).split())
+
+
+def _postcode_energy_positive(certificates: list[dict]) -> str | None:
+    """The energy positive a postcode earns as a whole, or None: each
+    home's newest certificate (the list is newest first, as the EPC layer
+    sorts it), and awarded only where more than half of at least
+    _POSTCODE_EPC_MIN_HOMES homes rate C or better, saying how many."""
+    bands: dict[str, str] = {}
+    for c in certificates:
+        key = _home_key(c.get("address"))
+        if key and key not in bands and c.get("rating") in _EPC_BANDS:
+            bands[key] = c["rating"]
+    good = sum(1 for band in bands.values() if band in _EFFICIENT_EPC_BANDS)
+    if len(bands) < _POSTCODE_EPC_MIN_HOMES or good * 2 <= len(bands):
+        return None
+    return f"Most homes here with an energy certificate rated C or better ({good} of {len(bands)})"
+
+
+def _find_positives(context: dict, postcode_only: bool = False) -> list[str]:
     positives = []
 
     landscape = context.get("school_landscape")
@@ -282,8 +313,23 @@ def _find_positives(context: dict) -> list[str]:
         if landscape["good_or_better_pct"] >= _STRONG_SCHOOLS_THRESHOLD_PCT:
             positives.append(f"{landscape['good_or_better_pct']}% of nearby schools rated Outstanding or Good")
 
+    # 18 Sep 2026 (first-visitor audit item E7). With a house number the
+    # certificates are that home's, newest first, and its own band earns
+    # the positive, as it always has. Without one they are every home's
+    # at the postcode, and the newest was one home's band scored as the
+    # postcode's: 57 Malden Hill Gardens' C read "Energy-efficient
+    # property" on KT3 4HX, in the verdict and six points of the score.
+    # There the positive is now the postcode's own, from the certificates
+    # the report already holds: most homes' newest certificate at C or
+    # better, with the count. Where most are not, or too few homes have
+    # one, no energy positive is awarded, and the score neither gains
+    # nor loses for energy.
     certificates = context.get("certificates")
-    if certificates and certificates[0].get("rating") in _EFFICIENT_EPC_BANDS:
+    if postcode_only:
+        postcode_energy = _postcode_energy_positive(certificates or [])
+        if postcode_energy:
+            positives.append(postcode_energy)
+    elif certificates and certificates[0].get("rating") in _EFFICIENT_EPC_BANDS:
         positives.append(f"Energy-efficient property (EPC {certificates[0]['rating']})")
 
     # Decided by crime.compare_counts on the two totals (18 Sep 2026),
@@ -304,10 +350,10 @@ def _find_positives(context: dict) -> list[str]:
 
 
 def _positive_modal(text: str) -> str:
-    """The card a positive opens, from the four fixed phrasings above."""
+    """The card a positive opens, from the fixed phrasings above."""
     if "schools" in text:
         return "modal-schools"
-    if text.startswith("Energy-efficient"):
+    if text.startswith(("Energy-efficient", "Most homes here with an energy certificate")):
         return "modal-epc"
     if text.startswith("Lower crime"):
         return "modal-crime"
@@ -335,16 +381,18 @@ def _verdict_sentence(grade: str, concern_labels: list[str], positives: list[str
     return f"{grade} overall: {'; '.join(positives)}, balanced against {concern_text}."
 
 
-def compute(context: dict, premium_unlocked: bool = False) -> dict:
+def compute(context: dict, premium_unlocked: bool = False, postcode_only: bool = False) -> dict:
     """Returns {"score": int, "grade": str, "verdict": str, "positives": [...],
     "concerns": [...], "premium_extra_checks": int}. premium_extra_checks is
     how many additional concern checks Premium would factor in - shown as an
     upsell hint, not a specific finding, so it can't leak what those checks
-    found."""
+    found. postcode_only: the context describes a postcode searched without
+    a house number, whose certificates are every home's there, so the
+    energy positive is the postcode's (see _find_positives)."""
     all_concerns = _find_concerns(context, premium_unlocked=True)
     concerns = attention_items(context, premium_unlocked=premium_unlocked)
     concern_texts = [c["text"] for c in concerns]
-    positives = _find_positives(context)
+    positives = _find_positives(context, postcode_only=postcode_only)
 
     score = _BASE_SCORE - len(concerns) * _CONCERN_PENALTY + len(positives) * _POSITIVE_BONUS
     score = max(0, min(100, score))

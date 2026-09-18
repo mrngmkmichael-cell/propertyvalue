@@ -43,9 +43,13 @@
    for a postcode does not ask twice. #}
 <form action="/property" method="get" class="search-form area-check" role="search">
     <input type="hidden" name="src" value="areas">
+    {# "Check one address instead", with "e.g. SW1A 1AA", until 18 Sep 2026
+       (first-visitor audit E5). The box already took a district, since
+       property_search sends a bare district to its guide, but nothing
+       said so, on the page whose job is finding a district. #}
     <div class="search-form-field">
-        <label for="areas-postcode">Check one address instead</label>
-        <input type="text" id="areas-postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" data-typing-demo required>
+        <label for="areas-postcode">Find a district or check an address</label>
+        <input type="text" id="areas-postcode" name="postcode" placeholder="e.g. LS6 or SW1A 1AA" autocomplete="postal-code" data-typing-demo required>
     </div>
     <div class="search-form-field">
         <label for="areas-house">House or flat number (optional)</label>
@@ -54,11 +58,78 @@
     <button type="submit">Run the {{ check_count }} checks</button>
     {# Ended "Free, no account." until 17 Sep 2026; the offer now reads
        as on every other page (OFFER_SENTENCE in main.py). #}
-    <p class="section-sub" style="margin: 0.5rem 0 0;">Sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. {{ offer_sentence }}</p>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">A district such as LS6 opens its area guide. A full postcode gets sold prices, EPC, flood, crime, every nearby school's admission odds and what it costs to live there, for that address. {{ offer_sentence }}</p>
 </form>
 {% import "_recent_places.html" as recent %}
 {{ recent.recent_addresses("/property") }}
 
+{# Filter as you type (18 Sep 2026, first-visitor audit E5): the index
+   below is 2,943 district links, about 42 phone screens. Typing hides
+   the council blocks that match neither the typed district prefix nor
+   the council's name, in the page, with no request. Hidden until the
+   script below runs, so without JavaScript there is no dead control and
+   the whole index shows. #}
+<div class="address-filter-field areas-filter" id="areas-filter" hidden>
+    <label for="areas-filter-input">Filter the list below by district or council</label>
+    <input type="text" id="areas-filter-input" placeholder="e.g. NG21 or Gedling" autocomplete="off" aria-describedby="areas-filter-status">
+    <p class="areas-filter-status" id="areas-filter-status" role="status" aria-live="polite"></p>
+</div>
+
 {% set link_prefix = "/area/" %}
 {% include "_area_index.html" %}
+<script>
+    (function () {
+        var box = document.getElementById('areas-filter');
+        var input = document.getElementById('areas-filter-input');
+        var status = document.getElementById('areas-filter-status');
+        if (!box || !input || !status) return;
+        var list = function (nodes) { return Array.prototype.slice.call(nodes); };
+        // A council name matches from the start of one of its words, so
+        // "LS" finds Leeds by its districts and not Tunbridge Wells or
+        // Kensington and Chelsea by the middle of a word, as it did until
+        // 18 Sep 2026 (first-visitor audit E5, fix pass). Punctuation
+        // counts as a space, so "newcastle-under" and "king's" still match.
+        var words = function (text) {
+            return ' ' + text.toLowerCase().replace(/[^a-z0-9\u00c0-\u024f]+/g, ' ').trim();
+        };
+        var regions = list(document.querySelectorAll('.areas-region')).map(function (section) {
+            return {
+                el: section,
+                jump: document.querySelector('.areas-jump a[href="#' + section.id + '"]'),
+                councils: list(section.querySelectorAll('.areas-district')).map(function (block) {
+                    return {
+                        el: block,
+                        name: words(block.querySelector('h3').textContent),
+                        codes: list(block.querySelectorAll('.areas-codes a')).map(function (a) {
+                            return a.textContent.trim().toUpperCase();
+                        })
+                    };
+                })
+            };
+        });
+        function filter() {
+            var typed = input.value.trim().replace(/\s+/g, ' ');
+            var name = words(typed);
+            // A district prefix is the first word, so "NG21 7AA" still finds NG21.
+            var code = typed.split(' ')[0].toUpperCase();
+            var shown = 0;
+            regions.forEach(function (region) {
+                var any = false;
+                region.councils.forEach(function (council) {
+                    var hit = !typed || (name !== ' ' && council.name.indexOf(name) !== -1) ||
+                        council.codes.some(function (oc) { return oc.indexOf(code) === 0; });
+                    council.el.hidden = !hit;
+                    if (hit) { any = true; shown += 1; }
+                });
+                region.el.hidden = !any;
+                if (region.jump) region.jump.hidden = !any;
+            });
+            if (!typed) status.textContent = '';
+            else if (!shown) status.textContent = 'No council or district matches “' + typed + '”. The box above takes any full postcode.';
+            else status.textContent = shown === 1 ? '1 council matches.' : shown + ' councils match.';
+        }
+        input.addEventListener('input', filter);
+        box.hidden = false;
+    })();
+</script>
 {% endblock %}

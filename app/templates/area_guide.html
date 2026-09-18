@@ -111,11 +111,15 @@
     </div>
 </dialog>
 {% endif %}
+{# Both links to "/#postcode=<district>" went to the homepage until 18
+   Sep 2026 (first-visitor audit E5): a page away from the district the
+   reader was on. They go to this page's own box, "Check an address in"
+   the district, whose example already starts with it. #}
 {% if not has_data %}
 <p class="notice notice-error">
     We couldn't pull any data for {{ outcode }} right now, the underlying services may be
     temporarily unavailable. Try again shortly, or
-    <a href="/#postcode={{ outcode }}">search {{ outcode }} directly</a>.
+    <a href="#area-check-postcode">search an address in {{ outcode }} directly</a>.
 </p>
 {% else %}
 
@@ -135,7 +139,7 @@
     <p class="notice">House price index data isn't available for this area right now.</p>
     {% endif %}
     <p class="section-sub">
-        <a href="/#postcode={{ outcode }}">Check sold prices for a specific address in {{ outcode }} →</a>
+        <a href="#area-check-postcode">Check sold prices for a specific address in {{ outcode }} →</a>
         {% if region_slug %}
         <br><a href="/market/house-prices/{{ region_slug }}">See where {{ outcode }} ranks across {{ region_name }} →</a>
         {% endif %}

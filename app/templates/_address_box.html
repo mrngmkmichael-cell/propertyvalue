@@ -1,0 +1,25 @@
+{# A postcode box in place, for a page with no box of its own (18 Sep 2026,
+   first-visitor audit E5). "full property report" on the admissions and
+   private schools pages, "search it directly" on the market report and
+   "Run the free report first" on the buying guide all went to the
+   homepage, and the detour lost the page the reader was on. The link now
+   points at this box, one field away from the report.
+
+   Same action and field names as every other box that runs the checks,
+   and the offer in the one sentence every page uses (OFFER_SENTENCE in
+   main.py). Callers set box_id and box_label, and box_src, one of
+   REPORT_SOURCES in main.py, so the admin page can tell which page a
+   search started on rather than count it as the homepage. #}
+<form action="/property" method="get" class="search-form area-check" role="search">
+    <input type="hidden" name="src" value="{{ box_src }}">
+    <div class="search-form-field">
+        <label for="{{ box_id }}">{{ box_label }}</label>
+        <input type="text" id="{{ box_id }}" name="postcode" placeholder="e.g. a full postcode" autocomplete="postal-code" required>
+    </div>
+    <div class="search-form-field">
+        <label for="{{ box_id }}-house">House or flat number (optional)</label>
+        <input type="text" id="{{ box_id }}-house" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+    </div>
+    <button type="submit">Run the free report</button>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">{{ offer_sentence }}</p>
+</form>

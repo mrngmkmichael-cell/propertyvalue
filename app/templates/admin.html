@@ -158,10 +158,14 @@
 
 <section class="landing-section" id="alert-runs">
     <h2 class="landing-heading">Change alerts: what each run did</h2>
+    {# Named, not "when something on one of its homes changed" (18 Sep
+       2026, first-visitor audit E5): recorded crime is shown on My
+       properties and never emailed. ALERT_TRIGGERS_LIST in main.py. #}
     <p class="landing-subheading">
         The daily job re-checks every saved home and emails an account only
-        when something on one of its homes changed. It is the one reason to
-        come back the site sends, so this is whether it ever fires.
+        when one of these happens to one of its homes: {{ alert_triggers_list }}.
+        It is the one reason to come back the site sends, so this is whether
+        it ever fires.
     </p>
     {% if alert_runs %}
     <div class="tablewrap">

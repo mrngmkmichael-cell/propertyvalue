@@ -5,12 +5,17 @@
 The landing page's trust section carries the number a visitor can verify
 by counting cards on a report, and a test fails when the two disagree
 (tests/test_property_page.py::test_landing_page_check_count_matches_the_report).
-The same figure appears in the build-strip tally, the "All N checks"
-line, the dek, the contact note, the area guide's
-button and the running-costs page, and the landing page names every check in a script array. This script moves all
-of them together and appends the new card's name to the array, so a new
-check is one command rather than a hunt. Safe to re-run: a string already
-moved is skipped.
+The same figure appears in the dek, the area guide's button and the
+running-costs page, and the landing page names every check in a script
+array. This script moves all of them, and CHECK_COUNT in main.py, together
+and appends the new card's name to the array, so a new check is one
+command rather than a hunt. Safe to re-run: a string already moved is
+skipped.
+
+The trust-section stat, the build-strip tally, the "All N checks" line
+and the contact note read CHECK_COUNT since 18 Sep 2026 (first-visitor
+audit, E fix pass), so they move with the constant and are not listed
+below.
 
 By hand afterwards: the free/Premium split on the landing page and the
 pricing page ("N free on every report", "N more with Premium") and the
@@ -22,6 +27,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 INDEX = ROOT / "app" / "templates" / "index.html"
+MAIN = ROOT / "app" / "main.py"
 WORDS = {40: "forty", 41: "forty-one", 42: "forty-two", 43: "forty-three", 44: "forty-four", 45: "forty-five",
          46: "forty-six", 47: "forty-seven", 48: "forty-eight", 49: "forty-nine", 50: "fifty"}
 
@@ -56,21 +62,19 @@ def main(argv: list[str]) -> int:
         return 1
     new = int(argv[1])
     name = argv[2] if len(argv) > 2 else ""
-    m = re.search(r"stat_rows = \[\('(\d+)', 'Checks per property'\)", INDEX.read_text(encoding="utf-8"))
+    # The current count is CHECK_COUNT's. It was read from the trust-section
+    # stat until 18 Sep 2026, when that stat began reading the constant.
+    m = re.search(r"^CHECK_COUNT = (\d+)$", MAIN.read_text(encoding="utf-8"), re.M)
     if not m:
-        raise SystemExit("could not find the trust-section stat on the landing page")
+        raise SystemExit("could not find CHECK_COUNT in app/main.py")
     old = int(m.group(1))
     if old == new:
         old = new - 1  # a re-run after a partial move
     moves = [
-        (INDEX, f"[('{old}', 'Checks per property')", f"[('{new}', 'Checks per property')"),
-        (INDEX, f"/ {old} checks</p>", f"/ {new} checks</p>"),
-        (INDEX, f"All <strong>{old} checks</strong>", f"All <strong>{new} checks</strong>"),
         (INDEX, f"{WORDS[old].capitalize()} checks on any UK address", f"{WORDS[new].capitalize()} checks on any UK address"),
-        # The source count beside it is the length of OFFICIAL_SOURCES in
-        # main.py since 18 Sep 2026, so only the check count moves here.
-        (INDEX, f"{old} checks &middot; {{{{ official_sources | length }}}} official sources",
-         f"{new} checks &middot; {{{{ official_sources | length }}}} official sources"),
+        # The trust-section stat, the build-strip tally, the "All N checks"
+        # line and the contact note read CHECK_COUNT since 18 Sep 2026, so
+        # they move with the constant below.
         # The orbit heading, its "all forty-four." and the pricing link's
         # "full list of 44" left the landing page with the orbit on 17 Sep
         # 2026; the link now reads CHECK_COUNT, moved below.
@@ -84,7 +88,7 @@ def main(argv: list[str]) -> int:
         # main.py until 12 Sep 2026 and so was never moved by this script:
         # the live homepage said 40 checks in the strip and 44 in the trust
         # section a few hundred pixels below it.
-        (ROOT / "app" / "main.py", f"CHECK_COUNT = {old}", f"CHECK_COUNT = {new}"),
+        (MAIN, f"CHECK_COUNT = {old}", f"CHECK_COUNT = {new}"),
     ]
     for path, before, after in moves:
         _move(path, before, after)

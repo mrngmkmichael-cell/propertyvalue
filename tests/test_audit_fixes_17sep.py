@@ -418,9 +418,11 @@ def test_a3_sign_up_for_a_named_house_says_the_yes_comes_first(client, monkeypat
     assert line.endswith("say yes once on the report, and it opens in full. With an email and password, confirm your address first.")
 
     # The alert promise is the one My properties makes, not "anything".
+    # Since E5 (18 Sep 2026) it names the triggers, not "something".
     body = client.get(url).text
     assert "an email when anything changes" not in body
-    assert "an email when something changes on a saved property" in body
+    assert "an email when something changes on a saved property" not in body
+    assert "an email when one of these happens to a saved home: " + app_main.ALERT_TRIGGERS_LIST in body
 
 
 # ---- A4. Two promises the report does not keep ----------------------------
@@ -4689,14 +4691,13 @@ def test_d6_the_homepage_gives_the_lists_length_wherever_it_counts_sources(clien
     assert stat and stat.groups() == (str(n), str(n))
     assert f"{app_main.CHECK_COUNT} checks &middot; {n} official sources &middot; no card needed" in body
 
-    # The strip is the list, twice for the loop, and its belt runs at a
-    # pace set by the list's length.
+    # The strip is the list. It was the list twice, a belt looping at a
+    # pace set by its length, until item E1 of 18 Sep 2026 stopped it:
+    # now each body appears once, in a still row (pinned in the E1 tests).
     strip = body[body.index('class="sources-strip"'):]
     strip = strip[:strip.index("</section>")]
     names = [html.unescape(name) for name in re.findall(r'class="sources-strip-name">([^<]+)<', strip)]
-    assert names == _d6_names(app_main.OFFICIAL_SOURCES) * 2
-    assert f'style="--sources-n: {n}"' in strip
-    assert "var(--sources-n, 13) * 3.5s" in STYLE_CSS
+    assert names == _d6_names(app_main.OFFICIAL_SOURCES)
 
     # No other count of sources or bodies anywhere on the page.
     counts = set(re.findall(r"(\d+) official (?:sources|bodies)", _d6_text(body), re.I))
@@ -5769,3 +5770,1791 @@ def test_dfix_the_extensions_crime_panel_writes_the_month_and_counts_as_the_site
     assert "escapeHtml(c.month)" not in panel and "monthLabel(c.month)" in panel
     assert "countText(c.total)" in panel and "countText(r.here)" in panel
     assert 'toLocaleString("en-GB")' in js.split("function countText", 1)[1].split("}", 1)[0]
+
+
+# ---- E1. The homepage puts trust before its showpieces ---------------------
+# The demo report card sat above the headline, pushed the Search button to
+# y=833 on a 900px screen, did nothing when clicked, and clipped its cells
+# on a phone ("£147,62"). The accuracy log started on the ninth phone
+# screen, behind the scroll-built report; that report's hint was a video
+# editor's word; and the sources strip slid sideways for ever, which is the
+# auto-sliding carousel the owner rules out.
+
+def _hero(body):
+    start = body.index('<section class="lx-hero" id="home">')
+    return body[start:body.index("</section>", start)]
+
+
+def _css_rules(selector_part):
+    """(selector, declarations) of every innermost rule naming it."""
+    css = re.sub(r"/\*.*?\*/", "", STYLE_CSS, flags=re.S)
+    return [(sel.strip(), decls) for sel, decls in re.findall(r"([^{}]*)\{([^{}]*)\}", css)
+            if selector_part in sel]
+
+
+def test_e1_the_demo_card_is_a_link_that_follows_the_search_box_and_stays_out_of_the_tab_order(client):
+    body = _fresh_home(client)
+    hero = _hero(body)
+    tag = re.search(r'<a class="lx-strip" id="lx-strip"[^>]*>', hero)
+    assert tag, "the card is not a link inside the hero"
+    tag = tag.group(0)
+    assert 'href="/property?postcode=M1+1AE"' in tag
+    assert 'tabindex="-1"' in tag and 'aria-hidden="true"' in tag
+    assert '<div class="lx-strip"' not in body and body.count('id="lx-strip"') == 1
+    # The same report the text link opens, and that link is met once.
+    assert hero.count('<a href="/property?postcode=M1+1AE">See a real report for M1 1AE') == 1
+    # After the headline and the search form, no longer above them.
+    assert hero.index('class="lx-hero-h1"') < hero.index('<form class="lx-hero-form') < hero.index('id="lx-strip"')
+    assert hero.index('class="lx-hero-sample"') < hero.index('id="lx-strip"')
+
+    # It opens the report it is showing as it rotates, and holds still
+    # under a pointer.
+    script = body[body.index("const strip = document.getElementById('lx-strip');"):]
+    paint = script[script.index("function paint(d)"):script.index("const ok = function")]
+    assert "strip.href = '/property?postcode=' + encodeURIComponent(d.postcode).replace(/%20/g, '+');" in paint
+    assert "if (strip.matches(':hover')) return;" in script[script.index("const rotate = function"):]
+
+    base = [d for s, d in _css_rules(".lx-strip") if s == ".lx-strip" and "min-height: 152px;" in d]
+    assert len(base) == 1
+    assert "display: block;" in base[0] and "text-decoration: none;" in base[0] and "margin: 2rem 0 0;" in base[0]
+    assert "border-color: var(--accent);" in dict(_css_rules(".lx-strip:hover"))[".lx-hero .lx-strip:hover"]
+    # Two by two on a narrow phone, and a fixed height either way.
+    narrow = STYLE_CSS[STYLE_CSS.index("@media (max-width: 480px) {\n    .lx-strip-rows {"):]
+    narrow = narrow[:narrow.index("\n}\n")]
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in narrow and "height: 188px;" in narrow
+
+
+def test_e1_the_sources_the_log_and_the_reviews_come_before_the_scroll_built_report(client):
+    body = _fresh_home(client)
+    order = ['<section class="lx-hero" id="home">', '<section class="promo-banner">',
+             '<section class="lx-section lx-about" id="about">', '<section class="accuracy-strip"',
+             '<section class="lx-section lx-voices">', '<section class="lx-section lx-areas" id="areas">',
+             '<section class="lx-build" id="build"', '<section class="lx-section lx-checks lx-plan" id="checks">',
+             '<section class="landing-section" id="compare-alternatives">',
+             '<span class="section-pill" data-animate>Questions</span>', '<section class="sources-strip"',
+             '<section class="lx-section lx-contact" id="contact">']
+    at = [body.index(marker) for marker in order]
+    assert at == sorted(at), [marker for marker, _ in sorted(zip(order, at), key=lambda p: p[1])]
+    # Nothing but the offer band between the hero and the sources paragraph.
+    between = body[body.index("</section>", at[0]):at[2]]
+    assert re.findall(r'<section class="([^"]+)"', between) == ["promo-banner"]
+    assert "Every figure names its source" in body[at[2]:at[3]]
+    assert "Read the accuracy log" in body[at[3]:at[4]]
+
+    # Every piece still there, with its scripts: the scroll-built report
+    # and its pinned scrub, the trust figures' count-up, the parallax.
+    for piece in ('id="lx-build-track"', 'id="lx-build-pin"', 'id="lx-build-orb"', "Watch a report",
+                  "lx-about-stats .stat-count", "document.querySelector('.lx-about-art')",
+                  "targetP = Math.min(Math.max(-r.top / span, 0), 1);", "What people say",
+                  "Start with an area you know", "Questions people ask first", "What buyers do instead"):
+        assert body.count(piece) == 1, piece
+
+
+def test_e1_the_build_hint_says_scroll_in_plain_words(client):
+    body = _fresh_home(client)
+    assert "the page is the scrubber" not in body
+    assert '<p class="lx-build-hint" aria-hidden="true">Scroll to watch it build</p>' in body
+
+
+def test_e1_the_sources_strip_stands_still(client):
+    body = _fresh_home(client)
+    strip = body[body.index('<section class="sources-strip"'):]
+    strip = strip[:strip.index("</section>")]
+    assert "marquee" not in strip and "--sources-n" not in strip
+    assert '<div class="sources-strip-list">' in strip
+    names = [html.unescape(n) for n in re.findall(r'class="sources-strip-name">([^<]+)<', strip)]
+    assert names == [b["name"] for b in app_main.OFFICIAL_SOURCES]
+    # Every link is a real, reachable one: no hidden second pass.
+    assert 'aria-hidden="true" tabindex="-1"' not in strip
+    assert strip.count('class="sources-strip-item"') == len(app_main.OFFICIAL_SOURCES)
+
+    # Nothing in the sheet moves it.
+    assert "sources-marquee" not in STYLE_CSS and "@keyframes sources-scroll" not in STYLE_CSS
+    rules = _css_rules("sources-strip")
+    assert rules
+    for selector, declarations in rules:
+        assert "animation" not in declarations, selector
+    # On a phone it is two columns of icon and name rather than a column
+    # of tiles a screen and a half long.
+    phone = STYLE_CSS[STYLE_CSS.index("@media (max-width: 560px) {\n    .sources-strip {"):]
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in phone[:phone.index("\n}\n")]
+
+
+# ---- E2. The wait page lists answers, not datasets -------------------------
+# Its rows read "Nearby sold comparables", "ONS demographics" and "Noise &
+# air quality models"; the heading read "Building the report for BN11EE";
+# the header box kept typing other postcodes during the wait; and on a
+# phone the list ran past the first screen after row nine, so later ticks
+# landed out of sight.
+
+# Each row's publisher as the row names it, and the bodies of
+# OFFICIAL_SOURCES that name stands for.
+E2_PUBLISHERS = {
+    "HM Land Registry": ("HM Land Registry",),
+    "Local councils": ("Local councils",),
+    "EPC register": ("MHCLG",),
+    "Environment Agency": ("Environment Agency",),
+    "Police.uk": ("Police.uk",),
+    "DfE and Ofsted": ("Department for Education", "Ofsted"),
+    "ONS census": ("Office for National Statistics",),
+    "Defra": ("Defra",),
+    "British Geological Survey": ("British Geological Survey",),
+    "Mining Remediation Authority": ("Mining Remediation Authority",),
+    "Ofcom": ("Ofcom",),
+    "Natural England and Historic England": ("Natural England", "Historic England"),
+    "MHCLG planning data": ("MHCLG",),
+    "DfT Bus Open Data Service": ("Department for Transport",),
+    "NHS England": ("NHS England",),
+}
+
+
+def _e2_wait_page(client, fake_report, location=None, query="postcode=M14%205TG"):
+    fake_report(location=location)
+    r = client.get("/property?" + query, headers=D5_BROWSER)
+    assert r.status_code == 202
+    return r.text
+
+
+def _e2_script(body):
+    script = body[body.index("var live = document.getElementById('building-live');"):]
+    return script[:script.index("</script>")]
+
+
+def test_e2_every_wait_row_is_the_buyers_question_then_an_official_publisher():
+    official = {b["name"] for b in app_main.OFFICIAL_SOURCES}
+    for bodies in E2_PUBLISHERS.values():
+        assert set(bodies) <= official, bodies
+
+    labels = list(app_main.GATHER_SOURCE_LABELS.values())
+    assert labels == app_main.GATHER_SOURCE_ORDER and len(labels) == 19
+    for label in labels:
+        parts = label.split(" · ")
+        assert len(parts) == 2, label
+        question, publisher = parts
+        assert question[0].isupper() and len(question.split()) >= 2, label
+        assert publisher in E2_PUBLISHERS, label
+        # The page lists what it still waits for as "A, B and C", so a
+        # comma inside a row would split it in two there.
+        assert "," not in label, label
+        assert "—" not in label and "!" not in label, label
+
+    for row in ("What it last sold for · HM Land Registry", "What sold nearby · HM Land Registry",
+                "Flood zone and live warnings · Environment Agency", "Who lives here · ONS census",
+                "Road and rail noise and air quality · Defra"):
+        assert row in labels, row
+    for dataset in ("Nearby sold comparables", "ONS demographics", "Noise & air quality models",
+                    "Historic landfill records", "Sewage discharge records", "Planning designations"):
+        assert dataset not in labels, dataset
+
+
+def test_e2_the_done_list_still_names_the_rows_the_page_draws(client, fake_report):
+    """The keys did not change, so a member that comes back reports the
+    same string the page keys its row and dial mark by."""
+    sink = app_main._new_progress_sink()
+
+    async def go():
+        app_main._progress_sink.set(sink)
+
+        async def _zone():
+            return {"zone": 1}
+
+        await app_main._timed("flood-zones-zone-for", _zone())
+        await app_main._timed("sold-prices-for-postcode", _zone())
+
+    asyncio.run(go())
+    assert sink["done"] == ["Flood zone and live warnings · Environment Agency",
+                            "What it last sold for · HM Land Registry"]
+
+    body = _e2_wait_page(client, fake_report)
+    for label in app_main.GATHER_SOURCE_ORDER:
+        question, publisher = label.split(" · ")
+        attr = html.escape(label)
+        assert body.count(f'data-source="{attr}"') == 2, label  # its row and its dial mark
+        assert (f'<li class="building-item" data-source="{attr}"><span class="building-tick"></span>'
+                f'<span class="building-label">{html.escape(question)} '
+                f'<span class="building-publisher">· {html.escape(publisher)}</span></span></li>') in body
+    # The count's word stays the one item D6 chose.
+    assert f'<span id="building-done">0</span> of {len(app_main.GATHER_SOURCE_ORDER)} lookups back</p>' in body
+    # The publisher takes the quieter ink the report gives a source.
+    assert [d for s, d in _css_rules(".building-publisher") if s == ".building-publisher"] == [
+        " color: var(--ink-faint); "]
+
+
+def test_e2_the_postcode_has_its_space_in_the_report_headers_mono_face(client, fake_report):
+    assert app_main._spaced_postcode("bn11ee") == "BN1 1EE"
+    assert app_main._spaced_postcode(" M145TG ") == "M14 5TG"
+    assert app_main._spaced_postcode("ec1a1bb") == "EC1A 1BB"
+    assert app_main._spaced_postcode("SW1A  1AA") == "SW1A 1AA"
+    assert app_main._spaced_postcode("m14") == "M14"
+    # _home_from_query reads the same rule it was lifted from.
+    assert app_main._home_from_query("m145tg", "")["postcode"] == "M14 5TG"
+
+    body = _e2_wait_page(client, fake_report, location=fake_location(postcode="BN11EE", outcode="BN1"),
+                         query="postcode=bn11ee")
+    assert ('<h1 class="building-heading">Building the report for '
+            '<span class="building-postcode">BN1 1EE</span></h1>') in body
+    assert "BN11EE" not in body
+    # The way out after a minute reads the district from the spaced form.
+    assert ('href="/area/BN1"' in body) == ("BN1" in app_main.KNOWN_OUTCODES)
+
+    rule = [d for s, d in _css_rules(".building-postcode") if s == ".building-postcode"]
+    assert len(rule) == 1
+    assert "font-family: var(--font-mono);" in rule[0] and "letter-spacing: normal;" in rule[0]
+    assert "white-space: nowrap;" in rule[0]
+    head = [d for s, d in _css_rules(".report-head h1") if s == ".report-head h1"][0]
+    assert "font-family: var(--font-mono);" in head and "letter-spacing: normal;" in head
+
+
+def test_e2_the_tab_carries_the_count_and_the_postcode(client, fake_report):
+    body = _e2_wait_page(client, fake_report)
+    assert "<title>Building the report for M14 5TG | UKPropertyInsight</title>" in body
+    script = _e2_script(body)
+    assert 'var postcode = "M14 5TG";' in script
+    assert "function titled(text) { document.title = text + ' · ' + postcode; }" in script
+    land = script[script.index("function land(src) {"):script.index("function drain()")]
+    assert "titled(landed + ' of ' + total);" in land
+    stop = script[script.index("function stop() {"):script.index("retryEl.addEventListener")]
+    assert "titled('Stopped checking');" in stop
+
+
+def test_e2_the_header_box_does_not_type_demo_postcodes_during_the_wait(client, fake_report):
+    body = _e2_wait_page(client, fake_report)
+    box = re.search(r'<input type="text" id="header-postcode"[^>]*>', body).group(0)
+    assert "data-typing-demo" not in box
+    assert 'placeholder="Postcode"' in box and box.endswith(" required>")
+    # Every other page with the header box keeps its demo.
+    other = re.search(r'<input type="text" id="header-postcode"[^>]*>', client.get("/methodology").text).group(0)
+    assert "data-typing-demo" in other
+
+
+def test_e2_on_a_phone_the_list_scrolls_inside_itself_so_the_dial_and_count_stay_on_screen(client, fake_report):
+    phone = STYLE_CSS[STYLE_CSS.index("@media (max-width: 480px) {\n    .building-wrap { margin-top: 1.5rem; }"):]
+    phone = phone[:phone.index("\n}\n")]
+    assert ".building-list.is-fitted {" in phone and ".building-list.is-fitted:focus-visible {" in phone
+
+    rule = [d for s, d in _css_rules(".building-list.is-fitted") if s == ".building-list.is-fitted"]
+    assert len(rule) == 1
+    rule = rule[0]
+    assert "overflow-y: auto;" in rule and "overscroll-behavior: contain;" in rule
+    # Ends at the bottom of the first screen, measured from where the list
+    # starts, and never shorter than about four rows.
+    assert "max-height: max(7rem, calc(100svh - var(--list-top) - 0.75rem));" in rule
+    # Motion, not boxes: no border, fill or shadow, and nothing animates.
+    for word in ("border", "background", "box-shadow", "animation", "transition"):
+        assert word not in rule, word
+    focus = [d for s, d in _css_rules(".building-list.is-fitted:focus-visible")][0]
+    assert "outline: 2px solid var(--accent);" in focus and "mask-image: none;" in focus
+    # Only a script that ticks rows fits the list; without one it stays whole.
+    assert not [s for s, d in _css_rules(".building-list") if s == ".building-list" and "max-height" in d]
+
+    body = _e2_wait_page(client, fake_report)
+    assert '<ul class="building-list" id="building-list" aria-label="Lookups">' in body
+    script = _e2_script(body)
+    assert "list.classList.add('is-fitted');" in script
+    assert "list.style.setProperty('--list-top', top);" in script
+    assert "watch.observe(live);" in script and "watch.observe(document.querySelector('.building-overtime'));" in script
+    # A landing row is brought into view by scrolling the list, never the
+    # page, and without smoothing under reduced motion.
+    land = script[script.index("function land(src) {"):script.index("function drain()")]
+    assert "reveal(rows[src]);" in land
+    assert "list.scrollBy({ top: shift, behavior: still ? 'auto' : 'smooth' });" in script
+    assert "scrollIntoView" not in script and not re.search(r"window\.scroll(To|By)?\(", script)
+    # A list that scrolls is a tab stop, and one that does not is not.
+    assert "if (listScrolls()) list.setAttribute('tabindex', '0');" in script
+    assert "else list.removeAttribute('tabindex');" in script
+
+
+# ---- E3. The school page asks its question once ------------------------------
+# Two "Check this postcode" boxes a screen apart, the nearest schools listed
+# twice (the table, and a list the map's tick box opened), raw embed code
+# between the bus times and the fee-paying schools, and district labels on
+# the map that took a tap only on their type. One checker now, the upper
+# one, coming back as "Check another postcode" inside an answer; one list,
+# the table, which the tick box draws rings for; the badge last, after
+# Common questions; and a 48 by 32 tap box round each label in both map
+# branches.
+
+E3_LAT, E3_LON = 54.8900, -2.9300           # Carlisle, a corner no other test uses
+E3_PAGE = "/school/990731/eden-bank-academy"
+
+
+def _e3_school(urn, name, lat, lon, miles, phase="Secondary"):
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    with db.get_session() as session:
+        session.merge(School(urn=urn, name=name, phase=phase, type_name="Academy converter",
+                             postcode="CA3 8AA", latitude=lat, longitude=lon))
+        session.merge(SchoolDetail(urn=urn, town="Carlisle", admissions_policy="Not applicable",
+                                   local_authority="Cumberland"))
+        session.merge(SchoolAdmissionRadius(urn=urn, last_distance_miles=miles, academic_year="2025/26",
+                                            source_authority="Cumberland"))
+        session.commit()
+
+
+def _e3_page(client, query=""):
+    from app.services import _cache
+    _e3_school(990731, "Eden Bank Academy", E3_LAT, E3_LON, 1.2)
+    _e3_school(990732, "Stanwix Rise Primary", E3_LAT + 0.0050, E3_LON - 0.0050, 0.8, phase="Primary")
+    _e3_school(990733, "Caldew Vale School", E3_LAT - 0.0060, E3_LON + 0.0080, 0.95)
+    _e3_school(990734, "Petteril Grange High", E3_LAT - 0.0100, E3_LON - 0.0100, 25.0)  # did not limit entry
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get(E3_PAGE + query)
+    assert r.status_code == 200
+    return r.text
+
+
+def _e3_checkers(body):
+    """Every form on the page that checks a postcode against this school."""
+    return re.findall(r'<form[^>]*action="' + E3_PAGE + r'[#"][^>]*>.*?</form>', body, re.S)
+
+
+def test_e3_before_a_check_the_page_has_one_postcode_checker(client):
+    body = _e3_page(client)
+    forms = _e3_checkers(body)
+    assert len(forms) == 1 and body.count('name="check"') == 1
+    assert 'id="check-postcode-top"' in forms[0] and f'action="{E3_PAGE}#verdict"' in forms[0]
+    assert body.count(">Check this postcode</button>") == 1
+    assert "Check another postcode" not in body and 'id="verdict"' not in body
+    # The house report's own box asks a different question, and stays.
+    assert 'id="school-postcode"' in body and ">Run the full report</button>" in body
+
+
+def test_e3_after_a_check_the_verdict_offers_another_postcode(client, monkeypatch):
+    async def _lookup(_pc):
+        return {"postcode": "CA3 9AA", "latitude": E3_LAT + 0.004, "longitude": E3_LON}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    body = _e3_page(client, "?check=CA3+9AA")
+    forms = _e3_checkers(body)
+    assert len(forms) == 1 and body.count('name="check"') == 1
+    assert 'id="check-postcode-top"' not in body              # the landing box gives way to the answer
+    again = forms[0]
+    assert '<label for="check-postcode">Check another postcode</label>' in again
+    assert f'action="{E3_PAGE}#verdict"' in again and ">Check</button>" in again
+    box = re.search(r'<input type="text" id="check-postcode"[^>]*>', again).group(0)
+    assert "value=" not in box and 'autocomplete="postal-code"' in box and box.endswith(" required>")
+    # Inside the answer, as its last row, and before the map.
+    verdict = body[body.index('id="verdict"'):body.index('id="school-page-map"')]
+    assert again in verdict
+    assert re.search(r"<button type=\"submit\">Check</button>\s*</form>\s*</div>\s*"
+                     r'<div class="school-page-map"', body)
+    # The offer to save the school still follows the answer, ahead of the box.
+    offer = "to save this school and be told when Cumberland republishes the distance this answer rests on"
+    assert verdict.index(offer) < verdict.index("Check another postcode")
+    # The row is the search form's field and button without its card.
+    rule = [d for s, d in _css_rules(".admission-check-again") if s == ".admission-verdict .admission-check-again"]
+    assert len(rule) == 1
+    for decl in ("flex-basis: 100%;", "padding: 0;", "background: none;", "border: 0;", "box-shadow: none;"):
+        assert decl in rule[0], decl
+
+    # Signed in, the save button is still the next thing after the answer.
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert _signup(client, "e3-shortlist@customer.test").status_code == 303
+    signed = client.get(E3_PAGE + "?check=CA3+9AA").text
+    verdict = signed[signed.index('id="verdict"'):signed.index('id="school-page-map"')]
+    assert verdict.index(">Save this school</button>") < verdict.index("Check another postcode")
+    assert len(_e3_checkers(signed)) == 1
+
+
+def test_e3_a_postcode_that_cannot_be_found_comes_back_in_the_one_box(client, monkeypatch):
+    async def _lookup(_pc):
+        return None
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    body = _e3_page(client, "?check=ZZ9+9ZZ")
+    forms = _e3_checkers(body)
+    assert len(forms) == 1 and body.count('name="check"') == 1
+    box = re.search(r'<input type="text" id="check-postcode-top"[^>]*>', forms[0]).group(0)
+    assert 'value="ZZ9 9ZZ"' in box and 'aria-invalid="true"' in box and 'aria-describedby="check-error"' in box
+    assert 'id="check-error"' in forms[0]
+    assert "Couldn't find \"ZZ9 9ZZ\" as a UK postcode. Check the spelling and try again." in forms[0]
+    assert body.count("as a UK postcode") == 1 and 'id="verdict"' not in body
+    # A page with no error says nothing of one.
+    clean = _e3_page(client)
+    assert 'id="check-error"' not in clean and "aria-invalid" not in clean
+
+
+def test_e3_the_nearest_schools_are_listed_once_in_the_table_the_tick_box_draws(client):
+    body = _e3_page(client)
+    for urn, slug in ((990732, "stanwix-rise-primary"), (990733, "caldew-vale-school"),
+                      (990734, "petteril-grange-high")):
+        assert body.count(f'href="/school/{urn}/{slug}"') == 1, slug
+    assert 'id="nearby-rings-legend"' not in body and 'class="map-legend"' not in body
+    assert _css_rules(".map-legend") == []
+    toggle = _flat(re.search(r'<label class="map-toggle">(.*?)</label>', body, re.S).group(1))
+    # Worded for what it draws (fix pass): the table below also lists the
+    # school with no limit, which gets no ring.
+    assert toggle.endswith("Draw the admission distances of the 2 nearest schools in the table below that have a limit")
+    # The table follows the map's section, ahead of the picture and the
+    # school's own facts, so the rings and their names are a scroll apart.
+    at = [body.index(s) for s in ('id="school-page-map"', 'id="nearby-rings-toggle"', "This is not a catchment area",
+                                  '<section class="report-section" id="nearby-schools">',
+                                  "<h2>Other schools nearby with a published distance</h2>",
+                                  "<h2>The distance as a picture</h2>")]
+    assert at == sorted(at)
+    table = body.split('id="nearby-schools"', 1)[1].split("</section>", 1)[0]
+    assert "Stanwix Rise Primary" in table and "Caldew Vale School" in table and "No limit" in table
+    # The tick box draws rings for the two with a limit, and neither
+    # script looks for the list any more.
+    assert '"url": "/school/990732/stanwix-rise-primary"' in body and '"url": "/school/990733/caldew-vale-school"' in body
+    assert '"url": "/school/990734/' not in body
+    scripts = body[body.index("window.SCHOOL_PAGE = {"):]
+    assert "legend" not in scripts[:scripts.index("})();")]
+
+
+def test_e3_the_toggle_names_a_single_school_in_the_singular(client):
+    from app.models import SchoolAdmissionRadius
+    from app.services import _cache
+    _e3_page(client)
+    with db.get_session() as session:
+        session.merge(SchoolAdmissionRadius(urn=990733, last_distance_miles=30.0, academic_year="2025/26",
+                                            source_authority="Cumberland"))
+        session.commit()
+    try:
+        _cache._store.clear(); _cache._bytes = 0
+        body = client.get(E3_PAGE).text
+    finally:
+        _e3_school(990733, "Caldew Vale School", E3_LAT - 0.0060, E3_LON + 0.0080, 0.95)
+    toggle = _flat(re.search(r'<label class="map-toggle">(.*?)</label>', body, re.S).group(1))
+    assert toggle.endswith("Draw the admission distance of the nearest school in the table below that has a limit")
+
+
+def test_e3_the_embed_badge_comes_last_after_common_questions(client):
+    from app.models import BusStop
+    with db.get_session() as session:
+        session.merge(BusStop(atco_code="E3STOP", name="Eden Bank Road", latitude=E3_LAT + 0.0009, longitude=E3_LON,
+                              weekday_day=24, weekday_eve=6, sunday_day=12, weekday_first="06:40", weekday_last="22:50",
+                              routes='["60"]', feed_date=datetime.date(2026, 9, 7), ref_weekday=datetime.date(2026, 9, 8),
+                              ref_sunday=datetime.date(2026, 9, 13)))
+        session.commit()
+    try:
+        body = _e3_page(client)
+    finally:
+        with db.get_session() as session:
+            session.query(BusStop).filter(BusStop.atco_code == "E3STOP").delete()
+            session.commit()
+    bus = body.index("<h2>Getting to Eden Bank Academy by bus</h2>")
+    fees = body.index("<h2>The fee-paying alternative</h2>")
+    faq = body.index("<h2>Common questions</h2>")
+    badge = body.index("<h2>Put Eden Bank Academy's figure on your own site</h2>")
+    assert bus < fees < faq < badge
+    assert body.count('class="embed-code"') == 1 and body.index('class="embed-code"') > badge
+    assert body.count("/school/990731/badge.svg") == 2 and body.index("/school/990731/badge.svg") > badge
+    # The last section on the page: only the sources line and the scripts follow.
+    assert body.rindex('<section class="report-section"') < badge
+
+
+def test_e3_the_district_labels_take_a_32px_tap_in_both_map_branches(client, monkeypatch):
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "")
+    leaflet = _e3_page(client)
+    assert "districts: [" in leaflet and "districts: []" not in leaflet
+    assert "L.divIcon({ className: 'map-district-label', html: d.code, iconSize: [48, 32] })" in leaflet
+    assert "iconSize: null" not in leaflet
+    rule = [d for s, d in _css_rules(".map-district-label") if s == ".map-district-label"]
+    assert len(rule) == 1
+    assert "font: 600 12px/32px var(--font-sans);" in rule[0] and "text-align: center;" in rule[0]
+    assert "transform" not in rule[0]
+    # The look is as it was: the same type, colour and halo, on no ground.
+    for kept in ("color: #1c1714;", "white-space: nowrap;", "background: transparent;", "border: 0;",
+                 "text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;", "cursor: pointer;"):
+        assert kept in rule[0], kept
+
+    monkeypatch.setenv("GOOGLE_MAPS_API_KEY", "e3-test-key")
+    google = _e3_page(client)
+    assert "initSchoolPageMap" in google and "L.divIcon" not in google
+    script = google[google.index("function initSchoolPageMap()"):]
+    assert "legend" not in script[:script.index("</script>")]      # the rings' list is gone here too
+    hit = google[google.index("const districtHit = {"):google.index("(S.districts || []).forEach")]
+    assert "path: 'M -24 -16 H 24 V 16 H -24 Z', scale: 1," in hit
+    assert "fillOpacity: 0, strokeOpacity: 0, strokeWeight: 0" in hit
+    districts = google[google.index("(S.districts || []).forEach"):google.index("if (S.check) {")]
+    assert "icon: districtHit," in districts and "scale: 0" not in districts
+    assert ("label: { text: d.code, fontSize: '12px', fontWeight: '600', color: '#1c1714', "
+            "className: 'map-district-label-g' }") in districts
+
+
+# ---- E4. The admissions hub saves a school and says what it holds ----------
+# Signed out, the hub said "Sign up to save the schools you care about", and
+# signed in there was nothing to save on any row. Birmingham's hub held only
+# primary schools from the 2023/24 round and never said so. Each row now has
+# Save for a signed-in account, or Saved for a school already on the
+# shortlist, read in one statement for the page; a save returns to its row.
+# Under the tiles a line names the phases and rounds the hub's rows hold and
+# the phase it does not, then the closing date for each phase held, from the
+# school page's own helper. A hub holding one phase names it in its title and
+# description. Signed out, the sign-up link stays generic: saving is a POST
+# and sign-up returns by a GET, which could only carry the school through a
+# GET that writes. The imported rows hold no link to a council's admissions
+# page, so none is given.
+
+E4_ONLY = "/schools/admissions/ormsby-fen"          # three primaries, 2023/24
+E4_BOTH = "/schools/admissions/fenholt-marsh"       # a primary and a secondary, different rounds
+E4_TODAY = datetime.date(2026, 9, 18)
+
+
+def _e4_school(urn, name, phase, miles, year, authority):
+    from app.models import School, SchoolAdmissionRadius, SchoolDetail
+    with db.get_session() as session:
+        session.merge(School(urn=urn, name=name, phase=phase, type_name="Community school",
+                             postcode="PE12 6AA", latitude=52.79, longitude=0.15,
+                             ofsted_rating=2, ofsted_rating_label="Good"))
+        session.merge(SchoolDetail(urn=urn, town="Holbeach", admissions_policy="Not applicable",
+                                   local_authority=authority))
+        session.merge(SchoolAdmissionRadius(urn=urn, last_distance_miles=miles, academic_year=year,
+                                            source_authority=authority))
+        session.commit()
+
+
+def _e4_page(client, path, monkeypatch=None):
+    from app.services import _cache
+    for urn, name, miles in ((990941, "Ormsby Mill Primary", 0.21), (990942, "Fen Drove Primary", 0.64),
+                             (990943, "Ormsby Church Primary", 1.37)):
+        _e4_school(urn, name, "Primary", miles, "2023/24", "Ormsby Fen")
+    _e4_school(990944, "Fenholt Marsh Infants", "Primary", 0.5, "2025/26", "Fenholt Marsh")
+    _e4_school(990945, "Fenholt Marsh Academy", "Secondary", 2.4, "2024/25", "Fenholt Marsh")
+    if monkeypatch is not None:
+        # The deadlines move with the date; the page is read as on 18 Sep 2026.
+        coverage = app_main._admissions_hub_coverage
+        monkeypatch.setattr(app_main, "_admissions_hub_coverage", lambda council, today=None: coverage(council, E4_TODAY))
+    _cache._store.clear(); _cache._bytes = 0
+    r = client.get(path)
+    assert r.status_code == 200
+    return r.text
+
+
+def _e4_row(body, urn):
+    return re.search(rf'<tr id="school-{urn}">(.*?)</tr>', body, re.S).group(1)
+
+
+def _e4_text(fragment):
+    return _flat(re.sub(r"<[^>]+>", " ", fragment)).replace(" ,", ",").replace(" .", ".")
+
+
+def _e4_account(client, monkeypatch, email):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert _signup(client, email).status_code == 303
+    with db.get_session() as session:
+        return auth.find_user_by_email(session, email).id
+
+
+def test_e4_signed_in_each_row_has_save_and_a_shortlisted_school_reads_saved(client, monkeypatch):
+    from app import school_shortlist
+    uid = _e4_account(client, monkeypatch, "e4-hub@customer.test")
+    school_shortlist.save_item(uid, 990942, "")
+    body = _e4_page(client, E4_ONLY)
+    assert "Save a school on its row to keep it on" in body and 'href="/signup?next=' not in body
+    for urn, name in ((990941, "Ormsby Mill Primary"), (990943, "Ormsby Church Primary")):
+        row = _e4_row(body, urn)
+        assert row.count('<form action="/schools/shortlist/save" method="post" class="hub-save-form">') == 1
+        assert f'<input type="hidden" name="urn" value="{urn}">' in row
+        assert f'<input type="hidden" name="next" value="{E4_ONLY}#school-{urn}">' in row
+        assert f'Save<span class="visually-hidden"> {name} to your shortlist</span></button>' in row
+        assert "Saved" not in row
+    saved = _e4_row(body, 990942)
+    assert '<a href="/schools/shortlist" class="hub-saved">Saved<span class="visually-hidden">: Fen Drove Primary is on your shortlist</span></a>' in saved
+    assert "/schools/shortlist/save" not in saved
+    # The column sits last and out of the sort, so the sort script's
+    # header positions still match the cells it reads.
+    head = re.search(r"<thead>(.*?)</thead>", body, re.S).group(1)
+    headers = re.findall(r"<th[^>]*>", head)
+    assert headers[-1] == '<th class="hub-save">' and all("data-sort" in h for h in headers[:-1])
+    assert "Your shortlist" in head
+
+    # A save goes back to that row, which now reads Saved.
+    r = client.post("/schools/shortlist/save", data={"urn": "990941", "next": f"{E4_ONLY}#school-990941"},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == f"{E4_ONLY}#school-990941"
+    again = _e4_page(client, E4_ONLY)
+    assert 'class="hub-saved">Saved<' in _e4_row(again, 990941)
+    assert 'class="hub-saved">Saved<' not in _e4_row(again, 990943)
+
+
+def test_e4_signed_out_no_row_has_a_control_and_the_sign_up_link_stays_generic(client):
+    body = _e4_page(client, E4_ONLY)
+    page = body[body.index("<h1>"):]                # the stylesheet is inlined in the head
+    assert "/schools/shortlist/save" not in page and "hub-save" not in page and "hub-saved" not in page
+    assert body.count(f'href="/signup?next={E4_ONLY}"') == 1
+    assert "Save a school on its row" not in body
+    # Every row keeps its anchor and its five cells.
+    for urn in (990941, 990942, 990943):
+        assert len(re.findall(r"<td[ >]", _e4_row(body, urn))) == 5
+
+
+def test_e4_the_shortlist_is_read_in_one_statement_however_many_it_holds(client, monkeypatch):
+    from sqlalchemy import event
+    from app import school_shortlist
+    uid = _e4_account(client, monkeypatch, "e4-rounds@customer.test")
+    school_shortlist.save_item(uid, 990941, "")
+
+    def _one_by_one(*_a, **_k):
+        raise AssertionError("the hub read the shortlist one school at a time")
+
+    monkeypatch.setattr(app_main.school_shortlist, "list_items", _one_by_one)
+    engine = db._get_engine()
+
+    def _shortlist_reads():
+        seen = []
+
+        def _count(_conn, _cursor, statement, *_rest):
+            if "school_shortlist_items" in statement:
+                seen.append(statement)
+
+        event.listen(engine, "before_cursor_execute", _count)
+        try:
+            body = _e4_page(client, E4_ONLY)
+        finally:
+            event.remove(engine, "before_cursor_execute", _count)
+        return body, seen
+
+    body, one = _shortlist_reads()
+    assert body.count('class="hub-saved">Saved<') == 1 and len(one) == 1
+    for urn in (990942, 990943, 990944):
+        school_shortlist.save_item(uid, urn, "")
+    body, four = _shortlist_reads()
+    assert body.count('class="hub-saved">Saved<') == 3 and len(four) == 1
+    assert school_shortlist.saved_urns(uid) == {990941, 990942, 990943, 990944}
+
+
+def test_e4_a_primary_only_hub_says_so_with_its_round_and_names_the_phase(client, monkeypatch):
+    body = _e4_page(client, E4_ONLY, monkeypatch)
+    line = '<p class="section-sub hub-coverage">Primary schools only, from the 2023/24 round. Secondary distances are not on this page.</p>'
+    assert body.count(line) == 1
+    # Under the tiles, ahead of the tightest and the tables.
+    at = [body.index(s) for s in ('class="scorecard-row"', line, "The tightest is", "<h2>Primary schools</h2>")]
+    assert at == sorted(at)
+    assert "<title>Ormsby Fen primary school catchments: how far each school admitted from</title>" in body
+    assert '<meta name="description" content="How far the last child admitted lived, for 3 Ormsby Fen primary schools, from' in body
+    assert "<h1>How far Ormsby Fen primary schools admitted from</h1>" in body
+    assert "This is that figure for 3 primary schools, tightest first." in _flat(body)
+    assert "Ormsby Fen primary school admission distances (last distance offered)" in body
+    # The school page's deadline line, for the one phase held.
+    deadline = re.search(r'<p class="section-sub admission-deadline">(.*?)</p>', body, re.S).group(1)
+    assert _e4_text(deadline) == (
+        "Applying for September 2027? Primary applications close on 15 January 2027, with offers on "
+        "16 April 2027. The address on the deadline is the one the council uses. How it works.")
+    assert '<strong>15 January 2027</strong>' in deadline and 'href="/schools/how-admissions-work"' in deadline
+    assert "Secondary applications" not in body
+
+
+def test_e4_a_hub_with_both_phases_gives_each_its_round_and_deadline_and_keeps_its_title(client, monkeypatch):
+    body = _e4_page(client, E4_BOTH, monkeypatch)
+    assert ('<p class="section-sub hub-coverage">Primary schools from the 2025/26 round and secondary schools '
+            'from the 2024/25 round.</p>') in body
+    assert "are not on this page" not in body
+    assert "<title>Fenholt Marsh school catchments: how far each school admitted from</title>" in body
+    assert "<h1>How far Fenholt Marsh schools admitted from</h1>" in body
+    deadline = re.search(r'<p class="section-sub admission-deadline">(.*?)</p>', body, re.S).group(1)
+    assert _e4_text(deadline) == (
+        "Applying for September 2027? Secondary applications close on 31 October 2026, with offers on "
+        "1 March 2027; primary applications close on 15 January 2027, with offers on 16 April 2027. "
+        "The address on the deadline is the one the council uses. How it works.")
+
+
+def test_e4_the_coverage_line_and_the_deadlines_follow_the_rows():
+    def rows(*years):
+        return [{"academic_year": y} for y in years]
+
+    both_same = app_main._admissions_hub_coverage(
+        {"by_phase": [("Primary", rows("2025/26", "2025/26")), ("Secondary", rows("2025/26"))]}, E4_TODAY)
+    assert both_same["sentence"] == "Primary and secondary schools, from the 2025/26 round."
+    assert both_same["only_phase"] == "" and both_same["phase_word"] == ""
+
+    secondary = app_main._admissions_hub_coverage(
+        {"by_phase": [("Secondary", rows("2025/26", "2024/25", ""))]}, E4_TODAY)
+    assert secondary["sentence"] == ("Secondary schools only, from the 2024/25 and 2025/26 rounds. "
+                                     "Primary distances are not on this page.")
+    assert secondary["only_phase"] == "secondary" and secondary["phase_word"] == "secondary "
+    assert [[d["phase"] for d in g["items"]] for g in secondary["deadline_groups"]] == [["secondary"]]
+
+    # A round that was not recorded is left out, never guessed.
+    nursery = app_main._admissions_hub_coverage({"by_phase": [("Nursery", rows(""))]}, E4_TODAY)
+    assert nursery["sentence"] == "Nursery schools only. Primary and secondary distances are not on this page."
+    assert nursery["deadline_groups"] == []          # not admitted through the national closing dates
+
+    mixed = app_main._admissions_hub_coverage(
+        {"by_phase": [("Primary", rows("2025/26")), ("Special", rows(""))]}, E4_TODAY)
+    assert mixed["sentence"] == ("Primary schools from the 2025/26 round and special schools with no round "
+                                 "recorded. Secondary distances are not on this page.")
+
+    # Between the October and January deadlines the two phases are for
+    # different Septembers, so each gets its own question.
+    december = app_main._admissions_hub_coverage(
+        {"by_phase": [("Primary", rows("2025/26")), ("Secondary", rows("2025/26"))]}, datetime.date(2026, 12, 1))
+    assert [(g["entry_year"], [(d["phase"], d["deadline_text"]) for d in g["items"]])
+            for g in december["deadline_groups"]] == [
+        (2027, [("primary", "15 January 2027")]), (2028, [("secondary", "31 October 2027")])]
+    # The same helper the school page renders from.
+    assert december["deadline_groups"][0]["items"][0] == app_main._admissions_deadline("Primary", datetime.date(2026, 12, 1))
+
+    assert app_main._admissions_hub_coverage({"by_phase": []}, E4_TODAY) == {
+        "sentence": "", "only_phase": "", "phase_word": "", "deadline_groups": []}
+
+
+def test_e4_the_save_column_is_drawn_from_tokens_and_keeps_focus_visible():
+    rules = dict((s, d) for s, d in _css_rules(".hub-save") if s in (".hub-save-form", ".hub-saved"))
+    assert "display: inline;" in rules[".hub-save-form"]
+    assert "color: var(--good);" in rules[".hub-saved"] and "#" not in rules[".hub-saved"]
+    target = [d for s, d in _css_rules("tr:target") if s == ".school-table tr:target"]
+    assert len(target) == 1 and target[0].strip() == "background-color: var(--accent-soft);"
+    # Nothing here removes the site's focus ring.
+    assert all("outline" not in d for s, d in _css_rules("hub-save"))
+
+
+# ---- E5. Dead ends and small labels ------------------------------------------
+# Links on the content pages sent a reader to the homepage and lost the
+# council, district or postcode behind the click: "full property report" on
+# the admissions pages and private schools, "Run a free report" on council
+# tax, "search it directly" on the market report and the area guide's "Check
+# sold prices for a specific address". Each now goes to a postcode box on the
+# page it is on, the page's own where it has one and _address_box.html where
+# it had none. The schools guide for a full postcode links that postcode's
+# report and carries the share row. The buying guide links the free stamp
+# duty calculator, names only checks in FREE_CHECKS and dates the base rate
+# in words. /areas says its box takes a district, filters its councils as
+# you type, and files NG21 with East Midlands. Sign-up and My properties
+# name the alert triggers. The menu says "Chrome extension", the log-in page
+# on the way to My properties says so and carries next to sign-up, and the
+# 404 page drops the header's box and links running costs and council tax.
+
+def _e5_goes_to_its_box(body, words, box_id):
+    """The link with these words points at the box on this page, and the
+    box is one that runs the report."""
+    assert f'<a href="/">{words}</a>' not in body, words
+    assert body.count(f'<a href="#{box_id}">{words}</a>') == 1, words
+    form = re.search(r'<form action="/property" method="get"[^>]*>((?:(?!</form>).)*?id="' + box_id + r'".*?)</form>',
+                     body, re.S)
+    assert form, f"no report box holds #{box_id}"
+    field = re.search(r'<input type="text" id="' + box_id + r'"[^>]*>', form.group(1)).group(0)
+    assert 'name="postcode"' in field and "required" in field
+    src = re.search(r'<input type="hidden" name="src" value="([^"]*)">', form.group(1))
+    return form.group(1), src.group(1) if src else None
+
+
+def _e5_address_box(body, words, box_id, label, src):
+    """A box from _address_box.html: labelled, with a house number, the
+    offer sentence under it and a source the admin page counts."""
+    form, found_src = _e5_goes_to_its_box(body, words, box_id)
+    assert f'<label for="{box_id}">{label}</label>' in form
+    assert f'id="{box_id}-house" name="house_number"' in form
+    assert '<button type="submit">Run the free report</button>' in form
+    assert html.escape(app_main.OFFER_SENTENCE, quote=False) in form
+    assert found_src == src and src in app_main.REPORT_SOURCES
+    return form
+
+
+def test_e5_the_admissions_pages_send_the_report_link_to_a_box_on_the_page(client, monkeypatch):
+    # Whatever schools the shared database holds: the box does not depend on them.
+    index = client.get("/schools/admissions").text
+    box = _e5_address_box(index, "full property report", "admissions-check-postcode",
+                          "Check an address against every school near it", "admissions-index")
+    # In the section that asks the question, after the words.
+    section = index.split("<h2>How do I check one address?</h2>", 1)[1].split("</section>", 1)[0]
+    assert box in section and section.index("full property report") < section.index("<form")
+
+    tightest = client.get("/schools/tightest-catchments").text
+    _e5_address_box(tightest, "full property report", "tightest-check-postcode",
+                    "Check an address against every school near it", "tightest")
+
+    # A council's hub already had its own box, and the link now goes to it.
+    hub = _e4_page(client, E4_ONLY)
+    form, src = _e5_goes_to_its_box(hub, "full property report", "hub-check-postcode")
+    assert src == "council-hub" and hub.count('action="/property"') == 1
+
+
+def test_e5_the_private_schools_and_market_pages_send_their_links_to_a_box(client, monkeypatch):
+    school = {"name": "Whitworth House School", "website": "", "town": "Stackford", "postcode": "M1 3CC",
+              "age_low": 3, "age_high": 18, "gender": "Girls", "religious_character": "None",
+              "number_on_roll": 300, "occupancy_pct": 75}
+    district = {"name": "Stackford", "slug": "stackford", "count": 1, "mainstream": 1, "special": 0,
+                "single_sex": 1, "with_sixth_form": 1, "pupils": 300,
+                "groups": [("Mainstream schools", "By their registered age ranges.", [school])]}
+    body = _d2_page(client, monkeypatch, "/schools/independent/stackford", "independent_district", district)
+    _e5_address_box(body, "full property report", "independent-check-postcode",
+                    "Check an address in Stackford", "independent")
+
+    market = _d6_market_report(client, monkeypatch, D6_MARKET_ROWS)
+    box = _e5_address_box(market, "search it directly", "market-check-postcode", "Check an address", "market-report")
+    section = market.split("<h2>Check a specific area</h2>", 1)[1].split("</section>", 1)[0]
+    assert box in section
+
+
+def test_e5_council_tax_and_the_area_guide_link_to_their_own_boxes(client, monkeypatch):
+    import time
+    from app.services import _cache
+    from tests.test_ai_search_readiness import AREA_PAYLOAD, _forget_html
+
+    council = client.get("/running-costs/council-tax/basildon").text
+    _, src = _e5_goes_to_its_box(council, "A free report", "ct-check-postcode")
+    assert src == "council-tax"
+
+    async def _resolve(outcode):
+        return fake_location(postcode=f"{outcode} 2AA", outcode=outcode), True
+
+    monkeypatch.setattr(app_main, "_resolve_extension_location", _resolve)
+    key = ("area_guide", app_main.AREA_GUIDE_PAYLOAD_VERSION, "AB12")
+    bodies = {}
+    for name, payload in (("data", dict(AREA_PAYLOAD)), ("no data", {"has_data": False})):
+        _cache._put(key, time.time(), payload)
+        _forget_html()
+        try:
+            bodies[name] = client.get("/area/AB12").text
+        finally:
+            _cache._evict(key)
+            _forget_html()
+    guide = bodies["data"]
+    _, src = _e5_goes_to_its_box(guide, "Check sold prices for a specific address in AB12 →", "area-check-postcode")
+    assert src == "area-guide"
+    assert "/#postcode=" not in guide
+    # The district is carried: the box is labelled for it.
+    assert '<label for="area-check-postcode">Check an address in AB12</label>' in guide
+    # The notice shown when the district's data could not be read.
+    quiet = bodies["no data"]
+    assert "We couldn't pull any data for AB12 right now" in quiet
+    _e5_goes_to_its_box(quiet, "search an address in AB12 directly", "area-check-postcode")
+    assert "/#postcode=" not in quiet
+
+    # None of the named templates links its report words to the homepage.
+    for name, words in (("schools_admissions_council.html", "full property report"),
+                        ("schools_admissions_index.html", "full property report"),
+                        ("schools_tightest.html", "full property report"),
+                        ("schools_independent_district.html", "full property report"),
+                        ("market_report.html", "search it directly"),
+                        ("council_tax_council.html", "A free report"),
+                        ("area_guide.html", "Check sold prices for a specific address in")):
+        text = _without_template_comments((ROOT / "app" / "templates" / name).read_text(encoding="utf-8"))
+        assert not re.search(r'<a href="/(?:#[^"]*)?">' + re.escape(words), text), name
+
+
+def test_e5_the_schools_guide_for_a_postcode_links_its_report_and_can_be_shared(client, monkeypatch):
+    from tests.test_ai_search_readiness import _forget_html
+    from tests.test_brainstorm_17sep import _patch_guide
+
+    _patch_guide(monkeypatch, {"latitude": 53.4502, "longitude": -2.2202, "label": "M14 5TX", "kind": "postcode"})
+    _forget_html()
+    body = client.get("/schools/guide?q=M14+5TX").text
+    line = re.findall(r'<p class="section-sub guide-report-link">\s*(.*?)\s*</p>', body, re.S)
+    assert line == ['<a href="/property?postcode=M14%205TX">M14 5TX itself: sold prices, flood, running costs '
+                    'and the rest &rarr;</a>']
+    # One line above the table, then the share row, then the table.
+    at = [body.index(s) for s in ('class="section-sub guide-report-link"', 'class="share-send-row"',
+                                  'id="school-table-0"')]
+    assert at == sorted(at)
+    share = body[at[1]:at[2]]
+    for label in (">WhatsApp</a>", ">Email</a>", ">Copy link</button>"):
+        assert share.count(label) == 1, label
+    copy = re.search(r'data-copy-link="([^"]*)"', share).group(1)
+    assert copy.endswith("/schools/guide?q=M14%205TX") and copy.startswith("http")
+    assert "Schools%20near%20M14%205TX" in share          # the message names the postcode
+    assert body.count('class="share-send-row"') == 1
+
+    # A district or a town has no report of its own to link, and no row.
+    _patch_guide(monkeypatch, {"latitude": 53.4502, "longitude": -2.2202, "label": "M14", "kind": "outcode"})
+    _forget_html()
+    district = client.get("/schools/guide?q=M14").text
+    assert "guide-report-link" not in district and 'class="share-send-row"' not in district
+
+    # Compared with a district, the postcode keeps its line; the row is for
+    # a guide to that one postcode.
+    two = app_main._areas_param([
+        {"latitude": 53.4502, "longitude": -2.2202, "label": "M14 5TX", "kind": "postcode"},
+        {"latitude": 53.46, "longitude": -2.23, "label": "M14", "kind": "outcode"}])
+    _forget_html()
+    both = client.get("/schools/guide", params={"areas": two}).text
+    assert "From M14 5TX" in both
+    assert both.count('class="section-sub guide-report-link"') == 1 and 'class="share-send-row"' not in both
+
+
+def _e5_buying_guide(client, monkeypatch):
+    from tests.test_ai_search_readiness import _forget_html
+
+    async def _rate():
+        return {"rate": 4.0, "since": "2025-12-18", "history": [
+            {"date": "2020-03-19", "rate": 0.1}, {"date": "2024-08-01", "rate": 5.0},
+            {"date": "2025-12-18", "rate": 4.0}]}
+
+    monkeypatch.setattr(app_main.boe_rate, "current_rate", _rate)
+    _forget_html()
+    r = client.get("/buying-guide")
+    assert r.status_code == 200
+    return r.text
+
+
+def test_e5_the_buying_guide_links_the_free_calculator_and_dates_the_rate_in_words(client, monkeypatch):
+    body = _e5_buying_guide(client, monkeypatch)
+    assert '<span class="snap-stat-label">since 18 December 2025</span>' in body
+    assert "2025-12-18</span>" not in body
+    rule = [d for s, d in _css_rules(".snap-stat-label") if s == ".snap-stat-label"]
+    assert len(rule) == 1 and "text-transform" not in rule[0]
+    assert app_main._day_label("2025-12-18", full_month=True) == "18 December 2025"
+    assert app_main._day_label("2025-12-18") == "18 Dec 2025"            # every other date as it was
+
+    tax = _flat(body.split('id="tax"', 1)[1].split("</section>", 1)[0])
+    assert "kept current" not in tax and "The calculator on any property report here" not in tax
+    assert ('The free <a href="/tools/stamp-duty-calculator">stamp duty calculator</a> does the maths on any price '
+            "in England and Northern Ireland, Scotland or Wales, and every property report here carries the same "
+            "calculator, free, for that home.") in tax
+    # The report's calculator is on a free card.
+    assert any(title == "Costs & Affordability" for _, title, _, _ in app_main.FREE_CHECKS)
+    assert client.get("/tools/stamp-duty-calculator").status_code == 200
+
+
+def test_e5_the_buying_guide_names_only_free_checks_and_links_a_box(client, monkeypatch):
+    body = _e5_buying_guide(client, monkeypatch)
+    tips = body.split('id="tips"', 1)[1].split("</section>", 1)[0]
+    item = _flat(re.search(r"<li><strong><a href=\"#guide-check-postcode\">Run the free report first\.</a></strong>"
+                           r"(.*?)</li>", tips, re.S).group(1))
+    assert item == (f"{len(app_main.FREE_CHECKS)} checks free on any address, among them flood, surface water, "
+                    "radon, noise, planning constraints, sold prices, the EPC, crime and schools, before you pay anyone.")
+    for locked in ("subsidence", "contamination", "mining"):
+        assert locked not in item.lower(), locked
+    # Every name the guide uses is a free check's, never a locked one's.
+    free = {title for _, title, _, _ in app_main.FREE_CHECKS}
+    locked = {title for _, title, _, _ in app_main.PREMIUM_CHECKS}
+    for title, _words in app_main.BUYING_GUIDE_FREE_NAMES:
+        assert title in free and title not in locked, title
+    _e5_address_box(body, "Run the free report first.", "guide-check-postcode", "Check an address", "buying-guide")
+    assert tips.count('<form action="/property"') == 1
+
+    # A check that moves behind the wall leaves the sentence, and the
+    # count follows the list.
+    monkeypatch.setattr(app_main, "FREE_CHECKS", tuple(c for c in app_main.FREE_CHECKS if c[1] != "Radon Gas"))
+    moved = _flat(_e5_buying_guide(client, monkeypatch).split('id="tips"', 1)[1].split("</section>", 1)[0])
+    assert f"{len(app_main.FREE_CHECKS)} checks free on any address" in moved
+    assert "surface water, noise," in moved and "radon" not in moved
+
+
+E5_AREAS_HARNESS = r"""
+const script = require('fs').readFileSync(process.argv[2], 'utf8');
+const spec = JSON.parse(process.argv[3]);
+const typed = JSON.parse(process.argv[4]);
+function el(extra) { return Object.assign({ hidden: false }, extra); }
+const box = el({ hidden: true }), status = el({ textContent: '' });
+let onInput = null;
+const input = el({ value: '', addEventListener: function (type, fn) { if (type === 'input') onInput = fn; } });
+const jumps = {};
+const sections = spec.map(function (region) {
+    jumps['#' + region.id] = el({});
+    const blocks = region.councils.map(function (c) {
+        return el({
+            council: c.name,
+            querySelector: function (sel) { return sel === 'h3' ? { textContent: ' ' + c.name + ' ' } : null; },
+            querySelectorAll: function (sel) {
+                return sel === '.areas-codes a' ? c.codes.map(function (code) { return { textContent: code }; }) : [];
+            },
+        });
+    });
+    return el({ id: region.id, blocks: blocks,
+                querySelectorAll: function (sel) { return sel === '.areas-district' ? blocks : []; } });
+});
+global.document = {
+    getElementById: function (id) {
+        return { 'areas-filter': box, 'areas-filter-input': input, 'areas-filter-status': status }[id] || null;
+    },
+    querySelectorAll: function (sel) { return sel === '.areas-region' ? sections : []; },
+    querySelector: function (sel) { const m = sel.match(/href="(#[^"]+)"/); return m ? (jumps[m[1]] || null) : null; },
+};
+eval(script);
+const out = { shown_box: !box.hidden, states: [] };
+typed.forEach(function (t) {
+    input.value = t;
+    onInput();
+    out.states.push({
+        status: status.textContent,
+        councils: [].concat.apply([], sections.map(function (s) {
+            return s.blocks.filter(function (b) { return !b.hidden; }).map(function (b) { return b.council; });
+        })),
+        regions: sections.filter(function (s) { return !s.hidden; }).map(function (s) { return s.id; }),
+        jumps: Object.keys(jumps).filter(function (k) { return !jumps[k].hidden; }),
+    });
+});
+console.log(JSON.stringify(out));
+"""
+
+
+def test_e5_the_areas_box_says_it_takes_a_district(client):
+    body = client.get("/areas").text
+    form = body.split('<form action="/property" method="get" class="search-form area-check" role="search">', 1)[1]
+    form = form.split("</form>", 1)[0]
+    assert '<label for="areas-postcode">Find a district or check an address</label>' in form
+    field = re.search(r'<input type="text" id="areas-postcode"[^>]*>', form).group(0)
+    assert 'placeholder="e.g. LS6 or SW1A 1AA"' in field and "data-typing-demo" in field
+    assert "Check one address instead" not in body
+    note = _flat(form.split('<p class="section-sub" style="margin: 0.5rem 0 0;">', 1)[1].split("</p>", 1)[0])
+    assert note.startswith("A district such as LS6 opens its area guide. A full postcode gets sold prices")
+    # Which is what the box does with one.
+    r = client.get("/property?postcode=LS6&src=areas", follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "/area/LS6"
+
+
+def test_e5_the_areas_filter_is_hidden_without_a_script_and_hides_councils_as_you_type(client, tmp_path):
+    import shutil
+    import subprocess
+    import pytest
+    body = client.get("/areas").text
+    wrapper = re.search(r'<div class="address-filter-field areas-filter" id="areas-filter"( hidden)?>(.*?)</div>',
+                        body, re.S)
+    assert wrapper and wrapper.group(1) == " hidden", "without a script the whole index shows and no control"
+    assert '<label for="areas-filter-input">Filter the list below by district or council</label>' in wrapper.group(2)
+    assert 'role="status" aria-live="polite"' in wrapper.group(2)
+    # Between the box and the index, and no request: the script reads the page.
+    assert body.index('id="areas-postcode"') < body.index('id="areas-filter"') < body.index('class="areas-jump"')
+    scripts = [s for s in re.findall(r"<script>(.*?)</script>", body, re.S) if "areas-filter-input" in s]
+    assert len(scripts) == 1
+    script = scripts[0]
+    assert "fetch(" not in script and "XMLHttpRequest" not in script
+    for selector in (".areas-filter[hidden]", ".areas-region[hidden]", ".areas-district[hidden]", ".areas-jump a[hidden]"):
+        assert any(selector in s and "display: none;" in d for s, d in _css_rules(selector)), selector
+    # Names are matched as words: both sides are cut at punctuation and led
+    # by a space, so a match can only begin a word.
+    assert "return ' ' + text.toLowerCase().replace(/[^a-z0-9\\u00c0-\\u024f]+/g, ' ').trim();" in script
+    assert "var name = words(typed);" in script and "name: words(block.querySelector('h3').textContent)," in script
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not installed; the filter is pinned by the source checks above")
+    spec = [
+        {"id": "region-1", "councils": [{"name": "Gedling", "codes": ["NG4", "NG21"]},
+                                         {"name": "Nottingham", "codes": ["NG1", "NG2", "NG7"]}]},
+        {"id": "region-2", "councils": [{"name": "Leeds", "codes": ["LS1", "LS6", "LS10"]}]},
+        {"id": "region-3", "councils": [{"name": "Westminster", "codes": ["SW1A", "W1B"]},
+                                         {"name": "Kensington and Chelsea", "codes": ["SW3", "W8"]},
+                                         {"name": "Tunbridge Wells", "codes": ["TN1", "TN2"]},
+                                         {"name": "Newcastle-under-Lyme", "codes": ["ST5"]}]},
+    ]
+    (tmp_path / "page.js").write_text(script, encoding="utf-8")
+    (tmp_path / "harness.js").write_text(E5_AREAS_HARNESS, encoding="utf-8")
+    typed = ["NG21", "gedling", "LS1", "ls6 3aa", "minster", "zz9", "", "LS", "wells", "west", "under-ly", "-"]
+    out = subprocess.run([node, str(tmp_path / "harness.js"), str(tmp_path / "page.js"), json.dumps(spec),
+                          json.dumps(typed)], capture_output=True, text=True, encoding="utf-8", timeout=60,
+                         check=True)
+    result = json.loads(out.stdout)
+    assert result["shown_box"] is True
+    ng21, gedling, ls1, ls6, minster, none, cleared, ls, wells, west, under, dash = result["states"]
+    assert ng21 == {"status": "1 council matches.", "councils": ["Gedling"], "regions": ["region-1"],
+                    "jumps": ["#region-1"]}
+    assert gedling["councils"] == ["Gedling"]
+    assert ls1["councils"] == ["Leeds"] and ls1["regions"] == ["region-2"]     # LS1 and LS10 start with it
+    assert ls6["councils"] == ["Leeds"]                                           # a full postcode, by its district
+    assert none["councils"] == [] and none["regions"] == [] and none["jumps"] == []
+    assert none["status"] == "No council or district matches “zz9”. The box above takes any full postcode."
+    assert cleared["status"] == "" and len(cleared["councils"]) == 7 and len(cleared["jumps"]) == 3
+    # A council name matches from the start of a word, never mid-word (fix
+    # pass, 18 Sep 2026): "LS" found Tunbridge Wells and Kensington and
+    # Chelsea as well as Leeds, and a single letter most of the index.
+    assert ls["councils"] == ["Leeds"] and ls["status"] == "1 council matches."
+    assert minster["councils"] == [] and minster["status"].startswith("No council or district matches “minster”")
+    assert wells["councils"] == ["Tunbridge Wells"]
+    assert west["councils"] == ["Westminster"]
+    assert under["councils"] == ["Newcastle-under-Lyme"]                         # a hyphen counts as a space
+    assert dash["councils"] == []                                                 # punctuation alone matches nothing
+
+
+def test_e5_ng21_is_filed_with_east_midlands_and_no_region_is_called_england(client):
+    import importlib.util
+    ng21 = [o for o in app_main.ALL_OUTCODES if o["outcode"] == "NG21"]
+    assert ng21 == [{"outcode": "NG21", "lat": 53.1445, "lon": -1.102, "district": "Gedling",
+                     "region": "East Midlands", "country": "England"}]
+    assert app_main.OUTCODE_REGION["NG21"] == "East Midlands"
+    assert not [o["outcode"] for o in app_main.ALL_OUTCODES if o["region"] == "England"]
+    regions = dict(app_main._area_index())
+    assert "England" not in regions and len(regions) == 12
+    assert "NG21" in dict(regions["East Midlands"])["Gedling"]
+    body = client.get("/areas").text
+    assert "{:,} postcode districts across 12 regions and nations".format(len(app_main.ALL_OUTCODES)) in body
+    assert ">England</a>" not in body.split('class="areas-jump"', 1)[1].split("</nav>", 1)[0]
+
+    # The build script settles the same case, so a re-run cannot bring it back.
+    spec = importlib.util.spec_from_file_location("build_outcode_list", ROOT / "scripts" / "build_outcode_list.py")
+    build = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(build)
+    rows = [{"outcode": "NG4", "district": "Gedling", "region": "East Midlands", "country": "England"},
+            {"outcode": "NG21", "district": "Gedling", "region": "England", "country": "England"},
+            {"outcode": "ZZ1", "district": "Nowhere", "region": "England", "country": "England"},
+            {"outcode": "CF10", "district": "Cardiff", "region": "Wales", "country": "Wales"}]
+    settled = {o["outcode"]: o["region"] for o in build.settle_english_regions(rows)}
+    assert settled == {"NG4": "East Midlands", "NG21": "East Midlands", "ZZ1": "England", "CF10": "Wales"}
+
+
+def test_e5_the_menu_says_chrome_extension(client):
+    body = client.get("/premium").text
+    nav = body.split('<nav class="site-nav" id="site-nav-menu">', 1)[1].split("</nav>", 1)[0]
+    assert '<a href="/browser-extension">Chrome extension</a>' in nav
+    assert ">Extension</a>" not in nav
+
+
+def test_e5_log_in_on_the_way_to_my_properties_says_so_and_sign_up_carries_next(client):
+    r = client.get("/watchlist", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/login?next=/watchlist"
+    body = client.get(r.headers["location"]).text
+    assert "<h1>Your saved homes</h1>" in body and "<h1>Log in</h1>" not in body
+    assert '<p class="dek">Log in to see them and what has changed since you last looked.</p>' in body
+    assert "<title>Your saved homes | UKPropertyInsight</title>" in body
+    assert '<a href="/signup?next=/watchlist">Sign up</a>' in body
+    assert '<input type="hidden" name="next" value="/watchlist">' in body
+
+    # A wrong password keeps the heading.
+    again = client.post("/login", data={"email": "e5-nobody@customer.test", "password": "wrong-password",
+                                        "next": "/watchlist"}).text
+    assert "Incorrect email or password." in again and "<h1>Your saved homes</h1>" in again
+
+    # Anywhere else it is the plain log-in, and sign-up still carries next.
+    plain = client.get("/login").text
+    assert "<h1>Log in</h1>" in plain and "Your saved homes" not in plain
+    assert '<a href="/signup">Sign up</a>' in plain
+    to_report = client.get("/login?next=/property%3Fpostcode%3DKT3%204HX%26house_number%3D36").text
+    assert "<h1>Log in</h1>" in to_report
+    assert '<a href="/signup?next=/property%3Fpostcode%3DKT3%204HX%26house_number%3D36">Sign up</a>' in to_report
+    assert "<h1>Log in</h1>" in client.get("/login?next=/watchlist/compare").text
+    # Carried safely: whatever next holds is quoted, and sign-up checks it.
+    hostile = client.get('/login?next=/x"><script>alert(1)</script>').text
+    assert "<script>alert(1)" not in hostile
+    assert '<a href="/signup?next=/x%22%3E%3Cscript%3Ealert%281%29%3C/script%3E">Sign up</a>' in hostile
+
+
+def test_e5_the_404_page_asks_for_a_postcode_once_and_links_running_costs(client):
+    for path in ("/no-such-page-e5", "/tools/no-such-tool-e5"):
+        r = client.get(path)
+        assert r.status_code == 404, path
+        body = r.text
+        assert 'id="header-search"' not in body and 'id="header-postcode"' not in body, path
+        assert len(re.findall(r'<input[^>]*name="postcode"', body)) == 1 and 'id="nf-postcode"' in body, path
+        assert '<a href="/running-costs">Running costs by postcode</a>' in body, path
+        assert '<a href="/running-costs/council-tax">Council tax by council</a>' in body, path
+    # Every other page keeps the header's box.
+    assert 'id="header-search"' in client.get("/premium").text
+
+
+E5_CHANGE_PROMISE = re.compile(
+    r"\b(?:e-?mails?|emailed|tells?|told|alerts?|alerted|hear from us|notif(?:y|ied|ications?))\b[^.]{0,80}?"
+    r"\b(?:if|when|whenever|as soon as)\s+(?:anything|something)\b", re.I)
+
+
+def test_e5_no_template_promises_an_email_when_anything_or_something_changes(client, monkeypatch):
+    templates = ROOT / "app" / "templates"
+    for path in sorted(templates.rglob("*.html")):
+        # Template comments are for the next developer, and the ones that
+        # record this change quote the old promise on purpose.
+        text = _flat(re.sub(r"<[^>]+>", " ", _without_template_comments(path.read_text(encoding="utf-8"))))
+        found = E5_CHANGE_PROMISE.search(text)
+        assert not found, f"{path.name} says {found.group(0)!r}"
+    # The rule catches the old wordings.
+    for old in ("an email when something changes on a saved property",
+                "get an email when something changes", "We email you if anything on this list changes",
+                "emails an account only when something on one of its homes changed",
+                "so we can tell you when something changes on a property or school you follow"):
+        assert E5_CHANGE_PROMISE.search(old), old
+
+    # Sign-up names the triggers, from the one list.
+    signup = _flat(client.get("/signup").text)
+    assert ("<strong>My properties</strong>: notes, side-by-side comparison, and an email when one of these "
+            f"happens to a saved home: {app_main.ALERT_TRIGGERS_LIST}, never on a schedule</li>") in signup
+    assert app_main.templates.env.globals["alert_triggers_list"] is app_main.ALERT_TRIGGERS_LIST
+
+    # So does My properties' list of reports opened but not saved.
+    _c5_quiet(monkeypatch)
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    _c5_account(client, "e5-opened@customer.test", saved=[], opened=("M14 5TG", "505"))
+    body = client.get("/watchlist").text
+    line = _flat(re.search(r'<h2 class="landing-heading">Reports you\'ve opened</h2>\s*<p class="landing-subheading">'
+                           r"(.*?)</p>", body, re.S).group(1))
+    assert line == ("Full reports you've already used. Save one to keep notes on it, and we email you when one of "
+                    f"these happens to it: {app_main.ALERT_TRIGGERS_LIST}. Never on a schedule.")
+    # With no way to send one, no email is promised.
+    monkeypatch.setattr(email_service, "is_configured", lambda: False)
+    body = client.get("/watchlist").text
+    line = _flat(re.search(r'<h2 class="landing-heading">Reports you\'ve opened</h2>\s*<p class="landing-subheading">'
+                           r"(.*?)</p>", body, re.S).group(1))
+    assert line == "Full reports you've already used. Save one to keep notes on it."
+
+
+# ---- E6. Premium on a phone, and the list view that forgets returns --------
+# /premium on a 375px phone was about seventeen screens, most of them the 44
+# check cards one per row under 9.5px titles. On a phone the checks now come
+# under the report's six group names, each a tap to open and each saying how
+# many of its checks come with Premium, counted from the plan lists; a wider
+# screen keeps the two columns. The titles are 12px on every width. On the
+# report, "Show every card at once" is remembered on the device and hides
+# the tiles, so a return visit's jump to the group that changed did nothing:
+# in that view the group's lead card is now scrolled to and wears the ring
+# an open tile wears, and the view's card labels are 12px on a desktop too.
+
+E6_GROUP_NAMES = ["Value & Market", "Property & Condition", "Risk & Safety", "Planning & Heritage",
+                  "Location & Connectivity", "Area & Community"]
+
+
+def _e6_text(fragment):
+    return html.unescape(_flat(re.sub(r"<[^>]+>", "", fragment)))
+
+
+def _e6_phone_groups(body):
+    """[(summary words, [(title, plan line)], open?)] from /premium's phone list."""
+    block = body.split('<div class="premium-groups">', 1)[1].split('<div class="premium-tiers">', 1)[0]
+    groups = []
+    for attrs, inner in re.findall(r'<details class="premium-group"([^>]*)>(.*?)</details>', block, re.S):
+        summary = _e6_text(re.search(r"<summary>(.*?)</summary>", inner, re.S).group(1))
+        rows = [(_e6_text(re.search(r'<p class="lx-check-title">(.*?)</p>', li, re.S).group(1)),
+                 _e6_text(re.search(r'<p class="premium-group-source">(.*?)</p>', li, re.S).group(1)))
+                for li in re.findall(r'<li class="premium-group-check">(.*?)</li>', inner, re.S)]
+        groups.append((summary, rows, "open" in attrs))
+    return groups
+
+
+def _e6_expected(free_checks, premium_checks):
+    """What each summary should say, counted here from the lists."""
+    free = {c[1]: c for c in free_checks}
+    locked = {c[1]: c for c in premium_checks}
+    expected = []
+    for name, titles in app_main.REPORT_GROUPS:
+        held = [t for t in titles if t in free or t in locked]
+        paid = sum(1 for t in held if t in locked)
+        expected.append(f"{name}: {len(held)} checks, {paid} with Premium" if paid else f"{name}: {len(held)} checks, all free")
+    return expected
+
+
+def test_e6_premium_lists_the_checks_under_the_reports_six_groups_on_a_phone(client, monkeypatch):
+    _billing(monkeypatch)
+    body = _fresh_premium(client)
+    groups = _e6_phone_groups(body)
+    assert [summary.split(":", 1)[0] for summary, _, _ in groups] == E6_GROUP_NAMES
+    assert [summary for summary, _, _ in groups] == _e6_expected(app_main.FREE_CHECKS, app_main.PREMIUM_CHECKS)
+    assert groups[2][0] == "Risk & Safety: 10 checks, 5 with Premium"
+    # Every group is closed until tapped.
+    assert not any(is_open for _, _, is_open in groups)
+
+    # All 44, each once, each saying which plan it comes with, and a
+    # Premium check where its source reaches, as the desktop columns do.
+    free = {c[1]: c for c in app_main.FREE_CHECKS}
+    locked = {c[1]: c for c in app_main.PREMIUM_CHECKS}
+    rows = [row for _, group_rows, _ in groups for row in group_rows]
+    assert len(rows) == app_main.CHECK_COUNT and {t for t, _ in rows} == set(free) | set(locked)
+    for title, line in rows:
+        if title in locked:
+            assert line == f"Premium · {locked[title][3]} · {app_main.premium_reach_label(title)}", title
+        else:
+            assert line == f"Free · {free[title][3]}", title
+    phone = _e6_text(body.split('<div class="premium-groups">', 1)[1].split("<details", 1)[0])
+    assert phone == (f"{len(app_main.FREE_CHECKS)} free on every report, with no account. "
+                     f"{len(app_main.PREMIUM_CHECKS)} more with Premium, free on your first property with no card.")
+
+    # The desktop columns are all still there, "Before you pay" still sits
+    # above the list (item C2), and the homepage's anchor holds both.
+    assert body.count('class="lx-check"') == app_main.CHECK_COUNT
+    assert body.count('<div class="premium-tiers">') == 1 and body.count('id="all-checks"') == 1
+    at = [body.index(s) for s in ("Before you pay", 'id="all-checks"', '<div class="premium-groups">',
+                                  '<div class="premium-tiers">')]
+    assert at == sorted(at)
+
+
+def test_e6_the_group_counts_follow_the_lists(client, monkeypatch):
+    _billing(monkeypatch)
+    # A Premium check that became free, and a free check that went.
+    mining = next(c for c in app_main.PREMIUM_CHECKS if c[1] == "Mining Risk")
+    free = tuple(c for c in app_main.FREE_CHECKS if c[1] != "Radon Gas") + (mining,)
+    premium = tuple(c for c in app_main.PREMIUM_CHECKS if c[1] != "Mining Risk")
+    monkeypatch.setattr(app_main, "FREE_CHECKS", free)
+    monkeypatch.setattr(app_main, "PREMIUM_CHECKS", premium)
+    groups = _e6_phone_groups(_fresh_premium(client))
+    assert [summary for summary, _, _ in groups] == _e6_expected(free, premium)
+    assert groups[2][0] == "Risk & Safety: 9 checks, 4 with Premium"
+    assert ("Mining Risk", "Free · Mining Remediation Authority") in groups[2][1]
+    # A group with nothing behind the wall says so in words.
+    assert app_main.checks_by_group()[0]["count"] == "7 checks, 2 with Premium"
+    monkeypatch.setattr(app_main, "PREMIUM_CHECKS", tuple(c for c in premium if c[1] not in ("Valuation Estimate", "Price Trend")))
+    monkeypatch.setattr(app_main, "FREE_CHECKS", free + tuple(c for c in premium if c[1] in ("Valuation Estimate", "Price Trend")))
+    assert app_main.checks_by_group()[0]["count"] == "7 checks, all free"
+
+
+def test_e6_the_groups_are_the_reports_own(client, fake_report):
+    from tests.test_property_page import NOT_AN_OFFICIAL_SOURCE_CHECK
+    fake_report()
+    body = client.get("/property?postcode=M14+5TG").text
+    report = body.split('id="report-categories"', 1)[1].split('id="cat-complete"', 1)[0]
+    parts = re.split(r'<h3 class="dashboard-category-heading">(.*?)</h3>', report)[1:]
+    rendered = {}
+    for name, part in zip(parts[0::2], parts[1::2]):
+        titles = []
+        for m in re.finditer(r'<(?:button|a|div)[^>]*class="dashboard-card [^"]*"[^>]*>', part):
+            titles.append(html.unescape(re.search(r'dashboard-card-title">(.*?)</span>', part[m.end():m.end() + 3000]).group(1)))
+        rendered[html.unescape(name)] = [t for t in titles if t not in NOT_AN_OFFICIAL_SOURCE_CHECK]
+    assert list(rendered) == E6_GROUP_NAMES
+    # Each group holds the cards the report shows under its heading, in the
+    # report's order.
+    assert {name: list(titles) for name, titles in app_main.REPORT_GROUPS} == rendered
+    # And every check in the two lists is in exactly one group.
+    grouped = [t for _, titles in app_main.REPORT_GROUPS for t in titles]
+    assert sorted(grouped) == sorted(c[1] for c in app_main.FREE_CHECKS + app_main.PREMIUM_CHECKS)
+
+
+def test_e6_the_phone_list_replaces_the_columns_only_on_a_phone_and_titles_are_12px():
+    css = re.sub(r"/\*.*?\*/", "", STYLE_CSS, flags=re.S).replace("\r\n", "\n")
+    # Hidden unless the screen is a phone's; there, the columns go instead.
+    assert re.search(r"^\.premium-groups \{ display: none; \}$", css, re.M)
+    phone = re.search(r"@media \(max-width: 560px\) \{\s*\.premium-tiers \{ display: none; \}\s*"
+                      r"\.premium-groups \{([^}]*)\}\s*\}", css)
+    assert phone and "display: flex;" in phone.group(1)
+    # The same width the columns' grids drop to one card per row.
+    assert "@media (max-width: 560px) {\n    .lx-check-grid { grid-template-columns: 1fr; }" in css
+
+    # 12px on every width: the one rule that sizes a check title uses the
+    # 12px token, and nothing sizes it smaller.
+    assert "--text-xs: 0.75rem;" in STYLE_CSS
+    sized = [d for s, d in _css_rules(".lx-check-title") if "font-size" in d]
+    assert sized and all("font-size: var(--text-xs);" in d for d in sized)
+    assert "9.5px" not in "".join(d for _, d in _css_rules(".lx-check-title"))
+    # The chevron turns without motion for a reader who asks for none.
+    assert re.search(r"@media \(prefers-reduced-motion: reduce\) \{\s*\.premium-group > summary::after "
+                     r"\{ transition: none; \}", css)
+
+
+def _e6_tile_script(client, fake_report):
+    fake_report()
+    body = client.get("/property?postcode=M14+5TG").text
+    scripts = [s for s in re.findall(r"<script>(.*?)</script>", body, re.S) if "uki-report-view" in s]
+    assert len(scripts) == 1
+    return scripts[0]
+
+
+def _e6_function(script, name):
+    start = script.index(f"function {name}(")
+    depth = 0
+    for i in range(script.index("{", start), len(script)):
+        depth += {"{": 1, "}": -1}.get(script[i], 0)
+        if depth == 0:
+            return script[start:i + 1]
+    raise AssertionError(f"{name} does not close")
+
+
+E6_JUMP_HARNESS = r"""
+const src = require('fs').readFileSync(process.argv[2], 'utf8');
+const spec = JSON.parse(process.argv[3]);
+var scrolls = [], opened = [];
+var window = { pageYOffset: 1000, location: { hash: spec.hash }, scrollTo: function (o) { scrolls.push(o); } };
+var still = spec.still, listMode = spec.list;
+var cats = spec.groups.map(function (slug, n) {
+    var marks = {};
+    var lead = { classList: { add: function (c) { marks[c] = true; } } };
+    return { slug: slug, marks: marks,
+             grid: { querySelector: function (sel) { return sel === '.dashboard-card' ? lead : null; } },
+             panel: { querySelector: function (sel) {
+                 return sel === '.cat-panel-heading' ? { getBoundingClientRect: function () { return { top: 400 + n * 100 }; } } : null;
+             } } };
+});
+var root = { getAttribute: function (name) { return name === 'data-open-group' ? spec.open_group : null; } };
+function open(c) { opened.push(c.slug); }
+eval(src);
+console.log(JSON.stringify({ scrolls: scrolls, opened: opened,
+                             marked: cats.filter(function (c) { return c.marks['cat-card-jumped']; }).map(function (c) { return c.slug; }) }));
+"""
+
+
+def test_e6_the_every_card_view_jumps_to_what_changed(client, fake_report, tmp_path):
+    import shutil
+    import subprocess
+    import pytest
+    script = _e6_tile_script(client, fake_report)
+    # The code path: in the every-card view the changed group is jumped to,
+    # not left alone.
+    assert "if (!listMode && wanted === c.slug) open(c);" not in script
+    dispatch = re.search(r"var wanted = [^\n]*\n\s*cats\.forEach\(function \(c\) \{.*?\n\s*\}\);", script, re.S)
+    assert dispatch and re.search(r"if \(listMode\) jumpTo\(c\);\s*else open\(c\);", dispatch.group(0))
+    jump = _e6_function(script, "jumpTo")
+    assert "card.classList.add('cat-card-jumped');" in jump
+    assert "window.scrollTo(" in jump and "behavior: still ? 'auto' : 'smooth'" in jump
+    # Leaving the view takes the ring off, and the remembered view stays.
+    set_list = _e6_function(script, "setList")
+    assert "el.classList.remove('cat-card-jumped');" in set_list
+    assert "localStorage.setItem('uki-report-view', on ? 'list' : 'groups');" in set_list
+    assert "setList(saved === 'list', false);" in script
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not installed; the jump is pinned by the source checks above")
+    (tmp_path / "page.js").write_text(jump + "\n" + dispatch.group(0), encoding="utf-8")
+    (tmp_path / "harness.js").write_text(E6_JUMP_HARNESS, encoding="utf-8")
+    groups = ["cat-value-market", "cat-property-condition", "cat-risk-safety"]
+
+    def run(**spec):
+        spec = {"groups": groups, "hash": "", "open_group": "", "still": False, "list": True, **spec}
+        out = subprocess.run([node, str(tmp_path / "harness.js"), str(tmp_path / "page.js"), json.dumps(spec)],
+                             capture_output=True, text=True, timeout=60, check=True)
+        return json.loads(out.stdout)
+
+    # A return visit in the every-card view: the changed group's lead card
+    # is marked and scrolled to, under its heading, and no tile opens.
+    listed = run(open_group="cat-risk-safety")
+    assert listed == {"scrolls": [{"top": 400 + 2 * 100 + 1000 - 16, "behavior": "smooth"}], "opened": [],
+                      "marked": ["cat-risk-safety"]}
+    assert run(open_group="cat-risk-safety", still=True)["scrolls"][0]["behavior"] == "auto"
+    # A link to a group does the same, ahead of the server's choice.
+    assert run(hash="#cat-value-market", open_group="cat-risk-safety")["marked"] == ["cat-value-market"]
+    # In groups the tile opens as before, and nothing is marked.
+    assert run(open_group="cat-risk-safety", list=False) == {"scrolls": [], "opened": ["cat-risk-safety"], "marked": []}
+    # Nothing changed, nothing moves.
+    assert run() == {"scrolls": [], "opened": [], "marked": []}
+
+
+def test_e6_the_every_card_view_marks_like_a_tile_and_labels_at_12px():
+    rings = _css_rules("cat-card-jumped")
+    assert len(rings) == 1
+    selector, jumped = rings[0]
+    # Only in the every-card view, where there is no tile to open.
+    assert [s.strip() for s in selector.split(",")] == [".report-categories.is-list .dashboard-card.cat-card-jumped",
+                                                        ".report-categories.is-list .dashboard-card.cat-card-jumped:hover"]
+    jumped = _flat(jumped)
+    tile = _flat(next(d for s, d in _css_rules('.cat-tile[aria-expanded="true"]') if "background: var(--accent-soft)" in d))
+    for declaration in ("background: var(--accent-soft);", "border-color: var(--accent);", "box-shadow: 0 0 0 1px var(--accent);"):
+        assert declaration in jumped and declaration in tile, declaration
+    # Card labels in this view are 12px at every width; elsewhere they
+    # keep their size.
+    labels = [d for s, d in _css_rules(".dashboard-card-title") if s == ".report-categories.is-list .dashboard-card-title"]
+    assert labels == [" font-size: var(--text-xs); "]
+    assert "--text-xs: 0.75rem;" in STYLE_CSS
+
+
+# ---- E7. A postcode-only report stops describing one home ----------------
+# What batch D's review found D1 had left: the score's energy positive was
+# the newest certificate's band ("Energy-efficient property (EPC C)" on
+# KT3 4HX, for 57 Malden Hill Gardens alone), the locked valuation narrowed
+# the sales nearby to that home's floor area and called it "this
+# property's", and the PDF said "Last sale" and set the newest certificate
+# out as the home being bought. The district comparison's 229 against 230
+# was put right in the batch D fix pass; the page itself is pinned here.
+
+E7_CERTS = [
+    {"address": "57, Malden Hill Gardens, New Malden", "rating": "C", "date": "2025-11-04", "certificate_number": "E7-57"},
+    {"address": "59 Malden Hill Gardens, New Malden", "rating": "E", "date": "2024-03-12", "certificate_number": "E7-59"},
+    {"address": "61 Malden Hill Gardens, New Malden", "rating": "E", "date": "2023-03-12", "certificate_number": "E7-61"},
+    {"address": "63 Malden Hill Gardens, New Malden", "rating": "D", "date": "2022-03-12", "certificate_number": "E7-63"},
+    # 57's older certificate: each home counts once, at its newest.
+    {"address": "57 Malden Hill Gardens, New Malden", "rating": "E", "date": "2012-01-01", "certificate_number": "E7-57-old"},
+]
+
+
+def _e7_rated(*bands):
+    """E7_CERTS' four homes, newest first, rated as given."""
+    homes = [c for c in E7_CERTS if c["certificate_number"] != "E7-57-old"]
+    return [dict(c, rating=b) for c, b in zip(homes, bands)]
+
+
+def test_e7_the_newest_certificate_at_c_does_not_score_a_postcode_of_es():
+    from app.services import overview_score
+    postcode = overview_score.compute({"certificates": E7_CERTS}, postcode_only=True)
+    assert not any("nerg" in p for p in postcode["positives"]), postcode["positives"]
+    assert postcode["verdict"] == "No major signals either way from the data available for this property."
+    # A house number reads that home's own certificate, as it always has.
+    home = overview_score.compute({"certificates": E7_CERTS})
+    assert home["positives"] == ["Energy-efficient property (EPC C)"]
+    assert home["score"] == postcode["score"] + overview_score._POSITIVE_BONUS
+
+
+def test_e7_most_homes_at_c_or_better_is_the_postcodes_own_positive_with_its_count():
+    from app.services import overview_score
+    out = overview_score.compute({"certificates": _e7_rated("C", "B", "B", "D")}, postcode_only=True)
+    assert out["positives"] == ["Most homes here with an energy certificate rated C or better (3 of 4)"]
+    assert out["verdict"] == "Good overall: Most homes here with an energy certificate rated C or better (3 of 4)."
+    # It opens the EPC card, as the one-home positive does.
+    assert out["reasons"]["positives"] == [{"text": out["positives"][0], "modal": "modal-epc"}]
+    # Half is not most, and two homes are too few to speak for a postcode.
+    for certs in (_e7_rated("C", "C", "E", "E"), _e7_rated("C", "B")):
+        assert overview_score.compute({"certificates": certs}, postcode_only=True)["positives"] == []
+    # A certificate without a band is not counted as a home either way.
+    unbanded = _e7_rated("C", "B", "?", "?")
+    assert overview_score.compute({"certificates": unbanded}, postcode_only=True)["positives"] == []
+
+
+def test_e7_the_gather_scores_a_postcode_by_its_homes_and_a_house_by_its_own(monkeypatch):
+    """The real gather, every member failed but the EPC flow, which
+    answers with E7_CERTS, so nothing reaches the network."""
+    async def _members(name, coro):
+        close = getattr(coro, "close", None)
+        if close:
+            close()  # never awaited, so never sent
+        if name == "-epc-flow":
+            return [dict(c) for c in E7_CERTS], dict(D1_DETAIL_57, current_band="C"), None, None
+        return RuntimeError(f"{name} down")
+
+    async def _uncached(cache_key, ttl_s, factory):
+        return await factory()
+
+    monkeypatch.setattr(app_main, "_timed", _members)
+    monkeypatch.setattr(app_main, "_bounded", lambda coro, seconds: coro)
+    monkeypatch.setattr(app_main, "_deduped", _uncached)
+    location = fake_location(postcode="KT3 9ZE", outcode="KT3")
+    positives = {}
+    try:
+        for house_number in ("", "57"):
+            context = asyncio.run(app_main._full_property_gather(location, house_number, premium_unlocked=False))
+            positives[house_number] = context["overview"]["positives"]
+    finally:
+        for house_number in ("", "57"):
+            app_main._gather_progress.pop(("KT3 9ZE", house_number), None)
+    assert positives[""] == []
+    assert positives["57"] == ["Energy-efficient property (EPC C)"]
+
+
+def test_e7_a_postcode_valuation_is_for_the_homes_around_it_not_one_floor_area(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+    # Two sales the size of 57's 122 m², four of other sizes.
+    sizes = (120, 124, 60, 75, 200, 90)
+    comparables = [{"address": f"{n} Near Road", "date": recent, "amount": str(300000 + n * 1000), "floor_area": size}
+                   for n, size in enumerate(sizes, start=1)]
+
+    async def _comparables(_lat, _lon):
+        return [dict(c) for c in comparables]
+
+    fake_report(location=fake_location(postcode="KT3 4HX", outcode="KT3"), gather=_d1_gather())
+    monkeypatch.setattr(app_main, "_comparables_fetch", _comparables)
+
+    # Signed out, the estimate is not in the reply at all (batch B's rule).
+    out = client.get("/api/property/valuation?postcode=KT3+4HX").json()
+    assert "any size" not in out["card"] + out["body"] and "Middle (median)" not in out["body"]
+    assert B3_WAY_IN in _flat(out["body"])
+
+    _b3_subscriber(client, "e7-valuation@customer.test")
+    out = client.get("/api/property/valuation?postcode=KT3+4HX").json()
+    body = _flat(out["body"])
+    assert "this property's" not in body and "floor area within" not in body and "122 m²" not in body
+    assert "No home is chosen, so this is for the homes around this postcode, not for one of them." in body
+    assert "Based on 6 sales of any size within about 0.6 miles, sold in the last 1 year," in body
+    assert "Middle (median)" in body and "Estimate (median)" not in body
+    assert "for homes of any size nearby" in _flat(out["card"])
+
+    # With a house number the estimate is that home's size, as before.
+    out = client.get("/api/property/valuation?postcode=KT3+4HX&house_number=57").json()
+    body = _flat(out["body"])
+    assert "Based on 2 sales within about 0.6 miles" in body
+    assert "of a similar size (floor area within 5% of this property's)" in body
+    assert "any size" not in body + out["card"]
+
+
+def test_e7_the_estimate_counts_every_size_only_without_a_house_number():
+    recent = (datetime.date.today() - datetime.timedelta(days=40)).isoformat()
+    comparables = [{"address": f"{n} Near Road", "date": recent, "amount": "500000", "floor_area": size}
+                   for n, size in enumerate((122, 60, 200, None), start=1)]
+    postcode = {"transactions": []}
+    app_main._apply_valuation(postcode, comparables, 122, 0, "")
+    assert postcode["valuation"]["any_size"] is True and postcode["valuation"]["sample_size"] == 4
+    assert postcode["valuation"]["floor_area_variance_pct"] is None
+    home = {"transactions": []}
+    app_main._apply_valuation(home, comparables, 122, 0, "57")
+    assert home["valuation"]["any_size"] is False and home["valuation"]["sample_size"] == 1
+    # No floor area for a chosen home is still no estimate, as before.
+    unknown = {"transactions": []}
+    app_main._apply_valuation(unknown, comparables, None, 0, "57")
+    assert unknown["valuation"] is None
+    # Nothing sold nearby in the year: the pop-up says so for the postcode.
+    empty = {"transactions": []}
+    app_main._apply_valuation(empty, [], 122, 0, "")
+    page = _flat(str(app_main.templates.get_template("_valuation.html").module.valuation_body(
+        empty["valuation"], empty["price_per_sqm"], False, True, False, True, postcode_only=True)))
+    assert "No recorded sale within about 0.6 miles of this postcode in the last year to reference." in page
+    assert "similar-sized property" not in page and "this property" not in page
+
+
+def test_e7_a_postcode_pdf_gives_the_postcodes_figures_and_names_the_certificates_home():
+    from tests.test_pdf_report import _running_costs
+    certs = [{"address": "57, Malden Hill Gardens, New Malden", "rating": "E", "date": "2026-01-28"},
+             {"address": "59 Malden Hill Gardens, New Malden", "rating": "C", "date": "2019-03-12"}]
+    report = dict(_full_pdf_report(), certificates=certs, transactions=[dict(D1_SALE_55)],
+                  valuation={"estimate": 612000.0, "low": 450000.0, "high": 790000.0, "sample_size": 41,
+                             "years_window": 1, "floor_area_variance_pct": None, "any_size": True})
+    sales = dict(_running_costs()["sales"], recent_from_year="2016", recent_to_year="2025")
+    rc = dict(_running_costs(), house_number="", home=None, sales=sales,
+              stamp_duty={"price": 412000.0, "basis": "the middle of the postcode's recent sales",
+                          "standard": 10600, "first_time": 0, "additional": 31200})
+    ctx = app_main._pdf_context(report, rc, report["location"], "")
+    text = html.unescape(_flat(app_main.templates.get_template("pdf_report_full.html").render(ctx)))
+    assert "Last sale" not in text and "Last sold" not in text
+
+    # The cover: the postcode's middle price and count, its energy middle.
+    fig = '<span class="fig-v">{}</span><br/><span class="fig-l">{}</span>'
+    assert fig.format("£412,000", "Middle of the last 10 of 29 recorded sales here, 2016 to 2025") in text
+    assert fig.format("£974 a year", "Energy, the middle of 8 homes here") in text
+    assert "Estimated value" not in text
+    # The valuation, for the homes around the postcode, and the stamp duty on it.
+    assert "No home was chosen, so this is what homes of every size around this postcode sold for" in text
+    assert "matched on floor area" not in text and "what the house is likely worth" not in text
+    assert ("Stamp Duty Land Tax on £612,000, the middle of the last year's sales of any size around this "
+            "postcode.") in text
+    # The tenure split, and the certificate named as one home's.
+    assert "13 freehold, 16 leasehold of 29 recorded sales here" in text
+    assert ("Newest certificate here: 57 Malden Hill Gardens. One home's certificate from the EPC Register, "
+            "not a description of every home at KT3 4HX.") in text
+    assert "about this home itself" not in text
+
+    rows = {r["check"]: r["result"] for r in ctx["checklist"]}
+    assert rows["Sold prices at this postcode"] == "£412,000, middle of the last 10 of 29 recorded sales here, 2016 to 2025"
+    assert rows["Valuation estimate"] == ("£612,000, the middle of 41 sales of any size nearby in the last year, "
+                                          "range £450,000 to £790,000; no home chosen, so not one home's value")
+    assert rows["Energy: heating, hot water, lighting"] == (
+        "£974 a year, the middle of 8 homes' EPC estimates at this postcode, from £462 to £2,192")
+    assert rows["Tenure at this postcode"] == "13 freehold and 16 leasehold of 29 recorded sales"
+    assert rows["Energy performance certificate"].startswith("Newest certificate here, 57 Malden Hill Gardens: Band E, score 51")
+    assert rows["Size and layout"] == "57 Malden Hill Gardens: Semi-detached house, 130 sq m, 8 habitable rooms"
+    assert rows["Lettable (MEES minimum E)"] == "57 Malden Hill Gardens: Yes"
+    assert "(the middle of the last year's sales of any size around this postcode)" in rows["Stamp duty, one-off"]
+
+
+def test_e7_a_numbered_pdf_reads_as_it_did():
+    from tests.test_pdf_report import _running_costs
+    ctx = app_main._pdf_context(_full_pdf_report(), _running_costs(), _full_pdf_report()["location"], "36")
+    rows = {r["check"]: r["result"] for r in ctx["checklist"]}
+    assert ctx["postcode_only"] is False and ctx["postcode_sales_label"] == ""
+    assert rows["Sold prices at this postcode"] == "Last sale £823,500 in 2025; recent median £412,000 across 10 sales"
+    assert rows["Energy performance certificate"].startswith("Band E, score 51")
+    assert rows["Size and layout"] == "Semi-detached house, 130 sq m, 8 habitable rooms"
+    assert "(the valuation estimate)" in rows["Stamp duty, one-off"]
+    text = html.unescape(_flat(app_main.templates.get_template("pdf_report_full.html").render(ctx)))
+    assert "Stamp Duty Land Tax on the valuation estimate of £928,000." in text
+    assert "What the certificate and the register say about this home itself." in text
+
+
+def test_e7_a_district_comparison_of_229_against_230_crimes_names_no_winner(client, monkeypatch):
+    from tests.test_brainstorm_18sep import _versus
+    left, right = sorted(["LS6", app_main._neighbour_outcodes("LS6")[0]])
+    side = {"local_median": 310000, "local_sales_count": 104, "crime_total": 229, "imd_decile": 4}
+    body = html.unescape(_flat(_versus(client, monkeypatch, left, right, {left: side, right: dict(side, crime_total=230)})))
+    assert "Traceback" not in body
+    assert "fewer crimes" not in body
+    assert f"About the same. {left} recorded 229 crimes in the same period and {right} 230 (Police.uk)." in body
+    assert "229 recorded" in body and "230 recorded" in body
+
+
+# ---- Batch E fix pass: what the review of E1 to E7 found left over -------
+# (1) E5(5): "Chrome extension" is about 58px wider than "Extension", and
+# between 840 and 1210px the header gained a row on every page (84 to
+# 132px on the homepage at 1180px, iPad landscape). The menu's links and
+# gap are tighter where it wraps, and a sweep of 641 to 1340px in 3px steps
+# found the header nowhere taller than with the short label. (2) E5(7):
+# the verification email and the alert email's footer still promised an
+# email "when something changes". (3) E5(4): the /areas filter matched
+# council names mid-word, so "LS" showed Tunbridge Wells (pinned in the E5
+# filter test above). (4) E1: the moved homepage sections typed 44 four
+# times and painted "2291 recorded". (5) E3: the map's tick box named
+# "the nearest schools that have one, listed below" over a table that also
+# lists the schools with no limit (pinned in the E3 tests above).
+
+
+def _media_rules(query):
+    """(selector, declarations) of every rule inside `@media <query> {`."""
+    css = re.sub(r"/\*.*?\*/", "", STYLE_CSS, flags=re.S)
+    rules = []
+    for m in re.finditer(r"@media " + re.escape(query) + r"\s*\{", css):
+        depth, i = 1, m.end()
+        while depth:
+            depth += {"{": 1, "}": -1}.get(css[i], 0)
+            i += 1
+        rules += [(sel.strip(), decls) for sel, decls in re.findall(r"([^{}]*)\{([^{}]*)\}", css[m.end():i - 1])]
+    return rules
+
+
+def test_fix_e_the_menu_wins_back_the_width_chrome_extension_took_where_it_wraps(client):
+    nav = client.get("/premium").text.split('<nav class="site-nav" id="site-nav-menu">', 1)[1].split("</nav>", 1)[0]
+    assert '<a href="/browser-extension">Chrome extension</a>' in nav
+    wrapping = [(s, d) for s, d in _media_rules("(min-width: 641px) and (max-width: 1320px)")
+                if "gap" in d or "padding" in d]
+    assert wrapping == [(".site-nav", " gap: 0.1rem; "),
+                        (".site-nav a, .site-nav .nav-form button", " padding: 0.45rem 0.45rem; ")], wrapping
+    # After the rules it tightens, so it wins where both apply.
+    assert STYLE_CSS.index("padding: 0.45rem 0.45rem;") > STYLE_CSS.index(".site-nav .nav-form button {")
+    # Wide screens, where the menu shares the logo's row, keep the roomier
+    # spacing, and phones keep their full-width menu rows.
+    assert ".site-nav {\n    display: flex;\n    align-items: center;\n    gap: 0.25rem;\n}" in STYLE_CSS
+    assert STYLE_CSS.count("padding: 0.45rem 0.6rem;") == 2
+    assert STYLE_CSS.count("padding: 0.6rem 0.75rem;") >= 1
+    # Only spacing: no dark-mode rule and no size or font change rides along.
+    assert not [s for s, _ in _media_rules("(min-width: 641px) and (max-width: 1320px)") if "theme-dark" in s]
+
+
+def _fix_e_email_text(markup):
+    return _flat(html.unescape(re.sub(r"<[^>]+>", " ", markup)))
+
+
+def test_fix_e_the_verification_and_alert_emails_name_what_sends_an_alert():
+    verify = _fix_e_email_text(app_main._verification_email_html("https://example.test/verify-email?token=t"))
+    alert = _fix_e_email_text(app_main._watchlist_alert_email_html(
+        [{"label": "36 Acacia Road, KT3 4HX", "postcode": "KT3 4HX", "house_number": "36",
+          "changes": ["A sale was recorded on 3 Jul 2026"]}], "https://example.test/watchlist"))
+    assert ("Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can "
+            "email you when one of these happens to a home saved in My properties: "
+            f"{app_main.ALERT_TRIGGERS_LIST}. If you ask for it on your school shortlist, we also email you when "
+            "a council publishes a new admission distance for a school you saved. Never on a schedule.") in verify
+    assert ("You get this email only when one of these happens to a property saved in My properties, never on "
+            f"a schedule: {app_main.ALERT_TRIGGERS_LIST}. Remove a property from My properties and its "
+            "alerts stop.") in alert
+    for name, text in (("verification", verify), ("alert", alert)):
+        found = E5_CHANGE_PROMISE.search(text)
+        assert not found, f"the {name} email says {found.group(0)!r}"
+        assert "crime" not in text.lower() and "on a schedule" in text.lower(), name
+
+    # And no other string the app builds makes the old promise: every
+    # literal in app/, implicit concatenations joined as Python joins them,
+    # docstrings left out (they are for the next developer).
+    import ast
+    for path in sorted((ROOT / "app").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        docstrings = {id(node.body[0].value) for node in ast.walk(tree)
+                      if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+                      and node.body and isinstance(node.body[0], ast.Expr)
+                      and isinstance(node.body[0].value, ast.Constant)}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docstrings:
+                text = node.value
+            elif isinstance(node, ast.JoinedStr):
+                text = "".join(v.value if isinstance(v, ast.Constant) else "{}" for v in node.values)
+            else:
+                continue
+            found = E5_CHANGE_PROMISE.search(_fix_e_email_text(text))
+            assert not found, f"{path.name} line {node.lineno} says {found.group(0)!r}"
+
+
+def test_fix_e_the_homepage_counts_its_checks_from_check_count_and_separates_the_crime_count(client, monkeypatch):
+    template = INDEX_TEMPLATE.read_text(encoding="utf-8")
+    code = _without_template_comments(template)
+    for typed in ("('44', 'Checks per property')", "/ 44 checks", "All <strong>44 checks", ">44 checks &middot;"):
+        assert typed not in code, typed
+    # The scroll-built report names one check per mote, and its tally
+    # counts them landing against CHECK_COUNT, so the two agree.
+    names = re.findall(r"'([^']+)'", re.search(r"const CHECKS = \[([\s\S]*?)\n\s*\];", template).group(1))
+    assert len(names) == len(set(names)) == app_main.CHECK_COUNT
+
+    monkeypatch.setattr(app_main, "CHECK_COUNT", 45)
+    body = _fresh_home(client)
+    assert re.search(r'data-target="45">45</span></p>\s*<p class="lx-about-stat-l">Checks per property', body)
+    assert '<span id="lx-build-tally-n">0</span> / 45 checks</p>' in body
+    assert 'id="lx-build-done-head">All <strong>45 checks</strong> &middot; one search</p>' in body
+    assert '<p class="lx-contact-note">45 checks &middot; ' in body
+    assert "44 checks" not in body
+
+    # The card and the build chips write a crime count as the report does,
+    # "2,291 recorded", not "2291 recorded".
+    assert "out.push(['Crime', d.crime_total.toLocaleString('en-GB') + ' recorded', '']);" in body
+    assert "rows.push(['Crime', seed.crime_total.toLocaleString('en-GB') + ' recorded']);" in body
+    assert "crime_total + ' recorded'" not in body
+
+
+def test_fix_e_the_check_count_script_still_moves_every_typed_count(tmp_path):
+    """The script found the old count in the trust-section stat, which now
+    reads CHECK_COUNT. Run on copies, so nothing in the repository moves."""
+    import importlib.util
+    import shutil
+    for rel in ("app/main.py", "app/templates/index.html", "app/templates/area_guide.html",
+                "app/templates/running_costs.html"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / rel, tmp_path / rel)
+    spec = importlib.util.spec_from_file_location("bump_check_count_fix_e", ROOT / "scripts" / "bump_check_count.py")
+    bump = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bump)
+    bump.ROOT, bump.INDEX, bump.MAIN = tmp_path, tmp_path / "app/templates/index.html", tmp_path / "app/main.py"
+    n = app_main.CHECK_COUNT
+    assert bump.main(["bump_check_count.py", str(n + 1), "Fix E Check"]) == 0
+    assert bump.main(["bump_check_count.py", str(n + 1), "Fix E Check"]) == 0          # safe to re-run
+    read = lambda rel: (tmp_path / rel).read_text(encoding="utf-8")
+    assert f"\nCHECK_COUNT = {n + 1}\n" in read("app/main.py")
+    index = read("app/templates/index.html")
+    assert f"{bump.WORDS[n + 1].capitalize()} checks on any UK address" in index
+    assert index.count("'Fix E Check'") == 1
+    assert f"Run the {n + 1} checks" in read("app/templates/area_guide.html")
+    assert f"the rest of its {bump.WORDS[n + 1]} checks" in read("app/templates/running_costs.html")
+    # The repository itself is untouched.
+    assert "Fix E Check" not in INDEX_TEMPLATE.read_text(encoding="utf-8")

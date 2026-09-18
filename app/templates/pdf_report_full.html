@@ -154,7 +154,14 @@
 {% endif %}
 {{ sp("26pt") }}
 {% set figs = [] %}
-{% if valuation and valuation.estimate %}{% set _ = figs.append((valuation.estimate | gbp, "Estimated value")) %}
+{# 18 Sep 2026 (first-visitor audit item E7): without a house number the
+   cover gives the postcode's own middle price and sale count, the
+   report's words since D1, and an estimate only as the homes' around it,
+   any size. "Estimated value" was the newest certificate's floor area
+   priced, one neighbour's. #}
+{% if postcode_only and postcode_sales_label %}{% set _ = figs.append((running_costs.sales.median_recent | gbp, postcode_sales_label[:1] | upper ~ postcode_sales_label[1:])) %}
+{% elif valuation and valuation.estimate and valuation.any_size %}{% set _ = figs.append((valuation.estimate | gbp, "Middle of the last year's sales nearby, any size")) %}
+{% elif valuation and valuation.estimate %}{% set _ = figs.append((valuation.estimate | gbp, "Estimated value")) %}
 {# 18 Sep 2026 (D1 review): the home's own last priced sale where there
    is one, and otherwise the postcode's latest named as the postcode's.
    "Last sale here" printed the postcode's latest for a home whose own
@@ -163,6 +170,7 @@
 {% elif running_costs and running_costs.sales and running_costs.sales.latest_amount %}{% set _ = figs.append((running_costs.sales.latest_amount | gbp, "Latest sale at this postcode, " ~ running_costs.sales.latest_year)) %}{% endif %}
 {% if council_tax and council_tax.band_d %}{% set _ = figs.append((council_tax.band_d | gbp ~ " a year", "Council tax, Band D")) %}{% endif %}
 {% if running_costs and running_costs.home and running_costs.home.energy_now %}{% set _ = figs.append((running_costs.home.energy_now | gbp ~ " a year", "Energy, the EPC's estimate")) %}
+{% elif postcode_only and running_costs and running_costs.energy and running_costs.energy.median %}{% set _ = figs.append((running_costs.energy.median | gbp ~ " a year", ("Energy, the middle of " ~ running_costs.energy.priced ~ " homes here") if (running_costs.energy.priced or 0) > 1 else "Energy, one home's EPC here")) %}
 {% elif running_costs and running_costs.energy and running_costs.energy.median %}{% set _ = figs.append((running_costs.energy.median | gbp ~ " a year", "Energy, postcode median")) %}{% endif %}
 {% if flood_zone %}{% set _ = figs.append((flood_zone.label.split(" (")[0] ~ (", low" if flood_zone.zone == 1 else ""), "Flood zone")) %}
 {% elif flood_not_covered %}{% set _ = figs.append(("Not mapped", "Flood zone, " ~ flood_not_covered.country)) %}{% endif %}
@@ -234,7 +242,7 @@
 <p class="tiny faint" style="margin-top: 6pt">Fine, Check and Act are this report's reading of each figure; Noted is a fact with no judgement attached.</p>
 
 {# ================= PART 2: VALUE AND MARKET ================= #}
-{{ part("02", "Value and market", "What this postcode has sold for, what the house is likely worth, and which way the area is moving.") }}
+{{ part("02", "Value and market", "What this postcode has sold for, " ~ ("what homes around it sell for" if postcode_only else "what the house is likely worth") ~ ", and which way the area is moving.") }}
 <h2>Sold prices at this postcode</h2>
 <p class="why">Every sale HM Land Registry has recorded here, newest first. A price paid is the one number in a purchase that is not an opinion.</p>
 {% if transactions %}
@@ -250,19 +258,30 @@
 {% endif %}
 {% if running_costs and running_costs.sales and running_costs.sales.median_recent %}
 <table class="kv">
-    {{ kv("Median of the postcode's recent sales", running_costs.sales.median_recent | gbp ~ " across " ~ running_costs.sales.recent_n ~ " sales", "HM Land Registry price paid data") }}
+    {{ kv("Median of the postcode's recent sales", running_costs.sales.median_recent | gbp ~ ((", " ~ postcode_sales_label) if postcode_sales_label else (" across " ~ running_costs.sales.recent_n ~ " sales")), "HM Land Registry price paid data") }}
     {% if running_costs.district_prices and running_costs.district_prices.median %}{{ kv("Median across " ~ running_costs.district_prices.outcode ~ ", last two years", running_costs.district_prices.median | gbp ~ " from " ~ running_costs.district_prices.count ~ " sales", "HM Land Registry price paid data") }}{% endif %}
 </table>
 {% endif %}
 
 <h2>Valuation estimate</h2>
-{% if valuation and valuation.estimate %}
+{# Without a house number no home is chosen, so the estimate is for the
+   homes around the postcode, any size, and says so (18 Sep 2026, E7). #}
+{% if valuation and valuation.estimate and valuation.any_size %}
+<table><tr>
+    <td style="width: 34%"><span class="fig-v" style="font-size: 22pt">{{ valuation.estimate | gbp }}</span><br/><span class="fig-l">Middle, homes nearby</span></td>
+    <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{{ valuation.low | gbp }} to {{ valuation.high | gbp }}</span><br/><span class="fig-l">Middle half</span></td>
+    <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{{ valuation.sample_size | thousands }}</span><br/><span class="fig-l">Sales of any size, last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 }}</span></td>
+</tr></table>
+<p class="why" style="margin-top: 6pt">No home was chosen, so this is what homes of every size around this postcode sold for within about 0.6 miles, each scaled for the area's price growth since it sold, not one home's value. Add a house number for an estimate from sales of a similar floor area. Not a substitute for a RICS valuation.</p>
+{% elif valuation and valuation.estimate %}
 <table><tr>
     <td style="width: 34%"><span class="fig-v" style="font-size: 22pt">{{ valuation.estimate | gbp }}</span><br/><span class="fig-l">Estimate</span></td>
     <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{{ valuation.low | gbp }} to {{ valuation.high | gbp }}</span><br/><span class="fig-l">Range</span></td>
     <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{{ valuation.sample_size }}</span><br/><span class="fig-l">Comparable sales, last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 }}</span></td>
 </tr></table>
 <p class="why" style="margin-top: 6pt">Built from recorded sales of similar homes within about 0.6 miles{% if valuation.floor_area_variance_pct %}, matched on floor area to within {{ valuation.floor_area_variance_pct }}%{% endif %}. A small sample makes a wide range; treat it as a starting point for the agent's asking price, not a substitute for a RICS valuation.</p>
+{% elif postcode_only and not valuation_error %}
+<p class="soft">No recorded sale within about 0.6 miles of this postcode in the last year, so no estimate.</p>
 {% else %}
 <p class="soft">Not enough comparable sales nearby to estimate a value. HM Land Registry has too few recent sales of similar homes around this address.</p>
 {% endif %}
@@ -318,6 +337,9 @@
     {% endif %}
     {% if rc and rc.home and rc.home.energy_now %}
     {{ kv("Energy: heating, hot water and lighting for this home", rc.home.energy_now | gbp ~ " a year", "The EPC assessor's estimate on the certificate dated " ~ (rc.home.epc_date or "") ~ (". " ~ (rc.home.energy_potential | gbp) ~ " after its recommended improvements." if rc.home.energy_potential and rc.home.energy_potential < rc.home.energy_now else "")) }}
+    {# One home's estimate is named as one, not a middle (18 Sep 2026, E7). #}
+    {% elif postcode_only and rc and rc.energy and rc.energy.median and (rc.energy.priced or 0) < 2 %}
+    {{ kv("Energy: heating, hot water and lighting", rc.energy.median | gbp ~ " a year", "One home's EPC estimate at this postcode, too few for a range. Add a house number for the home's own figure.") }}
     {% elif rc and rc.energy and rc.energy.median %}
     {{ kv("Energy: heating, hot water and lighting", rc.energy.median | gbp ~ " a year", "Middle of " ~ rc.energy.priced ~ " homes with a certificate at this postcode, from " ~ (rc.energy.low | gbp) ~ " to " ~ (rc.energy.high | gbp) ~ ". Add a house number for the home's own figure.") }}
     {% else %}
@@ -327,6 +349,13 @@
     {{ kv("Ground rent and service charge", "Set in the lease; ask for the last two years of accounts", "This home sold as leasehold. HM Land Registry", "warn") }}
     {% elif rc and rc.home and rc.home.tenure %}
     {{ kv("Ground rent and service charge", "None: this home sold as freehold", "HM Land Registry", "good") }}
+    {# Without a house number, the tenure of every recorded sale here, as the
+       report's cost line gives it (18 Sep 2026, E7). #}
+    {% elif postcode_only and rc and rc.sales and rc.sales.sales and rc.sales.counts %}
+    {% set split = rc.sales.counts.items() | list %}
+    {% if split | length == 1 and split[0][1] == rc.sales.sales %}{% set split_text = (split[0][0] | capitalize) ~ " at " ~ ("the one recorded sale" if rc.sales.sales == 1 else "all " ~ (rc.sales.sales | thousands) ~ " recorded sales") ~ " here" %}
+    {% else %}{% set split_parts = [] %}{% for kind, n in split %}{% set _ = split_parts.append((n | thousands) ~ " " ~ kind) %}{% endfor %}{% set split_text = (split_parts | join(", ")) ~ " of " ~ (rc.sales.sales | thousands) ~ " recorded sale" ~ ("s" if rc.sales.sales != 1 else "") ~ " here" %}{% endif %}
+    {{ kv("Tenure at this postcode", split_text, "HM Land Registry, every recorded sale. A leasehold home pays ground rent and a service charge, set in its lease.") }}
     {% endif %}
     {{ kv("Estate charge, on a managed development only", "No official source publishes it; ask the seller for the last two demands and the management company's name", "Companies House holds the management company's filings") }}
     {{ kv("Discounts on the council tax above", "One adult alone pays 25% less. A home where everyone is disregarded pays 50% less or nothing. A home adapted for a disabled resident is charged at the band below.", "Statutory, Local Government Finance Act 1992; Council Tax Reduction for low incomes is set by the council in England and nationally in Wales and Scotland. Full rules at gov.uk/council-tax") }}
@@ -346,7 +375,7 @@
 <table class="keep"><tr><td style="padding: 0pt">
 <h2>Once, when you buy</h2>
 {% if stamp_duty_valuation %}
-<p class="why">Stamp Duty Land Tax on the valuation estimate of {{ stamp_duty_valuation.price | gbp }}. HMRC rates from April 2025; England and Northern Ireland only.</p>
+<p class="why">Stamp Duty Land Tax on {% if stamp_duty_valuation.basis %}{{ stamp_duty_valuation.price | gbp }}, {{ stamp_duty_valuation.basis }}{% else %}the valuation estimate of {{ stamp_duty_valuation.price | gbp }}{% endif %}. HMRC rates from April 2025; England and Northern Ireland only.</p>
 <table><tr>
     <td style="width: 33%"><span class="fig-v" style="font-size: 18pt">{{ stamp_duty_valuation.standard | gbp }}</span><br/><span class="fig-l">Moving home</span></td>
     <td style="width: 33%"><span class="fig-v" style="font-size: 18pt">{% if stamp_duty_valuation.first_time is not none %}{{ stamp_duty_valuation.first_time | gbp }}{% else %}No relief{% endif %}</span><br/><span class="fig-l">First-time buyer{% if stamp_duty_valuation.first_time is none %}, above the £500,000 ceiling{% endif %}</span></td>
@@ -378,8 +407,13 @@
 </td></tr></table>
 
 {# ================= PART 4: THE PROPERTY ================= #}
-{{ part("04", "The property", "What the certificate and the register say about this home itself.") }}
+{# Without a house number the certificate here is the postcode's newest,
+   one home's, and the part says whose (18 Sep 2026, first-visitor audit
+   item E7), in the report's own words since D1. It was set out as "this
+   home itself". #}
+{{ part("04", "The property", "What the newest certificate at this postcode says about the one home it was made for." if postcode_only else "What the certificate and the register say about this home itself.") }}
 {% if property_detail %}
+{% if postcode_only %}<p class="soft">Newest certificate here{% if newest_certificate_home %}: {{ newest_certificate_home }}{% endif %}. One home's certificate from the EPC Register, not a description of every home at {{ location.postcode }}. Add a house number for the home you are buying.</p>{% endif %}
 <table><tr>
     <td style="width: 25%"><span class="fig-v" style="font-size: 30pt">{{ property_detail.current_band }}</span><br/><span class="fig-l">EPC band now{% if property_detail.current_score %}, score {{ property_detail.current_score }}{% endif %}</span></td>
     <td style="width: 25%"><span class="fig-v" style="font-size: 30pt">{{ property_detail.potential_band or "" }}</span><br/><span class="fig-l">Potential{% if property_detail.potential_score %}, score {{ property_detail.potential_score }}{% endif %}</span></td>
@@ -729,7 +763,7 @@
 </table>
 {{ sp("10pt") }}
 <h2>The score</h2>
-<p class="why">The score out of 100 starts from the checks that most affect living here and resale: the share of nearby schools rated Good or Outstanding, crime against the wider district, the direction of area prices, the property's energy band, and each mapped risk (flood, surface water, radon, subsidence, noise, air, contamination, planning constraints). Strengths add, concerns subtract, and anything a source could not answer leaves the score untouched rather than counting for or against. It is a summary for comparing addresses, not a valuation and not a survey.</p>
+<p class="why">The score out of 100 starts from the checks that most affect living here and resale: the share of nearby schools rated Good or Outstanding, crime against the wider district, the direction of area prices, the property's energy band (without a house number, whether most of the postcode's homes with a certificate rate C or better), and each mapped risk (flood, surface water, radon, subsidence, noise, air, contamination, planning constraints). Strengths add, concerns subtract, and anything a source could not answer leaves the score untouched rather than counting for or against. It is a summary for comparing addresses, not a valuation and not a survey.</p>
 <h2>What this report is not</h2>
 <p class="why">It is not a RICS survey, a solicitor's searches, a mortgage valuation or advice. Sources publish on their own cycles, from monthly (prices, crime) to a decade (the Census); each figure carries its period. All data is used under the Open Government Licence v3.0 and the licences of OpenStreetMap contributors. Generated {{ generated_date }} by UKPropertyInsight, ukpropertyinsight.co.uk.</p>
 

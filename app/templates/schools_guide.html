@@ -120,6 +120,19 @@
                 <a href="#q">Check a postcode</a>
             </p>
             {% endif %}
+            {# A full postcode's guide had no way on to that postcode's
+               report and no share row (18 Sep 2026, first-visitor audit
+               E5): the KT3 4HX walk left through the homepage. One line
+               to the report, and for a guide to one postcode the share
+               row the school pages use. #}
+            {% if area.verdict_postcode %}
+            <p class="section-sub guide-report-link">
+                <a href="/property?postcode={{ area.verdict_postcode | urlencode }}">{{ area.verdict_postcode }} itself: sold prices, flood, running costs and the rest &rarr;</a>
+            </p>
+            {% if postcode_share_url %}
+            {% with share_url=postcode_share_url, share_text="Schools near " ~ area.verdict_postcode ~ ": Ofsted grades, and whether it sits inside each school's last admission distance" %}{% include "_share_row.html" %}{% endwith %}
+            {% endif %}
+            {% endif %}
             {# Every school, visible. Sort by any column; tap a name for
                its full profile, fetched on demand. data-stack (18 Sep
                2026): below 600px each row stacks as the school, then its

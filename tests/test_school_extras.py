@@ -72,8 +72,9 @@ def test_the_admissions_hub_links_the_near_miss_schools(client):
 
 def test_the_map_offers_the_nearest_schools_distances(client):
     """Step 1 of the catchment map: a school with published-distance
-    neighbours gets a tick box, a legend and the rings' coordinates in
-    the page's map payload; a school with none gets nothing."""
+    neighbours gets a tick box, the rings' coordinates in the page's map
+    payload and the table that names them (the legend that repeated the
+    table went on 18 Sep 2026); a school with none gets nothing."""
     from app import db
     from app.models import School, SchoolAdmissionRadius, SchoolDetail
     from app.services import _cache
@@ -95,7 +96,8 @@ def test_the_map_offers_the_nearest_schools_distances(client):
     body = client.get("/school/900105/riverbank-primary-school").text
     assert 'id="nearby-rings-toggle"' in body and "Nextdoor Junior School" in body
     assert '"lat": 53.456' in body and '"miles": 0.41' in body and 'href="/school/900106/nextdoor-junior-school"' in body
-    assert "admitted from 0.41 mi" in body
+    assert '<td class="num">0.41 mi <span class="school-table-type">2025/26</span></td>' in body
+    assert 'id="nearby-rings-legend"' not in body
     lonely = client.get("/school/900107/lonely-academy").text
     assert 'id="nearby-rings-toggle"' not in lonely and 'nearby: []' in lonely
 

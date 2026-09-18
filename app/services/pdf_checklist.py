@@ -60,6 +60,25 @@ def _status(label: str | None, good=(), bad=(), warn=()) -> str:
     return "neutral"
 
 
+def postcode_sales_label(sales: dict) -> str:
+    """The postcode's middle price in the report's own words ("What
+    stands out" in property.html, 18 Sep 2026, D1): "middle of the last 10
+    of 29 recorded sales here, 2016 to 2025". From _postcode_sales_summary
+    in main.py; "" where it has no middle price."""
+    if not sales.get("median_recent"):
+        return ""
+    n, total = sales.get("recent_n") or 0, sales.get("sales") or 0
+    first, last = sales.get("recent_from_year") or "", sales.get("recent_to_year") or ""
+    years = last if first == last else f"{first} to {last}"
+    if n == 1 and total == 1:
+        label = "the one recorded sale here"
+    elif n == total:
+        label = f"middle of the {total:,} recorded sales here"
+    else:
+        label = f"middle of the last {n:,} of {total:,} recorded sales here"
+    return f"{label}, {years}" if years else label
+
+
 RISK_GOOD = ("improbable", "very low", "low", "none", "clear", "not in", "no active", "zone 1")
 RISK_WARN = ("moderate", "possible", "medium", "zone 2")
 RISK_BAD = ("very high", "high", "likely", "probable", "on the site", "zone 3")
@@ -75,6 +94,22 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
     def add(group: str, check: str, result: str, status: str = "neutral", source: str = "") -> None:
         rows.append({"group": group, "check": check, "result": result, "status": status, "source": source})
 
+    # A postcode searched without a house number (18 Sep 2026, first-visitor
+    # audit item E7; main._postcode_only_view). The rows say what the
+    # report says since D1: the postcode's middle price and sale count, its
+    # energy range and tenure split, and the newest certificate as one
+    # named home's. They said "Last sale" and gave that certificate as the
+    # home being bought. The check names stay, so the side-by-side
+    # comparison still lines a postcode up against a numbered home.
+    postcode_only = bool(report.get("postcode_only"))
+    newest_home = report.get("newest_certificate_home") or ""
+
+    def one_home(result: str) -> str:
+        """A certificate's finding, named as one home's on a postcode."""
+        if not postcode_only:
+            return result
+        return f"{newest_home}: {result}" if newest_home else f"The newest certificate here: {result}"
+
     # ---- Value and market ------------------------------------------------
     psqm = report.get("price_per_sqm")
     if psqm and (psqm.get("median") or psqm.get("subject")):
@@ -88,7 +123,10 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Value and market", "Price per square metre", "; ".join(bits), "neutral", "HM Land Registry sold prices over EPC floor areas")
     sales = rc.get("sales") or {}
     tx = report.get("transactions") or []
-    if sales.get("latest_year") and sales.get("latest_amount"):
+    if postcode_only and sales.get("median_recent"):
+        add("Value and market", "Sold prices at this postcode",
+            f"{_fmt_gbp(sales['median_recent'])}, {postcode_sales_label(sales)}", "neutral", "HM Land Registry")
+    elif sales.get("latest_year") and sales.get("latest_amount"):
         result = f"Last sale {_fmt_gbp(sales['latest_amount'])} in {sales['latest_year']}"
         if sales.get("median_recent") and sales.get("recent_n", 0) >= 3:
             result += f"; recent median {_fmt_gbp(sales['median_recent'])} across {sales['recent_n']} sales"
@@ -99,10 +137,19 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Value and market", "Sold prices at this postcode", "No recorded sales at this postcode", "neutral", "HM Land Registry")
 
     val = report.get("valuation")
-    if val and val.get("estimate"):
+    if val and val.get("estimate") and val.get("any_size"):
+        n, window = val.get("sample_size", 0), val.get("years_window") or 1
+        add("Value and market", "Valuation estimate",
+            f"{_fmt_gbp(val['estimate'])}, the middle of {n:,} sale{'s' if n != 1 else ''} of any size nearby in the last "
+            f"{'year' if window == 1 else f'{window} years'}, range {_fmt_gbp(val['low'])} to {_fmt_gbp(val['high'])}; "
+            "no home chosen, so not one home's value",
+            "neutral", "HM Land Registry sales nearby")
+    elif val and val.get("estimate"):
         add("Value and market", "Valuation estimate",
             f"{_fmt_gbp(val['estimate'])}, range {_fmt_gbp(val['low'])} to {_fmt_gbp(val['high'])}, from {val.get('sample_size', 0)} comparable sales",
             "neutral", "HM Land Registry comparables")
+    elif postcode_only and not report.get("valuation_error"):
+        add("Value and market", "Valuation estimate", "No recorded sale nearby in the last year to estimate from", "neutral", "HM Land Registry")
     else:
         add("Value and market", "Valuation estimate", "Not enough comparable sales nearby to estimate", "neutral", "HM Land Registry")
 
@@ -175,6 +222,15 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         if home.get("energy_potential") and home["energy_potential"] < home["energy_now"]:
             result += f"; {_fmt_gbp(home['energy_potential'])} after its recommended improvements"
         add("Running costs", "Energy: heating, hot water, lighting", result, "neutral", "EPC Register")
+    elif energy.get("median") and postcode_only:
+        # The report's cost line (D1): the middle and the range, or one
+        # home's estimate called that where there are too few for a range.
+        if (energy.get("priced") or 0) > 1:
+            result = (f"{_fmt_gbp(energy['median'])} a year, the middle of {energy['priced']:,} homes' EPC estimates at this "
+                      f"postcode, from {_fmt_gbp(energy.get('low'))} to {_fmt_gbp(energy.get('high'))}")
+        else:
+            result = f"{_fmt_gbp(energy['median'])} a year, one home's EPC estimate at this postcode, too few for a range"
+        add("Running costs", "Energy: heating, hot water, lighting", result, "neutral", "EPC Register")
     elif energy.get("median"):
         add("Running costs", "Energy: heating, hot water, lighting",
             f"{_fmt_gbp(energy['median'])} a year, the middle of {energy.get('priced', 0)} homes with a certificate at this postcode", "neutral", "EPC Register")
@@ -183,7 +239,9 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
 
     sd = rc.get("stamp_duty") or {}
     if stamp_duty and stamp_duty.get("price"):
-        sd = {**stamp_duty, "basis": "the valuation estimate"}
+        # Its own basis where the route names one (18 Sep 2026, E7): the
+        # estimate on a postcode is for the homes around it, any size.
+        sd = {**stamp_duty, "basis": stamp_duty.get("basis") or "the valuation estimate"}
     if sd.get("devolved"):
         add("Running costs", "Stamp duty", "Devolved: Land Transaction Tax in Wales, LBTT in Scotland; not calculated here", "neutral", "HMRC")
     elif sd.get("price"):
@@ -210,35 +268,38 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
             result += f"; could reach {pd['potential_band']}"
         if pd.get("inspection_date"):
             result += f"; certificate dated {pd['inspection_date']}"
+        if postcode_only:
+            # The newest certificate at the postcode, one home's (E7).
+            result = f"Newest certificate here, {newest_home}: {result}" if newest_home else f"Newest certificate here: {result}"
         add("The property", "Energy performance certificate", result,
             "good" if pd["current_band"] in "ABC" else ("warn" if pd["current_band"] in "DE" else "bad"), "EPC Register")
         add("The property", "Size and layout",
-            (f"{pd['dwelling_type']}, " if pd.get("dwelling_type") else "") + (f"{pd['total_floor_area']} sq m, " if pd.get("total_floor_area") else "") + (f"{pd['habitable_room_count']} habitable rooms" if pd.get("habitable_room_count") else ""),
+            one_home((f"{pd['dwelling_type']}, " if pd.get("dwelling_type") else "") + (f"{pd['total_floor_area']} sq m, " if pd.get("total_floor_area") else "") + (f"{pd['habitable_room_count']} habitable rooms" if pd.get("habitable_room_count") else "")),
             "neutral", "EPC Register")
-        add("The property", "Year built", pd.get("year_built") or "Not recorded on the certificate", "neutral", "EPC Register")
+        add("The property", "Year built", one_home(pd.get("year_built") or "Not recorded on the certificate"), "neutral", "EPC Register")
         plan = pd.get("improvements") or {}
         to_c = plan.get("to_c")
         if plan.get("already_c"):
-            add("The property", "Cost to reach EPC Band C", f"Already Band {pd['current_band']}", "good", "EPC Register, the certificate's recommendations")
+            add("The property", "Cost to reach EPC Band C", one_home(f"Already Band {pd['current_band']}"), "good", "EPC Register, the certificate's recommendations")
         elif to_c and to_c.get("cost_low") is not None:
             saving = f", saving about {_fmt_gbp(to_c['saving'])} a year" if to_c.get("saving") else ""
             add("The property", "Cost to reach EPC Band C",
-                f"{_fmt_gbp(to_c['cost_low'])} to {_fmt_gbp(to_c['cost_high'])} for {to_c['count']} of the certificate's {len(plan['steps'])} measures{saving}",
+                one_home(f"{_fmt_gbp(to_c['cost_low'])} to {_fmt_gbp(to_c['cost_high'])} for {to_c['count']} of the certificate's {len(plan['steps'])} measures{saving}"),
                 "warn" if pd["current_band"] in "DEFG" else "neutral", "EPC Register, the certificate's recommendations")
         elif plan.get("steps"):
             whole = plan["all"]
             cost = f" for {_fmt_gbp(whole['cost_low'])} to {_fmt_gbp(whole['cost_high'])}" if whole.get("cost_low") is not None else ""
-            add("The property", "Cost to reach EPC Band C", f"Not reached: every measure on the certificate gets to Band {whole['band_after']}{cost}", "warn", "EPC Register, the certificate's recommendations")
+            add("The property", "Cost to reach EPC Band C", one_home(f"Not reached: every measure on the certificate gets to Band {whole['band_after']}{cost}"), "warn", "EPC Register, the certificate's recommendations")
         elif "improvements" in pd:
-            add("The property", "Cost to reach EPC Band C", "The certificate lists no recommended measures", "neutral", "EPC Register")
+            add("The property", "Cost to reach EPC Band C", one_home("The certificate lists no recommended measures"), "neutral", "EPC Register")
     else:
         add("The property", "Energy performance certificate", "No certificate found for this address; add a house number if you have one", "neutral", "EPC Register")
 
     mees = report.get("mees_compliant")
     if mees is not None:
-        add("The property", "Lettable (MEES minimum E)", "Yes" if mees else "No, rated F or G: cannot be let without improvement", "good" if mees else "bad", "EPC Register")
+        add("The property", "Lettable (MEES minimum E)", one_home("Yes" if mees else "No, rated F or G: cannot be let without improvement"), "good" if mees else "bad", "EPC Register")
     if report.get("lead_plumbing_era"):
-        add("The property", "Lead plumbing era", "Built before about 1970: original lead pipework possible, ask the surveyor", "warn", "EPC Register age band")
+        add("The property", "Lead plumbing era", one_home("Built before about 1970: original lead pipework possible, ask the surveyor"), "warn", "EPC Register age band")
     ext = report.get("extension_signal")
     if ext and ext.get("likely_extended"):
         add("The property", "Possible unrecorded extension", f"Floor area grew {ext['change_pct']:+.0f}% between certificates", "warn", "EPC Register")

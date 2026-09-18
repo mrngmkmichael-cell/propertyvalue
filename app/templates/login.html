@@ -1,11 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Log in | UKPropertyInsight{% endblock %}
+{% block title %}{{ "Your saved homes" if for_saved_homes else "Log in" }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
 {% block content %}
 <span class="kicker">Welcome back</span>
+{# On the way to My properties the page says so (18 Sep 2026, first-visitor
+   audit E5). It was a generic "Log in", and this is the door to the
+   return visit, which is when people pay. for_saved_homes is set in
+   login_form and login_submit from next. #}
+{% if for_saved_homes %}
+<h1>Your saved homes</h1>
+<p class="dek">Log in to see them and what has changed since you last looked.</p>
+{% else %}
 <h1>Log in</h1>
+{% endif %}
 
 {% if error %}
     <p class="notice notice-error">{{ error }}</p>
@@ -26,5 +35,7 @@
     <button type="submit">Log in</button>
 </form>
 
-<p class="section-sub">No account yet? <a href="/signup">Sign up</a> &middot; <a href="/forgot-password">Forgotten your password?</a></p>
+{# Sign-up carries next (18 Sep 2026, audit E5): it went to a bare /signup
+   and a new account landed on the homepage, not where it was going. #}
+<p class="section-sub">No account yet? <a href="/signup{% if next and next != '/' %}?next={{ next | urlencode }}{% endif %}">Sign up</a> &middot; <a href="/forgot-password">Forgotten your password?</a></p>
 {% endblock %}

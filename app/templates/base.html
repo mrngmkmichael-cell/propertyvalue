@@ -174,7 +174,12 @@
             <form class="header-search" action="/property" method="get" role="search" id="header-search">
                 <div class="header-search-field">
                     <label for="header-postcode" class="visually-hidden">Postcode</label>
-                    <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" data-typing-demo required>
+                    {# The typing demo opts in here, and a page can opt it out
+                       by emptying the block. The report wait page does (18
+                       Sep 2026, first-visitor audit E2): a box typing other
+                       postcodes while a report is being built for this one
+                       read as the search having gone somewhere else. #}
+                    <input type="text" id="header-postcode" name="postcode" placeholder="Postcode" autocomplete="off" {% block header_typing_demo %}data-typing-demo {% endblock %}required>
                 </div>
                 {# Slides open when the postcode field is used, so the
                    collapsed header stays narrow enough for one row. Always
@@ -214,7 +219,10 @@
                 <a href="/schools/guide">Schools</a>
                 <a href="/running-costs">Running costs</a>
                 <a href="/buying-guide">Buying Guide</a>
-                <a href="/browser-extension">Extension</a>
+                {# "Extension" until 18 Sep 2026 (first-visitor audit E5):
+                   on a property site whose own checks include "Extended
+                   or Modified", it read as a house extension. #}
+                <a href="/browser-extension">Chrome extension</a>
                 <a href="/premium">Pricing</a>
                 {% if current_user %}
                     <a href="/watchlist">My properties</a>

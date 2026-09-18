@@ -28,13 +28,20 @@
        card was still writing them into the page under a stylesheet rule
        that hid them (17 Sep 2026). Locked, the card carries its line and
        nothing else. #}
+    {# Without a house number the estimate is the homes' around the
+       postcode, any size, and the line says so (18 Sep 2026, item E7). #}
     {% if valuation and premium_unlocked %}
-    <span class="dashboard-card-substat">{{ valuation.low | gbp }} &ndash; {{ valuation.high | gbp }} range{% if price_per_sqm and price_per_sqm.median %}; {{ price_per_sqm.median | gbp }}/m² locally{% endif %}</span>
+    <span class="dashboard-card-substat">{{ valuation.low | gbp }} &ndash; {{ valuation.high | gbp }} {{ "for homes of any size nearby" if valuation.any_size else "range" }}{% if price_per_sqm and price_per_sqm.median %}; {{ price_per_sqm.median | gbp }}/m² locally{% endif %}</span>
     {% endif %}
 </button>
 {% endmacro %}
 
-{% macro valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, pending, premium_unlocked, lock_label="", lock_redirect="") %}
+{# postcode_only (18 Sep 2026, first-visitor audit item E7): the report was
+   searched without a house number, so no home is chosen and the estimate
+   is for the homes around the postcode, of any size (valuation.any_size).
+   It was narrowed to the newest certificate's floor area, one neighbour's,
+   and read "floor area within 5% of this property's". #}
+{% macro valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, pending, premium_unlocked, lock_label="", lock_redirect="", postcode_only=false) %}
 <div id="valuation-body">
     <p class="section-sub">
         A rough DIY estimate from public sold price data, not a professional valuation. There's
@@ -51,7 +58,7 @@
     {{ locked.locked_body(lock_label, lock_redirect) }}
     {% elif pending %}
         <p class="notice">
-            Reading the sold prices and floor areas of the homes around this one. This is the
+            Reading the sold prices and floor areas of the homes around {{ "this postcode" if postcode_only else "this one" }}. This is the
             slowest source on the report, so the page came up without waiting for it. It will
             fill in here shortly.
         </p>
@@ -59,6 +66,38 @@
         <p class="notice notice-error">
             The comparables data service didn't respond. Try again in a moment.
         </p>
+    {% elif valuation and valuation.any_size %}
+        <p class="section-sub">
+            No home is chosen, so this is for the homes around this postcode, not for one of them.
+            Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }} of any size
+            within about 0.6 miles, sold in the last {{ valuation.years_window }} year{{ "s" if valuation.years_window != 1 else "" }},
+            each scaled up for this area's house-price growth since its sale date so older sales
+            aren't taken at face value. Homes of every size count, so the range can be wide.
+            Add a house or flat number, or choose your home at the top of the report, for an
+            estimate from sales of a similar floor area.
+        </p>
+        <table class="tx-table">
+            <thead>
+                <tr>
+                    <th>Homes nearby, any size</th>
+                    <th class="num">Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Low (25th percentile)</td>
+                    <td class="num">{{ valuation.low | gbp }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Middle (median)</strong></td>
+                    <td class="num"><strong>{{ valuation.estimate | gbp }}</strong></td>
+                </tr>
+                <tr>
+                    <td>High (75th percentile)</td>
+                    <td class="num">{{ valuation.high | gbp }}</td>
+                </tr>
+            </tbody>
+        </table>
     {% elif valuation %}
         <p class="section-sub">
             Based on {{ valuation.sample_size }} sale{{ "s" if valuation.sample_size != 1 else "" }}
@@ -89,6 +128,10 @@
                 </tr>
             </tbody>
         </table>
+    {% elif postcode_only %}
+        <p class="notice">
+            No recorded sale within about 0.6 miles of this postcode in the last year to reference.
+        </p>
     {% elif not valuation_floor_area_known %}
         <p class="notice">
             We don't have a floor area for this property to compare against. Try adding a house

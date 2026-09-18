@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}{{ seo_title(council.name ~ " school catchments", " and admission distances", ": how far each school admitted from") }}{% endblock %}
-{% block meta_description %}How far the last child admitted lived, for {{ council.count }} {{ council.name }} schools, from the council's own published figures. Median {{ council.median_miles }} miles; tightest {{ council.tightest.name }} at {{ council.tightest.miles }} miles.{% endblock %}
-{% block og_title %}{{ council.name }}: how far each school admitted from{% endblock %}
+{# A hub holding one phase names it (18 Sep 2026, audit E4): Birmingham's
+   was titled for its schools and held only primaries. hub.phase_word is
+   "primary " there and "" on a hub holding more than one phase. #}
+{% block title %}{{ seo_title(council.name ~ " " ~ hub.phase_word ~ "school catchments", " and admission distances", ": how far each school admitted from") }}{% endblock %}
+{% block meta_description %}How far the last child admitted lived, for {{ council.count }} {{ council.name }} {{ hub.phase_word }}schools, from the council's own published figures. Median {{ council.median_miles }} miles; tightest {{ council.tightest.name }} at {{ council.tightest.miles }} miles.{% endblock %}
+{% block og_title %}{{ council.name }}: how far each {{ hub.phase_word }}school admitted from{% endblock %}
 {% block og_image %}{{ og_council_url }}{% endblock %}
 
 {% block content %}
@@ -10,18 +13,28 @@
 <a class="back-link" href="/schools/admissions">&larr; All councils</a>
 
 <span class="kicker">Admissions</span>
-<h1>How far {{ council.name }} schools admitted from</h1>
+<h1>How far {{ council.name }} {{ hub.phase_word }}schools admitted from</h1>
 <p class="dek">
     For every oversubscribed school, {{ council.name }} publishes how far away the last child offered a
-    place lived. This is that figure for {{ council.count }} schools, tightest first. A short distance
+    place lived. This is that figure for {{ council.count }} {{ hub.phase_word }}schools, tightest first. A short distance
     means a school that fills up close to its gates; a long one means places went further afield.
 </p>
+{# Signed out, the link stays generic (18 Sep 2026, audit E4). Saving is a
+   POST, and sign-up returns by a redirect, which is a GET: carrying the
+   school through would need a GET that writes to the shortlist, and the
+   session cookie is SameSite=lax, so any page could then add schools to a
+   signed-in account with a plain link. It returns here instead, where
+   every row now has its own Save. #}
 {% if not current_user %}
 <p class="section-sub" style="margin: -0.5rem 0 1rem;">
     <a href="/signup?next=/schools/admissions/{{ council.slug }}">Sign up</a> to save the schools you care about and be told when {{ council.name }} republishes a distance.
 </p>
+{% else %}
+<p class="section-sub" style="margin: -0.5rem 0 1rem;">
+    Save a school on its row to keep it on <a href="/schools/shortlist">your shortlist</a>, where you can ask to be emailed when {{ council.name }} republishes its distance.
+</p>
 {% endif %}
-{% with share_url=canonical_url, share_text="How far " ~ council.name ~ " schools admitted from, school by school" %}{% include "_share_row.html" %}{% endwith %}
+{% with share_url=canonical_url, share_text="How far " ~ council.name ~ " " ~ hub.phase_word ~ "schools admitted from, school by school" %}{% include "_share_row.html" %}{% endwith %}
 
 {# The one action that pays off on this page: an address, measured
    against every one of these schools at once. #}
@@ -49,6 +62,22 @@
     <div class="score-tile"><span class="score-tile-value">{{ council.under_a_mile }}</span><span class="score-tile-label">filled within a mile</span></div>
 </div>
 
+{# What this hub holds and what it does not (18 Sep 2026, audit E4), from
+   its own rows: _admissions_hub_coverage in main.py. Then the closing date
+   for each phase held, from the school page's own helper. #}
+{% if hub.sentence %}
+<p class="section-sub hub-coverage">{{ hub.sentence }}</p>
+{% endif %}
+{% if hub.deadline_groups %}
+<p class="section-sub admission-deadline">
+    {% for g in hub.deadline_groups %}Applying for September {{ g.entry_year }}?
+    {% for d in g["items"] %}{{ d.phase | capitalize if loop.first else d.phase }} applications close on <strong>{{ d.deadline_text }}</strong>,
+    with offers on {{ d.offers_text }}{{ "." if loop.last else ";" }}
+    {% endfor %}{% endfor %}The address on the deadline is the one the council uses.
+    <a href="/schools/how-admissions-work">How it works</a>.
+</p>
+{% endif %}
+
 {% if council.tightest and council.widest and council.tightest.urn != council.widest.urn %}
 <p class="section-sub">
     The tightest is <a href="/school/{{ council.tightest.urn }}/{{ council.tightest.slug }}">{{ council.tightest.name }}</a>
@@ -74,11 +103,14 @@
                     <th class="num" data-sort="num" aria-sort="ascending">Admitted from</th>
                     <th data-sort="text">Round</th>
                     <th class="num" data-sort="num">How full</th>
+                    {# Save sits last and unsorted: the sort script reads
+                       each header's position among the sortable ones. #}
+                    {% if current_user %}<th class="hub-save"><span class="visually-hidden">Your shortlist</span></th>{% endif %}
                 </tr>
             </thead>
             <tbody>
                 {% for s in schools %}
-                <tr>
+                <tr id="school-{{ s.urn }}">
                     <td data-value="{{ s.name | lower }}" data-st="title">
                         <a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>
                         {% set sub = s.town or s.type %}
@@ -93,6 +125,20 @@
                     <td class="num" data-value="{{ s.occupancy_pct if s.occupancy_pct is not none else -1 }}" data-label="How full">
                         {% if s.occupancy_pct is not none %}{{ s.occupancy_pct }}%{% else %}<span class="section-sub">not published</span>{% endif %}
                     </td>
+                    {# Save returns to this row (18 Sep 2026, audit E4). #}
+                    {% if current_user %}
+                    <td class="hub-save">
+                        {% if s.urn in saved_urns %}
+                        <a href="/schools/shortlist" class="hub-saved">Saved<span class="visually-hidden">: {{ s.name }} is on your shortlist</span></a>
+                        {% else %}
+                        <form action="/schools/shortlist/save" method="post" class="hub-save-form">
+                            <input type="hidden" name="urn" value="{{ s.urn }}">
+                            <input type="hidden" name="next" value="/schools/admissions/{{ council.slug }}#school-{{ s.urn }}">
+                            <button type="submit" class="shortlist-btn">Save<span class="visually-hidden"> {{ s.name }} to your shortlist</span></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    {% endif %}
                 </tr>
                 {% endfor %}
             </tbody>
@@ -114,11 +160,13 @@
     </p>
 </section>
 
+{# The link went to the homepage until 18 Sep 2026 (first-visitor audit
+   E5), which lost the council. It goes to this page's own box. #}
 <section class="report-section">
     <h2>Checking an address against these</h2>
     <p class="section-sub">
         Each school's page has a checker that measures a postcode against that school's distance.
-        The <a href="/">full property report</a> measures every nearby school at once, alongside sold
+        The <a href="#hub-check-postcode">full property report</a> measures every nearby school at once, alongside sold
         prices, flood risk and the rest of the house.
     </p>
 </section>

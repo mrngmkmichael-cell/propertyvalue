@@ -2028,9 +2028,30 @@
                 });
             }
 
+            /* The every-card view has no tiles to open (18 Sep 2026,
+               first-visitor audit item E6). "Show every card at once" is
+               remembered on the device for every report after it, and a
+               return visit's jump to the group that changed only ever
+               opened a tile, so in this view it did nothing and what
+               changed sat unmarked among forty-odd cards. Here the group's
+               lead card, a flagged one if it holds one, is scrolled to
+               under its group's heading and wears the ring an open tile
+               wears. The remembered view stays as the reader left it. */
+            function jumpTo(c) {
+                var card = c.grid.querySelector('.dashboard-card');
+                if (!card) return;
+                card.classList.add('cat-card-jumped');
+                var mark = c.panel.querySelector('.cat-panel-heading') || card;
+                window.scrollTo({ top: mark.getBoundingClientRect().top + window.pageYOffset - 16, behavior: still ? 'auto' : 'smooth' });
+            }
+
             function setList(on, remember) {
                 listMode = on;
                 current = null;
+                /* The ring marks what changed in this view only. */
+                Array.prototype.forEach.call(root.querySelectorAll('.cat-card-jumped'), function (el) {
+                    el.classList.remove('cat-card-jumped');
+                });
                 root.classList.toggle('is-list', on);
                 cats.forEach(function (c) {
                     c.tile.setAttribute('aria-expanded', 'false');
@@ -2084,10 +2105,14 @@
             paintProgress();
 
             /* A link to #cat-risk-safety and the like opens that group; so
-               does the server, for a return visit where something changed. */
+               does the server, for a return visit where something changed.
+               In the every-card view it is scrolled to and marked instead
+               (18 Sep 2026, see jumpTo). */
             var wanted = (window.location.hash || '').slice(1) || root.getAttribute('data-open-group') || '';
             cats.forEach(function (c) {
-                if (!listMode && wanted === c.slug) open(c);
+                if (wanted !== c.slug) return;
+                if (listMode) jumpTo(c);
+                else open(c);
             });
 
             /* The tiles rise in the first time the board is on screen. */
@@ -2381,7 +2406,7 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Valuation estimate</h2>
-        {{ val.valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, valuation_pending, premium_unlocked, lock_label, lock_redirect) }}
+        {{ val.valuation_body(valuation, price_per_sqm, valuation_error, valuation_floor_area_known, valuation_pending, premium_unlocked, lock_label, lock_redirect, postcode_only=not house_number) }}
             </section>
         </div>
     </dialog>

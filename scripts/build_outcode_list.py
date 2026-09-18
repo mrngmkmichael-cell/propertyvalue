@@ -97,6 +97,29 @@ async def refine(client, sem, o):
     return o
 
 
+def settle_english_regions(valid):
+    """An English district whose centroid finds no postcode within the
+    radius keeps the outcode endpoint's country as its region, and /areas
+    then showed a thirteenth region, "England", holding Gedling's NG21
+    alone (first-visitor audit, 17 Sep 2026; fixed in outcodes.json on
+    18 Sep). A council district lies in one English region, so such an
+    outcode takes the region its council's other outcodes carry. One
+    with no such neighbour is left as it is and printed, not guessed."""
+    by_council = {}
+    for o in valid:
+        if o["country"] == "England" and o["region"] not in (None, "England"):
+            counts = by_council.setdefault(o["district"], {})
+            counts[o["region"]] = counts.get(o["region"], 0) + 1
+    for o in valid:
+        if o["country"] == "England" and o["region"] in (None, "England"):
+            counts = by_council.get(o["district"])
+            if counts:
+                o["region"] = max(counts, key=counts.get)
+            else:
+                print(f"  no English region for {o['outcode']} ({o['district']}): left as {o['region']}")
+    return valid
+
+
 async def main():
     sem = asyncio.Semaphore(CONCURRENCY)
     cands = list(dict.fromkeys(candidates()))
@@ -107,6 +130,7 @@ async def main():
     print(f"{len(valid)} real districts; resolving the district at each centroid...")
     async with httpx.AsyncClient(headers=HEADERS, timeout=20) as client:
         valid = await asyncio.gather(*(refine(client, sem, o) for o in valid))
+    valid = settle_english_regions(list(valid))
     valid = sorted(valid, key=lambda r: (
         re.match(r"[A-Z]+", r["outcode"]).group(0),
         int(re.search(r"\d+", r["outcode"]).group(0)),

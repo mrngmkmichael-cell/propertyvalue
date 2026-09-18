@@ -21,9 +21,12 @@
 <section class="report-section" id="rate">
     <h2>Bank of England base rate</h2>
     {% if boe %}
+    {# "SINCE 2025-12-18" in the first-visitor walk of 17 Sep 2026; the
+       date is written out in full and the label no longer set in capitals
+       (18 Sep 2026, audit E5): "since 18 December 2025". #}
     <div class="snap-stat">
         <span class="snap-stat-value">{{ "%.2f"|format(boe.rate) }}%</span>
-        <span class="snap-stat-label">since {{ boe.since | day_label }}</span>
+        <span class="snap-stat-label">since {{ boe.since | day_label(full_month=True) }}</span>
     </div>
     <ul class="snap-points">
         <li><strong>Mortgage rates follow it.</strong> Lenders price fixed and tracker deals off this number.</li>
@@ -104,7 +107,13 @@
     <ul class="snap-points">
         <li><strong>One-off, paid on completion.</strong> SDLT in England and NI, LTT in Wales, LBTT in Scotland.</li>
         <li><strong>Banded, not flat.</strong> Each rate applies only to the slice of the price inside its band. First-time buyers and additional properties have their own bands.</li>
-        <li><strong>Bands change at budgets.</strong> The calculator on any property report here is kept current and does the maths.</li>
+        {# Until 18 Sep 2026 (first-visitor audit E5) this pointed only at
+           "the calculator on any property report here", which the walk of
+           17 Sep found locked, and never linked the free page. Costs &
+           Affordability is a free check since batch B, so both are named,
+           and "kept current" is gone: both work from bands published in
+           April 2025, as their own notes say. #}
+        <li><strong>Bands change at budgets.</strong> The free <a href="/tools/stamp-duty-calculator">stamp duty calculator</a> does the maths on any price in England and Northern Ireland, Scotland or Wales, and every property report here carries the same calculator, free, for that home. Both work from the published bands, so confirm the exact figure with your solicitor before you exchange.</li>
     </ul>
 
     <h3 class="subsection-heading">Capital Gains Tax</h3>
@@ -125,10 +134,17 @@
     <ul class="guide-steps">
         <li><strong>Lease under 80 years is a problem.</strong> Expensive to extend, hard to mortgage. Check years left, ground rent and service charge before offering.</li>
         <li><strong>Pick the survey level.</strong> Level 1 for newer and sound. Level 2 is the usual choice. Level 3 for older, larger or altered homes.</li>
-        <li><strong>Run the free report first.</strong> Flood, subsidence, radon, contamination, mining, planning, sold prices, EPC, crime and schools, before you pay anyone.</li>
+        {# 18 Sep 2026 (first-visitor audit E5): the list read "Flood,
+           subsidence, radon, contamination, mining, planning, sold prices,
+           EPC, crime and schools", three of them locked checks, with no
+           way to run the report from here. The names and the count now
+           come from FREE_CHECKS (BUYING_GUIDE_FREE_NAMES in main.py), and
+           the words link to a box at the foot of this section. #}
+        <li><strong><a href="#guide-check-postcode">Run the free report first.</a></strong> {{ free_check_count }} checks free on any address, among them {{ free_check_names }}, before you pay anyone.</li>
         <li><strong>Chain-free is safer.</strong> New build, probate, or a seller who has already moved. Chains are why purchases collapse.</li>
         <li><strong>Book solicitor and surveyor before the offer.</strong> Prices vary a lot. Being ready shortens everything after.</li>
     </ul>
+    {% with box_id="guide-check-postcode", box_label="Check an address", box_src="buying-guide" %}{% include "_address_box.html" %}{% endwith %}
 </section>
 {% endblock %}
 

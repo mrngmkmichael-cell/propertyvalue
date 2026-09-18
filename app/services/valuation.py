@@ -43,18 +43,27 @@ def estimate_value(
     comparables: list[dict],
     subject_floor_area: float | None,
     annual_growth_pct: float | None,
+    any_size: bool = False,
 ) -> dict | None:
-    if not subject_floor_area:
+    """any_size (18 Sep 2026, first-visitor audit item E7): for a report
+    searched without a house number, where no home is chosen and so no
+    floor area is the subject's. Every recent sale nearby counts, whatever
+    its size, and the answer says so ("any_size"), so the page words it as
+    what homes around the postcode sell for, not as one home's value. It
+    was narrowed to the newest certificate's floor area, one neighbour's,
+    and called "within 5% of this property's"."""
+    if not subject_floor_area and not any_size:
         return None
 
     growth_rate = (annual_growth_pct or 0) / 100
-    margin = subject_floor_area * (FLOOR_AREA_VARIANCE_PCT / 100)
-    low_area, high_area = subject_floor_area - margin, subject_floor_area + margin
+    if not any_size:
+        margin = subject_floor_area * (FLOOR_AREA_VARIANCE_PCT / 100)
+        low_area, high_area = subject_floor_area - margin, subject_floor_area + margin
 
     usable = []
     for tx in comparables:
         floor_area = tx.get("floor_area")
-        if not floor_area or not (low_area <= floor_area <= high_area):
+        if not any_size and (not floor_area or not (low_area <= floor_area <= high_area)):
             continue
         years = _years_since(tx.get("date"))
         if years is None or years > RECENT_YEARS:
@@ -79,7 +88,8 @@ def estimate_value(
         "high": round(_percentile(amounts, 0.75), -3),
         "sample_size": len(amounts),
         "years_window": RECENT_YEARS,
-        "floor_area_variance_pct": FLOOR_AREA_VARIANCE_PCT,
+        "floor_area_variance_pct": None if any_size else FLOOR_AREA_VARIANCE_PCT,
+        "any_size": any_size,
     }
 
 

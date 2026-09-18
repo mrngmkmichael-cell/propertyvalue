@@ -135,8 +135,10 @@
     {% endfor %}
 </section>
 
+{# "A free report" went to the homepage until 18 Sep 2026 (first-visitor
+   audit E5), which lost the council. It goes to this page's own box. #}
 <section class="report-section">
     <h2>Check a specific address</h2>
-    <p>The council sets the bill; the band belongs to the home, and this site does not hold it. A home's band is on its council tax bill, and anyone can look it up free {% if ct.nation == "Scotland" %}on the <a href="https://www.saa.gov.uk/" target="_blank" rel="noopener">Scottish Assessors</a> website{% else %}at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>{% endif %}. <a href="/">A free report</a> shows every band's bill at the address's council beside the home's other checks, and <a href="/running-costs">running costs by postcode</a> gives the yearly bill for the band you pick.</p>
+    <p>The council sets the bill; the band belongs to the home, and this site does not hold it. A home's band is on its council tax bill, and anyone can look it up free {% if ct.nation == "Scotland" %}on the <a href="https://www.saa.gov.uk/" target="_blank" rel="noopener">Scottish Assessors</a> website{% else %}at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>{% endif %}. <a href="#ct-check-postcode">A free report</a> shows every band's bill at the address's council beside the home's other checks, and <a href="/running-costs">running costs by postcode</a> gives the yearly bill for the band you pick.</p>
 </section>
 {% endblock %}

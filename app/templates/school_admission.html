@@ -86,15 +86,22 @@
 </div>
 
 {# The page's one action, under the figure that answered the search.
-   The full checker with the map and the verdict sits further down;
-   this form submits to it. #}
+   The verdict and the map sit further down; this form submits to them.
+   It is the only checker (18 Sep 2026): a second standing "Check this
+   postcode" box sat a screen below it, so a phone asked the same
+   question twice. A postcode that cannot be found comes back here, in
+   the box, with the reason under it; an answer brings the box back as
+   "Check another postcode" under the verdict. #}
 {% if not check %}
 <form class="search-form admission-check admission-check-top" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search" style="max-width: 36rem; margin: 0 0 1.25rem;">
     <div class="search-form-field">
         <label for="check-postcode-top">Will an address get in? {% if school.no_distance_limit %}Check how far an address is{% else %}Check a postcode against {{ school.miles_label }} miles{% endif %}</label>
-        <input type="text" id="check-postcode-top" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
+        <input type="text" id="check-postcode-top" name="check" value="{{ check_query }}" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required{% if check_error %} aria-invalid="true" aria-describedby="check-error"{% endif %}>
     </div>
     <button type="submit">Check this postcode</button>
+    {% if check_error %}
+    <p class="notice notice-error" id="check-error" style="flex-basis: 100%; margin: 0;">Couldn't find "{{ check_query }}" as a UK postcode. Check the spelling and try again.</p>
+    {% endif %}
     {# Where the check leads (16 Sep 2026): Google sends people to this
        page, sign-ups happen on the report, and the landing screen did
        not say the two were connected. The answer itself links to the
@@ -130,17 +137,8 @@
         <a href="/schools/how-admissions-work">How it works</a>.
     </p>
     {% endif %}
-    <form class="search-form admission-check" action="/school/{{ school.urn }}/{{ school.slug }}" method="get">
-        <div class="search-form-field">
-            <label for="check-postcode">Postcode to check</label>
-            <input type="text" id="check-postcode" name="check" value="{{ check_query }}" placeholder="e.g. {{ school.postcode }}" autocomplete="off" required>
-        </div>
-        <button type="submit">Check this postcode</button>
-    </form>
 
-    {% if check_error %}
-    <p class="notice notice-error">Couldn't find "{{ check_query }}" as a UK postcode. Check the spelling and try again.</p>
-    {% elif check %}
+    {% if check %}
     <div class="admission-verdict admission-verdict-{{ check.level }}" id="verdict">
         <span class="admission-verdict-label">{{ check.label }}</span>
         <span class="admission-verdict-detail">
@@ -179,6 +177,16 @@
             to save this school and be told when {{ school.authority }} republishes the distance this answer rests on.
         </span>
         {% endif %}
+        {# The checker comes back as the answer's last row (18 Sep 2026),
+           after the offer to save the school, instead of a second box
+           standing under the first whether or not it had been used. #}
+        <form class="search-form admission-check admission-check-again" action="/school/{{ school.urn }}/{{ school.slug }}#verdict" method="get" role="search">
+            <div class="search-form-field">
+                <label for="check-postcode">Check another postcode</label>
+                <input type="text" id="check-postcode" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
+            </div>
+            <button type="submit">Check</button>
+        </form>
     </div>
     {% endif %}
 
@@ -197,12 +205,15 @@
     </p>
     {% if nearby_rings %}
     {# Step 1 of the catchment map: the nearest schools' distances, on
-       request, so the main ring stays clear until the reader asks. #}
+       request, so the main ring stays clear until the reader asks. The
+       schools are named once, in the table under this section (18 Sep
+       2026): the tick used to open a list of the same schools as well,
+       so a phone read them twice. The label says what the tick draws
+       (fix pass, same day): it said "the 2 nearest schools that have one,
+       listed below" above a table that also lists schools with no limit,
+       which get no ring, and can list more than the six that do. #}
     <div class="map-toggle-row">
-        <label class="map-toggle"><input type="checkbox" id="nearby-rings-toggle"> Show the published distances of the {{ nearby_rings | length }} nearest school{{ 's' if nearby_rings | length != 1 }} that have one</label>
-        <ul class="map-legend" id="nearby-rings-legend" hidden>
-            {% for n in nearby_rings %}<li><span class="map-legend-swatch" aria-hidden="true"></span><a href="{{ n.url }}">{{ n.name }}</a>: admitted from {{ n.miles }} mi, {{ n.away }} mi from {{ school.name }}</li>{% endfor %}
-        </ul>
+        <label class="map-toggle"><input type="checkbox" id="nearby-rings-toggle"> {% if nearby_rings | length == 1 %}Draw the admission distance of the nearest school in the table below that has a limit{% else %}Draw the admission distances of the {{ nearby_rings | length }} nearest schools in the table below that have a limit{% endif %}</label>
     </div>
     {% endif %}
 
@@ -216,6 +227,32 @@
         not a boundary and not a promise.
     </div>
 </section>
+
+{% if nearby_with_figure %}
+{# The one list of the nearest schools, and the key to the rings the box
+   under the map draws. It stood at the foot of the page until 18 Sep
+   2026, far below the map, while the box opened a second list of the
+   same schools beside it. #}
+<section class="report-section" id="nearby-schools">
+    <h2>Other schools nearby with a published distance</h2>
+    <p class="section-sub">The closest schools to {{ school.name }} that also have a council-published admission distance, nearest first.</p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead><tr><th>School</th><th>Phase</th><th class="num">Admitted from</th><th class="num">Away</th></tr></thead>
+            <tbody>
+                {% for n in nearby_with_figure %}
+                <tr>
+                    <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a></td>
+                    <td>{{ n.phase }}</td>
+                    <td class="num">{% if n.miles > 20 %}No limit{% else %}{{ n.miles }} mi{% endif %}{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
+                    <td class="num">{{ n.away_miles }} mi</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
 
 {% if school.miles %}
 {# Step 3 of the catchment map: the same facts as a real image, drawn to
@@ -469,18 +506,6 @@
 </section>
 {% endif %}
 
-{% if badge_snippet %}
-<section class="report-section">
-    <h2>Put {{ school.name }}'s figure on your own site</h2>
-    <p class="section-sub">
-        A small badge that shows the published admission distance and links back here, for a school
-        website, a parents' group or a local forum. Copy the code and paste it where you want it to appear.
-    </p>
-    <p><img src="/school/{{ school.urn }}/badge.svg" alt="{{ school.name }} badge" width="320" height="96" style="max-width:100%;height:auto"></p>
-    <textarea class="embed-code" rows="3" readonly onclick="this.select()">{{ badge_snippet }}</textarea>
-</section>
-{% endif %}
-
 <section class="report-section">
     <h2>The fee-paying alternative</h2>
     <p class="section-sub">
@@ -557,6 +582,23 @@
     </p>
 </section>
 
+{# The badge is for someone who runs a site, not for a parent reading
+   this one, so it comes last (18 Sep 2026). It sat between the bus
+   times and the fee-paying schools, raw embed code in the middle of the
+   page, inside the block that needs the school's district, which the
+   badge never used. #}
+{% if badge_snippet %}
+<section class="report-section">
+    <h2>Put {{ school.name }}'s figure on your own site</h2>
+    <p class="section-sub">
+        A small badge that shows the published admission distance and links back here, for a school
+        website, a parents' group or a local forum. Copy the code and paste it where you want it to appear.
+    </p>
+    <p><img src="/school/{{ school.urn }}/badge.svg" alt="{{ school.name }} badge" width="320" height="96" loading="lazy" style="max-width:100%;height:auto"></p>
+    <textarea class="embed-code" rows="3" readonly onclick="this.select()">{{ badge_snippet }}</textarea>
+</section>
+{% endif %}
+
 <p class="section-sub">
     Admission distance published by {{ school.authority }}. School details from the Department for
     Education's register, ratings from Ofsted. Read how every figure on this site is sourced on the
@@ -601,12 +643,21 @@
             }).getBounds());
         }
         // Step 2: the districts inside the distance, as labels at their
-        // centres. A marker with no icon and a label is the plain way to
-        // put text on this map; each label opens the district's guide.
+        // centres. A marker with an invisible icon and a label is the
+        // plain way to put text on this map; each label opens the
+        // district's guide. The icon was a circle of scale 0 until 18 Sep
+        // 2026, which left a tap only the type itself, about 16px on a
+        // phone: it is now a clear 48 by 32 rectangle centred on the same
+        // point, so the label looks and sits as before and takes a
+        // 32px tap. Kept in step with the Leaflet branch below.
+        const districtHit = {
+            path: 'M -24 -16 H 24 V 16 H -24 Z', scale: 1,
+            fillColor: '#ffffff', fillOpacity: 0, strokeOpacity: 0, strokeWeight: 0,
+        };
         (S.districts || []).forEach(function (d) {
             const lm = new google.maps.Marker({
                 position: { lat: d.lat, lng: d.lng }, map: map, title: d.code + ': open the area guide',
-                icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 },
+                icon: districtHit,
                 label: { text: d.code, fontSize: '12px', fontWeight: '600', color: '#1c1714', className: 'map-district-label-g' },
             });
             lm.addListener('click', function () { window.location.href = '/area/' + d.code; });
@@ -623,11 +674,12 @@
         if (S.noLimit && !S.check) { map.setZoom(14); }
         // Step 1: the nearest schools' distances, drawn on request and
         // removed again, the view following whichever set is showing.
+        // The table under the section names them; the list this used to
+        // open beside the box went on 18 Sep 2026.
         const toggle = document.getElementById('nearby-rings-toggle');
         if (toggle && S.nearby && S.nearby.length) {
             let shapes = [];
             toggle.addEventListener('change', function () {
-                const legend = document.getElementById('nearby-rings-legend');
                 if (toggle.checked) {
                     const all = new google.maps.LatLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
                     S.nearby.forEach(function (n) {
@@ -643,12 +695,10 @@
                         all.union(c.getBounds());
                     });
                     map.fitBounds(all, 30);
-                    if (legend) legend.hidden = false;
                 } else {
                     shapes.forEach(function (sh) { sh.setMap(null); });
                     shapes = [];
                     map.fitBounds(bounds, 30);
-                    if (legend) legend.hidden = true;
                 }
             });
         }
@@ -674,9 +724,12 @@
                 radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
             }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map).getBounds();
         }
+        // A 48 by 32 box round each district label (18 Sep 2026), so it
+        // takes a 32px tap, not just its type; the box is clear and centred
+        // on the district centre, as the Google branch's label is.
         (S.districts || []).forEach(function (d) {
             L.marker([d.lat, d.lng], {
-                icon: L.divIcon({ className: 'map-district-label', html: d.code, iconSize: null }),
+                icon: L.divIcon({ className: 'map-district-label', html: d.code, iconSize: [48, 32] }),
                 title: d.code + ': open the area guide', keyboard: false,
             }).addTo(map).on('click', function () { window.location.href = '/area/' + d.code; });
         });
@@ -691,7 +744,6 @@
         if (toggle && S.nearby && S.nearby.length) {
             const group = L.layerGroup();
             toggle.addEventListener('change', function () {
-                const legend = document.getElementById('nearby-rings-legend');
                 if (toggle.checked) {
                     group.addTo(map);
                     const all = L.latLngBounds(bounds.getSouthWest(), bounds.getNorthEast());
@@ -706,38 +758,15 @@
                         all.extend(c.getBounds());
                     });
                     map.fitBounds(all, { padding: [30, 30] });
-                    if (legend) legend.hidden = false;
                 } else {
                     group.clearLayers();
                     map.removeLayer(group);
                     map.fitBounds(bounds, { padding: [30, 30] });
-                    if (legend) legend.hidden = true;
                 }
             });
         }
     })();
 </script>
-{% endif %}
-{% if nearby_with_figure %}
-<section class="report-section">
-    <h2>Other schools nearby with a published distance</h2>
-    <p class="section-sub">The closest schools to {{ school.name }} that also have a council-published admission distance, nearest first.</p>
-    <div class="tablewrap">
-        <table class="tx-table">
-            <thead><tr><th>School</th><th>Phase</th><th class="num">Admitted from</th><th class="num">Away</th></tr></thead>
-            <tbody>
-                {% for n in nearby_with_figure %}
-                <tr>
-                    <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a></td>
-                    <td>{{ n.phase }}</td>
-                    <td class="num">{% if n.miles > 20 %}No limit{% else %}{{ n.miles }} mi{% endif %}{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
-                    <td class="num">{{ n.away_miles }} mi</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</section>
 {% endif %}
 {# This school, remembered on the device for the schools search's
    "Pick up where you left off" (15 Sep 2026). #}

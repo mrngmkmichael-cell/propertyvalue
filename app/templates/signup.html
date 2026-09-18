@@ -58,8 +58,12 @@
            (_snapshot_changes in main.py) emails a meaningful move only:
            sold prices, a new energy certificate, the flood zone, recorded
            crime or the area price trend. "Something", as My properties
-           itself says. #}
-        <li><strong>My properties</strong>: notes, side-by-side comparison, and an email when something changes on a saved property</li>
+           itself says.
+           18 Sep 2026 (first-visitor audit E5): since C6 recorded crime
+           never sends an email on its own, and "something" still read as
+           anything. The triggers are named, from ALERT_TRIGGERS_LIST in
+           main.py, the words My properties uses. #}
+        <li><strong>My properties</strong>: notes, side-by-side comparison, and an email when one of these happens to a saved home: {{ alert_triggers_list }}, never on a schedule</li>
         <li><strong>Share any unlocked report</strong> with a partner or friend, free for them to read</li>
     </ul>
     <p class="signup-benefits-note">No card. No tracking. Your free report never expires, and a property you unlock stays unlocked for good.</p>

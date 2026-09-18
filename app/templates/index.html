@@ -88,40 +88,8 @@
     <div class="lx-hero-inner">
         <p class="lx-eyebrow">Prices, schools, running costs</p>
 
-        {# Live report strip. Every figure is fetched from this site's own
-           /api/lookup at page load, never hardcoded: the prototype's
-           baked-in scores had all five drifted out of date (M1 1AE read
-           75 against a real 82) within days of being written. If the
-           fetch fails the strip removes itself rather than show a
-           number nobody can stand behind. #}
-        {# Whatever the route already had cached, handed over in the page
-           so the strip needs no round trip at all. Anything absent here
-           the script asks for, exactly as before. #}
-        {% if strip_seeds %}
-        <script type="application/json" id="lx-strip-seed">{{ strip_seeds | tojson }}</script>
-        {% endif %}
-        {# aria-hidden: the strip sits before the heading in the markup,
-           so a screen reader met "ukpropertyinsight.co.uk/property?
-           postcode=M1 1AE 76 GOOD ..." before the page had said what it
-           was (16 Sep 2026). The same figures are one link away, "See a
-           real report for M1 1AE", which stays in the reading order. #}
-        <div class="lx-strip" id="lx-strip" hidden data-animate aria-hidden="true">
-            <div class="lx-strip-chrome">
-                <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
-                <span class="lx-strip-url">ukpropertyinsight.co.uk/property?postcode=<span id="lx-strip-pc"></span></span>
-            </div>
-            <div class="lx-strip-body">
-                <div class="lx-strip-score">
-                    <div class="lx-dial" id="lx-dial"><div class="lx-dial-in"><span id="lx-dial-num">0</span></div></div>
-                    <div class="lx-strip-meta">
-                        <p class="lx-strip-postcode" id="lx-strip-postcode"></p>
-                        <span class="lx-strip-grade" id="lx-strip-grade"></span>
-                        <p class="lx-strip-place" id="lx-strip-place"></p>
-                    </div>
-                </div>
-                <div class="lx-strip-rows" id="lx-strip-rows"></div>
-            </div>
-        </div>
+        {# The demo report card stood here, above the headline, until
+           18 Sep 2026. It now closes the hero: see the foot of this block. #}
 
         <h1 class="lx-hero-h1">
             <span class="lx-w">Prices, schools, and the</span>
@@ -200,6 +168,48 @@
         {% import "_recent_places.html" as recent %}
         {{ recent.recent_addresses("/property") }}
 
+        {# Live report strip. Every figure is fetched from this site's own
+           /api/lookup at page load, never hardcoded: the prototype's
+           baked-in scores had all five drifted out of date (M1 1AE read
+           75 against a real 82) within days of being written. If the
+           fetch fails the strip removes itself rather than show a
+           number nobody can stand behind. #}
+        {# Whatever the route already had cached, handed over in the page
+           so the strip needs no round trip at all. Anything absent here
+           the script asks for, exactly as before. #}
+        {% if strip_seeds %}
+        <script type="application/json" id="lx-strip-seed">{{ strip_seeds | tojson }}</script>
+        {% endif %}
+        {# Until 18 Sep 2026 (first-visitor audit, item E1) this card sat
+           between the eyebrow and the headline. On a 1280x800 screen it
+           pushed the Search button below the first screen, and clicking
+           it did nothing. It now closes the hero, under the link to the
+           same report, and the whole card is a link: to M1 1AE as the
+           text link is, and then to whichever postcode it is showing as
+           it rotates, so a card showing LS1 4DY never opens M1 1AE.
+           It stays aria-hidden (16 Sep 2026: a screen reader met
+           "ukpropertyinsight.co.uk/property?postcode=M1 1AE 76 GOOD ..."
+           as a run of figures) and, as a link, out of the tab order with
+           tabindex -1, so assistive technology and the keyboard meet
+           "See a real report for M1 1AE" once, in the reading order. #}
+        <a class="lx-strip" id="lx-strip" href="/property?postcode=M1+1AE" tabindex="-1" aria-hidden="true" hidden data-animate>
+            <div class="lx-strip-chrome">
+                <span class="lx-dot lx-dot-gold"></span><span class="lx-dot"></span><span class="lx-dot"></span>
+                <span class="lx-strip-url">ukpropertyinsight.co.uk/property?postcode=<span id="lx-strip-pc"></span></span>
+            </div>
+            <div class="lx-strip-body">
+                <div class="lx-strip-score">
+                    <div class="lx-dial" id="lx-dial"><div class="lx-dial-in"><span id="lx-dial-num">0</span></div></div>
+                    <div class="lx-strip-meta">
+                        <p class="lx-strip-postcode" id="lx-strip-postcode"></p>
+                        <span class="lx-strip-grade" id="lx-strip-grade"></span>
+                        <p class="lx-strip-place" id="lx-strip-place"></p>
+                    </div>
+                </div>
+                <div class="lx-strip-rows" id="lx-strip-rows"></div>
+            </div>
+        </a>
+
         {# The "40 CHECKS . 13 OFFICIAL SOURCES . 1.7M POSTCODES" row stood
            here. Removed 28 Aug 2026 on a reader's feedback: three
            tracked-caps stats with middot separators, numbers rolling up
@@ -251,107 +261,17 @@
 </section>
 {% endif %}
 
-{# =================================================================== BUILD
-   Variant C of the scroll choreography: one section pins for ~2.5
-   screen-heights and a sample report assembles under the reader's
-   scroll. Every figure is painted from the same server-cached lookup
-   seeds the hero strip uses - never hardcoded, for the same reason the
-   strip isn't: baked-in scores drift wrong within days. No seed, no
-   section (it stays hidden), and reduced-motion readers never see it:
-   its content is a duplicate of the hero strip's, only the motion is
-   the point. #}
-<section class="lx-build" id="build" hidden>
-    <div class="lx-build-track" id="lx-build-track">
-        <div class="lx-build-pin" id="lx-build-pin">
-            {# Backdrop: an orbiting sphere of gold points, drawn on a
-               plain canvas - the ThreeUI "orbital sphere" look without
-               React or Three.js, which this page does not carry and, at
-               ~200KB for a decoration, should not start to. Painted only
-               while the section is on screen. #}
-            <canvas class="lx-build-orb" id="lx-build-orb" aria-hidden="true"></canvas>
-            {# The 40 checks as named motes, spawned by script from the
-               same titles the report's cards carry. They fly into the
-               dial as the reader scrolls; the score is the sum of what
-               has been absorbed. #}
-            <div class="lx-build-swarm" id="lx-build-swarm" aria-hidden="true"></div>
-            <div class="lx-wrap">
-                <p class="lx-eyebrow">One search</p>
-                <h2 class="lx-h2 lx-build-h" id="lx-build-h">Watch a report <em class="hl-accent">build itself</em>.</h2>
-                <div class="lx-build-grid">
-                    <div class="lx-build-dial-wrap">
-                        <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
-                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / 44 checks</p>
-                    </div>
-                    <div class="lx-build-chips" id="lx-build-chips"></div>
-                </div>
-                {# The receipt: once every check has been absorbed, the
-                   full list re-emerges as ticked pills, so the closing
-                   frame shows the breadth of the report rather than
-                   four findings. Populated by script from CHECKS. #}
-                <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
-                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>44 checks</strong> &middot; one search</p>
-                    <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
-                </div>
-                <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
-                <a class="lx-build-cta" id="lx-build-cta" href="#home">Run the checks on your postcode</a>
-                <p class="lx-build-hint" aria-hidden="true">Scroll &middot; the page is the scrubber</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-{# =================================================================== CHECKS
-   Until 17 Sep 2026 this section was the orbit: twelve of the report's
-   check cards painted onto canvases and spun round a "Forty-four checks"
-   heading. The first-visitor audit counted about four and a half phone
-   screens between the hero and the pricing link, the scroll-built report
-   above and the orbit both saying 44, and the owner removed the orbit
-   that day. What it carried that nothing else on the page says stays:
-   the free and Premium split, as lengths of FREE_CHECKS and
-   PREMIUM_CHECKS, and the link to the full list. The offer itself is in
-   the hero dek, in the one sentence the site uses for it. #}
-<section class="lx-section lx-checks lx-plan" id="checks">
-    <div class="lx-wrap lx-centre">
-        <p class="lx-eyebrow">What we check</p>
-        <p class="lx-plan-tiers">
-            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} {{ free_check_count }} free on every report</span>
-            <span class="lx-plan-tiers-sep" aria-hidden="true">&middot;</span>
-            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} {{ premium_check_count }} more with Premium</span>
-        </p>
-        <p class="lx-plan-more">
-            <a class="lx-plan-more-btn" href="/premium#all-checks">See pricing for the full list of {{ pillars.checks }} &rsaquo;</a>
-        </p>
-    </div>
-</section>
-
-{# =================================================================== AREAS #}
-<section class="lx-section lx-areas" id="areas">
-    <div class="lx-wrap lx-centre">
-        <p class="lx-eyebrow">Area guides</p>
-        <h2 class="lx-h2">Start with an area you know</h2>
-        <p class="lx-lede lx-lede-centre">
-            No postcode to hand? Every district has a free guide: prices, schools,
-            crime and flood risk at a glance.
-        </p>
-        <div class="lx-chips" data-cascade>
-            {% for code, place in [
-                ('SW1A', 'Westminster'), ('E14', 'Canary Wharf'), ('N1', 'Islington'), ('SE1', 'Southwark'),
-                ('SW11', 'Battersea'), ('M1', 'Manchester'), ('M20', 'Didsbury'), ('LS1', 'Leeds'),
-                ('B1', 'Birmingham'), ('L1', 'Liverpool'), ('S1', 'Sheffield'), ('NE1', 'Newcastle'),
-                ('NG1', 'Nottingham'), ('BS1', 'Bristol'), ('CF10', 'Cardiff'), ('G1', 'Glasgow'),
-                ('EH1', 'Edinburgh'), ('BN1', 'Brighton'), ('OX1', 'Oxford'), ('CB1', 'Cambridge'),
-                ('YO1', 'York'), ('RG1', 'Reading')
-            ] %}
-            <a class="lx-chip" href="/area/{{ code }}">
-                <span class="lx-chip-code">{{ code }}</span>
-                <span class="lx-chip-place">{{ place }}</span>
-            </a>
-            {% endfor %}
-            <a class="lx-chip lx-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
-        </div>
-    </div>
-</section>
-
+{# ===================================================================
+   The order below is the first-visitor audit's (item E1, 18 Sep
+   2026): trust before showpieces. The page used to run from the hero
+   into the scroll-built report, the orbit, the areas and only then
+   the sources, and the accuracy log started on the ninth phone
+   screen. Now the sources paragraph and the accuracy log come
+   straight after the hero, then the reviews, then the area chips,
+   then the scroll-built report with the free and Premium split under
+   it, then the reference half. Every section is as it was; only its
+   place changed.
+   =================================================================== #}
 {# =================================================================== ABOUT #}
 <section class="lx-section lx-about" id="about">
     <div class="lx-wrap lx-about-grid">
@@ -392,8 +312,9 @@
                 and <a href="/schools/independent">private schools by council</a>.
             </p>
             <div class="lx-about-stats">
-                {# "Official sources" is the length of OFFICIAL_SOURCES in main.py since 18 Sep 2026 (item D6), not a typed 13. #}
-                {% set stat_rows = [('44', 'Checks per property'), ((official_sources | length) ~ '', 'Official sources'), ('2,943', 'Area guides')] %}
+                {# "Official sources" is the length of OFFICIAL_SOURCES in main.py since 18 Sep 2026 (item D6), not a typed 13.
+                   The check count is CHECK_COUNT (pillars.checks) since the same day (E fix pass), not a typed 44. #}
+                {% set stat_rows = [((pillars.checks) ~ '', 'Checks per property'),((official_sources | length) ~ '', 'Official sources'), ('2,943', 'Area guides')] %}
                 {% if admission_stats and admission_stats.schools %}{% set stat_rows = stat_rows + [("{:,}".format(admission_stats.schools), 'Published school admission distances')] %}{% endif %}
                 {% for n, label in stat_rows %}
                 <div>
@@ -406,7 +327,21 @@
     </div>
 </section>
 
-
+<section class="accuracy-strip" data-animate>
+    <div class="accuracy-strip-inner">
+        <div class="accuracy-strip-copy">
+            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
+            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
+        </div>
+        {% if accuracy_counts %}
+        <div class="accuracy-strip-stats">
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
+            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> {{ 'was' if accuracy_counts.fixed == 1 else 'were' }} wrong, now fixed</span>
+        </div>
+        {% endif %}
+        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
+    </div>
+</section>
 
 {# =================================================================== VOICES
    Real, unedited comments. No star ratings: nobody gave one, and
@@ -457,6 +392,112 @@
     </div>
 </section>
 
+{# =================================================================== AREAS #}
+<section class="lx-section lx-areas" id="areas">
+    <div class="lx-wrap lx-centre">
+        <p class="lx-eyebrow">Area guides</p>
+        <h2 class="lx-h2">Start with an area you know</h2>
+        <p class="lx-lede lx-lede-centre">
+            No postcode to hand? Every district has a free guide: prices, schools,
+            crime and flood risk at a glance.
+        </p>
+        <div class="lx-chips" data-cascade>
+            {% for code, place in [
+                ('SW1A', 'Westminster'), ('E14', 'Canary Wharf'), ('N1', 'Islington'), ('SE1', 'Southwark'),
+                ('SW11', 'Battersea'), ('M1', 'Manchester'), ('M20', 'Didsbury'), ('LS1', 'Leeds'),
+                ('B1', 'Birmingham'), ('L1', 'Liverpool'), ('S1', 'Sheffield'), ('NE1', 'Newcastle'),
+                ('NG1', 'Nottingham'), ('BS1', 'Bristol'), ('CF10', 'Cardiff'), ('G1', 'Glasgow'),
+                ('EH1', 'Edinburgh'), ('BN1', 'Brighton'), ('OX1', 'Oxford'), ('CB1', 'Cambridge'),
+                ('YO1', 'York'), ('RG1', 'Reading')
+            ] %}
+            <a class="lx-chip" href="/area/{{ code }}">
+                <span class="lx-chip-code">{{ code }}</span>
+                <span class="lx-chip-place">{{ place }}</span>
+            </a>
+            {% endfor %}
+            <a class="lx-chip lx-chip-all" href="/areas">All 2,943 guides &rsaquo;</a>
+        </div>
+    </div>
+</section>
+
+{# =================================================================== BUILD
+   Variant C of the scroll choreography: one section pins for ~2.5
+   screen-heights and a sample report assembles under the reader's
+   scroll. Every figure is painted from the same server-cached lookup
+   seeds the hero strip uses - never hardcoded, for the same reason the
+   strip isn't: baked-in scores drift wrong within days. No seed, no
+   section (it stays hidden), and reduced-motion readers never see it:
+   its content is a duplicate of the hero strip's, only the motion is
+   the point. #}
+<section class="lx-build" id="build" hidden>
+    <div class="lx-build-track" id="lx-build-track">
+        <div class="lx-build-pin" id="lx-build-pin">
+            {# Backdrop: an orbiting sphere of gold points, drawn on a
+               plain canvas - the ThreeUI "orbital sphere" look without
+               React or Three.js, which this page does not carry and, at
+               ~200KB for a decoration, should not start to. Painted only
+               while the section is on screen. #}
+            <canvas class="lx-build-orb" id="lx-build-orb" aria-hidden="true"></canvas>
+            {# The 40 checks as named motes, spawned by script from the
+               same titles the report's cards carry. They fly into the
+               dial as the reader scrolls; the score is the sum of what
+               has been absorbed. #}
+            <div class="lx-build-swarm" id="lx-build-swarm" aria-hidden="true"></div>
+            <div class="lx-wrap">
+                <p class="lx-eyebrow">One search</p>
+                <h2 class="lx-h2 lx-build-h" id="lx-build-h">Watch a report <em class="hl-accent">build itself</em>.</h2>
+                <div class="lx-build-grid">
+                    <div class="lx-build-dial-wrap">
+                        <div class="lx-dial lx-build-dial" id="lx-build-dial"><div class="lx-dial-in"><span id="lx-build-num">0</span></div></div>
+                        <p class="lx-build-tally" aria-hidden="true"><span id="lx-build-tally-n">0</span> / {{ pillars.checks }} checks</p>
+                    </div>
+                    <div class="lx-build-chips" id="lx-build-chips"></div>
+                </div>
+                {# The receipt: once every check has been absorbed, the
+                   full list re-emerges as ticked pills, so the closing
+                   frame shows the breadth of the report rather than
+                   four findings. Populated by script from CHECKS. #}
+                <div class="lx-build-done" id="lx-build-done" aria-hidden="true">
+                    {# The tally above and this line read CHECK_COUNT since 18 Sep 2026
+                       (E fix pass); both were a typed 44. CHECKS in the script below
+                       names the same number of checks, and a test holds them together. #}
+                    <p class="lx-build-done-head" id="lx-build-done-head">All <strong>{{ pillars.checks }} checks</strong> &middot; one search</p>
+                    <div class="lx-build-done-grid" id="lx-build-done-grid"></div>
+                </div>
+                <p class="lx-build-place"><span id="lx-build-pc"></span> <span id="lx-build-place"></span></p>
+                <a class="lx-build-cta" id="lx-build-cta" href="#home">Run the checks on your postcode</a>
+                {# "Scroll · the page is the scrubber" until 18 Sep 2026: a
+                   video editor's word, flagged by the first-visitor audit
+                   (item E1). Plain words now. #}
+                <p class="lx-build-hint" aria-hidden="true">Scroll to watch it build</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# =================================================================== CHECKS
+   Until 17 Sep 2026 this section was the orbit: twelve of the report's
+   check cards painted onto canvases and spun round a "Forty-four checks"
+   heading. The first-visitor audit counted about four and a half phone
+   screens between the hero and the pricing link, the scroll-built report
+   above and the orbit both saying 44, and the owner removed the orbit
+   that day. What it carried that nothing else on the page says stays:
+   the free and Premium split, as lengths of FREE_CHECKS and
+   PREMIUM_CHECKS, and the link to the full list. The offer itself is in
+   the hero dek, in the one sentence the site uses for it. #}
+<section class="lx-section lx-checks lx-plan" id="checks">
+    <div class="lx-wrap lx-centre">
+        <p class="lx-eyebrow">What we check</p>
+        <p class="lx-plan-tiers">
+            <span class="lx-tier-label lx-tier-free">{{ icons.icon('unlock') }} {{ free_check_count }} free on every report</span>
+            <span class="lx-plan-tiers-sep" aria-hidden="true">&middot;</span>
+            <span class="lx-tier-label lx-tier-premium">{{ icons.icon('lock') }} {{ premium_check_count }} more with Premium</span>
+        </p>
+        <p class="lx-plan-more">
+            <a class="lx-plan-more-btn" href="/premium#all-checks">See pricing for the full list of {{ pillars.checks }} &rsaquo;</a>
+        </p>
+    </div>
+</section>
 
 {# ---------------------------------------------------------------
    Restored 26 Aug 2026. The rebuild took these out; they are the
@@ -493,22 +534,6 @@
     </div>
 </section>
 
-<section class="accuracy-strip" data-animate>
-    <div class="accuracy-strip-inner">
-        <div class="accuracy-strip-copy">
-            <h2 class="accuracy-strip-heading">Think a figure is wrong? Say so, publicly.</h2>
-            <p>Every card on every report has an &ldquo;Is this wrong?&rdquo; link. We check each challenge against its official source and publish the outcome on a public log, including every time we were wrong.</p>
-        </div>
-        {% if accuracy_counts %}
-        <div class="accuracy-strip-stats">
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.total }}</strong> figure{{ '' if accuracy_counts.total == 1 else 's' }} challenged</span>
-            <span class="accuracy-strip-stat"><strong>{{ accuracy_counts.fixed }}</strong> {{ 'was' if accuracy_counts.fixed == 1 else 'were' }} wrong, now fixed</span>
-        </div>
-        {% endif %}
-        <a class="accuracy-strip-link" href="/accuracy">Read the accuracy log &rsaquo;</a>
-    </div>
-</section>
-
 <section class="landing-section">
     <span class="section-pill" data-animate>Questions</span>
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
@@ -533,26 +558,23 @@
        Later the same day (first-visitor audit item D6) the typed list of
        thirteen gave way to OFFICIAL_SOURCES in main.py, read from the
        source each check names, which is also what /methodology lists and
-       what "official sources" counts further down this page. The typed
+       what "official sources" counts in the trust section (higher up the
+       page since 18 Sep 2026, item E1). The typed
        list had left out bodies Premium names, NHS England and the Bus
-       Open Data Service among them. The belt's duration grows with the
-       list (--sources-n in style.css), so a longer list does not scroll
-       faster.
-       A continuous ticker of the sources, the strongest content this
-       site has. Two passes of the same list make the loop seamless;
-       hover or keyboard focus pauses it; prefers-reduced-motion stops
-       it entirely and falls back to a wrapped row. #}
-    <div class="sources-marquee">
-        <div class="sources-marquee-track" style="--sources-n: {{ official_sources | length }}">
-            {% for pass_num in range(2) %}
-            {% for body in official_sources %}
-            <a class="sources-strip-item" href="{{ body.url }}" target="_blank" rel="noopener"{% if body.full_name != body.name %} title="{{ body.full_name }}"{% endif %}{% if pass_num == 1 %} aria-hidden="true" tabindex="-1"{% endif %}>
-                <span class="sources-strip-icon">{{ icons.icon(body.icon) }}</span>
-                <span class="sources-strip-name">{{ body.name }}</span>
-            </a>
-            {% endfor %}
-            {% endfor %}
-        </div>
+       Open Data Service among them.
+       Until 18 Sep 2026 this was a continuous ticker: two passes of the
+       list sliding sideways for ever. The owner's rule is no auto-sliding
+       carousels, and the first-visitor audit (item E1) counted it as one,
+       so it is a still, wrapped row of the list, once: every body can be
+       read without waiting for it to come round, and a keyboard meets
+       each link once rather than chasing a moving target. #}
+    <div class="sources-strip-list">
+        {% for body in official_sources %}
+        <a class="sources-strip-item" href="{{ body.url }}" target="_blank" rel="noopener"{% if body.full_name != body.name %} title="{{ body.full_name }}"{% endif %}>
+            <span class="sources-strip-icon">{{ icons.icon(body.icon) }}</span>
+            <span class="sources-strip-name">{{ body.name }}</span>
+        </a>
+        {% endfor %}
     </div>
     <p class="sources-strip-note">
         Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly
@@ -588,8 +610,9 @@
                 <input type="text" id="contact-house" name="house_number" placeholder="37" autocomplete="off">
             </div>
             <button type="submit">Run the checks</button>
-            {# The source count is the list's length since 18 Sep 2026 (item D6); it was a typed 13. #}
-            <p class="lx-contact-note">44 checks &middot; {{ official_sources | length }} official sources &middot; no card needed</p>
+            {# The source count is the list's length since 18 Sep 2026 (item D6); it was a typed 13.
+               The check count is CHECK_COUNT since the same day (E fix pass); it was a typed 44. #}
+            <p class="lx-contact-note">{{ pillars.checks }} checks &middot; {{ official_sources | length }} official sources &middot; no card needed</p>
         </form>
     </div>
 </section>
@@ -775,7 +798,9 @@
         if (typeof d.avg_price === 'number') {
             out.push(['Sold price', '£' + Math.round(d.avg_price).toLocaleString('en-GB'), '']);
         }
-        if (typeof d.crime_total === 'number') out.push(['Crime', d.crime_total + ' recorded', '']);
+        /* With its thousands separator, as the report writes it: "2291
+           recorded" until 18 Sep 2026 (E fix pass). */
+        if (typeof d.crime_total === 'number') out.push(['Crime', d.crime_total.toLocaleString('en-GB') + ' recorded', '']);
         return out.slice(0, 5);
     }
 
@@ -787,6 +812,9 @@
         el.place.textContent = [d.admin_district, d.region].filter(Boolean).join(', ');
         el.grade.textContent = o.grade || '';
         el.grade.hidden = !o.grade;
+        /* The card is a link since 18 Sep 2026, and it opens the report
+           it is showing: the same "+" for the space the text link uses. */
+        strip.href = '/property?postcode=' + encodeURIComponent(d.postcode).replace(/%20/g, '+');
         /* Four cells are built once and then rewritten in place. Tearing
            the row down and rebuilding it on every rotation registered a
            small layout shift each time, several times a minute for as
@@ -855,6 +883,10 @@
                tab is in the background: repainting off-screen only burns
                battery and books layout shifts nobody saw. */
             if (document.hidden || strip.getBoundingClientRect().bottom < 0) return;
+            /* Nor under a pointer resting on it (18 Sep 2026): the card
+               is a link now, and it should not change report between
+               the reader aiming at it and clicking. */
+            if (strip.matches(':hover')) return;
             i = (i + 1) % loaded.length;
             paint(loaded[i]);
         }, 4000);
@@ -1041,7 +1073,7 @@
         if (seed.flood_zone) rows.push(['Flood', seed.flood_zone.replace(/\s*\(.*\)$/, '')]);
         if (typeof seed.schools_good_pct === 'number') rows.push(['Schools', seed.schools_good_pct + '% good']);
         if (typeof seed.avg_price === 'number') rows.push(['Sold price', '£' + Math.round(seed.avg_price).toLocaleString('en-GB')]);
-        if (typeof seed.crime_total === 'number') rows.push(['Crime', seed.crime_total + ' recorded']);
+        if (typeof seed.crime_total === 'number') rows.push(['Crime', seed.crime_total.toLocaleString('en-GB') + ' recorded']);
         if (rows.length >= 3) {
             const holder = document.getElementById('lx-build-chips');
             rows.slice(0, 4).forEach(function (r, i) {
@@ -1098,8 +1130,10 @@
             });
             doneHead = document.getElementById('lx-build-done-head');
 
-            /* The page just grew ~2.5 screens above the coverage map;
-               its parallax cached geometry at load, so re-measure. */
+            /* The page just grew ~2.5 screens; anything that cached its
+               geometry at load re-measures. (Until 18 Sep 2026 this was
+               above the coverage map, whose parallax needed it most; the
+               section now sits below it, and the resize stays harmless.) */
             window.dispatchEvent(new Event('resize'));
         }
     }

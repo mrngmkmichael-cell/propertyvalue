@@ -49,6 +49,17 @@ def list_items(user_id: int) -> list[dict]:
         return [_item_dict(session, i) for i in items]
 
 
+def saved_urns(user_id: int) -> set[int]:
+    """The URNs on one account's shortlist, in a single statement. Added
+    18 Sep 2026 for the admissions hub's Save column: list_items reads two
+    more rows per saved school, which a page that only needs to know
+    "saved or not" for every row has no use for."""
+    with get_session() as session:
+        return set(session.scalars(
+            select(SchoolShortlistItem.urn).where(SchoolShortlistItem.user_id == user_id)
+        ))
+
+
 def save_item(user_id: int, urn: int, note: str) -> None:
     with get_session() as session:
         existing = session.scalar(

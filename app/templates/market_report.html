@@ -86,12 +86,15 @@
 <p class="notice notice-error">Couldn't load house price data right now. Try again shortly.</p>
 {% endif %}
 
+{# "search it directly" went to the homepage until 18 Sep 2026
+   (first-visitor audit E5). It goes to a box here: _address_box.html. #}
 <section class="report-section">
     <h2>Check a specific area</h2>
     <p class="section-sub">
         This snapshot covers averages for whole council areas. For a specific postcode's own sold price history,
-        schools, crime and flood risk, <a href="/">search it directly</a>, or browse an
+        schools, crime and flood risk, <a href="#market-check-postcode">search it directly</a>, or browse an
         <a href="/area/SW1A">area guide</a> for any UK postcode district.
     </p>
+    {% with box_id="market-check-postcode", box_label="Check an address", box_src="market-report" %}{% include "_address_box.html" %}{% endwith %}
 </section>
 {% endblock %}

@@ -1,4 +1,10 @@
 {% extends "base.html" %}
+{# The page asks for a postcode itself, so the header drops its own box
+   (18 Sep 2026, first-visitor audit E5): on a phone the two sat within
+   one screen. Set here rather than in a route because about twenty
+   routes render this page. The flag is the one base.html reads
+   (HERO_SEARCH_PATHS). #}
+{% set page_asks_for_a_postcode = True %}
 
 {% block title %}Page not found | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
@@ -14,10 +20,14 @@
     <button type="submit">Search</button>
 </form>
 
+{# Every link but one was a school page until 18 Sep 2026 (audit E5);
+   running costs and council tax are the other questions people bring. #}
 <section class="report-section">
     <h2>Or start from the data</h2>
     <ul>
         <li><a href="/areas">Area guides</a> for every postcode district: prices, schools, flood risk, crime.</li>
+        <li><a href="/running-costs">Running costs by postcode</a>: council tax, energy, rent and stamp duty for an address.</li>
+        <li><a href="/running-costs/council-tax">Council tax by council</a>: every band's bill, council by council.</li>
         <li><a href="/schools/admissions">School admission distances by council</a>: how far each school admitted from last time.</li>
         <li><a href="/schools/tightest-catchments">England's tightest school catchments</a> and <a href="/schools/catchment-house-prices">what living within reach of them costs</a>.</li>
         <li><a href="/schools/independent">Private schools by council</a>.</li>

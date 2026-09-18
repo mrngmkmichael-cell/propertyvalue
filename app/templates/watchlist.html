@@ -119,7 +119,11 @@
 {% if opened_reports %}
 <section class="landing-section" style="margin-top: 2.5rem;">
     <h2 class="landing-heading">Reports you've opened</h2>
-    <p class="landing-subheading">Full reports you've already used. Save one to keep notes on it and get an email when something changes.</p>
+    {# "get an email when something changes" until 18 Sep 2026
+       (first-visitor audit E5). The triggers are named, as in the line at
+       the top of this page, from ALERT_TRIGGERS_LIST in main.py, and the
+       email is promised only where one can be sent. #}
+    <p class="landing-subheading">Full reports you've already used. Save one to keep notes on it{% if alerts_configured %}, and {% if current_user.email_verified or not verification_available() %}we email you{% else %}once you confirm your email address, we email you{% endif %} when one of these happens to it: {{ alert_triggers_list }}. Never on a schedule{% endif %}.</p>
     <div class="myprops-opened-list">
         {% for r in opened_reports %}
         <div class="myprops-opened-row">

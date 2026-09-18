@@ -2229,7 +2229,10 @@ def test_the_four_404_shapes_from_search_console(client, fake_place):
     assert client.get("/schools/grammar").status_code == 200          # the literal routes still win
     # 4. The guide no longer links to an outcode-only report.
     body = client.get("/area/AB12").text
-    assert "/property?postcode=AB12" not in body and 'href="/#postcode=AB12"' in body
+    # Nor, since 18 Sep 2026 (first-visitor audit E5), to the homepage:
+    # it links to its own box. The homepage still reads an old /#postcode= link.
+    assert "/property?postcode=AB12" not in body and 'href="/#postcode=AB12"' not in body
+    assert 'href="#area-check-postcode"' in body and 'id="area-check-postcode"' in body
     assert "location.hash" in client.get("/").text
 
 

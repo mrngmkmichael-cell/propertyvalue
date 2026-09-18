@@ -360,8 +360,39 @@
    is the full picture a buyer weighs up: what every report gives away,
    against what Premium adds. #}
 <p class="section-sub"><a href="/alternatives">How this compares with Propbar, Crystal Roof and Locrating, feature by feature →</a></p>
+{# The anchor moved from the two columns to this wrapper on 18 Sep 2026,
+   because a phone hides those columns and the homepage's "full list"
+   link would otherwise land on nothing. #}
+<div id="all-checks">
 <p class="premium-preview-lede">Every kind of check on the report, and which plan it comes with:</p>
-<div class="premium-tiers" id="all-checks">
+{# On a phone, the same checks under the report's six group names, each
+   group a tap to open (18 Sep 2026, first-visitor audit item E6). The
+   two columns below, stacked with one card per row, made this list about
+   fifteen of the page's seventeen screens on a 375px phone, and sorted
+   it by plan when a buyer looks for flood or schools. Each group says how many of
+   its checks come with Premium, counted from the plan lists by
+   checks_by_group in main.py. A wider screen keeps the two columns below
+   and never shows this; the stylesheet swaps them. #}
+<div class="premium-groups">
+    <p class="premium-groups-note"><span class="lx-tier-free">{{ free_checks | length }} free</span> on every report, with no account. <span class="lx-tier-premium">{{ premium_checks | length }} more with Premium</span>, free on your first property with no card.</p>
+    {% for group in check_groups %}
+    <details class="premium-group">
+        <summary><span class="premium-group-name">{{ group.name }}</span><span class="visually-hidden">: </span>
+            <span class="premium-group-count">{{ group.count }}</span></summary>
+        <ul class="premium-group-checks">
+            {% for icon, title, value, source, locked in group.checks %}
+            <li class="premium-group-check">
+                <span class="lx-check-icon lx-tone-plain">{{ icons.icon(icon) }}</span>
+                <p class="lx-check-title">{{ title }}</p>
+                <p class="premium-group-value">{{ value }}</p>
+                <p class="premium-group-source">{% if locked %}<span class="lx-tier-premium">Premium</span> &middot; {{ source }} &middot; {{ premium_reach_label(title) }}{% else %}<span class="lx-tier-free">Free</span> &middot; {{ source }}{% endif %}</p>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endfor %}
+</div>
+<div class="premium-tiers">
     <div>
         <div class="lx-tier-head">
             {{ icons.icon('unlock') }}
@@ -402,6 +433,7 @@
             {% endfor %}
         </div>
     </div>
+</div>
 </div>
 
 

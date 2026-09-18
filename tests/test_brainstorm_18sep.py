@@ -449,9 +449,11 @@ def test_the_official_strip_names_only_official_bodies(client):
     strip = body[body.index('class="sources-strip"'):]
     strip = strip[:strip.index("</section>")]
     names = re.findall(r'class="sources-strip-name">([^<]+)<', strip)
-    # Two passes of one list make the ticker loop.
-    first_pass = names[:len(names) // 2]
-    assert first_pass == names[len(names) // 2:]
+    # Two passes of one list made the ticker loop until 18 Sep 2026, when
+    # the first-visitor audit (item E1) stopped the ticker: the list now
+    # appears once, as a still row.
+    first_pass = names
+    assert len(set(first_pass)) == len(first_pass)
     assert "OpenStreetMap" not in first_pass and "Defra" in first_pass
     # The figure quoted on the same page is the strip's own length, which
     # since 18 Sep 2026 (first-visitor audit item D6) is OFFICIAL_SOURCES

@@ -1204,6 +1204,11 @@ ALERT_TRIGGERS_LIST = (
     "a sale is recorded, a new energy certificate is lodged, "
     "the flood zone changes or area prices change direction"
 )
+# A global as well (18 Sep 2026, first-visitor audit E5), for the pages
+# that promise the email without a home in hand: the sign-up benefits,
+# reached by two routes, and the "Reports you've opened" line on My
+# properties. Both still promised an email "when something changes".
+templates.env.globals["alert_triggers_list"] = ALERT_TRIGGERS_LIST
 
 
 def alert_triggers(house_number: str | None) -> tuple[str, ...]:
@@ -1455,13 +1460,17 @@ def _thousands(value) -> str:
 templates.env.filters["thousands"] = _thousands
 
 
-def _day_label(value) -> str:
+def _day_label(value, full_month: bool = False) -> str:
     """"2026-07-03" as "3 Jul 2026"; anything else passes through unchanged.
     Sale dates and timetable weeks printed in ISO form on the area guides
-    and school pages until 14 Sep 2026, which read as a database dump."""
+    and school pages until 14 Sep 2026, which read as a database dump.
+    full_month gives "3 July 2026", for a date said once in a sentence
+    rather than down a column (the buying guide's base rate, 18 Sep 2026,
+    first-visitor audit E5)."""
     try:
         year, month, day = str(value)[:10].split("-")
-        return f"{int(day)} {_MONTH_NAMES[int(month) - 1][:3]} {int(year)}"
+        name = _MONTH_NAMES[int(month) - 1]
+        return f"{int(day)} {name if full_month else name[:3]} {int(year)}"
     except (ValueError, IndexError):
         return str(value or "")
 
@@ -2615,6 +2624,53 @@ PREMIUM_CHECKS = (
     ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
 )
 
+# The report's six groups, as its tiles name them, each with its checks
+# in the order the report lays out their cards (18 Sep 2026, first-visitor
+# audit item E6). /premium on a 375px phone was about seventeen screens:
+# all 44 checks one per row, split by plan rather than by anything a
+# buyer looks for, under 9.5px titles. On a phone it now lists them under
+# these names, each group opening on a tap and saying how many of its
+# checks come with Premium. The names are property.html's group headings,
+# and a test holds each group to the cards a real report renders under
+# that heading. Only titles are kept here: which plan a check comes with,
+# and so every count, is read from FREE_CHECKS and PREMIUM_CHECKS.
+REPORT_GROUPS = (
+    ('Value & Market', ('Local Market', 'Council Tax', 'Valuation Estimate', 'Costs & Affordability',
+                        'Rental Analysis', 'Area Prosperity', 'Price Trend')),
+    ('Property & Condition', ('Energy Efficiency', 'Extended or Modified', 'Aspect')),
+    ('Risk & Safety', ('Flood Risk', 'Surface Water Risk', 'Sewage Discharge', 'Noise', 'Crime & Safety',
+                       'Radon Gas', 'Subsidence Risk', 'Air Quality', 'Historic Contamination', 'Mining Risk')),
+    ('Planning & Heritage', ('Planning Constraints', 'Environmental Designations', 'Development Nearby',
+                             'Listed Buildings')),
+    ('Location & Connectivity', ('Schools Nearby', 'State Schools', 'Private Schools', 'Universities',
+                                 'School Catchment Areas', 'Nearby Essentials', 'Getting Around',
+                                 'Health Services', 'Bus Service', 'Broadband', 'Mobile Signal')),
+    ('Area & Community', ('Household Income', 'Since 2011', 'Deprivation', 'Occupation', 'Qualification',
+                          'Age Profile', 'Housing Types & Tenure', 'Ethnicity, Religion & Origin',
+                          'Health, Relationships & Social Grade')),
+)
+
+
+def checks_by_group() -> list[dict]:
+    """REPORT_GROUPS filled in from the two plan lists, read when called:
+    each group's checks as (icon, title, what it shows, source, premium)
+    and its count in words, "10 checks, 5 with Premium". A title the
+    lists no longer hold drops out of its group, and a group left with
+    nothing is not shown."""
+    premium = {title for _, title, _, _ in PREMIUM_CHECKS}
+    by_title = {check[1]: check for check in FREE_CHECKS + PREMIUM_CHECKS}
+    groups = []
+    for name, titles in REPORT_GROUPS:
+        checks = [by_title[title] + (title in premium,) for title in titles if title in by_title]
+        if not checks:
+            continue
+        locked = sum(1 for check in checks if check[4])
+        count = f"{len(checks)} check{'s' if len(checks) != 1 else ''}, " + (
+            f"{locked} with Premium" if locked else "all free")
+        groups.append({"name": name, "checks": checks, "total": len(checks), "premium": locked, "count": count})
+    return groups
+
+
 # Who publishes what the checks read, as one list (18 Sep 2026,
 # first-visitor audit item D6). The homepage said "13 official sources",
 # typed, with OpenStreetMap among them; the wait page counted "0 of 19
@@ -3705,11 +3761,39 @@ def _boe_chart(history: list[dict]) -> dict | None:
     }
 
 
+# The free report's checks as the buying guide names them (18 Sep 2026,
+# first-visitor audit E5): each by its title in FREE_CHECKS and the words
+# the guide uses. It said "Flood, subsidence, radon, contamination,
+# mining, planning, sold prices, EPC, crime and schools", and subsidence,
+# contamination and mining are three of the locked checks. A name is said
+# only while its check is in FREE_CHECKS, so a check that moves behind
+# the wall drops out of the sentence instead of being promised free.
+BUYING_GUIDE_FREE_NAMES = (
+    ("Flood Risk", "flood"),
+    ("Surface Water Risk", "surface water"),
+    ("Radon Gas", "radon"),
+    ("Noise", "noise"),
+    ("Planning Constraints", "planning constraints"),
+    ("Local Market", "sold prices"),
+    ("Energy Efficiency", "the EPC"),
+    ("Crime & Safety", "crime"),
+    ("Schools Nearby", "schools"),
+)
+
+
+def buying_guide_free_names() -> str:
+    free = {title for _, title, _, _ in FREE_CHECKS}
+    names = [words for title, words in BUYING_GUIDE_FREE_NAMES if title in free]
+    return _check_names(names) if names else ""
+
+
 @app.get("/buying-guide")
 async def buying_guide(request: Request):
     context = base_context(request)
     context["boe"] = await boe_rate.current_rate()
     context["boe_chart"] = _boe_chart(context["boe"]["history"]) if context["boe"] else None
+    context["free_check_count"] = len(FREE_CHECKS)
+    context["free_check_names"] = buying_guide_free_names()
     return templates.TemplateResponse(request, "buying_guide.html", context)
 
 
@@ -3800,8 +3884,13 @@ ANON_PAGE_CACHE_TTL_S = 600
 # not stored. Whether the next month goes on a fifteenth page family or
 # on deepening the five that exist turns on this, and a hidden field
 # costs nothing and identifies nobody.
+# The last five are the boxes that replaced links to the homepage on
+# 18 Sep 2026 (first-visitor audit E5, _address_box.html): unmarked, a
+# search from them would have counted as the homepage.
 REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide",
-                  "running-costs", "council-hub", "areas", "premium-success"}
+                  "running-costs", "council-hub", "areas", "premium-success",
+                  "admissions-index", "tightest", "independent", "market-report",
+                  "buying-guide"}
 REPORT_SOURCE_PATH_PREFIX = "/from/"
 
 
@@ -4284,29 +4373,41 @@ _last_gather_timings: dict[str, float] = {}
 # A member named here that no longer exists would silently stop its
 # source ever ticking, so a test asserts every one of these is still
 # wired into the gather.
+#
+# Each row is the buyer's question, then a middle dot, then who publishes
+# the answer (18 Sep 2026, first-visitor audit E2). Until then the rows
+# were dataset names, "Nearby sold comparables", "ONS demographics",
+# "Noise & air quality models", which told a buyer what we were reading
+# rather than what they would learn. The keys are unchanged, so the done
+# list the ready endpoint returns still matches the rows. A row still
+# stands for its source and ticks when the one member named here comes
+# back, which is why the demographics row asks "Who lives here" although
+# its member is the deprivation table read beside the census ones. No
+# row carries a comma: the page names what it is still waiting for as
+# "A, B and C", and a comma inside a row would split it in two there.
 GATHER_SOURCE_LABELS = {
-    "sold-prices-for-postcode": "HM Land Registry",
+    "sold-prices-for-postcode": "What it last sold for · HM Land Registry",
     # Its own line rather than folded into Land Registry: at 6-7 s cold
     # it is the longest call in the gather, and a bar that hit 100% while
     # this was still running left the reader staring at a full bar.
-    "-nearby-comparables": "Nearby sold comparables",
-    "catchment-catchments-for": "Council admissions data",
-    "-epc-flow": "EPC Register",
-    "flood-zones-zone-for": "Environment Agency flood data",
-    "crime-summary-near": "Police.uk crime data",
-    "schools-db-school-landscape, lat, lon)": "Department for Education & Ofsted",
-    "area-stats-deprivation-for-lsoa, codes-get": "ONS demographics",
-    "noise-noise-near": "Noise & air quality models",
-    "radon-risk-near": "British Geological Survey",
-    "coal-mining-check-near": "Mining Remediation Authority",
-    "historic-landfill-check-near": "Historic landfill records",
-    "sewage-discharge-nearby-outfalls": "Sewage discharge records",
-    "broadband-coverage-for-postcode, canonical)": "Ofcom broadband & mobile",
-    "designations-check-all": "Planning designations",
-    "brownfield-sites-near": "Brownfield land registers",
-    "bus-service-stops-near": "Bus Open Data Service timetables",
-    "health-services-near": "NHS practice and A&E statistics",
-    "census-change-for-lsoa, codes-get": "ONS Census 2011 and 2021",
+    "-nearby-comparables": "What sold nearby · HM Land Registry",
+    "catchment-catchments-for": "Which school catchments it is in · Local councils",
+    "-epc-flow": "Energy rating and running costs · EPC register",
+    "flood-zones-zone-for": "Flood zone and live warnings · Environment Agency",
+    "crime-summary-near": "Crime reported nearby · Police.uk",
+    "schools-db-school-landscape, lat, lon)": "Schools nearby and their Ofsted ratings · DfE and Ofsted",
+    "area-stats-deprivation-for-lsoa, codes-get": "Who lives here · ONS census",
+    "noise-noise-near": "Road and rail noise and air quality · Defra",
+    "radon-risk-near": "Radon gas risk · British Geological Survey",
+    "coal-mining-check-near": "Whether a coal mining search is needed · Mining Remediation Authority",
+    "historic-landfill-check-near": "Former landfill sites nearby · Environment Agency",
+    "sewage-discharge-nearby-outfalls": "Storm overflow spills nearby · Environment Agency",
+    "broadband-coverage-for-postcode, canonical)": "Broadband speeds and mobile signal · Ofcom",
+    "designations-check-all": "Protected land and heritage sites · Natural England and Historic England",
+    "brownfield-sites-near": "Sites nearby that could take new homes · MHCLG planning data",
+    "bus-service-stops-near": "How often the buses run · DfT Bus Open Data Service",
+    "health-services-near": "GP list sizes and A&E waits · NHS England",
+    "census-change-for-lsoa, codes-get": "How the area changed since 2011 · ONS census",
 }
 # In the order the building page lists them.
 GATHER_SOURCE_ORDER = list(GATHER_SOURCE_LABELS.values())
@@ -4511,13 +4612,16 @@ async def _building_context(request: Request, canonical: str, house_number: str)
     clutter and came out, and with it a cache read and a schools query
     on every wait page."""
     ctx = base_context(request)
-    ctx["building_postcode"] = canonical
+    # With its space, whatever the lookup handed over (18 Sep 2026,
+    # first-visitor audit E2); the page sets it in the report's mono face.
+    postcode = _spaced_postcode(canonical)
+    ctx["building_postcode"] = postcode
     ctx["building_house_number"] = house_number
     ctx["build_sources"] = GATHER_SOURCE_ORDER
     # The way out offered after a minute's wait (18 Sep 2026, first-visitor
     # audit D5): a link, not the box, and only to a district that has a
     # guide, so the page never sends anyone to a 404.
-    outcode = canonical.split(" ", 1)[0]
+    outcode = postcode.split(" ", 1)[0]
     ctx["building_outcode"] = outcode if outcode in KNOWN_OUTCODES else ""
     return ctx
 
@@ -4723,10 +4827,12 @@ async def property_valuation(request: Request, postcode: str = "", house_number:
             context["valuation"], context["price_per_sqm"], context["valuation_error"], False,
             premium_unlocked, lock_label, lock_redirect,
         )),
+        # Without a house number the pop-up speaks of the postcode's homes,
+        # as the page's own render does (18 Sep 2026, item E7).
         "body": str(val.valuation_body(
             context["valuation"], context["price_per_sqm"], context["valuation_error"],
             context["valuation_floor_area_known"], False,
-            premium_unlocked, lock_label, lock_redirect,
+            premium_unlocked, lock_label, lock_redirect, postcode_only=not house_number,
         )),
     })
 
@@ -4808,7 +4914,14 @@ def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct,
     comparables list. Shared by the gather and /api/property/valuation so
     the two cannot drift."""
     context["valuation_floor_area_known"] = bool(subject_floor_area)
-    context["valuation"] = valuation.estimate_value(comparables, subject_floor_area, growth_pct)
+    # Without a house number no home is chosen, so the estimate is for the
+    # homes around the postcode: every recent sale nearby, any size, and
+    # worded that way (18 Sep 2026, first-visitor audit item E7). It was
+    # narrowed to within 5% of the newest certificate's floor area, 57
+    # Malden Hill Gardens' 122 m² on KT3 4HX, and called "this property's".
+    own = bool(house_number.strip())
+    context["valuation"] = valuation.estimate_value(
+        comparables, subject_floor_area if own else None, growth_pct, any_size=not own)
     # "This home last sold at £X per m²" only with a house number (18 Sep
     # 2026, first-visitor audit item D1). Without one, the floor area is
     # the newest certificate's home and the sales are the whole
@@ -4818,7 +4931,6 @@ def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct,
     # 18 Sep 2026, D1 review: "At that rate this home's 122 m² would be
     # worth about £X" goes with it, since that floor area is the newest
     # certificate's home too; the floor area is passed only for a chosen home.
-    own = bool(house_number.strip())
     context["price_per_sqm"] = valuation.price_per_sqm(
         comparables, subject_floor_area if own else None,
         (context.get("transactions") or []) if own else [], growth_pct,
@@ -5275,7 +5387,11 @@ async def _full_property_gather(
     if context.get("property_detail", {}).get("year_built"):
         context["lead_plumbing_era"] = _likely_pre_1970(context["property_detail"]["year_built"])
 
-    context["overview"] = overview_score.compute(context, premium_unlocked=premium_unlocked)
+    # Without a house number the certificates are every home's at the
+    # postcode, so the score's energy positive is the postcode's own, or
+    # none (18 Sep 2026, first-visitor audit item E7; see overview_score).
+    context["overview"] = overview_score.compute(
+        context, premium_unlocked=premium_unlocked, postcode_only=not (house_number or "").strip())
 
     # Catchment polygon shapes are the visual equivalent of the
     # locked "School Catchment Areas" card - stripping them for
@@ -5519,6 +5635,23 @@ async def api_extension_login(request: Request):
 
 
 _FULL_POSTCODE_RE = re.compile(r"^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$", re.I)
+
+
+def _spaced_postcode(postcode: str) -> str:
+    """A full postcode in capitals with its one space, the way postcodes.io
+    and the report's own URLs and headings write it: "bn11ee" and
+    "BN1  1EE" both read "BN1 1EE". Anything that is not a full postcode
+    comes back trimmed and in capitals and is otherwise left alone.
+
+    Lifted out of _home_from_query on 18 Sep 2026 so the wait page's
+    heading uses the same rule (first-visitor audit E2): the audit read
+    "Building the report for BN11EE" there and wondered whether the right
+    place had been searched."""
+    cleaned = (postcode or "").strip().upper()
+    if not _FULL_POSTCODE_RE.match(cleaned):
+        return cleaned
+    compact = re.sub(r"\s+", "", cleaned)
+    return f"{compact[:-3]} {compact[-3:]}"
 
 
 async def _immediate(value):
@@ -5765,7 +5898,10 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "district_crime": ok(crime_outcode_result),
         "location": location,
     }
-    payload["overview"] = overview_score.compute(score_context, premium_unlocked=False)
+    # A postcode, never a house number, so its certificates are every
+    # home's there and the energy positive is the postcode's, as on a site
+    # report searched the same way (18 Sep 2026, item E7).
+    payload["overview"] = overview_score.compute(score_context, premium_unlocked=False, postcode_only=True)
 
     payload["summary"] = {
         "avg_price": _average_amount(tx_result),
@@ -6510,7 +6646,8 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         "sections": sections,
         "area_level": area_level,
         "district": postcode.strip().upper() if area_level else None,
-        "overview": overview_score.compute(full_context, premium_unlocked=True),
+        # Postcode-only, as /api/extension-report's score (18 Sep 2026, E7).
+        "overview": overview_score.compute(full_context, premium_unlocked=True, postcode_only=True),
     }
     _cache.set(cache_key, payload)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
@@ -6705,6 +6842,36 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
     return templates.TemplateResponse(request, "comparables.html", context)
 
 
+def _postcode_only_view(report: dict, house_number: str) -> dict:
+    """What the PDF and its at-a-glance rows need to word a postcode
+    searched without a house number (18 Sep 2026, first-visitor audit item
+    E7): whether it was, and the home the newest certificate is, named as
+    the report's own property line names it. The PDF still said "Last
+    sale" and set the newest certificate out as the home being bought."""
+    if (house_number or "").strip():
+        return {"postcode_only": False, "newest_certificate_home": ""}
+    certs = report.get("certificates") or []
+    home = _epc_home_label(certs[0].get("address", ""), _sale_streets(report.get("transactions") or [])) if certs else ""
+    return {"postcode_only": True, "newest_certificate_home": home}
+
+
+def _valuation_stamp_duty(valuation: dict | None, location: dict) -> dict | None:
+    """Stamp duty on the valuation estimate, England and Northern Ireland
+    only, for the PDF and the side-by-side rows. An estimate for the homes
+    around a postcode (any size, no home chosen) says so in its basis
+    (18 Sep 2026, E7), where it was "the valuation estimate" of one home."""
+    valuation = valuation or {}
+    if not valuation.get("estimate") or (location.get("country") or "England") not in ("England", "Northern Ireland"):
+        return None
+    price = float(valuation["estimate"])
+    return {
+        "price": price, "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
+        "additional": _stamp_duty(price, additional=True),
+        **({"basis": "the middle of the last year's sales of any size around this postcode"}
+           if valuation.get("any_size") else {}),
+    }
+
+
 def _pdf_context(report: dict, running_costs: dict | None, location: dict, house_number: str) -> dict:
     """Everything pdf_report_full.html renders, from the same gathered
     dataset the live report shows plus the running-costs answer. Kept
@@ -6717,14 +6884,10 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
     report["buyer_questions"] = solicitor_questions.grouped(
         solicitor_questions.build({**report, "house_number": house_number})
     )
-    valuation = report.get("valuation") or {}
-    stamp_duty_valuation = None
-    if valuation.get("estimate") and (location.get("country") or "England") in ("England", "Northern Ireland"):
-        price = float(valuation["estimate"])
-        stamp_duty_valuation = {
-            "price": price, "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
-            "additional": _stamp_duty(price, additional=True),
-        }
+    # And whether the document speaks of one home or of the postcode, the
+    # report's D1 wording (18 Sep 2026, E7): see _postcode_only_view.
+    report.update(_postcode_only_view(report, house_number))
+    stamp_duty_valuation = _valuation_stamp_duty(report.get("valuation"), location)
     checklist = pdf_checklist.build(report, rc, stamp_duty=stamp_duty_valuation)
     home = rc.get("home") or {}
     address = ""
@@ -6742,6 +6905,9 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
         "checklist_groups": pdf_checklist.grouped(checklist),
         "address": address,
         "house_number": house_number,
+        # "middle of the last 10 of 29 recorded sales here, 2016 to 2025",
+        # the report's own words for the postcode's price (18 Sep 2026, E7).
+        "postcode_sales_label": pdf_checklist.postcode_sales_label(rc.get("sales") or {}) if report["postcode_only"] else "",
         "generated_date": f"{datetime.date.today().day} {datetime.date.today():%B %Y}",
         "postcode_url": quote(location["postcode"]),
         "house_number_url": quote(house_number),
@@ -8792,8 +8958,7 @@ def _home_from_query(home: str, house_number: str) -> dict | None:
         return None
     # "M145TG" and "M14 5TG" are the same postcode; the report's URLs
     # and headings use postcodes.io's spacing, so this does too.
-    compact = re.sub(r"\s+", "", postcode)
-    postcode = f"{compact[:-3]} {compact[-3:]}"
+    postcode = _spaced_postcode(postcode)
     if number and not _HOME_HOUSE_NUMBER_RE.match(number):
         number = ""
     return {
@@ -8819,6 +8984,9 @@ def premium_info(request: Request, checkout: str = "", error: str = "",
     context["portal_error"] = error == "portal_failed"
     context["free_checks"] = FREE_CHECKS
     context["premium_checks"] = PREMIUM_CHECKS
+    # The same checks under the report's group names, for a phone (18 Sep
+    # 2026, first-visitor audit item E6).
+    context["check_groups"] = checks_by_group()
     # The home the buyer came from (17 Sep 2026). ?postcode= was the
     # locked PDF gate's spelling of the same thing until it moved to
     # ?home=&hn= that day (see property_pdf); still read, so a link made
@@ -9194,10 +9362,20 @@ def _with_query(url: str, key: str, value: str) -> str:
     return f"{url}{'&' if '?' in url else '?'}{key}={quote(value)}"
 
 
+def _login_for_saved_homes(next_url: str) -> bool:
+    """Is this log-in on the way to My properties? Opening it signed out
+    landed on a generic "Log in" with nothing about saved homes (18 Sep
+    2026, first-visitor audit E5), and that page is the door to the
+    return visit, which is when people pay. The page now heads itself
+    "Your saved homes" when that is where the visitor was going."""
+    return urlparse(next_url or "").path.rstrip("/") == "/watchlist"
+
+
 @app.get("/login")
 def login_form(request: Request, next: str = "/", error: str = ""):
     context = base_context(request)
     context["next"] = next
+    context["for_saved_homes"] = _login_for_saved_homes(next)
     context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "login.html", context)
 
@@ -9208,6 +9386,7 @@ def login_submit(
 ):
     context = base_context(request)
     context["next"] = next
+    context["for_saved_homes"] = _login_for_saved_homes(next)
     email = email.strip().lower()
 
     with db.get_session() as session:
@@ -9621,10 +9800,17 @@ def _user_for_verify_token(session, token: str) -> tuple[User | None, str]:
 
 
 def _verification_email_html(link: str) -> str:
+    # It said "so we can tell you when something changes on a property or
+    # school you follow" until 18 Sep 2026 (first-visitor audit E5, fix
+    # pass). Since C6 a move in recorded crime alone never sends an email,
+    # so the email names what does, from the list the pages use, and the
+    # school email for what it is: opted into on the shortlist.
     return (
         "<p>Hello,</p>"
-        "<p>Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can tell "
-        "you when something changes on a property or school you follow.</p>"
+        "<p>Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can "
+        f"email you when one of these happens to a home saved in My properties: {ALERT_TRIGGERS_LIST}. If you "
+        "ask for it on your school shortlist, we also email you when a council publishes a new admission "
+        "distance for a school you saved. Never on a schedule.</p>"
         f'<p><a href="{link}">Confirm my email</a></p>'
         "<p>The link works for three days. If you did not create an account, ignore this and nothing happens.</p>"
         "<p>UKPropertyInsight<br>ukpropertyinsight.co.uk</p>"
@@ -9988,14 +10174,10 @@ async def _compare_rows(postcode: str, house_number: str) -> dict:
         raise report
     if isinstance(rc, Exception):
         rc = {}
-    valuation = report.get("valuation") or {}
-    stamp_duty_valuation = None
-    if valuation.get("estimate") and (location.get("country") or "England") in ("England", "Northern Ireland"):
-        price = float(valuation["estimate"])
-        stamp_duty_valuation = {
-            "price": price, "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
-            "additional": _stamp_duty(price, additional=True),
-        }
+    # The PDF's rows, worded for the postcode where no home was saved with
+    # a number (18 Sep 2026, E7), so the two never read differently.
+    report = {**report, **_postcode_only_view(report, house_number)}
+    stamp_duty_valuation = _valuation_stamp_duty(report.get("valuation"), location)
     rows = pdf_checklist.build(report, rc, stamp_duty=stamp_duty_valuation)
     out = {
         "postcode": canonical, "house_number": house_number, "admin_district": location.get("admin_district", ""),
@@ -10206,7 +10388,12 @@ def _watchlist_alert_email_html(entries: list[dict], watchlist_url: str) -> str:
         + "".join(blocks) +
         f'<p style="margin:16px 0;"><a href="{watchlist_url}" style="color:#1f2a5a;">Open My properties</a></p>'
         '<p style="color:#8a8378;font-size:12px;line-height:1.5;">'
-        "You get this email only when something changes on a property saved in My properties, never on a schedule. "
+        # "only when something changes on a property" until 18 Sep 2026
+        # (first-visitor audit E5, fix pass): crime moves are listed on My
+        # properties but never send this email (C6), so the footer names
+        # the four things that do, from the list the pages use.
+        "You get this email only when one of these happens to a property saved in My properties, never on "
+        f"a schedule: {ALERT_TRIGGERS_LIST}. "
         f'Remove a property from <a href="{watchlist_url}" style="color:#8a8378;">My properties</a> and its alerts stop.'
         "</p></div>"
     )
@@ -11734,6 +11921,81 @@ async def api_school_search(q: str = ""):
     ]}, headers={"Cache-Control": "public, max-age=300"})
 
 
+# The phases a council hub can hold, as they read inside a sentence.
+# "Other" (a school GIAS gives no phase that groups) has no word of its
+# own, so a hub holding only those never names a phase in its title.
+_HUB_PHASE_WORDS = {"Primary": "primary", "Secondary": "secondary", "All-through": "all-through",
+                    "Nursery": "nursery", "Special": "special"}
+
+
+def _hub_rounds(years: list[str]) -> str:
+    """ "from the 2023/24 round", "from the 2023/24 and 2024/25 rounds"."""
+    if not years:
+        return ""
+    if len(years) == 1:
+        return f"from the {years[0]} round"
+    return f"from the {', '.join(years[:-1])} and {years[-1]} rounds"
+
+
+def _admissions_hub_coverage(council: dict, today: datetime.date | None = None) -> dict:
+    """What one council hub holds, read from its own rows (18 Sep 2026,
+    first-visitor audit E4).
+
+    Birmingham's hub listed 52 primary schools from the 2023/24 round and
+    never said so, so a parent of an older child read the whole table
+    before finding no secondary school in it. The line under the tiles now
+    names each phase held and the rounds its rows come from, and says
+    which of primary and secondary is missing. A hub holding one phase
+    names it in its title and description too (`only_phase`).
+
+    The application deadlines are the school page's own helper, once per
+    phase held, soonest first, grouped where they are for the same
+    September. Nursery and special schools get none: neither is admitted
+    through the national closing dates the helper knows.
+
+    No link to the council's own admissions page: the imported rows keep
+    the authority's name and nothing else, so there is none to give
+    rather than one guessed."""
+    held = []
+    for phase, rows in council.get("by_phase") or []:
+        years = sorted({(r.get("academic_year") or "").strip() for r in rows} - {""})
+        held.append((phase, [y for y in years if y[:2].isdigit()]))
+    names = [p for p, _ in held]
+    words = [_HUB_PHASE_WORDS.get(p, "other") for p in names]
+    missing = [p.lower() for p in ("Primary", "Secondary") if p not in names]
+    if len(held) == 1:
+        rounds = _hub_rounds(held[0][1])
+        sentence = f"{words[0].capitalize()} schools only" + (f", {rounds}." if rounds else ".")
+    elif held and all(years == held[0][1] for _, years in held):
+        rounds = _hub_rounds(held[0][1])
+        listed = f"{', '.join(words[:-1])} and {words[-1]}"
+        sentence = f"{listed.capitalize()} schools" + (f", {rounds}." if rounds else ".")
+    elif held:
+        clauses = [f"{w} schools {_hub_rounds(years) or 'with no round recorded'}"
+                   for w, (_, years) in zip(words, held)]
+        listed = f"{', '.join(clauses[:-1])} and {clauses[-1]}"
+        sentence = listed[0].upper() + listed[1:] + "."
+    else:
+        sentence = ""
+    if sentence and missing:
+        sentence += f" {' and '.join(missing).capitalize()} distances are not on this page."
+    deadlines = []
+    if "Primary" in names:
+        deadlines.append(_admissions_deadline("Primary", today))
+    if "Secondary" in names or "All-through" in names:
+        deadlines.append(_admissions_deadline("Secondary", today))
+    deadlines.sort(key=lambda d: d["deadline"])
+    groups = []
+    for d in deadlines:
+        if groups and groups[-1]["entry_year"] == d["entry_year"]:
+            groups[-1]["items"].append(d)
+        else:
+            groups.append({"entry_year": d["entry_year"], "items": [d]})
+    only = _HUB_PHASE_WORDS.get(names[0], "") if len(names) == 1 else ""
+    return {"sentence": sentence, "only_phase": only, "phase_word": f"{only} " if only else "",
+            "deadline_groups": groups}
+
+
 @app.get("/schools/admissions/{council_slug}")
 async def admissions_council(request: Request, council_slug: str):
     """One council's schools, each with how far it admitted from.
@@ -11754,6 +12016,19 @@ async def admissions_council(request: Request, council_slug: str):
             return templates.TemplateResponse(request, "404.html", context, status_code=404)
         _cache.set(cache_key, council)
     context["council"] = council
+    # First-visitor audit E4 (18 Sep 2026): the page said "Sign up to save
+    # the schools you care about" and a signed-in account then found
+    # nothing to save on any row. Each row now carries Save, or Saved for
+    # a school already on the shortlist, read in one statement for the
+    # whole page. Worked out per request and kept out of the cached
+    # council, which every visitor shares; a signed-in page is never in
+    # the anonymous HTML cache either (it carries the session cookie).
+    context["saved_urns"] = (
+        await asyncio.to_thread(school_shortlist.saved_urns, context["current_user"]["id"])
+        if context["current_user"] else set()
+    )
+    context["hub"] = hub = _admissions_hub_coverage(council)
+    phase_word = hub["phase_word"]
     context["canonical_url"] = f"{_public_base_url(request)}/schools/admissions/{council_slug}"
     _base = _public_base_url(request)
     context["og_council_url"] = f"{_base}/og/council/{council_slug}.png"
@@ -11763,9 +12038,9 @@ async def admissions_council(request: Request, council_slug: str):
     ])
     context["dataset_jsonld"] = _dataset_jsonld(
         _base,
-        name=f"{council['name']} school admission distances (last distance offered)",
+        name=f"{council['name']} {phase_word}school admission distances (last distance offered)",
         description=(f"How far from the school the last child offered a place lived, for "
-                     f"{council['count']} oversubscribed schools in {council['name']}, as published "
+                     f"{council['count']} oversubscribed {phase_word}schools in {council['name']}, as published "
                      f"by the council after offer day. Straight-line miles unless the council states otherwise."),
         path=f"/schools/admissions/{council_slug}", spatial=f"{council['name']}, England",
         years=council.get("years") or [], keywords=["school admissions", "catchment", "last distance offered", council["name"]],
@@ -11773,7 +12048,7 @@ async def admissions_council(request: Request, council_slug: str):
     )
     context["admissions_faqs_jsonld"] = _faq_jsonld([
         (f"How far do you need to live from a school in {council['name']} to get a place?",
-         f"It depends on the school. Across the {council['count']} {council['name']} schools with a "
+         f"It depends on the school. Across the {council['count']} {council['name']} {phase_word}schools with a "
          f"published figure, the last child admitted lived a median of {council['median_miles']} miles "
          f"away; the tightest was {council['tightest']['name']} at {council['tightest']['miles']} miles. "
          "The distance moves every year with demand."),
@@ -12190,6 +12465,13 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
             "outcode": label if _OUTCODE_RE.match(label) else None,
         })
     context["areas"] = areas_with_stats
+    # The guide for one full postcode had no save or share (18 Sep 2026,
+    # first-visitor audit E5), so a parent could not send it on. The
+    # link shared is this search, which the canonical URL drops.
+    if len(areas_with_stats) == 1 and areas_with_stats[0]["verdict_postcode"]:
+        context["postcode_share_url"] = (
+            f"{_public_base_url(request)}/schools/guide?q={quote(areas_with_stats[0]['verdict_postcode'])}"
+        )
     context["areas_param"] = _areas_param(area_list)
     context["can_add_more"] = len(area_list) < MAX_COMPARE_AREAS
 

@@ -84,12 +84,15 @@
 {% if admission_faqs_jsonld %}<script type="application/ld+json">{{ admission_faqs_jsonld | safe }}</script>{% endif %}
 {% endif %}
 
+{# The report link went to the homepage until 18 Sep 2026 (first-visitor
+   audit E5). It goes to a box here instead: _address_box.html. #}
 <section class="report-section">
     <h2>How do I check one address?</h2>
     <p class="section-sub">
         Every school page has a checker: put a postcode in and it is measured against that school's
-        distance. The <a href="/">full property report</a> does the same for every school near an
+        distance. The <a href="#admissions-check-postcode">full property report</a> does the same for every school near an
         address at once, alongside the house itself.
     </p>
+    {% with box_id="admissions-check-postcode", box_label="Check an address against every school near it", box_src="admissions-index" %}{% include "_address_box.html" %}{% endwith %}
 </section>
 {% endblock %}

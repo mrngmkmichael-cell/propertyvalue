@@ -270,6 +270,11 @@ for path, body in pages_html.items():
             # nothing flagged", are legitimately other numbers.
             if n in TIER_COUNTS or int(n) <= 9:
                 continue
+            # Premium's phone grouping counts each of the report's six
+            # groups ("Risk & Safety: 11 checks, 4 with Premium", 18 Sep
+            # 2026), and a group can hold more than nine.
+            if re.match(r",\s*\d+\s+with Premium", block[m.end():]):
+                continue
             problems["check count"].append(
                 f"{path}: '{' '.join(m.group(0).split())}' but the hero says {HEADLINE_CHECKS}"
             )

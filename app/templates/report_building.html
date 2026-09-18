@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}Building your report | UKPropertyInsight{% endblock %}
+{# The tab names the postcode, and from the first lookup back the script
+   below keeps the count there too ("7 of 19 · BN1 1EE"), so a reader who
+   went back to a portal while waiting can see it move from the tab strip
+   (18 Sep 2026, first-visitor audit E2). The report that replaces this
+   page brings its own title, so nothing needs putting back. #}
+{% block title %}Building the report for {{ building_postcode }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
+{# No typing demo in the header box here: see base.html. #}
+{% block header_typing_demo %}{% endblock %}
 
 {% block content %}
 <div class="building-wrap">
     <span class="kicker">One moment</span>
-    <h1 class="building-heading">Building the report for {{ building_postcode }}{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
+    {# The postcode with its space and in the report header's mono face
+       (18 Sep 2026, first-visitor audit E2). Set in the heading's own
+       face with its tightened spacing it read "BN11EE", which made the
+       audit wonder whether the right place had been searched. #}
+    <h1 class="building-heading">Building the report for <span class="building-postcode">{{ building_postcode }}</span>{% if building_house_number %}, {{ building_house_number }}{% endif %}</h1>
     <p class="dek">We are checking every source live, right now. Usually 5 to 15 seconds.</p>
 
     {# The wait's one moving object. The dial has a mark per source, in
@@ -67,10 +78,18 @@
        when that source actually comes back (see /api/report-ready).
        The old version ran a timer and looped when the gather was slow,
        which meant the one screen showing our working was the one
-       screen making it up. #}
-    <ul class="building-list" id="building-list">
+       screen making it up.
+
+       Each row is the buyer's question, then who publishes the answer
+       (18 Sep 2026, first-visitor audit E2; the rows are
+       GATHER_SOURCE_LABELS in main.py). On a phone the list is a short
+       scroll area of its own, so the dial and the count above it stay
+       on the first screen, and the script brings each row that lands
+       below the fold into view inside the list. #}
+    <ul class="building-list" id="building-list" aria-label="Lookups">
         {% for src in build_sources %}
-        <li class="building-item" data-source="{{ src }}"><span class="building-tick"></span>{{ src }}</li>
+        {% set question, publisher = src.split(' · ', 1) %}
+        <li class="building-item" data-source="{{ src }}"><span class="building-tick"></span><span class="building-label">{{ question }} <span class="building-publisher">· {{ publisher }}</span></span></li>
         {% endfor %}
     </ul>
     <p class="section-sub">Every figure will name its source. Nothing is scraped, nothing is guessed.</p>
@@ -91,6 +110,8 @@
     var total = Object.keys(rows).length;
     var seen = {}, landed = 0, queue = [], timer = null;
     var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var postcode = {{ building_postcode | tojson }};
+    var list = document.getElementById('building-list');
 
     function say(text) {
         latestEl.textContent = text;
@@ -99,12 +120,52 @@
         latestEl.classList.add('is-fresh');
     }
 
+    /* The count in the tab as well (18 Sep 2026, first-visitor audit E2):
+       "7 of 19 · BN1 1EE". */
+    function titled(text) { document.title = text + ' · ' + postcode; }
+
+    /* On a phone the list scrolls inside its own area, which the
+       stylesheet ends at the bottom of the first screen from where the
+       list starts (--list-top, measured here and again whenever what sits
+       above it changes height). A row that lands below that area's fold
+       is brought into view inside it. Only the list scrolls, never the
+       page, so the dial and the count stay where the reader is looking.
+       Where the whole list fits, as on a desktop, nothing moves. */
+    var FADE_PX = 28;  /* the list's faded bottom edge, clear of which a row counts as seen */
+    function listScrolls() { return list.scrollHeight > list.clientHeight + 1; }
+    function reveal(li) {
+        if (!listScrolls()) return;
+        var area = list.getBoundingClientRect(), row = li.getBoundingClientRect();
+        var shift = 0;
+        if (row.bottom > area.bottom - FADE_PX) shift = row.bottom - (area.bottom - FADE_PX);
+        else if (row.top < area.top) shift = row.top - area.top;
+        if (shift) list.scrollBy({ top: shift, behavior: still ? 'auto' : 'smooth' });
+    }
+    function fit() {
+        var top = Math.round(list.getBoundingClientRect().top + window.scrollY) + 'px';
+        if (list.style.getPropertyValue('--list-top') !== top) list.style.setProperty('--list-top', top);
+        /* A list that scrolls can be reached and scrolled from the
+           keyboard; one that does not is not a tab stop. */
+        if (listScrolls()) list.setAttribute('tabindex', '0');
+        else list.removeAttribute('tabindex');
+    }
+    list.classList.add('is-fitted');
+    fit();
+    window.addEventListener('resize', fit);
+    if (window.ResizeObserver) {
+        var watch = new ResizeObserver(fit);
+        watch.observe(live);
+        watch.observe(document.querySelector('.building-overtime'));
+    }
+
     /* One source back: its row ticks, its mark fills, and the line
        under the count names it. */
     function land(src) {
         rows[src].classList.add('done');
         if (marks[src]) marks[src].classList.add('is-done');
         landed++;
+        titled(landed + ' of ' + total);
+        reveal(rows[src]);
         if (landed >= total) {
             /* Every source is back but the page is still being put
                together. Saying so beats a full dial that appears stuck. */
@@ -179,6 +240,8 @@
     }
 
     function stop() {
+        /* A tab left on "12 of 19" would read as still working. */
+        titled('Stopped checking');
         nameMissing();
         document.getElementById('building-help-text').hidden = true;
         document.getElementById('building-stopped').hidden = false;
