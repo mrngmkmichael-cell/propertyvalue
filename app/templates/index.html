@@ -233,6 +233,19 @@
         <a href="/premium" class="promo-banner-btn">See plans</a>
     </div>
 </section>
+{# A subscriber with no home and no school saved (18 Sep 2026): the
+   first to pay on the day they joined left with neither, and nothing
+   on this page said where to start. #}
+{% elif premium_first_step %}
+<section class="promo-banner">
+    <div class="promo-banner-inner">
+        <p class="promo-banner-text">
+            <strong>Premium is on.</strong> Put the address you are weighing up in above: every check
+            opens, and it is kept in My properties.
+        </p>
+        <a href="/schools/guide" class="promo-banner-btn">Start with schools</a>
+    </div>
+</section>
 {% endif %}
 
 {# =================================================================== BUILD

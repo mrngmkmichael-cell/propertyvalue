@@ -275,3 +275,59 @@ def test_the_price_answer_uses_the_district_median_only():
     faqs = dict(app_main._versus_faqs("LS6", "LS7", one_postcode, district))
     assert "Is LS6 or LS7 cheaper?" not in faqs
     assert app_main._versus_differences("LS6", "LS7", one_postcode, district) == []
+
+
+# ---- 3. A subscriber who paid without a home gets a first step --------------
+
+def _subscriber(client, email):
+    from app import auth, db
+    client.post("/signup", data={"email": email, "password": "correct-horse-battery"}, follow_redirects=True)
+    client.post("/login", data={"email": email, "password": "correct-horse-battery"}, follow_redirects=True)
+    with db.get_session() as session:
+        auth.find_user_by_email(session, email).is_premium = True
+        session.commit()
+
+
+def _save_home(email, postcode="LS6 2DA", house_number="12"):
+    from app import auth, db
+    from app.models import WatchlistItem
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, email)
+        session.add(WatchlistItem(user_id=user.id, postcode=postcode, house_number=house_number))
+        session.commit()
+
+
+def test_a_subscriber_with_nothing_saved_is_told_where_to_start(client):
+    from app import main as app_main
+
+    _subscriber(client, "first-step@customer.test")
+    body = client.get("/premium/success").text
+    flat = " ".join(body.split())
+    assert "Premium is on: every check on every property is open from now on." in flat
+    assert "Start with the home you are weighing up" in body
+    assert '<input type="hidden" name="src" value="premium-success">' in body
+    assert "premium-success" in app_main.REPORT_SOURCES
+    assert f"when one of these happens to it: {app_main.ALERT_TRIGGERS_LIST}. Never on a schedule." in flat
+    assert "Choosing on schools?" in body and 'href="/schools/guide"' in body
+    assert "Back to search" not in body
+    # One postcode box, not the header's as well.
+    assert 'id="header-search"' not in body
+    # The homepage says the same, once, until something is saved.
+    home = client.get("/").text
+    assert "<strong>Premium is on.</strong>" in home and "Start with schools" in home
+
+
+def test_a_subscriber_with_a_saved_home_is_sent_to_it(client):
+    _subscriber(client, "has-a-home@customer.test")
+    _save_home("has-a-home@customer.test")
+    body = " ".join(client.get("/premium/success").text.split())
+    assert "Open My properties</a>: the 1 home you saved is open in full now." in body
+    assert "Start with the home you are weighing up" not in body
+    assert 'id="header-search"' in client.get("/premium/success").text
+    assert "<strong>Premium is on.</strong>" not in client.get("/").text
+
+
+def test_a_free_account_and_a_visitor_see_no_subscriber_prompt(client):
+    assert "<strong>Premium is on.</strong>" not in client.get("/").text
+    client.post("/signup", data={"email": "free-first@customer.test", "password": "correct-horse-battery"}, follow_redirects=True)
+    assert "<strong>Premium is on.</strong>" not in client.get("/").text

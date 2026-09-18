@@ -20,9 +20,41 @@
 <p class="section-sub"><a href="{{ home.url }}">Open the full report on {{ home.label }}</a> &middot; <a href="/watchlist">My properties</a></p>
 {% else %}
 <p class="section-sub">
-    You're subscribed. Full Premium access is unlocked on every property report from now on. Manage
-    your plan, payment details, or cancel any time from the <a href="/premium">Premium</a> page.
+    Premium is on: every check on every property is open from now on. Manage your plan, payment
+    details, or cancel any time from the <a href="/premium">Premium</a> page.
 </p>
+{# A first step when checkout carried no home (18 Sep 2026). The first
+   subscriber to pay on the day they joined did it from the homepage,
+   opened no report, saved nothing and left through the schools guide
+   inside five minutes. This page offered only "Back to search", and
+   with nothing saved no change alert can bring anyone back. #}
+{% if saved_homes %}
+<p class="section-sub"><a href="/watchlist">Open My properties</a>: the {{ saved_homes }} home{{ "" if saved_homes == 1 else "s" }} you saved {{ "is" if saved_homes == 1 else "are" }} open in full now.</p>
+{% elif current_user %}
+<section class="report-section">
+    <h2>Start with the home you are weighing up</h2>
+    <form action="/property" method="get" class="search-form area-check" role="search">
+        <input type="hidden" name="src" value="premium-success">
+        <div class="search-form-field">
+            <label for="first-home-postcode">Its postcode</label>
+            <input type="text" id="first-home-postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="postal-code" required>
+        </div>
+        <div class="search-form-field">
+            <label for="first-home-number">House or flat number (optional)</label>
+            <input type="text" id="first-home-number" name="house_number" placeholder="e.g. 37 or Flat 2" autocomplete="off">
+        </div>
+        <button type="submit">Open every check</button>
+    </form>
+    <p class="section-sub">It is kept in <a href="/watchlist">My properties</a>, and {% if current_user.email_verified or not verification_available() %}we email you{% else %}once you confirm your email address, we email you{% endif %} when one of these happens to it: {{ alert_triggers_list }}. Never on a schedule.</p>
+</section>
+{% if not saved_schools %}
+<section class="report-section">
+    <h2>Choosing on schools?</h2>
+    <p class="section-sub">Put a postcode into the <a href="/schools/guide">schools guide</a> to measure it against every nearby school's admission distance. Save a school to your shortlist from its own page, and you can ask to hear when its council publishes new distances.</p>
+</section>
+{% endif %}
+{% else %}
 <p class="section-sub"><a href="/">&larr; Back to search</a></p>
+{% endif %}
 {% endif %}
 {% endblock %}

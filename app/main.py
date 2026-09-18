@@ -37,7 +37,7 @@ from app import auth, db, school_shortlist, watchlist
 from app.services import _cache, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import (
-    FigureReport, PageCache, PageView, PremiumUnlock, School, ShareLink, User,
+    FigureReport, PageCache, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
     WatchlistItem,
 )
 from app.services import (
@@ -2296,6 +2296,13 @@ templates.env.globals["plan_prices"] = stripe_billing.plan_prices()
 @app.get("/")
 def index(request: Request):
     context = base_context(request)
+    # A subscriber with nothing saved is told where to start (18 Sep
+    # 2026): the first one to pay on the day they joined left with no
+    # home and no school saved. One count, and only for a subscriber.
+    user = context.get("current_user")
+    context["premium_first_step"] = bool(
+        user and user.get("is_premium") and _saved_counts(user["id"]) == (0, 0)
+    )
     context["accuracy_counts"] = _landing_accuracy_counts()
     context["trustpilot"] = TRUSTPILOT
     context["admission_stats"] = _admission_stats()
@@ -3110,7 +3117,7 @@ ANON_PAGE_CACHE_TTL_S = 600
 # on deepening the five that exist turns on this, and a hidden field
 # costs nothing and identifies nobody.
 REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide",
-                  "running-costs", "council-hub", "areas"}
+                  "running-costs", "council-hub", "areas", "premium-success"}
 REPORT_SOURCE_PATH_PREFIX = "/from/"
 
 
@@ -7968,12 +7975,40 @@ async def premium_checkout(request: Request, plan: str = Form(...),
     return RedirectResponse(checkout_url, status_code=303)
 
 
+def _saved_counts(user_id: int) -> tuple[int, int]:
+    """Homes and schools an account has saved, in one round trip."""
+    if not db.is_configured():
+        return 0, 0
+    homes = select(func.count()).select_from(WatchlistItem).where(WatchlistItem.user_id == user_id)
+    schools = select(func.count()).select_from(SchoolShortlistItem).where(SchoolShortlistItem.user_id == user_id)
+    try:
+        with db.get_session() as session:
+            row = session.execute(select(homes.scalar_subquery(), schools.scalar_subquery())).one()
+    except Exception:  # noqa: BLE001 - a prompt, never the reason a page fails
+        return 0, 0
+    return int(row[0] or 0), int(row[1] or 0)
+
+
 @app.get("/premium/success")
 def premium_success(request: Request, home: str = "", hn: str = ""):
     context = base_context(request)
     # Straight back to the house they just paid to open, when checkout
     # carried one (17 Sep 2026). Without it the page is what it was.
     context["home"] = _home_from_query(home, hn)
+    # And a first step when it carried none (18 Sep 2026). The
+    # subscriber of 17 Sep paid from the homepage within two minutes,
+    # opened no report, saved nothing and left through the schools guide
+    # inside five, and with nothing saved no change alert could ever bring
+    # them back before the first renewal. "Back to search" was all this
+    # page offered.
+    user = context.get("current_user")
+    if not context["home"] and user:
+        context["saved_homes"], context["saved_schools"] = _saved_counts(user["id"])
+        context["alert_triggers_list"] = ALERT_TRIGGERS_LIST
+        # The first step is a postcode box, so the header drops its own
+        # rather than ask the same question twice (HERO_SEARCH_PATHS).
+        if not context["saved_homes"]:
+            context["page_asks_for_a_postcode"] = True
     return templates.TemplateResponse(request, "premium_success.html", context)
 
 
