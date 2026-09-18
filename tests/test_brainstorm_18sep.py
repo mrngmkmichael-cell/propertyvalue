@@ -331,3 +331,53 @@ def test_a_free_account_and_a_visitor_see_no_subscriber_prompt(client):
     assert "<strong>Premium is on.</strong>" not in client.get("/").text
     client.post("/signup", data={"email": "free-first@customer.test", "password": "correct-horse-battery"}, follow_redirects=True)
     assert "<strong>Premium is on.</strong>" not in client.get("/").text
+
+
+# ---- 4. A crawler asking /running-costs for a postcode gets the plain page --
+
+_NOINDEX = '<meta name="robots" content="noindex, follow">'
+
+
+def _answering(monkeypatch):
+    from app import main as app_main
+    from app.services import _cache
+
+    calls = []
+
+    async def _lookup(postcode):
+        calls.append(postcode)
+        return fake_location()
+
+    async def _answer(where, house_number):
+        calls.append("answer")
+        return {"postcode": "M14 5TG", "district": "Manchester", "outcode": "M14", "house_number": "",
+                "latitude": 53.45, "longitude": -2.22, "council_tax": None, "energy": None,
+                "home": None, "sales": None, "stamp_duty": None, "rent": None, "district_prices": None,
+                "area_prices": None, "broadband": None, "flood": None, "typical_year": None,
+                "energy_figure": None, "income_value": None, "income_la": None, "income_la_name": "",
+                "typical_share_pct": None}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
+    monkeypatch.setattr(app_main, "_running_costs_for_postcode", _answer)
+    _cache._store.clear()
+    _cache._bytes = 0
+    return calls
+
+
+def test_a_crawler_gets_running_costs_without_the_answer(client, monkeypatch):
+    calls = _answering(monkeypatch)
+    googlebot = {"User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"}
+    body = client.get("/running-costs?postcode=M14%205TG", headers=googlebot).text
+    assert calls == []
+    assert "What it costs to live in M14 5TG" not in body and 'id="checked"' not in body
+    assert _NOINDEX in body
+    assert 'rel="canonical" href="' in body and '/running-costs"' in body
+
+
+def test_a_person_still_gets_the_answer_on_a_noindex_url(client, monkeypatch):
+    calls = _answering(monkeypatch)
+    body = client.get("/running-costs?postcode=M14%205TG").text
+    assert calls == ["M14 5TG", "answer"]
+    assert "What it costs to live in M14 5TG" in body and _NOINDEX in body
+    plain = client.get("/running-costs").text
+    assert _NOINDEX not in plain

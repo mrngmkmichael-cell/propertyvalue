@@ -1849,6 +1849,16 @@ async def running_costs_page(request: Request, postcode: str = "", house_number:
     context["checked"] = None
     context["check_query"] = postcode.strip()
     context["check_house"] = house_number.strip()[:20]
+    context["answered_url"] = bool(postcode.strip())
+    # A crawler gets the page without the answer (18 Sep 2026). On 17 Sep
+    # this path took 4,501 views, almost all crawl-shaped, and an answer
+    # for a postcode costs a postcodes.io lookup plus the council, EPC and
+    # tenure reads, 2.9 s cold on production that morning. The answered
+    # URL canonicals to this page and is noindex, so the work bought a
+    # crawler nothing it could index. The test client is not a crawler
+    # here (_is_real_crawler), so the suites still see the answer.
+    if postcode.strip() and _is_real_crawler(request.headers.get("user-agent")):
+        return templates.TemplateResponse(request, "running_costs.html", context)
     if postcode.strip():
         try:
             where = await lookup_postcode(postcode.strip())

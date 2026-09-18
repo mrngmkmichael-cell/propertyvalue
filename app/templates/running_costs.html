@@ -4,6 +4,9 @@
 {% block title %}Running Costs by Postcode: Council Tax, Energy and Tenure for Any UK Address{% endblock %}
 {% block meta_description %}What it costs to live at an address, from official sources: the council tax bill for every band in {{ ct.count }} English councils ({{ ct.year }}), the EPC's estimated energy costs, and whether a home is freehold or leasehold. Plus the estate charge no listing shows.{% endblock %}
 {% block og_title %}Running costs by postcode{% endblock %}
+{# An answered URL is one postcode's copy of this page: it canonicals
+   here, and says noindex so it never competes with it (18 Sep 2026). #}
+{% block robots %}{% if answered_url %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block content %}
 <script type="application/ld+json">{{ {
