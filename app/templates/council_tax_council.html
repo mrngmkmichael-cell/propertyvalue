@@ -97,12 +97,12 @@
     {% if finance.s114 %}
     <p class="notice">
         <strong>Section 114 notice{{ 's' if finance.s114 | length != 1 }}.</strong>
-        {% for n in finance.s114 %}{{ n.date }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        {% for n in finance.s114 %}{{ n.date | day_label }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
         A section 114 notice is the chief finance officer's declaration that the council cannot balance its budget; it freezes new spending until a recovery plan is agreed, and government commissioners may follow.
     </p>
     {% endif %}
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}, as at {{ finance.as_of }}.</p>
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
     <p class="section-sub">Ministry of Housing, Communities and Local Government: live council tax tables (Band D area averages by year) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils. Rises are year on year on the Band D area average.</p>
 </section>

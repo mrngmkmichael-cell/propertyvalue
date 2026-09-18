@@ -182,13 +182,13 @@
                             {% if s.ofsted_rating_label %}
                             <table>
                                 <tr><td>Overall rating</td><td><span class="ofsted-badge ofsted-{{ s.ofsted_rating }}">{{ s.ofsted_rating_label }}</span></td></tr>
-                                <tr><td>Inspected</td><td>{{ s.ofsted_inspection_date }}</td></tr>
+                                <tr><td>Inspected</td><td>{{ s.ofsted_inspection_date | day_label }}</td></tr>
                             </table>
                             {% else %}
                             <p>
                                 No current overall grade, often means a recent inspection under Ofsted's
                                 newer ungraded report-card format, not that the school hasn't been visited.
-                                {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} Last inspected {{ s.detail.ofsted_ungraded_inspection_date }}.{% endif %}
+                                {%- if s.detail and s.detail.ofsted_ungraded_inspection_date %} Last inspected {{ s.detail.ofsted_ungraded_inspection_date | day_label }}.{% endif %}
                             </p>
                             {% endif %}
                             {% if s.detail and (s.detail.ofsted_quality_of_education or s.detail.ofsted_behaviour_attitudes or s.detail.ofsted_personal_development or s.detail.ofsted_leadership_management) %}

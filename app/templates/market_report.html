@@ -43,7 +43,7 @@
             <td class="num {{ 'num-up' if a.annual_change_pct >= 0 else 'num-down' }}">
                 {{ "%+.1f"|format(a.annual_change_pct) }}%
             </td>
-            <td>{{ a.period[:7] }}</td>
+            <td>{{ a.period | month_label }}</td>
         </tr>
         {% endfor %}
     </tbody>

@@ -123,10 +123,14 @@ def render(
     score: int | None = None,
     grade: str = "",
     facts: list[tuple[str, str]] | None = None,
+    check_count: int | None = None,
 ) -> bytes:
     """PNG bytes for one address's share card. facts is up to three
     (label, value) pairs, already resolved to display strings by the
-    caller so this module needs no knowledge of the data sources."""
+    caller so this module needs no knowledge of the data sources.
+    check_count is main.CHECK_COUNT, passed in because this module cannot
+    import main: the footer said "40 CHECKS" beside a site saying 44 until
+    18 Sep 2026, a literal nothing moved."""
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
 
@@ -165,7 +169,7 @@ def render(
     draw.line((PAD, H - PAD - 40, W - PAD, H - PAD - 40), fill=BORDER, width=2)
     _tracked(
         draw, (PAD, H - PAD - 26),
-        "40 CHECKS  ·  EVERY FIGURE NAMES ITS OFFICIAL SOURCE",
+        (f"{check_count} CHECKS  ·  " if check_count else "") + "EVERY FIGURE NAMES ITS OFFICIAL SOURCE",
         mono(18), INK_FAINT, tracking=1.6,
     )
 

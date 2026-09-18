@@ -208,7 +208,7 @@
                 <tr>
                     <td><strong>Rent, if renting instead</strong><span class="school-table-type">private rents across {{ checked.rent.la_name }}, all sizes</span></td>
                     <td><strong>{{ checked.rent.price_all | gbp }}</strong> a month{% if checked.rent.change_all_pct is not none %}, {{ "up" if checked.rent.change_all_pct >= 0 else "down" }} {{ "%.1f"|format(checked.rent.change_all_pct|abs) }}% on a year ago{% endif %}{% if checked.rent.by_bedroom %}<span class="school-table-type">{% for b in checked.rent.by_bedroom %}{{ b.label }} {{ b.price | gbp }}{% if not loop.last %} &middot; {% endif %}{% endfor %}</span>{% endif %}</td>
-                    <td>ONS private rental prices, {{ checked.rent.period }}</td>
+                    <td>ONS private rental prices, {{ checked.rent.period | month_label }}</td>
                 </tr>
                 {% endif %}
                 {% if checked.typical_year %}
@@ -249,7 +249,7 @@
                 {% if checked.area_prices and checked.area_prices.local_authority %}
                 <tr>
                     <td><strong>Prices across {{ checked.area_prices.local_authority.name }}</strong><span class="school-table-type">the council's average and its year-on-year move</span></td>
-                    <td><strong>{{ checked.area_prices.local_authority.average_price | gbp }}</strong>, {{ "up" if checked.area_prices.local_authority.annual_change_pct >= 0 else "down" }} {{ "%.1f"|format(checked.area_prices.local_authority.annual_change_pct|abs) }}% on a year ago ({{ checked.area_prices.local_authority.period[:7] }})</td>
+                    <td><strong>{{ checked.area_prices.local_authority.average_price | gbp }}</strong>, {{ "up" if checked.area_prices.local_authority.annual_change_pct >= 0 else "down" }} {{ "%.1f"|format(checked.area_prices.local_authority.annual_change_pct|abs) }}% on a year ago ({{ checked.area_prices.local_authority.period | month_label }})</td>
                     <td>UK House Price Index</td>
                 </tr>
                 {% endif %}

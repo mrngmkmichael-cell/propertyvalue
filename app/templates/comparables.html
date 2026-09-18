@@ -103,7 +103,7 @@
                         <td class="capitalize">{{ tx.property_type or "Not recorded" }}</td>
                         <td>{{ tx.tenure or "Not recorded" }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
-                        <td>{{ tx.date }}</td>
+                        <td>{{ tx.date | day_label }}</td>
                         <td class="num">{{ tx.distance_m | distance if tx.distance_m is not none else "Not recorded" }}</td>
                     </tr>
                     {% endfor %}

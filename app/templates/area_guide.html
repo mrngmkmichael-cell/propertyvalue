@@ -475,7 +475,7 @@
     {% if health.trusts %}
     <p>Nearest A&amp;E: <strong>{{ health.trusts[0].name }}</strong>, where {{ health.trusts[0].type1_within_4h_pct }}% of type 1 attendances were seen within four hours in {{ health.trusts[0].period }}{% if health.trusts | length > 1 %}; then {{ health.trusts[1].name }} at {{ health.trusts[1].type1_within_4h_pct }}%{% endif %}.</p>
     {% endif %}
-    <p class="section-sub">NHS England: patients registered at a GP practice ({{ health.patients_date or health.nearest.patients_date }}), the general practice workforce ({{ health.workforce_date or health.nearest.workforce_date }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
+    <p class="section-sub">NHS England: patients registered at a GP practice ({{ (health.patients_date or health.nearest.patients_date) | day_label }}), the general practice workforce ({{ (health.workforce_date or health.nearest.workforce_date) | month_label }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
 </section>
 {% endif %}
 
@@ -518,12 +518,12 @@
     {% if finance.s114 %}
     <p class="notice">
         <strong>Section 114 notice{{ 's' if finance.s114 | length != 1 }}.</strong>
-        {% for n in finance.s114 %}{{ n.date }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
+        {% for n in finance.s114 %}{{ n.date | day_label }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
         The chief finance officer's declaration that the council cannot balance its budget; it freezes new spending until a recovery plan is agreed.
     </p>
     {% endif %}
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of }}.</p>
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
     <p class="section-sub">Ministry of Housing, Communities and Local Government, live council tax tables (Band D, area averages) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils.</p>
 </section>

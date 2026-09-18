@@ -2123,12 +2123,12 @@ def council_tax_council_page(request: Request, slug: str):
                 parts.append(f"{data['authority']} was agreed Exceptional Financial Support by government for "
                              + ", ".join(f"{e['year']} ({e['amount']})" for e in reversed(finance["efs"])) + ".")
             if finance.get("s114"):
-                parts.append("Section 114 notice: " + "; ".join(f"{n['date']} ({n['note'].lower()})" for n in finance["s114"]) + ".")
+                parts.append("Section 114 notice: " + "; ".join(f"{_day_label(n['date'])} ({n['note'].lower()})" for n in finance["s114"]) + ".")
             faqs.append((f"Has {data['authority']} council had financial trouble?", " ".join(parts)))
         else:
             faqs.append((f"Has {data['authority']} council had financial trouble?",
                          f"No exceptional financial support from government since 2020-21 and no section 114 notice on record for "
-                         f"{data['authority']}, as at {finance.get('as_of', data['year'])}. Source: the Exceptional Financial Support lists "
+                         f"{data['authority']}, as at {_day_label(finance.get('as_of', data['year']))}. Source: the Exceptional Financial Support lists "
                          "published by MHCLG each year, and notices published by councils."))
     context["faqs"] = faqs
     context["faqs_jsonld"] = _faq_jsonld(faqs)
@@ -6278,7 +6278,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
         faqs.append((
             f"What is the average house price in {outcode}?",
             f"The average sold price in {la['name']} is \u00a3{la['average_price']:,.0f}"
-            + (f" as of {period}" if period else "")
+            + (f" as of {_month_label(period)}" if period else "")
             + ", according to the UK House Price Index.",
         ))
         if la.get("annual_change_pct") is not None:
@@ -6312,13 +6312,13 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     # Police.uk barely covers Scotland, so a Scottish "0 crimes" is a
     # coverage gap; never state it as an answer.
     if not context.get("is_scotland") and crime_data and crime_data.get("total"):
-        month = f" in {crime_data['month']}" if crime_data.get("month") else ""
+        month = f" in {_month_label(crime_data['month'])}" if crime_data.get("month") else ""
         common = ""
         if crime_data.get("by_category"):
             common = f", most commonly {crime_data['by_category'][0]['category']}"
         faqs.append((
             f"How much crime is there in {outcode}?",
-            f"{crime_data['total']} crimes were recorded within roughly a mile of central {outcode}{month}{common} (Police.uk).",
+            f"{crime_data['total']:,} crimes were recorded within roughly a mile of central {outcode}{month}{common} (Police.uk).",
         ))
     flood = context.get("flood_zone")
     gap = context.get("flood_not_covered")
@@ -6357,7 +6357,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             f"the area sits in decile {dep['imd_decile']} of 10 on the Index of Multiple Deprivation"
         )
     if crime_data and crime_data.get("total") and not context.get("is_scotland"):
-        quality_bits.append(f"{crime_data['total']} crimes were recorded within about a mile")
+        quality_bits.append(f"{crime_data['total']:,} crimes were recorded within about a mile")
     if len(quality_bits) >= 2:
         faqs.append((
             f"Is {outcode} a good place to live?",
@@ -6766,7 +6766,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
         month = f" in {_month_label(crime['month'])}" if crime.get("month") else ""
         plural = "" if crime["total"] == 1 else "s"
         out.append(
-            f"Police recorded {crime['total']} crime{plural} within roughly a mile of the "
+            f"Police recorded {crime['total']:,} crime{plural} within roughly a mile of the "
             f"centre{month}"
             + (f", most commonly {commonest.lower()}" if commonest else "")
             + " (Police.uk)."
@@ -9355,6 +9355,7 @@ async def og_property_image(request: Request, postcode: str = "", house_number: 
             score=payload.get("score"),
             grade=payload.get("grade", ""),
             facts=[tuple(f) for f in payload.get("facts", [])],
+            check_count=CHECK_COUNT,
         )
         # A card drawn before the gather finished has the address but no
         # score. Serve it (a share should never wait on us) but do not

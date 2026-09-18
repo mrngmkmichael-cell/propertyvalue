@@ -1571,7 +1571,7 @@ B3_FINDINGS = dict(
 B3_ANSWERS = (
     "412,345", "401,111", "Estimate (median)", "5,111",          # Valuation Estimate
     "17.3", "247,777", "255,555",                                # Price Trend & Forecast
-    "2011-03-02", "87 m", "Locked Lane",                         # Extended or Modified, Aspect
+    "2 Mar 2011", "87 m", "Locked Lane",                         # Extended or Modified (day_label since 18 Sep 2026), Aspect
     "South-west", "Locked Outfall", "312.4",                     # Aspect, Sewage Discharge
     "Probable by 2030", "34.9", "3.49",                          # Subsidence Risk, Air Quality
     "Locked Tip", "Locked Coalfield",                            # Contamination, Mining Risk

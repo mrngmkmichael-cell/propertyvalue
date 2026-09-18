@@ -457,3 +457,65 @@ def test_the_official_strip_names_only_official_bodies(client):
     note = strip[strip.index('class="sources-strip-note"'):]
     assert "apart from what is nearby and which way a home faces" in " ".join(note.split())
     assert "OpenStreetMap, the map its volunteers draw" in " ".join(note.split())
+
+
+# ---- 7. Dates and counts the way the rest of the site writes them ----------
+
+def _copy_rules():
+    import importlib.util
+    import pathlib
+    path = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "copy_rules.py"
+    spec = importlib.util.spec_from_file_location("copy_rules_for_test", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_audit_rule_finds_iso_dates_and_bare_counts_and_nothing_else():
+    rules = _copy_rules()
+    found = rules.date_and_count_problems
+    assert found("patients registered at a GP practice (2026-08-01)") == [("date in ISO form", "2026-08-01")]
+    assert found("as of 2026-06, according to") == [("date in ISO form", "2026-06")]
+    assert found("1330 crimes recorded") == [("count without a thousands separator", "1330 crimes")]
+    # Financial years, council tax years, real prose and separated counts pass.
+    for fine in ("every year since 2008-09", "Band D for 2026-27", "rises since 2011-12",
+                 "1,330 crimes recorded", "in 2026 sales rose", "3 Jul 2026", "July 2026",
+                 "E01032946 is the neighbourhood", "4,965 district comparisons"):
+        assert found(fine) == [], fine
+
+
+def test_a_report_prints_sale_dates_and_the_hpi_month_in_words(client, fake_report):
+    fake_report(gather=fake_gather(transactions=[
+        {"address": "1 Test Street", "postcode": "M14 5TG", "amount": "250000", "date": "2024-06-01"},
+    ]))
+    body = client.get("/property?postcode=M14%205TG").text
+    assert "1 Jun 2024" in body and ">2024-06-01<" not in body
+    rules = _copy_rules()
+    text = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", body)
+    text = re.sub(r"<[^>]+>", " ", text)
+    assert [hit for hit in rules.date_and_count_problems(text) if hit[1].startswith("2024")] == []
+
+
+def test_the_accuracy_log_dates_its_entries_in_words(client):
+    body = client.get("/accuracy").text
+    assert "18 Sep 2026" in body and "27 Aug 2026" in body
+    assert "&middot; 2026-09-18" not in body
+
+
+def test_a_guide_answers_with_a_month_not_a_database_field(client, monkeypatch):
+    payload = {"has_data": True, "hpi": {"local_authority": {"name": "Leeds", "average_price": 249394,
+                                                            "annual_change_pct": 5.9, "period": "2026-06-01"}}}
+    body = _guide(client, monkeypatch, "LS6", "Leeds", "England", payload)
+    assert "is £249,394 as of June 2026" in body and "as of 2026-06" not in body
+
+
+def test_the_share_card_counts_the_checks_the_site_counts():
+    import pathlib
+    from app import main as app_main
+
+    source = pathlib.Path("app/services/og_image.py").read_text(encoding="utf-8")
+    # The drawing code, not the docstring that tells its history.
+    assert "\"40 CHECKS  ·" not in source
+    assert 'f"{check_count} CHECKS  ·  "' in source
+    assert "check_count=CHECK_COUNT" in pathlib.Path("app/main.py").read_text(encoding="utf-8")
+    assert app_main.CHECK_COUNT == 44

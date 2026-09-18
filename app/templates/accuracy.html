@@ -24,7 +24,7 @@
     <article class="correction">
         <header class="correction-head">
             <span class="status-pill status-confirmed">Confirmed and fixed</span>
-            <span class="correction-meta">{{ c.card }} &middot; {{ c.district }} &middot; {{ c.date }}</span>
+            <span class="correction-meta">{{ c.card }} &middot; {{ c.district }} &middot; {{ c.date | day_label }}</span>
         </header>
         <dl class="correction-body">
             <dt>{{ c.how or "Reported" }}</dt><dd>{{ c.reported }}</dd>

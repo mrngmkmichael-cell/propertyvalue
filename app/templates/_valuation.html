@@ -117,7 +117,7 @@
         <thead><tr><th>Sale</th><th class="num">Sold</th><th class="num">Price</th><th class="num">Floor area</th><th class="num">Per m² at sale</th><th class="num">Scaled to today</th></tr></thead>
         <tbody>
         {% for r in price_per_sqm.rows %}
-        <tr><td>{{ r.address }}</td><td class="num">{{ r.date }}</td><td class="num">{{ r.amount | gbp }}</td><td class="num">{{ r.floor_area }} m²</td><td class="num">{{ r.sold_per_sqm | gbp }}</td><td class="num">{{ r.per_sqm | gbp }}</td></tr>
+        <tr><td>{{ r.address }}</td><td class="num">{{ r.date | day_label }}</td><td class="num">{{ r.amount | gbp }}</td><td class="num">{{ r.floor_area }} m²</td><td class="num">{{ r.sold_per_sqm | gbp }}</td><td class="num">{{ r.per_sqm | gbp }}</td></tr>
         {% endfor %}
         </tbody>
     </table>

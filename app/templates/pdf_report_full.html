@@ -236,7 +236,7 @@
 <table class="data">
     <tr><th style="width: 40%">Address</th><th style="width: 16%">Date</th><th class="num" style="width: 16%">Price</th><th style="width: 16%">Tenure</th><th style="width: 12%">New build</th></tr>
     {% for tx in transactions[:14] %}
-    <tr><td class="b">{{ tx.address | title }}</td><td>{{ tx.date }}</td><td class="num b">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or "" }}</td><td>{{ "Yes" if tx.new_build else "" }}</td></tr>
+    <tr><td class="b">{{ tx.address | title }}</td><td>{{ tx.date | day_label }}</td><td class="num b">{{ tx.amount | gbp }}</td><td>{{ tx.tenure or "" }}</td><td>{{ "Yes" if tx.new_build else "" }}</td></tr>
     {% endfor %}
 </table>
 {% if transactions | length > 14 %}<p class="tiny faint">{{ transactions | length - 14 }} earlier sales not shown.</p>{% endif %}
@@ -280,7 +280,7 @@
         <td>{{ bar(area.average_price / ([hpi.local_authority.average_price if hpi.local_authority else 0, hpi.region.average_price if hpi.region else 0, hpi.country.average_price if hpi.country else 0] | max) * 100, "bar-fill" if loop.first else "bar-fill-soft") }}</td></tr>
     {% endif %}{% endfor %}
 </table>
-<p class="tiny faint">HM Land Registry UK House Price Index{% if hpi.local_authority and hpi.local_authority.period %}, {{ hpi.local_authority.period }}{% endif %}.</p>
+<p class="tiny faint">HM Land Registry UK House Price Index{% if hpi.local_authority and hpi.local_authority.period %}, {{ hpi.local_authority.period | month_label }}{% endif %}.</p>
 {% endif %}
 
 {% if rental %}
@@ -292,7 +292,7 @@
     <tr><td class="b">All sizes, {{ rental.la_name }}</td><td class="num b">{{ rental.price_all | gbp }}</td><td class="num">{% if rental.change_all_pct is not none %}{{ "%+.1f" | format(rental.change_all_pct) }}%{% endif %}</td></tr>
     {% for b in rental.by_bedroom %}<tr><td>{{ b.label }}</td><td class="num">{{ b.price | gbp }}</td><td class="num">{% if b.change_pct is not none %}{{ "%+.1f" | format(b.change_pct) }}%{% endif %}</td></tr>{% endfor %}
 </table>
-<p class="tiny faint">ONS Price Index of Private Rents{% if rental.period %}, {{ rental.period }}{% endif %}.</p>
+<p class="tiny faint">ONS Price Index of Private Rents{% if rental.period %}, {{ rental.period | month_label }}{% endif %}.</p>
 </td></tr></table>
 {% endif %}
 {% if new_build_stat and new_build_stat.total %}
@@ -416,7 +416,7 @@
 <h2>Certificates at this postcode</h2>
 <table class="data">
     <tr><th style="width: 60%">Address</th><th style="width: 24%">Date</th><th class="num" style="width: 16%">Rating</th></tr>
-    {% for c in certificates[:12] %}<tr><td>{{ c.address }}</td><td>{{ c.date }}</td><td class="num b">{{ c.rating }}</td></tr>{% endfor %}
+    {% for c in certificates[:12] %}<tr><td>{{ c.address }}</td><td>{{ c.date | day_label }}</td><td class="num b">{{ c.rating }}</td></tr>{% endfor %}
 </table>
 {% endif %}
 

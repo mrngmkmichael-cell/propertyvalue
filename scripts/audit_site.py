@@ -4,7 +4,8 @@ Checks, in order:
   1. Every internal href on every rendered page resolves (no 404/500).
   2. The project's copy rules: no em-dashes in user-facing text.
   3. Stale numbers: every check count must match the hero's own figure.
-  4. Common typos and doubled words.
+  4. Common typos and doubled words; dates in ISO form and counts
+     without a thousands separator (copy_rules.py).
   5. Placeholder text that should never ship (lorem, TODO, FIXME, XXX).
   6. Accessibility basics: every img has alt, every input has a label,
      every page has exactly one h1 and a non-empty title.
@@ -22,6 +23,8 @@ import sys
 from collections import defaultdict
 
 import httpx
+
+from copy_rules import date_and_count_problems
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://127.0.0.1:8010"
 UA = {"User-Agent": "Googlebot/2.1 (+audit)", "X-Internal-Check": "1"}
@@ -254,6 +257,17 @@ for path, body in pages_html.items():
             )
     if re.search(r"twenty[- ]three checks|thirty[- ]seven checks", text, re.I):
         problems["check count"].append(f"{path}: an old check count spelled out in words")
+
+    # Dates in the site's own form and counts with a separator (18 Sep
+    # 2026): see copy_rules.py. Grouped per page, because the comparables
+    # page alone printed 300 ISO sale dates.
+    found = defaultdict(list)
+    for block in blocks:
+        for rule, what in date_and_count_problems(block):
+            found[rule].append(what)
+    for rule, hits in found.items():
+        examples = ", ".join(sorted(set(hits))[:3])
+        problems[rule].append(f"{path}: {len(hits)}, e.g. {examples}")
 
 # ---- 6. accessibility basics -------------------------------------------
 print("checking accessibility basics...")

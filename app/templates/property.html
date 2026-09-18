@@ -2138,14 +2138,14 @@
                 {% if finance.s114 %}
                 <p class="notice">
                     <strong>Section 114 notice{{ 's' if finance.s114 | length != 1 }}.</strong>
-                    {% for n in finance.s114 %}{{ n.date }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
+                    {% for n in finance.s114 %}{{ n.date | day_label }} ({{ n.note | lower }}){% if not loop.last %}; {% endif %}{% endfor %}.
                     A section 114 notice is the chief finance officer's declaration that the council cannot balance its budget; it freezes new spending until a recovery plan is agreed, and government commissioners may follow.
                 </p>
                 {% endif %}
                 {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-                <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of }}.</p>
+                <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
                 {% endif %}
-                <p class="property-detail-note">Sources: MHCLG, live tables on council tax (Band D, all precepts, by billing authority); MHCLG, exceptional financial support for local authorities, the list for each year from 2020-21; section 114 notices as published by the councils, listed to {{ finance.s114_as_of }}. Open Government Licence.</p>
+                <p class="property-detail-note">Sources: MHCLG, live tables on council tax (Band D, all precepts, by billing authority); MHCLG, exceptional financial support for local authorities, the list for each year from 2020-21; section 114 notices as published by the councils, listed to {{ finance.s114_as_of | day_label }}. Open Government Licence.</p>
                 {% endif %}
             </section>
         </div>
@@ -2181,7 +2181,7 @@
                     {% for tx in transactions %}
                     <tr>
                         <td>{{ tx.address }}</td>
-                        <td>{{ tx.date }}</td>
+                        <td>{{ tx.date | day_label }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.tenure or "Not recorded" }}</td>
                     </tr>
@@ -2203,7 +2203,7 @@
         {% endif %}
 
         {% if hpi and (hpi.local_authority or hpi.region or hpi.country) %}
-            <p class="section-sub">How this compares ({{ hpi.local_authority.period or hpi.region.period or hpi.country.period }}):</p>
+            <p class="section-sub">How this compares ({{ (hpi.local_authority.period or hpi.region.period or hpi.country.period) | month_label }}):</p>
             <table class="tx-table">
                 <thead>
                     <tr>
@@ -2438,7 +2438,7 @@
         <h2>Rental analysis</h2>
         <p class="section-sub">
             Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
-            ({{ rental.period if rental else "" }}). There's no free equivalent to Land Registry's sold price
+            ({{ rental.period | month_label if rental else "" }}). There's no free equivalent to Land Registry's sold price
             register for rents. Tenancies aren't publicly registered the way sales are, so this is an
             area + bedroom-count typical rent, not a comparison against specific nearby lettings.
         </p>
@@ -2524,7 +2524,7 @@
             </div>
         </div>
         {% if property_detail.valid_until %}
-        <p class="property-detail-note">Certificate for the most recent match at this postcode, valid until {{ property_detail.valid_until }}.</p>
+        <p class="property-detail-note">Certificate for the most recent match at this postcode, valid until {{ property_detail.valid_until | day_label }}.</p>
         {% endif %}
         {# The certificate's own recommendation report: measures in the
            assessor's order, each with the rating after it, so the cost of
@@ -2603,7 +2603,7 @@
                     {% for cert in certificates %}
                     <tr>
                         <td>{{ cert.address }}</td>
-                        <td>{{ cert.date }}</td>
+                        <td>{{ cert.date | day_label }}</td>
                         <td class="num"><span class="epc-badge epc-{{ cert.rating | lower }}">{{ cert.rating }}</span></td>
                     </tr>
                     {% endfor %}
@@ -2671,22 +2671,22 @@
             </p>
         {% elif extension_signal.likely_extended %}
             <p class="notice">
-                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                <strong>Floor area grew {{ "%+.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date | day_label }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date | day_label }}).
                 Large enough that this property has probably been extended or had a loft/garage
                 conversion since the earlier certificate.
             </p>
         {% elif extension_signal.change_pct <= -15 %}
             <p class="notice">
-                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }})
-                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}).
+                <strong>Floor area shrank {{ "%.0f"|format(extension_signal.change_pct) }}%</strong>, from {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date | day_label }})
+                to {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date | day_label }}).
                 No sign of an extension, but that's a large enough drop to be worth asking about. It
                 could mean the unit was subdivided, or just a re-measurement.
             </p>
         {% else %}
             <p class="notice">
-                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date }}) to
-                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date }}). No meaningful change, no sign of an extension from this data.
+                {{ extension_signal.earliest_area }} m² ({{ extension_signal.earliest_date | day_label }}) to
+                {{ extension_signal.latest_area }} m² ({{ extension_signal.latest_date | day_label }}). No meaningful change, no sign of an extension from this data.
             </p>
         {% endif %}
             </section>
@@ -2810,7 +2810,7 @@
                     <tr>
                         <td>{{ w.description }}</td>
                         <td class="num"><span class="flood-badge flood-level-{{ w.severity_level }}">{{ w.severity }}</span></td>
-                        <td>{{ w.date }}</td>
+                        <td>{{ w.date | day_label }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -3829,7 +3829,7 @@
         {% elif not health.count %}
             <p class="notice">No GP practice with a patient list within {{ health.radius_m }} m of this address in NHS England's register (England only).</p>
         {% else %}
-            <p class="section-sub">The nearest practices by distance, with their patient list on {{ health.patients_date }} (NHS England Digital) and their fully qualified GP full-time equivalents in the {{ health.workforce_date[:7] if health.workforce_date else "latest" }} workforce release. A practice's list divided by its fully qualified GPs is the national pressure measure; the England median is {{ "{:,}".format(health.median_patients_per_qualified_gp) if health.median_patients_per_qualified_gp else "not available" }} patients per GP. Trainees and locums see patients too, so the all-GP figure is shown beside it. Distance is not registration: a practice may not be taking new patients.</p>
+            <p class="section-sub">The nearest practices by distance, with their patient list on {{ health.patients_date | day_label }} (NHS England Digital) and their fully qualified GP full-time equivalents in the {{ health.workforce_date | month_label if health.workforce_date else "latest" }} workforce release. A practice's list divided by its fully qualified GPs is the national pressure measure; the England median is {{ "{:,}".format(health.median_patients_per_qualified_gp) if health.median_patients_per_qualified_gp else "not available" }} patients per GP. Trainees and locums see patients too, so the all-GP figure is shown beside it. Distance is not registration: a practice may not be taking new patients.</p>
             <div class="tablewrap">
             <table class="tx-table health-table">
                 <thead><tr><th>Practice</th><th class="num">Distance</th><th class="num">Patients</th><th class="num">Fully qualified GPs (FTE)</th><th class="num">All GPs (FTE)</th><th class="num">Patients per GP</th><th class="num">Against the median</th></tr></thead>
