@@ -56,6 +56,31 @@ ENGLAND_ONLY = {
 # see a burst.
 PACE_S = 20
 
+# Greater Manchester Police publishes only a trickle to Police.uk (5
+# records within a mile of central Manchester for July 2026, where other
+# forces list hundreds), so no crime count is shown for its ten boroughs
+# (app/services/crime.py, 18 Sep 2026). This reads the raw figure past
+# that rule on every run, so the rule comes off when the force publishes
+# in full again rather than whenever someone happens to look.
+GMP_PROBE = (53.4775, -2.2305)
+GMP_FULL_AT = 200
+
+
+async def _greater_manchester_probe() -> str:
+    from app.services import crime
+    try:
+        raw = await crime._fetch_summary(*GMP_PROBE)
+    except Exception as exc:  # noqa: BLE001 - a report line, not a crash
+        return f"Greater Manchester crime: Police.uk did not answer ({exc.__class__.__name__})"
+    total = raw.get("total") or 0
+    if total >= GMP_FULL_AT:
+        return (
+            f"Greater Manchester crime: {total:,} records within a mile of central Manchester. "
+            "The force looks to publish in full again: take its boroughs off "
+            "crime.GREATER_MANCHESTER_DISTRICTS so the count shows."
+        )
+    return f"Greater Manchester crime: still partial, {total} records within a mile of central Manchester."
+
 
 # The gather's own sources, being every name it can set a <name>_error
 # flag for. Listed rather than discovered: the flag is only set when a
@@ -179,6 +204,8 @@ async def main() -> int:
             always_failed.append(name)
 
     print()
+    time.sleep(PACE_S)
+    print(await _greater_manchester_probe())
     if always_failed:
         print(f"{len(always_failed)} source(s) failed everywhere they were tried:")
         for name in always_failed:

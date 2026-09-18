@@ -2954,7 +2954,8 @@ def test_c6_both_snapshots_record_the_crime_month(monkeypatch):
     def _down_sync(*_a, **_k):
         raise RuntimeError("not under test")
 
-    async def _crime(_lat, _lon):
+    # district and country are required keywords since 18 Sep 2026.
+    async def _crime(_lat, _lon, **_where):
         return {"total": 57, "month": "2026-07", "by_category": []}
 
     monkeypatch.setattr(app_main, "lookup_postcode", _location)

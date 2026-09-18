@@ -160,12 +160,8 @@
                     <li><strong>EPC rating</strong>: from the England &amp; Wales EPC register. Scotland runs a separate register we don't query yet. Not shown.</li>
                     <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland. Not shown.</li>
                     <li><strong>Flood risk</strong>: the Environment Agency maps England only, so this report gives no flood zone or surface water reading here. SEPA's flood maps cover Scotland.</li>
-                    <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count below will read far lower than actual local crime levels.</li>
+                    <li><strong>Crime</strong>: Police Scotland does not publish to data.police.uk, which holds only British Transport Police records for Scotland, so this report shows no crime figure rather than one that would look reassuring.</li>
                 </ul>
-                <p class="notice">
-                    Crime in particular can look reassuring here when it is really just missing,
-                    so please don't rely on it for this property.
-                </p>
             </section>
         </div>
     </dialog>
@@ -1043,7 +1039,10 @@
             <span class="dashboard-card-title">Crime &amp; Safety</span>
             <span class="dashboard-card-status">
                 {% if crime_error %}Data unavailable
-                {% elif crime and crime.total %}{{ crime.total }} crimes recorded
+                {% elif crime and crime.total %}{{ "{:,}".format(crime.total) }} crimes recorded
+                {# Greater Manchester and Scotland: Police.uk holds only a
+                   trickle there, which read as a safe area (18 Sep 2026). #}
+                {% elif crime and crime.incomplete %}{{ crime.incomplete.status }}
                 {# "No data available" read as "nothing found here". The
                    force simply hasn't filed to Police.uk; say so. #}
                 {% elif crime and crime.unpublished %}Not published by the force recently
@@ -2988,6 +2987,8 @@
             <p class="notice notice-error">
                 The crime data service didn't respond. Try again in a moment.
             </p>
+        {% elif crime and crime.incomplete %}
+            <p class="notice">{{ crime.incomplete.note }}</p>
         {% elif crime and crime.unpublished %}
             <p class="notice">
                 The local police force has not published street-level data for this
@@ -2997,8 +2998,8 @@
             </p>
         {% elif crime and crime.total %}
             <p class="section-sub">
-                {{ crime.total }} crimes recorded within ~1 mile in {{ crime.month }}
-                {%- if district_crime %}, versus {{ district_crime.total }} in the wider {{ location.outcode }} postcode area{% endif %}.
+                {{ "{:,}".format(crime.total) }} crimes recorded within ~1 mile in {{ crime.month | month_label }}
+                {%- if district_crime %}, versus {{ "{:,}".format(district_crime.total) }} in the wider {{ location.outcode }} postcode area{% endif %}.
             </p>
             {% if crime_comparison %}
             <table class="tx-table">

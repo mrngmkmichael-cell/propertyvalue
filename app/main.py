@@ -742,7 +742,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
             sold_prices_for_postcode(canonical),
             _epc_flow(canonical, house_number, epc_configured),
             flood_zones.zone_for(lat, lon, location.get("country")),
-            crime.summary_near(lat, lon),
+            crime.summary_near(lat, lon, district=location.get("admin_district"), country=location.get("country")),
             asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
             hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
             asyncio.to_thread(schools_db.school_landscape, lat, lon),
@@ -782,6 +782,7 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         # months it compares (17 Sep 2026).
         if crime_result.get("month"):
             summary["crime_month"] = crime_result.get("month")
+        summary["crime_incomplete"] = (crime_result.get("incomplete") or {}).get("status")
 
     if not isinstance(deprivation_result, Exception) and deprivation_result:
         summary["imd_decile"] = deprivation_result.get("imd_decile")
@@ -1043,7 +1044,12 @@ def _imd_label(decile: int | None) -> str | None:
     return "Among the least deprived areas in England"
 
 
-def _crime_comparison(local: dict, district: dict) -> list[dict]:
+def _crime_comparison(local: dict | None, district: dict | None) -> list[dict]:
+    # Both sides or nothing. An empty side is a force that did not
+    # publish, not a crime-free district, and comparing against it made
+    # every category read "Higher" (18 Sep 2026).
+    if not (local and local.get("by_category") and district and district.get("by_category")):
+        return []
     local_counts = {c["category"]: c["count"] for c in local["by_category"]}
     district_counts = {c["category"]: c["count"] for c in district["by_category"]}
     categories = sorted(
@@ -4118,7 +4124,7 @@ async def _full_property_gather(
             # is worth holding the whole page for, and the card copes
             # with the data being absent.
             _timed("flood-warnings-near", _bounded(flood.warnings_near(lat, lon), 12.0)),
-            _timed("crime-summary-near", crime.summary_near(lat, lon)),
+            _timed("crime-summary-near", crime.summary_near(lat, lon, district=location.get("admin_district"), country=location.get("country"))),
             _timed("crime-summary-for-outcode", crime.summary_for_outcode(location["outcode"])),
             _timed("amenities-nearby-amenities-and-station", _amenities()),
             _timed("hpi-area-comparison", hpi.area_comparison(location["admin_district"], location["region"], location.get("country", ""))),
@@ -4219,10 +4225,13 @@ async def _full_property_gather(
         context["crime_error"] = True
     else:
         context["crime"] = crime_result
-        if not isinstance(district_crime_result, Exception) and district_crime_result:
+        # The wider district only as a count: a district Police.uk cannot
+        # give a true figure for (Greater Manchester, Scotland) or one
+        # whose force did not publish printed "versus None" in the modal.
+        if (not isinstance(district_crime_result, Exception) and district_crime_result
+                and district_crime_result.get("total") is not None):
             context["district_crime"] = district_crime_result
-            if crime_result.get("by_category") or district_crime_result.get("by_category"):
-                context["crime_comparison"] = _crime_comparison(crime_result, district_crime_result)
+            context["crime_comparison"] = _crime_comparison(crime_result, district_crime_result)
 
     if isinstance(amenities_result, Exception):
         context["amenities_error"] = True
@@ -4580,7 +4589,7 @@ async def api_lookup(postcode: str = ""):
     tx_result, flood_zone_result, crime_result, landscape_result, hpi_result = await asyncio.gather(
         sold_prices_for_postcode(canonical),
         flood_zones.zone_for(lat, lon, location.get("country")),
-        crime.summary_near(lat, lon),
+        crime.summary_near(lat, lon, district=location.get("admin_district"), country=location.get("country")),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
         return_exceptions=True,
@@ -4878,7 +4887,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
         _immediate([]) if area_level else sold_prices_for_postcode(canonical),
         _comparables_for_extension(lat, lon),
         flood_zones.zone_for(lat, lon, location.get("country")),
-        crime.summary_near(lat, lon),
+        crime.summary_near(lat, lon, district=location.get("admin_district"), country=location.get("country")),
         crime.summary_for_outcode(location["outcode"]),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         hpi.area_comparison(location["admin_district"], location["region"], location.get("country", "")),
@@ -5020,6 +5029,9 @@ async def api_extension_report(request: Request, postcode: str = ""):
         "total": ok(crime_result)["total"] if ok(crime_result) else None,
         "month": ok(crime_result)["month"] if ok(crime_result) else None,
         "by_category": ok(crime_result)["by_category"] if ok(crime_result) else [],
+        # Why there is no count, for a build that can show it; 2.3.0
+        # reads no count as "No data" (18 Sep 2026).
+        "note": ((ok(crime_result) or {}).get("incomplete") or {}).get("note"),
         "outcode": location.get("outcode"),
         "district_total": ok(crime_outcode_result)["total"] if ok(crime_outcode_result) else None,
         # Same category-by-category "here vs the wider postcode area"
@@ -5131,7 +5143,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         flood_zones.zone_for(lat, lon, location.get("country")),
         asyncio.to_thread(schools_db.school_landscape, lat, lon),
         _immediate([]) if area_level else epc.certificates_for_postcode(canonical),
-        crime.summary_near(lat, lon),
+        crime.summary_near(lat, lon, district=location.get("admin_district"), country=location.get("country")),
         crime.summary_for_outcode(location["outcode"]),
         asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
         # Everything below powers the 20 dashboard cards this endpoint
@@ -5543,12 +5555,13 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 card("Flood Risk", flood_zone_data["label"] if flood_zone_data else (flood_gap_label or "No data"), flood_status, detail=flood_detail),
                 card(
                     "Crime & Safety",
-                    f"{crime_data['total']} crimes recorded" if crime_data and crime_data.get("total") else "No data",
+                    f"{crime_data['total']:,} crimes recorded" if crime_data and crime_data.get("total")
+                    else (((crime_data or {}).get("incomplete") or {}).get("status") or "No data"),
                     crime_status,
                     detail=table_detail(
                         ["Category", "Here", crime_outcode_data and location.get("outcode") or "Area", "Versus area"],
                         [[r["category"].title(), r["here"], r["area"], {"higher": "Higher", "lower": "Lower", "same": "About the same"}[r["trend"]]] for r in _crime_comparison(crime_data, crime_outcode_data)],
-                    ) if crime_data and crime_outcode_data else None,
+                    ) if _crime_comparison(crime_data, crime_outcode_data) else None,
                 ),
                 card("Surface Water Risk", surface_water["label"] if surface_water else (flood_gap_label or "No data"), surface_water_status),
                 # Matches property.html's own card text exactly - the
@@ -6240,17 +6253,19 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
 
     if not context.get("is_scotland") and crime_data:
         if crime_data.get("total"):
-            month = f" in {crime_data['month']}" if crime_data.get("month") else ""
+            month = f" in {_month_label(crime_data['month'])}" if crime_data.get("month") else ""
             common = (
                 f" The most common category was {crime_data['by_category'][0]['category']}."
                 if crime_data.get("by_category") else ""
             )
             faqs.append((
                 f"Is {outcode} safe?",
-                f"{crime_data['total']} crimes were recorded within roughly a mile of central "
+                f"{crime_data['total']:,} crimes were recorded within roughly a mile of central "
                 f"{outcode}{month}, according to Police.uk.{common} Crime counts follow how many "
                 "people are around, so a busy district records more than a quiet one of the same size.",
             ))
+        elif crime_data.get("incomplete"):
+            faqs.append((f"Is {outcode} safe?", crime_data["incomplete"]["note"]))
         elif crime_data.get("unpublished"):
             faqs.append((
                 f"Is {outcode} safe?",
@@ -6682,7 +6697,9 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
         band_d = "Not held"
     if crime.get("total") is not None:
         month = f" in {_month_label(crime['month'])}" if crime.get("month") else ""
-        crimes = f"{crime['total']}{month}"
+        crimes = f"{crime['total']:,}{month}"
+    elif crime.get("incomplete"):
+        crimes = crime["incomplete"]["status"]
     else:
         crimes = "Not held"
     return [
@@ -6726,6 +6743,8 @@ async def _area_compare(context: dict, outcode: str, compare: str) -> None:
         logging.getLogger(__name__).exception("area compare %s against %s failed", outcode, other)
         context["compare_error"] = f"The figures for {other} could not be gathered just now. Try again in a moment."
         return
+    payload = dict(payload)
+    payload["crime"] = crime.with_coverage(payload.get("crime"), location.get("admin_district"), location.get("country"))
     here = _area_figures(outcode, context, (context.get("flood_not_covered") or {}).get("country"))
     there = _area_figures(other, payload, location.get("country"))
     pair = sorted([outcode, other])
@@ -6813,6 +6832,9 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
     context["flood_not_covered"] = flood_zones.outside_coverage(location.get("country"))
     if context["flood_not_covered"]:
         context["flood_zone"] = None
+    # The same for crime: warm guides still hold the trickle Police.uk
+    # carries for Greater Manchester and Scotland (18 Sep 2026).
+    context["crime"] = crime.with_coverage(context.get("crime"), location.get("admin_district"), location.get("country"))
     _area_guide_extras(context, outcode, lat, lon)
     _set_page_date(context, cache_key)
     await _area_compare(context, outcode, compare)
@@ -8436,8 +8458,18 @@ FIGURE_STATUSES = {
 # they have no FigureReport row. They belong on the accuracy log all the
 # same: the log's whole point is that it shows the misses, and quietly
 # omitting the ones that arrived by another route would defeat it.
-# Newest first. Districts only, never a full postcode.
+# Newest first. Districts only, never a full postcode. "how" replaces
+# the "Reported" label for one we caught ourselves (18 Sep 2026).
 CORRECTIONS = [
+    {
+        "date": "2026-09-18",
+        "district": "M1",
+        "card": "Crime & Safety",
+        "how": "Found by our own check",
+        "reported": "No reader told us. Our daily look at the live site found the sample report for central Manchester, the one the homepage links to, saying 6 crimes had been recorded within about a mile in July 2026.",
+        "found": "Greater Manchester Police is publishing only a small part of its recorded crime to Police.uk. On 18 September 2026 Police.uk listed 5 offences within a mile of central Manchester for July, all violence or public order, and 0 to 2 at Salford, Stockport, Wigan, Bolton, Oldham and Trafford, while every other force we read listed hundreds or thousands: 493 in Headingley, Leeds, and 1,892 in central Birmingham. The fix of 27 August caught a month with nothing in it, not a month with almost nothing, so a trickle was shown as a count. Scottish addresses had the same fault in a smaller way, because Police.uk holds only British Transport Police records for Scotland.",
+        "fixed": "Across the ten Greater Manchester boroughs and in Scotland, no crime count is shown on reports, comparisons, area guides or the PDF, and the browser extension shows no figure. Crime plays no part in the score there. Each says in words why. The count comes back when Greater Manchester Police publishes in full again, which our source checker looks for on every run.",
+    },
     {
         "date": "2026-08-27",
         "district": "SK4",
@@ -9129,6 +9161,8 @@ def _og_facts(context: dict) -> list[tuple[str, str]]:
     crime_data = context.get("crime")
     if crime_data and crime_data.get("total") is not None:
         facts.append(("Crime", f"{crime_data['total']:,} nearby"))
+    elif crime_data and crime_data.get("incomplete"):
+        facts.append(("Crime", crime_data["incomplete"]["short"]))
     elif crime_data and crime_data.get("unpublished"):
         facts.append(("Crime", "Not published"))
 
@@ -9756,6 +9790,10 @@ async def area_versus(request: Request, left: str, right: str):
         gap_label = flood_zones.not_mapped_label(OUTCODE_COUNTRY.get(code))
         if gap_label:
             summary["flood_zone"] = gap_label
+        # And the crime count Police.uk cannot give truly there (18 Sep 2026).
+        crime_gap = crime.coverage_gap(summary.get("admin_district"), OUTCODE_COUNTRY.get(code))
+        if crime_gap:
+            summary.update(crime_total=None, crime_unpublished=True, crime_incomplete=crime_gap["status"])
         sides.append(summary)
     context["columns"] = [
         {"postcode": left, "house_number": "", "summary": sides[0], "outcode": left},

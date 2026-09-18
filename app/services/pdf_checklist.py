@@ -19,6 +19,20 @@ def _fmt_gbp(value, decimals: int = 0) -> str:
     return f"£{value:,.{decimals}f}"
 
 
+_MONTHS = ("January", "February", "March", "April", "May", "June", "July",
+           "August", "September", "October", "November", "December")
+
+
+def _month(value) -> str:
+    """"2026-07" as "July 2026", as the site writes it (main._month_label,
+    which this module cannot import without a cycle)."""
+    try:
+        year, month = str(value)[:7].split("-")
+        return f"{_MONTHS[int(month) - 1]} {int(year)}"
+    except (ValueError, IndexError):
+        return str(value or "")
+
+
 def _status(label: str | None, good=(), bad=(), warn=()) -> str:
     """Status from a label's wording. Order matters: a label such as
     "Very low risk" must not match "high" inside "highly"."""
@@ -260,7 +274,10 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         comp = ""
         if dc.get("total"):
             comp = ", lower than the wider district" if crime["total"] < dc["total"] else (", higher than the wider district" if crime["total"] > dc["total"] else ", in line with the wider district")
-        add("Risk and safety", "Crime within about a mile", f"{crime['total']} recorded in {crime.get('month', 'the latest month')}{comp}", "good" if "lower" in comp else ("warn" if "higher" in comp else "neutral"), "Police.uk")
+        month = _month(crime["month"]) if crime.get("month") else "the latest month"
+        add("Risk and safety", "Crime within about a mile", f"{crime['total']:,} recorded in {month}{comp}", "good" if "lower" in comp else ("warn" if "higher" in comp else "neutral"), "Police.uk")
+    elif crime and crime.get("incomplete"):
+        add("Risk and safety", "Crime within about a mile", crime["incomplete"]["status"], "neutral", "Police.uk")
     else:
         add("Risk and safety", "Crime within about a mile", "Not available", "neutral", "Police.uk")
     radon = report.get("radon")

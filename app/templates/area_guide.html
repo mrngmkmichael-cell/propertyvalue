@@ -100,17 +100,13 @@
             <h2>Parts of this page do not cover Scotland</h2>
             <p class="section-sub">
                 House prices below are genuine (the UK House Price Index covers all four nations),
-                but two other sources are England-only infrastructure with no Scottish equivalent
-                wired up yet:
+                but three other sources stop short of Scotland:
             </p>
             <ul class="notice-list">
                 <li><strong>Flood risk</strong>: the Environment Agency maps England only, so this page does not give a flood zone for Scotland. SEPA's flood maps cover it.</li>
-                <li><strong>Crime</strong>: from data.police.uk, which for Scotland only includes British Transport Police records, not Police Scotland. The count will read far lower than actual local crime levels.</li>
+                <li><strong>Crime</strong>: Police Scotland does not publish to data.police.uk, which holds only British Transport Police records for Scotland, so this page shows no crime figure rather than one that would look reassuring.</li>
                 <li><strong>Schools</strong>: ratings come from Ofsted, which doesn't operate in Scotland, so "no schools found" reflects that gap, not an actual absence of schools nearby.</li>
             </ul>
-            <p class="notice">
-                Please don't rely on the crime figure on this page for a Scottish area.
-            </p>
         </section>
     </div>
 </dialog>
@@ -387,10 +383,12 @@
     <h2>Crime</h2>
     {% if crime and crime.total is not none %}
     <p class="section-sub">
-        {{ crime.total }} crime{{ "s" if crime.total != 1 else "" }} recorded within roughly a mile of
-        central {{ outcode }}{% if crime.month %} in {{ crime.month }}{% endif %}{% if crime.by_category %}, most commonly
+        {{ "{:,}".format(crime.total) }} crime{{ "s" if crime.total != 1 else "" }} recorded within roughly a mile of
+        central {{ outcode }}{% if crime.month %} in {{ crime.month | month_label }}{% endif %}{% if crime.by_category %}, most commonly
         <strong>{{ crime.by_category[0].category }}</strong>{% endif %}.
     </p>
+    {% elif crime and crime.incomplete %}
+    <p class="notice">{{ crime.incomplete.note }}</p>
     {% else %}
     <p class="notice">Crime data isn't available for this area right now.</p>
     {% endif %}

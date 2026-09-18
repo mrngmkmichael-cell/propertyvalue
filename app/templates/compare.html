@@ -169,7 +169,8 @@
                     {# `is defined` first: an absent key is Undefined, and
                        Jinja counts Undefined as "not none", which rendered
                        a bare "recorded" with no number in front of it. #}
-                    {%- if col.summary.crime_total is defined and col.summary.crime_total is not none %}{{ col.summary.crime_total }} recorded
+                    {%- if col.summary.crime_total is defined and col.summary.crime_total is not none %}{{ "{:,}".format(col.summary.crime_total) }} recorded
+                    {%- elif col.summary.crime_incomplete %}{{ col.summary.crime_incomplete }}
                     {%- elif col.summary.crime_unpublished %}Not published by the force
                     {%- else %}Not published{% endif -%}
                 </td>

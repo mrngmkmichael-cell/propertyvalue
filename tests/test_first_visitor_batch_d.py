@@ -209,7 +209,11 @@ def test_an_area_guide_compares_two_districts_and_stays_out_of_the_index(client,
     body = client.get("/area/AB12?compare=m20").text
     assert "AB12 against M20" in body
     assert '<meta name="robots" content="noindex, follow">' in body
-    assert "£412,500 median of 63 sales" in body and "214 in May 2026" in body
+    assert "£412,500 median of 63 sales" in body
+    # The fake location sits in Manchester, where Police.uk's trickle is
+    # not shown as a count (18 Sep 2026); _area_figures above pins the
+    # count and its month for everywhere else.
+    assert "214 in May 2026" not in body and "Not published in full" in body
     assert 'href="/area/M20"' in body
     assert '<th scope="col">M20 (Manchester)</th>' in body
     assert "Not held" in body or "median of" in body

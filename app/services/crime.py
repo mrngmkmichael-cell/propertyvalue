@@ -12,6 +12,76 @@ from app.services import _cache, postcodes
 API_BASE = "https://data.police.uk/api"
 CACHE_TTL_S = 86400  # Police.uk data only updates monthly
 
+# Places where Police.uk's street-level figures are known to be far from
+# complete, so that any count would make a place look much safer than it
+# is (18 Sep 2026). Read that day at 18 points for July 2026: six Greater
+# Manchester boroughs gave 0 to 2 records within a mile and central
+# Manchester 5, all violence or public order, while every other force
+# sampled gave 25 to 4,728 across 7 to 14 categories (Headingley in Leeds
+# 493, central Birmingham 1,892). The homepage's own sample report is in
+# Manchester and said "6 crimes recorded". Police Scotland does not
+# publish to Police.uk at all; only British Transport Police records
+# appear there. Police force areas are built from whole local
+# authorities, so the council a postcode sits in names its force
+# exactly. scripts/check_sources.py reads central Manchester on every
+# run and says when the force publishes in full again, which is when it
+# comes off this list.
+GREATER_MANCHESTER_DISTRICTS = frozenset({
+    "Bolton", "Bury", "Manchester", "Oldham", "Rochdale",
+    "Salford", "Stockport", "Tameside", "Trafford", "Wigan",
+})
+
+_GAPS = {
+    "scotland": {
+        "force": "Police Scotland",
+        "status": "Not published for Scotland",
+        "short": "Not published",
+        "note": (
+            "Police Scotland does not publish street-level crime to Police.uk, which "
+            "holds only British Transport Police records for Scotland. Any count here "
+            "would make the area look far safer than it is, so none is shown."
+        ),
+    },
+    "greater-manchester": {
+        "force": "Greater Manchester Police",
+        "status": "Not published in full",
+        "short": "Incomplete",
+        "note": (
+            "Greater Manchester Police is publishing only a small part of its recorded "
+            "crime to Police.uk at present, a handful of offences a month where other "
+            "forces list hundreds. Any count here would make the area look far safer "
+            "than it is, so none is shown."
+        ),
+    },
+}
+
+
+def coverage_gap(district: str | None, country: str | None) -> dict | None:
+    """Where Police.uk cannot give a true count, the words to show
+    instead: the force, a status for a card, a shorter one for the share
+    image, and a sentence for the detail. None everywhere the figures
+    are complete."""
+    if (country or "").strip() == "Scotland":
+        return dict(_GAPS["scotland"])
+    if (district or "").strip() in GREATER_MANCHESTER_DISTRICTS:
+        return dict(_GAPS["greater-manchester"])
+    return None
+
+
+def gap_summary(gap: dict) -> dict:
+    """What every surface receives in place of a count. unpublished keeps
+    any reader that predates the rule from printing a figure; incomplete
+    carries the words."""
+    return {"total": None, "month": None, "by_category": [], "unpublished": True, "incomplete": dict(gap)}
+
+
+def with_coverage(result: dict | None, district: str | None, country: str | None) -> dict | None:
+    """A summary gathered earlier (a warm area guide or comparison) with
+    the rule applied at render, so a count cached before 18 Sep 2026 is
+    never shown where Police.uk cannot give a true one."""
+    gap = coverage_gap(district, country)
+    return gap_summary(gap) if gap else result
+
 
 async def summary_for_outcode(outcode: str) -> dict | None:
     """Same crime summary, but centred on the postcode district (e.g.
@@ -23,10 +93,19 @@ async def summary_for_outcode(outcode: str) -> dict | None:
     centroid = await postcodes.outcode_centroid(outcode)
     if centroid is None:
         return None
-    return await summary_near(centroid["latitude"], centroid["longitude"])
+    return await summary_near(
+        centroid["latitude"], centroid["longitude"],
+        district=centroid.get("admin_district"), country=centroid.get("country"),
+    )
 
 
-async def summary_near(lat: float, lon: float) -> dict:
+async def summary_near(lat: float, lon: float, *, district: str | None, country: str | None) -> dict:
+    """district and country are required on purpose: a caller that
+    cannot say where the point is would print a Greater Manchester or
+    Scottish trickle as a count."""
+    gap = coverage_gap(district, country)
+    if gap:
+        return gap_summary(gap)
     key = _cache.coord_key("crime", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:

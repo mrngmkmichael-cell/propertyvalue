@@ -465,8 +465,8 @@
 <h2>Crime</h2>
 {% if crime and crime.total is not none %}
 <table><tr>
-    <td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ crime.total }}</span><br/><span class="fig-l">Recorded within about a mile{% if crime.month %}, {{ crime.month }}{% endif %}</span></td>
-    {% if district_crime and district_crime.total is not none %}<td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ district_crime.total }}</span><br/><span class="fig-l">Wider {{ location.outcode }} district</span></td>{% endif %}
+    <td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ "{:,}".format(crime.total) }}</span><br/><span class="fig-l">Recorded within about a mile{% if crime.month %}, {{ crime.month | month_label }}{% endif %}</span></td>
+    {% if district_crime and district_crime.total is not none %}<td style="width: 33%"><span class="fig-v" style="font-size: 22pt">{{ "{:,}".format(district_crime.total) }}</span><br/><span class="fig-l">Wider {{ location.outcode }} district</span></td>{% endif %}
     <td style="width: 33%"><span class="fig-v" style="font-size: 14pt">{% if district_crime and district_crime.total %}{{ "Lower" if crime.total < district_crime.total else ("Higher" if crime.total > district_crime.total else "In line") }}{% endif %}</span><br/><span class="fig-l">Against the district</span></td>
 </tr></table>
 {% if crime.by_category %}
@@ -479,7 +479,9 @@
 </table>
 </td></tr></table>
 {% endif %}
-<p class="tiny faint">Police.uk street-level crime, one month. Scotland carries British Transport Police records only.</p>
+<p class="tiny faint">Police.uk street-level crime, one month.</p>
+{% elif crime and crime.incomplete %}
+<p class="soft small">{{ crime.incomplete.note }}</p>
 {% else %}
 <p class="soft small">Crime figures are not available for this point.</p>
 {% endif %}
