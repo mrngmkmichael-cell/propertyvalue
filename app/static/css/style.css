@@ -2060,6 +2060,9 @@ button:not([class]):hover { background: var(--accent-hover); }
     text-transform: uppercase;
     padding: 0.25rem 0.75rem;
     border-radius: var(--radius-sm);
+    /* 17 Sep 2026: "Made for one house hunt" wrapped onto two lines at
+       desktop widths and sat over the price; one line always */
+    white-space: nowrap;
 }
 
 .pricing-card-price {
@@ -3670,7 +3673,10 @@ a.school-profile-lock-label:hover {
 
 /* Neither red flags nor an all-clear: nothing open to the reader came
    back clear, usually because its services failed (17 Sep 2026). Neutral,
-   so it reads as neither a warning nor a green light. */
+   so it reads as neither a warning nor a green light. Later that day it
+   took the second case that is neither: the open checks came back clear
+   but a locked check found something, so the green and the tick would
+   vouch for a home nobody has fully read. */
 .attention-banner-unread {
     background: var(--surface-2);
     border-color: var(--border);
@@ -5698,6 +5704,16 @@ main:focus { outline: none; }
 .myprops-saved-date { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); }
 .myprops-address { font-size: var(--text-lg); font-weight: var(--weight-semi); color: var(--ink); text-decoration: none; }
 .myprops-address:hover { color: var(--accent); }
+/* Open in full or how many checks are locked, under each address (17
+   Sep 2026). A mono label, as a status reads elsewhere; the open one in
+   --good because it is a status, the locked one quiet because it is a
+   fact about the home, not a warning about it. */
+.myprops-access { margin: 0; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); }
+.myprops-access-open { color: var(--good); }
+/* The one offer line above the compare bar, once two or more saved
+   homes are closed (17 Sep 2026). */
+.myprops-offer { margin: 1.25rem 0 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.myprops-offer a { color: var(--accent); font-weight: var(--weight-medium); }
 .myprops-note { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); white-space: pre-wrap; }
 .myprops-note-edit {
     align-self: flex-start; background: none; border: none; padding: 0; box-shadow: none;
@@ -5903,6 +5919,25 @@ main:focus { outline: none; }
     font-family: var(--font-mono); font-size: var(--text-xs);
     letter-spacing: 0.03em; color: var(--ink-faint); margin: 1rem 0 0;
 }
+
+/* The house a buyer carried in from the report's wall (17 Sep 2026):
+   above the hero, because they arrived asking about one home and not
+   about pricing in general. Built from the same tokens as the wall
+   they came from, so the two read as one step. */
+.premium-home {
+    margin: 0 0 1.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.premium-home-line { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.premium-home-line strong { color: var(--ink); font-size: var(--text-base); }
+.premium-home-plans { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.8rem; }
+.premium-home-form { margin: 0; }
+/* Reassurance, not the ask: the same quiet the wall's own aside uses. */
+.premium-home-aside { margin: 0.7rem 0 0; font-size: var(--text-xs); color: var(--ink-faint); }
+.premium-home-aside a { color: var(--ink-soft); }
 
 /* ---- Signup ---- */
 .signup-split { display: grid; grid-template-columns: minmax(0, 26rem) minmax(0, 24rem); gap: 3rem; align-items: start; }
@@ -8790,6 +8825,12 @@ body.theme-dark .lx-hero-form button[type="submit"]:hover {
 .unlock-offer form { display: contents; }
 .unlock-choice { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; margin-top: 1rem; }
 .unlock-choice .link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Straight after the unlock the same notice carries a second line: the
+   home is kept, and here is what would make us email (17 Sep 2026). Two
+   stacked lines, so this one block, not the offer's single row. */
+.unlock-done { display: block; }
+.unlock-done .auto-saved-note { margin: 0.4rem 0 0; }
 
 /* The EPC recommendation table: the row where the rating first reaches
    Band C carries the tint, so the cost above it reads against a step. */

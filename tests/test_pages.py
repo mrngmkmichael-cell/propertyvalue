@@ -322,7 +322,13 @@ def test_the_premium_lead_colours_the_prices_it_compares(client, monkeypatch):
     assert re.findall(r'<span class="lede-cost">(.*?)</span>', lead) == [
         "&pound;25", "&pound;50&ndash;&pound;110", "&pound;40",
     ]
-    assert '<span class="lede-ours">&pound;9.99 a month</span>' in lead
+    # Both plans, three months first, from plan_prices rather than a
+    # typed monthly price (17 Sep 2026).
+    from app.services import stripe_billing
+    prices = stripe_billing.plan_prices()
+    assert re.findall(r'<span class="lede-ours">(.*?)</span>', lead) == [
+        prices["quarterly"] + " for three months", prices["monthly"] + " a month",
+    ]
     css = pathlib.Path("app/static/css/style.css").read_text(encoding="utf-8")
     assert ".lede-cost { color: var(--bad);" in css
     assert ".lede-ours { color: var(--good);" in css
@@ -457,10 +463,13 @@ def test_opening_a_report_keeps_the_property_and_says_so(client, monkeypatch):
     assert "Kept in" in body and 'href="/watchlist"' in body
     assert 'action="/watchlist/remove"' in body
 
-    # Opening it again is not a second row, and does not re-announce it.
+    # Opening it again is not a second row. The line itself stays: since
+    # 17 Sep 2026 it follows the saved home rather than the one visit
+    # that saved it, because the reload after the free unlock is not
+    # that visit and said nothing about the home being kept.
     again = client.get("/property?postcode=M1+1AE").text
     assert len(watchlist.list_items(user_id)) == 1
-    assert "Kept in" not in again
+    assert "Kept in" in again
 
 
 def test_remembering_never_overwrites_a_note_someone_typed(client):
@@ -2055,9 +2064,25 @@ def test_admin_counts_one_address_unlocked_by_two_accounts(client, monkeypatch):
     from sqlalchemy import select
 
     from app import auth
+    from app import main as app_main
     from app.db import get_session
     from app.models import PremiumUnlock, User
 
+    # Only the address this test creates is read (17 Sep 2026). The test
+    # database is shared across files, and tests/test_property_page.py
+    # unlocks M14 5TG with no house number under several accounts, so
+    # run after it this test found the table already full and failed on
+    # "no rows". The words for an empty table are still what is tested.
+    real_metrics = app_main._admin_metrics
+
+    def _this_tests_addresses(session, now):
+        m = real_metrics(session, now)
+        m["shared_unlock_addresses"] = [
+            row for row in m["shared_unlock_addresses"] if row["address"] == "OX3 0SG, 7"
+        ]
+        return m
+
+    monkeypatch.setattr(app_main, "_admin_metrics", _this_tests_addresses)
     monkeypatch.setenv("ADMIN_EMAIL", "boss2@example.test")
     client.cookies.clear()
     client.post("/signup", data={"email": "boss2@example.test",

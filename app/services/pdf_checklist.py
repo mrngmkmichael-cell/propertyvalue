@@ -272,11 +272,11 @@ def build(report: dict, rc: dict | None, stamp_duty: dict | None = None) -> list
         add("Risk and safety", "Subsidence, clay shrink-swell", f"{clay.get('label_2030', '')} by 2030, {clay.get('label_2050', '')} by 2050", _status(clay.get("label_2050"), RISK_GOOD, RISK_BAD, RISK_WARN), "British Geological Survey")
     coal = report.get("coal_mining")
     if coal and coal.get("present"):
-        add("Risk and safety", "Coal mining reporting area", "Yes" + (f", {coal['area_name']}" if coal.get("area_name") else "") + ": a coal mining search is advisable", "warn", "Coal Authority")
+        add("Risk and safety", "Coal mining reporting area", "Yes" + (f", {coal['area_name']}" if coal.get("area_name") else "") + ": a coal mining search is advisable", "warn", "Mining Remediation Authority")
     elif report.get("coal_mining_error"):
-        add("Risk and safety", "Coal mining reporting area", "Service did not answer; not a clear result", "neutral", "Coal Authority")
+        add("Risk and safety", "Coal mining reporting area", "Service did not answer; not a clear result", "neutral", "Mining Remediation Authority")
     else:
-        add("Risk and safety", "Coal mining reporting area", "Not in a reporting area", "good", "Coal Authority")
+        add("Risk and safety", "Coal mining reporting area", "Not in a reporting area", "good", "Mining Remediation Authority")
     hl = report.get("historic_landfill")
     if hl and hl.get("status") == "on_site":
         add("Risk and safety", "Historic landfill", f"On the site itself: {hl.get('site_name', '')}", "bad", "Environment Agency")

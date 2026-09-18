@@ -6,9 +6,23 @@
 {% block content %}
 <span class="kicker">Premium</span>
 <h1>You're all set</h1>
+{# The house they just paid to open, when checkout carried one (17 Sep
+   2026). This page said "Back to search" to everyone, which asked a
+   buyer who had just subscribed on one specific home to type its
+   postcode in again. The home comes back from Stripe on the success
+   URL and is checked in the route, so an invalid one leaves the page
+   exactly as it was. #}
+{% if home %}
+<p class="section-sub">
+    Premium is on. Every check on {{ home.label }} is open. Manage your plan, payment details, or
+    cancel any time from the <a href="/premium">Premium</a> page.
+</p>
+<p class="section-sub"><a href="{{ home.url }}">Open the full report on {{ home.label }}</a> &middot; <a href="/watchlist">My properties</a></p>
+{% else %}
 <p class="section-sub">
     You're subscribed. Full Premium access is unlocked on every property report from now on. Manage
     your plan, payment details, or cancel any time from the <a href="/premium">Premium</a> page.
 </p>
 <p class="section-sub"><a href="/">&larr; Back to search</a></p>
+{% endif %}
 {% endblock %}

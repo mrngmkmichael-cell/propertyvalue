@@ -778,6 +778,10 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
     if not isinstance(crime_result, Exception) and crime_result:
         summary["crime_total"] = crime_result.get("total")
         summary["crime_unpublished"] = bool(crime_result.get("unpublished"))
+        # The month the count is for, so a change line can name the two
+        # months it compares (17 Sep 2026).
+        if crime_result.get("month"):
+            summary["crime_month"] = crime_result.get("month")
 
     if not isinstance(deprivation_result, Exception) and deprivation_result:
         summary["imd_decile"] = deprivation_result.get("imd_decile")
@@ -825,6 +829,8 @@ def _summary_from_report(context: dict, canonical: str, house_number: str) -> di
     crime = context.get("crime") or {}
     if isinstance(crime, dict) and crime.get("total") is not None:
         summary["crime_total"] = crime.get("total")
+        if crime.get("month"):
+            summary["crime_month"] = crime.get("month")
     hpi_data = context.get("hpi") or {}
     growth_area = (hpi_data.get("local_authority") or hpi_data.get("region") or {}) if isinstance(hpi_data, dict) else {}
     if growth_area.get("annual_change_pct") is not None:
@@ -849,16 +855,27 @@ def _group_for_changes(changes: list[str]) -> str:
     return ""
 
 
-def _snapshot_changes(old: dict, new: dict) -> list[str]:
-    """Human-readable differences between two _comparison_summary
-    snapshots of the same address, for the watchlist's "what's
-    changed since you last looked" - deliberately only flags
-    meaningfully-sized moves, not every minor fluctuation."""
+def _snapshot_change_items(old: dict, new: dict) -> list[tuple[str, str]]:
+    """(kind, sentence) for each difference between two
+    _comparison_summary snapshots of the same address - deliberately
+    only meaningfully-sized moves, not every minor fluctuation.
+
+    In the order a buyer should read them (17 Sep 2026): a new sale,
+    a new energy certificate, a flood zone change, the area's price
+    trend, the average sold price, and recorded crime last. The average
+    price used to come first and crime sat between the flood zone and
+    the sales, so an alert could open on the least telling line in it.
+    The branches below are written in that order on purpose."""
     changes = []
 
-    old_price, new_price = old.get("avg_price"), new.get("avg_price")
-    if old_price and new_price and old_price != new_price:
-        changes.append(f"Average sold price changed from {_format_gbp(old_price)} to {_format_gbp(new_price)}")
+    old_tx, new_tx = old.get("tx_count"), new.get("tx_count")
+    if old_tx is not None and new_tx is not None and new_tx > old_tx:
+        added = new_tx - old_tx
+        changes.append(("sale", f"{added} new sold price{'s' if added != 1 else ''} recorded here since you last looked"))
+
+    old_epc, new_epc = old.get("epc_date"), new.get("epc_date")
+    if old_epc and new_epc and new_epc > old_epc:
+        changes.append(("epc", "A new energy certificate was lodged, often a sign the property is being prepared for sale"))
 
     old_zone, new_zone = old.get("flood_zone"), new.get("flood_zone")
     # Only zone against zone: "Not mapped for Wales" replacing the Zone 1
@@ -866,22 +883,7 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
     # our side, not a change at the property.
     if (old_zone and new_zone and old_zone != new_zone
             and old_zone.startswith("Zone") and new_zone.startswith("Zone")):
-        changes.append(f"Flood zone changed from {old_zone} to {new_zone}")
-
-    old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
-    if old_crime is not None and new_crime is not None and old_crime != new_crime:
-        diff = new_crime - old_crime
-        if abs(diff) >= 5:
-            changes.append(f"Recorded crime nearby {'up' if diff > 0 else 'down'} by {abs(diff)} since last checked")
-
-    old_tx, new_tx = old.get("tx_count"), new.get("tx_count")
-    if old_tx is not None and new_tx is not None and new_tx > old_tx:
-        added = new_tx - old_tx
-        changes.append(f"{added} new sold price{'s' if added != 1 else ''} recorded here since you last looked")
-
-    old_epc, new_epc = old.get("epc_date"), new.get("epc_date")
-    if old_epc and new_epc and new_epc > old_epc:
-        changes.append("A new energy certificate was lodged, often a sign the property is being prepared for sale")
+        changes.append(("flood", f"Flood zone changed from {old_zone} to {new_zone}"))
 
     old_growth, new_growth = old.get("price_growth_pct"), new.get("price_growth_pct")
     if old_growth is not None and new_growth is not None:
@@ -893,9 +895,133 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
         was_down, now_down = old_growth <= -deadband, new_growth <= -deadband
         if (was_up and now_down) or (was_down and now_up):
             direction = "growth turned negative" if new_growth < 0 else "prices are growing again"
-            changes.append(f"Area house-price trend flipped: {direction} ({new_growth:+.1f}% YoY)")
+            changes.append(("trend", f"Area house-price trend flipped: {direction} ({new_growth:+.1f}% YoY)"))
+
+    old_price, new_price = old.get("avg_price"), new.get("avg_price")
+    if old_price and new_price and old_price != new_price:
+        changes.append(("price", f"Average sold price changed from {_format_gbp(old_price)} to {_format_gbp(new_price)}"))
+
+    old_crime, new_crime = old.get("crime_total"), new.get("crime_total")
+    if old_crime is not None and new_crime is not None and old_crime != new_crime:
+        diff = new_crime - old_crime
+        if abs(diff) >= 5:
+            moved = f"{'up' if diff > 0 else 'down'} by {abs(diff)}"
+            # Police.uk counts one month at a time, so the line names the
+            # two months it compares once the snapshots hold them (17 Sep
+            # 2026). Snapshots written before then carry no month, and for
+            # those the wording is what it was.
+            old_month, new_month = old.get("crime_month"), new.get("crime_month")
+            if old_month and new_month and old_month != new_month:
+                text = (f"Recorded crime nearby {moved} in {_month_label(new_month)} "
+                        f"compared with {_month_label(old_month)}")
+            elif old_month and new_month:
+                text = f"Recorded crime nearby for {_month_label(new_month)} {moved} since last checked"
+            else:
+                text = f"Recorded crime nearby {moved} since last checked"
+            changes.append(("crime", text))
 
     return changes
+
+
+def _snapshot_changes(old: dict, new: dict) -> list[str]:
+    """Human-readable differences between two _comparison_summary
+    snapshots of the same address, for the watchlist's and the report's
+    "what's changed since you last looked". Every kind, crime included."""
+    return [text for _, text in _snapshot_change_items(old, new)]
+
+
+# What a change alert email may carry (17 Sep 2026): everything the page
+# shows except recorded crime. Crime was compared one month against the
+# last snapshot and fired at a difference of 5, which for a busy postcode
+# is most months, so an email could say nothing but that. It stays on the
+# report and My properties; it never sends an email, alone or alongside
+# anything else.
+ALERT_CHANGE_KINDS = ("sale", "epc", "flood", "trend", "price")
+
+
+def _alert_changes(old: dict, new: dict) -> list[str]:
+    """The changes a change alert email lists, in the page's order."""
+    return [text for kind, text in _snapshot_change_items(old, new)
+            if kind in ALERT_CHANGE_KINDS]
+
+
+# The snapshot keys only a page visit may move on (17 Sep 2026). The
+# alert job writes a fresh snapshot after every run, which "consumes" a
+# change; for anything it emails that is right, but it never emails
+# crime, so moving crime on there would spend the change on nobody and
+# the page would almost never show it. The job keeps these as the reader
+# last saw them, and the report or My properties compares against that.
+PAGE_ONLY_SNAPSHOT_KEYS = ("crime_total", "crime_month")
+
+
+def _snapshot_after_alert_run(old: dict | None, fresh: dict) -> dict:
+    if not old or old.get("crime_total") is None:
+        return fresh
+    kept = dict(fresh)
+    for key in PAGE_ONLY_SNAPSHOT_KEYS:
+        if key in old:
+            kept[key] = old[key]
+        else:
+            kept.pop(key, None)
+    return kept
+
+
+# The same triggers in the reader's words, for the report to name the
+# moment a home is saved (17 Sep 2026). Until then nothing after the
+# free unlock said what, if anything, would bring anyone back, and the
+# only message the site is allowed to send is the one driven by these.
+# One line per branch of _snapshot_changes above, so a trigger cannot be
+# added or dropped in the code without the promise on the page moving
+# with it. Month-to-month crime is deliberately not among them: it is on
+# the page but does not earn an email.
+#
+# The sale line is worded per home (17 Sep 2026). It was one constant,
+# "a new sale is recorded at this postcode", but for a home saved with a
+# house number both summaries (_comparison_summary for the job,
+# _summary_from_report for the page) count only the sales whose address
+# holds that number (_filter_by_address), so a neighbour's sale at the
+# same postcode never moves tx_count and never sends anything. The page
+# now promises what the job does: this home's own sale when there is a
+# house number, any sale at the postcode when there is not. Widening the
+# job to postcode-level sales is a behaviour change for the owner to
+# decide, not a wording fix.
+ALERT_SALE_TRIGGER_HOME = "a sale of this home is recorded"
+ALERT_SALE_TRIGGER_POSTCODE = "a new sale is recorded at this postcode"
+ALERT_OTHER_TRIGGERS = (
+    "a new energy certificate is lodged, often a sign it is being prepared for sale",
+    "the flood zone changes",
+    "area prices change direction",
+)
+# The same four, short, for the one-line offers (the anonymous "Save it
+# free" and the end of the report), where the reader needs the gist.
+ALERT_SALE_TRIGGER_HOME_SHORT = "a sale of this home is recorded"
+ALERT_SALE_TRIGGER_POSTCODE_SHORT = "a sale is recorded at this postcode"
+ALERT_OTHER_TRIGGERS_SHORT = (
+    "a new energy certificate is lodged, the flood zone changes "
+    "or area prices change direction"
+)
+# And for My properties, which speaks for a whole list at once, where
+# some homes carry a house number and some do not (17 Sep 2026). It said
+# "We email you if anything on this list changes", which after C6 is
+# untrue: a crime-only move is highlighted on that page and never
+# emailed.
+ALERT_TRIGGERS_LIST = (
+    "a sale is recorded, a new energy certificate is lodged, "
+    "the flood zone changes or area prices change direction"
+)
+
+
+def alert_triggers(house_number: str | None) -> tuple[str, ...]:
+    """The four lines beside a saved home, sale first, worded for this
+    home: see ALERT_SALE_TRIGGER_HOME above."""
+    sale = ALERT_SALE_TRIGGER_HOME if (house_number or "").strip() else ALERT_SALE_TRIGGER_POSTCODE
+    return (sale, *ALERT_OTHER_TRIGGERS)
+
+
+def alert_triggers_short(house_number: str | None) -> str:
+    """The same four in one clause, for the one-line offers."""
+    sale = ALERT_SALE_TRIGGER_HOME_SHORT if (house_number or "").strip() else ALERT_SALE_TRIGGER_POSTCODE_SHORT
+    return f"{sale}, {ALERT_OTHER_TRIGGERS_SHORT}"
 
 
 # _district_summary and _district_changes, and the two constants they
@@ -1390,7 +1516,7 @@ DATA_SOURCE_GROUPS = [
         {"name": "Environment Agency", "powers": "Flood zones, live flood warnings, surface water risk", "freshness": "Live; warnings update continuously", "url": "https://environment.data.gov.uk"},
         {"name": "Police.uk", "powers": "Recorded crime by category near the address", "freshness": "Live; forces publish monthly, England and Wales", "url": "https://www.police.uk"},
         {"name": "British Geological Survey", "powers": "Radon potential, clay subsidence risk", "freshness": "Live against BGS's current atlases", "url": "https://www.bgs.ac.uk"},
-        {"name": "Coal Authority", "powers": "Coal mining reporting areas", "freshness": "Live", "url": "https://www.gov.uk/government/organisations/the-coal-authority"},
+        {"name": "Mining Remediation Authority", "powers": "Coal mining reporting areas", "freshness": "Live", "url": "https://www.gov.uk/government/organisations/mining-remediation-authority"},
         {"name": "planning.data.gov.uk & council GIS", "powers": "Conservation areas, green belt, listed buildings, designations", "freshness": "Live; national planning data platform", "url": "https://www.planning.data.gov.uk"},
         {"name": "Food Standards Agency", "powers": "Food hygiene ratings nearby", "freshness": "Live", "url": "https://www.food.gov.uk"},
         {"name": "OpenStreetMap (Overpass)", "powers": "Shops, GPs, pubs, stations nearby", "freshness": "Live; community-maintained", "url": "https://www.openstreetmap.org"},
@@ -2053,7 +2179,7 @@ PREMIUM_CHECKS = (
     ('geology', 'Subsidence Risk', 'Clay shrink-swell, 2030 and 2050', 'British Geological Survey'),
     ('air_quality', 'Air Quality', 'Against WHO guidelines', 'Defra Pollution Climate Mapping'),
     ('landfill', 'Historic Contamination', 'Former landfill sites nearby', 'Environment Agency'),
-    ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'The Coal Authority'),
+    ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'Mining Remediation Authority'),
     ('schools', 'School Catchment Areas', 'Real admission distances', 'Council admissions data'),
     ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
     ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021'),
@@ -2083,7 +2209,7 @@ LOCKED_CARD_LINES = {
     'Subsidence Risk': 'Clay shrink-swell risk by 2030 and 2050 · British Geological Survey',
     'Air Quality': 'Nitrogen dioxide and particles against WHO guidelines · Defra',
     'Historic Contamination': 'Former landfill sites nearby · Environment Agency',
-    'Mining Risk': 'Whether this is a coal mining reporting area · The Coal Authority',
+    'Mining Risk': 'Whether this is a coal mining reporting area · Mining Remediation Authority',
     'School Catchment Areas': 'Likely, borderline or unlikely for each nearby school · Council admissions data',
     'Getting Around': 'Nearest stations and journey times to the city · National Rail',
     'Health, Relationships & Social Grade': 'Health and social grade mix of the area · Census 2021',
@@ -2116,6 +2242,24 @@ templates.env.globals["locked_card_needs_house_number"] = LOCKED_CARD_NEEDS_HOUS
 # count it reads is a length rather than a number typed into copy.
 templates.env.globals["locked_check_count"] = len(PREMIUM_CHECKS)
 
+
+# What a locked check that found something is allowed to say: how many,
+# never which (owner's decision 6, 17 Sep 2026). The score card said
+# "+N more checks factored in with Premium", which reads as N checks
+# nobody has looked at, when N is the number of locked checks that came
+# back with something on this home. Said plainly it is the most honest
+# reason to open them, and it is the sentence that keeps the all-clear
+# banner from vouching for the whole home. One function so the two say
+# the same thing on one screen, with both counts read from PREMIUM_CHECKS
+# rather than typed. It stops at the count on purpose: which check raised
+# it is what LOCKED_CARD_LINES above keeps back.
+def locked_found_sentence(found: int) -> str:
+    return (f"{found} of the {len(PREMIUM_CHECKS)} locked checks found "
+            "something worth checking on this home")
+
+
+templates.env.globals["locked_found_sentence"] = locked_found_sentence
+
 # The offer, in one sentence, used word for word wherever a page states
 # it (owner's decision, 17 Sep 2026). The first-visitor audit that day
 # found it worded four ways on the homepage alone: "Free, and no account
@@ -2129,6 +2273,18 @@ OFFER_SENTENCE = (
     f"Sign up free, no card, and your first home gets all {CHECK_COUNT}."
 )
 templates.env.globals["offer_sentence"] = OFFER_SENTENCE
+
+# Both prices, read from the labels in stripe_billing.PLANS, the same
+# labels /premium's plan cards show, so no page types one (17 Sep 2026).
+# The report's wall said "£9.99 a month" and nothing else, which made a
+# monthly subscription the only answer offered to someone checking one
+# house; the three-month plan is the one that covers a house hunt, and it
+# was invisible until /premium. Checkout charges whatever Price ID is in
+# the environment, not these labels, so PLANS must be edited whenever a
+# Stripe Price changes: a change made only in the dashboard leaves every
+# page stating the old price. A global rather than a context value
+# because the wall is in a template reached by several routes.
+templates.env.globals["plan_prices"] = stripe_billing.plan_prices()
 
 
 @app.get("/")
@@ -2873,6 +3029,33 @@ def _ordinal(n: int) -> str:
     return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th') }"
 
 
+def _free_report_home(session, user_id: int) -> dict | None:
+    """The home this account spent its free full report on, or None.
+
+    The first PremiumUnlock row is that report: the wall names it so a
+    returning buyer is not told to pay for the one thing they already
+    have. Pulled out of _paywall_history on 17 Sep 2026 so /premium can
+    say the same sentence, from the same row.
+    """
+    row = session.execute(
+        select(PremiumUnlock.postcode, PremiumUnlock.house_number)
+        .where(PremiumUnlock.user_id == user_id)
+        .order_by(PremiumUnlock.created_at)
+        .limit(1)
+    ).first()
+    if not row:
+        return None
+    pc, hn = row
+    return {
+        "postcode": pc,
+        "house_number": hn,
+        "label": f"{hn} {pc}".strip(),
+        "url": "/property?" + urlencode(
+            {"postcode": pc, **({"house_number": hn} if hn else {})}
+        ),
+    }
+
+
 def _paywall_history(session, user_id: int, prior_walls: int) -> dict:
     """What this account has already done, for the paywall to say back.
 
@@ -2887,26 +3070,11 @@ def _paywall_history(session, user_id: int, prior_walls: int) -> dict:
     already on their watchlist, and the earlier walls are already the
     synthetic pageviews the funnel counts.
     """
-    unlocked = session.execute(
-        select(PremiumUnlock.postcode, PremiumUnlock.house_number)
-        .where(PremiumUnlock.user_id == user_id)
-        .order_by(PremiumUnlock.created_at)
-    ).all()
     properties_opened = session.scalar(
         select(func.count()).select_from(WatchlistItem)
         .where(WatchlistItem.user_id == user_id)
     ) or 0
-    free_report = None
-    if unlocked:
-        pc, hn = unlocked[0]
-        free_report = {
-            "postcode": pc,
-            "house_number": hn,
-            "label": f"{hn} {pc}".strip(),
-            "url": "/property?" + urlencode(
-                {"postcode": pc, **({"house_number": hn} if hn else {})}
-            ),
-        }
+    free_report = _free_report_home(session, user_id)
     return {
         "prior_walls": prior_walls,
         "nth_locked": _ordinal(prior_walls + 1),
@@ -3176,6 +3344,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     current = context["current_user"]
     premium_unlocked = bool(current and current.get("subscribed")) or _share is not None
     context["spent_unlock_now"] = request.query_params.get("unlocked") == "1"
+    # What would actually make the site email about this home, named on
+    # the page rather than left to be guessed (17 Sep 2026). Read from
+    # the helpers beside _snapshot_changes so the page and the alert
+    # job can never drift apart, and worded for this home: with a house
+    # number the job counts only that home's sales.
+    context["alert_triggers"] = alert_triggers(house_number)
+    context["alert_triggers_short"] = alert_triggers_short(house_number)
     context["can_unlock_now"] = False
     if current and not premium_unlocked:
         with db.get_session() as unlock_session:
@@ -3222,6 +3397,17 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # The wall's "By hand, these N checks are 28 websites" was a typed 44
     # until 17 Sep 2026, on the one page a reader can count the cards on.
     context["check_count"] = CHECK_COUNT
+    # Where the wall's "See plans" and the score's "+N checks with
+    # Premium" go, carrying the home (17 Sep 2026). Both linked to a bare
+    # /premium, so the one house the reader is standing on was dropped at
+    # the door and the price page opened on a generic hero. Nobody has
+    # ever subscribed on a first visit; the accounts that paid all came
+    # back, so this is the walk that matters. Built here, not in the
+    # template, so the query string is encoded once, the way the free
+    # report's own link in _paywall_history is.
+    context["premium_home_url"] = "/premium?" + urlencode(
+        {"home": location["postcode"], **({"hn": house_number} if house_number else {})}
+    )
 
     context.update(await _full_property_gather(location, house_number, premium_unlocked))
 
@@ -3232,9 +3418,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         # it. The page says it happened and offers to undo it, because
         # a list that fills itself without telling you is a surprise,
         # not a feature.
-        context["auto_saved"] = watchlist.remember(
-            context["current_user"]["id"], canonical, house_number
-        )
+        # 17 Sep 2026: the page says it from watchlist_item below, not
+        # from remember()'s return value. True only on the visit that
+        # created the row, it went false on the reload after the free
+        # unlock, which is the one visit where saying it matters most, so
+        # it is no longer kept in the context (it was auto_saved) and no
+        # template reads it. The call stays: it is what saves the home.
+        watchlist.remember(context["current_user"]["id"], canonical, house_number)
         # One query, not two: the whole list is needed for the second-home
         # offer below, and this address is in it. Neon round trips are the
         # unit of a page's cost, so the item comes out of the list rather
@@ -3363,7 +3553,7 @@ GATHER_SOURCE_LABELS = {
     "area-stats-deprivation-for-lsoa, codes-get": "ONS demographics",
     "noise-noise-near": "Noise & air quality models",
     "radon-risk-near": "British Geological Survey",
-    "coal-mining-check-near": "Coal Authority",
+    "coal-mining-check-near": "Mining Remediation Authority",
     "historic-landfill-check-near": "Historic landfill records",
     "sewage-discharge-nearby-outfalls": "Sewage discharge records",
     "broadband-coverage-for-postcode, canonical)": "Ofcom broadband & mobile",
@@ -5706,7 +5896,14 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
         with db.get_session() as session:
             home_unlocked = auth.has_unlocked(session, current_user["id"], canonical, unlock_house)
         if not home_unlocked:
-            return RedirectResponse(f"/premium?postcode={postcode}", status_code=303)
+            # The home goes along the way the wall's "See plans" sends it
+            # (premium_home_url), looked-up postcode and house number both
+            # (17 Sep 2026). It was ?postcode= as typed, so Premium named
+            # only the postcode and checkout sent the buyer back to the
+            # postcode-level report rather than the house.
+            return RedirectResponse("/premium?" + urlencode(
+                {"home": location["postcode"], **({"hn": house_number} if house_number else {})}
+            ), status_code=303)
 
     # premium_unlocked=True is this home's own access, not a subscription
     # flag: only a subscriber or an account that unlocked this home gets
@@ -7652,8 +7849,49 @@ def _oauth_redirect_uri(request: Request, provider: str = "google") -> str:
     return f"{base}/auth/{provider}/callback"
 
 
+# A house number as a link may carry it: the ones in the data are "7",
+# "12A", "Flat 3", "Rose Cottage". Anything else is dropped rather than
+# shown, so nothing arbitrary from a query string is ever put on the
+# page or into a Stripe success URL. Length is capped for the same
+# reason: this is a label in a sentence, not free text.
+_HOME_HOUSE_NUMBER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 '/.,-]{0,31}$")
+
+
+def _home_from_query(home: str, house_number: str) -> dict | None:
+    """The home a buyer carried into Premium, or None if it is not one.
+
+    (17 Sep 2026) The report's wall and the score's upsell send the
+    house being weighed up to /premium, the locked PDF gate sends its
+    postcode, and checkout sends it on to /premium/success, so a
+    returning buyer is never asked to find their own way back to the
+    report they were reading. Validated here
+    rather than trusted: only a full UK postcode counts, canonicalised
+    the way auth.property_key records an unlock so the link back is the
+    report's own URL. Anything else is ignored and the page is the one
+    it was before.
+    """
+    postcode, number = auth.property_key(home, house_number)
+    if not _FULL_POSTCODE_RE.match(postcode):
+        return None
+    # "M145TG" and "M14 5TG" are the same postcode; the report's URLs
+    # and headings use postcodes.io's spacing, so this does too.
+    compact = re.sub(r"\s+", "", postcode)
+    postcode = f"{compact[:-3]} {compact[-3:]}"
+    if number and not _HOME_HOUSE_NUMBER_RE.match(number):
+        number = ""
+    return {
+        "postcode": postcode,
+        "house_number": number,
+        "label": f"{number} {postcode}".strip(),
+        "url": "/property?" + urlencode(
+            {"postcode": postcode, **({"house_number": number} if number else {})}
+        ),
+    }
+
+
 @app.get("/premium")
-def premium_info(request: Request, checkout: str = "", error: str = ""):
+def premium_info(request: Request, checkout: str = "", error: str = "",
+                 home: str = "", hn: str = "", postcode: str = ""):
     context = base_context(request)
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
@@ -7664,21 +7902,43 @@ def premium_info(request: Request, checkout: str = "", error: str = ""):
     context["portal_error"] = error == "portal_failed"
     context["free_checks"] = FREE_CHECKS
     context["premium_checks"] = PREMIUM_CHECKS
+    # The home the buyer came from (17 Sep 2026). ?postcode= was the
+    # locked PDF gate's spelling of the same thing until it moved to
+    # ?home=&hn= that day (see property_pdf); still read, so a link made
+    # before then gets the same block.
+    context["home"] = _home_from_query(home or postcode, hn)
+    context["home_free_report"] = None
+    current = context["current_user"]
+    if context["home"] and current and not current.get("subscribed") and db.is_configured():
+        with db.get_session() as session:
+            context["home_free_report"] = _free_report_home(session, current["id"])
     return templates.TemplateResponse(request, "premium.html", context)
 
 
 @app.post("/premium/checkout")
-async def premium_checkout(request: Request, plan: str = Form(...)):
+async def premium_checkout(request: Request, plan: str = Form(...),
+                           home: str = Form(""), hn: str = Form("")):
     user = auth.current_user(request)
     if not user:
         return RedirectResponse("/login?next=/premium", status_code=303)
 
     base_url = _public_base_url(request)
+    # The home travels through Stripe and comes back on the other side
+    # (17 Sep 2026): success_url is handed to create_checkout_session
+    # unchanged, Stripe returns the buyer to it, and /premium/success
+    # links straight back to that report instead of "Back to search".
+    bought_for = _home_from_query(home, hn)
+    success_url = f"{base_url}/premium/success"
+    if bought_for:
+        success_url += "?" + urlencode(
+            {"home": bought_for["postcode"],
+             **({"hn": bought_for["house_number"]} if bought_for["house_number"] else {})}
+        )
     checkout_url = await stripe_billing.create_checkout_session(
         plan=plan,
         user_id=user["id"],
         user_email=user["email"],
-        success_url=f"{base_url}/premium/success",
+        success_url=success_url,
         cancel_url=f"{base_url}/premium/cancel",
     )
     if not checkout_url:
@@ -7687,8 +7947,11 @@ async def premium_checkout(request: Request, plan: str = Form(...)):
 
 
 @app.get("/premium/success")
-def premium_success(request: Request):
+def premium_success(request: Request, home: str = "", hn: str = ""):
     context = base_context(request)
+    # Straight back to the house they just paid to open, when checkout
+    # carried one (17 Sep 2026). Without it the page is what it was.
+    context["home"] = _home_from_query(home, hn)
     return templates.TemplateResponse(request, "premium_success.html", context)
 
 
@@ -8617,6 +8880,16 @@ async def oauth_callback(
 # --- Watchlist ---
 
 
+def _watchlist_unlock_key(postcode: str, house_number: str) -> tuple[str, str]:
+    """auth.property_key, with the postcode's spacing ignored (17 Sep
+    2026). A home saved from My properties keeps the postcode as it was
+    typed ("M145TG"), while its report looks the postcode up and asks
+    auth.has_unlocked about "M14 5TG", so without this the list could
+    call a home closed that its own report opens in full."""
+    pc, hn = auth.property_key(postcode, house_number)
+    return re.sub(r"\s+", "", pc), hn
+
+
 @app.get("/watchlist")
 async def watchlist_view(request: Request):
     context = base_context(request)
@@ -8639,18 +8912,55 @@ async def watchlist_view(request: Request):
             for u in unlock_rows
             if (u.postcode, u.house_number) not in saved_keys
         ]
+        unlocked_keys = {_watchlist_unlock_key(u.postcode, u.house_number) for u in unlock_rows}
+    # Which saved homes are open in full (17 Sep 2026). Alert emails lead
+    # here, so this is where a returning buyer lands, and the page never
+    # said which of their homes they could read in full and which they
+    # could not. Read from the unlock rows fetched just above rather than
+    # auth.has_unlocked per card: the same test, on the same key, for no
+    # extra round trip however long the list gets. A subscriber has every
+    # home open, so nothing here ever tells them one is closed.
+    subscribed = bool(context["current_user"].get("subscribed"))
+    closed = []
+    for item in items:
+        item["open_in_full"] = subscribed or (
+            _watchlist_unlock_key(item["postcode"], item["house_number"]) in unlocked_keys
+        )
+        if not item["open_in_full"]:
+            closed.append(item)
+    context["closed_home_count"] = len(closed)
+    # The offer, framed around those homes, once two or more are closed:
+    # both prices from plan_prices (the wall's own source) and a link to
+    # /premium carrying the first closed home, as the wall's does. A home
+    # whose saved postcode is not one keeps the link bare.
+    context["closed_home_premium_url"] = "/premium"
+    if closed:
+        first = _home_from_query(closed[0]["postcode"], closed[0]["house_number"])
+        if first:
+            context["closed_home_premium_url"] = "/premium?" + urlencode(
+                {"home": first["postcode"], **({"hn": first["house_number"]} if first["house_number"] else {})}
+            )
     if items:
         fresh_summaries = await asyncio.gather(
             *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
             return_exceptions=True,
         )
+        # Written once for the whole list, and only where the snapshot
+        # really moved (17 Sep 2026). update_snapshot inside this loop
+        # cost a session, a SELECT and an UPDATE per saved home on every
+        # visit, most of them writing back what was already there, and
+        # Neon round trips are the unit of a page's cost.
+        moved_snapshots = {}
         for item, fresh in zip(items, fresh_summaries):
             if isinstance(fresh, Exception):
                 item["changes"] = []
                 continue
             old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
             item["changes"] = _snapshot_changes(old, fresh) if old else []
-            watchlist.update_snapshot(context["current_user"]["id"], item["id"], json.dumps(fresh, default=str))
+            snapshot = json.dumps(fresh, default=str)
+            if old is None or json.loads(snapshot) != old:
+                moved_snapshots[item["id"]] = snapshot
+        watchlist.update_snapshots(context["current_user"]["id"], moved_snapshots)
     context["items"] = items
 
     # District following was removed on 7 Sep 2026. saved_districts held
@@ -8661,6 +8971,11 @@ async def watchlist_view(request: Request):
     # nothing, and dropping it cannot be undone.
     context["changed_item_count"] = sum(1 for item in items if item["changes"])
     context["alerts_configured"] = email_service.is_configured()
+    # What the alert job emails on, for the line at the top of the list
+    # (17 Sep 2026). It promised an email "if anything on this list
+    # changes", and a crime move highlighted on this very page is never
+    # emailed. List-worded, from beside the report's own triggers.
+    context["alert_triggers_list"] = ALERT_TRIGGERS_LIST
     return templates.TemplateResponse(request, "watchlist.html", context)
 
 
@@ -8971,7 +9286,9 @@ async def run_watchlist_alerts(request: Request):
     emails anyone whose items picked up a meaningful change since last
     checked. A page visit and this job both update the same
     last_snapshot, so whichever happens first "consumes" a change -
-    nobody gets double-notified via both paths.
+    nobody gets double-notified via both paths. Recorded crime is the
+    exception (17 Sep 2026): it is never emailed, so only a page visit
+    consumes it.
 
     Gated by a shared secret header rather than a session/login check,
     since the caller is a cron trigger with no user attached."""
@@ -8998,8 +9315,13 @@ async def run_watchlist_alerts(request: Request):
         if not item["last_snapshot"]:
             first_look += 1
         old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
-        changes = _snapshot_changes(old, fresh) if old else []
-        watchlist.update_snapshot(item["user_id"], item["id"], json.dumps(fresh, default=str))
+        # Only what an email may carry, in the order it is read, and the
+        # crime the email leaves out left for the page (17 Sep 2026): see
+        # ALERT_CHANGE_KINDS and PAGE_ONLY_SNAPSHOT_KEYS. A home whose only
+        # change is crime is not counted below and sends nothing.
+        changes = _alert_changes(old, fresh) if old else []
+        watchlist.update_snapshot(item["user_id"], item["id"],
+                                  json.dumps(_snapshot_after_alert_run(old, fresh), default=str))
         if changes:
             label = item["postcode"] + (f", {item['house_number']}" if item["house_number"] else "")
             changes_by_email.setdefault(item["email"], []).append({

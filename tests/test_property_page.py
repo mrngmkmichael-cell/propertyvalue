@@ -1040,7 +1040,12 @@ def test_the_group_board_keeps_its_checklist_per_address(client, fake_report):
     offer = body.split('id="cat-complete"', 1)[1].split("</div>", 1)[0]
     assert offer.lstrip().startswith("hidden")
     assert 'href="/signup?next=/property%3Fpostcode%3DM14' in offer
-    assert "be told when anything on it changes" in offer
+    # The triggers, not "anything on it changes" (17 Sep 2026): the
+    # words come from main.py so the offer and the alert job agree. This
+    # report has no house number, so the sale is any at the postcode.
+    from app import main as app_main
+    assert "be told when " + app_main.alert_triggers_short("") in offer
+    assert "a sale is recorded at this postcode" in offer
     assert "uki-report-checked" in body
 
     # Signed in, the report has already saved itself (watchlist.remember,

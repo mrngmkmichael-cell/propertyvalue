@@ -1,0 +1,39 @@
+{# "Kept in My properties", and exactly what would make the site email
+   about this home (17 Sep 2026).
+
+   Both this line and the first-home extension offer used to be gated on
+   auto_saved, which is only true on the visit that created the row. The
+   free unlock reloads the report with &unlocked=1, by which time the row
+   already existed, so the one moment the report opened in full said
+   nothing about the home being kept or about anything that would bring
+   anyone back. It follows the saved row itself now (watchlist_item), so
+   it is there on every visit by the owner of a saved home.
+
+   An include rather than a macro, so it reads the page's own context,
+   and included in exactly one place per render: folded into the unlock
+   notice on the view straight after the unlock, and standing on its own
+   under the report on every other visit. One notice, not several.
+
+   The triggers come from alert_triggers in main.py, written beside the
+   function that raises them and worded for this home (a house number
+   means this home's own sale, not any sale at the postcode), so the
+   promise here cannot drift from what the alert job actually sends. The
+   address is named only because the page already has it, the way the
+   confirmation banner does.
+
+   17 Sep 2026: once confirmation is switched on, the alert job skips an
+   address nobody has confirmed (_email_can_receive), so "We email you"
+   was untrue for exactly the account the banner above is asking to
+   confirm. That account is told the alerts start once it confirms. #}
+<p class="section-sub auto-saved-note">
+    Kept in <a href="/watchlist">My properties</a>, so you can come back to it.
+    {% if current_user and current_user.email %}{% if current_user.email_verified or not verification_available() %}We email {{ current_user.email }}{% else %}Once you confirm {{ current_user.email }}, we email you{% endif %}{% else %}We email you{% endif %}
+    when {{ alert_triggers[:-1] | join("; ") }}; or {{ alert_triggers[-1] }}. Never on a schedule.
+    {% if watchlist_item %}
+    <form action="/watchlist/remove" method="post" class="inline-undo">
+        <input type="hidden" name="item_id" value="{{ watchlist_item.id }}">
+        <input type="hidden" name="next" value="/property?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
+        <button type="submit" class="linkish">Remove it</button>
+    </form>
+    {% endif %}
+</p>

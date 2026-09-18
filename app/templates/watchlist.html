@@ -9,7 +9,13 @@
 <p class="dek">Every property you're weighing up, in one place. Notes, changes since you last looked, and side-by-side comparison.</p>
 
 {% if alerts_configured and items %}
-<p class="section-sub">We email you if anything on this list changes. No need to keep checking back.</p>
+{# Named, not "if anything on this list changes" (17 Sep 2026): the
+   alert job leaves recorded crime to this page, so that promise was
+   untrue for a change highlighted right below it. The triggers are
+   ALERT_TRIGGERS_LIST in main.py, beside the report's own. An account
+   still waiting on confirmation is skipped by the job, so it is told
+   the emails start once it confirms. #}
+<p class="section-sub">{% if current_user.email_verified or not verification_available() %}We email you{% else %}Once you confirm your email address, we email you{% endif %} when one of these happens to a home on this list: {{ alert_triggers_list }}. Never on a schedule.</p>
 
 {% endif %}
 
@@ -37,6 +43,16 @@
             <a class="myprops-address" href="/property?postcode={{ item.postcode | urlencode }}{% if item.house_number %}&house_number={{ item.house_number | urlencode }}{% endif %}">
                 {{ item.house_number ~ ", " ~ item.postcode if item.house_number else item.postcode }}
             </a>
+            {# Open in full or not, on every card (17 Sep 2026): the page
+               a change alert leads to never said which homes a buyer
+               could read in full. The closed count is the length of
+               PREMIUM_CHECKS, never typed. A subscriber's homes are all
+               open, so they never read the second line. #}
+            {% if item.open_in_full %}
+            <p class="myprops-access myprops-access-open">Open in full</p>
+            {% else %}
+            <p class="myprops-access">{{ locked_check_count }} checks locked</p>
+            {% endif %}
             {% if item.changes %}
             <div class="watchlist-changes">
                 {% for change in item.changes %}
@@ -62,6 +78,23 @@
         </div>
         {% endfor %}
     </div>
+    {# One line, once two or more saved homes are closed (17 Sep 2026),
+       framed around those homes rather than a pricing page in general.
+       With the free full report still unspent the one offer is that
+       report, as on the report itself: nobody is sold what they already
+       have. Otherwise both prices from plan_prices, the wall's own
+       source, and the link carries the first closed home to /premium. #}
+    {% if closed_home_count >= 2 and not current_user.subscribed %}
+    <p class="myprops-offer">
+        {{ closed_home_count }} of your saved homes have {{ locked_check_count }} checks locked.
+        {% if current_user.free_unlocks_left %}
+        {% if current_user.free_unlocks_left == 1 %}Your free full report opens every check on one of them, with no card: use it from that home's report.{% else %}Your {{ current_user.free_unlocks_left }} free full reports open every check on {{ current_user.free_unlocks_left }} of them, with no card: use each from that home's report.{% endif %}
+        {% else %}
+        Premium opens every check on all of them: {{ plan_prices.quarterly }} for three months, made for one house hunt, or {{ plan_prices.monthly }} a month. Each renews until you cancel.
+        <a href="{{ closed_home_premium_url }}">See plans</a>
+        {% endif %}
+    </p>
+    {% endif %}
     <div class="myprops-compare-bar">
         <button type="submit">Compare selected</button>
         <button type="submit" class="compare-full-secondary" formaction="/watchlist/compare/full">Every check, side by side</button>

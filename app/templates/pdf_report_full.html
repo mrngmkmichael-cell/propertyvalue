@@ -490,7 +490,7 @@
 <table class="kv">
     {% if radon %}{{ kv("Radon", radon.label if radon.label is defined else radon, "UK Health Security Agency and British Geological Survey indicative atlas", "good" if "low" in (radon.label if radon.label is defined else radon) | lower else "warn") }}{% endif %}
     {% if clay_risk %}{{ kv("Subsidence, clay shrink-swell", clay_risk.label_2030 ~ " by 2030, " ~ clay_risk.label_2050 ~ " by 2050", "British Geological Survey climate-adjusted susceptibility", "good" if clay_risk.label_2050 == "Improbable" else "warn") }}{% endif %}
-    {% if coal_mining and coal_mining.present %}{{ kv("Coal mining reporting area", "Yes" ~ (", " ~ coal_mining.area_name if coal_mining.area_name else "") ~ ": a coal mining search is advisable", "Coal Authority", "warn") }}{% elif coal_mining_error %}{{ kv("Coal mining reporting area", "The Coal Authority service did not answer; not a clear result", "Coal Authority") }}{% else %}{{ kv("Coal mining reporting area", "Not in a reporting area", "Coal Authority", "good") }}{% endif %}
+    {% if coal_mining and coal_mining.present %}{{ kv("Coal mining reporting area", "Yes" ~ (", " ~ coal_mining.area_name if coal_mining.area_name else "") ~ ": a coal mining search is advisable", "Mining Remediation Authority", "warn") }}{% elif coal_mining_error %}{{ kv("Coal mining reporting area", "The Mining Remediation Authority service did not answer; not a clear result", "Mining Remediation Authority") }}{% else %}{{ kv("Coal mining reporting area", "Not in a reporting area", "Mining Remediation Authority", "good") }}{% endif %}
     {% if historic_landfill and historic_landfill.status == "on_site" %}{{ kv("Historic landfill", "On the site itself: " ~ historic_landfill.site_name, "Environment Agency", "bad") }}{% elif historic_landfill and historic_landfill.status and historic_landfill.status != "clear" %}{{ kv("Historic landfill", historic_landfill.distance_m ~ " m away: " ~ historic_landfill.site_name, "Environment Agency", "warn") }}{% else %}{{ kv("Historic landfill", "None nearby", "Environment Agency", "good") }}{% endif %}
 </table>
 </td></tr></table>
@@ -707,7 +707,7 @@
     <tr><td class="b">Police.uk</td><td>Street-level crime for the latest published month.</td></tr>
     <tr><td class="b">Defra</td><td>Strategic noise mapping; modelled background air quality.</td></tr>
     <tr><td class="b">UK Health Security Agency and British Geological Survey</td><td>Radon potential; clay shrink-swell subsidence susceptibility, climate-adjusted to 2030 and 2050.</td></tr>
-    <tr><td class="b">Coal Authority</td><td>Coal mining reporting areas.</td></tr>
+    <tr><td class="b">Mining Remediation Authority</td><td>Coal mining reporting areas.</td></tr>
     <tr><td class="b">planning.data.gov.uk, Natural England, Historic England</td><td>Planning constraints, environmental designations, the National Heritage List.</td></tr>
     <tr><td class="b">Department for Education and Ofsted</td><td>Get Information About Schools; inspection outcomes; performance tables; free school meals; local authority admissions publications for last-admitted distances.</td></tr>
     <tr><td class="b">ONS</td><td>Census 2021 small area tables; Price Index of Private Rents; small area income estimates.</td></tr>

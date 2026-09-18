@@ -5,7 +5,7 @@ app/services/.
 import re
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import bindparam, select, update
 
 from app.db import get_session
 from app.models import User, WatchlistItem
@@ -168,6 +168,26 @@ def update_snapshot(user_id: int, item_id: int, snapshot_json: str) -> None:
         if item and item.user_id == user_id:
             item.last_snapshot = snapshot_json
             session.commit()
+
+
+def update_snapshots(user_id: int, snapshots: dict[int, str]) -> None:
+    """update_snapshot for several of one account's homes at once, as one
+    executemany in one session (17 Sep 2026). My properties called
+    update_snapshot inside its per-home loop, so every visit cost a
+    session, a SELECT and an UPDATE per saved home. Scoped to user_id in
+    the WHERE, the same ownership check update_snapshot makes."""
+    if not snapshots:
+        return
+    stmt = (
+        update(WatchlistItem)
+        .where(WatchlistItem.id == bindparam("item_id"), WatchlistItem.user_id == user_id)
+        .values(last_snapshot=bindparam("snapshot"))
+    )
+    with get_session() as session:
+        session.connection().execute(
+            stmt, [{"item_id": item_id, "snapshot": snap} for item_id, snap in snapshots.items()]
+        )
+        session.commit()
 
 
 def remove_item(user_id: int, item_id: int) -> None:

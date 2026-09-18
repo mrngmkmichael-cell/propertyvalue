@@ -207,9 +207,18 @@ def test_a_first_saved_home_offers_the_extension_and_a_second_does_not(client, f
     body = client.get("/property?postcode=M14%205TG").text
     assert 'class="compare-offer extension-offer"' in body
     assert 'href="/browser-extension"' in body
-    # The same home again: nothing new was saved, so no offer.
+    # The same home again: still the account's only saved home, so the
+    # offer is still there. It was gated on the row being created on
+    # this visit until 17 Sep 2026, which meant it vanished on the
+    # reload after the free unlock, the moment it was earned.
     again = client.get("/property?postcode=M14%205TG").text
-    assert 'class="compare-offer extension-offer"' not in again
+    assert 'class="compare-offer extension-offer"' in again
+    # A second home is where the comparison takes over: one offer at a
+    # time, and this one is the more useful of the two by then.
+    fake_report(location=fake_location(postcode="M18 2AA", outcode="M18"))
+    second = client.get("/property?postcode=M18%202AA").text
+    assert 'class="compare-offer extension-offer"' not in second
+    assert 'class="compare-offer" data-animate' in second
     client.cookies.clear()
 
 

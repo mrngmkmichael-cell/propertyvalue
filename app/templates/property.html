@@ -181,8 +181,13 @@
         </form>
     </div>
     {% elif spent_unlock_now %}
-    <div class="notice unlock-offer" id="use-free-report">
+    {# The moment after the free unlock, all of it in one notice (17 Sep
+       2026): open for good, kept in My properties, and exactly what
+       would make the site email. Before this the redirect showed the
+       first line alone, and the saved line below it disappeared. #}
+    <div class="notice unlock-offer unlock-done" id="use-free-report">
         <span>Unlocked. Every card on this property is yours, for good.</span>
+        {% if watchlist_item %}{% include "_saved_alerts.html" %}{% endif %}
     </div>
     {% endif %}
     {# premium_unlocked comes from the route: per-property, not per-account. #}
@@ -193,7 +198,10 @@
        full report, and landed on a page asking them to pay. They never
        saw the thing they signed up for. #}
     {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else "/premium")) %}
+    {# A spent account's locked cards and locked PDF button carry the home to
+       Premium, as the wall's "See plans" does (batch C fix pass, 17 Sep
+       2026): a bare /premium dropped the house at the door. #}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium"))) %}
         <div class="report-head-top">
             <div class="report-head-main">
                 {% set breadcrumb_parts = [] %}
@@ -283,30 +291,48 @@
                 {% else %}
                 <p class="overview-score-verdict">{{ overview.verdict }}</p>
                 {% endif %}
-                {% if overview.premium_extra_checks %}
+                {% if not premium_unlocked and overview.premium_extra_checks %}
                 {# Goes where a locked card goes (lock_redirect), 17 Sep 2026.
                    It sent every signed-in account to /premium, a brand-new
                    one with its free full report unused included, and a
                    visitor without an account to /signup without the house.
                    Now only an account that has spent its report goes to
-                   Premium; one with it unused goes to the offer at the top. #}
+                   Premium; one with it unused goes to the offer at the top.
+                   That one goes with the house (premium_home_url, later
+                   the same day), so Premium opens naming it rather than
+                   on a hero about houses in general. #}
+                {# And it now says what the count is, later the same day. It
+                   read "+N more checks factored in with Premium", which a
+                   reader takes as N checks nobody has looked at, when N is
+                   the number of locked checks that found something on this
+                   home: the most honest reason to open them. The words are
+                   locked_found_sentence in main.py, shared with the banner
+                   below so one sentence says it everywhere, and they stop
+                   at the count. Which check raised it is exactly what the
+                   locked cards keep back, so it is not named, not hinted
+                   at, and not linked to a card here. #}
                 {% set extra_n = overview.premium_extra_checks %}
-                <a href="{{ lock_redirect }}" class="overview-score-upsell">
+                <a href="{% if current_user and not can_unlock_now and not needs_confirmation %}{{ premium_home_url }}{% else %}{{ lock_redirect }}{% endif %}" class="overview-score-upsell">
                     {% if current_user and can_unlock_now %}
-                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} {{ 'open' if extra_n != 1 else 'opens' }} with your free full report →
+                    {{ locked_found_sentence(extra_n) }}. Open them with your free full report →
                     {% elif current_user and needs_confirmation %}
-                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} {{ 'open' if extra_n != 1 else 'opens' }} with your free full report, once your email address is confirmed →
+                    {{ locked_found_sentence(extra_n) }}. Open them with your free full report, once your email address is confirmed →
+                    {% elif current_user %}
+                    {{ locked_found_sentence(extra_n) }}. Open them with Premium →
                     {% else %}
-                    +{{ extra_n }} more check{{ 's' if extra_n != 1 }} factored in with Premium →
+                    {{ locked_found_sentence(extra_n) }}. Sign up free to open them →
                     {% endif %}
                 </a>
                 {% endif %}
                 {% if not current_user %}
                 {# The one return hook on the page that is not "unlock
-                   premium": a saved property emails when a sale lands, a
-                   flood zone changes or a school republishes its distance. #}
+                   premium". It said "when anything on it changes", which
+                   is both vaguer and wider than the truth; since 17 Sep
+                   2026 it names the same four triggers the saved line
+                   names, short, from alert_triggers_short in main.py,
+                   which words the sale for this home. #}
                 <p class="section-sub" style="margin: 0.6rem 0 0;">
-                    Coming back to this one? <a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when anything on it changes.
+                    Coming back to this one? <a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when {{ alert_triggers_short }}. Never on a schedule.
                 </p>
                 {% endif %}
             </div>
@@ -348,17 +374,12 @@
             {% if current_user %}
                 {# Opening the report put this address in My properties.
                    Said out loud, with the way out next to it: a list that
-                   fills itself silently is a surprise. #}
-                {% if auto_saved %}
-                <p class="section-sub auto-saved-note">
-                    Kept in <a href="/watchlist">My properties</a>, so you can come back to it and
-                    be told if anything here changes.
-                    <form action="/watchlist/remove" method="post" class="inline-undo">
-                        <input type="hidden" name="item_id" value="{{ watchlist_item.id }}">
-                        <input type="hidden" name="next" value="/property?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
-                        <button type="submit" class="linkish">Remove it</button>
-                    </form>
-                </p>
+                   fills itself silently is a surprise. On every visit by
+                   the owner of a saved home since 17 Sep 2026, not only
+                   the visit that saved it, and skipped here when the
+                   unlock notice above has already said it. #}
+                {% if watchlist_item and not spent_unlock_now %}
+                {% include "_saved_alerts.html" %}
                 {% endif %}
                 {# The extension, offered on an account's first home (17 Sep
                    2026). Every paying account came back on another day, and
@@ -367,7 +388,11 @@
                    listing without an email, and no report linked to it. A
                    second home gets the comparison instead: one offer at a
                    time. Hidden on a phone, where Chrome cannot take it. #}
-                {% if auto_saved and not compare_offer and not shared %}
+                {# Gated on the saved row since 17 Sep 2026, not on
+                   auto_saved: the free unlock reloads the report and
+                   auto_saved is false on that reload, so the offer
+                   vanished at exactly the moment it was earned. #}
+                {% if watchlist_item and not compare_offer and not shared %}
                 <div class="compare-offer extension-offer" data-animate>
                     <p class="compare-offer-lead">The next listing you open can show this too.</p>
                     <p class="section-sub">
@@ -477,8 +502,9 @@
     {% set mobile_status = 'muted' if not mobile else ('attn' if mobile.no_4g_outdoor_pct and mobile.no_4g_outdoor_pct >= 5 else 'ok') %}
     {% set deprivation_status = 'muted' if not deprivation else ('attn' if deprivation.imd_decile and deprivation.imd_decile <= 3 else 'ok') %}
     {# A locked card's finding must not leak. The score already handles
-       this: its verdict counts only unlocked checks and says "+N more
-       checks factored in with Premium" for the rest. But these statuses
+       this: its verdict counts only unlocked checks and says how many of
+       the locked ones found something, never which (C4, 17 Sep 2026;
+       locked_found_sentence). But these statuses
        also drive the red rings, the Check-this tags, the attention
        banner and the category counts, so left as attn they leaked the
        finding anyway, and contradicted the verdict's count on the same
@@ -597,12 +623,24 @@
     {% endif %}
     {% set clear_words = ((banner_clear[:-1] | join(', ')) ~ ' and ' ~ banner_clear[-1]) if banner_clear | length > 1 else (banner_clear | first) %}
     {% set unchecked_words = ((banner_unchecked[:-1] | join(', ')) ~ ' and ' ~ banner_unchecked[-1]) if banner_unchecked | length > 1 else (banner_unchecked | first) %}
-    <div class="attention-banner {{ 'attention-banner-clear' if banner_clear else 'attention-banner-unread' }}" data-animate>
-        {% if banner_clear %}<span class="attention-banner-count">&#10003;</span>{% endif %}
+    {# How many of the locked checks found something, and not one word
+       more about them (17 Sep 2026, later the same day). "No major red
+       flags found" beside a green tick is the sentence a buyer acts on,
+       and it cannot stand for the home while a check they have not
+       opened has a finding waiting behind the lock. So when one has, the
+       banner drops the tick and the green, says only that the checks
+       open to this reader are clear, and gives the count in the same
+       words the score card uses (locked_found_sentence in main.py).
+       Which check found it stays behind the lock: the count is the whole
+       of it, and it is the count the score already shows, so the two
+       cannot say different things on one screen. #}
+    {% set locked_found = overview.premium_extra_checks if (overview and not premium_unlocked) else 0 %}
+    <div class="attention-banner {{ 'attention-banner-clear' if (banner_clear and not locked_found) else 'attention-banner-unread' }}" data-animate>
+        {% if locked_found %}<span class="attention-banner-count">{{ locked_found }}</span>{% elif banner_clear %}<span class="attention-banner-count">&#10003;</span>{% endif %}
         <div class="attention-banner-body">
-            {% if banner_clear %}<strong>No major red flags found</strong> across {{ clear_words }}.{% else %}<strong>No all-clear to give.</strong>{% if not banner_unchecked %} None of the checks open to you had data to read for this address.{% endif %}{% endif %}
+            {% if banner_clear %}<strong>No major red flags{{ ' in the checks open to you' if locked_found else ' found' }}</strong> across {{ clear_words }}.{% else %}<strong>No all-clear to give.</strong>{% if not banner_unchecked %} None of the checks open to you had data to read for this address.{% endif %}{% endif %}
             {% if banner_unchecked %}{{ unchecked_words[:1] | upper }}{{ unchecked_words[1:] }} could not be checked just now.{% endif %}
-            {% if not premium_unlocked and premium_check_count %}The {{ premium_check_count }} locked check{{ 's are' if premium_check_count != 1 else ' is' }} not included.{% endif %}
+            {% if not premium_unlocked and premium_check_count %}{% if locked_found %}{{ locked_found_sentence(locked_found) }}.{% else %}The {{ premium_check_count }} locked check{{ 's are' if premium_check_count != 1 else ' is' }} not included.{% endif %}{% endif %}
         </div>
     </div>
     {% endif %}
@@ -684,7 +722,10 @@
        full report, and landed on a page asking them to pay. They never
        saw the thing they signed up for. #}
     {% set _return_to = "/property?postcode=" ~ location.postcode ~ ("&house_number=" ~ house_number if house_number else "") if location else "/" %}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else "/premium")) %}
+    {# A spent account's locked cards and locked PDF button carry the home to
+       Premium, as the wall's "See plans" does (batch C fix pass, 17 Sep
+       2026): a bare /premium dropped the house at the door. #}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium"))) %}
 
     {% if not premium_unlocked %}
     <div class="paywall-banner" data-animate>
@@ -724,11 +765,21 @@
            first one did not. Twelve accounts reached it in the week to
            9 Sep 2026 and one paid; the account that came back most, nine
            times, is still not paying. Repeating one sentence at someone
-           who has already read it eight times is not an offer. #}
+           who has already read it eight times is not an offer.
+           Both branches name both prices from 17 Sep 2026, the
+           three-month plan first: the wall quoted "£9.99 a month" and
+           nothing else, so the reader most likely to be standing here,
+           someone checking one house, was offered only an open-ended
+           monthly bill. The prices come from plan_prices, the labels in
+           stripe_billing.PLANS that /premium's cards show. Checkout
+           charges the Price ID in the environment, so PLANS must be
+           edited whenever a Stripe Price changes, or this sentence
+           states the old price. The renewal wording is the terms
+           page's own. #}
         <div class="paywall-banner-copy">
             {% if paywall_history and paywall_history.prior_walls %}
             <strong>This is the {{ paywall_history.nth_locked }} time you have reached this wall.</strong>
-            You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each of them, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium is &pound;9.99 a month for every check on all of them, however many you end up walking away from.
+            You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each of them, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium is {{ plan_prices.quarterly }} for three months, made for one house hunt, or {{ plan_prices.monthly }} a month. Each renews until you cancel, and either opens every check on all of them, however many you end up walking away from.
             {% else %}
             {# "The ones you opened stay unlocked for good" until 17 Sep 2026:
                a lapsed subscriber reads this on a home opened during the
@@ -736,14 +787,19 @@
                report's home stays open (owner's decision 4 that day), and the
                aside below names it when the history is to hand. #}
             <strong>You've used your free report.</strong>
-            {% if not (paywall_history and paywall_history.free_report) %}The home you opened with it stays open for good. {% endif %}Opening another is &pound;9.99 a month for unlimited properties, less than a single &pound;25 flood search elsewhere.
+            {% if not (paywall_history and paywall_history.free_report) %}The home you opened with it stays open for good. {% endif %}Opening another is {{ plan_prices.quarterly }} for three months, which covers a normal search from first viewing to exchange, or {{ plan_prices.monthly }} a month, less than a single &pound;25 flood search elsewhere. Each renews until you cancel, and either opens every check on unlimited properties.
             {% endif %}
             <span class="paywall-banner-by-hand">The next house by hand is the same 28 websites again, and still nothing side by side. Premium opens every check on every house, and the comparison page puts two of them next to each other. <a href="/methodology#by-hand">How we counted</a>.</span>
             {% if paywall_history and paywall_history.free_report %}
             <span class="paywall-banner-aside">Your free report went on <a href="{{ paywall_history.free_report.url }}">{{ paywall_history.free_report.label }}</a>, and it stays open for good.</span>
             {% endif %}
         </div>
-        <a class="paywall-banner-cta" href="/premium">See plans</a>
+        {# Carries this house to Premium (17 Sep 2026): premium_home_url
+           from the route, so the price page opens naming the home being
+           bought and checkout sends the buyer back to its report. It was
+           a bare /premium, and the one house they were reading about was
+           dropped at the door. #}
+        <a class="paywall-banner-cta" href="{{ premium_home_url }}">See plans</a>
         {% endif %}
     </div>
     {% endif %}
@@ -1401,10 +1457,16 @@
     {# Shown by the script below once every group has been opened
        (15 Sep 2026): the page's own save offer, for whoever is reading.
        A signed-in reader's report has already put itself in My
-       properties (watchlist.remember), so for them it is a reminder. #}
+       properties (watchlist.remember), so for them it is a reminder.
+       Both halves said "when anything on it changes" until 17 Sep 2026,
+       which promised more than the alert job sends and told nobody what
+       to expect. Same four triggers as the saved line, from
+       alert_triggers_short in main.py. An account still waiting on
+       confirmation is told the alerts start once it confirms, since the
+       alert job skips an unconfirmed address (17 Sep 2026). #}
     <div class="cat-complete" id="cat-complete" hidden>
-        {%- if current_user %}This property is in <a href="/watchlist">My properties</a>, so you will be told when anything on it changes.
-        {%- else %}<a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when anything on it changes.
+        {%- if current_user %}This property is in <a href="/watchlist">My properties</a>, so {% if current_user.email_verified or not verification_available() %}you will be told{% else %}once you confirm your email address you will be told{% endif %} when {{ alert_triggers_short }}. Never on a schedule.
+        {%- else %}<a href="/signup?next={{ _return_to | urlencode }}">Save it free</a> and be told when {{ alert_triggers_short }}. Never on a schedule.
         {%- endif %}
     </div>
     <script>
@@ -4146,7 +4208,7 @@
             <section class="report-section">
         <h2>Mining risk (coal)</h2>
         <p class="section-sub">
-            From the Coal Authority's National Coal Mining Database, the same Coal Mining Reporting
+            From the Mining Remediation Authority, formerly the Coal Authority, whose Coal Mining Reporting
             Area a solicitor's CON29M coal mining search is based on for property transactions. Being
             inside it doesn't mean the property is unsafe, but it means a proper coal mining search
             (checking for shafts, adits, or other historic workings nearby) is standard practice before
@@ -4158,7 +4220,7 @@
             {{ locked.locked_body(lock_label, lock_redirect) }}
         {% elif coal_mining_error %}
             <p class="notice notice-error">
-                The Coal Authority data service didn't respond. Try again in a moment.
+                The Mining Remediation Authority data service didn't respond. Try again in a moment.
             </p>
         {% elif coal_mining and coal_mining.present %}
             <p class="notice notice-error">

@@ -6,10 +6,77 @@
 {# Until 17 Sep 2026 this sold saving properties, tracking their changes
    and the PDF as Premium. Saving and change alerts come with every free
    account, and the first property's PDF with the free full report, so
-   it names only what Premium adds. #}
-{% block meta_description %}Premium opens every check on every property, with the full question list, each home's PDF and every check side by side. £9.99 a month, cancel any time.{% endblock %}
+   it names only what Premium adds. The price is plan_prices, not typed
+   (17 Sep 2026), and names one plan only because both do not fit under
+   the 155 characters a search result shows. #}
+{% block meta_description %}Premium opens every check on every property, with the full question list, each home's PDF and every check side by side. {{ plan_prices.monthly }} a month, cancel any time.{% endblock %}
 {% block content %}
 <span class="kicker">Premium</span>
+
+{# The questions are one list, written out twice by the macro below: as
+   the visible answers and as their FAQPage structured data (17 Sep
+   2026). They were typed twice until then and had drifted apart, and
+   both copies said three things that were not true:
+   - "What do I get" listed change alerts as a Premium addition, while
+     the table below has them included with every free account, and
+     alerts are the one message allowed to bring a buyer back.
+   - "Can I cancel?" and the one-house answer said everything unlocked
+     stays unlocked. Only the free full report is stored as an unlock
+     (auth.claim_unlock); a home opened on a subscription is open
+     because of it, so it locks again when the paid period ends, as the
+     terms say. The free full report's home stays open for good.
+   - Both sent readers to an "account page" that does not exist.
+     Cancelling is Manage subscription on this page.
+   The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so its
+   answer is gated with it. Unconditional, it described a product with
+   no button on the page, to exactly the reader most likely to want it:
+   someone checking one house who does not want a subscription. The
+   three-month plan is that reader's plan while the pass is off. The
+   Premium count is the list's length, never typed, because the split
+   between free and Premium checks is going to move, and the price is
+   plan_prices, the labels in stripe_billing.PLANS that the plan cards
+   below show. Checkout charges the Price ID in the environment, so
+   PLANS must be edited whenever a Stripe Price changes. #}
+{% set premium_faq = [
+    ("Do I need a card for the free report?",
+     "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running."),
+] + ([
+    ("What is the difference between the pass and the subscription?",
+     "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."),
+] if pass_available else [
+    ("I only have one house to check. Am I stuck with a monthly bill?",
+     "No. The three-month plan is " ~ plan_prices.quarterly ~ " for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
+]) + [
+    ("Can I cancel?",
+     "Yes, any time, from this page once you have subscribed. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
+    ("What do I get that the free report does not show?",
+     "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
+    ("Where does the data come from?",
+     "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
+] %}
+
+{# The questions used to sit at the foot of the page, below every one of
+   the check cards: seventeen screens down a phone, which is past every
+   reader who was weighing up the price (17 Sep 2026). A macro, called
+   once per state, because the answers belong directly under the prices
+   they are about and the page has two states that show prices at all.
+   Rendering it twice would put two FAQPage blocks on one page, which is
+   why it is a macro and not a second copy. Someone already subscribed
+   sees no prices and no "Before you pay": they have. #}
+{% macro before_you_pay(questions) %}
+<section class="report-section" id="before-you-pay">
+    <h2>Before you pay</h2>
+    <dl class="faq-list">
+        {% for question, answer in questions %}
+        <dt>{{ question }}</dt>
+        <dd>{{ answer }}</dd>
+        {% endfor %}
+    </dl>
+</section>
+{% set faq_ld = namespace(questions=[]) %}
+{% for question, answer in questions %}{% set faq_ld.questions = faq_ld.questions + [{"@type": "Question", "name": question, "acceptedAnswer": {"@type": "Answer", "text": answer}}] %}{% endfor %}
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_ld.questions} | tojson }}</script>
+{% endmacro %}
 
 {% if not billing_configured %}
 <h1>Premium isn't open for sign-up yet</h1>
@@ -23,19 +90,67 @@
     still building the billing side of this. Check back soon, or <a href="mailto:support@ukpropertyinsight.co.uk">email us</a> if you'd like early access.
 </p>
 <p class="section-sub"><a href="/">&larr; Back to search</a></p>
+{{ before_you_pay(premium_faq) }}
 
 {% else %}
+{# The house the buyer arrived with (17 Sep 2026). The report's wall and
+   the score's "+N checks with Premium" linked to a bare /premium, so
+   someone who came here weighing up one specific home met a hero about
+   houses in general and had to find their way back on their own. Nobody
+   has ever subscribed on a first visit and every account that paid came
+   back, so this is the walk that decides it. Only for a signed-in
+   account without a subscription: a subscriber has nothing to buy, and
+   a signed-out visitor has a free full report to spend first. The two
+   buttons are the same checkout as the cards below, with the home in
+   hidden fields so it survives Stripe and the return. #}
+{% if home and current_user and not current_user.subscribed %}
+{% set ordered_plans = (plans | selectattr("available") | selectattr("key", "equalto", "quarterly") | list)
+                     + (plans | selectattr("available") | rejectattr("key", "equalto", "quarterly") | list) %}
+{% set plan_button = {"quarterly": plan_prices.quarterly ~ " for three months", "monthly": plan_prices.monthly ~ " a month"} %}
+<div class="premium-home">
+    <p class="premium-home-line"><strong>Open {{ home.label }} in full</strong></p>
+    {# While the free full report is unspent it is the only offer (17 Sep
+       2026, batch C review). The pay buttons went to every account
+       without a subscription, so an account that had never used its
+       free report, the one the locked PDF sends here, was offered two
+       prices for a home it could open with no card. Waiting on
+       confirmation, the report is claimed from the confirmation banner. #}
+    {% if current_user.free_unlocks_left %}
+    {% set confirm_first = not current_user.email_verified and verification_available() %}
+    <p class="premium-home-aside">Your free full report can open <a href="{{ home.url }}#{{ 'verify-banner' if confirm_first else 'use-free-report' }}">{{ home.label }}</a>, with no card{% if confirm_first %}, once you confirm {{ current_user.email }}{% endif %}.</p>
+    {% elif ordered_plans %}
+    <div class="premium-home-plans">
+        {% for plan in ordered_plans %}
+        <form action="/premium/checkout" method="post" class="premium-home-form">
+            <input type="hidden" name="plan" value="{{ plan.key }}">
+            <input type="hidden" name="home" value="{{ home.postcode }}">
+            <input type="hidden" name="hn" value="{{ home.house_number }}">
+            <button type="submit">{{ plan_button.get(plan.key, plan.label) }}</button>
+        </form>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% if home_free_report %}
+    <p class="premium-home-aside">Your free full report is on <a href="{{ home_free_report.url }}">{{ home_free_report.label }}</a> and stays open.</p>
+    {% endif %}
+</div>
+{% endif %}
 <h1>One wrong house costs more than a lifetime of reports</h1>
 {# The lead reads at lead size, and the two kinds of price are two
    colours (16 Sep 2026): what a search costs per property in the red
    the site uses for a cost, ours in the green it uses for an all
    clear. The contrast is the argument, so nothing else here is
-   coloured. #}
+   coloured.
+   17 Sep 2026: ours was a typed "&pound;9.99 a month", the monthly plan
+   alone, on the page that badges the three-month plan as made for one
+   house hunt. Both now come from plan_prices, three months first, as
+   on the report's wall. #}
 <p class="premium-lede">
     Professional property searches are priced per property: a flood report is around
     <span class="lede-cost">&pound;25</span>, an environmental search
     <span class="lede-cost">&pound;50&ndash;&pound;110</span>, a coal mining search
-    <span class="lede-cost">&pound;40</span>. Premium is <span class="lede-ours">&pound;9.99 a month</span>
+    <span class="lede-cost">&pound;40</span>. Premium is <span class="lede-ours">{{ plan_prices.quarterly }} for three months</span>
+    or <span class="lede-ours">{{ plan_prices.monthly }} a month</span>
     for <strong>every check, in full, on unlimited properties</strong>, so you can
     afford to check the ones you walk away from too.
 </p>
@@ -114,6 +229,7 @@
         {% if current_user %}
         <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
             <input type="hidden" name="plan" value="pass">
+            {% if home %}<input type="hidden" name="home" value="{{ home.postcode }}"><input type="hidden" name="hn" value="{{ home.house_number }}">{% endif %}
             <button type="submit">Buy the pass</button>
         </form>
         {% else %}
@@ -121,19 +237,37 @@
         {% endif %}
     </div>
     {% endif %}
+    {# The badge and the line under the price, 17 Sep 2026. The badge read
+       "SAVE 17% VS MONTHLY": a figure typed into stripe_billing rather
+       than worked out from the two prices, and an answer to a question
+       nobody standing here is asking. What the three-month plan is for
+       is the point of it, and it is what the pass card beside it already
+       says, so the badge only appears when the pass is off sale and the
+       three-month plan is the one-house-hunt answer. The second line
+       repeated the price set in type directly above it, and now says
+       what happens next instead, in the terms page's own words
+       ("renews automatically at the end of each period until you
+       cancel"). Cancelling is the reassurance line under the cards. #}
+    {% set plan_badge = {"quarterly": "Made for one house hunt"} %}
+    {% set plan_renews = {"monthly": "every month", "quarterly": "every three months"} %}
     {% for plan in plans %}
     <div class="pricing-card{{ ' pricing-card-featured' if plan.key == 'quarterly' and not pass_available else '' }}">
-        {% if plan.saving_pct %}<span class="pricing-card-badge">Save {{ plan.saving_pct }}% vs monthly</span>{% endif %}
+        {% if plan_badge.get(plan.key) and not pass_available %}<span class="pricing-card-badge">{{ plan_badge.get(plan.key) }}</span>{% endif %}
         <h2 class="pricing-card-price">{{ plan.label }}</h2>
         {% if plan.trial_days %}
-        <p class="section-sub">{{ plan.trial_days }}-day free trial, then {{ plan.label }}. Cancel any time.</p>
+        <p class="section-sub">{{ plan.trial_days }}-day free trial first, then it renews {{ plan_renews.get(plan.key, "at the end of each period") }} until you cancel.</p>
         {% else %}
-        <p class="section-sub">{{ plan.label }}, billed from today. Cancel any time.</p>
+        <p class="section-sub">Billed from today, then renews {{ plan_renews.get(plan.key, "at the end of each period") }} until you cancel.</p>
         {% endif %}
         {% if plan.available %}
             {% if current_user %}
             <form action="/premium/checkout" method="post" class="stacked-form" style="padding: 0; border: none; box-shadow: none; background: none; margin: 1rem 0 0;">
                 <input type="hidden" name="plan" value="{{ plan.key }}">
+                {# The home rides along with the card below too, not only
+                   with the block at the top (17 Sep 2026): a buyer who
+                   scrolls past it and pays from here lands back on the
+                   same report. #}
+                {% if home %}<input type="hidden" name="home" value="{{ home.postcode }}"><input type="hidden" name="hn" value="{{ home.house_number }}">{% endif %}
                 <button type="submit">{{ "Start free trial" if plan.trial_days else "Subscribe" }}</button>
             </form>
             {% else %}
@@ -150,6 +284,8 @@
     {% endfor %}
 </div>
 <p class="pricing-reassure">Stripe checkout &middot; Cancel any time from this page &middot; The free plan needs no card at all</p>
+
+{{ before_you_pay(premium_faq) }}
 
 {# The 25-page PDF was rebuilt on 6 Sep 2026 as the thing that makes the
    subscription worth paying for, and this page did not show a single
@@ -261,54 +397,4 @@
 
 {% endif %}
 
-{# The questions are one list, drawn twice below: as the visible answers
-   and as their FAQPage structured data (17 Sep 2026). They were typed
-   twice until then and had drifted apart, and both copies said three
-   things that were not true:
-   - "What do I get" listed change alerts as a Premium addition, while
-     the table above has them included with every free account, and
-     alerts are the one message allowed to bring a buyer back.
-   - "Can I cancel?" and the one-house answer said everything unlocked
-     stays unlocked. Only the free full report is stored as an unlock
-     (auth.claim_unlock); a home opened on a subscription is open
-     because of it, so it locks again when the paid period ends, as the
-     terms say. The free full report's home stays open for good.
-   - Both sent readers to an "account page" that does not exist.
-     Cancelling is Manage subscription on this page.
-   The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so its
-   answer is gated with it. Unconditional, it described a product with
-   no button on the page, to exactly the reader most likely to want it:
-   someone checking one house who does not want a subscription. The
-   three-month plan is that reader's plan while the pass is off. The
-   Premium count is the list's length, never typed, because the split
-   between free and Premium checks is going to move. #}
-{% set premium_faq = [
-    ("Do I need a card for the free report?",
-     "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running."),
-] + ([
-    ("What is the difference between the pass and the subscription?",
-     "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."),
-] if pass_available else [
-    ("I only have one house to check. Am I stuck with a monthly bill?",
-     "No. The three-month plan is £24.99 for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
-]) + [
-    ("Can I cancel?",
-     "Yes, any time, from this page once you have subscribed. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
-    ("What do I get that the free report does not show?",
-     "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
-    ("Where does the data come from?",
-     "Named official sources only: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
-] %}
-<section class="report-section">
-    <h2>Before you pay</h2>
-    <dl class="faq-list">
-        {% for question, answer in premium_faq %}
-        <dt>{{ question }}</dt>
-        <dd>{{ answer }}</dd>
-        {% endfor %}
-    </dl>
-</section>
-{% set faq_ld = namespace(questions=[]) %}
-{% for question, answer in premium_faq %}{% set faq_ld.questions = faq_ld.questions + [{"@type": "Question", "name": question, "acceptedAnswer": {"@type": "Answer", "text": answer}}] %}{% endfor %}
-<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_ld.questions} | tojson }}</script>
 {% endblock %}

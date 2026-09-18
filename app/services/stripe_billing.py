@@ -41,9 +41,11 @@ PASS_PRICE_ENV = "STRIPE_PRICE_ID_PASS"
 PASS_LABEL = "£19 once"
 PASS_MONTHS = 6
 
-# Saving against paying monthly, shown on the pricing card. £24.99 for
-# three months is £8.33 a month against £9.99: 17%. Stated as a number
-# because "Best value" on its own asks the reader to do the division.
+# Saving against paying monthly. £24.99 for three months is £8.33 a
+# month against £9.99: 17%. Typed, not worked out, which is why the
+# pricing card stopped showing it on 17 Sep 2026 (the card now names the
+# house hunt the three-month plan is for). Kept here because
+# plan_choices() hands it to anything that wants it, computed or not.
 PLAN_SAVING_PCT = {"quarterly": 17}
 
 # Subscription statuses that should count as "has Premium access" -
@@ -71,6 +73,16 @@ def plan_for_price_id(price_id: str | None) -> str | None:
 
 def pass_available() -> bool:
     return bool(os.environ.get(PASS_PRICE_ENV))
+
+
+def plan_prices() -> dict[str, str]:
+    """{"monthly": "£9.99", "quarterly": "£24.99"}: the price out of each
+    plan's label, so copy anywhere on the site can name a price without
+    typing one (17 Sep 2026). The report's wall quoted "£9.99 a month"
+    as a literal until then and named no other plan, which left the
+    three-month plan, the one that covers a house hunt, unsaid on the
+    page where the decision is actually made."""
+    return {key: label.split("/", 1)[0].strip() for key, (_, label, _) in PLANS.items()}
 
 
 def plan_choices() -> list[dict]:

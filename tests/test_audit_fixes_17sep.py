@@ -1,6 +1,8 @@
 """Fixes from the first-time visitor audit of 17 September 2026
 (docs/audits/2026-09-17-first-visitor-audit.md), one headed section per
 item, each pinning the behaviour the owner approved that day."""
+import asyncio
+import datetime
 import html
 import json
 import pathlib
@@ -10,6 +12,7 @@ from app import auth, db
 from app import main as app_main
 from app.services import email as email_service
 from app.services import pdf_export
+from app.services import stripe_billing
 from tests.conftest import fake_location
 from tests.test_email_verification import _live, _signup
 from tests.test_pdf_report import _report as _full_pdf_report
@@ -32,7 +35,7 @@ def _banner(body):
 
 
 def _upsell(body):
-    """(href, words) of the score card's "+N more checks" link."""
+    """(href, words) of the score card's locked-checks link."""
     m = re.search(r'<a href="([^"]*)" class="overview-score-upsell">\s*(.*?)\s*</a>', body, re.S)
     assert m, "the score card's upsell link is missing"
     return m.group(1), " ".join(m.group(2).split())
@@ -70,9 +73,10 @@ def test_a1_a_new_account_is_offered_its_free_report_once_and_never_told_it_is_u
     assert f"&ldquo;{label}&rdquo;" in banner
 
     # The score's extra checks open with the free report, not Premium.
+    # The words are C4's, later the same day; the route is this item's.
     href, words = _upsell(body)
     assert href == "#use-free-report"
-    assert words == "+1 more check opens with your free full report →"
+    assert words == app_main.locked_found_sentence(1) + ". Open them with your free full report →"
 
 
 def test_a1_the_used_up_wall_is_for_an_account_that_spent_its_report(client, fake_report, monkeypatch):
@@ -89,12 +93,14 @@ def test_a1_the_used_up_wall_is_for_an_account_that_spent_its_report(client, fak
     body = client.get("/property?postcode=M1+9AA").text
     banner = _banner(body)
     assert f"{USED_UP}." in banner
-    assert '<a class="paywall-banner-cta" href="/premium">See plans</a>' in banner
+    # Both links carry this house to Premium since C3, later the same
+    # day; see that section for what the price page then does with it.
+    assert '<a class="paywall-banner-cta" href="/premium?home=M1+9AA">See plans</a>' in banner
     assert 'id="use-free-report"' not in body
 
     href, words = _upsell(body)
-    assert href == "/premium"
-    assert words == "+1 more check factored in with Premium →"
+    assert href == "/premium?home=M1+9AA"
+    assert words == app_main.locked_found_sentence(1) + ". Open them with Premium →"
 
 
 def test_a1_an_unconfirmed_account_is_pointed_at_confirming_not_told_it_is_used(client, fake_report, monkeypatch):
@@ -205,7 +211,10 @@ def test_a2_the_same_free_account_is_sent_to_premium_for_a_home_it_has_not_unloc
     for url in ("/property/pdf?postcode=M16+7AA", "/property/pdf?postcode=M15+5AA&house_number=9"):
         r = client.get(url, follow_redirects=False)
         assert r.status_code == 303, url
-        assert r.headers["location"].startswith("/premium?postcode="), url
+        # To Premium carrying the home, house number too (batch C fix pass).
+        assert r.headers["location"].startswith("/premium?home="), url
+    assert client.get("/property/pdf?postcode=M15+5AA&house_number=9",
+                      follow_redirects=False).headers["location"] == "/premium?home=M15+5AA&hn=9"
     assert seen["gathers"] == [("M15 5AA", "", True, True)] and len(seen["documents"]) == 1
 
 
@@ -610,7 +619,7 @@ def test_a4_an_all_borderline_or_unlikely_card_marks_its_estimates_too(client, f
 # radon, air quality, contamination, planning and area indicators" to
 # every reader: air quality and contamination were locked (and their flags
 # turned to ok before the banner was built), and it stayed green while the
-# noise service and the Coal Authority check had failed. It now names only
+# noise service and the coal mining check had failed. It now names only
 # checks open to this reader that ran and came back clear, names a failed
 # one as not checked, and counts the locked checks from PREMIUM_CHECKS
 # without a word about what they found.
@@ -621,9 +630,14 @@ LOCKED_SENTENCE = f"The {len(app_main.PREMIUM_CHECKS)} locked checks are not inc
 def _all_read(**overrides):
     """A report on which every check behind the banner ran and came back
     clear. conftest's fake_gather marks most of those services failed, and
-    its deprivation decile of 3 is a red flag of its own."""
+    its deprivation decile of 3 is a red flag of its own. The locked
+    checks are clear here too, so the score's count of locked checks that
+    found something is nil: C4 below is where that count is not nil, and
+    what the banner then says (conftest's fake sets it to 1, and the
+    banner reads it rather than the locked results themselves)."""
     from tests.conftest import fake_gather
     read = {
+        "overview": {**fake_gather()["overview"], "premium_extra_checks": 0},
         "deprivation": {"imd_decile": 7, "la_name": "Manchester"},
         "surface_water": {"label": "Very low risk", "probability": "Less than 1 in 1,000 (0.1%)"},
         "radon": {"class": "1", "label": "Low (under 1% of homes above the Action Level)"},
@@ -679,8 +693,11 @@ def test_a5_a_locked_report_names_no_locked_check_and_counts_them_from_the_const
     assert words.endswith(LOCKED_SENTENCE)
     assert "could not be checked" not in words
 
-    # Whatever the locked checks found, clear, flagged or failed, the
-    # banner does not change by a word.
+    # Whatever the locked checks found, clear, flagged or failed, no
+    # finding of theirs changes a word of the banner. Since C4, later the
+    # same day, one number does reach it: how many of them found
+    # something, from the score, pinned in that section below. Held at
+    # nil here so this test stays about the findings themselves.
     fake_report(gather=_all_read(
         air_quality={"year": 2024, "pollutants": [
             {"name": "no2", "label": "NO2", "value": 34.0, "who_guideline": 10, "times_guideline": 3.4},
@@ -709,7 +726,7 @@ def test_a5_an_open_report_with_nothing_failed_keeps_its_all_clear(client, fake_
         "environmental designations, area prices, council finances, deprivation, broadband and mobile signal."
     )
 
-    # Open to a subscriber, a failed Coal Authority check is named, not cleared.
+    # Open to a subscriber, a failed coal mining check is named, not cleared.
     fake_report(location=fake_location(postcode="M23 9AA", outcode="M23"),
                 gather=_all_read(coal_mining=None, coal_mining_error=True))
     classes, words = _a5_banner(client.get("/property?postcode=M23+9AA").text)
@@ -990,8 +1007,12 @@ def test_fix_the_locked_pdf_button_says_premium_only_once_the_free_report_is_spe
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
     body = client.get("/property?postcode=M25+1AA").text
     assert USED_UP in body
-    assert _locked_pdf_button(body) == ("/premium", "PDF report &middot; Premium")
+    # Carrying the home to Premium, as the wall does (batch C fix pass).
+    assert _locked_pdf_button(body) == ("/premium?home=M25+1AA", "PDF report &middot; Premium")
     assert FREE_PDF_LABEL not in body
+    # And so does every locked card on it.
+    redirects = set(re.findall(r'data-lock-redirect="([^"]*)"', body))
+    assert redirects == {"/premium?home=M25+1AA"}, redirects
 
 
 def test_fix_an_unconfirmed_account_is_not_told_the_pdf_is_premium(client, fake_report, monkeypatch):
@@ -1035,7 +1056,9 @@ def test_fix_a_lapsed_subscribers_wall_promises_only_the_free_reports_home(clien
     assert "The ones you opened" not in banner and "stay unlocked for good" not in banner
     assert banner.count("for good") == 1
     assert '<a href="/property?postcode=M28+1AA">M28 1AA</a>, and it stays open for good.' in banner
-    assert "Opening another is &pound;9.99 a month" in banner
+    # The price the wall quotes is the plans' own, and from 17 Sep 2026 it
+    # is both of them (C2), so this reads them rather than typing one.
+    assert f"or {stripe_billing.plan_prices()['monthly']} a month" in banner
 
     # Without the history (a script, or the owner's own browser), the wall
     # says it itself, still of that one home only.
@@ -1097,7 +1120,8 @@ def test_fix_the_pdf_gate_reads_the_looked_up_postcode_not_the_typed_one(client,
 
     # A home it has not unlocked still goes to Premium, however it is typed.
     r = client.get("/property/pdf?postcode=m324aa&house_number=7", follow_redirects=False)
-    assert r.status_code == 303 and r.headers["location"].startswith("/premium?postcode=")
+    # The looked-up postcode and the house go along (batch C fix pass).
+    assert r.status_code == 303 and r.headers["location"] == "/premium?home=M32+4AA&hn=7"
     assert len(seen["gathers"]) == 1
 
 
@@ -1279,7 +1303,7 @@ def test_b1_the_walls_by_hand_line_counts_the_checks_from_the_constant(client, f
 # line, so the fifteen locked cards were a title, an icon and a lock: the
 # audit's first-time visitor could not tell what any of them was for, and
 # the only one that said anything, Mining Risk, was saying "Data
-# unavailable" from behind the lock while the Coal Authority was down.
+# unavailable" from behind the lock while the coal mining service was down.
 # Owner's decision 8: one neutral line on each, what the check answers and
 # who publishes it, never what it found. The wording is in main.py
 # (LOCKED_CARD_LINES) and the cards read it through _locked.html.
@@ -1387,13 +1411,18 @@ def test_b2_a_postcode_only_report_says_the_extension_check_needs_a_house_number
 
 def test_b2_a_locked_check_whose_service_failed_says_so(client, fake_report):
     """conftest's fake marks every service it is not given as failed, so
-    the default report is the one the audit walked into: the Coal
-    Authority down behind a lock."""
+    the default report is the one the audit walked into: the coal mining
+    check down behind a lock. The publisher is read from
+    LOCKED_CARD_LINES rather than typed: the Coal Authority became the
+    Mining Remediation Authority, whose own service the check has used
+    since 17 Sep 2026."""
     from tests.conftest import fake_gather
     fake_report(gather=fake_gather())
     body = client.get("/property?postcode=M14+5TG&house_number=1").text
 
-    assert _b2_line(body, "Mining Risk") == "Could not be checked just now · The Coal Authority"
+    publisher = app_main.LOCKED_CARD_LINES["Mining Risk"].split(" · ")[1]
+    assert publisher == "Mining Remediation Authority"
+    assert _b2_line(body, "Mining Risk") == "Could not be checked just now · " + publisher
     for title in ("Mining Risk", "Air Quality", "Subsidence Risk", "Historic Contamination"):
         shown = _b2_line(body, html.escape(title))
         assert shown == _b2_escaped_unavailable(title), title
@@ -1872,3 +1901,1217 @@ def test_b3_the_catchment_popup_no_longer_offers_an_upgrade_it_cannot_show():
     template = _without_template_comments(
         (ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8"))
     assert "Upgrade to Premium to see them" not in template
+
+
+# ---- C1. After the free unlock: kept, and what would make us email -------
+# POST /property/unlock sends the reader back to the report with
+# &unlocked=1, where it said "Unlocked. Every card on this property is
+# yours, for good." and nothing more. The "Kept in My properties" line
+# and the first-home extension offer were both gated on auto_saved,
+# which is true only on the visit that created the saved row, so on that
+# reload both vanished: the one moment the report opened in full said
+# nothing about the home being kept, and nothing about what, if
+# anything, would bring the reader back.
+
+SAVED_NOTE = 'class="section-sub auto-saved-note"'
+
+
+def _c1_open(client, fake_report, postcode, outcode, house_number):
+    fake_report(location=fake_location(postcode=postcode, outcode=outcode))
+    r = client.get("/property", params={"postcode": postcode, "house_number": house_number})
+    assert r.status_code == 200
+    return r.text
+
+
+def _c1_unlock(client, fake_report, postcode, outcode, house_number):
+    """Claim the free report the way a reader does: open it, POST the
+    yes, then follow the redirect the POST hands back."""
+    _c1_open(client, fake_report, postcode, outcode, house_number)
+    r = client.post("/property/unlock",
+                    data={"postcode": postcode, "house_number": house_number},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
+    unlocked = client.get(r.headers["location"])
+    assert unlocked.status_code == 200
+    return unlocked.text
+
+
+def _c1_notice(body):
+    """The unlock notice, from its id to the end of its block."""
+    assert 'id="use-free-report"' in body, "the report has no unlock notice"
+    return _flat(body.split('id="use-free-report"', 1)[1].split("</div>", 1)[0])
+
+
+def test_c1_the_unlocked_report_says_it_is_kept_and_names_every_trigger(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    email = "c1-unlocked@customer.test"
+    assert _signup(client, email).status_code == 303
+    body = _c1_unlock(client, fake_report, "M16 4AA", "M16", "12")
+
+    # One notice, not several: the unlock, the saved home and the
+    # triggers are all in the block the reader is already looking at.
+    assert _flat(body).count(SAVED_NOTE) == 1
+    notice = _c1_notice(body)
+    assert "Unlocked. Every card on this property is yours, for good." in notice
+    assert 'Kept in <a href="/watchlist">My properties</a>' in notice
+    for trigger in app_main.alert_triggers("12"):
+        assert trigger in notice, f"the unlocked report does not name {trigger!r}"
+    # House 12 is saved with its number, so the job counts only its own
+    # sales: the notice must not promise a neighbour's.
+    assert "a sale of this home is recorded" in notice
+    assert "sale is recorded at this postcode" not in notice
+    assert "Never on a schedule." in notice
+    # The address is named because the page already holds it, the way
+    # the confirmation banner does.
+    assert f"We email {email}" in notice
+    # And the way out of the list is still beside it.
+    assert 'action="/watchlist/remove"' in notice and ">Remove it</button>" in notice
+
+
+def test_c1_the_first_home_keeps_its_extension_offer_through_the_unlock(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert _signup(client, "c1-extension@customer.test").status_code == 303
+    before = _c1_open(client, fake_report, "M16 4BB", "M16", "14")
+    assert "Add it to Chrome" in before
+    # It used to disappear here, on the account's first home, at the
+    # moment the reader said yes.
+    after = _c1_unlock(client, fake_report, "M16 4BB", "M16", "14")
+    assert "Add it to Chrome" in after
+    assert 'class="compare-offer extension-offer"' in after
+
+
+def test_c1_a_second_saved_home_gets_the_comparison_and_not_the_extension(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert _signup(client, "c1-second@customer.test").status_code == 303
+    _c1_unlock(client, fake_report, "M17 5AA", "M17", "16")
+    second = _c1_open(client, fake_report, "M17 5BB", "M17", "18")
+
+    assert 'class="compare-offer" data-animate' in second
+    assert 'class="compare-offer extension-offer"' not in second
+    assert "Add it to Chrome" not in second
+    # The second home is saved too, so it says so and names the same
+    # triggers, once, even though its cards are locked.
+    assert _flat(second).count(SAVED_NOTE) == 1
+    assert "Never on a schedule." in second
+    for trigger in app_main.alert_triggers("18"):
+        assert trigger in second, f"the second home does not name {trigger!r}"
+
+
+def test_c1_the_saved_line_is_there_on_every_later_visit_too(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    assert _signup(client, "c1-return@customer.test").status_code == 303
+    _c1_unlock(client, fake_report, "M17 5CC", "M17", "20")
+    # A plain visit, no &unlocked=1: the row was saved on an earlier
+    # visit, so auto_saved is false and this used to say nothing.
+    later = _flat(_c1_open(client, fake_report, "M17 5CC", "M17", "20"))
+    assert later.count(SAVED_NOTE) == 1
+    assert "Kept in" in later and "Never on a schedule." in later
+    assert app_main.alert_triggers("20")[0] in later
+
+
+def test_c1_the_anonymous_save_line_names_the_same_triggers(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    body = _flat(_c1_open(client, fake_report, "M17 5DD", "M17", "22"))
+    assert "Save it free</a> and be told when " + app_main.alert_triggers_short("22") in body
+    assert "Never on a schedule." in body
+    # "when anything on it changes" promised more than the alert job
+    # sends, and told nobody what to expect.
+    assert "be told when anything on it changes" not in body
+
+
+def _c1_sales(*addresses):
+    """Price Paid records at one postcode, addressed the way
+    land_registry builds them (SAON, PAON, street)."""
+    return [{"address": address, "amount": 250000} for address in addresses]
+
+
+def _c1_sale_summary(records, house_number):
+    """tx_count and avg_price the way both real summaries build them:
+    _comparison_summary for the alert job and _summary_from_report (over
+    the gather's own filtered list) for the page, each through
+    _filter_by_address. A bare tx_count here once let a house-numbered
+    home be promised every sale at its postcode."""
+    mine = app_main._filter_by_address(records, house_number)
+    return {"tx_count": len(mine), "avg_price": app_main._average_amount(mine)}
+
+
+C1_BASE = {"epc_date": "2024-01-01", "flood_zone": "Zone 2 (medium probability)",
+           "price_growth_pct": 3.0}
+C1_STREET = _c1_sales("9 ACACIA AVENUE", "14 ACACIA AVENUE", "22 ACACIA AVENUE")
+
+
+def _c1_moved(house_number, change_for):
+    """What the job compares once each named trigger has happened,
+    keyed by the words the page uses for this home."""
+    before = {**C1_BASE, **_c1_sale_summary(C1_STREET, house_number)}
+    triggers = app_main.alert_triggers(house_number)
+    sale_at = C1_STREET + _c1_sales(f"{change_for} ACACIA AVENUE")
+    moved = {
+        triggers[0]: _c1_sale_summary(sale_at, house_number),
+        triggers[1]: {"epc_date": "2026-01-01"},
+        triggers[2]: {"flood_zone": "Zone 3 (high probability)"},
+        triggers[3]: {"price_growth_pct": -2.0},
+    }
+    return before, moved
+
+
+def test_c1_each_named_trigger_is_one_the_alert_job_really_sends_on():
+    """Four lines beside a saved home, four branches of
+    _snapshot_changes. If one stops firing, the promise on the page is
+    wrong, which is the failure this catches."""
+    # A house-numbered home: its own sale fires, and it is the one the
+    # page names.
+    before, moved = _c1_moved("9", change_for="9")
+    assert list(moved) == list(app_main.alert_triggers("9"))
+    assert list(moved)[0] == "a sale of this home is recorded"
+    for trigger, change in moved.items():
+        assert app_main._snapshot_changes(before, {**before, **change}), \
+            f"nothing in the alert job fires for {trigger!r}"
+
+    # A postcode-only home: any sale at the postcode fires, and the page
+    # says so.
+    before, moved = _c1_moved("", change_for="31")
+    assert list(moved)[0] == "a new sale is recorded at this postcode"
+    for trigger, change in moved.items():
+        assert app_main._snapshot_changes(before, {**before, **change}), \
+            f"nothing in the alert job fires for {trigger!r}"
+
+    # The short lines are the same four, so the promises cannot drift.
+    for hn, sale in (("9", "a sale of this home is recorded"), ("", "a sale is recorded at this postcode")):
+        short = app_main.alert_triggers_short(hn)
+        assert short.startswith(sale + ", ")
+        for word in ("energy certificate", "flood zone", "area prices"):
+            assert word in short
+
+
+def test_c1_the_saved_line_is_written_once_and_read_from_the_constants():
+    """One partial, included where it is needed. The line was written
+    into property.html by hand before, and the triggers are never
+    typed into a template at all: not the report's, and not the list
+    line on My properties either."""
+    assert (ROOT / "app" / "templates" / "_saved_alerts.html").exists()
+    template = _without_template_comments(
+        (ROOT / "app" / "templates" / "property.html").read_text(encoding="utf-8"))
+    assert template.count('{% include "_saved_alerts.html" %}') == 2
+    assert 'Kept in <a href="/watchlist">My properties</a>' not in template, \
+        "the saved line is written out in property.html again"
+    typed = {*app_main.alert_triggers("1"), *app_main.alert_triggers(""),
+             app_main.ALERT_OTHER_TRIGGERS_SHORT, app_main.ALERT_TRIGGERS_LIST}
+    for path in (ROOT / "app" / "templates").rglob("*.html"):
+        text = _without_template_comments(path.read_text(encoding="utf-8"))
+        for trigger in typed:
+            assert trigger not in text, f"{path.name} types {trigger!r} out by hand"
+    watchlist_template = _without_template_comments(
+        (ROOT / "app" / "templates" / "watchlist.html").read_text(encoding="utf-8"))
+    assert "{{ alert_triggers_list }}" in watchlist_template
+    assert "if anything on this list changes" not in watchlist_template
+    assert "No need to keep checking back" not in watchlist_template
+
+
+# ---- C2. Both prices on the wall, and the questions under them ------------
+# The signed-in wall on a locked home said "Opening another is £9.99 a
+# month" and named no other plan, so the reader most likely to be standing
+# there, someone checking one house, was offered an open-ended monthly
+# bill and nothing else. The three-month plan that covers a house hunt was
+# invisible until /premium, where its card was badged "SAVE 17% VS
+# MONTHLY" (a figure typed into stripe_billing, not worked out), its
+# second line repeated the price set in type directly above it, and
+# "Before you pay", which answers "am I stuck with a monthly bill?", sat
+# seventeen phone screens down, below every check card on the page.
+
+PROPERTY_TEMPLATE = ROOT / "app" / "templates" / "property.html"
+TERMS_TEMPLATE = ROOT / "app" / "templates" / "terms.html"
+
+
+def _pricing_cards(body):
+    """{price heading: (badge, the line under the price)} per card."""
+    grid = body.split('<div class="pricing-grid">', 1)[1].split('<p class="pricing-reassure">', 1)[0]
+    plain = lambda s: _flat(html.unescape(s))
+    cards = {}
+    for chunk in grid.split('<div class="pricing-card')[1:]:
+        price = re.search(r'<h2 class="pricing-card-price">(.*?)</h2>', chunk, re.S)
+        badge = re.search(r'<span class="pricing-card-badge">(.*?)</span>', chunk, re.S)
+        line = re.search(r'<p class="section-sub">(.*?)</p>', chunk, re.S)
+        assert price and line, chunk[:200]
+        cards[plain(price.group(1))] = (plain(badge.group(1)) if badge else "", plain(line.group(1)))
+    return cards
+
+
+def test_c2_plan_prices_come_from_the_plan_labels_premium_shows():
+    prices = stripe_billing.plan_prices()
+    assert set(prices) == set(stripe_billing.PLANS)
+    for key, price in prices.items():
+        # The price out of the PLANS label /premium's cards show. The
+        # checkout charges the Price ID in the environment, not this
+        # label, so a Price changed in the Stripe dashboard does not move
+        # the copy: PLANS has to be edited with it.
+        assert stripe_billing.PLANS[key][1].startswith(price), key
+        assert "/" not in price
+    assert app_main.templates.env.globals["plan_prices"] == prices
+
+
+def test_c2_the_spent_accounts_wall_names_both_prices_three_months_first(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    # Addresses of its own: two accounts unlocking one address on one day
+    # is the pattern the /admin test asserts is absent.
+    fake_report(location=fake_location(postcode="M32 6AA", outcode="M32"))
+    assert _signup(client, "c2-spent@customer.test").status_code == 303
+    client.get("/property?postcode=M32+6AA")
+    r = client.post("/property/unlock", data={"postcode": "M32 6AA", "house_number": "14"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
+
+    fake_report(location=fake_location(postcode="M32 7AA", outcode="M32"))
+    banner = _flat(_banner(client.get("/property?postcode=M32+7AA").text))
+    prices = stripe_billing.plan_prices()
+    assert f"{USED_UP}." in banner
+    assert f"Opening another is {prices['quarterly']} for three months" in banner
+    assert f"or {prices['monthly']} a month" in banner
+    # The three-month plan is the plain answer, so it is read first.
+    assert banner.index(prices["quarterly"]) < banner.index(prices["monthly"])
+    # What happens next, in the terms page's own words, and still no
+    # promise that a home opened on a subscription stays open.
+    assert "Each renews until you cancel" in banner
+    assert "renews automatically at the end of each period until you cancel" in \
+        TERMS_TEMPLATE.read_text(encoding="utf-8")
+    assert "stay unlocked" not in banner
+
+
+def test_c2_the_returning_wall_names_both_prices_too(client, fake_report, monkeypatch):
+    """The second-and-later wording is a branch of its own, and it quoted
+    the monthly price on its own as well."""
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    fake_report(location=fake_location(postcode="M33 2AA", outcode="M33"))
+    assert _signup(client, "c2-returner@customer.test").status_code == 303
+    client.get("/property?postcode=M33+2AA")
+    r = client.post("/property/unlock", data={"postcode": "M33 2AA", "house_number": "8"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
+
+    fake_report(location=fake_location(postcode="M33 3AA", outcode="M33"))
+    # A real browser, and a gather marked warm, is what records a paywall
+    # event and still renders the report (the same trick as above).
+    from app.services import _cache
+    _cache.set(("property_search_gather", "M33 3AA", ""), {"warm": True})
+    browser = {"user-agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Safari/537.36"}
+    client.get("/property?postcode=M33+3AA", headers=browser)
+    banner = _flat(_banner(client.get("/property?postcode=M33+3AA", headers=browser).text))
+
+    prices = stripe_billing.plan_prices()
+    assert "This is the 2nd time you have reached this wall." in banner
+    assert (f"Premium is {prices['quarterly']} for three months, made for one house hunt, "
+            f"or {prices['monthly']} a month") in banner
+    assert "Each renews until you cancel" in banner
+
+
+def test_c2_the_report_types_no_price_the_plans_already_hold():
+    template = _without_template_comments(PROPERTY_TEMPLATE.read_text(encoding="utf-8"))
+    for price in stripe_billing.plan_prices().values():
+        assert price not in template, f"the report types {price} out by hand"
+    for typed in ("9.99", "24.99"):
+        assert typed not in template, f"the report types {typed} out by hand"
+    assert "{{ plan_prices.quarterly }}" in template and "{{ plan_prices.monthly }}" in template
+
+
+def test_c2_before_you_pay_sits_under_the_prices_not_below_every_check(client, monkeypatch):
+    _billing(monkeypatch)
+    body = _fresh_premium(client)
+    cards = body.index('<div class="pricing-grid">')
+    questions = body.index("Before you pay")
+    checks = body.index('id="all-checks"')
+    assert cards < questions < checks, "the questions are still below the check cards"
+    # One list, drawn once, with its structured data still beside it.
+    assert body.count("Before you pay") == 1
+    assert body.count('"FAQPage"') == 1
+    visible, structured = _faq(body)
+    assert visible == structured and len(visible) == 5
+
+    # The one answer that states a price states the plans' price.
+    prices = stripe_billing.plan_prices()
+    one_house = dict(visible)["I only have one house to check. Am I stuck with a monthly bill?"]
+    assert one_house.startswith(f"No. The three-month plan is {prices['quarterly']} for three months")
+
+    # With billing off there are no prices to sit under, and the page
+    # keeps its questions rather than losing them with the cards.
+    monkeypatch.delenv("STRIPE_SECRET_KEY", raising=False)
+    off = _fresh_premium(client)
+    assert off.count("Before you pay") == 1 and off.count('"FAQPage"') == 1
+
+
+def test_c2_the_three_month_card_is_badged_for_a_house_hunt_and_never_repeats_its_price(client, monkeypatch):
+    _billing(monkeypatch)
+    body = _fresh_premium(client)
+    assert "vs monthly" not in body
+    labels = {plan["key"]: plan["label"] for plan in stripe_billing.plan_choices()}
+    cards = _pricing_cards(body)
+
+    assert cards[labels["quarterly"]] == (
+        "Made for one house hunt", "Billed from today, then renews every three months until you cancel.")
+    assert cards[labels["monthly"]] == (
+        "", "Billed from today, then renews every month until you cancel.")
+    # The price is set in type directly above each line, so the line says
+    # what happens next instead of saying it again.
+    for heading, (_, line) in cards.items():
+        assert "\u00a3" not in line, line
+
+    # With the pass on sale the pass is the one made for a house hunt, and
+    # the three-month card drops the badge rather than claiming it too.
+    _billing(monkeypatch, pass_on=True)
+    with_pass = _pricing_cards(_fresh_premium(client))
+    assert with_pass[labels["quarterly"]][0] == ""
+    assert "house hunt" in with_pass[stripe_billing.PASS_LABEL][0]
+
+
+# ---- C3. The house travels through Premium and checkout ------------------
+# The wall's "See plans" and the score's "+N with Premium" linked to a bare
+# /premium, which opened on a hero about houses in general; checkout named
+# no home in its success_url, and /premium/success said "Back to search".
+# A returning buyer, the only kind that has ever paid, had to find the
+# house again at every step.
+
+C3_HOME = "M35 1AA"  # the locked home a buyer is weighing up
+
+
+def _home_block(body):
+    """The block above the hero naming the home, or "" if there is none."""
+    if '<div class="premium-home">' not in body:
+        return ""
+    return body.split('<div class="premium-home">', 1)[1].split("<h1", 1)[0]
+
+
+def _wall_cta(body):
+    """The href of the wall's "See plans", as a browser would read it."""
+    m = re.search(r'<a class="paywall-banner-cta" href="([^"]*)"', _banner(body))
+    assert m, "the wall's call to action is missing"
+    return html.unescape(m.group(1))
+
+
+def _spend_the_free_report(client, email, postcode, house_number):
+    """A signed-in account with its free full report spent on a home of
+    its own: the one state that is offered Premium at all."""
+    assert _signup(client, email).status_code == 303
+    r = client.post("/property/unlock", data={"postcode": postcode, "house_number": house_number},
+                    follow_redirects=False)
+    assert r.status_code == 303
+
+
+def test_c3_the_wall_and_the_score_carry_the_home_to_premium(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    _spend_the_free_report(client, "c3-wall@customer.test", "M35 3AA", "9")
+
+    fake_report(location=fake_location(postcode=C3_HOME, outcode="M35"))
+    body = client.get("/property?postcode=M35+1AA&house_number=7").text
+    assert USED_UP in body
+    assert _wall_cta(body) == "/premium?home=M35+1AA&hn=7"
+    # The score's upsell goes where the wall goes, as it has since A1.
+    assert html.unescape(_upsell(body)[0]) == _wall_cta(body)
+
+    # A report without a house number carries the postcode alone.
+    fake_report(location=fake_location(postcode=C3_HOME, outcode="M35"))
+    assert _wall_cta(client.get("/property?postcode=M35+1AA").text) == "/premium?home=M35+1AA"
+
+
+def test_c3_premium_opens_on_the_home_for_a_signed_in_free_account(client, monkeypatch):
+    _billing(monkeypatch)
+    with_home = "/premium?home=M35+1AA&hn=7"
+
+    # Signed out there is a free full report to spend first, so this page
+    # is not asking that visitor to pay for one house.
+    assert _home_block(client.get(with_home).text) == ""
+
+    _spend_the_free_report(client, "c3-premium@customer.test", "M35 4AA", "10")
+    block = _home_block(client.get(with_home).text)
+    assert "Open 7 M35 1AA in full" in block
+
+    # Both plans, the three-month one first, each posting the home along.
+    forms = re.findall(r'<form action="/premium/checkout".*?</form>', block, re.S)
+    assert len(forms) == 2
+    assert [re.search(r'name="plan" value="([^"]*)"', f).group(1) for f in forms] == ["quarterly", "monthly"]
+    prices = stripe_billing.plan_prices()
+    labels = [re.search(r'<button type="submit">(.*?)</button>', f).group(1) for f in forms]
+    assert labels == [prices["quarterly"] + " for three months", prices["monthly"] + " a month"]
+    for form in forms:
+        assert '<input type="hidden" name="home" value="M35 1AA">' in form
+        assert '<input type="hidden" name="hn" value="7">' in form
+
+    # And it says where the free report went, so nobody is sold what they
+    # already have. The same row the wall's own aside reads.
+    assert ('Your free full report is on '
+            '<a href="/property?postcode=M35+4AA&amp;house_number=10">10 M35 4AA</a> '
+            'and stays open.') in " ".join(block.split())
+
+    # A subscriber has nothing to buy, on this home or any other.
+    with db.get_session() as session:
+        auth.find_user_by_email(session, "c3-premium@customer.test").is_premium = True
+        session.commit()
+    assert _home_block(client.get(with_home).text) == ""
+
+
+def test_c3_premium_ignores_a_home_that_is_not_a_postcode(client, monkeypatch):
+    _billing(monkeypatch)
+    _spend_the_free_report(client, "c3-junk@customer.test", "M35 5AA", "11")
+
+    for junk in ("javascript:alert(1)", "<script>alert(1)</script>", "M35", "not a postcode"):
+        body = client.get("/premium", params={"home": junk, "hn": "7"}).text
+        assert _home_block(body) == "", junk
+        assert junk not in body and html.escape(junk) not in body, junk
+
+    # A real postcode with a house number that is not one keeps the
+    # postcode and drops the rest, rather than putting it on the page.
+    block = _home_block(client.get("/premium", params={"home": "m351aa", "hn": "<b>x</b>"}).text)
+    assert "Open M35 1AA in full" in block
+    assert '<input type="hidden" name="hn" value="">' in block
+    assert "<b>x</b>" not in block and "&lt;b&gt;" not in block
+
+
+def test_c3_checkout_sends_stripe_a_success_url_carrying_the_home(client, monkeypatch):
+    _billing(monkeypatch)
+    _spend_the_free_report(client, "c3-checkout@customer.test", "M35 6AA", "12")
+    seen = {}
+
+    async def _fake_session(**kwargs):
+        seen.update(kwargs)
+        return "https://checkout.stripe.test/c/pay/abc"
+
+    monkeypatch.setattr(stripe_billing, "create_checkout_session", _fake_session)
+
+    r = client.post("/premium/checkout", data={"plan": "quarterly", "home": "m351aa", "hn": "7"},
+                    follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "https://checkout.stripe.test/c/pay/abc"
+    assert seen["plan"] == "quarterly"
+    assert seen["success_url"].endswith("/premium/success?home=M35+1AA&hn=7")
+    assert seen["cancel_url"].endswith("/premium/cancel")
+
+    # No home, or one that is not a postcode: the page checkout comes back
+    # to is the one it was before today.
+    for data in ({"plan": "monthly"}, {"plan": "monthly", "home": "nonsense", "hn": "7"}):
+        seen.clear()
+        assert client.post("/premium/checkout", data=data, follow_redirects=False).status_code == 303
+        assert seen["success_url"].endswith("/premium/success")
+
+
+def test_c3_stripe_is_given_that_success_url_unchanged(monkeypatch):
+    """The last link in the chain: what create_checkout_session actually
+    posts to Stripe. Nothing here reaches the network."""
+    _billing(monkeypatch)
+    sent = {}
+
+    class _Response:
+        @staticmethod
+        def raise_for_status():
+            return None
+
+        @staticmethod
+        def json():
+            return {"url": "https://checkout.stripe.test/c/pay/abc"}
+
+    class _FakeClient:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_exc):
+            return False
+
+        async def post(self, url, data=None, auth=None):
+            sent.update({"url": url, "data": data})
+            return _Response()
+
+    monkeypatch.setattr(stripe_billing.httpx, "AsyncClient", _FakeClient)
+    success_url = "https://ukpropertyinsight.co.uk/premium/success?home=M35+1AA&hn=7"
+    url = asyncio.run(stripe_billing.create_checkout_session(
+        plan="quarterly", user_id=1, user_email="c3-stripe@customer.test",
+        success_url=success_url, cancel_url="https://ukpropertyinsight.co.uk/premium/cancel",
+    ))
+    assert url == "https://checkout.stripe.test/c/pay/abc"
+    assert sent["url"].endswith("/checkout/sessions")
+    assert sent["data"]["success_url"] == success_url
+
+
+def test_c3_the_success_page_opens_the_report_it_was_bought_for(client):
+    body = client.get("/premium/success", params={"home": "m351aa", "hn": "7"}).text
+    assert "Premium is on. Every check on 7 M35 1AA is open." in " ".join(body.split())
+    assert '<a href="/property?postcode=M35+1AA&amp;house_number=7">Open the full report on 7 M35 1AA</a>' in body
+    assert '<a href="/watchlist">My properties</a>' in body
+    assert "Back to search" not in body
+
+    # No home, or one that is not a postcode: today's page, unchanged.
+    for params in ({}, {"home": "javascript:alert(1)"}):
+        plain = client.get("/premium/success", params=params).text
+        assert "Back to search" in plain and "is open." not in plain
+        assert "javascript:alert(1)" not in plain
+
+
+# ---- C4. How many of the locked checks found something, never which ------
+# Beside the score the report said "+N more checks factored in with
+# Premium", which never says those checks found anything, and the banner
+# under it could show a green tick and "No major red flags found" while a
+# locked check had a finding waiting behind the lock. Owner's decision 6:
+# say how many of the locked checks found something worth checking on this
+# home, and never which. The count is the score's own premium_extra_checks,
+# the words are locked_found_sentence in main.py so the score and the
+# banner cannot say different things on one screen, and the check that
+# raised it stays where B2 and B3 above put it.
+
+# A finding behind a lock, with a name of its own that must not reach the
+# page while that lock holds.
+C4_FLAGGED_LANDFILL = {"status": "on_site", "site_name": "Former Brickworks Tip", "distance_m": 0}
+
+# The locked checks, in the words the report would use if they were open.
+# None of them may appear beside the count.
+C4_LOCKED_WORDS = ("landfill", "brickworks", "contamination", "air quality",
+                   "mining", "coal", "subsidence", "sewage", "extension")
+
+
+def _c4_gather(**overrides):
+    """A5's report, where every check open to the reader came back clear,
+    with a locked check flagged. The score is computed from that gather
+    rather than written into the fake, so the count on the page is the one
+    the real service produces from a real finding."""
+    from app.services import overview_score
+    gather = _all_read(**{"historic_landfill": C4_FLAGGED_LANDFILL, **overrides})
+    gather["overview"] = overview_score.compute(gather, premium_unlocked=False)
+    return gather
+
+
+def test_c4_a_flagged_locked_check_is_counted_beside_the_score_and_never_named(client, fake_report):
+    gather = _c4_gather()
+    assert gather["overview"]["premium_extra_checks"] == 1
+    assert gather["overview"]["concerns"] == []  # and the verdict still says nothing of it
+    fake_report(location=fake_location(postcode="M32 1AA", outcode="M32"), gather=gather)
+    body = client.get("/property?postcode=M32+1AA").text
+
+    # The score's line, word for word. Only the total is read from the
+    # constant: the sentence itself is the one the owner approved.
+    href, words = _upsell(body)
+    assert words == (f"1 of the {len(app_main.PREMIUM_CHECKS)} locked checks found something "
+                     "worth checking on this home. Sign up free to open them →")
+    assert href == "/signup?next=/property%3Fpostcode%3DM32%201AA"
+
+    # The banner is not an all-clear for the home: no green, no tick, and
+    # what it vouches for is only the checks this reader can open.
+    classes, banner = _a5_banner(body)
+    assert "attention-banner-clear" not in classes and "attention-banner-unread" in classes
+    assert "✓" not in banner and "No major red flags found" not in banner
+    assert banner.startswith("1 No major red flags in the checks open to you across ")
+    assert banner.endswith(app_main.locked_found_sentence(1) + ".")
+
+    # Neither place names or hints at the check, and the finding itself is
+    # not on the page at all (B3 above).
+    for word in C4_LOCKED_WORDS:
+        assert word not in banner.lower(), word
+        assert word not in words.lower(), word
+    assert "Former Brickworks Tip" not in body and "On a former landfill" not in body
+
+
+def test_c4_with_nothing_flagged_behind_the_lock_neither_the_count_nor_the_mention_appears(client, fake_report):
+    gather = _c4_gather(historic_landfill={"status": "clear"})
+    assert gather["overview"]["premium_extra_checks"] == 0
+    fake_report(location=fake_location(postcode="M32 1AA", outcode="M32"), gather=gather)
+    body = client.get("/property?postcode=M32+1AA").text
+
+    assert 'class="overview-score-upsell"' not in body
+    assert "found something worth checking on this home" not in body
+    # A5's all-clear, to the word, for a report with nothing behind the lock.
+    classes, banner = _a5_banner(body)
+    assert "attention-banner-clear" in classes
+    assert banner.startswith("✓ No major red flags found across ")
+    assert banner.endswith(LOCKED_SENTENCE)
+
+
+def test_c4_one_count_in_both_places_routed_by_state_and_gone_once_the_home_opens(client, fake_report, monkeypatch):
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    # Two locked checks with a finding, so the count is read as a count.
+    gather = _c4_gather(coal_mining={"present": True})
+    assert gather["overview"]["premium_extra_checks"] == 2
+    sentence = app_main.locked_found_sentence(2)
+    fake_report(location=fake_location(postcode="M32 2AA", outcode="M32"), gather=gather)
+
+    # Signed out: sign up, carrying the house.
+    body = client.get("/property?postcode=M32+2AA").text
+    href, words = _upsell(body)
+    assert href == "/signup?next=/property%3Fpostcode%3DM32%202AA"
+    assert words == sentence + ". Sign up free to open them →"
+    assert _a5_banner(body)[1].endswith(sentence + ".")
+
+    # A free account with its free full report unused: the offer at the top.
+    assert _signup(client, "c4-states@customer.test").status_code == 303
+    body = client.get("/property?postcode=M32+2AA").text
+    href, words = _upsell(body)
+    assert href == "#use-free-report"
+    assert words == sentence + ". Open them with your free full report →"
+    assert _a5_banner(body)[1].endswith(sentence + ".")
+
+    # The same account after spending that report on a home of its own:
+    # Premium, opening on the house it was read from (C3 above).
+    fake_report(location=fake_location(postcode="M32 9AA", outcode="M32"), gather=gather)
+    r = client.post("/property/unlock", data={"postcode": "M32 9AA", "house_number": "4"},
+                    follow_redirects=False)
+    assert r.status_code == 303
+    fake_report(location=fake_location(postcode="M32 2AA", outcode="M32"), gather=gather)
+    body = client.get("/property?postcode=M32+2AA").text
+    assert USED_UP in body
+    href, words = _upsell(body)
+    assert href == "/premium?home=M32+2AA"
+    assert words == sentence + ". Open them with Premium →"
+    assert _a5_banner(body)[1].endswith(sentence + ".")
+
+    # On the home this account did open there is nothing to count, and the
+    # findings are named, because they are in front of the reader now.
+    fake_report(location=fake_location(postcode="M32 9AA", outcode="M32"), gather=gather)
+    body = client.get("/property?postcode=M32+9AA&house_number=4").text
+    assert 'class="overview-score-upsell"' not in body
+    assert "found something worth checking on this home" not in body
+    banner = _a5_banner(body)[1]
+    assert "locked" not in banner
+    assert "Historic landfill on/near site" in banner and "In a Coal Mining Reporting Area" in banner
+
+
+# ---- C5. My properties says which homes are open in full -----------------
+# Change alerts lead to My properties, which listed every saved home with
+# its notes and changes and never said whether it could be read in full.
+# Each card now says "Open in full" or how many checks are locked, counted
+# from PREMIUM_CHECKS. Once two or more are closed, one line above the
+# compare bar gives both prices from plan_prices and carries the first
+# closed home to /premium (C2 and C3 above). With the free full report
+# unspent the line offers that report instead, and a subscriber, whose
+# every home is open, reads neither a locked label nor an offer.
+
+WATCHLIST_TEMPLATE = ROOT / "app" / "templates" / "watchlist.html"
+C5_LOCKED_LABEL = f'<p class="myprops-access">{len(app_main.PREMIUM_CHECKS)} checks locked</p>'
+C5_OPEN_LABEL = '<p class="myprops-access myprops-access-open">Open in full</p>'
+
+
+def _c5_quiet(monkeypatch):
+    """My properties diffs every saved home against a fresh summary. None
+    of that is under test here, and none of it may reach the network."""
+    async def _summary(postcode, house_number):
+        return {"postcode": postcode}
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+
+
+def _c5_account(client, email, saved, opened=None):
+    """A signed-in account that spent its free full report on `opened`, if
+    given, and saved each (postcode, house number) in `saved`."""
+    from app import watchlist
+    assert _signup(client, email).status_code == 303
+    if opened:
+        r = client.post("/property/unlock", data={"postcode": opened[0], "house_number": opened[1]},
+                        follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"].endswith("&unlocked=1")
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, email).id
+    for postcode, house_number in saved:
+        watchlist.save_item(uid, postcode, house_number, "")
+    return uid
+
+
+def _c5_cards(body):
+    """[(address, access line)] for each saved home, in page order."""
+    cards = re.split(r'<div class="myprops-card(?: myprops-card-changed)?">', body)[1:]
+    out = []
+    for card in cards:
+        address = _flat(re.search(r'class="myprops-address"[^>]*>(.*?)</a>', card, re.S).group(1))
+        access = re.search(r'<p class="myprops-access[^"]*">(.*?)</p>', card, re.S)
+        out.append((address, access.group(1) if access else None))
+    return out
+
+
+def _c5_offer(body):
+    """The offer line's words and its link, or ("", None) when there is none."""
+    found = re.findall(r'<p class="myprops-offer">(.*?)</p>', body, re.S)
+    assert len(found) <= 1, "My properties states the offer more than once"
+    if not found:
+        return "", None
+    link = re.search(r'<a href="([^"]*)">', found[0])
+    return _flat(re.sub(r"<[^>]+>", "", found[0])), html.unescape(link.group(1)) if link else None
+
+
+def test_c5_one_home_open_two_locked_by_the_constant_and_one_offer(client, monkeypatch):
+    _c5_quiet(monkeypatch)
+    uid = _c5_account(client, "c5-mixed@customer.test", opened=("M36 1AA", "3"),
+                      saved=[("M36 1AA", "3"), ("M36 2AA", "5"), ("M36 3AA", "")])
+    locked = f"{len(app_main.PREMIUM_CHECKS)} checks locked"
+
+    body = client.get("/watchlist").text
+    cards = _c5_cards(body)
+    assert sorted(cards) == sorted([("3, M36 1AA", "Open in full"),
+                                    ("5, M36 2AA", locked), ("M36 3AA", locked)])
+    assert body.count(C5_OPEN_LABEL) == 1 and body.count(C5_LOCKED_LABEL) == 2
+
+    # One line, above the compare bar, naming how many homes are closed and
+    # both prices, three months first, as the wall does.
+    words, link = _c5_offer(body)
+    prices = stripe_billing.plan_prices()
+    assert words == (f"2 of your saved homes have {locked}. Premium opens every check on all of "
+                     f"them: {prices['quarterly']} for three months, made for one house hunt, or "
+                     f"{prices['monthly']} a month. Each renews until you cancel. See plans")
+    assert body.index('<p class="myprops-offer">') < body.index('class="myprops-compare-bar"')
+
+    # The link carries the first closed home on the page, in C3's words.
+    first_closed = next(address for address, access in cards if access == locked)
+    assert link == {"5, M36 2AA": "/premium?home=M36+2AA&hn=5",
+                    "M36 3AA": "/premium?home=M36+3AA"}[first_closed]
+
+    # One closed home left: its label stays, the offer goes.
+    from app import watchlist
+    closed_ids = [i["id"] for i in watchlist.list_items(uid) if i["postcode"] != "M36 1AA"]
+    assert client.post("/watchlist/remove", data={"item_id": closed_ids[0]},
+                       follow_redirects=False).status_code == 303
+    body = client.get("/watchlist").text
+    assert body.count(C5_OPEN_LABEL) == 1 and body.count(C5_LOCKED_LABEL) == 1
+    assert _c5_offer(body) == ("", None)
+
+
+def test_c5_a_subscriber_reads_no_locked_label_and_no_offer(client, monkeypatch):
+    _c5_quiet(monkeypatch)
+    _c5_account(client, "c5-subscriber@customer.test",
+                saved=[("M36 5AA", "1"), ("M36 5AA", "2"), ("M36 6AA", "")])
+    with db.get_session() as session:
+        auth.find_user_by_email(session, "c5-subscriber@customer.test").is_premium = True
+        session.commit()
+
+    body = client.get("/watchlist").text
+    assert [access for _, access in _c5_cards(body)] == ["Open in full"] * 3
+    assert "checks locked" not in body
+    assert 'class="myprops-offer"' not in body and "/premium?home=" not in body
+
+
+def test_c5_with_the_free_report_unspent_the_offer_is_that_report(client, monkeypatch):
+    """A1's rule on the report holds here too: with an unlock left, the one
+    offer is the free full report, and no price is put beside it."""
+    _c5_quiet(monkeypatch)
+    _c5_account(client, "c5-unspent@customer.test", saved=[("M36 7AA", "4"), ("M36 8AA", "6")])
+
+    body = client.get("/watchlist").text
+    assert body.count(C5_LOCKED_LABEL) == 2 and C5_OPEN_LABEL not in body
+    words, link = _c5_offer(body)
+    assert words == (f"2 of your saved homes have {len(app_main.PREMIUM_CHECKS)} checks locked. "
+                     "Your free full report opens every check on one of them, with no card: "
+                     "use it from that home's report.")
+    assert link is None
+    for price in stripe_billing.plan_prices().values():
+        assert price not in words
+
+
+def test_c5_a_postcode_saved_as_typed_is_open_when_its_report_is(client, monkeypatch):
+    """My properties keeps a postcode as it was typed, while the report
+    looks it up and records the unlock against postcodes.io's spacing."""
+    _c5_quiet(monkeypatch)
+    _c5_account(client, "c5-typed@customer.test", opened=("M36 9AA", "8"),
+                saved=[("m369aa", "8"), ("M36 9AB", "8")])
+    cards = dict(_c5_cards(client.get("/watchlist").text))
+    assert cards == {"8, m369aa": "Open in full",
+                     "8, M36 9AB": f"{len(app_main.PREMIUM_CHECKS)} checks locked"}
+
+
+def test_c5_my_properties_costs_no_statement_per_home(client, monkeypatch):
+    """Neon round trips are the unit of page cost: the labels are read from
+    the unlock rows the page already fetches, never one lookup per card,
+    and the snapshots are written once for the list and only where they
+    moved (batch C fix pass). Every statement is counted, not only the
+    unlock ones: a count of those alone passed while the page wrote one
+    snapshot per home."""
+    from sqlalchemy import event
+    from app import watchlist
+    _c5_quiet(monkeypatch)
+    uid = _c5_account(client, "c5-rounds@customer.test", opened=("M35 8AA", "2"),
+                      saved=[("M35 8AA", "2"), ("M35 8AB", "2")])
+
+    def _no_per_home_lookup(*_a, **_k):
+        raise AssertionError("My properties asked about one home at a time")
+
+    monkeypatch.setattr(auth, "has_unlocked", _no_per_home_lookup)
+    engine = db._get_engine()
+
+    def _statements():
+        seen = []
+
+        def _count(_conn, _cursor, statement, *_rest):
+            seen.append(statement)
+
+        event.listen(engine, "before_cursor_execute", _count)
+        try:
+            body = client.get("/watchlist").text
+        finally:
+            event.remove(engine, "before_cursor_execute", _count)
+        return body, seen
+
+    # The first visit writes both homes' first snapshots, in one statement.
+    body, two_homes = _statements()
+    assert body.count(C5_OPEN_LABEL) == 1 and body.count(C5_LOCKED_LABEL) == 1
+    assert sum(1 for s in two_homes if s.lstrip().upper().startswith("UPDATE")) == 1
+    # Four more homes: the four new snapshots are one statement, and the
+    # two that did not move are not written again.
+    for n in range(3, 7):
+        watchlist.save_item(uid, "M35 8AC", str(n), "")
+    body, six_homes = _statements()
+    assert body.count(C5_LOCKED_LABEL) == 5
+    assert len(six_homes) == len(two_homes), (two_homes, six_homes)
+    assert sum(1 for s in six_homes if "premium_unlocks" in s) == sum(1 for s in two_homes if "premium_unlocks" in s)
+    # Nothing moved since: nothing is written at all.
+    _body, again = _statements()
+    assert not any(s.lstrip().upper().startswith("UPDATE") for s in again)
+    assert len(again) == len(two_homes) - 1
+    # And what was written is each home's own snapshot, under this account.
+    for item in watchlist.list_items(uid):
+        assert json.loads(item["last_snapshot"]) == {"postcode": item["postcode"]}
+
+
+def test_c5_the_count_and_the_prices_are_never_typed_into_the_page():
+    source = _without_template_comments(WATCHLIST_TEMPLATE.read_text(encoding="utf-8"))
+    assert "{{ locked_check_count }} checks locked" in source
+    assert "plan_prices.quarterly" in source and "plan_prices.monthly" in source
+    assert "£" not in source and not re.search(r"\d+ checks", source)
+
+
+# ---- C6. Change alerts lead with what matters and leave crime out ---------
+# One comparison feeds the report's "Since you last looked", the My
+# properties chips and the change alert emails. It flagged recorded crime
+# whenever the latest month differed from the last snapshot by 5 or more,
+# without naming the months, which for a busy postcode is most months, so
+# an email could carry nothing else. Crime now stays on the page, last,
+# and names the two months it compares once the snapshots hold them; an
+# email never carries it, never goes out for it alone, and lists what it
+# does carry in the order a buyer reads it: new sales, a new energy
+# certificate, a flood zone change, then the price trend and the average.
+# The job still runs when it did: nothing here sends on a schedule.
+
+C6_BEFORE = {
+    "tx_count": 3, "avg_price": 250000, "epc_date": "2024-01-01",
+    "flood_zone": "Zone 1 (low probability)", "price_growth_pct": 2.0,
+    "crime_total": 40, "crime_month": "2026-06",
+}
+C6_AFTER_EVERYTHING = {
+    "tx_count": 4, "avg_price": 262500, "epc_date": "2026-08-01",
+    "flood_zone": "Zone 2 (medium probability)", "price_growth_pct": -1.5,
+    "crime_total": 60, "crime_month": "2026-07",
+}
+C6_ORDER = [
+    "1 new sold price recorded here since you last looked",
+    "A new energy certificate was lodged, often a sign the property is being prepared for sale",
+    "Flood zone changed from Zone 1 (low probability) to Zone 2 (medium probability)",
+    "Area house-price trend flipped: growth turned negative (-1.5% YoY)",
+    "Average sold price changed from £250,000 to £262,500",
+]
+C6_CRIME_LINE = "Recorded crime nearby up by 20 in July 2026 compared with June 2026"
+
+
+def _c6_run(client, monkeypatch, email, postcode, house_number, before, after):
+    """Save one home holding `before` as its snapshot, run the alert job
+    with `after` as that home's fresh summary, and return what was sent
+    to this account and the snapshot the job left behind. Every other
+    saved home in the shared database comes back with nothing to compare,
+    so the run's figures are this home's alone."""
+    from app import watchlist
+    monkeypatch.setenv("ALERTS_CRON_SECRET", "c6-secret")
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    sent = []
+
+    async def _send(to, subject, body):
+        sent.append({"to": to, "subject": subject, "html": body})
+        return True
+
+    monkeypatch.setattr(email_service, "send_email", _send)
+
+    async def _summary(pc, hn):
+        if (pc, hn) == (postcode, house_number):
+            return {"postcode": pc, "house_number": hn, **after}
+        return {"postcode": pc}
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+
+    assert _signup(client, email).status_code == 303
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, email).id
+    watchlist.save_item(uid, postcode, house_number, "")
+    item = next(i for i in watchlist.list_items(uid) if i["postcode"] == postcode)
+    watchlist.update_snapshot(uid, item["id"], json.dumps(
+        {"postcode": postcode, "house_number": house_number, **before}))
+
+    r = client.post("/internal/run-watchlist-alerts", headers={"x-alerts-secret": "c6-secret"})
+    assert r.status_code == 200
+    mine = [m for m in sent if m["to"] == email]
+    left = next(i for i in watchlist.list_items(uid) if i["postcode"] == postcode)
+    return mine, sent, json.loads(left["last_snapshot"])
+
+
+def _c6_listed(email_html):
+    return [html.unescape(li) for li in re.findall(r"<li[^>]*>(.*?)</li>", email_html, re.S)]
+
+
+def test_c6_the_page_reads_changes_in_order_with_crime_last_and_its_months_named():
+    changes = app_main._snapshot_changes(C6_BEFORE, C6_AFTER_EVERYTHING)
+    assert changes == C6_ORDER + [C6_CRIME_LINE]
+    # The return visit opens on the first line, which is now the sale.
+    assert app_main._group_for_changes(changes) == "cat-value-market"
+
+
+def test_c6_the_crime_line_keeps_its_old_words_when_the_snapshot_has_no_month():
+    """Snapshots written before 17 Sep 2026 carry no month, and a line
+    must not name months nobody recorded."""
+    old = {"crime_total": 40}
+    assert app_main._snapshot_changes(old, {"crime_total": 52, "crime_month": "2026-07"}) == [
+        "Recorded crime nearby up by 12 since last checked"]
+    # The same month republished with a different count says which month.
+    assert app_main._snapshot_changes({"crime_total": 40, "crime_month": "2026-07"},
+                                      {"crime_total": 33, "crime_month": "2026-07"}) == [
+        "Recorded crime nearby for July 2026 down by 7 since last checked"]
+    # And under 5 is still not a change.
+    assert app_main._snapshot_changes(C6_BEFORE, {**C6_BEFORE, "crime_total": 44,
+                                                  "crime_month": "2026-07"}) == []
+
+
+def test_c6_the_email_list_is_the_page_list_without_crime():
+    assert app_main._alert_changes(C6_BEFORE, C6_AFTER_EVERYTHING) == C6_ORDER
+    only_crime = {**C6_BEFORE, "crime_total": 90, "crime_month": "2026-07"}
+    assert app_main._snapshot_changes(C6_BEFORE, only_crime)
+    assert app_main._alert_changes(C6_BEFORE, only_crime) == []
+    assert "crime" not in app_main.ALERT_CHANGE_KINDS
+
+
+def test_c6_every_trigger_the_page_names_still_sends_an_email():
+    """C1 names four triggers beside a saved home; the job now sends on
+    _alert_changes, so each must still fire there, not only on the page.
+    The sale is built through _filter_by_address, as both summaries build
+    it (fix pass, 17 Sep 2026), for a home with a house number and one
+    without."""
+    for house_number, seller in (("9", "9"), ("", "31")):
+        before, moved = _c1_moved(house_number, change_for=seller)
+        assert list(moved) == list(app_main.alert_triggers(house_number))
+        for trigger, change in moved.items():
+            assert app_main._alert_changes(before, {**before, **change}), \
+                f"the alert job no longer emails on {trigger!r}"
+
+
+def test_c6_a_run_where_only_crime_moved_sends_no_email(client, monkeypatch):
+    # The area trend moves too, by less than a change of direction, so the
+    # snapshot shows the job really did check this home and write it.
+    only_crime = {**C6_BEFORE, "crime_total": 60, "crime_month": "2026-07", "price_growth_pct": 2.4}
+    mine, sent, left = _c6_run(client, monkeypatch, "c6-crime-only@customer.test",
+                               "M38 1AA", "7", C6_BEFORE, only_crime)
+    assert mine == [], "an email went out with crime as its only change"
+    assert sent == []
+    run = app_main._alert_runs()[0]
+    assert run["homes_changed"] == 0 and run["users_with_changes"] == 0 and run["emails_sent"] == 0
+
+    # The job did not spend the crime change: the snapshot keeps crime as
+    # the reader last saw it, and moves everything else on.
+    assert left["price_growth_pct"] == 2.4
+    assert left["crime_total"] == 40 and left["crime_month"] == "2026-06"
+
+    # So My properties still shows it, naming both months.
+    body = client.get("/watchlist").text
+    assert C6_CRIME_LINE in html.unescape(body)
+    assert "myprops-card myprops-card-changed" in body
+    # And once the reader has seen it, it is not shown again.
+    assert C6_CRIME_LINE not in html.unescape(client.get("/watchlist").text)
+
+
+def test_c6_an_email_with_several_changes_lists_them_in_the_new_order(client, monkeypatch):
+    mine, _sent, left = _c6_run(client, monkeypatch, "c6-ordered@customer.test",
+                                "M38 2AA", "9", C6_BEFORE, C6_AFTER_EVERYTHING)
+    assert len(mine) == 1
+    assert _c6_listed(mine[0]["html"]) == C6_ORDER
+    assert "crime" not in mine[0]["html"].lower()
+    assert mine[0]["subject"] == "Changes on 1 property you follow"
+    run = app_main._alert_runs()[0]
+    assert run["homes_changed"] == 1 and run["emails_sent"] == 1
+    # Everything the email carried is consumed; crime waits for the page.
+    assert left["tx_count"] == 4 and left["flood_zone"].startswith("Zone 2")
+    assert left["crime_total"] == 40 and left["crime_month"] == "2026-06"
+
+
+def test_c6_a_single_change_email_leads_its_subject_with_that_change(client, monkeypatch):
+    """A sale beside a crime move is a one-change email: the subject names
+    the sale, and the crime is on the page, not in the inbox."""
+    sale_and_crime = {**C6_BEFORE, "tx_count": 5, "crime_total": 70, "crime_month": "2026-07"}
+    mine, _sent, _left = _c6_run(client, monkeypatch, "c6-sale@customer.test",
+                                 "M38 3AA", "11", C6_BEFORE, sale_and_crime)
+    assert len(mine) == 1
+    assert mine[0]["subject"] == "M38 3AA, 11: 2 new sold prices recorded here since you last looked"
+    assert _c6_listed(mine[0]["html"]) == ["2 new sold prices recorded here since you last looked"]
+    assert "never on a schedule" in mine[0]["html"]
+
+
+def test_c6_both_snapshots_record_the_crime_month(monkeypatch):
+    """The report writes one snapshot and My properties and the alert job
+    write the other; both must carry the month for the line to name it."""
+    from app.services import area_stats, crime, flood_zones, hpi, schools_db
+    from tests.conftest import fake_gather
+    summary = app_main._summary_from_report(fake_gather(), "M14 5TG", "")
+    assert summary["crime_total"] == 120 and summary["crime_month"] == "2026-06"
+
+    async def _location(_pc):
+        return fake_location(postcode="M38 4AA", outcode="M38")
+
+    async def _down(*_a, **_k):
+        raise RuntimeError("not under test")
+
+    def _down_sync(*_a, **_k):
+        raise RuntimeError("not under test")
+
+    async def _crime(_lat, _lon):
+        return {"total": 57, "month": "2026-07", "by_category": []}
+
+    monkeypatch.setattr(app_main, "lookup_postcode", _location)
+    monkeypatch.setattr(app_main, "sold_prices_for_postcode", _down)
+    monkeypatch.setattr(app_main, "_epc_flow", _down)
+    monkeypatch.setattr(flood_zones, "zone_for", _down)
+    monkeypatch.setattr(hpi, "area_comparison", _down)
+    monkeypatch.setattr(area_stats, "deprivation_for_lsoa", _down_sync)
+    monkeypatch.setattr(schools_db, "school_landscape", _down_sync)
+    monkeypatch.setattr(crime, "summary_near", _crime)
+    light = asyncio.run(app_main._comparison_summary("M38 4AA", "c6"))
+    assert light["crime_total"] == 57 and light["crime_month"] == "2026-07"
+
+
+# ---- Batch C fix pass: what the review of C1 to C6 found left over -------
+# The saved line promised an email when "a new sale is recorded at this
+# postcode", but a home saved with a house number counts only its own
+# sales (_filter_by_address), so a neighbour's sale never sent anything.
+# It told an account waiting on confirmation "We email <address>" while
+# the job skips that address. My properties still promised an email "if
+# anything on this list changes", above a crime move the job never
+# emails. The rest is below, one test per finding.
+
+def test_c1_a_neighbours_sale_is_not_promised_on_a_house_numbered_home():
+    """The mismatch this pins: house 9 saved, the neighbour at 14 sells.
+    The job sends nothing, so the page must not say it would."""
+    before = _c1_sale_summary(C1_STREET, "9")
+    after = _c1_sale_summary(C1_STREET + _c1_sales("14 ACACIA AVENUE"), "9")
+    assert app_main._alert_changes(before, after) == []
+    assert all("postcode" not in trigger for trigger in app_main.alert_triggers("9"))
+    assert "postcode" not in app_main.alert_triggers_short("9")
+    # The same sale at a postcode-only home is one it is told about.
+    before = _c1_sale_summary(C1_STREET, "")
+    after = _c1_sale_summary(C1_STREET + _c1_sales("14 ACACIA AVENUE"), "")
+    assert app_main._alert_changes(before, after)
+    # Whitespace is no house number: _filter_by_address keeps every sale.
+    assert app_main.alert_triggers("  ")[0] == "a new sale is recorded at this postcode"
+
+
+def test_c1_a_house_numbered_report_and_a_postcode_report_word_the_sale_apart(client, fake_report, monkeypatch):
+    """Rendered, signed in and out, for a home with a house number and a
+    home without one."""
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    anon_house = _flat(_c1_open(client, fake_report, "M18 6AA", "M18", "24"))
+    assert "be told when a sale of this home is recorded, a new energy" in anon_house
+    assert "sale is recorded at this postcode" not in anon_house
+    anon_postcode = _flat(_c1_open(client, fake_report, "M18 6AB", "M18", ""))
+    assert "be told when a sale is recorded at this postcode, a new energy" in anon_postcode
+
+    email = "c1-wording@customer.test"
+    assert _signup(client, email).status_code == 303
+    house = _flat(_c1_open(client, fake_report, "M18 6AC", "M18", "26"))
+    saved = house.split(SAVED_NOTE, 1)[1].split("</p>", 1)[0]
+    assert f"We email {email} when a sale of this home is recorded; a new energy" in saved
+    assert "sale is recorded at this postcode" not in saved
+    postcode = _flat(_c1_open(client, fake_report, "M18 6AD", "M18", ""))
+    saved = postcode.split(SAVED_NOTE, 1)[1].split("</p>", 1)[0]
+    assert f"We email {email} when a new sale is recorded at this postcode; a new energy" in saved
+
+
+def test_c1_an_unconfirmed_account_is_not_told_we_email_it(client, fake_report, monkeypatch):
+    """With confirmation switched on, the alert job skips an address
+    nobody has confirmed (_email_can_receive), so the saved line and the
+    end-of-report line say the emails start once it is confirmed."""
+    _live(monkeypatch)
+    email = "c1-unconfirmed@customer.test"
+    assert _signup(client, email).status_code == 303
+    assert app_main._email_can_receive(email) is False
+    body = _flat(_c1_open(client, fake_report, "M18 6AE", "M18", "28"))
+    saved = body.split(SAVED_NOTE, 1)[1].split("</p>", 1)[0]
+    assert f"Once you confirm {email}, we email you when a sale of this home is recorded" in saved
+    assert f"We email {email}" not in body
+    ending = body.split('id="cat-complete"', 1)[1].split("</div>", 1)[0]
+    assert "so once you confirm your email address you will be told when" in ending
+
+    # Confirmed, the line names the address it sends to.
+    with db.get_session() as session:
+        auth.find_user_by_email(session, email).email_verified_at = datetime.datetime.now(datetime.timezone.utc)
+        session.commit()
+    assert app_main._email_can_receive(email) is True
+    body = _flat(_c1_open(client, fake_report, "M18 6AE", "M18", "28"))
+    assert f"We email {email} when a sale of this home is recorded" in body
+    ending = body.split('id="cat-complete"', 1)[1].split("</div>", 1)[0]
+    assert "so you will be told when" in ending
+
+
+def test_c6_my_properties_names_the_triggers_and_not_any_change(client, monkeypatch):
+    """The line at the top of My properties said "We email you if anything
+    on this list changes", above a crime move it highlights and never
+    emails. It names what the job sends on now."""
+    from app import watchlist
+    monkeypatch.setattr(email_service, "is_configured", lambda: True)
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+
+    async def _summary(pc, hn):
+        return {"postcode": pc, "house_number": hn}
+
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    email = "c6-list-line@customer.test"
+    assert _signup(client, email).status_code == 303
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, email).id
+    watchlist.save_item(uid, "M18 6AF", "30", "")
+    body = _flat(client.get("/watchlist").text)
+    assert ("We email you when one of these happens to a home on this list: "
+            + app_main.ALERT_TRIGGERS_LIST + ". Never on a schedule.") in body
+    assert "if anything on this list changes" not in body
+    assert "No need to keep checking back" not in body
+
+    # Waiting on confirmation, the job skips the address, so it says so.
+    _live(monkeypatch)
+    email = "c6-list-line-unconfirmed@customer.test"
+    assert _signup(client, email).status_code == 303
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, email).id
+    watchlist.save_item(uid, "M18 6AG", "32", "")
+    body = _flat(client.get("/watchlist").text)
+    assert "Once you confirm your email address, we email you when one of these happens" in body
+
+
+def test_c3_premium_offers_an_unspent_free_report_and_no_price(client, monkeypatch):
+    """The home block sold two plans to every account without a
+    subscription, so an account that had never used its free full report,
+    the one the locked PDF sends here, was offered a price for a home it
+    could open with no card. While the free report is unspent it is the
+    only offer, pointed at the report's own unlock (or the confirmation
+    banner, when the address is not confirmed yet)."""
+    _billing(monkeypatch)
+    monkeypatch.setattr(email_service, "can_verify", lambda: False)
+    with_home = "/premium?home=M35+1AA&hn=7"
+
+    assert _signup(client, "c3-unspent@customer.test").status_code == 303
+    block = " ".join(_home_block(client.get(with_home).text).split())
+    assert "Open 7 M35 1AA in full" in block
+    assert "/premium/checkout" not in block and "<button" not in block
+    assert ('Your free full report can open '
+            '<a href="/property?postcode=M35+1AA&amp;house_number=7#use-free-report">7 M35 1AA</a>, '
+            'with no card.') in block
+    for price in stripe_billing.plan_prices().values():
+        assert price not in block
+
+    # Waiting on confirmation, the report is claimed from the banner.
+    _live(monkeypatch)
+    email = "c3-unspent-unconfirmed@customer.test"
+    assert _signup(client, email).status_code == 303
+    block = " ".join(_home_block(client.get(with_home).text).split())
+    assert "/premium/checkout" not in block
+    assert ('<a href="/property?postcode=M35+1AA&amp;house_number=7#verify-banner">7 M35 1AA</a>, '
+            f'with no card, once you confirm {email}.') in block
+
+
+def test_c2_premium_types_no_price_the_plans_already_hold():
+    """The lede said "Premium is £9.99 a month", typed, and named only the
+    monthly plan, on the page that badges the three-month plan as made for
+    one house hunt. The meta description typed the same price."""
+    template = _without_template_comments(PREMIUM_TEMPLATE.read_text(encoding="utf-8"))
+    for typed in ("9.99", "24.99"):
+        assert typed not in template, f"premium.html types {typed} out by hand"
+    lede = template.split('<p class="premium-lede">', 1)[1].split("</p>", 1)[0]
+    assert lede.index("{{ plan_prices.quarterly }}") < lede.index("{{ plan_prices.monthly }}")
