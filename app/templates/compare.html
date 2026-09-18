@@ -4,7 +4,7 @@
    block at parse time, so wrapping the definition in an {% if %} does
    not do what it looks like it does. #}
 {% block title %}{% if versus %}{{ left_code }} or {{ right_code }}? Prices, schools, crime and flood risk compared{% elif anonymous_compare %}Compare UK postcodes side by side{% else %}Compare properties{% endif %} | UKPropertyInsight{% endblock %}
-{% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, energy ratings, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.{% endif %}{% endblock %}
+{% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, schools likely to admit, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.{% endif %}{% endblock %}
 {% block robots %}{% if (not versus and not anonymous_compare) or versus_noindex %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 
 {% block content %}
@@ -14,7 +14,7 @@
 <span class="kicker">Side by side</span>
 <h1>{{ left_code }} or {{ right_code }}?</h1>
 <p class="dek">
-    Two neighbouring postcode districts compared on sold prices, energy, flood risk, crime and
+    Two neighbouring postcode districts compared on sold prices, schools, flood risk, crime and
     deprivation, all from the same official sources as every report on this site.
 </p>
 {% if page_modified_label %}
@@ -98,12 +98,17 @@
                 {% endfor %}
             </tr>
             {% endif %}
+            {# On a district page this average is one postcode inside it, which
+               read £82,818 under LS7's median of £256,000; the median row above
+               is the district (18 Sep 2026). #}
+            {% if not versus %}
             <tr>
                 <td><strong>Average sold price</strong></td>
                 {% for col in columns %}
                 <td>{{ col.summary.avg_price | gbp if col.summary.avg_price else "No sales recorded" }}</td>
                 {% endfor %}
             </tr>
+            {% endif %}
             <tr>
                 <td><strong>Area price growth (YoY)</strong></td>
                 {% for col in columns %}
@@ -114,6 +119,11 @@
                 </td>
                 {% endfor %}
             </tr>
+            {# One energy certificate at the postcode a district resolves to is
+               one home, not the district: M14 read "End-terrace house, 97 m²,
+               built 1991 to 1995" as if that described Rusholme. Shown for
+               addresses, where the certificate is the home's own (18 Sep 2026). #}
+            {% if not versus %}
             <tr>
                 <td><strong>Dwelling type</strong></td>
                 {% for col in columns %}
@@ -144,6 +154,7 @@
                 <td>{{ ("£" ~ col.summary.heating_cost ~ "/yr") if col.summary.heating_cost else "No certificate" }}</td>
                 {% endfor %}
             </tr>
+            {% endif %}
             <tr>
                 <td><strong>Schools likely to admit</strong></td>
                 {% for col in columns %}

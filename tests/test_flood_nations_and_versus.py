@@ -158,10 +158,15 @@ def test_an_english_comparison_with_prices_stays_indexable(client, monkeypatch):
     from app import main as app_main
 
     left, right = sorted(["M20", app_main._neighbour_outcodes("M20")[0]])
-    side = {"flood_zone": "Zone 1 (low probability)", "avg_price": 350000}
+    # The district-wide median is the price that counts; one postcode's
+    # average inside the district is not the district (18 Sep 2026).
+    side = {"flood_zone": "Zone 1 (low probability)", "local_median": 350000, "local_sales_count": 40}
     body = _versus(client, monkeypatch, left, right, {left: side, right: side})
     assert "noindex" not in body.lower()
     assert "Zone 1 (low probability)" in body
+    only_one_postcode = {"flood_zone": "Zone 1 (low probability)", "avg_price": 350000}
+    body = _versus(client, monkeypatch, left, right, {left: side, right: only_one_postcode})
+    assert '<meta name="robots" content="noindex, follow">' in body
     # Without a price on one side it is not a comparison worth indexing.
     body = _versus(client, monkeypatch, left, right, {left: side, right: {"flood_zone": "Zone 1 (low probability)"}})
     assert '<meta name="robots" content="noindex, follow">' in body

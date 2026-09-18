@@ -9799,7 +9799,9 @@ async def area_versus(request: Request, left: str, right: str):
         {"postcode": left, "house_number": "", "summary": sides[0], "outcode": left},
         {"postcode": right, "house_number": "", "summary": sides[1], "outcode": right},
     ]
-    has_price = all(s.get("local_median") or s.get("avg_price") for s in sides)
+    # The district-wide median only: the summary's own average is one postcode
+    # inside the district, not the district (18 Sep 2026).
+    has_price = all(s.get("local_median") for s in sides)
     context["versus_noindex"] = not (_versus_indexable(left, right) and has_price)
     context["versus"] = True
     context["anonymous_compare"] = False
@@ -9817,23 +9819,32 @@ def _versus_faqs(left: str, right: str, a: dict, b: dict):
     one side is not a comparison.
     """
     faqs = []
-    la, lb = a.get("local_median") or a.get("avg_price"), b.get("local_median") or b.get("avg_price")
+    la, lb = a.get("local_median"), b.get("local_median")
+    # A tie names no winner. Both answers picked the right-hand district
+    # whenever the figures were equal, so /compare/M14/vs/M20 told Google
+    # "M20 recorded fewer crimes (1 in M14 against 1 in M20)" (18 Sep 2026).
     if la and lb:
-        cheaper = left if la < lb else right
-        faqs.append((
-            f"Is {left} or {right} cheaper?",
-            f"{cheaper} is the cheaper of the two. Homes around {left} sell for about "
-            f"£{la:,.0f} and around {right} for about £{lb:,.0f}, from HM Land Registry "
-            "records of what actually changed hands.",
-        ))
+        if la == lb:
+            answer = (f"Neither. Homes around both sell for about £{la:,.0f}, from HM Land "
+                      "Registry records of what actually changed hands.")
+        else:
+            cheaper = left if la < lb else right
+            answer = (f"{cheaper} is the cheaper of the two. Homes around {left} sell for about "
+                      f"£{la:,.0f} and around {right} for about £{lb:,.0f}, from HM Land Registry "
+                      "records of what actually changed hands.")
+        faqs.append((f"Is {left} or {right} cheaper?", answer))
     ca, cb = a.get("crime_total"), b.get("crime_total")
     if ca is not None and cb is not None:
-        quieter = left if ca < cb else right
+        if ca == cb:
+            lead = f"Neither. Both recorded {ca:,} crimes in the same period (Police.uk)."
+        else:
+            quieter = left if ca < cb else right
+            lead = (f"{quieter} recorded fewer crimes in the same period ({ca:,} in {left} "
+                    f"against {cb:,} in {right}, Police.uk).")
         faqs.append((
             f"Which has less crime, {left} or {right}?",
-            f"{quieter} recorded fewer crimes in the same period ({ca} in {left} against "
-            f"{cb} in {right}, Police.uk). Busier places record more, so read this "
-            "alongside how built-up each area is rather than on its own.",
+            f"{lead} Busier places record more, so read this alongside how built-up "
+            "each area is rather than on its own.",
         ))
     da, db = a.get("imd_decile"), b.get("imd_decile")
     if da and db:
@@ -9845,8 +9856,9 @@ def _versus_faqs(left: str, right: str, a: dict, b: dict):
     faqs.append((
         f"Should I buy in {left} or {right}?",
         "That depends on what you need, and no dataset answers it. What this page gives you "
-        "is the evidence side by side: what homes actually sell for, the energy ratings, the "
-        "flood zone, recorded crime and deprivation, each traced to the body that published it.",
+        "is the evidence side by side: what homes actually sell for, the price trend, the "
+        "schools likely to admit, the flood zone, recorded crime and deprivation, each traced "
+        "to the body that published it.",
     ))
     return faqs
 
@@ -9897,7 +9909,7 @@ def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
     Only where both sides have the figure: a gap is not a finding."""
     out = []
 
-    la, lb = a.get("local_median") or a.get("avg_price"), b.get("local_median") or b.get("avg_price")
+    la, lb = a.get("local_median"), b.get("local_median")
     if la and lb and la != lb:
         cheaper, dearer = (left, right) if la < lb else (right, left)
         gap = abs(la - lb) / max(la, lb) * 100
@@ -9913,9 +9925,8 @@ def _versus_differences(left: str, right: str, a: dict, b: dict) -> list[str]:
         less = left if da > db else right
         out.append(f"{less} is the less deprived of the two on the Index of Multiple Deprivation.")
 
-    ea, eb = a.get("energy_band"), b.get("energy_band")
-    if ea and eb and ea != eb:
-        out.append(f"The most recent EPC we hold is {ea} in {left} and {eb} in {right}.")
+    # No EPC line: each side's certificate is one home at the postcode the
+    # district resolved to, not the district (18 Sep 2026).
     return out
 
 

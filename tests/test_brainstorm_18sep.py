@@ -198,3 +198,80 @@ def test_the_accuracy_log_carries_the_finding(client):
     assert "Found by our own check" in body
     assert "Greater Manchester Police is publishing only a small part" in body
     assert "or found by our own checks" in body
+
+
+# ---- 2. District comparisons: ties, and rows that were one home -------------
+
+def _versus(client, monkeypatch, left, right, summaries):
+    from app import main as app_main
+
+    async def _resolve(outcode):
+        location = fake_location(postcode=f"{outcode} 1AA", outcode=outcode)
+        location["admin_district"] = "Leeds"
+        return location, True
+
+    async def _summary(postcode, house_number):
+        return dict(summaries[postcode.split()[0]])
+
+    async def _sales(lat, lon):
+        return None
+
+    monkeypatch.setattr(app_main, "_resolve_extension_location", _resolve)
+    monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    monkeypatch.setattr(app_main, "_outcode_sales", _sales)
+    real_get = app_main._cache.get_persistent
+    monkeypatch.setattr(app_main._cache, "get_persistent",
+                        lambda key, ttl: None if isinstance(key, tuple) and key and key[0] == "area_vs" else real_get(key, ttl))
+    monkeypatch.setattr(app_main._cache, "set_persistent", lambda key, value: None)
+    _forget_html()
+    return client.get(f"/compare/{left}/vs/{right}").text
+
+
+def test_a_tie_names_no_winner():
+    from app import main as app_main
+
+    same = {"crime_total": 1330, "local_median": 250000, "imd_decile": 5}
+    faqs = dict(app_main._versus_faqs("LS6", "LS7", same, dict(same)))
+    assert faqs["Which has less crime, LS6 or LS7?"].startswith("Neither. Both recorded 1,330 crimes")
+    assert faqs["Is LS6 or LS7 cheaper?"].startswith("Neither. Homes around both sell for about £250,000")
+    assert app_main._versus_differences("LS6", "LS7", same, dict(same)) == []
+    faqs = dict(app_main._versus_faqs("LS6", "LS7", same, dict(same, crime_total=2000, local_median=300000)))
+    assert faqs["Which has less crime, LS6 or LS7?"].startswith("LS6 recorded fewer crimes in the same period (1,330 in LS6 against 2,000 in LS7")
+    assert faqs["Is LS6 or LS7 cheaper?"].startswith("LS6 is the cheaper of the two")
+
+
+def test_a_district_comparison_does_not_show_one_home_as_the_district(client, monkeypatch):
+    from app import main as app_main
+
+    left, right = sorted(["LS6", app_main._neighbour_outcodes("LS6")[0]])
+    side = {"local_median": 310000, "local_sales_count": 104, "avg_price": 290000,
+            "dwelling_type": "End-terrace house", "floor_area": 97, "year_built": "1991-1995",
+            "energy_band": "C", "heating_cost": 820, "crime_total": 494, "imd_decile": 4}
+    other = dict(side, energy_band="D", dwelling_type="Mid-floor flat")
+    body = _versus(client, monkeypatch, left, right, {left: side, right: other})
+    assert "Traceback" not in body
+    for gone in ("Dwelling type", "Floor area", "<strong>Built</strong>", "Energy rating",
+                 "Heating cost", "End-terrace house", "The most recent EPC we hold",
+                 "Average sold price", "290,000"):
+        assert gone not in body, gone
+    assert "Median home sale nearby" in body and "Crime nearby" in body
+    assert "494 recorded" in body
+    assert "energy ratings" not in body and "compared on sold prices, energy," not in body
+
+
+def test_the_address_comparison_keeps_the_home_s_own_certificate():
+    """Only district pages lose the rows: for two addresses the certificate
+    is each home's own."""
+    source = open("app/templates/compare.html", encoding="utf-8").read()
+    rows = source[source.index("<strong>Dwelling type</strong>") - 800:source.index("<strong>Dwelling type</strong>")]
+    assert "{% if not versus %}" in rows
+
+
+def test_the_price_answer_uses_the_district_median_only():
+    from app import main as app_main
+
+    one_postcode = {"avg_price": 82818}
+    district = {"local_median": 256000}
+    faqs = dict(app_main._versus_faqs("LS6", "LS7", one_postcode, district))
+    assert "Is LS6 or LS7 cheaper?" not in faqs
+    assert app_main._versus_differences("LS6", "LS7", one_postcode, district) == []
