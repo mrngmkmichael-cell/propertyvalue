@@ -893,8 +893,9 @@ class AirQuality(Base):
     UK, not just where a monitor happens to sit. Populated by
     scripts/import_air_quality.py. Republished annually - grid_easting/
     grid_northing are the cell's centre point (British National Grid,
-    EPSG:27700), matching what postcodes.io already returns per
-    postcode, so no separate coordinate conversion is needed.
+    EPSG:27700), matching what postcodes.io returns for a postcode in
+    Great Britain. Not in Northern Ireland, where postcodes.io's grid is
+    the Irish one: air_quality.for_location converts there (18 Sep 2026).
     """
     __tablename__ = "air_quality"
 
