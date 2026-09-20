@@ -165,6 +165,32 @@ class ViewingChecklistTicks(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
+class MustHaveConditions(Base):
+    """One buyer's own must-haves, the conditions every report is
+    checked against (18 Sep 2026, first-visitor audit F7). Up to six
+    plain thresholds on checks the report already rates: a flood zone,
+    an EPC band, a named school, freehold.
+
+    Its own table, for the reason SavedAskingPrice gives: create_all
+    makes a new table but never adds a column to one that exists. One
+    row per account, because the list is the buyer's, not a home's,
+    and it travels with them from report to report. Conditions are
+    kept on the device too, so the panel works with no account at all;
+    this row is what carries them to the next device and to My
+    properties.
+
+    "conditions" is JSON, {condition key: threshold}, both written by
+    app/must_haves.py, the only module that reads or writes here, and
+    which drops any key or threshold it does not offer. Cleared
+    conditions leave an empty object rather than delete the row."""
+    __tablename__ = "must_have_conditions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True, unique=True)
+    conditions: Mapped[str] = mapped_column(Text, default="{}")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class SavedDistrict(Base):
     """A postcode district someone followed, as opposed to a single
     address on the watchlist. Retired on 7 Sep 2026.
@@ -891,6 +917,38 @@ class SchoolAdmissionRadius(Base):
 
     urn: Mapped[int] = mapped_column(Integer, primary_key=True)
     academic_year: Mapped[str] = mapped_column(String(16), default="")
+    last_distance_miles: Mapped[float] = mapped_column(Float)
+    source_authority: Mapped[str] = mapped_column(String(150), default="")
+
+
+class SchoolAdmissionRadiusYear(Base):
+    """The same published "last distance offered" figure, but one row
+    per academic year instead of one per school (18 Sep 2026, F5 of the
+    17 Sep first-visitor audit).
+
+    Every school page says the distance moves every year, and then shows
+    one year. Four of the councils in scripts/import_admission_radii.py
+    publish a table with a column per year (Haringey, Bristol, Bexley,
+    Solihull), and the importer threw all but the most recent away,
+    because school_admission_radii is keyed on urn alone. This table is
+    keyed on (urn, academic_year) so those columns can be kept, and the
+    school page can draw the circle for any year the council published
+    and answer a postcode across all of them.
+
+    Deliberately a second table rather than a change to the first: the
+    single most recent figure is what every other surface of the site
+    reads (the report's school cards, the shortlist, the alert emails,
+    the badge), and nothing about that changes. Filled by a separate
+    code path in the same importer (`--years`), which only ever inserts
+    or updates a row and never deletes one, so a council dropping an old
+    column from this year's PDF does not erase what it published before.
+    Only a year the document itself names is stored: a column the
+    importer cannot label is skipped rather than guessed at.
+    """
+    __tablename__ = "school_admission_radius_years"
+
+    urn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    academic_year: Mapped[str] = mapped_column(String(16), primary_key=True)
     last_distance_miles: Mapped[float] = mapped_column(Float)
     source_authority: Mapped[str] = mapped_column(String(150), default="")
 

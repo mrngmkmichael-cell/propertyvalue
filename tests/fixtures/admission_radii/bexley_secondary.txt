@@ -1,0 +1,13 @@
+# London Borough of Bexley, "Admission to Secondary Schools" booklet
+# (the shape fetch_bexley's own docstring describes): "School |
+# 5 years ago | ... | @ <date>", the last column the most recent and
+# the only one that names its year outright. A cell is either
+# "<n> miles" over the measurement method or a sentence saying the
+# school was not oversubscribed that year.
+#
+# Cells are separated by "|", "\n" is a line break inside a cell, and
+# lines starting with "#" are not part of the table.
+School|5 years ago|4 years ago|3 years ago|2 years ago|1 year ago|@ 1 July 2022
+Beths Grammar\nSchool|3.1 miles\nStraight line|All selective applicants offered places|2.9 miles\nRoad route|2.7 miles\nStraight line|All applicants offered places|2.5 miles\nStraight line
+Bexleyheath Academy|All applicants offered places|4.02 miles\nStraight line|All applicants offered places|All applicants offered places|All applicants offered places|All applicants offered places
+Townley Grammar School|1.9 miles\nStraight line|2.05 miles\nStraight line|2.1 miles\nRoad route|1.95 miles\nStraight line|1.8 miles\nStraight line|1.75 miles\nStraight line

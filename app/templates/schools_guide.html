@@ -67,7 +67,19 @@
             <h2>{{ area.label }}</h2>
             <a href="/schools/guide?areas={{ area.remove_areas_param | urlencode }}" class="shortlist-btn">Remove</a>
         </div>
-        {% if area.landscape %}
+        {# Filtered on the server by ?only=fee (18 Sep 2026, first-visitor
+           audit F8), so this page is the same page with fewer rows and
+           says so, with the way back to all of them. #}
+        {% if only_fee %}
+        <p class="section-sub">
+            Fee-paying schools only: {{ area.rows | length }} of them near {{ area.label }}, each with its distance from here.
+            <a href="/schools/guide?q={{ area.label | urlencode }}">Show state schools as well</a>
+        </p>
+        {% endif %}
+        {# 21 Sep 2026: the Ofsted headline and its rating chips describe
+           every school near here, so they cannot stand over a list narrowed
+           to fee-paying schools, which Ofsted largely does not grade. #}
+        {% if area.landscape and not only_fee %}
             {% if area.landscape.good_or_better_pct is not none %}
             <p class="school-guide-headline-pct
                 {%- if national_baseline and area.landscape.good_or_better_pct >= national_baseline.good_or_better_pct %} hl-good

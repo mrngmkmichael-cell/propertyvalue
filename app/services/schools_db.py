@@ -11,7 +11,8 @@ from sqlalchemy import func, null, select
 
 from app.db import get_session, is_configured
 from app.models import (
-    Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolCatchmentEstimate, SchoolCharacteristics,
+    Ks2Result, Ks4Result, School, SchoolAdmissionRadius, SchoolAdmissionRadiusYear,
+    SchoolCatchmentEstimate, SchoolCharacteristics,
     SchoolDemographics, SchoolDestinations, SchoolDetail,
 )
 from app.services import _cache, ofsted_outcomes, overview_score, reviews
@@ -1006,6 +1007,85 @@ def admission_point(urn: int) -> dict | None:
         "miles": published_miles(row.last_distance_miles),
         "academic_year": row.academic_year, "authority": row.source_authority,
     }
+
+
+def admission_partner(urn: int) -> dict | None:
+    """The school named as the second half of a pair, in one statement
+    (18 Sep 2026, first-visitor audit F6): where it stands on the DfE
+    register, and the distance its council published when there is one,
+    with "miles" None when there is not.
+
+    admission_point answers "can this school be read?" and joins on
+    school_admission_radii to do it, so it cannot tell a school whose
+    council has published nothing from a URN the register has never
+    heard of. The page has to say which, because the two need different
+    words: one is a school we cannot draw, the other is not a school.
+    None here means the register holds no such URN.
+    """
+    if not is_configured():
+        return None
+    with get_session() as session:
+        row = session.execute(
+            select(School.urn, School.name, School.phase, School.postcode,
+                   School.latitude, School.longitude,
+                   SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year,
+                   SchoolAdmissionRadius.source_authority)
+            .select_from(School)
+            .outerjoin(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+            .where(School.urn == urn)
+        ).first()
+    if row is None:
+        return None
+    return {
+        "urn": row.urn, "name": row.name, "slug": _slugify(row.name),
+        "phase": _phase_group(row.phase) or "", "postcode": row.postcode or "",
+        "latitude": row.latitude, "longitude": row.longitude,
+        "miles": published_miles(row.last_distance_miles) if row.last_distance_miles is not None else None,
+        "academic_year": row.academic_year or "", "authority": row.source_authority or "",
+    }
+
+
+def _year_sort_key(label: str) -> tuple:
+    """Newest first, whatever shape the council's label is: "2025/26"
+    and "2026" both sort on their first four digits, and a label with no
+    digits at all sorts last rather than raising."""
+    match = re.search(r"(20\d\d)", label or "")
+    return (int(match.group(1)) if match else 0, label or "")
+
+
+def admission_years_for(urns: list[int]) -> dict[int, list[dict]]:
+    """Every academic year a council published for these schools,
+    newest first, from school_admission_radius_years (18 Sep 2026, audit
+    item F5). One statement for the whole list, so a page with several
+    schools on it does not pay a round trip each.
+
+    Four councils publish a column per year; every other school has no
+    row here at all, and gets an empty list rather than a guess.
+    """
+    if not urns or not is_configured():
+        return {}
+    with get_session() as session:
+        rows = session.execute(
+            select(SchoolAdmissionRadiusYear.urn, SchoolAdmissionRadiusYear.academic_year,
+                   SchoolAdmissionRadiusYear.last_distance_miles,
+                   SchoolAdmissionRadiusYear.source_authority)
+            .where(SchoolAdmissionRadiusYear.urn.in_(urns))
+        ).all()
+    out: dict[int, list[dict]] = {}
+    for urn, year, miles, authority in rows:
+        if miles is None or not year:
+            continue
+        out.setdefault(urn, []).append({
+            "academic_year": year, "miles": published_miles(miles), "authority": authority or "",
+        })
+    for years in out.values():
+        years.sort(key=lambda y: _year_sort_key(y["academic_year"]), reverse=True)
+    return out
+
+
+def admission_years(urn: int) -> list[dict]:
+    """The published years for one school, newest first."""
+    return admission_years_for([urn]).get(urn, [])
 
 
 def admission_profile(urn: int) -> dict | None:

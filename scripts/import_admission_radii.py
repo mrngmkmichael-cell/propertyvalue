@@ -21,6 +21,14 @@ To add another authority: write a fetch_<name>() function returning
 [{"school_name": ..., "last_distance_miles": ...}, ...], then add it
 to _AUTHORITIES below with the authority name (must exactly match
 SchoolDetail.local_authority for that area) and academic year label.
+
+A fetcher whose source publishes a column per year may also return
+{"years": {"2025/26": 1.2, "2024/25": 1.4}} on each record. Those go
+to the separate school_admission_radius_years table, and only when
+this script is run with --years; a plain run ignores them and writes
+exactly what it always wrote. Four authorities do this today
+(Haringey, Bristol, Bexley, Solihull). See SchoolAdmissionRadiusYear
+in app/models.py for why it is a second table.
 """
 import csv
 import difflib
@@ -41,7 +49,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from app.db import Base, _get_engine  # noqa: E402
-from app.models import School, SchoolAdmissionRadius, SchoolDetail  # noqa: E402
+from app.models import (  # noqa: E402
+    School, SchoolAdmissionRadius, SchoolAdmissionRadiusYear, SchoolDetail,
+)
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
@@ -87,6 +97,74 @@ def _normalize_school_name(name: str) -> str:
     name = re.sub(r"\bschool\b", "", name, flags=re.IGNORECASE)
     name = re.sub(r"[^a-z0-9 ]", "", name.lower())
     return re.sub(r"\s+", " ", name).strip()
+
+
+# ---- Several years from one document (18 Sep 2026, audit item F5) -------
+# Four councils publish a column per year rather than one figure, and
+# until now every column but the most recent was read and thrown away
+# (school_admission_radii is keyed on urn alone). Those columns are now
+# also returned, under a "years" key on each record, and written to
+# school_admission_radius_years by --years. What each fetcher already
+# returned is untouched, so a plain run writes exactly what it wrote
+# before.
+#
+# A column is only kept when the document's own header names its year.
+# "Real data or no feature" applies to the label as much as the figure:
+# a column we cannot date is dropped rather than guessed at, which is
+# why _year_label returns "" far more often than it returns a year.
+_YEAR_IN_HEADER = re.compile(r"(20\d\d)\s*[/-]\s*(\d\d)(?!\d)")
+_BARE_YEAR = re.compile(r"(?<!\d)(20\d\d)(?!\d)")
+_YEARS_AGO = re.compile(r"(\d+)\s*years?\s*ago", re.IGNORECASE)
+
+
+def _year_label(cell: str, anchor_year: int | None = None) -> str:
+    """One header cell as the academic-year label the site renders, or ""
+    when the cell does not name a year.
+
+    Handles the three shapes these four documents use: "2024/25" and
+    "2024-25" (kept as "2024/25"), a bare "2026" or "Sept 2026" (kept as
+    "2026"), and Bexley's relative "5 years ago", which is only
+    resolvable against the dated column at the end of the same header
+    row - without that anchor it stays unlabelled.
+
+    The result always matches the site's own year test (_YEAR_LIKE in
+    app/main.py), so a label that reaches a page is one the page can
+    render.
+    """
+    text = (cell or "").replace("\n", " ").strip()
+    if not text:
+        return ""
+    span = _YEAR_IN_HEADER.search(text)
+    if span:
+        return f"{span.group(1)}/{span.group(2)}"
+    ago = _YEARS_AGO.search(text)
+    if ago:
+        return str(anchor_year - int(ago.group(1))) if anchor_year else ""
+    bare = _BARE_YEAR.search(text)
+    return bare.group(1) if bare else ""
+
+
+def _anchor_year(header: list) -> int | None:
+    """The most recent four-digit year named anywhere in a header row,
+    which is what Bexley's "N years ago" columns count back from."""
+    years = [int(y) for cell in header or [] for y in _BARE_YEAR.findall((cell or "").replace("\n", " "))]
+    return max(years) if years else None
+
+
+def _grouped_year_labels(header: list, anchor_year: int | None = None) -> list[str]:
+    """A year label for every column of a header that names its years
+    once per group of columns rather than once per column (Solihull puts
+    "places offered" and "distance" under one year). Each column takes
+    the last year named at or before it; columns before the first year
+    named stay unlabelled, so the school-name column never inherits
+    one."""
+    labels, current = [], ""
+    for cell in header:
+        label = _year_label(cell, anchor_year)
+        if label:
+            current = label
+        labels.append(current)
+    return labels
 
 
 def fetch_hounslow() -> list[dict]:
@@ -392,6 +470,9 @@ def fetch_solihull() -> list[dict]:
     Takes the most recent year's figure ("All offered"/N/A means not
     oversubscribed that year, so falls back to the next most recent
     year with a real value).
+
+    Since 18 Sep 2026 all three years are also returned, under "years",
+    labelled from the header row.
     """
     url = "https://www.solihull.gov.uk/sites/default/files/2025-04/How-Reception-Places-Were-Offered-23-24-25.pdf"
     print(f"  Downloading {url}")
@@ -399,24 +480,70 @@ def fetch_solihull() -> list[dict]:
     resp.raise_for_status()
 
     records = []
+    labels: list[str] = []
     with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
         for page in pdf.pages:
             table = page.extract_table()
             if not table:
                 continue
-            for row in table:
-                if not row or not row[0] or row[0].strip().lower() in ("", "school"):
-                    continue
-                name = row[0].strip()
-                # Distance columns are at indices 2, 4, 6 (most recent first).
-                for idx in (2, 4, 6):
-                    if idx >= len(row) or not row[idx]:
-                        continue
-                    try:
-                        records.append({"school_name": name, "last_distance_miles": float(row[idx].strip())})
-                        break
-                    except ValueError:
-                        continue
+            # 20 Sep 2026: the years sit in the row above "School"
+            # ("September 2025 admissions"), and only the first page
+            # carries that row, so the labels are kept for later pages.
+            labels = _solihull_year_labels(table) or labels
+            records.extend(_solihull_rows(table, labels))
+    return records
+
+
+def _solihull_year_labels(table: list) -> list[str]:
+    """The year label for each column, from the first row of this table
+    that names a year. Solihull puts "September 2025 admissions" in a row
+    of its own, above the "School | Criteria | Distance in miles" row."""
+    for row in table or []:
+        if not row:
+            continue
+        labels = _grouped_year_labels(row)
+        if any(labels):
+            return labels
+    return []
+
+
+def _solihull_rows(table: list, labels: list[str] | None = None) -> list[dict]:
+    """One extracted Solihull table to records. Split out from the fetch
+    so the parsing can be tested against saved text rather than a live
+    PDF (tests/fixtures/admission_radii/solihull_reception.txt).
+
+    Solihull's header groups two columns under each year ("places
+    offered" then "distance"), so the year is named once per pair and
+    a distance column takes the last year named at or before it
+    (_grouped_year_labels). A column with no year in front of it is
+    left unlabelled and kept out of the years table. The years are in
+    their own row above "School", and only on the first page, so the
+    caller passes the labels in for every page after it (20 Sep 2026).
+    """
+    if labels is None:
+        labels = _solihull_year_labels(table)
+    records = []
+    for row in table:
+        if not row or not row[0] or row[0].strip().lower() in ("", "school"):
+            continue
+        name = row[0].strip()
+        years, latest = {}, None
+        # Distance columns are at indices 2, 4, 6 (most recent first).
+        for idx in (2, 4, 6):
+            if idx >= len(row) or not row[idx]:
+                continue
+            try:
+                miles = float(row[idx].strip())
+            except ValueError:
+                continue
+            if latest is None:
+                latest = miles
+            label = labels[idx] if idx < len(labels) else ""
+            if label:
+                years[label] = miles
+        if latest is None:
+            continue
+        records.append({"school_name": name, "last_distance_miles": latest, "years": years})
     return records
 
 
@@ -2084,6 +2211,7 @@ _HARINGEY_URLS = [
 ]
 _HARINGEY_ROW_RE = re.compile(r"<tr>\s*<td>(.*?)</td>((?:\s*<td>.*?</td>)+)\s*</tr>", re.DOTALL)
 _HARINGEY_CELL_RE = re.compile(r"<td>(.*?)</td>")
+_HARINGEY_TH_RE = re.compile(r"<th[^>]*>(.*?)</th>", re.DOTALL)
 
 
 def fetch_haringey() -> list[dict]:
@@ -2096,27 +2224,64 @@ def fetch_haringey() -> list[dict]:
     recent) non-"N/A" column per row rather than always the newest
     year, since some schools' most recent year has no distance figure
     (not oversubscribed that year).
+
+    Since 18 Sep 2026 every year-column that carries a distance is also
+    returned, under "years", labelled from the table's own header row.
     """
     records = []
     for url in _HARINGEY_URLS:
         print(f"  Downloading {url}")
         resp = httpx.get(url, timeout=30, follow_redirects=True, headers=HEADERS)
         resp.raise_for_status()
-        text = resp.text.replace("&nbsp;", " ")
-        start = text.find("<tbody>")
-        end = text.find("</tbody>")
-        if start < 0 or end < 0:
-            continue
-        for name, cells in _HARINGEY_ROW_RE.findall(text[start:end]):
-            clean_name = re.sub("<[^>]+>", "", name).strip()
-            for value in _HARINGEY_CELL_RE.findall(cells):
-                value = value.strip()
-                if value and value.upper() not in ("N/A", "ALL"):
-                    try:
-                        records.append({"school_name": clean_name, "last_distance_miles": float(value)})
-                    except ValueError:
-                        pass
-                    break
+        records.extend(_haringey_rows(resp.text))
+    return records
+
+
+def _haringey_rows(text: str) -> list[dict]:
+    """One Haringey page's table to records. Split out from the fetch so
+    the parsing can be tested against saved markup rather than the live
+    council site (tests/fixtures/admission_radii/haringey_primary.html).
+    """
+    text = text.replace("&nbsp;", " ")
+    start = text.find("<tbody>")
+    end = text.find("</tbody>")
+    if start < 0 or end < 0:
+        return []
+    # The year of each column, from the header above the same table: the
+    # first header cell is the school's name, so the rest line up with
+    # the value cells below.
+    head = text[:start]
+    thead = head.rfind("<thead")
+    header = [re.sub("<[^>]+>", "", c).strip() for c in _HARINGEY_TH_RE.findall(head[thead:] if thead >= 0 else head)]
+    labels = [_year_label(c) for c in header[1:]]
+    records = []
+    for name, cells in _HARINGEY_ROW_RE.findall(text[start:end]):
+        clean_name = re.sub("<[^>]+>", "", name).strip()
+        values = _HARINGEY_CELL_RE.findall(cells)
+        years, latest, taken = {}, None, False
+        for idx, raw in enumerate(values):
+            # Left exactly as it was: a cell with markup inside it has
+            # never parsed as a distance here, and making it parse now
+            # would change what a plain run writes.
+            value = raw.strip()
+            if not value or value.upper() in ("N/A", "ALL"):
+                continue
+            try:
+                miles = float(value)
+            except ValueError:
+                # The council wrote something that is not a number in a
+                # distance column. It stops the newest-first scan, as it
+                # always has, and it is no use to the years table either.
+                if not taken:
+                    taken = True
+                continue
+            if not taken:
+                latest, taken = miles, True
+            label = labels[idx] if idx < len(labels) else ""
+            if label:
+                years[label] = miles
+        if latest is not None:
+            records.append({"school_name": clean_name, "last_distance_miles": latest, "years": years})
     return records
 
 
@@ -2571,6 +2736,11 @@ def fetch_bristol() -> list[dict]:
     year-columns are corrupted by an overlapping-text PDF rendering
     glitch (e.g. "0.68 6", "D7") - these simply fail to parse and are
     skipped in the backwards scan like any other non-numeric year.
+
+    Since 18 Sep 2026 every year-column that parses is also returned,
+    under "years", labelled from the header row ("Name of school |
+    2020 | ... | 2026"). The most recent one is the same figure
+    "last_distance_miles" carries, so the two never disagree.
     """
     url = "https://www.bristol.gov.uk/files/documents/3382-furthest-distance-table/file"
     resp = httpx.get(url, timeout=60, follow_redirects=True, headers=HEADERS)
@@ -2581,21 +2751,39 @@ def fetch_bristol() -> list[dict]:
             table = page.extract_table()
             if not table:
                 continue
-            for row in table:
-                if not row or not row[0] or len(row) < 2:
-                    continue
-                name = row[0].strip()
-                if not name or name.lower().startswith("name of school"):
-                    continue
-                for cell in reversed(row[1:]):
-                    if not cell:
-                        continue
-                    try:
-                        distance_km = float(cell.strip())
-                    except ValueError:
-                        continue
-                    records.append({"school_name": name, "last_distance_miles": distance_km / 1.60934})
-                    break
+            records.extend(_bristol_rows(table))
+    return records
+
+
+def _bristol_rows(table: list) -> list[dict]:
+    """One extracted Bristol table to records. Split out from the fetch
+    so the parsing can be tested against saved text rather than a live
+    PDF (tests/fixtures/admission_radii/bristol_furthest_distance.txt)."""
+    header = next((r for r in table if r and r[0] and str(r[0]).lower().startswith("name of school")), None)
+    labels = [_year_label(c) for c in (header[1:] if header else [])]
+    records = []
+    for row in table:
+        if not row or not row[0] or len(row) < 2:
+            continue
+        name = str(row[0]).strip()
+        if not name or name.lower().startswith("name of school"):
+            continue
+        years, latest = {}, None
+        for idx, cell in enumerate(row[1:]):
+            if not cell:
+                continue
+            try:
+                distance_km = float(str(cell).strip())
+            except ValueError:
+                continue
+            miles = distance_km / 1.60934
+            latest = miles
+            label = labels[idx] if idx < len(labels) else ""
+            if label:
+                years[label] = miles
+        if latest is None:
+            continue
+        records.append({"school_name": name, "last_distance_miles": latest, "years": years})
     return records
 
 
@@ -3002,6 +3190,12 @@ def fetch_bexley() -> list[dict]:
     Bexley's primary school admissions booklet was also checked but
     contains only prose admissions policies per school, no numeric
     distance table - primary schools aren't covered here.
+
+    Since 18 Sep 2026 every column that carries a distance is also
+    returned, under "years". Only the last column names its year
+    outright ("@ 1 July 2022"); the rest are relative ("5 years ago"),
+    so they are counted back from that dated column and nothing is
+    labelled at all when the booklet's own header carries no date.
     """
     url = "https://www.bexley.gov.uk/sites/default/files/2023-03/Admission-to-secondary-schools-2023-2024.pdf"
     print(f"  Downloading {url}")
@@ -3009,22 +3203,43 @@ def fetch_bexley() -> list[dict]:
     resp.raise_for_status()
 
     records = []
-    dist_re = re.compile(r"([\d.]+)\s*miles")
     with pdfplumber.open(io.BytesIO(resp.content)) as pdf:
         for page in pdf.pages:
             table = page.extract_table()
             if not table or not table[0] or table[0][0] != "School":
                 continue
-            for row in table[1:]:
-                if not row or not row[0]:
-                    continue
-                name = row[0].replace("\n", " ").strip()
-                last_cell = row[-1]
-                if not last_cell:
-                    continue
-                match = dist_re.search(last_cell)
-                if match:
-                    records.append({"school_name": name, "last_distance_miles": float(match.group(1))})
+            records.extend(_bexley_rows(table))
+    return records
+
+
+_BEXLEY_DIST_RE = re.compile(r"([\d.]+)\s*miles")
+
+
+def _bexley_rows(table: list) -> list[dict]:
+    """One extracted Bexley table to records. Split out from the fetch
+    so the parsing can be tested against saved text rather than a live
+    PDF (tests/fixtures/admission_radii/bexley_secondary.txt)."""
+    if not table or not table[0]:
+        return []
+    anchor = _anchor_year(table[0])
+    labels = [_year_label(c, anchor) for c in table[0][1:]]
+    records = []
+    for row in table[1:]:
+        if not row or not row[0]:
+            continue
+        name = row[0].replace("\n", " ").strip()
+        years = {}
+        for idx, cell in enumerate(row[1:]):
+            match = _BEXLEY_DIST_RE.search(cell or "")
+            label = labels[idx] if idx < len(labels) else ""
+            if match and label:
+                years[label] = float(match.group(1))
+        last_cell = row[-1]
+        if not last_cell:
+            continue
+        match = _BEXLEY_DIST_RE.search(last_cell)
+        if match:
+            records.append({"school_name": name, "last_distance_miles": float(match.group(1)), "years": years})
     return records
 
 
@@ -4368,7 +4583,14 @@ def _match_urn(school_name: str, candidates: dict[str, int]) -> int | None:
     return prefixed[0] if len(prefixed) == 1 else None
 
 
-def build_records(session) -> list[dict]:
+def build_records(session, years: list | None = None) -> list[dict]:
+    """The rows for school_admission_radii, exactly as before.
+
+    Pass a list as `years` and the multi-year columns a fetcher returned
+    under "years" are appended to it as well (18 Sep 2026, audit item
+    F5), for school_admission_radius_years. Nothing about the returned
+    list changes either way, so a plain run writes what it always wrote.
+    """
     records = []
     for authority, academic_year, fetch_fn in _AUTHORITIES:
         print(f"Fetching {authority}...")
@@ -4440,6 +4662,19 @@ def build_records(session) -> list[dict]:
                 "last_distance_miles": row["last_distance_miles"],
                 "source_authority": authority,
             })
+            # Every other year the same document published, for the
+            # second table. Same URN, same authority, same floor on a
+            # figure that is not a figure.
+            if years is not None:
+                for year_label, miles in sorted((row.get("years") or {}).items()):
+                    if not isinstance(miles, (int, float)) or miles < 0.01:
+                        continue
+                    years.append({
+                        "urn": urn,
+                        "academic_year": year_label,
+                        "last_distance_miles": miles,
+                        "source_authority": authority,
+                    })
             matched += 1
 
         print(f"  matched {matched}/{len(rows)} to a school in our database (before de-duplication)")
@@ -4459,6 +4694,17 @@ def build_records(session) -> list[dict]:
         by_urn[r["urn"]] = r
     if duplicates:
         print(f"Dropped {duplicates} duplicate URN(s) (same school matched more than once)")
+
+    if years is not None:
+        # Same rule one level down: the key there is the school AND the
+        # year, so two documents that both cover 2024/25 keep the first.
+        by_key: dict[tuple, dict] = {}
+        for r in years:
+            by_key.setdefault((r["urn"], r["academic_year"]), r)
+        if len(by_key) != len(years):
+            print(f"Dropped {len(years) - len(by_key)} duplicate school-year row(s)")
+        years[:] = list(by_key.values())
+        print(f"{len(years)} school-year row(s) from the multi-year sources")
 
     return list(by_urn.values())
 
@@ -4487,21 +4733,88 @@ def load_into_db(records: list[dict], only: list[str] | None = None) -> None:
             session.commit()
 
 
+def load_years_into_db(records: list[dict]) -> None:
+    """The multi-year rows, into school_admission_radius_years only
+    (18 Sep 2026, audit item F5).
+
+    Deliberately not load_into_db's clear-and-insert: this table is a
+    record of what each council published in each year, and a council
+    that drops an older column from this year's PDF has not unpublished
+    that year. So every row is an insert or an update on its own
+    (urn, academic_year) key, nothing is deleted, and running the same
+    import twice leaves the table exactly as one run did.
+    """
+    engine = _get_engine()
+    Base.metadata.create_all(engine, tables=[SchoolAdmissionRadiusYear.__table__])
+    SessionLocal = sessionmaker(bind=engine)
+
+    inserted = updated = unchanged = 0
+    with SessionLocal() as session:
+        for r in records:
+            existing = session.get(SchoolAdmissionRadiusYear, (r["urn"], r["academic_year"]))
+            if existing is None:
+                session.add(SchoolAdmissionRadiusYear(**r))
+                inserted += 1
+            elif (existing.last_distance_miles != r["last_distance_miles"]
+                  or existing.source_authority != r["source_authority"]):
+                existing.last_distance_miles = r["last_distance_miles"]
+                existing.source_authority = r["source_authority"]
+                updated += 1
+            else:
+                unchanged += 1
+        session.commit()
+    print(f"school_admission_radius_years: {inserted} inserted, {updated} updated, {unchanged} unchanged, 0 deleted")
+
+
+def _only_from_argv(argv: list[str], known: set) -> list[str] | None:
+    """The authority names --only asked for, or None when it was not
+    given. One registry name has a comma in it ("Bristol, City of"), so
+    a value that is itself a registry name is taken whole; anything else
+    is split on commas as it always was, and --only may be repeated."""
+    if "--only" not in argv:
+        return None
+    only = []
+    for i, arg in enumerate(argv):
+        if arg != "--only" or i + 1 >= len(argv):
+            continue
+        value = argv[i + 1].strip()
+        only += [value] if value in known else [a.strip() for a in value.split(",") if a.strip()]
+    return only
+
+
 def main():
-    """Usage: import_admission_radii.py [--only "Essex,Lincolnshire"]
+    """Usage: import_admission_radii.py [--only "Essex,Lincolnshire"] [--years]
 
     With --only, just those authorities are fetched and their rows
-    replaced; everything else in the table is left exactly as it was."""
+    replaced; everything else in the table is left exactly as it was.
+
+    With --years, nothing is written to school_admission_radii at all:
+    the same fetchers run, and only the years they found go into
+    school_admission_radius_years (18 Sep 2026, audit item F5). Four
+    councils publish a column per year, so in practice this is run as:
+
+        import_admission_radii.py --years --only Haringey --only "Bristol, City of"
+
+    One registry name has a comma in it ("Bristol, City of"), so --only
+    may be given more than once, and a value that is itself a registry
+    name is taken whole rather than split on its comma.
+    """
     global _AUTHORITIES
-    only = None
-    if "--only" in sys.argv:
-        only = [a.strip() for a in sys.argv[sys.argv.index("--only") + 1].split(",") if a.strip()]
+    only = _only_from_argv(sys.argv, {t[0] for t in _AUTHORITIES})
+    if only is not None:
         _AUTHORITIES = [t for t in _AUTHORITIES if t[0] in only]
         missing = set(only) - {t[0] for t in _AUTHORITIES}
         if missing:
             sys.exit(f"not in the registry: {sorted(missing)}")
     engine = _get_engine()
     SessionLocal = sessionmaker(bind=engine)
+    if "--years" in sys.argv:
+        with SessionLocal() as session:
+            year_records = []
+            build_records(session, years=year_records)
+        load_years_into_db(year_records)
+        print("Done (years only; school_admission_radii untouched).")
+        return
     with SessionLocal() as session:
         records = build_records(session)
     load_into_db(records, only=only)

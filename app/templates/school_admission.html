@@ -147,6 +147,10 @@
         <label for="check-postcode-top">Will an address get in? {% if school.no_distance_limit %}Check how far an address is{% else %}Check a postcode against {{ school.miles_label }} miles{% endif %}</label>
         <input type="text" id="check-postcode-top" name="check" value="{{ check_query }}" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required{% if check_error %} aria-invalid="true" aria-describedby="check-error"{% endif %}>
     </div>
+    {# The second school and the budget travel with the check (18 Sep
+       2026, F6), so checking a postcode does not lose the pair. #}
+    {% if pair_school %}<input type="hidden" name="with" value="{{ pair_school.urn }}">{% if pair_budget_query %}<input type="hidden" name="budget" value="{{ pair_budget_query }}">{% endif %}{% endif %}
+    {% if radius_years | length > 1 and map_ring.year %}<input type="hidden" name="year" value="{{ map_ring.year }}">{% endif %}
     <button type="submit">Check this postcode</button>
     {% if check_error %}
     <p class="notice notice-error" id="check-error" style="flex-basis: 100%; margin: 0;">Couldn't find "{{ check_query }}" as a UK postcode. Check the spelling and try again.</p>
@@ -203,6 +207,38 @@
             {% if check.level == 'likely' %}That is {{ check.margin_miles | miles }} miles inside it.
             {% elif check.level == 'unlikely' %}That is {{ (check.margin_miles | abs) | miles }} miles outside it.{% endif %}{% endif %}
         </span>
+        {# The same postcode against every year the council published, not
+           the newest alone (18 Sep 2026, audit item F5). One year moves
+           with how many families applied that year; several say whether
+           this address is usually inside or usually out. Published
+           figures only: a year the council never published is not here. #}
+        {% if check_years %}
+        <span class="admission-verdict-years" style="flex-basis:100%; margin:0">
+            <strong>{{ check_years.label }} in {% if check_years.all %}all {{ check_years.total }}{% else %}{{ check_years.matched }} of the last {{ check_years.total }}{% endif %} published years.</strong>
+            <span class="school-year-runs">
+                {% for r in check_years.rows %}<span class="school-year-run school-year-run-{{ r.level }}"><span class="school-year-run-year">{{ r.year }}</span> <span class="school-year-run-label">{{ r.label }}</span> <span class="school-year-run-miles">{{ r.miles_label }} mi</span></span>{% endfor %}
+            </span>
+        </span>
+        {% endif %}
+        {# One postcode, both schools (18 Sep 2026, audit item F6). The
+           second reading is the same _school_reading the answer above
+           is, against the distance the second school's own council
+           published, so the two can never disagree with that school's
+           own page. Each pill names its school: never colour alone. #}
+        {% if check_pair %}
+        <span class="admission-verdict-pair" style="flex-basis:100%; margin:0" id="check-both">
+            <strong>{{ check.postcode }} against both schools:</strong>
+            <span class="school-pair-reads">
+                <span class="school-pair-read school-pair-read-{{ check.level }}"><span class="school-pair-read-name">{{ school.name }}</span> <span class="school-pair-read-label">{{ check.label }}</span> <span class="school-pair-read-miles">{{ check.distance_miles | miles }} mi</span></span>
+                <span class="school-pair-read school-pair-read-{{ check_pair.level }}"><span class="school-pair-read-name">{{ pair_school.name }}</span> <span class="school-pair-read-label">{{ check_pair.label }}</span> <span class="school-pair-read-miles">{{ check_pair.distance_miles | miles }} mi</span></span>
+            </span>
+            <span class="section-sub" style="display:block; margin:0.35rem 0 0;">
+                {% if pair_school.no_distance_limit %}Distance did not limit entry at {{ pair_school.name }} {{ pair_school.in_year }}: the furthest offer {{ pair_school.authority }} recorded was {{ pair_school.miles_label }} miles away.
+                {% else %}{{ pair_school.name }} admitted from {{ pair_school.miles_label }} miles {{ pair_school.in_year }}, published by {{ pair_school.authority }}.{% endif %}
+                <a href="#both-in-reach">The districts inside both distances</a>.
+            </span>
+        </span>
+        {% endif %}
         <span class="section-sub" style="flex-basis:100%; margin:0">
             Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
             looked-after children{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
@@ -235,6 +271,8 @@
                 <label for="check-postcode">Check another postcode</label>
                 <input type="text" id="check-postcode" name="check" placeholder="e.g. {{ school.postcode }}" autocomplete="postal-code" required>
             </div>
+            {% if pair_school %}<input type="hidden" name="with" value="{{ pair_school.urn }}">{% if pair_budget_query %}<input type="hidden" name="budget" value="{{ pair_budget_query }}">{% endif %}{% endif %}
+            {% if radius_years | length > 1 and map_ring.year %}<input type="hidden" name="year" value="{{ map_ring.year }}">{% endif %}
             <button type="submit">Check</button>
         </form>
     </div>
@@ -243,16 +281,57 @@
     {# The map: the school, the distance drawn as a circle, and the
        checked address when there is one. A circle is a simplification
        and the caption says so, but it beats a number floating alone. #}
-    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }}{% if not school.no_distance_limit %} and the {{ school.miles_label }} mile admission distance{% endif %}"></div>
-    <p class="section-sub">
-        {% if school.no_distance_limit %}
-        No circle to draw: {{ school.miles_label }} miles is not a distance limit, so the map shows the school and the postcode
+    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }}{% if not map_ring.no_limit %} and the {{ map_ring.miles_label }} mile admission distance{% if map_ring.year %}, {{ map_ring.year }}{% endif %}{% endif %}{% if pair_school and not pair_school.no_distance_limit %}, with {{ pair_school.name }} and its {{ pair_school.miles_label }} mile admission distance{% endif %}"></div>
+    <p class="section-sub" id="school-map-caption">
+        {% if map_ring.no_limit %}
+        No circle to draw: {{ map_ring.miles_label }} miles is not a distance limit, so the map shows the school and the postcode
         you check, and claims nothing about a boundary.
         {% else %}
-        The circle is {{ school.miles_label }} miles, the distance the school admitted from {{ school.in_year }}. Real admission areas are not circular: this is the distance, not a boundary.{% if district_labels %}
-        The labels are postcode districts whose centre falls inside it; each opens the district's guide.{% endif %}
+        The circle is <span id="school-map-miles">{{ map_ring.miles_label }}</span> miles, the distance the school admitted from
+        <span id="school-map-year">{% if map_ring.year %}in {{ map_ring.year }}{% else %}{{ school.in_year }}{% endif %}</span>. Real admission areas are not circular: this is the distance, not a boundary.{% if district_labels %}
+        The labels are postcode districts whose centre falls inside {% if pair %}both{% else %}it{% endif %}; each opens the district's guide.{% endif %}
         {% endif %}
     </p>
+    {# Both circles, named rather than described by colour (18 Sep 2026,
+       audit item F6): the second school's published distance is drawn on
+       the same map, and this key says which ring belongs to which school
+       and how far each one is. Only when there is a second ring to name. #}
+    {% if pair_school %}
+    <p class="section-sub school-ring-key" id="school-ring-key">
+        <span class="school-ring-name"><span class="key-ring key-ring-real" aria-hidden="true"></span>{{ school.name }}:
+            {% if map_ring.no_limit %}no circle, distance did not limit entry{% else %}{{ map_ring.miles_label }} miles{% if map_ring.year %}, {{ map_ring.year }}{% endif %}{% endif %}</span>
+        <span class="school-ring-name"><span class="key-ring key-ring-pair" aria-hidden="true"></span><a href="/school/{{ pair_school.urn }}/{{ pair_school.slug }}">{{ pair_school.name }}</a>:
+            {% if pair_school.no_distance_limit %}no circle, distance did not limit entry{% else %}{{ pair_school.miles_label }} miles{% if pair_school.year_label %}, {{ pair_school.year_label }}{% endif %}{% endif %},
+            published by {{ pair_school.authority }}</span>
+    </p>
+    {% endif %}
+    {# Several published years (18 Sep 2026, audit item F5). Four councils
+       publish a column per year and the site kept only the newest, under
+       a page that says in so many words that the distance moves every
+       year. Each button is a real link carrying ?year=, so the choice is
+       shareable and works with no script at all; the script at the foot
+       of the page redraws the circle in place instead of reloading. The
+       years are the council's own: nothing here is worked out. #}
+    {% if radius_years | length > 1 %}
+    <div class="school-years" id="school-years">
+        <p class="school-years-label" id="school-years-label">Draw the circle for a published year</p>
+        <div class="school-year-pick" role="group" aria-labelledby="school-years-label">
+            {% for y in radius_years %}
+            {# ?with= and ?budget= travel with the year (18 Sep 2026, F6),
+               so stepping a year does not drop the second school. #}
+            <a href="{{ '/school/' ~ school.urn ~ '/' ~ school.slug }}?{% if check %}check={{ check.postcode | urlencode }}&amp;{% endif %}{% if pair_school %}with={{ pair_school.urn }}&amp;{% if pair_budget_query %}budget={{ pair_budget_query | urlencode }}&amp;{% endif %}{% endif %}year={{ y.year | urlencode }}#school-page-map"
+               data-year="{{ y.year }}" data-miles="{{ y.miles }}" data-no-limit="{{ 'yes' if y.no_limit else 'no' }}"
+               {% if y.year == map_ring.year %}aria-current="true"{% endif %}>{{ y.year }}</a>
+            {% endfor %}
+        </div>
+        <p class="section-sub" style="margin: 0.35rem 0 0;">
+            {{ radius_years | length }} years published by {{ school.authority }}, newest first.
+            The figure at the top of this page is the newest of them.
+        </p>
+    </div>
+    {% elif radius_years | length == 1 %}
+    <p class="section-sub" id="school-years-one">One published year so far: {{ radius_years[0].year }}, from {{ school.authority }}. With two or more, this map draws any of them.</p>
+    {% endif %}
     {% if nearby_rings %}
     {# Step 1 of the catchment map: the nearest schools' distances, on
        request, so the main ring stays clear until the reader asks. The
@@ -282,6 +361,188 @@
     </div>
 </section>
 
+{# ==== Two schools, both in reach (18 Sep 2026, audit item F6) ==========
+   A family with two children, or one child and a second preference, had
+   to hold two of these pages open and intersect two circles by eye. A
+   second school now goes on the map above by name, and the postcode
+   districts whose centre falls inside both published distances are
+   listed here, cheapest first, on the same Land Registry medians the
+   page's own "within reach" table ranks on. Nothing is worked out: the
+   distances are the councils' and the medians are recorded sales, and a
+   budget only hides rows above it. The choice travels in the address
+   (?with=, ?budget=), so a pair can be shared and every part of this
+   works with no script at all; the typeahead below only saves typing.
+   The links are nofollow and the canonical link stays the bare page, so
+   a pair is a tool rather than thousands of thin pages. #}
+{% set pair_base = '/school/' ~ school.urn ~ '/' ~ school.slug ~ '?' ~ (('check=' ~ (check.postcode | urlencode) ~ '&') if check else '') ~ (('year=' ~ (map_ring.year | urlencode) ~ '&') if (radius_years | length > 1 and map_ring.year) else '') ~ (('budget=' ~ (pair_budget_query | urlencode) ~ '&') if pair_budget_query else '') %}
+<section class="report-section" id="both-in-reach">
+    <h2>{% if pair_school %}Where {{ school.name }} and {{ pair_school.name }} are both in reach{% else %}Two schools, both in reach{% endif %}</h2>
+
+    {% if pair_error or pair_choices %}
+    {# Published figures only, and the page says which of the reasons it
+       is: a school with nothing published is not the same as a URN the
+       register has never held, and neither is a name that matches
+       several schools. #}
+    <p class="notice notice-error" id="pair-error">
+        {% if pair_error == 'same' %}That is this school. Pick a different one as the second.
+        {% elif pair_error == 'no_figure' %}{{ pair_named or "That school" }} has no admission distance published by its council, so it cannot be added here. This page shows published figures only, never a modelled one.
+        {% elif pair_error == 'no_location' %}The Department for Education register gives {{ pair_named or "that school" }} no location, so its distance cannot be drawn.
+        {% elif pair_error == 'unknown' %}No school with that reference in the Department for Education register.
+        {% elif pair_error == 'not_found' %}No school found called "{{ pair_query }}".
+        {% elif pair_choices %}More than one school matches "{{ pair_query }}". Which did you mean?
+        {% endif %}
+    </p>
+    {% if pair_choices %}
+    <ul class="school-pair-choices">
+        {% for c in pair_choices %}
+        <li><a rel="nofollow" href="{{ pair_base }}with={{ c.urn }}#both-in-reach">{{ c.name }}</a>
+            <span class="section-sub">{{ c.authority }}{% if c.phase %} &middot; {{ c.phase }}{% endif %}{% if c.miles %} &middot; admitted from {{ c.miles }} mi{% if c.academic_year | year_label %} ({{ c.academic_year | year_label }}){% endif %}{% endif %}</span></li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% endif %}
+
+    {% if pair_school %}
+    <p class="section-sub">
+        Both distances are drawn on the map above.
+        {% if pair_school.no_distance_limit %}{{ pair_school.authority }} records the furthest offer at {{ pair_school.name }} at {{ pair_school.miles_label }} miles, which is further than any school run, so distance did not limit entry there.
+        {% else %}{{ pair_school.name }} admitted from <strong>{{ pair_school.miles_label }} miles</strong> {{ pair_school.in_year }}, published by {{ pair_school.authority }}.{% endif %}
+        <a href="/school/{{ pair_school.urn }}/{{ pair_school.slug }}">Its own page</a> has the rest of its figures.
+    </p>
+
+    {% if pair.no_limit %}
+    <p class="section-sub">
+        Districts inside both distances mean nothing when one of the two did not limit entry: a figure
+        beyond any school run would put half a county inside it. The map above still shows both schools,
+        and the postcode checker answers for both.
+    </p>
+    {% elif pair.areas.rows %}
+    <p class="section-sub">
+        The postcode districts whose centre falls inside both published distances, cheapest first by the
+        median of real sales around each district's centre{% if pair_budget %}, at or under {{ pair_budget | gbp }}{% endif %}.
+        The cheapest is <a href="/area/{{ pair.areas.rows[0].outcode }}">{{ pair.areas.rows[0].outcode }}</a> at
+        {{ pair.areas.rows[0].median | gbp }}{% if pair.areas.rows | length > 1 %}; the dearest shown,
+        <a href="/area/{{ pair.areas.rows[-1].outcode }}">{{ pair.areas.rows[-1].outcode }}</a>, {{ pair.areas.rows[-1].median | gbp }}{% endif %}.
+        A district is wide, so check the address itself, not the list.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table" id="pair-areas">
+            <thead><tr><th>District</th><th>Area</th><th class="num">From {{ school.name }}</th><th class="num">From {{ pair_school.name }}</th><th class="num">Median sold price</th></tr></thead>
+            <tbody>
+                {% for a in pair.areas.rows %}
+                <tr data-outcode="{{ a.outcode }}" data-median="{{ a.median }}">
+                    <td><a href="/area/{{ a.outcode }}">{{ a.outcode }}</a></td>
+                    <td>{{ a.district }}</td>
+                    <td class="num">{{ a.miles }} mi</td>
+                    <td class="num">{{ a.miles_b }} mi</td>
+                    <td class="num"><strong>{{ a.median | gbp }}</strong> <span class="school-table-note">{{ a.count }} sales</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Sold prices from HM Land Registry, via each district's area guide. Distances measured from each
+        district's centre to each school's point on the Department for Education register.
+        {% if pair.areas.over_budget %}{{ pair.areas.over_budget }} district{{ "" if pair.areas.over_budget == 1 else "s" }} inside both distances
+        {{ "is" if pair.areas.over_budget == 1 else "are" }} above {{ pair_budget | gbp }} and not shown.{% endif %}
+        {% if pair.areas.priced_total > pair.areas.rows | length + pair.areas.over_budget %}Only the cheapest {{ pair.areas.rows | length }} are listed.{% endif %}
+        {% if pair.areas.unpriced_total %}{{ pair.areas.unpriced_total }} more district{{ "" if pair.areas.unpriced_total == 1 else "s" }} fall{{ "s" if pair.areas.unpriced_total == 1 else "" }} inside both without enough
+        recorded sales to rank: {% for a in pair.areas.unpriced %}<a href="/area/{{ a.outcode }}">{{ a.outcode }}</a>{{ ", " if not loop.last }}{% endfor %}.{% endif %}
+    </p>
+    {% elif pair.areas.total == 0 %}
+    <p class="section-sub">
+        No postcode district has its centre inside both distances. The two schools admit from
+        {{ map_ring.miles_label }} and {{ pair_school.miles_label }} miles, and the ground those circles share
+        holds no district centre, which is a fact about where the centres fall rather than about any
+        one address. The map above shows both, and the postcode checker answers for both.
+    </p>
+    {% elif pair.areas.priced_total and pair_budget %}
+    <p class="section-sub">
+        {{ pair.areas.priced_total }} postcode district{{ "" if pair.areas.priced_total == 1 else "s" }} fall{{ "s" if pair.areas.priced_total == 1 else "" }}
+        inside both distances, and every one has a median sold price above {{ pair_budget | gbp }}. The cheapest of them is
+        <a href="/area/{{ pair.areas.cheapest.outcode }}">{{ pair.areas.cheapest.outcode }}</a> at {{ pair.areas.cheapest.median | gbp }}.
+        <a href="{{ '/school/' ~ school.urn ~ '/' ~ school.slug }}?{% if check %}check={{ check.postcode | urlencode }}&amp;{% endif %}with={{ pair_school.urn }}#both-in-reach">Clear the budget</a> to see them all.
+    </p>
+    {% else %}
+    {# Districts inside both, none of them with enough recorded sales to
+       rank. They are named rather than left out: "no district" would be
+       untrue, and the single school's table says the same of its own. #}
+    <p class="section-sub">
+        {{ pair.areas.total }} postcode district{{ "" if pair.areas.total == 1 else "s" }} fall{{ "s" if pair.areas.total == 1 else "" }}
+        inside both distances, and none has enough recorded sales around its centre to rank on price:
+        {% for a in pair.areas.unpriced %}<a href="/area/{{ a.outcode }}">{{ a.outcode }}</a>{{ ", " if not loop.last }}{% endfor %}.
+        A district is wide, so check the address itself, not the list.
+    </p>
+    {% endif %}
+
+    {# The budget hides rows; it never works anything out. Its own form,
+       so it can be changed without retyping the second school, and a
+       plain GET so it works with no script. #}
+    {% if not pair.no_limit %}
+    <form class="search-form school-pair-budget" action="/school/{{ school.urn }}/{{ school.slug }}" method="get">
+        <input type="hidden" name="with" value="{{ pair_school.urn }}">
+        {% if check %}<input type="hidden" name="check" value="{{ check.postcode }}">{% endif %}
+        {% if radius_years | length > 1 and map_ring.year %}<input type="hidden" name="year" value="{{ map_ring.year }}">{% endif %}
+        <div class="search-form-field">
+            <label for="pair-budget">Your budget, to hide the districts above it</label>
+            <input type="text" id="pair-budget" name="budget" value="{{ pair_budget_query }}" inputmode="numeric"
+                   placeholder="e.g. 450,000" autocomplete="off">
+        </div>
+        <button type="submit">{% if pair_budget %}Change{% else %}Apply{% endif %}</button>
+        {% if pair_budget %}<a class="section-sub school-pair-clear" href="{{ '/school/' ~ school.urn ~ '/' ~ school.slug }}?{% if check %}check={{ check.postcode | urlencode }}&amp;{% endif %}with={{ pair_school.urn }}#both-in-reach">Clear it</a>{% endif %}
+    </form>
+    {% endif %}
+
+    {# Saving the pair in one action, through the shortlist's own save
+       (18 Sep 2026, F6): two schools in reach of the same districts are
+       one decision, and pressing the same button on two pages is not. #}
+    {% set pair_next = '/school/' ~ school.urn ~ '/' ~ school.slug ~ '?with=' ~ pair_school.urn ~ '#both-in-reach' %}
+    {% if current_user and shortlisted and pair_shortlisted %}
+    <p class="section-sub">Both are on <a href="/schools/shortlist">your shortlist</a>: you will be told when either council republishes a distance.</p>
+    {% elif current_user %}
+    <form action="/schools/shortlist/save" method="post" class="nav-form">
+        <input type="hidden" name="urn" value="{{ school.urn }}">
+        <input type="hidden" name="also" value="{{ pair_school.urn }}">
+        <input type="hidden" name="next" value="{{ pair_next }}">
+        <button type="submit">Save both schools</button>
+        <span class="section-sub">and be told when either council republishes the distance these answers rest on.</span>
+    </form>
+    {% else %}
+    <p class="section-sub">
+        <a href="/signup?next={{ pair_next | urlencode }}">Sign up</a> to save both schools and be told when either
+        council republishes the distance these answers rest on.
+    </p>
+    {% endif %}
+    {% endif %}
+
+    {# The picker. A plain GET form: with no script the name typed is
+       searched on the server, one match with a published distance is
+       taken, and several are listed to choose from. With a script the
+       suggestions appear as you type and each is an ordinary link. #}
+    <form class="search-form school-pair-form" id="pair-form" action="/school/{{ school.urn }}/{{ school.slug }}"
+          method="get" role="search" autocomplete="off" data-base="{{ pair_base }}">
+        <div class="search-form-field">
+            <label for="pair-q">{% if pair_school %}Swap the second school{% else %}Add a second school{% endif %}</label>
+            <input type="text" id="pair-q" name="with_q" value="{{ pair_query }}" minlength="2" required
+                   placeholder="e.g. {{ nearby_with_figure[0].name if nearby_with_figure else 'Tapton School' }}"
+                   aria-autocomplete="list" aria-controls="pair-suggest" aria-expanded="false"
+                   {% if pair_error or pair_choices %}aria-invalid="true" aria-describedby="pair-error"{% endif %}>
+        </div>
+        {% if check %}<input type="hidden" name="check" value="{{ check.postcode }}">{% endif %}
+        {% if radius_years | length > 1 and map_ring.year %}<input type="hidden" name="year" value="{{ map_ring.year }}">{% endif %}
+        {% if pair_budget_query %}<input type="hidden" name="budget" value="{{ pair_budget_query }}">{% endif %}
+        <button type="submit">{% if pair_school %}Swap{% else %}Add{% endif %}</button>
+        <ul class="typeahead" id="pair-suggest" role="listbox" hidden></ul>
+    </form>
+    <p class="section-sub">
+        {% if pair_school %}<a rel="nofollow" href="{{ '/school/' ~ school.urn ~ '/' ~ school.slug }}{% if check %}?check={{ check.postcode | urlencode }}{% endif %}">Drop {{ pair_school.name }}</a> and go back to one school.
+        {% else %}Two children, or a first and second preference? Add a second school and this page draws both published
+        distances on the map above, lists the districts whose centre falls inside both, cheapest first, and
+        answers a checked postcode for both at once. Only a school whose council has published a distance can be added.{% endif %}
+    </p>
+</section>
+
 {% if nearby_with_figure %}
 {# The one list of the nearest schools, and the key to the rings the box
    under the map draws. It stood at the foot of the page until 18 Sep
@@ -296,9 +557,22 @@
             <tbody>
                 {% for n in nearby_with_figure %}
                 <tr>
-                    <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a></td>
+                    {# "Both in reach" puts this school on the map beside
+                       the page's own and lists the districts inside both
+                       (18 Sep 2026, audit item F6). Only for a school
+                       with a real distance limit: a figure past a school
+                       run has no circle to intersect. nofollow, because
+                       a pair is a tool, not a page to index. #}
+                    <td><a href="/school/{{ n.urn }}/{{ n.slug }}">{{ n.name }}</a>
+                        {% if n.miles and n.miles <= 20 and n.urn != school.urn %}<a class="school-pair-add" rel="nofollow" href="{{ pair_base }}with={{ n.urn }}#both-in-reach">Both in reach</a>{% endif %}</td>
                     <td>{{ n.phase }}</td>
-                    <td class="num">{% if n.miles > 20 %}No limit{% else %}{{ n.miles }} mi{% endif %}{% if n.academic_year %} <span class="school-table-type">{{ n.academic_year }}</span>{% endif %}</td>
+                    {# The year through the site's own year helper (18 Sep
+                       2026, audit item F5): this printed the raw field, so
+                       a school whose council publishes several years read
+                       "1.2 mi varies", as if the distance itself varied.
+                       "varies" is now nothing at all, as it is everywhere
+                       else the year is shown. #}
+                    <td class="num">{% if n.miles > 20 %}No limit{% else %}{{ n.miles }} mi{% endif %}{% set year = n.academic_year | year_label %}{% if year %} <span class="school-table-type">{{ year }}</span>{% endif %}</td>
                     <td class="num">{{ n.away_miles }} mi</td>
                 </tr>
                 {% endfor %}
@@ -663,11 +937,58 @@
 <script>
     window.SCHOOL_PAGE = {
         lat: {{ school.latitude | tojson }}, lng: {{ school.longitude | tojson }},
-        name: {{ school.name | tojson }}, miles: {{ school.miles | tojson }}, noLimit: {{ school.no_distance_limit | tojson }},
-        year: {{ school.academic_year | tojson }},
+        name: {{ school.name | tojson }},
+        /* The circle the map draws is the chosen published year's, which
+           is the page's own figure until a year is picked (18 Sep 2026,
+           audit item F5). The server has already worked out which, so the
+           map, its caption and the label on it start in step. */
+        miles: {{ map_ring.miles | tojson }}, noLimit: {{ map_ring.no_limit | tojson }},
+        year: {{ (map_ring.year or school.academic_year) | tojson }},
         check: {{ ({"lat": check.latitude, "lng": check.longitude, "postcode": check.postcode, "label": check.label} if check else none) | tojson }},
+        /* The second school of a pair (18 Sep 2026, audit item F6), so
+           both branches draw both published distances from one object.
+           Its own council's figure, never this school's. */
+        partner: {{ ({"lat": pair_school.latitude, "lng": pair_school.longitude, "name": pair_school.name,
+                      "miles": pair_school.miles, "noLimit": pair_school.no_distance_limit,
+                      "year": pair_school.year_label} if pair_school else none) | tojson }},
         nearby: {{ (nearby_rings or []) | tojson }},
         districts: {{ (district_labels or []) | tojson }}
+    };
+
+    /* The year stepper, shared by both map branches (18 Sep 2026, audit
+       item F5). Each year is a real link carrying ?year=, so with no
+       script at all the server draws the year asked for; with a script,
+       the click is caught here, the branch redraws its own circle, and
+       the address is corrected in place so the link can still be copied.
+       Keyboard use needs nothing extra: they are links. */
+    window.schoolYearStepper = function (draw) {
+        var wrap = document.getElementById('school-years');
+        if (!wrap || !draw) return;
+        var links = wrap.querySelectorAll('a[data-year]');
+        if (!links.length) return;
+        var milesOut = document.getElementById('school-map-miles');
+        var yearOut = document.getElementById('school-map-year');
+        Array.prototype.forEach.call(links, function (link) {
+            link.addEventListener('click', function (event) {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
+                var miles = parseFloat(link.getAttribute('data-miles'));
+                var year = link.getAttribute('data-year');
+                /* A year with no distance limit gets a different caption
+                   and no circle, and a page already showing that caption
+                   has no figures to rewrite. Either way the link is left
+                   to the server, which renders the right words. */
+                if (!milesOut || !yearOut || link.getAttribute('data-no-limit') === 'yes' || !(miles > 0)) return;
+                event.preventDefault();
+                Array.prototype.forEach.call(links, function (other) { other.removeAttribute('aria-current'); });
+                link.setAttribute('aria-current', 'true');
+                milesOut.textContent = (Math.round(miles * 100) / 100).toString();
+                yearOut.textContent = 'in ' + year;
+                draw(miles, year);
+                try {
+                    if (window.history && window.history.replaceState) window.history.replaceState(null, '', link.getAttribute('href'));
+                } catch (e) { /* an address the browser will not rewrite changes nothing on the page */ }
+            });
+        });
     };
 </script>
 {% if google_maps_api_key %}
@@ -687,14 +1008,43 @@
         new google.maps.Marker({ position: centre, map: map, title: S.name });
         // A figure beyond a school run is not a distance to draw, so the
         // map shows the school and the checked postcode and nothing else.
-        const bounds = new google.maps.LatLngBounds();
+        // The circle is kept in a variable since 18 Sep 2026 (audit item
+        // F5) so the year stepper can replace it without a reload.
+        let bounds = new google.maps.LatLngBounds();
+        let ring = null;
+        function drawRing(miles) {
+            if (ring) ring.setMap(null);
+            ring = new google.maps.Circle({
+                center: centre, radius: miles * 1609.34, map: map,
+                strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
+            });
+            return ring.getBounds();
+        }
         if (S.noLimit) {
             bounds.extend(centre);
         } else {
-            bounds.union(new google.maps.Circle({
-                center: centre, radius: S.miles * 1609.34, map: map,
-                strokeColor: '#d97706', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#d97706', fillOpacity: 0.07,
-            }).getBounds());
+            bounds.union(drawRing(S.miles));
+        }
+        // The second school of a pair (18 Sep 2026, audit item F6): its
+        // own council's distance, drawn once in the site's navy beside
+        // this school's amber, and kept so the year stepper can put it
+        // back in the view after it resets the bounds. A figure past a
+        // school run has no circle, here as anywhere else: the school is
+        // marked and nothing is claimed about a boundary. The Leaflet
+        // branch below does the same.
+        let partnerBounds = null;
+        if (S.partner) {
+            const pp = { lat: S.partner.lat, lng: S.partner.lng };
+            new google.maps.Marker({ position: pp, map: map, title: S.partner.name });
+            if (!S.partner.noLimit && S.partner.miles > 0) {
+                partnerBounds = new google.maps.Circle({
+                    center: pp, radius: S.partner.miles * 1609.34, map: map, clickable: false,
+                    strokeColor: '#2b4c8c', strokeWeight: 2, strokeOpacity: 0.85, fillColor: '#2b4c8c', fillOpacity: 0.07,
+                }).getBounds();
+                bounds.union(partnerBounds);
+            } else {
+                bounds.extend(pp);
+            }
         }
         // Step 2: the districts inside the distance, as labels at their
         // centres. A marker with an invisible icon and a label is the
@@ -756,6 +1106,20 @@
                 }
             });
         }
+        // The year stepper (18 Sep 2026, audit item F5): the same circle
+        // redrawn at another published year's distance, the view
+        // following it. The Leaflet branch below does the same.
+        if (window.schoolYearStepper) {
+            window.schoolYearStepper(function (miles) {
+                bounds = new google.maps.LatLngBounds();
+                bounds.union(drawRing(miles));
+                // The pair's second circle stays in the view (F6).
+                if (partnerBounds) bounds.union(partnerBounds);
+                else if (S.partner) bounds.extend({ lat: S.partner.lat, lng: S.partner.lng });
+                if (S.check) bounds.extend({ lat: S.check.lat, lng: S.check.lng });
+                map.fitBounds(bounds, 30);
+            });
+        }
     }
 </script>
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initSchoolPageMap&loading=async" async defer></script>
@@ -773,10 +1137,35 @@
         }).addTo(map);
         L.marker([S.lat, S.lng]).addTo(map).bindPopup(S.name);
         let bounds = L.latLngBounds([[S.lat, S.lng]]);
+        // Kept in a variable since 18 Sep 2026 (audit item F5) so the
+        // year stepper can replace it without a reload, exactly as the
+        // Google branch above does.
+        let ring = null;
+        function drawRing(miles, year) {
+            if (ring) map.removeLayer(ring);
+            ring = L.circle([S.lat, S.lng], {
+                radius: miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
+            }).bindPopup(S.name + ' admitted from ' + miles + ' miles in ' + year).addTo(map);
+            return ring.getBounds();
+        }
         if (!S.noLimit) {
-            bounds = L.circle([S.lat, S.lng], {
-                radius: S.miles * 1609.34, color: '#d97706', weight: 2, opacity: 0.85, fillOpacity: 0.07,
-            }).bindPopup(S.name + ' admitted from ' + S.miles + ' miles in ' + S.year).addTo(map).getBounds();
+            bounds = drawRing(S.miles, S.year);
+        }
+        // The second school of a pair (18 Sep 2026, audit item F6), the
+        // same as the Google branch above: its own council's distance in
+        // the site's navy beside this school's amber, kept so the year
+        // stepper can put it back in the view.
+        let partnerBounds = null;
+        if (S.partner) {
+            L.marker([S.partner.lat, S.partner.lng]).addTo(map).bindPopup(S.partner.name);
+            if (!S.partner.noLimit && S.partner.miles > 0) {
+                partnerBounds = L.circle([S.partner.lat, S.partner.lng], {
+                    radius: S.partner.miles * 1609.34, color: '#2b4c8c', weight: 2, opacity: 0.85, fillOpacity: 0.07, interactive: false,
+                }).addTo(map).getBounds();
+                bounds.extend(partnerBounds);
+            } else {
+                bounds.extend([S.partner.lat, S.partner.lng]);
+            }
         }
         // A 48 by 32 box round each district label (18 Sep 2026), so it
         // takes a 32px tap, not just its type; the box is clear and centred
@@ -819,9 +1208,102 @@
                 }
             });
         }
+        // The year stepper (18 Sep 2026, audit item F5), the same as the
+        // Google branch: another published year's distance, redrawn in
+        // place, the view following it.
+        if (window.schoolYearStepper) {
+            window.schoolYearStepper(function (miles, year) {
+                bounds = drawRing(miles, year);
+                // The pair's second circle stays in the view (F6).
+                if (partnerBounds) bounds.extend(partnerBounds);
+                else if (S.partner) bounds.extend([S.partner.lat, S.partner.lng]);
+                if (S.check) bounds.extend([S.check.lat, S.check.lng]);
+                map.fitBounds(bounds, { padding: [30, 30] });
+            });
+        }
     })();
 </script>
 {% endif %}
+<script>
+(function () {
+    /* "Add a second school" (18 Sep 2026, audit item F6). The same
+       /api/school-search the admissions index's box asks, and each
+       suggestion is an ordinary link to this page carrying ?with=<urn>,
+       so a keyboard needs nothing of its own and the pair can be
+       copied out of the address bar. A school whose council has
+       published no distance is listed and says why it cannot be added,
+       rather than being left out: an absence reads as a fault. With no
+       script at all the form submits the name and the server runs the
+       same search. Nothing typed leaves this site. */
+    var form = document.getElementById('pair-form');
+    var input = document.getElementById('pair-q');
+    var list = document.getElementById('pair-suggest');
+    if (!form || !input || !list || !window.fetch) return;
+    var base = form.getAttribute('data-base') || '';
+    var last = '', req = 0, debounce = null;
+
+    function close() { list.hidden = true; list.innerHTML = ''; input.setAttribute('aria-expanded', 'false'); }
+    function sub(parent, text) {
+        var small = document.createElement('span');
+        small.className = 'typeahead-sub';
+        small.textContent = text;
+        parent.appendChild(small);
+    }
+    function render(rows) {
+        list.innerHTML = '';
+        if (!rows.length) { close(); return; }
+        rows.forEach(function (r) {
+            var li = document.createElement('li');
+            li.setAttribute('role', 'option');
+            var detail = (r.authority || '') + (r.phase ? ' · ' + r.phase : '');
+            if (r.has_page && r.urn && r.miles) {
+                var a = document.createElement('a');
+                a.href = base + 'with=' + encodeURIComponent(r.urn) + '#both-in-reach';
+                a.setAttribute('rel', 'nofollow');
+                a.textContent = r.name;
+                sub(a, detail + ' · admitted from ' + r.miles + ' mi' + (r.year ? ' (' + r.year + ')' : ''));
+                li.appendChild(a);
+            } else {
+                var off = document.createElement('span');
+                off.className = 'typeahead-off';
+                off.textContent = r.name;
+                sub(off, detail + ' · no distance published by its council, so it cannot be added');
+                li.appendChild(off);
+                li.setAttribute('aria-disabled', 'true');
+            }
+            list.appendChild(li);
+        });
+        list.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+    }
+    input.addEventListener('input', function () {
+        var q = input.value.trim();
+        if (debounce) clearTimeout(debounce);
+        if (q.length < 2) { close(); return; }
+        debounce = setTimeout(function () {
+            if (q === last) return;
+            last = q;
+            var mine = ++req;
+            fetch('/api/school-search?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) { if (mine === req) render(d.results || []); })
+                .catch(close);
+        }, 180);
+    });
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') close();
+        if (e.key === 'ArrowDown' && !list.hidden) { var first = list.querySelector('a'); if (first) { e.preventDefault(); first.focus(); } }
+    });
+    list.addEventListener('keydown', function (e) {
+        var links = Array.prototype.slice.call(list.querySelectorAll('a'));
+        var i = links.indexOf(document.activeElement);
+        if (e.key === 'ArrowDown' && i < links.length - 1) { e.preventDefault(); links[i + 1].focus(); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); if (i > 0) links[i - 1].focus(); else input.focus(); }
+        if (e.key === 'Escape') { close(); input.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!list.contains(e.target) && e.target !== input) close(); });
+})();
+</script>
 <script>
 (function () {
     /* Homes you looked at (18 Sep 2026, first-visitor audit F3): the

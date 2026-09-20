@@ -396,6 +396,10 @@
                fails, so this can only add, never break. */
             document.querySelectorAll('input[name="postcode"]').forEach(function (input) {
                 if (input.closest('form') === null) return;
+                /* 21 Sep 2026: the homepage box has its own grouped list
+                   (areas, council tax, schools). Two lists on one input
+                   fought over the arrow keys and Enter. */
+                if (input.hasAttribute('data-grouped-suggest')) return;
                 const field = input.parentElement;
                 field.style.position = 'relative';
                 const list = document.createElement('ul');

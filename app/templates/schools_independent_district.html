@@ -33,6 +33,22 @@
 </p>
 {% endif %}
 
+{# The age chips (18 Sep 2026, first-visitor audit F8). The page listed
+   every fee-paying school in the council and could not say which took
+   pupils at the age the reader's child is. These narrow the tables below
+   on each school's registered age range, in the browser, and the count
+   says how many are left. No heading of its own: the stage headings
+   under it are the page's own structure and are what search reads.
+   Hidden until the script shows it, because with no script every row is
+   already on the page and there is nothing to narrow. #}
+<div class="age-chips" id="age-chips" hidden role="group" aria-label="Narrow the list by age">
+    <button type="button" class="age-chip" data-age="" aria-pressed="true">Any age</button>
+    <button type="button" class="age-chip" data-age="4" aria-pressed="false">Places at 4</button>
+    <button type="button" class="age-chip" data-age="11" aria-pressed="false">Places at 11</button>
+    <button type="button" class="age-chip" data-age="16" aria-pressed="false">Places at 16</button>
+</div>
+<p class="age-count" id="age-count" hidden aria-live="polite"></p>
+
 {% for group_name, group_note, schools in district.groups %}
 <section class="report-section">
     <h2>{{ group_name }}</h2>
@@ -54,7 +70,12 @@
             </thead>
             <tbody>
                 {% for s in schools %}
-                <tr>
+                {# data-age-low and data-age-high are the register's own
+                   registered age range, the same numbers the Ages cell
+                   prints, so the chips filter on a published fact and
+                   nothing inferred. A school the register does not date
+                   carries neither, and the chips leave it showing. #}
+                <tr{% if s.age_low is not none and s.age_high is not none %} data-age-low="{{ s.age_low }}" data-age-high="{{ s.age_high }}"{% endif %}>
                     <td data-value="{{ s.name }}" data-st="title">
                         {% if s.website %}<a href="{{ s.website | external_url }}" rel="noopener nofollow" target="_blank">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}
                         {% if s.town and s.town not in s.name %}<span class="school-table-type">{{ s.town }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</span>{% elif s.postcode %}<span class="school-table-type">{{ s.postcode }}</span>{% endif %}
@@ -74,6 +95,27 @@
     </div>
 </section>
 {% endfor %}
+
+{# A postcode box that answers "which of these is near us" (18 Sep 2026,
+   first-visitor audit F8). The council's register cannot say; the schools
+   guide measures every school from a postcode already, so this sends the
+   reader there with the state schools set aside (?only=fee). A plain
+   form, so it works with no script at all. #}
+<section class="report-section">
+    <h2>Which of these are near an address</h2>
+    <form action="/schools/guide" method="get" class="search-form" role="search">
+        <input type="hidden" name="only" value="fee">
+        <div class="search-form-field">
+            <label for="independent-near">A postcode in or near {{ district.name }}</label>
+            <input type="text" id="independent-near" name="q" placeholder="e.g. a full postcode" autocomplete="postal-code" required>
+        </div>
+        <button type="submit">Fee-paying schools by distance</button>
+    </form>
+    <p class="section-sub">
+        The schools guide measures each school from the postcode typed, so the answer is a list nearest first rather
+        than a council. A district is wide, so check the address itself before counting on a distance.
+    </p>
+</section>
 
 <section class="report-section">
     <h2>What this list is, and is not</h2>
@@ -116,6 +158,58 @@
                 });
             });
         });
+    })();
+</script>
+
+{# The age chips (18 Sep 2026, first-visitor audit F8). A school matches
+   an age when the register's own range takes it in, and a school whose
+   range the register does not give stays on the page whichever chip is
+   chosen, with its own words saying the range is not stated. #}
+<script>
+    (function () {
+        var chipBox = document.getElementById('age-chips');
+        var count = document.getElementById('age-count');
+        if (!chipBox || !count) return;
+        var chips = Array.prototype.slice.call(chipBox.querySelectorAll('.age-chip'));
+        var rows = Array.prototype.slice.call(document.querySelectorAll('.school-table tbody tr'));
+        if (!rows.length) return;
+
+        function apply(age) {
+            var shown = 0, unstated = 0;
+            rows.forEach(function (row) {
+                var low = row.getAttribute('data-age-low');
+                var high = row.getAttribute('data-age-high');
+                var stated = low !== null && high !== null;
+                var keep = !age || !stated || (parseInt(low, 10) <= age && parseInt(high, 10) >= age);
+                row.hidden = !keep;
+                if (keep) { shown += 1; if (!stated) unstated += 1; }
+            });
+            /* A section whose rows are all hidden is hidden with them,
+               so the page never shows a heading over an empty table. */
+            document.querySelectorAll('.school-table').forEach(function (table) {
+                var any = Array.prototype.slice.call(table.tBodies[0].rows).some(function (r) { return !r.hidden; });
+                var section = table.closest('.report-section');
+                if (section) section.hidden = !any;
+            });
+            if (!age) {
+                count.hidden = true;
+                count.textContent = '';
+                return;
+            }
+            count.hidden = false;
+            count.textContent = shown + (shown === 1 ? ' school takes' : ' schools take') + ' pupils at ' + age
+                + ', by the registered age ranges'
+                + (unstated ? ', including ' + unstated + ' whose range the register does not state' : '') + '.';
+        }
+
+        chips.forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c === chip)); });
+                var age = parseInt(chip.dataset.age, 10);
+                apply(isNaN(age) ? 0 : age);
+            });
+        });
+        chipBox.hidden = false;
     })();
 </script>
 {% endblock %}

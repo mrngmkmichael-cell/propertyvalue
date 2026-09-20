@@ -13,6 +13,51 @@ from app.services import _cache, postcodes
 API_BASE = "https://data.police.uk/api"
 CACHE_TTL_S = 86400  # Police.uk data only updates monthly
 
+# The map layer (18 Sep 2026, first-visitor audit F8). Until now the
+# fetch counted the month's records by category and threw the records
+# themselves away, so the report could say "229 crimes within about a
+# mile" and never show where. Police.uk gives each record a point, and
+# the summary now keeps it, capped at MAX_POINTS nearest the address so
+# a central-London month (4,728 records read on 18 Sep 2026) cannot
+# swell a cache entry or the page it is written into. The cap is said
+# out loud on the map whenever it bites.
+#
+# Those points are NOT addresses and must never be presented as one:
+# Police.uk snaps every record to the nearest of a fixed list of
+# anonymised map points, which can be a street or two away, and several
+# crimes at one point are the same point repeated. The caveat travels
+# with the layer, in POINT_CAVEAT.
+MAX_POINTS = 500
+POINT_CAVEAT = (
+    "Police.uk moves each record to an anonymised point on a nearby street, not the address it "
+    "happened at, so a pin marks a street rather than a door."
+)
+
+# The five chips the map offers, in the order they are shown. Police.uk
+# publishes fourteen categories; four of them are what a buyer asks
+# about by name and the rest are one honest "other" rather than a wall
+# of chips. Each of the four is exactly one Police.uk category and is
+# not a grouping of our own: a bicycle theft is not filed under vehicle
+# crime here because Police.uk does not file it there, and weapons
+# possession is not called violent crime because the register does not
+# call it that. Both fall to "Other", which is named as such. Violent
+# crime carries two slugs because Police.uk renamed the same category.
+CHIPS = [
+    ("burglary", "Burglary", ("burglary",)),
+    ("vehicle", "Vehicle crime", ("vehicle-crime",)),
+    ("asb", "Antisocial behaviour", ("anti-social-behaviour",)),
+    ("violent", "Violent crime", ("violent-crime", "violence-and-sexual-offences")),
+    ("other", "Other", ()),
+]
+_CHIP_OF = {category: key for key, _, categories in CHIPS for category in categories}
+
+
+def chip_for(category: str) -> str:
+    """Which map chip a Police.uk category belongs to. Anything the
+    list above does not name is "other", never dropped."""
+    return _CHIP_OF.get((category or "").strip().lower(), "other")
+
+
 # Places where Police.uk's street-level figures are known to be far from
 # complete, so that any count would make a place look much safer than it
 # is (18 Sep 2026). Read that day at 18 points for July 2026: six Greater
@@ -73,7 +118,21 @@ def gap_summary(gap: dict) -> dict:
     """What every surface receives in place of a count. unpublished keeps
     any reader that predates the rule from printing a figure; incomplete
     carries the words."""
-    return {"total": None, "month": None, "by_category": [], "unpublished": True, "incomplete": dict(gap)}
+    return {"total": None, "month": None, "by_category": [], "points": [], "points_capped": False,
+            "unpublished": True, "incomplete": dict(gap)}
+
+
+def without_points(result: dict | None) -> dict | None:
+    """The same summary with the map layer's points dropped (18 Sep
+    2026). Only the report draws them; the area guides keep their
+    payload in Postgres for a week across 2,943 districts, and 500
+    points each would be tens of megabytes of rows nothing reads."""
+    if not isinstance(result, dict) or "points" not in result:
+        return result
+    slim = dict(result)
+    slim["points"] = []
+    slim["points_capped"] = False
+    return slim
 
 
 def with_coverage(result: dict | None, district: str | None, country: str | None) -> dict | None:
@@ -270,16 +329,52 @@ async def _fetch_summary(lat: float, lon: float) -> dict:
         # Nothing in more than half a year: almost certainly a force
         # that isn't publishing here. total None (never 0) so every
         # surface says "no data" instead of claiming a crime-free area.
-        return {"total": None, "month": None, "by_category": [], "unpublished": True}
+        return {"total": None, "month": None, "by_category": [], "points": [], "points_capped": False,
+                "unpublished": True}
 
     counts = Counter(rec.get("category", "unknown") for rec in records)
     by_category = [
         {"category": cat.replace("-", " "), "count": n}
         for cat, n in sorted(counts.items(), key=lambda kv: -kv[1])
     ]
+    points, capped = _points(records, lat, lon)
 
     return {
         "total": len(records),
         "month": records[0]["month"] if records else None,
         "by_category": by_category,
+        # The map layer's own data (18 Sep 2026). total stays the count
+        # of every record for the month; points may be a capped subset,
+        # and points_capped says so rather than letting the map imply
+        # that is all the force recorded.
+        "points": points,
+        "points_capped": capped,
     }
+
+
+def _points(records: list, lat: float, lon: float) -> tuple[list[dict], bool]:
+    """Every record's anonymised point, nearest the address first and
+    capped at MAX_POINTS, with whether the cap bit.
+
+    Each point carries the category in the same words by_category uses
+    and the chip it belongs to, so the map never has to reproduce the
+    grouping. A record whose location Police.uk withheld is skipped:
+    a missing point is not a point at (0, 0).
+    """
+    scored = []
+    for rec in records:
+        where = rec.get("location") or {}
+        try:
+            plat, plon = float(where["latitude"]), float(where["longitude"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        category = (rec.get("category") or "unknown")
+        # Squared degrees: only the ordering matters, and a mile of
+        # latitude and a mile of longitude are close enough at these
+        # distances for "which 500 are nearest".
+        scored.append(((plat - lat) ** 2 + (plon - lon) ** 2, {
+            "lat": round(plat, 5), "lon": round(plon, 5),
+            "category": category.replace("-", " "), "chip": chip_for(category),
+        }))
+    scored.sort(key=lambda pair: pair[0])
+    return [point for _, point in scored[:MAX_POINTS]], len(scored) > MAX_POINTS

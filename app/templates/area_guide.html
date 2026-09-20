@@ -175,16 +175,47 @@
     </form>
     {% if compare_error %}<p class="notice notice-error">{{ compare_error }}</p>{% endif %}
     {% if compare %}
-    <table class="tx-table compare-table">
+    {# Two districts in one council (18 Sep 2026, first-visitor audit F8).
+       What the council sets is the same for both by definition, so it is
+       said once here instead of twice in the table, and the table gains
+       the district figures this guide already holds. #}
+    {% if compare.shared %}
+    <p class="compare-shared">
+        Both in {{ compare.shared.council }}:
+        {# 21 Sep 2026: labels as they are written, so "Band D" keeps its capitals. #}
+        {% for figure in compare.shared.figures %}{{ figure.label }} {{ figure.value }}{% if not loop.last %}, {% endif %}{% endfor %}.
+        <span class="compare-shared-source">Set by the council, not by the district: {{ compare.shared.figures | map(attribute='source') | unique | join(', ') }}.</span>
+    </p>
+    {% endif %}
+    {# The toggle the full comparison page already has (compare_full.html),
+       here for the same reason: a reader wants the differences. Rendered
+       hidden and shown by the script, because with no script there is
+       nothing to toggle and every row is already on the page. #}
+    <label class="map-toggle" id="area-differ-toggle" hidden><input type="checkbox" id="area-differences-only"> Show only the checks that differ ({{ compare.differ_count }} of {{ compare.rows | length }})</label>
+    <table class="tx-table compare-table" id="area-compare-table">
         <thead>
             <tr><th scope="col">Figure</th><th scope="col">{{ outcode }}</th><th scope="col">{{ compare.outcode }}{% if compare.admin_district %} ({{ compare.admin_district }}){% endif %}</th></tr>
         </thead>
         <tbody>
             {% for row in compare.rows %}
-            <tr><th scope="row">{{ row.label }}<br><span class="section-sub">{{ row.source }}</span></th><td>{{ row.here }}</td><td>{{ row.there }}</td></tr>
+            <tr data-differs="{{ 1 if row.differs else 0 }}"><th scope="row">{{ row.label }}<br><span class="section-sub">{{ row.source }}</span></th><td>{{ row.here }}</td><td>{{ row.there }}</td></tr>
             {% endfor %}
         </tbody>
     </table>
+    <script>
+    (function () {
+        var box = document.getElementById('area-differences-only');
+        var toggle = document.getElementById('area-differ-toggle');
+        var table = document.getElementById('area-compare-table');
+        if (!box || !toggle || !table) return;
+        toggle.hidden = false;
+        box.addEventListener('change', function () {
+            Array.prototype.forEach.call(table.tBodies[0].rows, function (row) {
+                row.hidden = box.checked && row.getAttribute('data-differs') === '0';
+            });
+        });
+    })();
+    </script>
     <p class="section-sub">Each figure is for the centre of its district, from the source named beside it, and "Not held" means that source has nothing for the district. <a href="/area/{{ compare.outcode }}">Open the {{ compare.outcode }} guide</a>{% if compare.versus_href %}, or <a href="{{ compare.versus_href }}">the full {{ outcode }} or {{ compare.outcode }} comparison</a>{% endif %}.</p>
     {% else %}
     <p class="section-sub">Sold prices, the price trend, schools, flood zone, Band D council tax and crime for {{ outcode }} against any other district, each from the source the section below names.</p>

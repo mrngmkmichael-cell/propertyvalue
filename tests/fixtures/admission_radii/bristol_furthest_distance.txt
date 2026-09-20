@@ -1,0 +1,14 @@
+# Bristol City Council, "furthest distance table" (the shape
+# fetch_bristol's own docstring describes): one row per primary school,
+# one column per year back to 2020 with the most recent last, distance
+# in kilometres. "D" means distance was not needed as a tie-break that
+# year, "O" faith or random allocation, "N" not open; "0.68 6" is the
+# overlapping-text PDF glitch the docstring names.
+#
+# Cells are separated by "|" and an empty cell is a cell pdfplumber
+# would hand back as None. Lines starting with "#" are not part of the
+# table.
+Name of school|2020|2021|2022|2023|2024|2025|2026
+Ashton Gate Primary School|0.5|D|0.62|0.68 6|0.71|D|0.8
+Bishop Road Primary School|0.9|1.0|D|N|1.2|1.25|D
+Cathedral Primary School|O|O|O|O|O|O|O

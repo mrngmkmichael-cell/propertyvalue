@@ -35,7 +35,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import OperationalError
 
-from app import asking_prices, auth, checklist_ticks, db, school_shortlist, watchlist
+from app import asking_prices, auth, checklist_ticks, db, must_haves, school_shortlist, watchlist
 from app.services import _cache, comparables_view, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import (
@@ -164,7 +164,15 @@ _ANON_HTML_PREFIXES = (
 # not on this list on purpose: a page with any query string other than
 # these is rendered fresh. `q` is the schools guide's district; `check`
 # is a school page's address check, which must not be shared.
-_ANON_HTML_QUERY_OK = {"q"}
+# `year` joined it on 18 Sep 2026 (audit item F5): a school page's year
+# stepper links to ?year=<published year>, which is the same page for
+# everyone and, for the four councils that publish several years, three
+# or four more URLs per school for a crawler to walk. The cache key
+# carries the whole query string, so each year is its own entry, and
+# ?check= alongside still keeps the page out of the cache. A made-up
+# year is cached too, as a made-up ?q= already is; the store is
+# least-recently-used and bounded, so that churns it rather than fills it.
+_ANON_HTML_QUERY_OK = {"q", "year"}
 
 
 def _anon_html_key(request: Request):
@@ -953,6 +961,18 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         filtered_tx = _filter_by_address(tx_result, house_number)
         summary["avg_price"] = _average_amount(filtered_tx)
         summary["tx_count"] = len(filtered_tx)
+        # The tenure recorded at this home's last sale, and below it the
+        # authority's Band D (18 Sep 2026, first-visitor audit F7): two
+        # facts a buyer may set a must-have on, both already in hand here
+        # (the sales are fetched above, council tax is a local file read),
+        # so My properties can answer those conditions for every saved
+        # home without a single extra round trip. Only with a house
+        # number: without one the latest sale is another home's.
+        if house_number and filtered_tx and filtered_tx[0].get("tenure"):
+            summary["tenure"] = (filtered_tx[0]["tenure"] or "").strip().lower()
+    band_d = (council_tax.for_district(codes.get("admin_district"), location.get("admin_district")) or {}).get("band_d")
+    if band_d is not None:
+        summary["band_d"] = band_d
 
     if not isinstance(epc_flow_result, Exception) and epc_configured:
         _, property_detail, _, _ = epc_flow_result
@@ -1015,6 +1035,15 @@ def _summary_from_report(context: dict, canonical: str, house_number: str) -> di
     if not context.get("tx_error"):
         summary["avg_price"] = _average_amount(transactions)
         summary["tx_count"] = len(transactions)
+        # The same two must-have facts _comparison_summary keeps (18 Sep
+        # 2026, F7), written the same way, so a snapshot from a report
+        # visit and one from My properties hold the same keys and neither
+        # rewrites the other's on every visit.
+        if house_number and transactions and transactions[0].get("tenure"):
+            summary["tenure"] = (transactions[0]["tenure"] or "").strip().lower()
+    band_d = (context.get("council_tax") or {}).get("band_d")
+    if band_d is not None:
+        summary["band_d"] = band_d
     detail = context.get("property_detail") or {}
     if isinstance(detail, dict) and detail.get("inspection_date"):
         summary["epc_date"] = detail.get("inspection_date")
@@ -1281,6 +1310,12 @@ templates.env.globals["crime_versus_area"] = crime.versus_area
 templates.env.globals["crime_margin_share"] = crime.MARGIN_SHARE
 templates.env.globals["crime_margin_crimes"] = crime.MARGIN_CRIMES
 templates.env.globals["crime_few_records"] = crime.FEW_RECORDS
+# The map layer's chips and Police.uk's own caveat (18 Sep 2026, audit
+# item F8), read from the service so the map and the summary can never
+# name a different set of categories.
+templates.env.globals["crime_chips"] = [{"key": k, "label": label} for k, label, _ in crime.CHIPS]
+templates.env.globals["crime_point_caveat"] = crime.POINT_CAVEAT
+templates.env.globals["crime_points_max"] = crime.MAX_POINTS
 # First and last bus in words, one helper for the report, the area guides,
 # the school pages and the PDF (18 Sep 2026): a service that runs past
 # midnight read "first bus 00:19, last 00:14".
@@ -2965,6 +3000,12 @@ templates.env.globals["locked_card_needs_house_number"] = LOCKED_CARD_NEEDS_HOUS
 # written in a macro imported without context (_locked.html), and the
 # count it reads is a length rather than a number typed into copy.
 templates.env.globals["locked_check_count"] = len(PREMIUM_CHECKS)
+# The must-haves a reader may set, and how many (18 Sep 2026,
+# first-visitor audit F7). Globals, not context values, because the
+# editor's form is the same on every page that offers it and its options
+# are must_haves.CONDITIONS rather than copy typed into a template.
+templates.env.globals["must_have_conditions_all"] = must_haves.CONDITIONS
+templates.env.globals["must_have_max"] = must_haves.MAX_CONDITIONS
 
 
 # What a locked check that found something is allowed to say: how many,
@@ -2993,6 +3034,18 @@ templates.env.globals["locked_check_count"] = len(PREMIUM_CHECKS)
 # Agency's storm overflow and landfill registers, the brownfield
 # register, NHS England and the councils whose admission distances we
 # hold are England only. A test keeps every Premium check in this map.
+def _must_have_locked_label(context: dict) -> str:
+    """What a must-have on a locked check says instead of a reading (18
+    Sep 2026, first-visitor audit F7). The offer this reader would take,
+    in the words the locked cards already use, and nothing about what the
+    check found: a reader with a free full report still to spend is told
+    it opens that way, and an account that has spent it is told Premium.
+    Signed out, signing up is the free report, so it says the same."""
+    if context.get("current_user") and not context.get("can_unlock_now"):
+        return "Opens with Premium"
+    return "Opens with your free full report"
+
+
 _REACH_ENGLAND = ("England",)
 _REACH_ENGLAND_WALES = ("England", "Wales")
 _REACH_GB = ("England", "Wales", "Scotland")
@@ -4364,6 +4417,19 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # read 2 things worth checking in the verdict and 3 a line below.
     context["attention_items"] = overview_score.attention_items(context, premium_unlocked=premium_unlocked)
 
+    # Your own must-haves, checked on this report (18 Sep 2026,
+    # first-visitor audit F7). The facts are this report's own, one per
+    # condition a reader may set; a locked check carries no value at all
+    # for a reader who has not opened this home, so neither the panel nor
+    # the JSON the page's script reads can leak it (must_haves.facts).
+    # The conditions themselves are the reader's: from the account where
+    # there is one, so the panel is right before any script runs, and
+    # from the device otherwise, which the script fills in.
+    context["must_have_facts"] = must_haves.facts(context, premium_unlocked=premium_unlocked)
+    context["must_have_conditions"] = {}
+    context["must_haves"] = None
+    context["must_have_locked_label"] = _must_have_locked_label(context)
+
     # A report searched without a house number describes the postcode,
     # not one home (18 Sep 2026, first-visitor audit item D1). Its top
     # read as one house but was stitched from two: KT3 4HX's "Semi-detached
@@ -4440,6 +4506,22 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["shortlisted_urns"] = {
             item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
         }
+        # The account's own must-haves (18 Sep 2026, first-visitor audit
+        # F7). One row per account, so one read for the page, and the
+        # panel is rendered from it before any script runs: signed in,
+        # the account's list is the list, as the viewing checklist's
+        # ticks are. A read that fails leaves the panel to the device's
+        # copy rather than showing an empty one.
+        try:
+            context["must_have_conditions"] = await asyncio.to_thread(
+                must_haves.load, context["current_user"]["id"])
+        except Exception:  # noqa: BLE001 - the device's own copy still works
+            context["must_have_conditions"] = {}
+
+    if context["must_have_conditions"]:
+        context["must_haves"] = must_haves.evaluate(
+            context["must_have_conditions"], context["must_have_facts"],
+            unlocked_label=context["must_have_locked_label"])
 
     if context["accounts_configured"]:
         context["area_reviews"] = reviews.summary_for("property", canonical)
@@ -5294,7 +5376,10 @@ async def _full_property_gather(
         # whose force did not publish printed "versus None" in the modal.
         if (not isinstance(district_crime_result, Exception) and district_crime_result
                 and district_crime_result.get("total") is not None):
-            context["district_crime"] = district_crime_result
+            # Its count only: the map draws the points for the address,
+            # and a second 500-point list would double the gather this
+            # page keeps in memory for nothing (18 Sep 2026, item F8).
+            context["district_crime"] = crime.without_points(district_crime_result)
             context["crime_comparison"] = _crime_comparison(crime_result, district_crime_result)
 
     if isinstance(amenities_result, Exception):
@@ -7005,6 +7090,70 @@ async def property_checklist_save(request: Request):
     return RedirectResponse(back + "&saved=1#checklist", status_code=303)
 
 
+# Your own must-haves (18 Sep 2026, first-visitor audit F7). The panel's
+# editor posts the whole set, form-encoded, as one form: with a script it
+# is intercepted and sent here in the background, and without one the
+# form's own Save button posts it and the browser comes back to the page
+# it was on. Signed in only, and only ever onto the signed-in account's
+# own row: the account comes from the session, never from the form, so no
+# request can read or write another person's list. Without an account the
+# conditions stay on the device and this endpoint is never reached.
+#
+# Ten conditions, each one short value, so the body is small: the limits
+# below are generous against that and mean and a script cannot fill the
+# table through this door. must_haves.parse drops any key or threshold
+# the page does not offer.
+MUST_HAVES_SAVE_MAX_BYTES = 8 * 1024
+MUST_HAVES_SAVE_MAX_FIELDS = 2 * len(must_haves.CONDITIONS) + 8
+# Where the form came from, so a save without a script returns there.
+# _safe_next is the site's own check, the one the sign-in redirect uses:
+# a path on this site or nothing.
+MUST_HAVES_NEXT_MAX = 512
+
+
+@app.post("/property/must-haves")
+async def property_must_haves_save(request: Request):
+    wants_page = "text/html" in (request.headers.get("accept") or "")
+
+    def refuse(message: str, status: int, error: str):
+        if not wants_page:
+            return JSONResponse({"error": error, "message": message}, status_code=status)
+        return Response(message, status_code=status, media_type="text/plain")
+
+    if not _same_site_origin(request):
+        return refuse("That request did not come from this site, so nothing was saved.", 403, "origin")
+    if (request.headers.get("content-type") or "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
+        return refuse("That was not the must-haves form, so nothing was saved.", 415, "form")
+    declared = request.headers.get("content-length")
+    if declared and (not declared.isdigit() or int(declared) > MUST_HAVES_SAVE_MAX_BYTES):
+        return refuse("That list is too long to save.", 413, "too_long")
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > MUST_HAVES_SAVE_MAX_BYTES:
+            return refuse("That list is too long to save.", 413, "too_long")
+    try:
+        pairs = parse_qsl(body.decode("utf-8"), keep_blank_values=True,
+                          max_num_fields=MUST_HAVES_SAVE_MAX_FIELDS)
+    except (UnicodeDecodeError, ValueError):
+        return refuse("That list could not be read, so nothing was saved.", 400, "unreadable")
+    fields = dict(pairs)
+    asked_back = (fields.get("next") or "").strip()
+    back = _safe_next(asked_back if len(asked_back) <= MUST_HAVES_NEXT_MAX else "")
+
+    user = auth.current_user(request)
+    if not user:
+        if not wants_page:
+            return JSONResponse({"error": "sign_in", "message": "Log in to keep your must-haves with your account."},
+                                status_code=401)
+        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
+    kept = must_haves.parse({c["key"]: fields.get(c["key"], "") for c in must_haves.CONDITIONS})
+    saved = await asyncio.to_thread(must_haves.save, user["id"], kept)
+    if not wants_page:
+        return JSONResponse({"ok": True, "conditions": saved, "total": len(saved)})
+    return RedirectResponse(back, status_code=303)
+
+
 # The Comparables page fetched nearby postcodes and their sales on every
 # request, with no cache: 2.61 s and then 2.26 s to first byte for KT3
 # 4HX on consecutive requests, 17 Sep 2026, against 0.4 to 0.6 s for the
@@ -7934,7 +8083,10 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         "health": ok(health_result),
         "finance": finance_result,
         "hpi": ok(hpi_result),
-        "crime": ok(crime_result),
+        # Without the map layer's points (18 Sep 2026, audit item F8):
+        # only the report draws them, and this payload is kept in
+        # Postgres for a week for every one of the 2,943 districts.
+        "crime": crime.without_points(ok(crime_result)),
         "landscape": landscape,
         "flood_zone": ok(flood_zone_result),
         "deprivation": ok(deprivation_result),
@@ -8094,7 +8246,65 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
     ]
 
 
-async def _area_compare(context: dict, outcode: str, compare: str) -> None:
+# The two figures on that list the council sets, not the district: both
+# come from the local authority the postcode district sits in, so two
+# districts in the same council always carry the same pair. Folded into
+# one line since 18 Sep 2026 (first-visitor audit F8): LS6 against LS8
+# printed "+5.9% (Leeds, June 2026)" and "£2,284 a year (Leeds)" twice
+# each, four rows of a six-row table that could not differ.
+COUNCIL_WIDE_FIGURES = ("Prices on a year ago", "Band D council tax")
+
+# The district figures this guide already holds and its comparison did
+# not show (18 Sep 2026). Each is a figure printed further down the same
+# page, from the same payload, with the source named beside it. Nothing
+# is worked out here that the guide does not already state.
+def _area_district_figures(payload: dict, home_type: str | None) -> list[dict]:
+    deprivation = payload.get("deprivation") or {}
+    decile = deprivation.get("imd_decile")
+    best = (payload.get("bus") or {}).get("best") or {}
+    per_hour = best.get("weekday_day_per_hour")
+    health = payload.get("health") or {}
+    per_gp = (health.get("nearest") or {}).get("patients_per_qualified_gp")
+    renting = None
+    for row in ((payload.get("census_change") or {}).get("rows") or []):
+        if row.get("key") == "private_rented" and row.get("in_2021") is not None:
+            renting = row["in_2021"]
+            break
+    return [
+        {"label": "Deprivation decile at the centre", "source": "Index of Multiple Deprivation",
+         "value": f"{decile} of 10" if decile else "Not held"},
+        {"label": "Buses an hour at the best stop", "source": "Department for Transport, BODS",
+         "value": (f"{per_hour:g} at {best['name']}" if per_hour and best.get("name")
+                   else (f"{per_hour:g}" if per_hour else "Not held"))},
+        {"label": "Patients per fully qualified GP", "source": "NHS England",
+         "value": f"{per_gp:,}" if per_gp else "Not held"},
+        {"label": "Households renting privately", "source": "ONS Census 2021",
+         "value": f"{renting}%" if renting is not None else "Not held"},
+        {"label": "Most common home type", "source": "ONS Census 2021",
+         "value": home_type or "Not held"},
+    ]
+
+
+def _dominant_home_type(lsoa: str | None) -> str | None:
+    """The commonest accommodation type in the census neighbourhood at a
+    district's centre, as a share. The report's own housing card reads
+    the same table; the area guides never had it, and a comparison of
+    two districts in one council is exactly where it tells them apart.
+    Read at render rather than added to the cached payload, so the
+    2,943 warm guides are not thrown away for it, and only when a
+    reader has asked for a comparison."""
+    try:
+        housing = demographics.housing_for_lsoa(lsoa or "")
+    except Exception:  # noqa: BLE001 - a comparison stands without it
+        return None
+    breakdown = [row for row in ((housing or {}).get("type_breakdown") or []) if row.get("pct")]
+    if not breakdown:
+        return None
+    top = max(breakdown, key=lambda row: row["pct"])
+    return f"{top['label']}, {top['pct']}%"
+
+
+async def _area_compare(context: dict, outcode: str, compare: str, here_location: dict | None = None) -> None:
     """Two districts side by side on an area guide (16 Sep 2026). The
     schools guide could already put two areas next to each other and
     the area guide could not, and "which area" is the question these
@@ -8129,11 +8339,59 @@ async def _area_compare(context: dict, outcode: str, compare: str) -> None:
     payload["crime"] = crime.with_coverage(payload.get("crime"), location.get("admin_district"), location.get("country"))
     here = _area_figures(outcode, context, (context.get("flood_not_covered") or {}).get("country"))
     there = _area_figures(other, payload, location.get("country"))
+
+    # Two districts in the same council (18 Sep 2026, first-visitor audit
+    # F8). LS6 against LS8 repeated the council's price growth and its
+    # Band D bill in four cells that could not differ, and said nothing
+    # about what actually separates two districts of one city. The pair
+    # the council sets folds into one line, and the district figures the
+    # guide already holds join the table underneath.
+    here_council = (context.get("admin_district") or "").strip()
+    there_council = (location.get("admin_district") or "").strip()
+    same_council = bool(here_council) and here_council == there_council
+    shared = None
+    if same_council:
+        # Folded only where the two really are the same figure. One
+        # district's payload can be warm and the other cold, so a
+        # council-wide row that reads "Not held" on one side is a
+        # difference the table should keep rather than a repetition.
+        folded = {h["label"] for h, t in zip(here, there)
+                  if h["label"] in COUNCIL_WIDE_FIGURES and h["value"] == t["value"] and h["value"] != "Not held"}
+        if folded:
+            # 21 Sep 2026: the sentence already says "Both in Leeds", so
+            # the council's name comes out of each value it repeats.
+            def _without_council(value: str) -> str:
+                return (value.replace(f"({here_council}, ", "(")
+                             .replace(f" ({here_council})", "")).strip()
+
+            shared = {"council": here_council, "figures": [
+                {"label": h["label"], "source": h["source"], "value": _without_council(h["value"])}
+                for h in here if h["label"] in folded
+            ]}
+            here = [h for h in here if h["label"] not in folded]
+            there = [t for t in there if t["label"] not in folded]
+        here_lsoa = ((here_location or {}).get("codes") or {}).get("lsoa", "")
+        there_lsoa = (location.get("codes") or {}).get("lsoa", "")
+        # One thread, two reads, one after the other: a comparison is
+        # worth two round trips and is not worth two connections.
+        here_type, there_type = await asyncio.to_thread(
+            lambda: (_dominant_home_type(here_lsoa), _dominant_home_type(there_lsoa)))
+        here = here + _area_district_figures(context, here_type)
+        there = there + _area_district_figures(payload, there_type)
+
     pair = sorted([outcode, other])
+    rows = [{"label": h["label"], "source": h["source"], "here": h["value"], "there": t["value"],
+             # "Show only the checks that differ" reads this, and two
+             # sources with nothing for either district are not a
+             # difference worth keeping on screen.
+             "differs": h["value"] != t["value"]}
+            for h, t in zip(here, there)]
     context["compare"] = {
         "outcode": other,
         "admin_district": location.get("admin_district") or "",
-        "rows": [{"label": h["label"], "source": h["source"], "here": h["value"], "there": t["value"]} for h, t in zip(here, there)],
+        "rows": rows,
+        "shared": shared,
+        "differ_count": sum(1 for row in rows if row["differs"]),
         # The linkable page exists only for genuine neighbours.
         "versus_href": f"/compare/{pair[0]}/vs/{pair[1]}" if _are_neighbours(outcode, other) and _versus_indexable(outcode, other) else "",
     }
@@ -8224,7 +8482,7 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
     context["finance"] = council_finance.with_council_tax_band_d(context.get("finance"))
     _area_guide_extras(context, outcode, lat, lon)
     _set_page_date(context, cache_key)
-    await _area_compare(context, outcode, compare)
+    await _area_compare(context, outcode, compare, here_location=location)
     response = templates.TemplateResponse(request, "area_guide.html", context)
     response.headers["Server-Timing"] = (timing + ", " if timing else "") + f'cache;desc="{outcome}"'
     return response
@@ -10417,6 +10675,7 @@ async def watchlist_view(request: Request):
             context["closed_home_premium_url"] = "/premium?" + urlencode(
                 {"home": first["postcode"], **({"hn": first["house_number"]} if first["house_number"] else {})}
             )
+    fresh_summaries: list = []
     if items:
         fresh_summaries = await asyncio.gather(
             *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
@@ -10438,6 +10697,44 @@ async def watchlist_view(request: Request):
             if old is None or json.loads(snapshot) != old:
                 moved_snapshots[item["id"]] = snapshot
         watchlist.update_snapshots(context["current_user"]["id"], moved_snapshots)
+
+    # Each home against this account's own must-haves (18 Sep 2026,
+    # first-visitor audit F7), from the summary this page already holds
+    # for it: no extra query, and no extra fetch. It answers the free
+    # checks the summary carries. A condition on a locked check is not in
+    # the summary, so on a home this account has not opened it says
+    # "Opens with Premium" and nothing else; on one that is open in full
+    # it is simply not yet known here, and its own report answers it.
+    # Nothing is guessed: a fact the snapshot does not hold is "not yet
+    # known", never a miss.
+    conditions: dict = {}
+    if items:
+        try:
+            conditions = await asyncio.to_thread(must_haves.load, context["current_user"]["id"])
+        except Exception:  # noqa: BLE001 - the list is the point, not the panel
+            conditions = {}
+    context["must_have_conditions"] = conditions
+    context["must_have_total"] = len(conditions)
+    locked_label = "Opens with Premium"
+    for item, fresh in zip(items, fresh_summaries):
+        snapshot = fresh if isinstance(fresh, dict) else None
+        if snapshot is None and item.get("last_snapshot"):
+            try:
+                snapshot = json.loads(item["last_snapshot"])
+            except (TypeError, ValueError):
+                snapshot = None
+        item["must_haves"] = must_haves.for_snapshot(
+            conditions, snapshot or {}, unlocked_label=locked_label,
+            premium_unlocked=bool(item.get("open_in_full")))
+
+    # "Must-haves met" orders the list on that count, most met first, and
+    # a home with more still unknown after one with fewer. Server-side, so
+    # it works with no script, and the default stays the order the list
+    # has always had.
+    context["sort"] = "must-haves" if request.query_params.get("sort") == "must-haves" else ""
+    if context["sort"] == "must-haves" and conditions:
+        items = sorted(items, key=lambda i: (-i["must_haves"]["met"], i["must_haves"]["unknown"],
+                                             i["postcode"], i["house_number"]))
     context["items"] = items
 
     # District following was removed on 7 Sep 2026. saved_districts held
@@ -11609,6 +11906,65 @@ def _admission_verdict(distance_miles: float, radius_miles: float, no_limit: boo
     }
 
 
+# ---- Several published years, on one school page (18 Sep 2026) ----------
+# First-visitor audit F5. Every school page says in so many words that the
+# distance moves every year, and then shows one year, because
+# school_admission_radii is keyed on urn alone. Four councils publish a
+# column per year, and those columns now have their own table
+# (SchoolAdmissionRadiusYear). Where two or more years are held, the map
+# will draw any of them and a checked postcode is answered against all of
+# them. Nothing here is worked out: every year on the page is a figure a
+# council published, and a year we do not hold is simply not offered.
+
+
+def _published_years(profile: dict, rows: list[dict]) -> list[dict]:
+    """Every year this school's distance is published for, newest first.
+
+    The rows are school_admission_radius_years' (empty for all but the
+    four multi-year councils); the page's own figure is added when its
+    label is a real year, which is how a school with one ordinary source
+    still says "One published year so far" rather than nothing at all.
+    The four multi-year councils label the single figure "varies", so
+    for them the list is the table's rows and the newest of those is the
+    same figure the page's tile carries: both come from the most recent
+    usable column of the same document.
+    """
+    years = [{"year": r["academic_year"], "miles": r["miles"]} for r in rows]
+    own = _year_label(profile.get("academic_year"))
+    miles = profile.get("miles")
+    if own and isinstance(miles, (int, float)) and not any(y["year"] == own for y in years):
+        years.append({"year": own, "miles": miles})
+    years.sort(key=lambda y: schools_db._year_sort_key(y["year"]), reverse=True)
+    for y in years:
+        y["no_limit"] = y["miles"] > NO_DISTANCE_LIMIT_MILES
+        y["miles_label"] = _miles_label(y["miles"])
+    return years
+
+
+def _readings_across_years(profile: dict, where: dict, years: list[dict]) -> dict | None:
+    """One checked postcode read against every published year, so the
+    answer says how often it would have been enough rather than how it
+    stands against last year alone. None when only one year is held:
+    "Likely in 1 of the last 1 published years" says nothing."""
+    if len(years) < 2:
+        return None
+    km = _haversine_km(profile["latitude"], profile["longitude"], where["latitude"], where["longitude"])
+    miles = km / 1.60934
+    rows = []
+    for y in years:
+        verdict = _admission_verdict(miles, y["miles"], y["no_limit"])
+        rows.append({"year": y["year"], "miles": y["miles"], "miles_label": y["miles_label"],
+                     "level": verdict["level"], "label": verdict["label"]})
+    # Counted against the most recent year's reading, which is the one
+    # the page's own verdict gives: "Likely in 3 of the last 4 published
+    # years" is the same word the reader has just been given, with the
+    # years behind it.
+    level, label = rows[0]["level"], rows[0]["label"]
+    matched = sum(1 for r in rows if r["level"] == level)
+    return {"rows": rows, "level": level, "label": label, "matched": matched,
+            "total": len(rows), "all": matched == len(rows)}
+
+
 # ---- Homes you looked at, against a school (18 Sep 2026) -----------------
 # First-visitor audit F3. A school page checked one typed postcode at a
 # time, while the buyer it serves has several homes on the go: the ones
@@ -11757,13 +12113,29 @@ def _miles_label(miles) -> str:
 templates.env.filters["miles"] = _miles_label
 
 
+def _year_label(value) -> str:
+    """A council's academic-year label when it really is a year, and ""
+    when it is not: 832 profiles carry "varies", which is what the
+    council publishes rather than a year.
+
+    Pulled out of _school_labels on 18 Sep 2026 (audit item F5) and
+    registered as a filter, because the nearby-schools table on a school
+    page printed the raw field and so printed "varies" beside a
+    distance, which reads as if the distance itself varies.
+    """
+    year = str(value or "").strip()
+    return year if _YEAR_LIKE.match(year) else ""
+
+
+templates.env.filters["year_label"] = _year_label
+
+
 def _school_labels(profile: dict) -> dict:
     """Wording every surface shares: the year only when the source gives
     a year (832 profiles say "varies", which is what the council
     publishes, not a year), and the distance to two decimals for titles
     and badges while the page itself keeps the published figure."""
-    year = str(profile.get("academic_year") or "").strip()
-    profile["year_label"] = year if _YEAR_LIKE.match(year) else ""
+    profile["year_label"] = _year_label(profile.get("academic_year"))
     profile["year_phrase"] = f", {profile['year_label']}" if profile["year_label"] else ""
     profile["year_or_latest"] = profile["year_label"] or "latest published year"
     profile["in_year"] = f"in {profile['year_label']}" if profile["year_label"] else "in the latest published year"
@@ -11872,7 +12244,14 @@ async def school_badge(request: Request, urn: int):
 
 
 @app.get("/school/{urn}/{slug}")
-async def school_admission_page(request: Request, urn: int, slug: str, check: str = ""):
+async def school_admission_page(
+    request: Request, urn: int, slug: str, check: str = "", year: str = "",
+    # `with` is a Python keyword, so the query name and the argument name
+    # part company here (18 Sep 2026, audit item F6). `with_q` is the name
+    # typed into the second school's box when there is no script to turn
+    # it into a URN; `budget` hides the districts above it.
+    with_urn: str = Query("", alias="with"), with_q: str = "", budget: str = "",
+):
     """One school's real admission distance.
 
     "School catchment area for X" is one of the most searched property
@@ -11920,9 +12299,14 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         if n.get("latitude") is not None and n.get("longitude") is not None and n.get("miles")
         and n["miles"] <= NO_DISTANCE_LIMIT_MILES
     ][:6]
-    context["shortlisted"] = bool(context["current_user"]) and any(
-        i["urn"] == urn for i in school_shortlist.list_items(context["current_user"]["id"])
+    # 18 Sep 2026 (audit item F6): the saved URNs, from school_shortlist's
+    # own one-statement lookup, because the pair's "Save both schools"
+    # needs the second school's state as well. list_items read two more
+    # rows for every saved school to answer a question about one.
+    saved_school_urns = (
+        school_shortlist.saved_urns(context["current_user"]["id"]) if context["current_user"] else set()
     )
+    context["shortlisted"] = urn in saved_school_urns
 
     # "Will this address get in?" A postcode is measured against how far
     # the school admitted from last time. Postcode centre, not the
@@ -11933,6 +12317,91 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
     context["check_query"] = check.strip()
     context["check"] = None
     context["check_error"] = False
+    context["check_years"] = None
+    # Every year this council published for this school (18 Sep 2026,
+    # audit item F5): one statement, and an empty list for all but the
+    # four councils whose documents carry a column per year.
+    published_years = await asyncio.to_thread(schools_db.admission_years, urn)
+    context["radius_years"] = _published_years(profile, published_years)
+    # Which year's circle the map draws. It travels in the address so the
+    # choice can be shared and so the buttons work with no script at all;
+    # anything that is not one of this school's published years falls
+    # back to the newest, which is the figure the rest of the page
+    # describes. The canonical link stays the year-less path, so the
+    # years are one page to a search engine rather than four.
+    context["radius_year"] = next(
+        (y for y in context["radius_years"] if y["year"] == year.strip()),
+        context["radius_years"][0] if context["radius_years"] else None,
+    )
+    # What the map draws: the chosen year when one is held, the page's
+    # own figure when the council labels it "varies" and no year table
+    # row exists. One object, so the circle, the caption under it and
+    # the map's own label can never disagree.
+    context["map_ring"] = context["radius_year"] or {
+        "year": "", "miles": profile.get("miles"), "miles_label": profile.get("miles_label") or "",
+        "no_limit": bool(profile.get("no_distance_limit")),
+    }
+    # The second school of a pair (18 Sep 2026, audit item F6). Resolved
+    # before the postcode check below, so one checked postcode is
+    # answered against both schools rather than this one alone. Costs one
+    # statement, and only when a second school was asked for.
+    context["pair"] = None
+    context["pair_school"] = None
+    context["pair_error"] = ""
+    context["pair_named"] = ""
+    context["pair_choices"] = []
+    context["pair_query"] = " ".join(with_q.split())[:80]
+    context["pair_budget"] = _pair_budget(budget)
+    context["pair_budget_query"] = (budget or "").strip()[:20]
+    context["check_pair"] = None
+    asked = with_urn.strip()[:12]
+    partner = None
+    if asked.isdigit() and 0 < int(asked) < 10 ** 8:
+        if int(asked) == urn:
+            context["pair_error"] = "same"
+        else:
+            partner = await asyncio.to_thread(schools_db.admission_partner, int(asked))
+            if partner is None:
+                context["pair_error"] = "unknown"
+    elif asked:
+        context["pair_error"] = "unknown"
+    elif len(context["pair_query"]) >= 2:
+        # No script, or a name typed and submitted before a suggestion was
+        # picked: the same search the typeahead asks. One school with a
+        # published distance is taken as the one meant; several are listed
+        # to choose from, because guessing between them would put a
+        # circle on the map for a school nobody chose. The second
+        # statement is only on this path, and only for a single match.
+        found = await asyncio.to_thread(schools_db.search_admission_schools, context["pair_query"], 8)
+        others = [r for r in found if r["urn"] != urn]
+        usable = [r for r in others if r["has_page"]]
+        if len(usable) == 1:
+            partner = await asyncio.to_thread(schools_db.admission_partner, usable[0]["urn"])
+        elif usable:
+            context["pair_choices"] = usable
+        elif others:
+            context["pair_error"] = "no_figure"
+            context["pair_named"] = others[0]["name"]
+        elif found:
+            # The only school of that name is this one.
+            context["pair_error"] = "same"
+        else:
+            context["pair_error"] = "not_found"
+    if partner is not None:
+        # Published figures only. A school with no distance from its
+        # council, and one the register gives no location for, are both
+        # schools this page cannot draw, and it says which.
+        context["pair_named"] = partner["name"]
+        if partner["miles"] is None:
+            context["pair_error"] = "no_figure"
+            partner = None
+        elif partner["latitude"] is None or partner["longitude"] is None:
+            context["pair_error"] = "no_location"
+            partner = None
+        else:
+            _school_labels(partner)
+            context["pair_school"] = partner
+    context["pair_shortlisted"] = bool(context["pair_school"]) and context["pair_school"]["urn"] in saved_school_urns
     if check.strip():
         try:
             where = await lookup_postcode(check.strip())
@@ -11944,6 +12413,15 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
             # The same reading the homes under the checker and the
             # /api/school-readings lookups give (18 Sep 2026, F3).
             context["check"] = _school_reading(profile, where)
+            # And the same postcode against every other year the council
+            # published (18 Sep 2026, F5).
+            context["check_years"] = _readings_across_years(profile, where, context["radius_years"])
+            # And against the second school of a pair, by the same
+            # reading (18 Sep 2026, F6): one postcode, both answers, so
+            # a family checking a house against two schools does not
+            # have to open two pages and remember the first.
+            if context["pair_school"]:
+                context["check_pair"] = _school_reading(context["pair_school"], where)
     # Homes you looked at (18 Sep 2026, first-visitor audit F3): signed
     # in, the homes in My properties are read against this school here,
     # from one query for the list, so they show without a script; the
@@ -11983,6 +12461,26 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
             reach.append({**a, "median": row["median"], "count": row["count"]})
     reach.sort(key=lambda r: r["median"])
     context["reach_prices"] = reach
+    # Both in reach (18 Sep 2026, audit item F6): the districts inside
+    # both distances, off the same cached medians the table above ranks
+    # on, so no extra query and no second set of figures. A distance that
+    # did not limit entry is not a distance to intersect, and the section
+    # says so instead of listing half the county.
+    if context["pair_school"]:
+        partner = context["pair_school"]
+        no_limit = bool(partner["no_distance_limit"] or profile.get("no_distance_limit"))
+        context["pair"] = {
+            "no_limit": no_limit,
+            "areas": None if no_limit else _pair_areas(profile, partner, prices, context["pair_budget"]),
+        }
+        # The map labels the districts the table names, rather than the
+        # ones inside this school's distance alone: the two would
+        # otherwise disagree on the same screen.
+        if context["pair"]["areas"] and context["pair"]["areas"]["rows"]:
+            context["district_labels"] = [
+                {"code": a["outcode"], "lat": a["lat"], "lng": a["lon"]}
+                for a in context["pair"]["areas"]["rows"]
+            ]
     context["deadline"] = _admissions_deadline(profile.get("group"))
     # The district this school stands in, for the link to its
     # private-schools page. Only when the outcode is real: a malformed
@@ -12074,6 +12572,100 @@ def _outcodes_within(lat: float, lon: float, miles: float) -> list[dict]:
             })
     out.sort(key=lambda e: e["miles"])
     return out[:12]
+
+
+# ---- Two schools, both in reach (18 Sep 2026) ---------------------------
+# First-visitor audit F6. A family with two children, or one child and a
+# second preference, had to hold two school pages in their head and
+# intersect two circles by eye. ?with= puts the second school's published
+# distance on the same map and lists the postcode districts whose centre
+# falls inside both, cheapest first on the same Land Registry medians the
+# page's own "within reach" table ranks on. Published figures only: a
+# school whose council has published no distance cannot be added, and the
+# page says so rather than drawing a circle it has no figure for.
+
+# The longest the paired table runs, matching the single school's twelve.
+PAIR_AREAS_MAX = 12
+# A typed budget above this is a typing slip, not a budget. The most
+# expensive district median in the table is under £3m.
+PAIR_BUDGET_MAX = 50_000_000
+
+
+def _outcodes_within_pair(a: dict, b: dict, limit: int = PAIR_AREAS_MAX * 4) -> list[dict]:
+    """Postcode districts whose centre falls inside BOTH schools'
+    published distances, nearest to the pair first.
+
+    The same centres and the same measurement _outcodes_within uses, so
+    a district cannot be inside one page's distance and outside the
+    other's. As there, a centre being in range says nothing about a
+    particular address, which is the whole point of checking one.
+    """
+    km_a = (a.get("miles") or 0) * 1.60934
+    km_b = (b.get("miles") or 0) * 1.60934
+    if km_a <= 0 or km_b <= 0:
+        return []
+    out = []
+    for entry in ALL_OUTCODES:
+        from_a = _haversine_km(a["latitude"], a["longitude"], entry["lat"], entry["lon"])
+        if from_a > km_a:
+            continue
+        from_b = _haversine_km(b["latitude"], b["longitude"], entry["lat"], entry["lon"])
+        if from_b > km_b:
+            continue
+        out.append({
+            "outcode": entry["outcode"], "district": entry.get("district", ""),
+            # "miles" is the distance from the page's own school, as it is
+            # in _outcodes_within, so the two tables read the same way.
+            "miles": round(from_a / 1.60934, 1), "miles_b": round(from_b / 1.60934, 1),
+            "lat": entry["lat"], "lon": entry["lon"],
+        })
+    out.sort(key=lambda e: e["miles"] + e["miles_b"])
+    return out[:limit]
+
+
+def _pair_budget(raw: str) -> int | None:
+    """A typed budget as whole pounds: "£450,000", "450,000" and
+    "450000" all read the same, and anything with no digits in it at all
+    is no budget rather than nought. Nothing is worked out from it: it
+    only hides rows whose median sits above it."""
+    digits = re.sub(r"[^0-9]", "", (raw or "")[:20])
+    if not digits:
+        return None
+    value = int(digits[:12])
+    return min(value, PAIR_BUDGET_MAX) if value > 0 else None
+
+
+def _pair_areas(a: dict, b: dict, prices: dict, budget: int | None) -> dict:
+    """The districts inside both distances, cheapest first by the median
+    of real sales around each district's centre.
+
+    Ranked on price rather than distance, because that is the question a
+    second school raises: of the places that reach both, which can we
+    afford? Districts without enough recorded sales to rank are named
+    but not priced, exactly as the single school's table says of them.
+    """
+    areas = _outcodes_within_pair(a, b)
+    priced, unpriced = [], []
+    for area in areas:
+        row = prices.get(area["outcode"])
+        if row:
+            priced.append({**area, "median": row["median"], "count": row["count"]})
+        else:
+            unpriced.append(area)
+    priced.sort(key=lambda r: r["median"])
+    kept = [r for r in priced if budget is None or r["median"] <= budget]
+    return {
+        "total": len(areas),
+        "rows": kept[:PAIR_AREAS_MAX],
+        "priced_total": len(priced),
+        # The cheapest priced district whatever the budget, so a budget
+        # that hides every row can say what the cheapest really is
+        # rather than leaving the reader guessing by how much.
+        "cheapest": priced[0] if priced else None,
+        "over_budget": len(priced) - len(kept),
+        "unpriced": unpriced[:PAIR_AREAS_MAX],
+        "unpriced_total": len(unpriced),
+    }
 
 
 @app.get("/area/{outcode}/private-schools")
@@ -12467,10 +13059,125 @@ async def api_school_search(q: str = ""):
     matching schools with a published distance."""
     q = q.strip()[:80]
     rows = await asyncio.to_thread(schools_db.search_admission_schools, q, 10) if len(q) >= 2 else []
+    # The URN joined the answer on 18 Sep 2026 (audit item F6): a school
+    # page's "Add a second school" builds ?with=<urn> from a suggestion,
+    # and the URN is the DfE's own public reference, already in the
+    # address of every school page this endpoint links to.
     return JSONResponse({"results": [
-        {"name": r["name"], "url": r["url"], "authority": r["authority"], "has_page": r["has_page"],
-         "phase": r["phase"], "miles": r["miles"], "year": r["academic_year"]} for r in rows
+        {"urn": r["urn"], "name": r["name"], "url": r["url"], "authority": r["authority"],
+         # 21 Sep 2026: the label, not the raw field, so a council's
+         # "varies" never reaches a suggestion (batch D item D6).
+         "has_page": r["has_page"], "phase": r["phase"], "miles": r["miles"],
+         "year": _year_label(r["academic_year"])}
+        for r in rows
     ]}, headers={"Cache-Control": "public, max-age=300"})
+
+
+# The homepage's one search box (18 Sep 2026, first-visitor audit F8).
+# The hero took a postcode and nothing else, so a reader who knew the
+# area but not the postcode, or who came for a school, had nothing to
+# type. Each group below is a page the site already holds, answered from
+# data already in memory or from the one query the admissions typeahead
+# already makes. Nothing new is fetched and nothing is stored.
+SEARCH_SUGGEST_PER_GROUP = 5
+SEARCH_SUGGEST_MIN = 2
+SEARCH_SUGGEST_MAX_Q = 60
+# What a half-typed postcode district looks like: one or two letters and
+# up to two digits, so "L", "LS" and "LS6" all offer districts while a
+# town of three letters or more ("Ely", "York") goes to the name match
+# below instead.
+_OUTCODE_PREFIX_RE = re.compile(r"^[A-Z]{1,2}[0-9]{0,2}[A-Z]?$")
+
+
+def _suggest_areas(q: str) -> list[dict]:
+    """Area guides for what was typed: a postcode district by its own
+    name first, otherwise the districts inside a town or council of that
+    name. ALL_OUTCODES, in memory, no query."""
+    typed = q.upper().replace(" ", "")
+    out: list[dict] = []
+    if _OUTCODE_PREFIX_RE.match(typed):
+        for entry in ALL_OUTCODES:
+            if entry["outcode"].startswith(typed):
+                out.append({"label": entry["outcode"], "note": entry.get("district") or "",
+                            "url": f"/area/{entry['outcode']}"})
+        # The exact district first, then the rest in postcode order.
+        out.sort(key=lambda item: (item["label"] != typed, item["label"]))
+    if len(out) < SEARCH_SUGGEST_PER_GROUP:
+        lower = q.lower()
+        seen = {item["label"] for item in out}
+        earned = set(GSC_EARNED_OUTCODES)
+        named = []
+        for entry in ALL_OUTCODES:
+            district = entry.get("district") or ""
+            low = district.lower()
+            if lower not in low or entry["outcode"] in seen:
+                continue
+            # "York" must not answer with Craven before it answers with
+            # York: the council whose name begins with what was typed
+            # comes first, then one of whose words does (North
+            # Yorkshire), then any other match. Districts already
+            # earning search traffic lead within each of those, the same
+            # order the council tax pages list their guides in.
+            rank = 0 if low.startswith(lower) else (1 if any(w.startswith(lower) for w in low.split()) else 2)
+            # 21 Sep 2026: LS1 before LS23 before LS88. Sorted as text,
+            # and with the earned-traffic tiebreak, "Leeds" answered with
+            # LS88 (a large-user code) before the city centre.
+            digits = "".join(c for c in entry["outcode"] if c.isdigit())
+            named.append((rank, int(digits or 0), entry["outcode"],
+                          {"label": entry["outcode"], "note": district, "url": f"/area/{entry['outcode']}"}))
+        named.sort(key=lambda row: row[:3])
+        out += [item for *_, item in named]
+    return out[:SEARCH_SUGGEST_PER_GROUP]
+
+
+def _suggest_councils(q: str) -> list[dict]:
+    """Council tax pages whose authority's name contains what was
+    typed, from the same council_tax.pages() the pages themselves read.
+    A name that starts with the words typed comes first."""
+    lower = q.lower()
+    found = []
+    for slug, entry in council_tax.pages().items():
+        name = entry.get("authority") or ""
+        if lower in name.lower():
+            found.append((not name.lower().startswith(lower), name, {
+                "label": name, "note": f"Band D {_format_gbp(entry['band_d'])}",
+                "url": f"/running-costs/council-tax/{slug}",
+            }))
+    found.sort(key=lambda row: (row[0], row[1]))
+    return [item for _, _, item in found[:SEARCH_SUGGEST_PER_GROUP]]
+
+
+@app.get("/api/search-suggest")
+async def api_search_suggest(q: str = ""):
+    """What the homepage box offers as a reader types: area guides,
+    council tax pages and school pages, each group named. The box still
+    runs the report on a full postcode and still redirects a bare
+    district, so this only adds ways in that were already pages."""
+    q = " ".join(q.split())[:SEARCH_SUGGEST_MAX_Q]
+    # 21 Sep 2026: cached per typed prefix, as /api/postcode-suggest is.
+    # The school half is an unindexable LIKE over 26,533 rows, and this
+    # runs on every keystroke from the busiest box on the site.
+    cache_key = ("search_suggest", q.lower())
+    cached = _cache.get(cache_key, 3600)
+    if cached is not None:
+        return JSONResponse({"q": q, "groups": cached},
+                            headers={"Cache-Control": "public, max-age=300"})
+    groups: list[dict] = []
+    if len(q) >= SEARCH_SUGGEST_MIN:
+        areas = _suggest_areas(q)
+        councils = _suggest_councils(q)
+        schools = await asyncio.to_thread(schools_db.search_admission_schools, q, SEARCH_SUGGEST_PER_GROUP)
+        if areas:
+            groups.append({"label": "Area guide", "items": areas})
+        if councils:
+            groups.append({"label": "Council tax", "items": councils})
+        if schools:
+            groups.append({"label": "School", "items": [
+                {"label": s["name"], "note": s["authority"], "url": s["url"]} for s in schools
+            ]})
+    _cache.set(cache_key, groups)
+    return JSONResponse({"q": q, "groups": groups},
+                        headers={"Cache-Control": "public, max-age=300"})
 
 
 @app.post("/api/school-readings")
@@ -13047,9 +13754,17 @@ def admissions_guide(request: Request):
 
 
 @app.get("/schools/guide")
-async def schools_guide(request: Request, q: str = "", areas: str = ""):
+async def schools_guide(request: Request, q: str = "", areas: str = "", only: str = ""):
     context = base_context(request)
     context["query"] = q
+    # Fee-paying only (18 Sep 2026, first-visitor audit F8). A council's
+    # private schools page lists every fee-paying school it holds and
+    # cannot say how far any of them is from a particular home; this
+    # guide measures that distance already, so its postcode box sends a
+    # reader here with the state schools set aside. Done on the server,
+    # so the filtered page is a real page with no script running.
+    only_fee = (only or "").strip().lower() == "fee"
+    context["only_fee"] = only_fee
 
     area_list = _parse_areas_param(areas)
 
@@ -13080,10 +13795,13 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
         # distance against the middle of Oxford would read as an answer
         # while being nothing of the kind.
         precise = area if area.get("kind") == "postcode" else None
+        rows = _guide_rows(landscape, verdict_from=precise)
+        if only_fee:
+            rows = [row for row in rows if row["independent"]]
         areas_with_stats.append({
             **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
             "verdict_postcode": (area.get("label") or "").strip().upper() if precise else None,
-            "rows": _guide_rows(landscape, verdict_from=precise),
+            "rows": rows,
             # A search that was a postcode district gets a link to its area
             # guide; a town or full postcode doesn't have one.
             "outcode": label if _OUTCODE_RE.match(label) else None,
@@ -13189,15 +13907,28 @@ async def school_shortlist_view(request: Request, alerts: str = ""):
 @app.post("/schools/shortlist/save")
 def school_shortlist_save(
     request: Request, urn: int = Form(...), postcode: str = Form(""), note: str = Form(""),
-    next: str = Form(""),
+    next: str = Form(""), also: str = Form(""),
 ):
     """Save a school. From a report this returns to the report's schools
-    section; from a school page, `next` brings it back there."""
+    section; from a school page, `next` brings it back there.
+
+    `also` carries a second URN since 18 Sep 2026 (audit item F6): a
+    reader looking at two schools both in reach of the same districts
+    saves the pair in one action rather than opening the other page to
+    press the same button again. Same sign-in check, same `next`, and a
+    URN that is not a number, is the first one over again, or names no
+    school is simply not saved: save_item would otherwise leave a
+    shortlist row pointing at nothing.
+    """
     back = _safe_next(next) if next else (f"/property?postcode={postcode}#schools" if postcode else "/schools/shortlist")
     user = auth.current_user(request)
     if not user:
         return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
     school_shortlist.save_item(user["id"], urn, note.strip())
+    second = also.strip()[:12]
+    if second.isdigit() and 0 < int(second) < 10 ** 8 and int(second) != urn:
+        if schools_db.admission_partner(int(second)) is not None:
+            school_shortlist.save_item(user["id"], int(second), "")
     return RedirectResponse(back, status_code=303)
 
 
@@ -13216,11 +13947,21 @@ def _admission_update_email_html(rows: list[dict], shortlist_url: str) -> str:
     for r in rows:
         url = f"{base}/school/{r['urn']}/{r['slug']}"
         was = f"{r['was_miles']} miles ({r['was_year']})" if r["was_miles"] is not None else "no published figure"
+        # The council's own previous year, when both it and the new one
+        # are in school_admission_radius_years (18 Sep 2026, audit item
+        # F5). "Was" above is what we recorded last time we looked, which
+        # is not the same claim: this line names a published year against
+        # a published year, and is left out entirely unless both are held.
+        published = ""
+        if r.get("published_before"):
+            before = r["published_before"]
+            published = (f'<p style="margin:6px 0 0;color:#3d3833;">{before["authority"] or "The council"} also publishes '
+                         f'<strong>{before["miles"]} miles</strong> for {before["academic_year"]}.</p>')
         blocks.append(
             f'<div style="border:1px solid #e6e1d8;border-radius:8px;padding:14px 16px;margin-bottom:12px;">'
             f'<a href="{url}" style="font-size:16px;font-weight:600;color:#1f2a5a;text-decoration:none;">{r["name"]}</a>'
             f'<p style="margin:8px 0 0;color:#3d3833;">Now admits from <strong>{r["miles"]} miles</strong> ({r["academic_year"]}). '
-            f'Was {was}.</p></div>'
+            f'Was {was}.</p>{published}</div>'
         )
     return (
         '<div style="font-family:Georgia,serif;max-width:540px;margin:0 auto;padding:8px;">'
@@ -13244,7 +13985,11 @@ async def send_admission_updates(request: Request):
     we recorded last time and emails only the ones that changed. The
     first sighting of a school records it and says nothing: an alert
     that fires on sign-up is noise. Returns counts, so the person
-    running it can see what happened."""
+    running it can see what happened.
+
+    Since 18 Sep 2026 (audit item F5) an email also names the year the
+    council published before this one, where both years are held in
+    school_admission_radius_years."""
     configured_secret = os.environ.get("ALERTS_CRON_SECRET")
     provided_secret = request.headers.get("x-alerts-secret", "")
     if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
@@ -13252,6 +13997,7 @@ async def send_admission_updates(request: Request):
 
     shortlist_url = f"{_public_base_url(request)}/schools/shortlist"
     sent, recorded, changed = 0, 0, 0
+    pending = []
     for sub in await asyncio.to_thread(school_shortlist.alert_subscribers):
         rows = []
         for item in sub["items"]:
@@ -13265,13 +14011,36 @@ async def send_admission_updates(request: Request):
                 recorded += 1
         if rows:
             changed += len(rows)
-            if email_service.is_configured() and _email_can_receive(sub["email"]) and await email_service.send_email(
-                sub["email"],
-                f"{rows[0]['name']} now admits from {rows[0]['miles']} miles" if len(rows) == 1
-                else f"{len(rows)} of your saved schools have new admission distances",
-                _admission_update_email_html(rows, shortlist_url),
-            ):
-                sent += 1
+            pending.append((sub, rows))
+    # The year the council published before this one, for the schools
+    # that changed (18 Sep 2026, audit item F5). One statement for every
+    # subscriber's every changed school, after the loop rather than
+    # inside it: this runs right after an import, when a change is the
+    # normal case rather than the rare one.
+    if pending:
+        changed_urns = sorted({r["urn"] for _, rows in pending for r in rows})
+        by_urn = await asyncio.to_thread(schools_db.admission_years_for, changed_urns)
+        for _, rows in pending:
+            for r in rows:
+                years = by_urn.get(r["urn"]) or []
+                # Only when both the new year and one before it are held:
+                # an email that names a year we do not have is worse than
+                # an email that names none.
+                newest = _year_label(r["academic_year"])
+                if not newest or not any(y["academic_year"] == newest for y in years):
+                    continue
+                before = next((y for y in years
+                               if schools_db._year_sort_key(y["academic_year"]) < schools_db._year_sort_key(newest)), None)
+                if before:
+                    r["published_before"] = before
+    for sub, rows in pending:
+        if email_service.is_configured() and _email_can_receive(sub["email"]) and await email_service.send_email(
+            sub["email"],
+            f"{rows[0]['name']} now admits from {rows[0]['miles']} miles" if len(rows) == 1
+            else f"{len(rows)} of your saved schools have new admission distances",
+            _admission_update_email_html(rows, shortlist_url),
+        ):
+            sent += 1
     return JSONResponse({"subscribers_emailed": sent, "changes": changed, "snapshots_recorded": recorded})
 
 

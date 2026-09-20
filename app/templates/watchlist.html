@@ -29,6 +29,21 @@
 {% endif %}
 
 {% if items %}
+{# Order by how many of the buyer's own must-haves each home meets (18
+   Sep 2026, first-visitor audit F7). Links, not a script, so the order
+   is the server's and the page works without one. With no must-haves
+   set, one line saying where they are set, and no second ask. #}
+{% if must_have_total %}
+<nav class="myprops-sort" aria-label="Order these homes">
+    <a href="/watchlist"{% if not sort %} aria-current="true"{% endif %}>Recently saved</a>
+    <a href="/watchlist?sort=must-haves"{% if sort == 'must-haves' %} aria-current="true"{% endif %}>Must-haves met</a>
+</nav>
+{% else %}
+<p class="section-sub">Set your own must-haves on any report, under the score, and this list says how many each home meets.</p>
+{% endif %}
+{% endif %}
+
+{% if items %}
 <form action="/watchlist/compare" method="get" id="compare-form">
     <div class="myprops-grid">
         {% for item in items %}
@@ -69,6 +84,21 @@
                 {% if item.viewing %}Viewed: {{ item.viewing.checked }} of {{ item.viewing.total }} checked, {{ item.viewing.follow_up }} to follow up. <a href="{{ list_href }}">Open its viewing checklist</a>
                 {% else %}<a href="{{ list_href }}">Viewing checklist</a> to tick off on your phone at the viewing.{% endif %}
             </p>
+            {# This home against the buyer's own must-haves (18 Sep 2026,
+               first-visitor audit F7), from the summary this page already
+               holds for it. A condition on a check this home has not been
+               opened for is never answered here and never hinted at: it
+               says where it opens instead. #}
+            {% if item.must_haves and item.must_haves.total %}
+            <p class="myprops-musthaves">
+                Must-haves: <strong>{{ item.must_haves.line }}</strong>
+                <span class="myprops-musthave-lines">
+                    {% for row in item.must_haves.rows %}
+                    <span class="myprops-musthave musthave-{% if row.met is none %}wait{% elif row.met %}yes{% else %}no{% endif %}">{{ row.prompt }} {{ row.threshold }}: {{ row.text if row.text else row.why }}</span>
+                    {% endfor %}
+                </span>
+            </p>
+            {% endif %}
             {% if item.changes %}
             <div class="watchlist-changes">
                 {% for change in item.changes %}

@@ -1,0 +1,16 @@
+# Solihull Council, "How Reception Places Were Offered" (the shape
+# fetch_solihull's own docstring describes): three years side by side,
+# most recent first, each year a pair of columns so the distances land
+# at indices 2, 4 and 6. "All offered" and "N/A" mean the school was not
+# oversubscribed that year.
+#
+# The years sit in a row of their own above the "School" row, which is
+# how the PDF extracts (checked against the live file, 20 Sep 2026).
+#
+# Cells are separated by "|"; lines starting with "#" are not part of
+# the table.
+|September 2025 admissions||September 2024 admissions||September 2023 admissions|
+School|Criteria|Distance in miles|Criteria|Distance in miles|Criteria|Distance in miles
+Alderbrook School|210|1.85|208|2.01|205|All offered
+Balsall Common Primary School|90|N/A|88|1.42|87|1.5
+Sharmans Cross Junior School|60|All offered|58|N/A|57|All offered

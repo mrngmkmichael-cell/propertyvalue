@@ -6104,15 +6104,25 @@ def _e3_page(client, query=""):
     return r.text
 
 
+def _e3_check_boxes(body):
+    """The postcode boxes themselves. A hidden field carrying an
+    already-checked postcode through another form, so that form's own
+    choice does not throw the answer away (the second-school picker and
+    the budget box of 18 Sep 2026, audit item F6), is not a second
+    checker: E3 is about how many boxes ask for a postcode."""
+    return re.findall(r'<input type="text"[^>]*name="check"', body)
+
+
 def _e3_checkers(body):
     """Every form on the page that checks a postcode against this school."""
-    return re.findall(r'<form[^>]*action="' + E3_PAGE + r'[#"][^>]*>.*?</form>', body, re.S)
+    forms = re.findall(r'<form[^>]*action="' + E3_PAGE + r'[#"][^>]*>.*?</form>', body, re.S)
+    return [f for f in forms if _e3_check_boxes(f)]
 
 
 def test_e3_before_a_check_the_page_has_one_postcode_checker(client):
     body = _e3_page(client)
     forms = _e3_checkers(body)
-    assert len(forms) == 1 and body.count('name="check"') == 1
+    assert len(forms) == 1 and len(_e3_check_boxes(body)) == 1
     assert 'id="check-postcode-top"' in forms[0] and f'action="{E3_PAGE}#verdict"' in forms[0]
     assert body.count(">Check this postcode</button>") == 1
     assert "Check another postcode" not in body and 'id="verdict"' not in body
@@ -6127,7 +6137,7 @@ def test_e3_after_a_check_the_verdict_offers_another_postcode(client, monkeypatc
     monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
     body = _e3_page(client, "?check=CA3+9AA")
     forms = _e3_checkers(body)
-    assert len(forms) == 1 and body.count('name="check"') == 1
+    assert len(forms) == 1 and len(_e3_check_boxes(body)) == 1
     assert 'id="check-postcode-top"' not in body              # the landing box gives way to the answer
     again = forms[0]
     assert '<label for="check-postcode">Check another postcode</label>' in again
@@ -6164,7 +6174,7 @@ def test_e3_a_postcode_that_cannot_be_found_comes_back_in_the_one_box(client, mo
     monkeypatch.setattr(app_main, "lookup_postcode", _lookup)
     body = _e3_page(client, "?check=ZZ9+9ZZ")
     forms = _e3_checkers(body)
-    assert len(forms) == 1 and body.count('name="check"') == 1
+    assert len(forms) == 1 and len(_e3_check_boxes(body)) == 1
     box = re.search(r'<input type="text" id="check-postcode-top"[^>]*>', forms[0]).group(0)
     assert 'value="ZZ9 9ZZ"' in box and 'aria-invalid="true"' in box and 'aria-describedby="check-error"' in box
     assert 'id="check-error"' in forms[0]

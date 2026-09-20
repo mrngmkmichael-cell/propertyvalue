@@ -370,6 +370,80 @@
         </div>
         {% endif %}
 
+        {# Your own must-haves, checked on this report (18 Sep 2026,
+           first-visitor audit F7). A buyer arrives with a list in their
+           head and had to read forty-four cards to find the six lines
+           they came for. Up to six plain thresholds, set once, answered
+           on every report and on My properties.
+
+           The way in is a plain disclosure, not an offer: the audit's
+           first-time visitor met two asks before a single figure, so
+           this adds no third. Nothing opens it but the reader.
+
+           The panel is rendered here when the account holds conditions,
+           so it is right before any script runs and right with none. On
+           a device with no account the script below fills the same
+           container from what the device kept. Either way the reading
+           comes from must_have_facts, which carries no value at all for
+           a check this reader has not opened. #}
+        {% if location %}
+        <div class="musthave-block" id="must-haves" data-lock-redirect="{{ lock_redirect }}" data-animate>
+            <div class="musthave-panel" id="must-have-panel"{% if not must_haves %} hidden{% endif %}>
+                <p class="musthave-line">Your must-haves: <strong id="must-have-count">{{ must_haves.line if must_haves else "" }}</strong></p>
+                <ul class="musthave-list" id="must-have-rows">
+                    {% if must_haves %}{% for row in must_haves.rows %}
+                    <li class="musthave-row">
+                        <button type="button" class="musthave-open" data-modal-target="{{ row.modal }}"{% if row.locked %} data-lock-redirect="{{ lock_redirect }}"{% endif %}>
+                            <span class="musthave-mark musthave-{% if row.met is none %}wait{% elif row.met %}yes{% else %}no{% endif %}">{% if row.met is none %}Not yet known{% elif row.met %}Met{% else %}Not met{% endif %}</span>
+                            <span class="musthave-what">{{ row.prompt }} {{ row.threshold }}</span>
+                            <span class="musthave-found">{{ row.text if row.text else row.why }}</span>
+                        </button>
+                    </li>
+                    {% endfor %}{% endif %}
+                </ul>
+                <p class="musthave-source">Each line is a published figure against your own threshold, on the card it comes from. Nothing here is scored or weighted.</p>
+            </div>
+            <details class="musthave-editor" id="must-haves-set">
+                <summary>Set your must-haves</summary>
+                <p class="musthave-how">Up to {{ must_have_max }} conditions, checked on every report you open{% if current_user %} and on My properties{% endif %}. {% if current_user %}Kept with your account.{% else %}Kept on this device. <a href="/signup?next={{ _return_to | urlencode }}">Sign up free</a> to keep them across devices.{% endif %}</p>
+                {% if not current_user %}<noscript><p class="musthave-how">With JavaScript off, must-haves are kept with an account rather than on the device, so Save asks you to log in first.</p></noscript>{% endif %}
+                <form method="post" action="/property/must-haves" class="musthave-form" id="must-have-form">
+                    <input type="hidden" name="next" value="{{ _return_to }}">
+                    {% for c in must_have_conditions_all %}
+                    <label class="musthave-pick">
+                        <span class="musthave-pick-k">{{ c.prompt }}{% if c.locked %} <span class="musthave-pick-lock">{{ must_have_locked_label }}</span>{% endif %}</span>
+                        {% if c.free_text %}
+                        <input type="text" name="{{ c.key }}" maxlength="120" autocomplete="off"
+                               value="{{ must_have_conditions.get(c.key, '') }}"
+                               placeholder="Name of the school"
+                               {# 21 Sep 2026: the label wraps this box, but its words also carry
+                                  the lock line, so the box names itself for a screen reader. #}
+                               aria-label="{{ c.prompt }}"
+                               {% if must_have_facts[c.key].known %}list="must-have-schools"{% endif %}>
+                        {% else %}
+                        <select name="{{ c.key }}">
+                            <option value="">No preference</option>
+                            {% for o in c.options %}
+                            <option value="{{ o.value }}"{% if must_have_conditions.get(c.key) == o.value %} selected{% endif %}>{{ o.label }}</option>
+                            {% endfor %}
+                        </select>
+                        {% endif %}
+                    </label>
+                    {% endfor %}
+                    {% if must_have_facts['school'].known and must_have_facts['school'].value %}
+                    {# Only ever for a reader who has opened this home: the
+                       names come from the locked catchment check. #}
+                    <datalist id="must-have-schools">
+                        {% for name in must_have_facts['school'].value %}<option value="{{ name }}"></option>{% endfor %}
+                    </datalist>
+                    {% endif %}
+                    <p class="musthave-status" id="must-have-status" role="status"></p>
+                    <button type="submit" class="musthave-save">Save my must-haves</button>
+                </form>
+            </details>
+        </div>
+        {% endif %}
+
         {# The third pillar, on the report: the bills that come with the
            keys, from what the gather already holds. Computed here so every
            render path (fresh, cached gather, shared link) shows it. #}
@@ -440,6 +514,41 @@
             <div id="globe-intro" class="globe-container"></div>
             <div id="map" class="map-container"></div>
         </div>
+
+        {# The crime layer (18 Sep 2026, first-visitor audit F8). The card
+           has always said how many crimes were recorded within about a
+           mile and never where, because the fetch counted the month's
+           records and threw their points away. It keeps them now, capped
+           at the nearest crime_points_max, and this puts them on both
+           map branches behind a toggle.
+
+           Crime is a free check, so no lock applies. Hidden until a map
+           script un-hides it: with JavaScript off there is no map to
+           draw on, and the count and the category table below are what
+           the page says. The chips are real checkboxes inside their
+           labels, so a keyboard alone works them. #}
+        {% if crime and crime.points %}
+        <div class="crime-layer" id="crime-layer" hidden>
+            <label class="crime-layer-toggle">
+                <input type="checkbox" id="crime-layer-on">
+                Show recorded crime{% if crime.month %}, {{ crime.month | month_label }}{% endif %}
+            </label>
+            <div class="crime-chips" id="crime-chips" hidden>
+                {% for chip in crime_chips %}
+                <label class="crime-chip" data-chip="{{ chip.key }}">
+                    <input type="checkbox" name="crime-chip" value="{{ chip.key }}" checked>
+                    <span>{{ chip.label }}</span>
+                    <span class="crime-chip-count" data-count-for="{{ chip.key }}"></span>
+                </label>
+                {% endfor %}
+            </div>
+            <p class="crime-layer-note">
+                {{ crime_point_caveat }}
+                {% if crime.points_capped %}The {{ crime_points_max | thousands }} points nearest this postcode are drawn, of {{ crime.total | thousands }} recorded within about a mile.{% endif %}
+                Source: Police.uk street-level crime.
+            </p>
+        </div>
+        {% endif %}
 
         {% if accounts_configured %}
             {% if current_user %}
@@ -5325,6 +5434,70 @@ Listed building data from Historic England's
     })();
 </script>
 
+{% if crime and crime.points %}
+{# The crime layer's controls, shared by both map branches (18 Sep 2026,
+   first-visitor audit F8). Production renders the Google branch and dev
+   renders Leaflet, so the toggle, the chips and the counts live here
+   once and each branch supplies only the way to draw a group of points
+   on its own map. Nothing here leaves the device: the points were
+   rendered into the page by the server. #}
+<script>
+    window.__crimeChipColours = {
+        burglary: '#a83a32', vehicle: '#8a5a12', asb: '#6d5a9c',
+        violent: '#c2410c', other: '#6b6560',
+    };
+    /* makeGroup(chipKey, points) -> { show(), hide() }. The controller
+       owns which groups are visible; the branch owns the drawing. */
+    window.__setupCrimeLayer = function (makeGroup) {
+        var block = document.getElementById('crime-layer');
+        var on = document.getElementById('crime-layer-on');
+        var chipBox = document.getElementById('crime-chips');
+        if (!block || !on || !chipBox) return;
+        var points = {{ crime.points | tojson }};
+        if (!points.length) return;
+
+        var byChip = {};
+        points.forEach(function (p) {
+            (byChip[p.chip] = byChip[p.chip] || []).push(p);
+        });
+
+        var groups = {};
+        var chips = Array.prototype.slice.call(chipBox.querySelectorAll('input[name="crime-chip"]'));
+        chips.forEach(function (box) {
+            var key = box.value;
+            var count = (byChip[key] || []).length;
+            var label = chipBox.querySelector('[data-count-for="' + key + '"]');
+            if (label) label.textContent = count ? String(count) : '0';
+            /* A category with nothing recorded this month is shown,
+               unticked and not clickable, rather than hidden: "none
+               recorded" is an answer, and a chip that comes and goes
+               between months is not. */
+            if (!count) {
+                box.checked = false;
+                box.disabled = true;
+                box.closest('.crime-chip').classList.add('crime-chip-empty');
+            }
+        });
+
+        function redraw() {
+            chips.forEach(function (box) {
+                var key = box.value;
+                var wanted = on.checked && box.checked && (byChip[key] || []).length > 0;
+                if (wanted && !groups[key]) groups[key] = makeGroup(key, byChip[key]);
+                if (!groups[key]) return;
+                if (wanted) groups[key].show(); else groups[key].hide();
+            });
+            chipBox.hidden = !on.checked;
+        }
+
+        on.addEventListener('change', redraw);
+        chips.forEach(function (box) { box.addEventListener('change', redraw); });
+        block.hidden = false;
+        redraw();
+    };
+</script>
+{% endif %}
+
 {% if google_maps_api_key %}
 {{ mapstyle.dark_map_style() }}
 <script>
@@ -5429,6 +5602,36 @@ Listed building data from Historic England's
         };
         window.__addStationsToMap({{ ((stations_list or {}) if premium_unlocked else {}) | tojson }});
 
+        /* The crime layer on the Google branch (18 Sep 2026, item F8).
+           Small circles rather than pins: several hundred of them, and
+           each marks an anonymised street point, not a door. They are
+           deliberately left out of the bounds fit below, so turning the
+           layer on never moves the reader's view off the address. */
+        if (window.__setupCrimeLayer) {
+            window.__setupCrimeLayer(function (chipKey, chipPoints) {
+                const colour = window.__crimeChipColours[chipKey] || '#6b6560';
+                const circles = chipPoints.map(function (p) {
+                    return new google.maps.Circle({
+                        center: { lat: p.lat, lng: p.lon }, radius: 40, map: null,
+                        strokeColor: colour, strokeWeight: 1, strokeOpacity: 0.85,
+                        fillColor: colour, fillOpacity: 0.45, clickable: true,
+                    });
+                });
+                circles.forEach(function (circle, i) {
+                    circle.addListener('click', function () {
+                        info.setContent('<strong>' + chipPoints[i].category + '</strong><br>'
+                            + {{ crime_point_caveat | tojson }});
+                        info.setPosition({ lat: chipPoints[i].lat, lng: chipPoints[i].lon });
+                        info.open(map);
+                    });
+                });
+                return {
+                    show: function () { circles.forEach(function (c) { c.setMap(map); }); },
+                    hide: function () { circles.forEach(function (c) { c.setMap(null); }); },
+                };
+            });
+        }
+
         if (havePins) {
             map.fitBounds(bounds, 30);
             google.maps.event.addListenerOnce(map, 'bounds_changed', function () {
@@ -5526,6 +5729,29 @@ Listed building data from Historic England's
     }
     L.control.layers(null, overlays, { collapsed: false, position: 'bottomright' }).addTo(map);
 
+    /* The crime layer on the dev branch (18 Sep 2026, item F8), the
+       same points and the same chips as the Google branch above. Its
+       own control rather than a row in the layers box, so the chips
+       and Police.uk's caveat sit together under the map. The points
+       are not added to mapPinLatLngs: the view stays on the address. */
+    if (window.__setupCrimeLayer) {
+        window.__setupCrimeLayer(function (chipKey, chipPoints) {
+            const colour = window.__crimeChipColours[chipKey] || '#6b6560';
+            const layer = L.layerGroup();
+            chipPoints.forEach(function (p) {
+                L.circleMarker([p.lat, p.lon], {
+                    radius: 4, color: colour, weight: 1, opacity: 0.85,
+                    fillColor: colour, fillOpacity: 0.45,
+                }).bindPopup('<strong>' + p.category + '</strong><br>'
+                    + {{ crime_point_caveat | tojson }}).addTo(layer);
+            });
+            return {
+                show: function () { layer.addTo(map); },
+                hide: function () { map.removeLayer(layer); },
+            };
+        });
+    }
+
     /* Widen the view just enough to take in the school and station
        pins, so toggling a layer never shows an apparently empty map. */
     if (mapPinLatLngs.length) {
@@ -5577,6 +5803,242 @@ Listed building data from Historic England's
     };
     s.onerror = function () { globeEl.classList.add('globe-skip'); };
     document.head.appendChild(s);
+})();
+</script>
+{% endif %}
+
+{% if location %}
+{# Your own must-haves (18 Sep 2026, first-visitor audit F7). The facts
+   are this report's, one per condition, and a check this reader has not
+   opened carries no value here at all: {"locked": true} and nothing
+   else, so viewing source tells them nothing the page would not.
+
+   Signed in, the server has already rendered the panel from the
+   account's conditions and this only keeps a copy on the device. With no
+   account the conditions live on the device alone and this builds the
+   same panel from them. Neither path sends anything anywhere: the only
+   request it makes is the save, to this site's own endpoint, and only
+   for an account. #}
+<script type="application/json" id="must-have-data">{{ {
+    "facts": must_have_facts,
+    "conditions": must_have_conditions_all,
+    "set": must_have_conditions,
+    "max": must_have_max,
+    "locked_label": must_have_locked_label,
+    "signed_in": true if current_user else false,
+} | tojson }}</script>
+<script>
+(function () {
+    var block = document.getElementById('must-haves');
+    var holder = document.getElementById('must-have-data');
+    if (!block || !holder) return;
+    var data;
+    try { data = JSON.parse(holder.textContent || '{}'); } catch (e) { return; }
+    var defs = data.conditions || [];
+    var facts = data.facts || {};
+    var max = data.max || 6;
+    var signedIn = !!data.signed_in;
+    var STORE = 'uki-must-haves';
+    var form = document.getElementById('must-have-form');
+    var editor = document.getElementById('must-haves-set');
+    var panel = document.getElementById('must-have-panel');
+    var rows = document.getElementById('must-have-rows');
+    var countEl = document.getElementById('must-have-count');
+    var statusEl = document.getElementById('must-have-status');
+
+    /* The device's copy. Blocked storage is a normal state, not an
+       error: every call is wrapped and the page renders either way. */
+    function readDevice() {
+        try {
+            var kept = JSON.parse(localStorage.getItem(STORE) || '{}');
+            return (kept && typeof kept === 'object' && !Array.isArray(kept)) ? kept : {};
+        } catch (e) { return {}; }
+    }
+    function writeDevice(conditions) {
+        try { localStorage.setItem(STORE, JSON.stringify(conditions)); } catch (e) {}
+    }
+
+    function defFor(key) {
+        for (var i = 0; i < defs.length; i++) { if (defs[i].key === key) return defs[i]; }
+        return null;
+    }
+    function indexIn(scale, value) {
+        var text = String(value === null || value === undefined ? '' : value).trim().toLowerCase();
+        for (var i = 0; i < scale.length; i++) {
+            if (String(scale[i]).toLowerCase() === text) return i;
+        }
+        return null;
+    }
+    function optionLabel(def, value) {
+        if (def.free_text) return value;
+        for (var i = 0; i < def.options.length; i++) {
+            if (def.options[i].value === value) return def.options[i].label;
+        }
+        return value;
+    }
+    /* The same four tests must_haves._met makes, in the same order. A
+       fact that is not known is never turned into a miss. */
+    function met(def, threshold, fact) {
+        if (!fact || !fact.known) return null;
+        var value = fact.value;
+        if (def.test === 'worse') {
+            var wanted = indexIn(def.scale, threshold);
+            return (wanted === null || value === null) ? null : value <= wanted;
+        }
+        if (def.test === 'at_most') {
+            var most = parseFloat(threshold);
+            return (isNaN(most) || value === null) ? null : value <= most;
+        }
+        if (def.test === 'at_least') {
+            var least = parseFloat(threshold);
+            return (isNaN(least) || value === null) ? null : value >= least;
+        }
+        if (def.test === 'is') {
+            return String(value === null || value === undefined ? '' : value).trim().toLowerCase()
+                === String(threshold).trim().toLowerCase();
+        }
+        if (def.test === 'school') {
+            var schools = (value && typeof value === 'object') ? value : {};
+            var want = String(threshold).trim().toLowerCase();
+            for (var name in schools) {
+                if (Object.prototype.hasOwnProperty.call(schools, name)
+                        && name.trim().toLowerCase() === want) {
+                    return schools[name].level === 'likely';
+                }
+            }
+            return null;
+        }
+        return null;
+    }
+    function summaryLine(metCount, total, unknown) {
+        if (!total) return '';
+        return metCount + ' of ' + total + ' met' + (unknown ? ', ' + unknown + ' not yet known' : '');
+    }
+
+    function fromStored(conditions) {
+        var made = [];
+        defs.forEach(function (def) {
+            if (made.length >= max) return;
+            if (!Object.prototype.hasOwnProperty.call(conditions, def.key)) return;
+            var threshold = String(conditions[def.key] || '').trim();
+            if (!threshold) return;
+            var fact = facts[def.key] || { locked: def.locked, known: false };
+            var row = {
+                prompt: def.prompt, threshold: optionLabel(def, threshold), modal: def.modal,
+                locked: !!fact.locked, met: null, text: '', why: ''
+            };
+            if (fact.locked) {
+                row.why = data.locked_label || '';
+            } else {
+                row.met = met(def, threshold, fact);
+                row.text = fact.text || '';
+                if (row.met === null) row.why = fact.gap || 'Not answered on this report';
+            }
+            made.push(row);
+        });
+        return made;
+    }
+
+    function render(conditions) {
+        var made = fromStored(conditions);
+        while (rows.firstChild) rows.removeChild(rows.firstChild);
+        var metCount = 0, unknown = 0;
+        made.forEach(function (row) {
+            if (row.met === true) metCount++;
+            if (row.met === null) unknown++;
+            var li = document.createElement('li');
+            li.className = 'musthave-row';
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'musthave-open';
+            button.setAttribute('data-modal-target', row.modal);
+            var mark = document.createElement('span');
+            mark.className = 'musthave-mark musthave-' + (row.met === null ? 'wait' : (row.met ? 'yes' : 'no'));
+            mark.textContent = row.met === null ? 'Not yet known' : (row.met ? 'Met' : 'Not met');
+            var what = document.createElement('span');
+            what.className = 'musthave-what';
+            what.textContent = row.prompt + ' ' + row.threshold;
+            var found = document.createElement('span');
+            found.className = 'musthave-found';
+            found.textContent = row.text || row.why;
+            button.appendChild(mark);
+            button.appendChild(what);
+            button.appendChild(found);
+            button.addEventListener('click', function () {
+                if (row.locked) {
+                    var to = block.getAttribute('data-lock-redirect');
+                    if (to) { window.location.href = to; }
+                    return;
+                }
+                var dialog = document.getElementById(row.modal);
+                if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+            });
+            li.appendChild(button);
+            rows.appendChild(li);
+        });
+        countEl.textContent = summaryLine(metCount, made.length, unknown);
+        panel.hidden = made.length === 0;
+        var summary = editor.querySelector('summary');
+        if (summary) summary.textContent = made.length ? 'Change your must-haves' : 'Set your must-haves';
+    }
+
+    function fillForm(conditions) {
+        if (!form) return;
+        defs.forEach(function (def) {
+            var field = form.elements[def.key];
+            if (!field) return;
+            field.value = Object.prototype.hasOwnProperty.call(conditions, def.key)
+                ? String(conditions[def.key] || '') : '';
+        });
+    }
+    function fromForm() {
+        var chosen = {};
+        defs.forEach(function (def) {
+            var field = form.elements[def.key];
+            if (!field) return;
+            var value = String(field.value || '').trim();
+            if (value) chosen[def.key] = value;
+        });
+        return chosen;
+    }
+
+    /* Signed in, the account's list is the list, as the viewing
+       checklist's ticks are: the server has already rendered it. The
+       device's copy is only what carries the list to a report opened
+       signed out. */
+    var stored = readDevice();
+    var fromAccount = (data.set && typeof data.set === 'object') ? data.set : {};
+    var conditions = (signedIn && Object.keys(fromAccount).length) ? fromAccount : stored;
+    if (signedIn && Object.keys(fromAccount).length) writeDevice(fromAccount);
+    fillForm(conditions);
+    render(conditions);
+
+    if (!form) return;
+    form.addEventListener('submit', function (event) {
+        var chosen = fromForm();
+        if (Object.keys(chosen).length > max) {
+            event.preventDefault();
+            statusEl.textContent = 'That is more than ' + max + '. Set one back to no preference first.';
+            return;
+        }
+        event.preventDefault();
+        writeDevice(chosen);
+        render(chosen);
+        if (!signedIn) {
+            statusEl.textContent = 'Kept on this device.';
+            editor.open = false;
+            return;
+        }
+        statusEl.textContent = 'Saving';
+        fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams(new FormData(form)).toString()
+        }).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+          .then(function () { statusEl.textContent = 'Saved to your account.'; editor.open = false; })
+          .catch(function () { statusEl.textContent = 'Kept on this device. Your account could not be reached.'; });
+    });
 })();
 </script>
 {% endif %}

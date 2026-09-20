@@ -107,9 +107,19 @@
            sentence every page uses (OFFER_SENTENCE in main.py). #}
 
         <form class="lx-hero-form search-form" action="/property" method="get">
-            <div class="search-form-field lx-field">
-                <label for="postcode">UK postcode</label>
-                <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA" autocomplete="off" data-typing-demo required>
+            {# One box, four ways in (18 Sep 2026, first-visitor audit F8).
+               It took a postcode and nothing else, so a reader who knew
+               the area but not the postcode had nothing to type. The
+               form still posts a postcode to /property, which still runs
+               the report on a full one and still redirects a bare
+               district to its guide, so with JavaScript off the box
+               behaves exactly as it did. The suggestions below are the
+               addition: they are links to pages the site already has. #}
+            <div class="search-form-field lx-field hero-suggest-wrap">
+                <label for="postcode">Postcode, district, council or school</label>
+                <input type="text" id="postcode" name="postcode" placeholder="e.g. SW1A 1AA, LS6, Leeds" autocomplete="off" data-typing-demo data-grouped-suggest required
+                       role="combobox" aria-expanded="false" aria-autocomplete="list" aria-controls="hero-suggest">
+                <ul class="hero-suggest" id="hero-suggest" role="listbox" aria-label="Suggestions" hidden></ul>
                 {# A guide links here as /#postcode=M14: one crawlable URL, the
                    district already in the box, the cursor waiting for the rest. #}
                 <script>
@@ -129,6 +139,120 @@
             </div>
             <button type="submit">Search</button>
         </form>
+
+        {# The suggestions behind the box (18 Sep 2026, first-visitor audit
+           F8). Every row is a page this site already serves, fetched from
+           this site's own /api/search-suggest and built as text, never as
+           markup. Nothing is stored, and with the script blocked the form
+           above is unchanged. The arrow keys walk the list, Enter opens
+           the highlighted row, Escape closes it. #}
+        <script>
+        (function () {
+            var input = document.getElementById('postcode');
+            var list = document.getElementById('hero-suggest');
+            if (!input || !list) return;
+            var options = [];
+            var active = -1;
+            var asked = 0;
+            var timer = null;
+
+            function close() {
+                list.hidden = true;
+                list.textContent = '';
+                options = [];
+                active = -1;
+                input.setAttribute('aria-expanded', 'false');
+                input.removeAttribute('aria-activedescendant');
+            }
+
+            function highlight(next) {
+                if (!options.length) return;
+                if (active >= 0) options[active].setAttribute('aria-selected', 'false');
+                active = (next + options.length) % options.length;
+                options[active].setAttribute('aria-selected', 'true');
+                input.setAttribute('aria-activedescendant', options[active].id);
+                if (options[active].scrollIntoView) options[active].scrollIntoView({ block: 'nearest' });
+            }
+
+            function draw(groups) {
+                list.textContent = '';
+                options = [];
+                active = -1;
+                groups.forEach(function (group) {
+                    var head = document.createElement('li');
+                    head.className = 'hero-suggest-group';
+                    head.setAttribute('role', 'presentation');
+                    head.textContent = group.label;
+                    list.appendChild(head);
+                    (group.items || []).forEach(function (item) {
+                        var row = document.createElement('li');
+                        row.className = 'hero-suggest-item';
+                        row.setAttribute('role', 'option');
+                        row.setAttribute('aria-selected', 'false');
+                        row.id = 'hero-suggest-' + options.length;
+                        row.dataset.url = item.url;
+                        /* 21 Sep 2026: a real link inside the option, as the
+                           school typeahead does, so a middle click, a new tab
+                           and a screen reader's browse mode all work. */
+                        var link = document.createElement('a');
+                        link.href = item.url;
+                        link.className = 'hero-suggest-link';
+                        link.tabIndex = -1;
+                        var name = document.createElement('span');
+                        name.textContent = item.label;
+                        link.appendChild(name);
+                        if (item.note) {
+                            var note = document.createElement('span');
+                            note.className = 'hero-suggest-note';
+                            note.textContent = item.note;
+                            link.appendChild(note);
+                        }
+                        row.appendChild(link);
+                        row.addEventListener('mousedown', function (event) {
+                            if (event.button !== 0) return;
+                            event.preventDefault();
+                            window.location.href = row.dataset.url;
+                        });
+                        list.appendChild(row);
+                        options.push(row);
+                    });
+                });
+                list.hidden = options.length === 0;
+                input.setAttribute('aria-expanded', options.length ? 'true' : 'false');
+            }
+
+            function ask() {
+                var q = input.value.trim();
+                if (q.length < 2) { close(); return; }
+                var mine = ++asked;
+                fetch('/api/search-suggest?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : null; })
+                    .then(function (data) {
+                        /* A slower answer to an earlier keystroke must
+                           never overwrite a newer one. */
+                        if (!data || mine !== asked || input.value.trim() !== q) return;
+                        draw(data.groups || []);
+                    })
+                    .catch(function () { close(); });
+            }
+
+            input.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(ask, 180);
+            });
+            input.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') { close(); return; }
+                if (list.hidden || !options.length) return;
+                if (event.key === 'ArrowDown') { event.preventDefault(); highlight(active + 1); }
+                else if (event.key === 'ArrowUp') { event.preventDefault(); highlight(active - 1); }
+                else if (event.key === 'Enter' && active >= 0) {
+                    event.preventDefault();
+                    window.location.href = options[active].dataset.url;
+                }
+            });
+            input.addEventListener('blur', function () { window.setTimeout(close, 120); });
+        })();
+        </script>
 
         {# The three things the site does, as three doors. Live counts,
            never typed in: the same numbers the data pages carry. #}
