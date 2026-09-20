@@ -47,6 +47,9 @@
                     {{ (col.house_number ~ ", " ~ col.postcode) if col.house_number else col.postcode }}
                 </a>
                 {% if col.data.admin_district %}<div class="compare-note">{{ col.data.admin_district }}</div>{% endif %}
+                {% if col.asking_price %}<div class="compare-note compare-asking">Asking price you saved: <strong>{{ col.asking_price.price | gbp }}</strong></div>{% endif %}
+                {# The viewing checklist's count (18 Sep 2026, first-visitor audit F2). #}
+                {% if col.viewing %}<div class="compare-note">Viewing checklist: {{ col.viewing.checked }} of {{ col.viewing.total }} checked, {{ col.viewing.follow_up }} to follow up</div>{% endif %}
                 {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
                 {% endif %}
             </th>

@@ -972,6 +972,42 @@ def nearby_admission_pages(urn: int, limit: int = 6, radius_miles: float = 3.0) 
     return out[:limit]
 
 
+def published_miles(value: float) -> float:
+    """A council's published distance as every reading is measured
+    against it: to three decimals, as the school page shows it. Shared
+    since 18 Sep 2026 (first-visitor audit F3) by the page, the homes
+    listed under its checker and the shortlist's grid, so a home read
+    against the same school can never come out Likely on one and
+    Borderline on another."""
+    return round(value, 3)
+
+
+def admission_point(urn: int) -> dict | None:
+    """What a reading of one school needs and nothing more, in one
+    statement: where the school stands on the DfE register and the
+    distance its council published, or None when it has no page (no
+    published distance, or no location to measure from). Added 18 Sep
+    2026 for the school page's "Homes you looked at" lookups, which ask
+    for readings of one school and would otherwise pay admission_profile's
+    three round trips for fields they never read."""
+    with get_session() as session:
+        row = session.execute(
+            select(School.urn, School.name, School.latitude, School.longitude,
+                   SchoolAdmissionRadius.last_distance_miles, SchoolAdmissionRadius.academic_year,
+                   SchoolAdmissionRadius.source_authority)
+            .join(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+            .where(School.urn == urn)
+        ).first()
+    if row is None or row.latitude is None or row.longitude is None or row.last_distance_miles is None:
+        return None
+    return {
+        "urn": row.urn, "name": row.name, "slug": _slugify(row.name),
+        "latitude": row.latitude, "longitude": row.longitude,
+        "miles": published_miles(row.last_distance_miles),
+        "academic_year": row.academic_year, "authority": row.source_authority,
+    }
+
+
 def admission_profile(urn: int) -> dict | None:
     """Everything one school's admission page renders."""
     with get_session() as session:
@@ -1029,7 +1065,7 @@ def admission_profile(urn: int) -> dict | None:
             "ofsted_card_date": detail.ofsted_card_date if detail else None,
             # Three decimals at most: a council that measured to the metre
             # published 2.948705680589559, and that is what the title said.
-            "miles": round(radius.last_distance_miles, 3),
+            "miles": published_miles(radius.last_distance_miles),
             "academic_year": radius.academic_year,
             "authority": radius.source_authority,
             "fsm_eligible_pct": chars.fsm_eligible_pct if chars else None,

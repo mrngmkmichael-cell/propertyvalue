@@ -19,6 +19,11 @@ def _slug(name: str) -> str:
     return _slugify(name)
 
 
+def _published_miles(value: float) -> float:
+    from app.services.schools_db import published_miles
+    return published_miles(value)
+
+
 def _item_dict(session, i: SchoolShortlistItem) -> dict:
     school = session.get(School, i.urn)
     radius = session.get(SchoolAdmissionRadius, i.urn)
@@ -36,6 +41,16 @@ def _item_dict(session, i: SchoolShortlistItem) -> dict:
         "miles": round(radius.last_distance_miles, 2) if radius else None,
         "academic_year": radius.academic_year if radius else "",
         "has_page": radius is not None,
+        # For the shortlist's grid of saved homes against these schools
+        # (18 Sep 2026, first-visitor audit F3): where the school stands,
+        # from the row already read, and the published distance at the
+        # school page's own precision, so a home reads the same in the
+        # grid as on the school's page. "miles" above stays at two
+        # decimals: the alert email compares it with the snapshots it
+        # recorded, and a third decimal would read as a republished figure.
+        "latitude": school.latitude if school else None,
+        "longitude": school.longitude if school else None,
+        "radius_miles": _published_miles(radius.last_distance_miles) if radius else None,
     }
 
 

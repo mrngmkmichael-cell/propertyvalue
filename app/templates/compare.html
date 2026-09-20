@@ -85,6 +85,39 @@
             </tr>
         </thead>
         <tbody>
+            {# The buyer's own asking price, kept with the home from its
+               Comparables page (18 Sep 2026, first-visitor audit F1). Only
+               on the saved-homes comparison, and a link where none is kept. #}
+            {% if asking_row %}
+            <tr>
+                <td><strong>Asking price you saved</strong></td>
+                {% for col in columns %}
+                <td>
+                    {%- if col.asking_price %}{{ col.asking_price.price | gbp }}
+                    <div class="compare-note"><a href="/property/comparables?postcode={{ col.postcode | urlencode }}{% if col.house_number %}&house_number={{ col.house_number | urlencode }}{% endif %}&price={{ col.asking_price.price }}">Where it sits among nearby sales</a></div>
+                    {%- elif not col.summary.not_found %}None saved. <a href="/property/comparables?postcode={{ col.postcode | urlencode }}{% if col.house_number %}&house_number={{ col.house_number | urlencode }}{% endif %}">Add it on its sold prices page</a>
+                    {%- else %}None saved{% endif -%}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endif %}
+            {# What the buyer ticked at each viewing (18 Sep 2026,
+               first-visitor audit F2), from the viewing checklist, kept
+               with the account. Only on the saved-homes comparison. #}
+            {% if viewing_row %}
+            <tr>
+                <td><strong>Viewing checklist</strong></td>
+                {% for col in columns %}
+                {% set list_href = "/property/checklist?postcode=" ~ (col.postcode | urlencode) ~ (("&house_number=" ~ (col.house_number | urlencode)) if col.house_number else "") %}
+                <td>
+                    {%- if col.viewing %}{{ col.viewing.checked }} of {{ col.viewing.total }} checked, {{ col.viewing.follow_up }} to follow up
+                    <div class="compare-note"><a href="{{ list_href }}">Open the checklist</a></div>
+                    {%- elif not col.summary.not_found %}Not started. <a href="{{ list_href }}">Open the checklist</a>
+                    {%- else %}Not started{% endif -%}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endif %}
             {% if versus %}
             <tr>
                 <td><strong>Median home sale nearby</strong></td>

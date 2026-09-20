@@ -56,36 +56,169 @@
                 <div id="comparables-map" class="map-container"></div>
             </div>
 
-            {% if comparables_median %}
-            <p class="section-sub"><strong>Median: {{ comparables_median | gbp }}</strong></p>
+            {# Is the asking price in line? (18 Sep 2026, first-visitor audit
+               F1.) The figures here used to describe every sale on the
+               page, whatever the year buttons showed: flats beside
+               detached houses, and Land Registry's commercial "Other".
+               Type chips, a tenure toggle and the year buttons now choose
+               one set of rows for the table, the pins and every figure, and
+               a typed asking price is placed among them with its stamp
+               duty. The server renders the figures for the choices in the
+               address, so a reader without JavaScript submits this form and
+               reads the same sentences; the script below redoes the sums as
+               the choices change (app/services/comparables_view.py is the
+               server's half). It ranks recorded sales and never prices a
+               home. #}
+            {% set v = comp_view %}
+            <h2 class="comp-ask-heading" id="asking">Is the asking price in line?</h2>
+            <form class="comp-filters" id="comp-filters" method="get" action="/property/comparables#asking">
+                <input type="hidden" name="postcode" value="{{ location.postcode }}">
+                {% if house_number %}<input type="hidden" name="house_number" value="{{ house_number }}">{% endif %}
+                {# Sent even with every chip unticked, so no type reads as
+                   no type rather than as the starting choice. #}
+                <input type="hidden" name="type" value="">
+                <input type="hidden" name="years" value="{{ v.years }}" id="comp-years-now">
+                <div class="comp-ask">
+                    <label for="comp-price" class="comp-ask-label">Asking price</label>
+                    <div class="comp-ask-row">
+                        <span class="comp-ask-pound" aria-hidden="true">&pound;</span>
+                        <input type="text" id="comp-price" name="price" inputmode="numeric" autocomplete="off"
+                               maxlength="{{ comp_price_rules.chars }}" pattern="[£0-9,. ]*" placeholder="850,000"
+                               value="{{ v.price | thousands if v.price else '' }}" aria-describedby="comp-ask-hint">
+                        {# The form's first submit button, so Enter in the
+                           price box applies every choice without JavaScript.
+                           The script hides it: there each change applies as
+                           it is made. #}
+                        <button type="submit" class="comp-apply" id="comp-apply">Update</button>
+                    </div>
+                    <p class="comp-ask-hint" id="comp-ask-hint">Ranked among the sales HM Land Registry recorded here, chosen below.</p>
+                </div>
+                <fieldset class="comp-choice">
+                    <legend class="comp-choice-label">Type</legend>
+                    <div class="comp-chip-row">
+                        {% for t, label in comp_type_labels.items() %}
+                        <label class="comp-chip"><input type="checkbox" name="type" value="{{ t }}"{% if t in v.types %} checked{% endif %}><span>{{ label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                {% if comp_known_type or "other" not in comp_defaults %}
+                <p class="comp-note">
+                    {%- if comp_known_type %}{{ comp_type_labels[comp_known_type] }} is ticked to match this home's own recorded sale. {% endif -%}
+                    {%- if "other" not in comp_defaults %}Land Registry's Other covers commercial and unusual sales, so it starts unticked.{% endif -%}
+                </p>
+                {% endif %}
+                <fieldset class="comp-choice">
+                    <legend class="comp-choice-label">Tenure</legend>
+                    <div class="comp-chip-row">
+                        {% for value, label in (("any", "Any"), ("freehold", "Freehold"), ("leasehold", "Leasehold")) %}
+                        <label class="comp-chip"><input type="radio" name="tenure" value="{{ value }}"{% if v.tenure == value %} checked{% endif %}><span>{{ label }}</span></label>
+                        {% endfor %}
+                    </div>
+                </fieldset>
+                {# Sales since: the same rows and pins, narrowed by year
+                   (16 Sep 2026). Every sale stays on the page; this only
+                   hides the older ones while a range is chosen. Submit
+                   buttons since 18 Sep 2026, so the form works without
+                   JavaScript, and a button that would keep every sale of
+                   the chosen types is hidden. #}
+                <span class="comp-choice-label" aria-hidden="true">Sales since</span>
+                <div class="comp-range" role="group" aria-label="Sales since">
+                    {% for y, label in ((0, "All years"), (10, "Last 10 years"), (5, "Last 5 years"), (2, "Last 2 years")) %}
+                    <button type="submit" name="years" value="{{ y }}" data-years="{{ y }}" aria-pressed="{{ 'true' if v.years == y else 'false' }}"{% if y in v.hidden_years %} hidden{% endif %}>{{ label }}</button>
+                    {% endfor %}
+                    <span class="comp-range-count" id="comp-range-count" aria-live="polite">{% if v.shown_count == v.total %}All {{ v.total }} sales{% else %}{{ v.shown_count }} of {{ v.total }} sales{% endif %}</span>
+                </div>
+            </form>
 
-            {% if comparables_reference_price %}
-            <div class="price-position-bar">
-                <div class="price-position-marker" style="left: {{ comparables_percentile }}%;"></div>
-            </div>
-            <p class="price-position-caption">
-                {{ comparables_reference_price | gbp }}
-                {% if house_number %}(for "{{ house_number }}"){% endif %}
-                sits above {{ comparables_percentile }}% of the {{ comparables_count }} nearby sold prices, from {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
-            </p>
-            {% else %}
-            <div class="price-position-bar"></div>
-            <p class="price-position-caption">
-                Range: {{ comparables_min | gbp }} to {{ comparables_max | gbp }}.
-                No matching sale for this exact address to place a marker.
-            </p>
-            {% endif %}
-            {% endif %}
+            <div class="comp-figures" id="comp-figures">
+                <p class="section-sub" id="comp-median-line"{% if not v.count %} hidden{% endif %}>
+                    <strong>Median: <span id="comp-median">{{ v.median | gbp if v.count else "" }}</span></strong><span id="comp-median-words">
+                    {%- if v.count == 1 %}, from the one nearby sold price{% else %}, the middle of the {{ v.count }} nearby sold prices{% endif %}{{ v.qualifier }}.</span>
+                </p>
+                <div class="price-position-bar" id="comp-bar" aria-hidden="true"{% if not v.count %} hidden{% endif %}>
+                    {% if comparables_reference_price %}<div class="price-position-marker" id="comp-ref-marker" style="left: {{ comparables_percentile or 0 }}%;"></div>{% endif %}
+                    <div class="price-position-marker comp-ask-marker" id="comp-ask-marker"{% if v.asking_pct is not none %} style="left: {{ v.asking_pct }}%;"{% else %} hidden{% endif %}></div>
+                </div>
+                {% if comparables_reference_price %}
+                <p class="price-position-caption" id="comp-ref-caption"{% if not v.count %} hidden{% endif %}>
+                    <span class="comp-ref-swatch" aria-hidden="true"></span>
+                    <span id="comp-ref-text" data-price="{{ comparables_reference_price }}"
+                          data-lead="{{ comparables_reference_price | gbp }}{% if house_number %} (for &quot;{{ house_number }}&quot;){% endif %} sits above">
+                    {{ comparables_reference_price | gbp }}
+                    {% if house_number %}(for "{{ house_number }}"){% endif %}
+                    sits above {{ comparables_percentile if v.count else 0 }}% of the {{ v.count }} nearby sold price{{ "s" if v.count != 1 }}{{ v.qualifier }}{% if v.count %}, from {{ v.low | gbp }} to {{ v.high | gbp }}{% endif %}.
+                    </span>
+                </p>
+                {% else %}
+                <p class="price-position-caption" id="comp-range-caption"{% if not v.count %} hidden{% endif %}>
+                    Range: <span id="comp-low">{{ v.low | gbp if v.count else "" }}</span> to <span id="comp-high">{{ v.high | gbp if v.count else "" }}</span>.
+                    No matching sale for this exact address to place a marker.
+                </p>
+                {% endif %}
+                <p class="notice" id="comp-empty"{% if v.count %} hidden{% endif %}>No recorded sale here matches these choices, so there is nothing to place a price among. Tick another type, or choose Any tenure or All years.</p>
 
-            {# Sales since: the same rows and pins, narrowed by year
-               (16 Sep 2026). Every sale stays on the page; this only
-               hides the older ones while a range is chosen. #}
-            <div class="comp-range" role="group" aria-label="Sales since">
-                <button type="button" data-years="0" aria-pressed="true">All years</button>
-                <button type="button" data-years="10" aria-pressed="false">Last 10 years</button>
-                <button type="button" data-years="5" aria-pressed="false">Last 5 years</button>
-                <button type="button" data-years="2" aria-pressed="false">Last 2 years</button>
-                <span class="comp-range-count" id="comp-range-count" aria-live="polite"></span>
+                {# The asking price, placed: a rank among the chosen sales,
+                   in one sentence, with the circle on the bar beside it. #}
+                <div id="comp-ask-live" aria-live="polite">
+                    <p class="comp-ask-result" id="comp-ask-result"{% if v.asking_below is none %} hidden{% endif %}>
+                        <span class="comp-ask-swatch" aria-hidden="true"></span>
+                        <span id="comp-ask-text">
+                            {%- if v.asking_below is not none and v.count == 1 %}{{ v.price | gbp }} is {{ "above" if v.asking_below else ("the same as" if v.asking_same else "below") }} the one nearby sold price{{ v.qualifier }}, {{ v.median | gbp }}.
+                            {%- elif v.asking_below is not none %}{{ v.price | gbp }} is {% if v.asking_below == v.count %}above all {{ v.count }}{% elif v.asking_below == 0 and not v.asking_same %}below all {{ v.count }}{% elif v.asking_below == 0 %}level with the lowest of the {{ v.count }}{% else %}above {{ v.asking_below }} of the {{ v.count }}{% endif %} nearby sold prices{{ v.qualifier }}; the middle of those {{ v.count }} is {{ v.median | gbp }}.
+                            {%- endif -%}
+                        </span>
+                    </p>
+                </div>
+
+                {# Stamp duty on that price from the site's own bands
+                   (main.SDLT_BANDS, the running-costs row's), which the
+                   script reads from comp_sdlt_rates rather than a copy. #}
+                {% set sd = comp_stamp_duty %}
+                <div class="comp-sdlt" id="comp-sdlt"{% if not sd %} hidden{% endif %}>
+                    {% if comp_sdlt_rates %}
+                    <p class="comp-sdlt-head">Stamp duty on <span id="comp-sdlt-price">{{ sd.price | gbp if sd else "" }}</span></p>
+                    <ul class="comp-sdlt-list">
+                        <li><span class="comp-sdlt-who">Moving home</span> <strong id="comp-sdlt-standard">{{ sd.standard | gbp if sd else "" }}</strong></li>
+                        <li><span class="comp-sdlt-who">First-time buyer</span> <strong id="comp-sdlt-first">{{ (sd.standard if sd.first_time is none else sd.first_time) | gbp if sd else "" }}</strong>
+                            <span class="comp-sdlt-note" id="comp-sdlt-first-note"{% if not sd or sd.first_time is not none %} hidden{% endif %}>no relief above {{ comp_sdlt_rates.first_time_ceiling | gbp }}</span></li>
+                        <li><span class="comp-sdlt-who">Additional home</span> <strong id="comp-sdlt-additional">{{ sd.additional | gbp if sd else "" }}</strong></li>
+                    </ul>
+                    <p class="comp-sdlt-source">HMRC rates from April 2025, England and Northern Ireland.</p>
+                    {% elif comp_country == "Wales" %}
+                    <p class="comp-sdlt-source">Wales sets its own tax on buying: Land Transaction Tax, Welsh Revenue Authority. <a href="/tools/stamp-duty-calculator">The stamp duty calculator</a> works it out on any price.</p>
+                    {% elif comp_country == "Scotland" %}
+                    <p class="comp-sdlt-source">Scotland sets its own tax on buying: Land and Buildings Transaction Tax, Revenue Scotland. <a href="/tools/stamp-duty-calculator">The stamp duty calculator</a> works it out on any price.</p>
+                    {% else %}
+                    <p class="comp-sdlt-source">Stamp Duty Land Tax covers England and Northern Ireland, so no figure is given for {{ comp_country }}.</p>
+                    {% endif %}
+                    <p class="comp-sdlt-source"><a id="comp-rc-link" href="/running-costs?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}{% if v.price %}&amp;price={{ v.price }}{% endif %}">Running costs for this home, with stamp duty on this price</a></p>
+                </div>
+
+                {# Kept with a saved home: shown on My properties and in the
+                   side-by-side comparison, the reason to come back with the
+                   next house in hand. #}
+                {% if current_user and comp_saved %}
+                {% set kept = comp_saved.price %}
+                <form class="comp-save" id="comp-save" method="post" action="/watchlist/asking-price">
+                    <input type="hidden" name="item_id" value="{{ comp_saved.item_id }}">
+                    <input type="hidden" name="price" id="comp-save-price" value="{{ v.price or '' }}">
+                    <input type="hidden" name="next" id="comp-save-next" value="{{ comp_url }}#asking">
+                    <button type="submit" class="comp-save-btn" id="comp-save-btn"{% if not v.price or v.price == kept %} hidden{% endif %}>Save {{ v.price | gbp if v.price else "the price" }} with this home</button>
+                    <span class="comp-save-status" id="comp-save-status">
+                        {%- if kept and (not v.price or v.price == kept) %}{{ kept | gbp }} is saved with this home, on My properties and in the side-by-side comparison.
+                        {%- elif kept %}{{ kept | gbp }} is saved with this home now.
+                        {%- elif v.price %}It shows on My properties and in the side-by-side comparison.
+                        {%- else %}Type the asking price above to save it with this home.{% endif -%}
+                    </span>
+                    {% if kept %}<button type="submit" class="comp-save-clear" name="clear" value="1">Remove the saved price</button>{% endif %}
+                </form>
+                {% elif current_user %}
+                <p class="comp-save-note">To keep an asking price with this home, save the home to My properties from <a href="/property?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}">its report</a>.</p>
+                {% else %}
+                <p class="comp-save-note"><a id="comp-login-link" href="/login?next={{ (comp_url ~ '#asking') | urlencode }}">Log in</a> to keep an asking price with a home in My properties.</p>
+                {% endif %}
+
+                {% with share_url=comp_share_url, share_text=comp_share_text %}{% include "_share_row.html" %}{% endwith %}
             </div>
             {# data-stack (18 Sep 2026): below 600px each sale stacks as
                "£823,500 · 2025-12-08 · 0 yd", then its address and
@@ -105,13 +238,18 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {# What the asking-price tool filters on (18 Sep 2026,
+                       F1): the chip each sale belongs to, its tenure and
+                       price, on their own cells beside data-date. A row
+                       outside the chosen set starts hidden, so the table
+                       agrees with the figures without JavaScript. #}
                     {% for tx in comparables %}
-                    <tr data-date="{{ tx.date }}">
+                    <tr data-date="{{ tx.date }}"{% if not v.shown[loop.index0] %} hidden{% endif %}>
                         <td data-st="sub">{{ tx.address }}{% if tx.postcode %}<span class="st-only">, {{ tx.postcode }}</span>{% endif %}</td>
                         <td data-st="skip">{{ tx.postcode }}</td>
-                        <td class="capitalize" data-st="half" data-label="Type">{{ tx.property_type or "Not recorded" }}</td>
-                        <td data-st="half" data-label="Tenure">{{ tx.tenure or "Not recorded" }}</td>
-                        <td class="num" data-st="lead">{{ tx.amount | gbp }}</td>
+                        <td class="capitalize" data-st="half" data-label="Type" data-type="{{ v.row_types[loop.index0] }}">{{ tx.property_type or "Not recorded" }}</td>
+                        <td data-st="half" data-label="Tenure" data-tenure="{{ v.row_tenures[loop.index0] }}">{{ tx.tenure or "Not recorded" }}</td>
+                        <td class="num" data-st="lead" data-price="{{ tx.amount or '' }}">{{ tx.amount | gbp }}</td>
                         <td data-st="answer">{{ tx.date | day_label }}</td>
                         <td class="num" data-st="answer">{{ tx.distance_m | distance if tx.distance_m is not none else "Not recorded" }}</td>
                     </tr>
@@ -198,37 +336,305 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         compPaginate();
     });
 
-    function compApplyRange(years) {
-        var cutoff = null;
-        if (years > 0) {
-            var d = new Date();
-            d.setFullYear(d.getFullYear() - years);
-            cutoff = d.toISOString().slice(0, 10);
+    /* Is the asking price in line? (18 Sep 2026, first-visitor audit F1).
+       The type chips and the tenure toggle choose rows with the year
+       buttons, and the median, the range, the sentences, the bar and the
+       pins are worked out again from the rows in the page on every change.
+       Each sum is app/services/comparables_view.py's, line for line, so
+       this and the first render never disagree: the median is the upper
+       middle sale, a percentage rounds halves up, and stamp duty comes
+       from the site's own bands (main.SDLT_BANDS, passed in below), rounded
+       as Python's round() rounds them there. Nothing is estimated. */
+    var COMP_PLACE = {{ {
+        "postcode": location.postcode, "house": house_number, "defaults": comp_defaults,
+        "years": comp_view.years, "saved": (comp_saved.price if comp_saved else none),
+        "base": comp_base, "shareText": comp_share_text,
+        "price": comp_price_rules,
+    } | tojson }};
+    var COMP_SDLT = {{ comp_sdlt_rates | tojson }};
+    var COMP_HOUSES = ['detached', 'semi-detached', 'terraced'];
+    var compForm = document.getElementById('comp-filters');
+    var compRows = [];
+    document.querySelectorAll('#comparables-table tbody tr[data-date]').forEach(function (tr) {
+        function cell(name) {
+            var c = tr.querySelector('[data-' + name + ']');
+            return c ? c.getAttribute('data-' + name) : '';
         }
-        var rows = document.querySelectorAll('#comparables-table tbody tr[data-date]');
-        var shown = 0;
-        rows.forEach(function (tr) {
-            var ok = !cutoff || tr.getAttribute('data-date') >= cutoff;
-            tr.hidden = !ok;
-            if (ok) shown++;
+        var p = parseFloat(cell('price'));
+        compRows.push({ tr: tr, type: cell('type') || 'other', tenure: cell('tenure'),
+                        price: isFinite(p) ? p : null, date: tr.getAttribute('data-date') || '' });
+    });
+    var compPresent = [];
+    compRows.forEach(function (r) { if (compPresent.indexOf(r.type) < 0) compPresent.push(r.type); });
+    var compVisible = compRows.map(function () { return true; });
+
+    function compEl(id) { return document.getElementById(id); }
+    /* Only write when the words change: two of these live in aria-live
+       regions, and a rewrite is an announcement (20 Sep 2026). */
+    function compText(id, text) { var e = compEl(id); if (e && e.textContent !== text) e.textContent = text; }
+    function compShow(id, on) { var e = compEl(id); if (e) e.hidden = !on; }
+    function compHalfUp(n) { return Math.floor(n + 0.5); }
+    function compGbp(n) { return '£' + compHalfUp(n).toLocaleString('en-GB'); }
+    function compAnd(words) {
+        if (words.length < 2) return words[0] || '';
+        return words.slice(0, -1).join(', ') + ' and ' + words[words.length - 1];
+    }
+    function compParsePrice(raw) {
+        var text = String(raw || '').trim();
+        if (!text || text.length > COMP_PLACE.price.chars) return null;
+        var m = /^([0-9]+)(?:\.[0-9]{1,2})?$/.exec(text.replace(/[£,\s]/g, ''));
+        if (!m) return null;
+        var n = parseInt(m[1], 10);
+        return n >= COMP_PLACE.price.min && n <= COMP_PLACE.price.max ? n : null;
+    }
+    function compCutoff(years) {
+        if (!years) return null;
+        var d = new Date();
+        d.setFullYear(d.getFullYear() - years);
+        return d.toISOString().slice(0, 10);
+    }
+    function compState() {
+        var s = { types: [], tenure: 'any', price: null };
+        if (compForm) {
+            compForm.querySelectorAll('input[name="type"]:checked').forEach(function (c) { s.types.push(c.value); });
+            var t = compForm.querySelector('input[name="tenure"]:checked');
+            if (t) s.tenure = t.value;
+        }
+        var input = compEl('comp-price');
+        if (input) s.price = compParsePrice(input.value);
+        return s;
+    }
+    /* " for semi-detached houses in the last 2 years": which sales, named
+       only where the choice leaves out a type the page holds. */
+    function compQualifier(s, years) {
+        var phrase = '';
+        if (compPresent.some(function (t) { return s.types.indexOf(t) < 0; })) {
+            var houses = COMP_HOUSES.filter(function (t) { return s.types.indexOf(t) >= 0; });
+            var nouns = [];
+            if (houses.length === COMP_HOUSES.length) nouns.push('houses');
+            else if (houses.length) nouns.push(compAnd(houses) + ' houses');
+            if (s.types.indexOf('flat') >= 0) nouns.push('flats');
+            if (s.types.indexOf('other') >= 0) nouns.push('Other sales');
+            phrase = compAnd(nouns);
+        }
+        var out = '';
+        if (s.tenure !== 'any') out = phrase ? ' for ' + s.tenure + ' ' + phrase : ' sold ' + s.tenure;
+        else if (phrase) out = ' for ' + phrase;
+        if (years) out += ' in the last ' + years + ' years';
+        return out;
+    }
+    function compBandsTax(price, bands) {
+        var tax = 0, lower = 0;
+        bands.forEach(function (b) {
+            var upper = b[0] === null ? Infinity : b[0];
+            if (price > lower) tax += (Math.min(price, upper) - lower) * b[1];
+            lower = upper;
         });
-        compMarkers.forEach(function (m) { m.show(!cutoff || (m.date || '') >= cutoff); });
+        return tax;
+    }
+    function compPyRound(x) {
+        var r = Math.round(x);
+        return (r - x === 0.5 && r % 2 !== 0) ? r - 1 : r;
+    }
+    function compStampDuty(price) {
+        if (!compEl('comp-sdlt')) return;
+        compShow('comp-sdlt', !!price);
+        if (!price || !COMP_SDLT) return;
+        var standard = compPyRound(compBandsTax(price, COMP_SDLT.bands));
+        var relief = price <= COMP_SDLT.first_time_ceiling;
+        compText('comp-sdlt-price', compGbp(price));
+        compText('comp-sdlt-standard', compGbp(standard));
+        compText('comp-sdlt-first', compGbp(relief ? compPyRound(compBandsTax(price, COMP_SDLT.first_time)) : standard));
+        compShow('comp-sdlt-first-note', !relief);
+        compText('comp-sdlt-additional', compGbp(compPyRound(compBandsTax(price, COMP_SDLT.bands) + price * COMP_SDLT.surcharge)));
+    }
+    function compSaved(price) {
+        if (!compEl('comp-save')) return;
+        var kept = COMP_PLACE.saved;
+        compEl('comp-save-price').value = price ? String(price) : '';
+        var btn = compEl('comp-save-btn');
+        btn.hidden = !price || price === kept;
+        if (price) btn.textContent = 'Save ' + compGbp(price) + ' with this home';
+        compText('comp-save-status',
+            kept && (!price || price === kept) ? compGbp(kept) + ' is saved with this home, on My properties and in the side-by-side comparison.'
+            : kept ? compGbp(kept) + ' is saved with this home now.'
+            : price ? 'It shows on My properties and in the side-by-side comparison.'
+            : 'Type the asking price above to save it with this home.');
+    }
+    function compFigures(s, years, prices) {
+        var n = prices.length;
+        var qual = compQualifier(s, years);
+        var median = n ? prices[Math.floor(n / 2)] : null;
+        compShow('comp-median-line', n > 0);
+        compShow('comp-bar', n > 0);
+        compShow('comp-empty', n === 0);
+        if (n) {
+            compText('comp-median', compGbp(median));
+            compText('comp-median-words', (n === 1 ? ', from the one nearby sold price' : ', the middle of the ' + n + ' nearby sold prices') + qual + '.');
+        }
+        var ref = compEl('comp-ref-text');
+        compShow('comp-ref-caption', n > 0);
+        if (ref && n) {
+            var refPrice = parseFloat(ref.getAttribute('data-price'));
+            var pct = compHalfUp(prices.filter(function (p) { return p < refPrice; }).length * 100 / n);
+            ref.textContent = ref.getAttribute('data-lead') + ' ' + pct + '% of the ' + n + ' nearby sold price' + (n === 1 ? '' : 's') + qual
+                + ', from ' + compGbp(prices[0]) + ' to ' + compGbp(prices[n - 1]) + '.';
+            var mark = compEl('comp-ref-marker');
+            if (mark) mark.style.left = pct + '%';
+        }
+        compShow('comp-range-caption', n > 0);
+        if (n) {
+            compText('comp-low', compGbp(prices[0]));
+            compText('comp-high', compGbp(prices[n - 1]));
+        }
+        var price = s.price, placed = !!(price && n);
+        compShow('comp-ask-result', placed);
+        compShow('comp-ask-marker', placed);
+        if (placed) {
+            var below = prices.filter(function (p) { return p < price; }).length;
+            var same = prices.filter(function (p) { return p === price; }).length;
+            var where = below === n ? 'above all ' + n
+                : below === 0 ? (same ? 'level with the lowest of the ' + n : 'below all ' + n)
+                : 'above ' + below + ' of the ' + n;
+            compText('comp-ask-text', n === 1
+                ? compGbp(price) + ' is ' + (below ? 'above' : (same ? 'the same as' : 'below')) + ' the one nearby sold price' + qual + ', ' + compGbp(median) + '.'
+                : compGbp(price) + ' is ' + where + ' nearby sold prices' + qual + '; the middle of those ' + n + ' is ' + compGbp(median) + '.');
+            compEl('comp-ask-marker').style.left = compHalfUp(below * 100 / n) + '%';
+        }
+        compStampDuty(price);
+        compSaved(price);
+    }
+    /* The choices travel in the address (?price= and any choice that is
+       not where the page starts), so a reload, the share link, the log-in
+       link and the running-costs link all carry them. Only this site's
+       own addresses: nothing typed here goes anywhere else. */
+    function compQuery(s, years) {
+        var q = new URLSearchParams();
+        q.set('postcode', COMP_PLACE.postcode);
+        if (COMP_PLACE.house) q.set('house_number', COMP_PLACE.house);
+        if (s.price) q.set('price', String(s.price));
+        if (s.types.slice().sort().join(' ') !== COMP_PLACE.defaults.slice().sort().join(' ')) {
+            if (s.types.length) s.types.forEach(function (t) { q.append('type', t); });
+            else q.append('type', '');
+        }
+        if (s.tenure !== 'any') q.set('tenure', s.tenure);
+        if (years) q.set('years', String(years));
+        return '/property/comparables?' + q.toString();
+    }
+    function compCarry(s, years) {
+        var url = compQuery(s, years);
+        try { history.replaceState(history.state, '', url + window.location.hash); } catch (e) { /* a sandboxed frame may refuse; the links below still carry it */ }
+        var full = COMP_PLACE.base + url;
+        var row = document.querySelector('#comparables .share-send-row');
+        if (row) {
+            var copy = row.querySelector('[data-copy-link]');
+            if (copy) copy.setAttribute('data-copy-link', full);
+            var said = COMP_PLACE.shareText + ' ' + full;
+            var wa = row.querySelector('a[href^="https://wa.me/"]');
+            if (wa) wa.href = 'https://wa.me/?text=' + encodeURIComponent(said);
+            var mail = row.querySelector('a[href^="mailto:"]');
+            if (mail) mail.href = 'mailto:?subject=' + encodeURIComponent(COMP_PLACE.shareText) + '&body=' + encodeURIComponent(said);
+        }
+        var next = compEl('comp-save-next');
+        if (next) next.value = url + '#asking';
+        var login = compEl('comp-login-link');
+        if (login) login.href = '/login?next=' + encodeURIComponent(url + '#asking');
+        var rc = compEl('comp-rc-link');
+        if (rc) {
+            var r = new URLSearchParams();
+            r.set('postcode', COMP_PLACE.postcode);
+            if (COMP_PLACE.house) r.set('house_number', COMP_PLACE.house);
+            if (s.price) r.set('price', String(s.price));
+            rc.href = '/running-costs?' + r.toString();
+        }
+    }
+    /* One pass over the rows for the chosen types, tenure and years.
+       Returns the years in force: a year button that would keep every
+       sale of the chosen types is hidden, and choosing it means all. */
+    function compRefresh(years) {
+        var s = compState();
+        var base = compRows.map(function (r) {
+            return s.types.indexOf(r.type) >= 0 && (s.tenure === 'any' || r.tenure === s.tenure);
+        });
+        var dates = compRows.filter(function (r, i) { return base[i]; }).map(function (r) { return r.date; });
+        var hidden = [];
+        document.querySelectorAll('.comp-range button').forEach(function (b) {
+            var y = parseInt(b.getAttribute('data-years'), 10);
+            var c = compCutoff(y);
+            b.hidden = !!c && dates.length > 0 && dates.every(function (d) { return d >= c; });
+            if (b.hidden) hidden.push(y);
+        });
+        if (hidden.indexOf(years) >= 0) years = 0;
+        var cutoff = compCutoff(years);
+        var prices = [];
+        compRows.forEach(function (r, i) {
+            var ok = base[i] && (!cutoff || r.date >= cutoff);
+            compVisible[i] = ok;
+            r.tr.hidden = !ok;
+            if (ok && r.price !== null) prices.push(r.price);
+        });
+        prices.sort(function (a, b) { return a - b; });
+        compMarkers.forEach(function (m) { m.show(!!compVisible[m.i]); });
         /* Counts sales in the range, not rows on screen: said "shown"
            until 18 Sep 2026, which a phone listing 25 at a time made
            untrue. */
-        var count = document.getElementById('comp-range-count');
-        if (count) count.textContent = shown === rows.length ? 'All ' + rows.length + ' sales' : shown + ' of ' + rows.length + ' sales';
+        var shown = compVisible.filter(Boolean).length;
+        var count = compEl('comp-range-count');
+        if (count) count.textContent = shown === compRows.length ? 'All ' + compRows.length + ' sales' : shown + ' of ' + compRows.length + ' sales';
+        compFigures(s, years, prices);
+        compCarry(s, years);
+        return years;
+    }
+
+    function compApplyRange(years) {
+        years = compRefresh(years);
         document.querySelectorAll('.comp-range button').forEach(function (b) {
             b.setAttribute('aria-pressed', String(parseInt(b.getAttribute('data-years'), 10) === years));
         });
+        var now = compEl('comp-years-now');
+        if (now) now.value = String(years);
         if (years !== window.__compYears) compLimit = COMP_PAGE;
         window.__compYears = years;
         compPaginate();
     }
     document.querySelectorAll('.comp-range button').forEach(function (b) {
-        b.addEventListener('click', function () { compApplyRange(parseInt(b.getAttribute('data-years'), 10)); });
+        b.addEventListener('click', function (e) {
+            e.preventDefault();
+            compApplyRange(parseInt(b.getAttribute('data-years'), 10));
+        });
     });
-    compApplyRange(0);
+    if (compForm) {
+        /* Each change applies as it is made, so the form never submits
+           and its Update button, there for a reader without JavaScript,
+           goes. */
+        compForm.addEventListener('submit', function (e) { e.preventDefault(); compApplyRange(window.__compYears); });
+        compForm.querySelectorAll('input[name="type"], input[name="tenure"]').forEach(function (el) {
+            el.addEventListener('change', function () {
+                compLimit = COMP_PAGE;
+                compApplyRange(window.__compYears);
+            });
+        });
+        var compPriceBox = compEl('comp-price');
+        /* 20 Sep 2026: a quarter of a second after the last keystroke, not on
+           every one. Typing "850,000" used to redraw 300 rows and every map
+           marker seven times, and announce both live regions seven times. */
+        if (compPriceBox) {
+            var compTyping = null;
+            compPriceBox.addEventListener('input', function () {
+                if (compTyping) clearTimeout(compTyping);
+                compTyping = setTimeout(function () {
+                    compTyping = null;
+                    compApplyRange(window.__compYears);
+                }, 250);
+            });
+            compPriceBox.addEventListener('change', function () {
+                if (compTyping) { clearTimeout(compTyping); compTyping = null; }
+                compApplyRange(window.__compYears);
+            });
+        }
+        compShow('comp-apply', false);
+    }
+    compApplyRange(COMP_PLACE.years);
 </script>
 {% if google_maps_api_key %}
 {{ mapstyle.dark_map_style() }}
@@ -248,7 +654,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         new google.maps.Marker({ position: center, map: map, title: {{ location.postcode | tojson }} });
 
         const infoWindow = new google.maps.InfoWindow();
-        comparablePoints.forEach(function (c) {
+        comparablePoints.forEach(function (c, i) {
             if (c.latitude == null || c.longitude == null) return;
             const marker = new google.maps.Marker({
                 position: { lat: c.latitude, lng: c.longitude },
@@ -266,7 +672,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
                 infoWindow.setContent(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
                 infoWindow.open(map, marker);
             });
-            compMarkers.push({ date: c.date, show: function (visible) { marker.setMap(visible ? map : null); } });
+            compMarkers.push({ i: i, date: c.date, show: function (visible) { marker.setMap(visible ? map : null); } });
         });
         compApplyRange(window.__compYears || 0);
     }
@@ -287,7 +693,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         .addTo(compMap)
         .bindPopup({{ location.postcode | tojson }});
 
-    comparablePoints.forEach(function (c) {
+    comparablePoints.forEach(function (c, i) {
         if (c.latitude == null || c.longitude == null) return;
         var pin = L.circleMarker([c.latitude, c.longitude], {
             radius: 6,
@@ -298,7 +704,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
         })
             .addTo(compMap)
             .bindPopup(c.address + '<br>' + c.postcode + '<br><strong>£' + Number(c.amount).toLocaleString() + '</strong> &middot; ' + c.date);
-        compMarkers.push({ date: c.date, show: function (visible) { if (visible) pin.addTo(compMap); else compMap.removeLayer(pin); } });
+        compMarkers.push({ i: i, date: c.date, show: function (visible) { if (visible) pin.addTo(compMap); else compMap.removeLayer(pin); } });
     });
     compApplyRange(window.__compYears || 0);
 </script>

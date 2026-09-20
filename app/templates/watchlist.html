@@ -53,6 +53,22 @@
             {% else %}
             <p class="myprops-access">{{ locked_check_count }} checks locked</p>
             {% endif %}
+            {# The asking price kept with this home on its Comparables page
+               (18 Sep 2026, first-visitor audit F1), with the way back to
+               where it sits among the sales recorded nearby. #}
+            {% set comp_href = "/property/comparables?postcode=" ~ (item.postcode | urlencode) ~ (("&house_number=" ~ (item.house_number | urlencode)) if item.house_number else "") %}
+            <p class="myprops-asking">
+                {% if item.asking_price %}Asking price <strong>{{ item.asking_price.price | gbp }}</strong>. <a href="{{ comp_href }}&amp;price={{ item.asking_price.price }}">Where it sits among nearby sales</a>
+                {% else %}<a href="{{ comp_href }}">Add the asking price</a> to see where it sits among nearby sales.{% endif %}
+            </p>
+            {# How far through its viewing checklist the buyer got (18 Sep
+               2026, first-visitor audit F2), from the ticks kept with the
+               account, or the way to the list before the viewing. #}
+            {% set list_href = "/property/checklist?postcode=" ~ (item.postcode | urlencode) ~ (("&house_number=" ~ (item.house_number | urlencode)) if item.house_number else "") %}
+            <p class="myprops-viewed">
+                {% if item.viewing %}Viewed: {{ item.viewing.checked }} of {{ item.viewing.total }} checked, {{ item.viewing.follow_up }} to follow up. <a href="{{ list_href }}">Open its viewing checklist</a>
+                {% else %}<a href="{{ list_href }}">Viewing checklist</a> to tick off on your phone at the viewing.{% endif %}
+            </p>
             {% if item.changes %}
             <div class="watchlist-changes">
                 {% for change in item.changes %}

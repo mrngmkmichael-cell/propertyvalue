@@ -102,7 +102,8 @@ def test_the_running_costs_answer_follows_the_band_the_reader_picks(client, monk
     assert 'id="rc-total">' in body and "3,200 a year" in body
     assert 'id="rc-share">8.0</span>%' in body
     assert 'Band <span id="rc-band-label">D</span> council tax' in body
-    assert '<select id="rc-band">' in body and body.count('<option value="') == 8
+    # Named since 18 Sep 2026 (F4): the picker is a plain form without a script.
+    assert '<select id="rc-band" name="band">' in body and body.count('<option value="') == 8
     assert '<option value="D" selected>' in body
     assert 'data-energy="1200"' in body and 'data-income="40000"' in body
     assert "Not Band D? Pick the home" in body and "on the seller" in body

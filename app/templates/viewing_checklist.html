@@ -3,7 +3,41 @@
 {% block title %}Viewing checklist for {{ query }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
+{# One item on the list (18 Sep 2026, first-visitor audit F2). Every box
+   was a drawn square, aria-hidden, on a page that said to open it on your
+   phone at the viewing. Each is now a real checkbox inside a label that
+   wraps the item's words, so the whole item is the tap target, with a
+   line for what the seller or agent said and a Follow up mark. "k" names
+   the item for the save whether or not it is ticked, and the account's
+   ticks, read first by the route, are rendered in, so the list is right
+   with no script at all. The script keeps each change on the device and,
+   signed in, on the account. #}
+{% macro tick(key, trigger="", heading="", detail="", question=False) -%}
+{%- set s = ((ticks or {}).get("items") or {}).get(key) or {} -%}
+<li class="checklist-item" data-check-item="{{ key }}">
+    <input type="hidden" name="k" value="{{ key }}">
+    <label class="checklist-tick">
+        <input type="checkbox" class="checklist-check" name="c" value="{{ key }}"{% if s.c %} checked{% endif %}>
+        <span class="checklist-text">
+            {%- if trigger %}
+            <span class="checklist-trigger">{{ trigger }}</span>
+            {%- endif %}
+            <span class="checklist-heading{{ ' checklist-question' if question }}">{{ heading }}</span>
+            {%- if detail %}
+            <span class="checklist-detail">{{ detail }}</span>
+            {%- endif %}
+        </span>
+    </label>
+    <div class="checklist-reply">
+        <label class="checklist-reply-label" for="said-{{ key }}">What they said</label>
+        <label class="checklist-follow"><input type="checkbox" name="f" value="{{ key }}"{% if s.f %} checked{% endif %}><span>Follow up</span></label>
+        <input type="text" class="checklist-said" id="said-{{ key }}" name="a_{{ key }}" maxlength="200" value="{{ s.a or '' }}" autocomplete="off" enterkeyhint="done">
+    </div>
+</li>
+{%- endmacro %}
+
 {% block content %}
+{% set here = "/property/checklist?postcode=" ~ (query | urlencode) ~ (("&house_number=" ~ (house_number | urlencode)) if house_number else "") %}
 <a class="back-link no-print" href="/property?postcode={{ query | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">&larr; Back to the report</a>
 
 <span class="kicker">Take this with you</span>
@@ -13,9 +47,46 @@
     your phone while you are standing there.
 </p>
 
+{# How far through it the reader is, and where the ticks are kept. The
+   count is shown from the account's ticks, or once the script is running
+   and can keep it up to date; with neither it would sit at nought while
+   the boxes filled. "To follow up" is the Follow up ticks, nothing
+   cleverer, and the line under the count says so. #}
+<div class="checklist-panel" id="checklist">
+    <div class="checklist-count" id="checklist-count"{% if not ticks %} hidden{% endif %}>
+        <p class="checklist-progress" id="checklist-progress" aria-live="polite">{{ ticks_counts.checked }} of {{ ticks_counts.total }} checked, {{ ticks_counts.follow_up }} to follow up</p>
+        <span class="checklist-meter" aria-hidden="true"><span id="checklist-meter" style="width: {{ (100 * ticks_counts.checked / ticks_counts.total) | round | int if ticks_counts.total else 0 }}%"></span></span>
+    </div>
+    <p class="checklist-how">
+        Tick an item once you have looked at it or asked. Note what the seller or agent said on the line
+        under it, and tick Follow up for anything you still need to chase, such as an answer to get in
+        writing or a room to see again. &ldquo;To follow up&rdquo; counts those.
+    </p>
+    <p class="checklist-status no-print" id="checklist-status" role="status">
+        {%- if ticks_saved %}Saved to your account. My properties shows how far you got.
+        {%- elif ticks_account %}Signed in, your ticks and answers are kept with your account for this home, and My properties shows how far you got.
+        {%- else %}Your ticks and answers are kept on this phone or computer. <a href="/login?next={{ here | urlencode }}">Log in</a> to keep them with your account too, where My properties shows how far you got.{% endif -%}
+    </p>
+    <noscript><p class="checklist-status no-print">
+        {%- if ticks_account %}Press &ldquo;Save to my account&rdquo; at the end of the list to keep what you have ticked.
+        {%- else %}With JavaScript off, this page cannot keep what you tick, so print it, or log in to save it to your account.{% endif -%}
+    </p></noscript>
+</div>
+
 <p class="no-print">
     <button type="button" class="pdf-download-btn" onclick="window.print()">Print this checklist</button>
 </p>
+
+{# A form only where it has somewhere to go: signed in, "Save to my
+   account" posts it. Signed out, pressing Enter in an answer would have
+   sent the reader to the login page and lost what they typed. #}
+{% if ticks_account %}
+<form class="checklist-form" id="checklist-form" method="post" action="/property/checklist/save" data-home="{{ query }}|{{ house_number }}" data-account="1" data-saved-at="{{ ticks_saved_ms }}">
+{% else %}
+<div class="checklist-form" id="checklist-form" data-home="{{ query }}|{{ house_number }}" data-account="0" data-saved-at="0">
+{% endif %}
+<input type="hidden" name="postcode" value="{{ query }}">
+<input type="hidden" name="house_number" value="{{ house_number }}">
 
 {% if checklist.flagged %}
 <section class="report-section">
@@ -26,14 +97,7 @@
     </p>
     <ul class="checklist">
         {% for item in checklist.flagged %}
-        <li class="checklist-item">
-            <span class="checklist-box" aria-hidden="true"></span>
-            <div>
-                <p class="checklist-trigger">{{ item.finding }}</p>
-                <p class="checklist-heading">{{ item.heading }}</p>
-                <p class="checklist-detail">{{ item.detail }}</p>
-            </div>
-        </li>
+        {{ tick(item.key, trigger=item.finding, heading=item.heading, detail=item.detail) }}
         {% endfor %}
     </ul>
 </section>
@@ -67,13 +131,7 @@
     <h3 class="checklist-audience">{{ audience }}</h3>
     <ul class="checklist">
         {% for item in qs %}
-        <li class="checklist-item">
-            <span class="checklist-box" aria-hidden="true"></span>
-            <div>
-                <p class="checklist-trigger">{{ item.trigger }}{% if item.cost %} &middot; {{ item.cost }}{% endif %}</p>
-                <p class="checklist-heading checklist-question">{{ item.question }}</p>
-            </div>
-        </li>
+        {{ tick(checklist.question_keys[item.question], trigger=(item.trigger ~ (" · " ~ item.cost if item.cost else "")), heading=item.question, question=True) }}
         {% endfor %}
     </ul>
     {% endfor %}
@@ -88,13 +146,7 @@
     <h3 class="checklist-audience">Asked on every purchase</h3>
     <ul class="checklist">
         {% for item in bq.every_purchase %}
-        <li class="checklist-item">
-            <span class="checklist-box" aria-hidden="true"></span>
-            <div>
-                <p class="checklist-trigger">{{ item.audience }}</p>
-                <p class="checklist-heading checklist-question">{{ item.question }}</p>
-            </div>
-        </li>
+        {{ tick(checklist.question_keys[item.question], trigger=item.audience, heading=item.question, question=True) }}
         {% endfor %}
     </ul>
     {% endif %}
@@ -106,16 +158,19 @@
     <p class="section-sub">The things a report cannot tell you and buyers routinely forget.</p>
     <ul class="checklist">
         {% for item in checklist.always %}
-        <li class="checklist-item">
-            <span class="checklist-box" aria-hidden="true"></span>
-            <div>
-                <p class="checklist-heading">{{ item.heading }}</p>
-                <p class="checklist-detail">{{ item.detail }}</p>
-            </div>
-        </li>
+        {{ tick(item.key, heading=item.heading, detail=item.detail) }}
         {% endfor %}
     </ul>
 </section>
+
+{% if ticks_account %}
+<p class="no-print checklist-save-row">
+    <button type="submit" class="checklist-save" id="checklist-save">Save to my account</button>
+</p>
+</form>
+{% else %}
+</div>
+{% endif %}
 
 <section class="report-section">
     <h2>Notes</h2>
@@ -128,4 +183,242 @@
     Findings from UKPropertyInsight, {{ query }}. Every one traces to a named public source; the
     report has the detail. This is a prompt for looking, not a survey.
 </p>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* The viewing checklist, ticked at the viewing (18 Sep 2026, first-visitor
+   audit F2). Every change is kept on this device, in one localStorage
+   entry per home keyed by postcode and house number; signed in, it is
+   also posted to /property/checklist/save, the page's own form, and the
+   account's copy is the one the page opened with. Storage that throws
+   (private windows, blocked site data) only means nothing is kept on the
+   device: the boxes, the count and the account save all still work.
+   Nothing typed here goes anywhere but this site. */
+(function () {
+    var root = document.getElementById('checklist-form');
+    if (!root) return;
+    var STORE = 'uki-viewing-checklist';
+    var KEEP_HOMES = 40;
+    var home = root.getAttribute('data-home') || '';
+    var account = root.getAttribute('data-account') === '1';
+    var savedAt = parseInt(root.getAttribute('data-saved-at') || '0', 10) || 0;
+    var canPost = account && root.tagName === 'FORM' && typeof window.fetch === 'function';
+    var items = Array.prototype.slice.call(root.querySelectorAll('[data-check-item]'));
+    var count = document.getElementById('checklist-count');
+    var progress = document.getElementById('checklist-progress');
+    var meter = document.getElementById('checklist-meter');
+    var status = document.getElementById('checklist-status');
+    var saveRow = document.querySelector('.checklist-save-row');
+    if (!home || !items.length || !progress) return;
+
+    function parts(li) {
+        return {
+            key: li.getAttribute('data-check-item'),
+            c: li.querySelector('input[name="c"]'),
+            f: li.querySelector('input[name="f"]'),
+            a: li.querySelector('.checklist-said')
+        };
+    }
+
+    function snapshot() {
+        var s = {};
+        items.forEach(function (li) {
+            var x = parts(li);
+            s[x.key] = { c: x.c.checked ? 1 : 0, f: x.f.checked ? 1 : 0, a: x.a.value };
+        });
+        return s;
+    }
+
+    function apply(s) {
+        items.forEach(function (li) {
+            var x = parts(li), v = s[x.key];
+            if (!v || typeof v !== 'object') return;
+            x.c.checked = !!v.c;
+            x.f.checked = !!v.f;
+            x.a.value = typeof v.a === 'string' ? v.a.slice(0, 200) : '';
+        });
+    }
+
+    function readAll() {
+        var all = JSON.parse(localStorage.getItem(STORE) || '{}');
+        return all && typeof all === 'object' && !Array.isArray(all) ? all : {};
+    }
+
+    function readMine() {
+        try {
+            var mine = readAll()[home];
+            return mine && typeof mine === 'object' && mine.s && typeof mine.s === 'object' ? mine : null;
+        } catch (e) { return null; }
+    }
+
+    /* p: not yet saved to an account. b: the account's save this page
+       started from, so a later visit can tell whether the account has
+       moved on since (another phone) or this device is ahead of it. Ticks
+       on items not on this page are kept, never shown. Forty homes is
+       plenty for one device, as the report's own group ticks keep. */
+    var kept = true;
+    function writeMine() {
+        try {
+            var all = readAll(), old = (all[home] && all[home].s) || {}, s = {}, now = snapshot();
+            Object.keys(old).forEach(function (k) {
+                var v = old[k];
+                if (v && typeof v === 'object' && (v.c || v.f || v.a)) s[k] = v;
+            });
+            Object.keys(now).forEach(function (k) { s[k] = now[k]; });
+            all[home] = { s: s, t: Date.now(), p: 1, b: savedAt };
+            Object.keys(all).sort(function (x, y) {
+                return ((all[y] && all[y].t) || 0) - ((all[x] && all[x].t) || 0);
+            }).slice(KEEP_HOMES).forEach(function (k) { delete all[k]; });
+            localStorage.setItem(STORE, JSON.stringify(all));
+            kept = true;
+        } catch (e) { kept = false; }
+    }
+
+    function markSaved() {
+        try {
+            var all = readAll();
+            if (all[home]) {
+                all[home].p = 0;
+                all[home].b = savedAt;
+                localStorage.setItem(STORE, JSON.stringify(all));
+            }
+        } catch (e) { /* the account has it; the device copy can wait */ }
+    }
+
+    function paint() {
+        var done = 0, follow = 0;
+        items.forEach(function (li) {
+            var x = parts(li);
+            if (x.c.checked) done++;
+            if (x.f.checked) follow++;
+        });
+        var text = done + ' of ' + items.length + ' checked, ' + follow + ' to follow up';
+        if (progress.textContent !== text) progress.textContent = text;
+        if (meter) meter.style.width = Math.round(100 * done / items.length) + '%';
+        count.hidden = false;
+    }
+
+    function say(text) {
+        if (status && status.textContent !== text) status.textContent = text;
+    }
+
+    function clock() {
+        var d = new Date();
+        return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+
+    function encode() {
+        var out = [];
+        Array.prototype.forEach.call(root.elements || [], function (el) {
+            if (!el.name || el.disabled || el.type === 'submit' || el.type === 'button') return;
+            if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
+            out.push(encodeURIComponent(el.name) + '=' + encodeURIComponent(el.value));
+        });
+        return out.join('&');
+    }
+
+    var timer = null, busy = false, again = false, edits = 0;
+    function sync() {
+        clearTimeout(timer);
+        timer = null;
+        if (!canPost) return;
+        if (busy) { again = true; return; }
+        busy = true;
+        var sent = edits;
+        fetch(root.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+            body: encode()
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok) { d.status = r.status; throw d; }
+                return d;
+            });
+        }).then(function (d) {
+            savedAt = d.updated_ms || savedAt;
+            if (sent === edits) markSaved();
+            say('Saved to your account at ' + clock() + '. My properties shows how far you got.');
+        }, function (d) {
+            var where = kept ? ' It is kept on this device.' : '';
+            if (d && d.status === 401) {
+                say('You are signed out now, so this was not saved to your account.' + where + ' Log in and open this list again to save it.');
+            } else if (d && d.error && d.message) {
+                say(d.message + where);
+            } else {
+                say('Your account could not be reached just now.' + where + ' It saves again at your next change.');
+            }
+        }).then(function () {
+            busy = false;
+            if (again) { again = false; sync(); }
+        });
+    }
+
+    function changed(delay) {
+        edits++;
+        paint();
+        writeMine();
+        if (!kept) {
+            say(account
+                ? 'This browser is not letting the page keep anything on this device, so it is saved to your account only.'
+                : 'This browser is not letting the page keep anything, so what you tick goes when you close it. Print the list, or log in to save it to your account.');
+        }
+        if (canPost) {
+            clearTimeout(timer);
+            timer = setTimeout(sync, delay);
+        }
+    }
+
+    root.addEventListener('change', function (e) {
+        var t = e.target;
+        if (!t) return;
+        if (t.name === 'c' || t.name === 'f') changed(400);
+        else if (t.classList && t.classList.contains('checklist-said')) changed(0);
+    });
+    root.addEventListener('input', function (e) {
+        var t = e.target;
+        if (t && t.classList && t.classList.contains('checklist-said')) changed(1500);
+    });
+
+    if (canPost) {
+        /* Saving is automatic, so the button the list needs without a
+           script goes; Enter in an answer saves rather than reloads. */
+        if (saveRow) saveRow.hidden = true;
+        root.addEventListener('submit', function (e) {
+            e.preventDefault();
+            sync();
+        });
+        /* Locked mid-answer: the last change goes as a beacon rather than
+           waiting for a page that may never come back. */
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState !== 'hidden' || !timer || !navigator.sendBeacon) return;
+            clearTimeout(timer);
+            timer = null;
+            try {
+                navigator.sendBeacon(root.action, new Blob([encode()], { type: 'application/x-www-form-urlencoded' }));
+            } catch (e) { /* the device copy is still marked unsaved */ }
+        });
+        window.addEventListener('online', function () {
+            var mine = readMine();
+            if (mine && mine.p) sync();
+        });
+    }
+
+    /* Which copy the page opens with. Signed out: this device's. Signed
+       in: the account's, already in the boxes, unless this device holds
+       changes the account never got, made since the save the account
+       holds (or, ticked before signing in, made after it). */
+    var mine = readMine();
+    if (account) {
+        if (mine && mine.p && (mine.b ? mine.b >= savedAt : (mine.t || 0) > savedAt)) {
+            apply(mine.s);
+            sync();
+        }
+    } else if (mine) {
+        apply(mine.s);
+    }
+    paint();
+})();
+</script>
 {% endblock %}

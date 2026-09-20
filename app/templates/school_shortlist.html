@@ -67,6 +67,75 @@
     </label>
     <button type="submit" style="margin-top:0.6rem">{{ "Update" if alerts_enabled else "Turn on" }}</button>
 </form>
+
+{# Saved homes against these schools (18 Sep 2026, first-visitor audit
+   F3): a row per home in My properties, a column per school above, each
+   cell the home's distance and its reading against the school's
+   published distance, the reading the school's own page gives for that
+   postcode. A school without a published figure says so in words in
+   every cell; nothing is read against an estimate. On a phone each home
+   is one block with a line per school (data-stack). #}
+{% if homes_grid %}
+<section class="report-section shortlist-grid-section" id="homes-grid">
+    <h2>Your saved homes against these schools</h2>
+    {% if homes_grid.rows %}
+    <p class="section-sub">
+        Each home in <a href="/watchlist">My properties</a>, measured from its postcode's centre to the school's
+        location on the Department for Education register, and read against the distance the council last
+        published. Likely is comfortably inside it, Borderline within about a tenth of it either way, Unlikely
+        outside it. The distance moves every year, and siblings and other criteria come before it.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table shortlist-grid" data-stack>
+            <thead>
+                <tr>
+                    <th>Home</th>
+                    {% for col in homes_grid.columns %}
+                    {% set s = col.school %}
+                    <th class="shortlist-grid-school">
+                        {% if s.has_page %}<a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>{% else %}{{ s.name }}{% endif %}
+                        <span class="school-table-type">{% if s.radius_miles is none %}No published distance{% elif col.no_limit %}Distance did not limit entry{% else %}Admitted from {{ s.radius_miles | miles }} mi{% if s.academic_year %}, {{ s.academic_year }}{% endif %}{% endif %}</span>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in homes_grid.rows %}
+                <tr>
+                    <td data-st="title" class="shortlist-grid-home"><a href="{{ row.url }}">{{ row.label }}</a>{% if row.area %} <span class="school-table-type">{{ row.area }}</span>{% endif %}</td>
+                    {% for cell in row.cells %}
+                    {% set s = homes_grid.columns[loop.index0].school %}
+                    <td data-label="{{ s.name }}">
+                        {% if cell.state == "reading" %}
+                        <span class="shortlist-grid-cell"><span class="table-verdict table-verdict-{{ cell.reading.level }}" title="{{ cell.reading.why_sentence }}">{{ cell.reading.label }}</span> <span class="shortlist-grid-mi">{{ cell.reading.distance_miles | miles }} mi</span></span>
+                        {% elif cell.state == "no_figure" %}
+                        <span class="shortlist-grid-cell"><span class="shortlist-grid-mi">{{ cell.distance_miles | miles }} mi</span> <span class="shortlist-grid-none">No published admission distance to read it against</span></span>
+                        {% elif cell.state == "no_location" %}
+                        <span class="shortlist-grid-none">No location for this school on the register</span>
+                        {% elif cell.state == "not_found" %}
+                        <span class="shortlist-grid-none">Postcode not found</span>
+                        {% else %}
+                        <span class="shortlist-grid-none">Not measured just now</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if homes_total > school_homes_max %}
+    <p class="section-sub">Your {{ school_homes_max }} most recently saved homes, of {{ homes_total }}. <a href="/watchlist">My properties</a> has them all.</p>
+    {% endif %}
+    <p class="section-sub">Admission distances as each council published them; school locations from the Department for Education register; postcode centres from the Office for National Statistics, via postcodes.io.</p>
+    {% else %}
+    <p class="section-sub">
+        No saved homes yet. Every report you open is kept in <a href="/watchlist">My properties</a>, and each
+        one then appears here with its distance and reading for every school on this list.
+    </p>
+    {% endif %}
+</section>
+{% endif %}
 {% else %}
 <p class="notice">
     Nothing saved yet. Every school page has a "Save to my shortlist" button:

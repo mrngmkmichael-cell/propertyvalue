@@ -4191,7 +4191,9 @@ def _d4_report_questions(body):
 
 
 def _d4_checklist_questions(body):
-    return [_flat(q) for q in re.findall(r'<p class="checklist-heading checklist-question">(.*?)</p>',
+    # A span since 18 Sep 2026 (F2): the question is the words of a
+    # checkbox's label now, and a label holds no paragraphs.
+    return [_flat(q) for q in re.findall(r'<span class="checklist-heading checklist-question">(.*?)</span>',
                                          html.unescape(body), re.S)]
 
 

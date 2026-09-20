@@ -91,6 +91,80 @@ class WatchlistItem(Base):
     user: Mapped["User"] = relationship(back_populates="watchlist_items")
 
 
+class SavedAskingPrice(Base):
+    """The asking price a buyer kept with a saved home, from the
+    Comparables page's "Is the asking price in line?" box (18 Sep 2026,
+    first-visitor audit F1). It shows on My properties and in the
+    side-by-side comparison, so the buyer's own number sits beside the
+    recorded ones when they come back.
+
+    Its own table: create_all makes new tables but never adds a column
+    to one that exists, and the site has no migration tool. One row per
+    saved home, keyed by that home's watchlist_items id. No foreign key
+    to watchlist_items on purpose: removing a home deletes its row there,
+    and a key would make Postgres refuse that delete. A row left behind
+    by a removed home shows nowhere, because every read (app/asking_prices.py)
+    matches it to a home that still exists, owned by the same account,
+    at the same postcode and house number. A cleared price is stored as
+    NULL rather than deleted.
+
+    Since 18 Sep 2026 (first-visitor audit F4) the row also keeps the
+    home's council tax band, picked on /running-costs, which then opens
+    on it and sets the band on the report's "What it costs to live here"
+    line. A column here rather than a table of its own because this
+    table is new in the same batch and has never been created in
+    production, so create_all makes it with the column; the band is
+    NULL until one is saved, and a price and a band are read
+    independently (a row can hold either)."""
+    __tablename__ = "saved_asking_prices"
+
+    item_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    postcode: Mapped[str] = mapped_column(String(16))
+    house_number: Mapped[str] = mapped_column(String(32), default="")
+    price: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    band: Mapped[str | None] = mapped_column(String(1), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+class ViewingChecklistTicks(Base):
+    """What a buyer ticked on a home's viewing checklist, and what the
+    seller or agent said to each item (18 Sep 2026, first-visitor audit
+    F2). The checklist said to open it on your phone at the viewing and
+    nothing on it could be ticked. Every change is kept on the device;
+    signed in, it is kept here too, and My properties and the side-by-side
+    comparison read "Viewed: 7 of 12 checked, 2 to follow up" from it.
+
+    Its own table, for the reason SavedAskingPrice gives. Keyed by the
+    account, the postcode as postcodes.io writes it ("M14 5TG") and the
+    house number as the checklist was opened with it, not by a saved
+    home, so a buyer can tick a home they have not saved yet, and it
+    shows the moment they do (app/checklist_ticks.py matches a saved
+    home's house number word by word, as the watchlist does). Every read
+    and write is scoped to the signed-in account; a row is only ever
+    overwritten, never deleted.
+
+    "items" is JSON, {item key: {"c": ticked, "f": follow up, "a": what
+    they said}}, where a key names one item on the page (the "keys" of
+    viewing_checklist.build). The counts are of the items the page showed
+    at the last save, stored so a list page never has to parse the JSON."""
+    __tablename__ = "viewing_checklist_ticks"
+    __table_args__ = (
+        UniqueConstraint("user_id", "postcode", "house_number", name="uq_checklist_ticks_user_home"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    postcode: Mapped[str] = mapped_column(String(16))
+    house_number: Mapped[str] = mapped_column(String(32), default="")
+    items: Mapped[str] = mapped_column(Text, default="{}")
+    checked: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    follow_up: Mapped[int] = mapped_column(Integer, default=0)
+    answered: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
 class SavedDistrict(Base):
     """A postcode district someone followed, as opposed to a single
     address on the watchlist. Retired on 7 Sep 2026.

@@ -17,7 +17,7 @@ import secrets
 import statistics
 import string
 import time
-from urllib.parse import parse_qs, quote, urlencode, urlparse
+from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urlparse
 from xml.sax.saxutils import escape
 
 import httpx
@@ -35,8 +35,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import OperationalError
 
-from app import auth, db, school_shortlist, watchlist
-from app.services import _cache, council_tax, estate_companies
+from app import asking_prices, auth, checklist_ticks, db, school_shortlist, watchlist
+from app.services import _cache, comparables_view, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import (
     FigureReport, PageCache, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
@@ -1915,6 +1915,38 @@ def _stamp_duty(price: float, first_time: bool = False, additional: bool = False
     return int(round(tax))
 
 
+# Stamp duty on an asking price the reader typed (18 Sep 2026,
+# first-visitor audit F1), on the Comparables page and the running-costs
+# page's stamp duty row. The same shape as the running-costs answer's
+# stamp_duty, from the bands above; Scotland and Wales set their own tax,
+# which is named rather than worked out, as that row already does.
+SDLT_NATIONS = ("England", "Northern Ireland")
+
+
+def _stamp_duty_on(price: int, country: str, basis: str) -> dict:
+    country = (country or "England").strip()
+    if country not in SDLT_NATIONS:
+        return {"price": price, "basis": basis, "devolved": country}
+    return {
+        "price": price, "basis": basis,
+        "standard": _stamp_duty(price), "first_time": _stamp_duty(price, first_time=True),
+        "additional": _stamp_duty(price, additional=True),
+    }
+
+
+def _sdlt_rates_for_page() -> dict:
+    """The bands above as the Comparables page's script reads them, so the
+    stamp duty it works out as the reader types comes from this one copy
+    of the rates, never a second one typed into the page. JSON has no
+    infinity, so the open top band's bound is null."""
+    def rows(bands):
+        return [[None if math.isinf(upper) else upper, rate] for upper, rate in bands]
+    return {
+        "bands": rows(SDLT_BANDS), "first_time": rows(SDLT_FIRST_TIME_BANDS),
+        "first_time_ceiling": SDLT_FIRST_TIME_CEILING, "surcharge": SDLT_ADDITIONAL_SURCHARGE,
+    }
+
+
 def _median(values: list) -> float | None:
     vals = sorted(v for v in values if isinstance(v, (int, float)))
     return vals[len(vals) // 2] if vals else None
@@ -2248,8 +2280,83 @@ async def _running_costs_for_postcode(where: dict, house_number: str = "") -> di
     return out
 
 
+# The band picker and the energy toggle on /running-costs (18 Sep 2026,
+# first-visitor audit F4). Picking Band F changed the headline and left
+# the table beneath it on Band D, so the page gave two yearly totals for
+# one house a screen apart, and its share link sent Band D to a partner.
+# Every figure that follows the band or the energy figure now comes from
+# _running_costs_choice, on the server for ?band= and ?energy=, and the
+# page's script does the same sums on the same figures as the reader
+# changes them: Math.round where whole_pounds rounds, halves up both. The
+# bands are the council's own bills and both energy figures are the
+# EPC's; nothing is estimated. The cached answer is never changed.
+RC_DEFAULT_BAND = "D"
+
+
+def _running_costs_energy(answer: dict) -> tuple:
+    """The energy figure a typical year adds, today and after the
+    certificate's recommended improvements, both from the certificates
+    the answer used: the home's own where it has one, otherwise the
+    middle of the postcode's. The second is None unless it is lower."""
+    home = answer.get("home") or {}
+    energy = answer.get("energy") or {}
+    now = answer.get("energy_figure")
+    later = home.get("energy_potential") if home.get("energy_now") else energy.get("median_potential")
+    if not isinstance(later, (int, float)) or not now or later >= now:
+        later = None
+    return now, later
+
+
+def _running_costs_choice(answer: dict, band: str = "", energy: str = "") -> dict:
+    """Every figure on the page that follows the band and the energy
+    figure: the band's bill, the typical year, the year over twelve
+    months and its share of household income. An unknown band is Band D
+    and an unknown energy choice is today's, so a mistyped link still
+    opens on the page everyone else gets."""
+    ct = answer.get("council_tax") or {}
+    bands = ct.get("bands") or {}
+    band = (band or "").strip().upper()
+    if band not in bands:
+        band = RC_DEFAULT_BAND
+    amount = bands.get(band, ct.get("band_d")) if ct else None
+    now, later = _running_costs_energy(answer)
+    mode = "improved" if (energy or "").strip().lower() == "improved" and later is not None else "now"
+    used = later if mode == "improved" else now
+    year = council_tax.whole_pounds(amount + used) if amount is not None and used else None
+    income = answer.get("income_value")
+    return {
+        "band": band, "amount": amount, "energy": mode, "energy_now": now, "energy_improved": later,
+        "from_home": bool((answer.get("home") or {}).get("energy_now")),
+        "year": year, "month": council_tax.whole_pounds(year / 12) if year else None,
+        # A tenth of a per cent, halves up, as the script's Math.round.
+        "share": council_tax.whole_pounds(1000 * year / income) / 10 if year and income else None,
+    }
+
+
+def _running_costs_path(postcode: str, house: str, price, choice: dict | None,
+                        share: bool = False, kept: str | None = None) -> str:
+    """The page's own address for the reader's choices, in the order and
+    encoding the page's script writes it. Band D and today's energy are
+    where the page starts, so they are left out, except that the address
+    bar keeps ?band=D when another band is saved with the home, or a
+    reload would open on the saved one. A share link never does: the
+    partner has no saved band."""
+    parts = [f"postcode={quote(postcode, safe='')}"]
+    if house:
+        parts.append(f"house_number={quote(house, safe='')}")
+    if price:
+        parts.append(f"price={price}")
+    if choice:
+        if choice["band"] != RC_DEFAULT_BAND or (kept and not share):
+            parts.append(f"band={choice['band']}")
+        if choice["energy"] == "improved":
+            parts.append("energy=improved")
+    return "/running-costs?" + "&".join(parts)
+
+
 @app.get("/running-costs")
-async def running_costs_page(request: Request, postcode: str = "", house_number: str = ""):
+async def running_costs_page(request: Request, postcode: str = "", house_number: str = "", price: str = "",
+                             band: str = "", energy: str = ""):
     """The third pillar: what it costs to live at an address, from the
     bodies that publish it, and the one cost nobody publishes. With a
     postcode, the page answers on the spot with the council's bands, and
@@ -2262,6 +2369,14 @@ async def running_costs_page(request: Request, postcode: str = "", house_number:
     context["check_query"] = postcode.strip()
     context["check_house"] = house_number.strip()[:20]
     context["answered_url"] = bool(postcode.strip())
+    # An asking price carried from the Comparables page (18 Sep 2026,
+    # first-visitor audit F1): the stamp duty row is worked out on it
+    # rather than on the home's last sale, and the share link keeps it.
+    context["asking_price"] = comparables_view.parse_price(price)
+    # The band and energy choices (18 Sep 2026, first-visitor audit F4),
+    # set below once there is an answer to work them on.
+    context["rc"] = None
+    context["rc_saved"] = None
     # A crawler gets the page without the answer (18 Sep 2026). On 17 Sep
     # this path took 4,501 views, almost all crawl-shaped, and an answer
     # for a postcode costs a postcodes.io lookup plus the council, EPC and
@@ -2292,7 +2407,32 @@ async def running_costs_page(request: Request, postcode: str = "", house_number:
             if answer is None:
                 answer = await _running_costs_for_postcode(where, context["check_house"])
                 _cache.set(rc_key, answer)
+            if context["asking_price"]:
+                # A copy: the cached answer serves every reader of this
+                # postcode, and only this one brought a price.
+                answer = {**answer, "stamp_duty": _stamp_duty_on(
+                    context["asking_price"], where.get("country"), "the asking price")}
             context["checked"] = answer
+            # The band the reader picked (?band=), or else the one this
+            # account saved with the home, and today's energy figure or
+            # the one after the certificate's recommended improvements
+            # (?energy=improved). A saved home is looked up only for a
+            # signed-in reader, one round trip, and the page still
+            # answers if the database does not.
+            current = context["current_user"]
+            if current and db.is_configured():
+                try:
+                    context["rc_saved"] = await asyncio.to_thread(asking_prices.saved_home, current["id"], where["postcode"], context["check_house"])
+                except Exception:  # noqa: BLE001 - the figures show without it
+                    context["rc_saved"] = None
+            kept = (context["rc_saved"] or {}).get("band")
+            chosen = band if "band" in request.query_params else (kept or "")
+            context["rc"] = rc = _running_costs_choice(answer, chosen[:2], energy[:12])
+            context["rc_kept"] = kept
+            place = (answer.get("postcode") or where["postcode"], answer.get("house_number") or "", context["asking_price"])
+            context["rc_path"] = _running_costs_path(*place, rc, kept=kept)
+            context["rc_base"] = _public_base_url(request)
+            context["rc_share_url"] = context["rc_base"] + _running_costs_path(*place, rc, share=True)
         else:
             context["checked"] = {"postcode": postcode.strip(), "district": "", "council_tax": None, "unknown": True}
     return templates.TemplateResponse(request, "running_costs.html", context)
@@ -4285,6 +4425,15 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
                 context["since_last_visit"] = _snapshot_changes(old, fresh)
                 context["open_group"] = _group_for_changes(context["since_last_visit"])
             watchlist.update_snapshot(context["current_user"]["id"], saved_here["id"], json.dumps(fresh, default=str))
+            # The council tax band saved with this home on /running-costs
+            # (18 Sep 2026, first-visitor audit F4): the running-costs
+            # line gives that band's bill instead of Band D's. Only for a
+            # saved home, so one read, and the line falls back to Band D
+            # if the database does not answer.
+            try:
+                context["kept_band"] = await asyncio.to_thread(asking_prices.band_for, context["current_user"]["id"], saved_here)
+            except Exception:  # noqa: BLE001 - Band D still shows
+                context["kept_band"] = None
         context["compare_offer"] = _compare_offer(
             saved_items, canonical, house_number, context["current_user"]
         )
@@ -6732,7 +6881,128 @@ async def property_checklist(request: Request, postcode: str = "", house_number:
         context, premium_unlocked=premium_unlocked, questions=_buyer_questions(context, premium_unlocked)
     )
     context["query"] = location["postcode"]
+    # Ticks, answers and Follow up marks (18 Sep 2026, first-visitor audit
+    # F2). Signed in, the account's are read first and rendered into the
+    # boxes, so the page is right before any script runs and with none;
+    # the script keeps every change on the device and posts it to
+    # /property/checklist/save. A failed read leaves the account out of
+    # it for this visit rather than let the device's older copy be taken
+    # for the account's and posted over it.
+    context["ticks"] = None
+    context["ticks_account"] = False
+    context["ticks_saved_ms"] = 0
+    context["ticks_saved"] = request.query_params.get("saved") == "1"
+    home_postcode = checklist_ticks.canonical_postcode(location["postcode"])
+    home_house = checklist_ticks.clean_house(hn)
+    if current and db.is_configured() and home_postcode and home_house is not None:
+        try:
+            ticks = await asyncio.to_thread(checklist_ticks.load, current["id"], home_postcode, home_house)
+            context["ticks_account"] = True
+        except Exception:  # noqa: BLE001 - the list still works on the device
+            ticks = None
+        if ticks:
+            context["ticks"] = ticks
+            context["ticks_saved_ms"] = ticks["updated_ms"]
+    # The counts this page shows, over the items it shows, from the
+    # account's ticks where it has them.
+    kept = (context["ticks"] or {}).get("items") or {}
+    keys = context["checklist"]["keys"]
+    context["ticks_counts"] = {
+        "checked": sum(1 for k in keys if (kept.get(k) or {}).get("c")),
+        "follow_up": sum(1 for k in keys if (kept.get(k) or {}).get("f")),
+        "total": len(keys),
+    }
     return templates.TemplateResponse(request, "viewing_checklist.html", context)
+
+
+# The viewing checklist's save (18 Sep 2026, first-visitor audit F2). The
+# page's script posts the whole list as it changes, form-encoded, and
+# reads JSON back; without a script, the list's own "Save to my account"
+# button posts the same form, and a browser navigating (it asks for
+# text/html) is sent back to the page instead. A beacon sent as the phone
+# is locked asks for neither, so it gets JSON, not a page. Signed in only,
+# and only ever onto the signed-in account's own row: the account comes
+# from the session, never from the form. The session cookie is SameSite
+# =Lax, as for every form on the site, so another site cannot post here
+# as the reader; a browser's Origin header, where one is sent, must also
+# be this site. The body is read up to CHECKLIST_SAVE_MAX_BYTES and no
+# further, the form to CHECKLIST_SAVE_MAX_FIELDS fields, and every field
+# is checked by checklist_ticks.parse_form.
+CHECKLIST_SAVE_MAX_BYTES = 64 * 1024
+CHECKLIST_SAVE_MAX_FIELDS = 4 * checklist_ticks.MAX_ITEMS + 8
+
+
+def _checklist_url(postcode: str, house_number: str) -> str:
+    query = {"postcode": postcode, **({"house_number": house_number} if house_number else {})}
+    return "/property/checklist?" + urlencode(query)
+
+
+def _same_site_origin(request: Request) -> bool:
+    """No Origin header (an older browser, a test client), or one naming
+    the host the request came to, or the site's own configured address."""
+    origin = request.headers.get("origin")
+    if not origin:
+        return True
+    netloc = urlparse(origin).netloc.lower()
+    allowed = {(request.headers.get("host") or "").lower()}
+    # 20 Sep 2026: the site's own address counts even where SITE_URL is
+    # unset, so a save cannot be refused by a missing environment value.
+    allowed.add(urlparse(os.environ.get("SITE_URL") or "https://ukpropertyinsight.co.uk").netloc.lower())
+    return bool(netloc) and netloc in allowed
+
+
+@app.post("/property/checklist/save")
+async def property_checklist_save(request: Request):
+    wants_page = "text/html" in (request.headers.get("accept") or "")
+
+    def refuse(message: str, status: int, error: str):
+        if not wants_page:
+            return JSONResponse({"error": error, "message": message}, status_code=status)
+        return Response(message, status_code=status, media_type="text/plain")
+
+    if not _same_site_origin(request):
+        return refuse("That request did not come from this site, so nothing was saved.", 403, "origin")
+    if (request.headers.get("content-type") or "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
+        return refuse("That was not the checklist's form, so nothing was saved.", 415, "form")
+    declared = request.headers.get("content-length")
+    if declared and (not declared.isdigit() or int(declared) > CHECKLIST_SAVE_MAX_BYTES):
+        return refuse("That checklist is too long to save.", 413, "too_long")
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > CHECKLIST_SAVE_MAX_BYTES:
+            return refuse("That checklist is too long to save.", 413, "too_long")
+    try:
+        pairs = parse_qsl(body.decode("utf-8"), keep_blank_values=True,
+                          max_num_fields=CHECKLIST_SAVE_MAX_FIELDS)
+    except (UnicodeDecodeError, ValueError):
+        return refuse("That checklist could not be read, so nothing was saved.", 400, "unreadable")
+    fields = dict(pairs)
+    postcode = checklist_ticks.canonical_postcode(fields.get("postcode", ""))
+    house = checklist_ticks.clean_house(fields.get("house_number", ""))
+    if postcode is None or house is None:
+        return refuse("That is not a home this checklist can be saved for.", 400, "home")
+    back = _checklist_url(postcode, house)
+
+    user = auth.current_user(request)
+    if not user:
+        if not wants_page:
+            return JSONResponse({"error": "sign_in", "message": "Log in to save the checklist to your account."},
+                                status_code=401)
+        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
+    items = checklist_ticks.parse_form(pairs)
+    if items is None:
+        return refuse("That checklist could not be read, so nothing was saved.", 400, "unreadable")
+    saved = await asyncio.to_thread(checklist_ticks.save, user["id"], postcode, house, items)
+    if saved is None:
+        return refuse(f"Your account already keeps checklists for {checklist_ticks.MAX_HOMES} homes, "
+                      "so this one stays on this device.", 409, "too_many")
+    if not wants_page:
+        return JSONResponse({
+            "ok": True, "checked": saved["checked"], "total": saved["total"],
+            "follow_up": saved["follow_up"], "updated_ms": saved["updated_ms"],
+        })
+    return RedirectResponse(back + "&saved=1#checklist", status_code=303)
 
 
 # The Comparables page fetched nearby postcodes and their sales on every
@@ -6781,6 +7051,24 @@ async def _comparables_page_rows(lat: float, lon: float) -> list[dict]:
     return await _deduped(_comparables_page_key(lat, lon), COMPARABLES_CACHE_TTL_S, build)
 
 
+def _comparables_query(postcode: str, house_number: str, view: dict, defaults: list[str]) -> str:
+    """The page's own address for the reader's choices, as the script
+    writes it into the address bar and the share link: the asking price,
+    and each choice only where it differs from where the page starts."""
+    pairs = [("postcode", postcode)]
+    if house_number:
+        pairs.append(("house_number", house_number))
+    if view.get("price"):
+        pairs.append(("price", str(view["price"])))
+    if sorted(view["types"]) != sorted(defaults):
+        pairs += [("type", t) for t in view["types"]] or [("type", "")]
+    if view["tenure"] != "any":
+        pairs.append(("tenure", view["tenure"]))
+    if view["years"]:
+        pairs.append(("years", str(view["years"])))
+    return "/property/comparables?" + urlencode(pairs)
+
+
 @app.get("/property/comparables")
 async def property_comparables(request: Request, postcode: str = "", house_number: str = ""):
     postcode = postcode.strip()
@@ -6815,27 +7103,66 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
         context["comparables"] = transactions
         context["comparables_count"] = len(transactions)
 
-        if amounts:
-            context["comparables_median"] = _median(amounts)
-            context["comparables_min"] = amounts[0]
-            context["comparables_max"] = amounts[-1]
+        # comparables_median, _min and _max went on 20 Sep 2026: comp_view
+        # gives the page all three, filtered by what the reader chose.
 
-            reference_price = None
-            subject_sales = [t for t in transactions if t["postcode"] == canonical]
-            if house_number:
-                # The report's own matcher since 18 Sep 2026 (first-visitor
-                # audit D7, review). A substring match took 19 Acacia
-                # Road's £410,000 as house 9's sale in the caption.
-                subject_sales = _filter_by_address(subject_sales, house_number)
-            if subject_sales:
+        reference_price = None
+        subject_sales = [t for t in transactions if t["postcode"] == canonical]
+        if house_number:
+            # The report's own matcher since 18 Sep 2026 (first-visitor
+            # audit D7, review). A substring match took 19 Acacia
+            # Road's £410,000 as house 9's sale in the caption.
+            subject_sales = _filter_by_address(subject_sales, house_number)
+        if subject_sales:
+            try:
+                reference_price = float(subject_sales[0]["amount"])
+            except (TypeError, ValueError):
+                reference_price = None
+        if reference_price and amounts:
+            context["comparables_reference_price"] = reference_price
+
+        # Is the asking price in line? (18 Sep 2026, first-visitor audit
+        # F1.) The median, the range, the reference sentence and the bar
+        # used to describe all 300 rows whatever the year buttons showed,
+        # Land Registry's commercial "Other" sales included. They now
+        # describe the rows the reader has chosen by type, tenure and
+        # years, starting from this home's own type where its sale is on
+        # record, and the page's script redoes the sums as the choices
+        # change. The percentage rounds halves up, as the script does (it
+        # went through round(), which sends a half to the even number).
+        if transactions:
+            known_type = (comparables_view.row_type(subject_sales[0].get("property_type"))
+                          if house_number and subject_sales else None)
+            defaults = comparables_view.default_types(known_type)
+            state = comparables_view.state_from_query(request.query_params, known_type)
+            saved = None
+            current = context["current_user"]
+            if current and db.is_configured():
                 try:
-                    reference_price = float(subject_sales[0]["amount"])
-                except (TypeError, ValueError):
-                    reference_price = None
-            if reference_price:
-                below = sum(1 for a in amounts if a < reference_price)
-                context["comparables_reference_price"] = reference_price
-                context["comparables_percentile"] = round(below / len(amounts) * 100)
+                    saved = await asyncio.to_thread(
+                        asking_prices.saved_home, current["id"], canonical, house_number
+                    )
+                except Exception:  # noqa: BLE001 - the sales still show without it
+                    saved = None
+            if saved and saved["price"] and "price" not in request.query_params:
+                state["price"] = saved["price"]
+            view = comparables_view.build(transactions, state, datetime.date.today(),
+                                          context.get("comparables_reference_price"))
+            context["comparables_percentile"] = view["reference_pct"]
+            comp_url = _comparables_query(canonical, house_number, view, defaults)
+            country = (location.get("country") or "England").strip()
+            context.update({
+                "comp_view": view, "comp_defaults": defaults, "comp_known_type": known_type,
+                "comp_type_labels": comparables_view.TYPE_LABELS, "comp_saved": saved,
+                "comp_url": comp_url, "comp_base": _public_base_url(request),
+                "comp_share_url": f"{_public_base_url(request)}{comp_url}",
+                "comp_share_text": f"What sold near {canonical}, from HM Land Registry",
+                "comp_country": country,
+                "comp_stamp_duty": _stamp_duty_on(view["price"], country, "") if view["price"] else None,
+                "comp_sdlt_rates": _sdlt_rates_for_page() if country in SDLT_NATIONS else None,
+                "comp_price_rules": {"min": comparables_view.PRICE_MIN, "max": comparables_view.PRICE_MAX,
+                                     "chars": comparables_view.PRICE_INPUT_MAX},
+            })
     except Exception:
         context["comparables_error"] = True
 
@@ -10038,6 +10365,15 @@ async def watchlist_view(request: Request):
         return RedirectResponse("/login?next=/watchlist", status_code=303)
 
     items = watchlist.list_items(context["current_user"]["id"])
+    # The asking price the buyer kept with each home on its Comparables
+    # page (18 Sep 2026, first-visitor audit F1), one query for the list.
+    kept_prices = asking_prices.for_items(context["current_user"]["id"], items)
+    # And how far through its viewing checklist the buyer got (18 Sep
+    # 2026, first-visitor audit F2), one query for the list.
+    viewed = checklist_ticks.for_items(context["current_user"]["id"], items)
+    for item in items:
+        item["asking_price"] = kept_prices.get(item["id"])
+        item["viewing"] = viewed.get(item["id"])
     # Reports this account has opened in full but never saved - shown
     # as one-click adds, so the page fills itself from real activity
     # instead of starting empty.
@@ -10132,10 +10468,18 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
             *(_comparison_summary(item["postcode"], item["house_number"]) for item in items),
             return_exceptions=True,
         )
+        # The buyer's own asking price leads the comparison (18 Sep 2026,
+        # first-visitor audit F1), from the Comparables page where it was kept.
+        kept_prices = asking_prices.for_items(context["current_user"]["id"], items)
+        # With what the buyer ticked at each viewing (18 Sep 2026, F2).
+        viewed = checklist_ticks.for_items(context["current_user"]["id"], items)
         context["columns"] = [
-            {**item, "summary": ({"not_found": True} if isinstance(s, Exception) else s)}
+            {**item, "summary": ({"not_found": True} if isinstance(s, Exception) else s),
+             "asking_price": kept_prices.get(item["id"]), "viewing": viewed.get(item["id"])}
             for item, s in zip(items, summaries)
         ]
+        context["asking_row"] = True
+        context["viewing_row"] = True
     else:
         context["columns"] = []
     return templates.TemplateResponse(request, "compare.html", context)
@@ -10217,7 +10561,14 @@ async def watchlist_compare_full(request: Request, item_ids: list[int] = Query(d
                     return {"not_found": True, "postcode": item["postcode"], "house_number": item["house_number"]}
 
         results = await asyncio.gather(*(one(i) for i in items))
-        columns = [{**item, "data": r} for item, r in zip(items, results)]
+        # Each home's kept asking price heads its column (18 Sep 2026,
+        # first-visitor audit F1): the buyer's own number beside the checks.
+        kept_prices = asking_prices.for_items(user["id"], items)
+        # And its viewing checklist's counts (18 Sep 2026, F2).
+        viewed = checklist_ticks.for_items(user["id"], items)
+        columns = [{**item, "data": r, "asking_price": kept_prices.get(item["id"]),
+                    "viewing": viewed.get(item["id"])}
+                   for item, r in zip(items, results)]
         order: list[tuple[str, str]] = []
         for c in columns:
             for key in c["data"].get("order", []):
@@ -10533,6 +10884,100 @@ def watchlist_remove(request: Request, item_id: int = Form(...), next: str = For
     # URL to a browser and an open redirect to everyone else.
     target = next if next.startswith("/") and not next.startswith("//") else "/watchlist"
     return RedirectResponse(target, status_code=303)
+
+
+def _asking_price_back(next_url: str) -> str:
+    """Where saving an asking price returns to: the Comparables page it
+    was saved from, or My properties. Nothing else, so the form's `next`
+    can never send anyone off the site."""
+    n = (next_url or "").strip()
+    if n.startswith("/property/comparables?") and not re.search(r"[\\\s]", n):
+        return n
+    return "/watchlist"
+
+
+@app.post("/watchlist/asking-price")
+def watchlist_asking_price(
+    request: Request,
+    item_id: int = Form(...),
+    price: str = Form("", max_length=comparables_view.PRICE_INPUT_MAX),
+    clear: str = Form("", max_length=8),
+    next: str = Form("", max_length=600),
+):
+    """Keep an asking price with a saved home, or clear it (18 Sep 2026,
+    first-visitor audit F1). Signed in, and only on a home in this
+    account's own My properties, as /watchlist/save and /watchlist/remove
+    are: the session cookie is SameSite=Lax, so another site cannot post
+    here as the reader, and every field is capped in length."""
+    back = _asking_price_back(next)
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
+    value = None
+    if not clear:
+        value = comparables_view.parse_price(price)
+        if value is None:
+            return Response("That asking price could not be read, so nothing was saved.",
+                            status_code=400, media_type="text/plain")
+    if not asking_prices.save(user["id"], item_id, value):
+        return Response("That home is not in your saved properties.", status_code=403, media_type="text/plain")
+    return RedirectResponse(back, status_code=303)
+
+
+# The council tax band kept with a saved home (18 Sep 2026, first-visitor
+# audit F4), from the running-costs page's "Save Band F with this home".
+# The same checks as the asking price and the viewing checklist: signed
+# in, only onto a home in this account's own My properties (the account
+# comes from the session, never the form), the SameSite=Lax session
+# cookie, a browser's Origin where it sends one, and a body read to
+# BAND_SAVE_MAX_BYTES and no further. It goes back only to a running-costs
+# page, so the form's `next` can never send anyone off the site.
+BAND_SAVE_MAX_BYTES = 2048
+
+
+def _band_back(next_url: str) -> str:
+    n = (next_url or "").strip()
+    if n.startswith("/running-costs?") and len(n) <= 600 and not re.search(r"[\\\s]", n):
+        return n
+    return "/watchlist"
+
+
+@app.post("/watchlist/council-tax-band")
+async def watchlist_council_tax_band(request: Request):
+    def refuse(message: str, status: int):
+        return Response(message, status_code=status, media_type="text/plain")
+
+    if not _same_site_origin(request):
+        return refuse("That request did not come from this site, so nothing was saved.", 403)
+    if (request.headers.get("content-type") or "").split(";")[0].strip().lower() != "application/x-www-form-urlencoded":
+        return refuse("That was not the band form, so nothing was saved.", 415)
+    declared = request.headers.get("content-length")
+    if declared and (not declared.isdigit() or int(declared) > BAND_SAVE_MAX_BYTES):
+        return refuse("That request is too long.", 413)
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > BAND_SAVE_MAX_BYTES:
+            return refuse("That request is too long.", 413)
+    try:
+        fields = dict(parse_qsl(body.decode("utf-8"), keep_blank_values=True, max_num_fields=8))
+    except (UnicodeDecodeError, ValueError):
+        return refuse("That form could not be read, so nothing was saved.", 400)
+    back = _band_back(fields.get("next", ""))
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
+    raw_id = fields.get("item_id", "").strip()
+    if not raw_id.isascii() or not raw_id.isdigit() or len(raw_id) > 12:
+        return refuse("That is not a saved home.", 400)
+    band = None
+    if not fields.get("clear"):
+        band = fields.get("band", "").strip().upper()
+        if band not in asking_prices.BAND_LETTERS:
+            return refuse("That is not a council tax band, so nothing was saved.", 400)
+    if not await asyncio.to_thread(asking_prices.save_band, user["id"], int(raw_id), band):
+        return refuse("That home is not in your saved properties.", 403)
+    return RedirectResponse(back, status_code=303)
 
 
 # /districts/follow and /districts/unfollow were removed on 7 Sep 2026
@@ -11164,6 +11609,95 @@ def _admission_verdict(distance_miles: float, radius_miles: float, no_limit: boo
     }
 
 
+# ---- Homes you looked at, against a school (18 Sep 2026) -----------------
+# First-visitor audit F3. A school page checked one typed postcode at a
+# time, while the buyer it serves has several homes on the go: the ones
+# this device opened (the "Pick up where you left off" list, localStorage
+# key uki-recent) and, signed in, the ones in My properties. The page now
+# lists each under its checker with its distance and reading, and the
+# school shortlist puts every saved home against every saved school.
+#
+# Every one of those readings, and the page's own ?check= answer, comes
+# from _school_reading below, over the published distance at the page's
+# precision (schools_db.published_miles), so one home read against one
+# school says the same thing wherever it appears. A school page exists
+# only for a school with a council-published distance, so none of these
+# readings is measured against a modelled estimate and none carries the
+# "est." mark (item A4); the grid says in words when a saved school has
+# no published figure rather than reading it against anything else.
+
+# The most homes read against a school at once: the device list keeps six
+# (_recent_places.html), so eight is room for all of them and a few saved
+# ones. The readings endpoint refuses a longer list, and the school page
+# and the shortlist grid take the most recently saved homes up to it, so a
+# long My properties costs at most this many postcode lookups (each cached
+# for a week by lookup_postcode).
+SCHOOL_HOMES_MAX = 8
+# A request naming eight postcodes and a school is well under 1 KB.
+SCHOOL_READINGS_MAX_BYTES = 2048
+
+
+def _school_reading(school: dict, where: dict) -> dict:
+    """One address against one school's published distance: the three
+    bands of _admission_verdict, measured from the postcode's centre to
+    the school's point on the register. `school` carries latitude,
+    longitude, miles and no_distance_limit (_school_labels sets that);
+    `where` is a postcodes.io result."""
+    km = _haversine_km(school["latitude"], school["longitude"], where["latitude"], where["longitude"])
+    reading = _admission_verdict(km / 1.60934, school["miles"], school.get("no_distance_limit"))
+    reading.update({"postcode": where["postcode"], "latitude": where["latitude"],
+                    "longitude": where["longitude"]})
+    return reading
+
+
+def _distinct_saved_homes(items: list[dict], limit: int = SCHOOL_HOMES_MAX) -> list[dict]:
+    """My properties' rows as homes: newest first (list_items' order), a
+    home saved twice ("17" and "17 High Street" at one postcode, as
+    watchlist.same_home reads them) once, and at most `limit`."""
+    out: list[dict] = []
+    for item in items:
+        compact = (item.get("postcode") or "").replace(" ", "").upper()
+        hn = (item.get("house_number") or "").strip()
+        if any(o["compact"] == compact and watchlist.same_home(o["house_number"], hn) for o in out):
+            continue
+        out.append({"compact": compact, "postcode": item.get("postcode") or "", "house_number": hn})
+        if len(out) >= limit:
+            break
+    return out
+
+
+async def _locate_homes(homes: list[dict]) -> list[dict]:
+    """Each home with where its postcode is, looked up once per postcode
+    and all at once: status "ok" with `where`, "not_found" for a postcode
+    postcodes.io does not know, or "error" when the lookup failed. The
+    address is labelled the way the device list labels it ("12, M14
+    5TG") and links to its report."""
+    canon = [checklist_ticks.canonical_postcode(h["postcode"]) for h in homes]
+    unique = [pc for pc in dict.fromkeys(canon) if pc]
+
+    async def locate(pc: str):
+        try:
+            return await lookup_postcode(pc), False
+        except httpx.HTTPError:
+            return None, True
+
+    found = dict(zip(unique, await asyncio.gather(*(locate(pc) for pc in unique))))
+    out = []
+    for home, pc in zip(homes, canon):
+        where, failed = found.get(pc, (None, False))
+        postcode = where["postcode"] if where else (pc or home["postcode"].strip().upper())
+        hn = home["house_number"]
+        query = {"postcode": postcode, **({"house_number": hn} if hn else {})}
+        out.append({
+            "postcode": postcode, "house_number": hn,
+            "label": f"{hn}, {postcode}" if hn else postcode,
+            "area": (where or {}).get("admin_district") or "",
+            "url": "/property?" + urlencode(query),
+            "where": where, "status": "ok" if where else ("error" if failed else "not_found"),
+        })
+    return out
+
+
 @app.get("/og/school/{urn}.png")
 async def og_school_image(request: Request, urn: int):
     """The share card for one school page."""
@@ -11407,11 +11941,29 @@ async def school_admission_page(request: Request, urn: int, slug: str, check: st
         if where is None:
             context["check_error"] = True
         else:
-            km = _haversine_km(profile["latitude"], profile["longitude"], where["latitude"], where["longitude"])
-            verdict = _admission_verdict(km / 1.60934, profile["miles"], profile.get("no_distance_limit"))
-            verdict.update({"postcode": where["postcode"], "latitude": where["latitude"],
-                            "longitude": where["longitude"]})
-            context["check"] = verdict
+            # The same reading the homes under the checker and the
+            # /api/school-readings lookups give (18 Sep 2026, F3).
+            context["check"] = _school_reading(profile, where)
+    # Homes you looked at (18 Sep 2026, first-visitor audit F3): signed
+    # in, the homes in My properties are read against this school here,
+    # from one query for the list, so they show without a script; the
+    # page's script adds the homes this device opened that are not among
+    # them, through /api/school-readings. Signed out, the list is empty
+    # in the HTML, which is what the anonymous page cache keeps.
+    context["school_homes_max"] = SCHOOL_HOMES_MAX
+    context["saved_homes"] = []
+    if context["current_user"] and db.is_configured():
+        try:
+            items = await asyncio.to_thread(watchlist.list_items, context["current_user"]["id"])
+        except Exception:  # noqa: BLE001 - the page stands without the list
+            items = []
+        homes = await _locate_homes(_distinct_saved_homes(items))
+        for home in homes:
+            home["reading"] = _school_reading(profile, home["where"]) if home["where"] else None
+        context["saved_homes"] = homes
+        # 20 Sep 2026: say so when the list is capped, as the shortlist does,
+        # rather than dropping the oldest saved homes without a word.
+        context["saved_homes_total"] = len(_distinct_saved_homes(items, limit=len(items) or 1))
     # Districts "inside the distance" mean nothing when there is no limit.
     context["nearby_areas"] = [] if profile.get("no_distance_limit") else await asyncio.to_thread(
         _outcodes_within, profile["latitude"], profile["longitude"], profile["miles"]
@@ -11919,6 +12471,78 @@ async def api_school_search(q: str = ""):
         {"name": r["name"], "url": r["url"], "authority": r["authority"], "has_page": r["has_page"],
          "phase": r["phase"], "miles": r["miles"], "year": r["academic_year"]} for r in rows
     ]}, headers={"Cache-Control": "public, max-age=300"})
+
+
+@app.post("/api/school-readings")
+async def api_school_readings(request: Request):
+    """The readings behind a school page's "Homes you looked at" (18 Sep
+    2026, first-visitor audit F3): the page's script posts the postcodes
+    this device opened, and each comes back read against the school by
+    _school_reading, the page's own ?check= answer, so the two can never
+    disagree.
+
+    Only postcodes arrive: the house numbers and the list itself stay on
+    the device, and nothing is stored or counted here. Posted rather than
+    put in an address, so the postcodes stay out of access logs and
+    browser history. Anyone may ask, as anyone may use the page's
+    checker, but only from this site (Origin, as the checklist's save
+    checks it), as JSON, within SCHOOL_READINGS_MAX_BYTES, and for at most
+    SCHOOL_HOMES_MAX well-formed postcodes. A malformed one is answered
+    "invalid" without a lookup; each real one costs one cached lookup."""
+    def refuse(error: str, status: int):
+        return JSONResponse({"error": error}, status_code=status, headers={"Cache-Control": "no-store"})
+
+    if not _same_site_origin(request):
+        return refuse("origin", 403)
+    if (request.headers.get("content-type") or "").split(";")[0].strip().lower() != "application/json":
+        return refuse("json", 415)
+    declared = request.headers.get("content-length")
+    if declared and (not declared.isdigit() or int(declared) > SCHOOL_READINGS_MAX_BYTES):
+        return refuse("too_long", 413)
+    body = bytearray()
+    async for chunk in request.stream():
+        body += chunk
+        if len(body) > SCHOOL_READINGS_MAX_BYTES:
+            return refuse("too_long", 413)
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return refuse("unreadable", 400)
+    if not isinstance(payload, dict):
+        return refuse("unreadable", 400)
+    urn, asked = payload.get("urn"), payload.get("postcodes")
+    if isinstance(urn, bool) or not isinstance(urn, int) or not 0 < urn < 10 ** 8:
+        return refuse("school", 400)
+    if not isinstance(asked, list) or not asked or not all(isinstance(p, str) for p in asked):
+        return refuse("postcodes", 400)
+    if len(asked) > SCHOOL_HOMES_MAX:
+        return refuse("too_many", 400)
+
+    school = await asyncio.to_thread(schools_db.admission_point, urn)
+    if school is None:
+        return refuse("no_school", 404)
+    _school_labels(school)
+    canon = [checklist_ticks.canonical_postcode(p) if len(p) <= 16 else None for p in asked]
+    homes = await _locate_homes([{"postcode": pc, "house_number": ""} for pc in canon if pc])
+    by_postcode = dict(zip([pc for pc in canon if pc], homes))
+    readings = []
+    for pc in canon:
+        home = by_postcode.get(pc) if pc else None
+        if home is None:
+            readings.append({"query": None, "status": "invalid"})
+            continue
+        row = {"query": pc, "status": home["status"]}
+        if home["where"]:
+            r = _school_reading(school, home["where"])
+            row.update({
+                "postcode": r["postcode"], "area": home["area"], "level": r["level"], "label": r["label"],
+                "why": r["why_sentence"], "no_limit": bool(r.get("no_limit")),
+                "distance_miles": r["distance_miles"], "distance_label": _miles_label(r["distance_miles"]),
+            })
+        readings.append(row)
+    return JSONResponse({"urn": school["urn"], "miles": school["miles"],
+                         "no_limit": school["no_distance_limit"], "readings": readings},
+                        headers={"Cache-Control": "no-store"})
 
 
 # The phases a council hub can hold, as they read inside a sentence.
@@ -12503,15 +13127,62 @@ async def schools_guide(request: Request, q: str = "", areas: str = ""):
 # --- School shortlist ---
 
 
+def _homes_grid(homes: list[dict], schools: list[dict]) -> dict:
+    """Saved homes (rows) against shortlisted schools (columns) for the
+    shortlist page (18 Sep 2026, first-visitor audit F3). Each cell is
+    the home's distance from the school and its reading against the
+    published distance, from _school_reading as on the school's own page.
+    A school with no published figure gets the distance and says it has
+    no figure to read it against; nothing is read against an estimate."""
+    columns = []
+    for s in schools:
+        point = None
+        if s.get("latitude") is not None and s.get("longitude") is not None:
+            point = {"latitude": s["latitude"], "longitude": s["longitude"],
+                     "miles": s.get("radius_miles"), "academic_year": s.get("academic_year")}
+            if point["miles"] is not None:
+                _school_labels(point)
+        columns.append({"school": s, "point": point,
+                        "no_limit": s.get("radius_miles") is not None and s["radius_miles"] > NO_DISTANCE_LIMIT_MILES})
+    rows = []
+    for home in homes:
+        cells = []
+        for col in columns:
+            point, where = col["point"], home["where"]
+            if home["status"] != "ok":
+                cells.append({"state": home["status"]})
+            elif point is None:
+                cells.append({"state": "no_location"})
+            elif point["miles"] is None:
+                km = _haversine_km(point["latitude"], point["longitude"], where["latitude"], where["longitude"])
+                cells.append({"state": "no_figure", "distance_miles": round(km / 1.60934, 2)})
+            else:
+                cells.append({"state": "reading", "reading": _school_reading(point, where)})
+        rows.append({**home, "cells": cells})
+    return {"columns": columns, "rows": rows}
+
+
 @app.get("/schools/shortlist")
-def school_shortlist_view(request: Request, alerts: str = ""):
+async def school_shortlist_view(request: Request, alerts: str = ""):
     context = base_context(request)
     if not context["current_user"]:
         return RedirectResponse("/login?next=/schools/shortlist", status_code=303)
     uid = context["current_user"]["id"]
-    context["items"] = school_shortlist.list_items(uid)
-    context["alerts_enabled"] = school_shortlist.alerts_enabled(uid)
+    context["items"] = await asyncio.to_thread(school_shortlist.list_items, uid)
+    context["alerts_enabled"] = await asyncio.to_thread(school_shortlist.alerts_enabled, uid)
     context["alerts_changed"] = alerts
+    # The grid of saved homes against these schools (18 Sep 2026, F3):
+    # the most recently saved SCHOOL_HOMES_MAX homes, one query for the
+    # list and one cached lookup per postcode.
+    context["homes_grid"] = None
+    context["homes_total"] = 0
+    if context["items"]:
+        saved = await asyncio.to_thread(watchlist.list_items, uid)
+        distinct = _distinct_saved_homes(saved, limit=len(saved) or 1)
+        context["homes_total"] = len(distinct)
+        homes = await _locate_homes(distinct[:SCHOOL_HOMES_MAX])
+        context["homes_grid"] = _homes_grid(homes, context["items"])
+    context["school_homes_max"] = SCHOOL_HOMES_MAX
     return templates.TemplateResponse(request, "school_shortlist.html", context)
 
 

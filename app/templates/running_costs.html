@@ -29,51 +29,169 @@
    their figure first on 8 Sep; this page was left behind. #}
 {% if answered %}
 <h1>What it costs to live in {{ checked.postcode }}{% if checked.district %}, {{ checked.district }}{% endif %}</h1>
-{% if checked.typical_year %}
+{# Every figure that follows the band or the energy figure comes from rc,
+   _running_costs_choice in main.py (18 Sep 2026, first-visitor audit
+   F4): Band D and today's estimate unless the address asks for another
+   (?band=F, ?energy=improved) or this account saved a band with the
+   home. The script below redoes the same sums as the reader changes
+   them; each figure it rewrites carries a data-rc attribute. Picking
+   Band F used to change the lead and leave the table on Band D. #}
+{% macro energy_after(plural) %}{% if rc.energy_improved %}<span data-rc-energy="improved"{% if rc.energy != "improved" %} hidden{% endif %}> after the certificate{{ "s'" if plural else "'s" }} recommended improvements</span>{% endif %}{% endmacro %}
+{% set rc_share_text = "What it costs to live in " ~ checked.postcode ~ ": council tax, energy, prices, rent, stamp duty, from the official sources" %}
+{% if rc.year %}
 <p class="area-lead" id="rc-lead">
-    <strong id="rc-total">{{ checked.typical_year | gbp }} a year</strong>{% if checked.typical_share_pct %}, <span id="rc-share">{{ checked.typical_share_pct }}</span>% of the typical household income here{% endif %}.
-    That is Band <span id="rc-band-label">D</span> council tax{% if checked.council_tax %} at {{ checked.council_tax.authority }}{% endif %} plus
-    {% if checked.home and checked.home.energy_now %}this home's own EPC energy estimate{% else %}the middle EPC energy estimate for the postcode{% endif %},
+    <strong id="rc-total">{{ rc.year | gbp }} a year</strong>{% if rc.share is not none %}, <span id="rc-share">{{ "%.1f" | format(rc.share) }}</span>% of the typical household income here{% endif %}.
+    That is Band <span id="rc-band-label">{{ rc.band }}</span> council tax{% if checked.council_tax %} at {{ checked.council_tax.authority }}{% endif %} plus
+    {% if rc.from_home %}this home's own EPC energy estimate{{ energy_after(false) }}{% else %}the middle EPC energy estimate for the postcode{{ energy_after(true) }}{% endif %},
     and nothing else: no water, insurance, mortgage or estate charge. Every figure below is the publishing body's own.
 </p>
-{% if checked.council_tax and checked.council_tax.bands and checked.energy_figure %}
+{% elif checked.council_tax %}
+<p class="area-lead">
+    <strong><span data-rc-ct>{{ rc.amount | gbp }}</span> a year</strong> at Band <span data-rc-band>{{ rc.band }}</span>, from {{ checked.council_tax.authority }} for {{ checked.council_tax.year }} (MHCLG).
+    The energy and tenure figures for this postcode are below, each from the body that publishes it.
+</p>
+{% endif %}
+{% if checked.council_tax and checked.council_tax.bands %}
 {# The home's band is on the seller's bill, not in open data (the
    methodology page says so), so the reader picks it: every band's
-   bill is already in the table below, and the figure above follows
-   the choice (16 Sep 2026). Nothing is estimated; a band is a fact
-   the reader supplies. #}
-<div class="rc-band-pick" data-energy="{{ checked.energy_figure }}" data-income="{{ checked.income_value or '' }}" data-bands='{{ checked.council_tax.bands | tojson }}'>
-    <label for="rc-band">Not Band D? Pick the home's band and the figure above follows.</label>
-    <select id="rc-band">{% for band in checked.council_tax.bands %}<option value="{{ band }}"{% if band == 'D' %} selected{% endif %}>Band {{ band }}</option>{% endfor %}</select>
+   bill is already in the table below (16 Sep 2026). Nothing is
+   estimated; a band is a fact the reader supplies. Since 18 Sep 2026
+   (F4) the choice moves every figure that depends on it, travels in
+   the address and the share links, and a signed-in reader can save it
+   with the home. A plain form underneath: without a script, "Show
+   these figures" asks the server for the same page on that band. #}
+<form class="rc-band-pick" id="rc-pick" method="get" action="/running-costs" autocomplete="off"
+      data-energy="{{ rc.energy_now or '' }}" data-energy-improved="{{ rc.energy_improved or '' }}" data-income="{{ checked.income_value or '' }}" data-bands='{{ checked.council_tax.bands | tojson }}'
+      data-place='{{ {"postcode": checked.postcode, "house": checked.house_number or "", "price": asking_price or "", "base": rc_base, "kept": rc_kept or "", "shareText": rc_share_text} | tojson }}'>
+    <input type="hidden" name="postcode" value="{{ checked.postcode }}">
+    {% if checked.house_number %}<input type="hidden" name="house_number" value="{{ checked.house_number }}">{% endif %}
+    {% if asking_price %}<input type="hidden" name="price" value="{{ asking_price }}">{% endif %}
+    <label for="rc-band">Not Band D? Pick the home's band and every figure on the page follows.</label>
+    <select id="rc-band" name="band">{% for band in checked.council_tax.bands %}<option value="{{ band }}"{% if band == rc.band %} selected{% endif %}>Band {{ band }}</option>{% endfor %}</select>
     <span class="section-sub">The band is on the seller's council tax bill.</span>
-</div>
+    {% if rc.energy_improved %}
+    <fieldset class="rc-energy-pick">
+        <legend>Energy</legend>
+        <label class="rc-chip"><input type="radio" name="energy" value="now"{% if rc.energy == "now" %} checked{% endif %}><span>today's estimate, {{ rc.energy_now | gbp }}</span></label>
+        <label class="rc-chip"><input type="radio" name="energy" value="improved"{% if rc.energy == "improved" %} checked{% endif %}><span>after the certificate{{ "'s" if rc.from_home else "s'" }} recommended improvements, {{ rc.energy_improved | gbp }}</span></label>
+    </fieldset>
+    {% endif %}
+    <button type="submit" class="rc-pick-go" id="rc-pick-go">Show these figures</button>
+</form>
+{# Saved with the home, for its own account: this page opens on the band
+   next time and the report's running-costs line gives its bill. #}
+{% if current_user and rc_saved %}
+<form class="rc-save" id="rc-save" method="post" action="/watchlist/council-tax-band">
+    <input type="hidden" name="item_id" value="{{ rc_saved.item_id }}">
+    <input type="hidden" name="band" id="rc-save-band" value="{{ rc.band }}">
+    <input type="hidden" name="next" id="rc-save-next" value="{{ rc_path }}">
+    <button type="submit" class="rc-save-btn" id="rc-save-btn"{% if rc.band == rc_kept %} hidden{% endif %}>Save Band {{ rc.band }} with this home</button>
+    <span class="rc-save-status" id="rc-save-status">
+        {%- if rc_kept and rc_kept == rc.band %}Band {{ rc_kept }} is saved with this home, and its report gives that band's bill.
+        {%- elif rc_kept %}Band {{ rc_kept }} is saved with this home now.
+        {%- else %}Its report then gives this band's bill.{% endif -%}
+    </span>
+    {% if rc_kept %}<button type="submit" class="rc-save-clear" name="clear" value="1">Remove the saved band</button>{% endif %}
+</form>
+{% elif current_user %}
+<p class="rc-save-note">To save the band with this home, open <a href="/property?postcode={{ checked.postcode | urlencode }}{% if checked.house_number %}&amp;house_number={{ checked.house_number | urlencode }}{% endif %}">its report</a> first: that puts it in My properties.</p>
+{% elif accounts_configured %}
+<p class="rc-save-note"><a id="rc-login-link" href="/login?next={{ rc_path | urlencode }}">Log in</a> to save the band with a home in My properties.</p>
+{% endif %}
 <script>
+/* The band picker and the energy toggle (18 Sep 2026, first-visitor
+   audit F4). The same sums as _running_costs_choice in main.py, on the
+   figures the server put on the form: Math.round where whole_pounds
+   rounds, halves up both. Nothing is stored on the device; the choice
+   goes into this site's own address and share links, and a save is the
+   form above posting to this site. */
 (function () {
-    var pick = document.querySelector('.rc-band-pick');
+    var pick = document.getElementById('rc-pick');
     if (!pick) return;
     var sel = document.getElementById('rc-band');
     var bands = JSON.parse(pick.getAttribute('data-bands'));
-    var energy = parseFloat(pick.getAttribute('data-energy')) || 0;
+    var place = JSON.parse(pick.getAttribute('data-place'));
+    var energyNow = parseFloat(pick.getAttribute('data-energy')) || 0;
+    var energyImproved = parseFloat(pick.getAttribute('data-energy-improved')) || 0;
     var income = parseFloat(pick.getAttribute('data-income')) || 0;
-    var total = document.getElementById('rc-total');
-    var share = document.getElementById('rc-share');
-    var label = document.getElementById('rc-band-label');
-    sel.addEventListener('change', function () {
-        var amount = bands[sel.value];
+    var go = document.getElementById('rc-pick-go');
+    if (go) go.hidden = true;
+    function each(selector, fn) { Array.prototype.forEach.call(document.querySelectorAll(selector), fn); }
+    function gbp(n) { return '£' + n.toLocaleString('en-GB'); }
+    function mode() {
+        var on = pick.querySelector('input[name="energy"]:checked');
+        return on && on.value === 'improved' && energyImproved ? 'improved' : 'now';
+    }
+    /* The order and encoding of _running_costs_path in main.py. */
+    function path(band, energy, share) {
+        var q = ['postcode=' + encodeURIComponent(place.postcode)];
+        if (place.house) q.push('house_number=' + encodeURIComponent(place.house));
+        if (place.price) q.push('price=' + encodeURIComponent(place.price));
+        if (band !== 'D' || (place.kept && !share)) q.push('band=' + encodeURIComponent(band));
+        if (energy === 'improved') q.push('energy=improved');
+        return '/running-costs?' + q.join('&');
+    }
+    function carry(band, energy) {
+        var own = path(band, energy, false);
+        try { history.replaceState(history.state, '', own + window.location.hash); } catch (e) { /* a sandboxed frame may refuse; the links below still carry it */ }
+        var full = place.base + path(band, energy, true);
+        var row = document.querySelector('#checked .share-send-row');
+        if (row) {
+            var copy = row.querySelector('[data-copy-link]');
+            if (copy) copy.setAttribute('data-copy-link', full);
+            var said = place.shareText + ' ' + full;
+            var wa = row.querySelector('a[href^="https://wa.me/"]');
+            if (wa) wa.href = 'https://wa.me/?text=' + encodeURIComponent(said);
+            var mail = row.querySelector('a[href^="mailto:"]');
+            if (mail) mail.href = 'mailto:?subject=' + encodeURIComponent(place.shareText) + '&body=' + encodeURIComponent(said);
+        }
+        var next = document.getElementById('rc-save-next');
+        if (next) next.value = own;
+        var login = document.getElementById('rc-login-link');
+        if (login) login.href = '/login?next=' + encodeURIComponent(own);
+    }
+    function saved(band) {
+        var field = document.getElementById('rc-save-band');
+        if (!field) return;
+        field.value = band;
+        var btn = document.getElementById('rc-save-btn');
+        btn.textContent = 'Save Band ' + band + ' with this home';
+        btn.hidden = band === place.kept;
+        document.getElementById('rc-save-status').textContent = !place.kept ? "Its report then gives this band's bill."
+            : band === place.kept ? 'Band ' + place.kept + " is saved with this home, and its report gives that band's bill."
+            : 'Band ' + place.kept + ' is saved with this home now.';
+    }
+    function update() {
+        var band = sel.value, amount = bands[band];
         if (amount == null) return;
-        var year = Math.round(amount + energy);
-        total.textContent = '£' + year.toLocaleString('en-GB') + ' a year';
-        if (share && income) share.textContent = (Math.round(1000 * year / income) / 10).toFixed(1);
-        label.textContent = sel.value;
-    });
+        var energy = mode();
+        var used = energy === 'improved' ? energyImproved : energyNow;
+        var label = document.getElementById('rc-band-label');
+        if (label) label.textContent = band;
+        each('[data-rc-band]', function (el) { el.textContent = band; });
+        each('[data-rc-ct]', function (el) { el.textContent = gbp(Math.round(amount)); });
+        each('[data-rc-energy]', function (el) { el.hidden = el.getAttribute('data-rc-energy') !== energy; });
+        each('th[data-band]', function (th) { th.classList.toggle('rc-band-chosen', th.getAttribute('data-band') === band); });
+        if (used) {
+            var year = Math.round(amount + used);
+            var total = document.getElementById('rc-total');
+            if (total) total.textContent = gbp(year) + ' a year';
+            each('[data-rc-year]', function (el) { el.textContent = gbp(year); });
+            each('[data-rc-month]', function (el) { el.textContent = gbp(Math.round(year / 12)); });
+            if (income) {
+                var share = (Math.round(1000 * year / income) / 10).toFixed(1);
+                var lead = document.getElementById('rc-share');
+                if (lead) lead.textContent = share;
+                each('[data-rc-share]', function (el) { el.textContent = share; });
+            }
+        }
+        saved(band);
+        carry(band, energy);
+    }
+    sel.addEventListener('change', update);
+    each('#rc-pick input[name="energy"]', function (r) { r.addEventListener('change', update); });
 })();
 </script>
-{% endif %}
-{% elif checked.council_tax %}
-<p class="area-lead">
-    <strong>{{ checked.council_tax.band_d | gbp }} a year</strong> at Band D, from {{ checked.council_tax.authority }} for {{ checked.council_tax.year }} (MHCLG).
-    The energy and tenure figures for this postcode are below, each from the body that publishes it.
-</p>
 {% endif %}
 {% else %}
 <h1>What it costs to live there</h1>
@@ -163,7 +281,11 @@
        what the tables are rather than repeating it. #}
     <h2>Every figure, and who published it</h2>
     <p class="section-sub">Each one is the publishing body's own, for this postcode, its district or its council. Where a figure is not held, the row says so. Nothing is modelled.</p>
-    {% with share_url=canonical_url ~ "?postcode=" ~ (checked.postcode | urlencode) ~ (("&house_number=" ~ (checked.house_number | urlencode)) if checked.house_number else ""), share_text="What it costs to live in " ~ checked.postcode ~ ": council tax, energy, prices, rent, stamp duty, from the official sources" %}{% include "_share_row.html" %}{% endwith %}
+    {# The asking price stays in a shared link (18 Sep 2026, first-visitor
+       audit F1), so the partner reads the same stamp duty row. #}
+    {# And the band and energy choice since 18 Sep 2026 (F4), so a partner
+       opens the same totals: rc_share_url, from _running_costs_path. #}
+    {% with share_url=rc_share_url, share_text=rc_share_text %}{% include "_share_row.html" %}{% endwith %}
     {% if checked.house_number and not checked.home %}
     <p class="notice">No EPC or recorded sale matched "{{ checked.house_number }}" in {{ checked.postcode }}, so the rows below are for the postcode. Try the number as it appears on the address, for example "Flat 2" or "37".</p>
     {% endif %}
@@ -179,7 +301,7 @@
             <tbody>
                 <tr>
                     <td><strong>Council tax</strong><span class="school-table-type">the home's own band is on its bill (not open data); every band is in the row beneath these tables</span></td>
-                    <td>{% if checked.council_tax %}<strong>{{ checked.council_tax.band_d | gbp }}</strong> a year at Band D{% else %}Not held for this council{% endif %}</td>
+                    <td>{% if checked.council_tax %}<strong data-rc-ct>{{ rc.amount | gbp }}</strong> a year at Band <span data-rc-band>{{ rc.band }}</span>{% else %}Not held for this council{% endif %}</td>
                     <td>{% if checked.council_tax %}{{ checked.council_tax.authority }}, {{ checked.council_tax.year }} (MHCLG){% else %}MHCLG{% endif %}</td>
                 </tr>
                 {% if h and h.energy_now %}
@@ -211,10 +333,13 @@
                     <td>ONS private rental prices, {{ checked.rent.period | month_label }}</td>
                 </tr>
                 {% endif %}
-                {% if checked.typical_year %}
+                {% if rc.year %}
+                {# The month is the year over twelve, beside the rent a month
+                   above; council tax itself is billed in ten or twelve
+                   instalments, as the council sets. #}
                 <tr>
-                    <td><strong>A typical year, owning</strong><span class="school-table-type">Band D council tax plus {% if h and h.energy_now %}this home's own energy estimate{% else %}the middle energy estimate{% endif %}; no water, insurance, mortgage or charges</span></td>
-                    <td><strong>{{ checked.typical_year | gbp }}</strong> a year{% if checked.typical_share_pct %}, {{ checked.typical_share_pct }}% of the typical household income here{% endif %}</td>
+                    <td><strong>A typical year, owning</strong><span class="school-table-type">Band <span data-rc-band>{{ rc.band }}</span> council tax plus {% if rc.from_home %}this home's own energy estimate{{ energy_after(false) }}{% else %}the middle energy estimate{{ energy_after(true) }}{% endif %}; no water, insurance, mortgage or charges</span></td>
+                    <td><strong data-rc-year>{{ rc.year | gbp }}</strong> a year, <span data-rc-month>{{ rc.month | gbp }}</span> a month over twelve months{% if rc.share is not none %}, <span data-rc-share>{{ "%.1f" | format(rc.share) }}</span>% of the typical household income here{% endif %}</td>
                     <td>the rows above</td>
                 </tr>
                 {% endif %}
@@ -307,7 +432,7 @@
     <p class="section-sub" style="margin-top: 1rem;">Council tax at every band in {{ checked.council_tax.authority }}, {{ checked.council_tax.year }}:</p>
     <div class="tablewrap">
         <table class="tx-table">
-            <thead><tr>{% for band in checked.council_tax.bands %}<th class="num">Band {{ band }}</th>{% endfor %}</tr></thead>
+            <thead><tr>{% for band in checked.council_tax.bands %}<th class="num{% if band == rc.band %} rc-band-chosen{% endif %}" data-band="{{ band }}">Band {{ band }}</th>{% endfor %}</tr></thead>
             <tbody><tr>{% for band, amount in checked.council_tax.bands.items() %}<td class="num">{{ amount | gbp }}</td>{% endfor %}</tr></tbody>
         </table>
     </div>

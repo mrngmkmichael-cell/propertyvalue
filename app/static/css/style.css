@@ -2599,22 +2599,17 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 /* Viewing checklist: made to be printed and written on. */
 .checklist { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.9rem; }
+/* A grid since 18 Sep 2026 (F2): the ticked label, then the line for
+   what they said. The drawn .checklist-box it sat beside is a real
+   checkbox now, inside the label. */
 .checklist-item {
-    display: flex;
-    gap: 0.85rem;
-    align-items: flex-start;
+    display: grid;
+    gap: 0.6rem;
     padding: 0.9rem 1rem;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     break-inside: avoid;
-}
-.checklist-box {
-    flex: none;
-    width: 20px; height: 20px;
-    margin-top: 0.15rem;
-    border: 2px solid var(--ink-faint);
-    border-radius: 4px;
 }
 .checklist-trigger {
     margin: 0 0 0.2rem;
@@ -2634,6 +2629,130 @@ button:not([class]):hover { background: var(--accent-hover); }
     margin: 1.5rem 0 0;
     font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--ink-faint);
+}
+
+/* The viewing checklist you can tick (18 Sep 2026, first-visitor audit
+   F2). The label wraps the item's words, so the whole item is the tap
+   target, at least 44 px high; the answer line is 44 px and 16 px type,
+   or iOS zooms the page; Follow up is a 44 px chip. A ticked item gains a
+   green edge and one to follow up an amber one, drawn as an inset shadow
+   so nothing moves. Colours are tokens, so the lamp needs no rule, and
+   print keeps the ticks and the answers as ink. */
+.checklist-panel {
+    margin: 0 0 1rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.checklist-progress {
+    margin: 0 0 0.45rem;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-medium);
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+}
+.checklist-meter {
+    display: block;
+    height: 6px;
+    margin: 0 0 0.75rem;
+    overflow: hidden;
+    background: var(--border);
+    border-radius: var(--radius-pill);
+}
+.checklist-meter span {
+    display: block;
+    height: 100%;
+    background: var(--good);
+    border-radius: var(--radius-pill);
+    transition: width 0.3s ease;
+}
+.checklist-how,
+.checklist-status { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); line-height: 1.55; max-width: 62ch; }
+.checklist-status { margin-top: 0.5rem; }
+.checklist-tick {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+    min-height: 2.75rem;
+    cursor: pointer;
+}
+.checklist-check {
+    flex: none;
+    width: 1.375rem;
+    height: 1.375rem;
+    margin: 0.1rem 0 0;
+    accent-color: var(--good);
+    cursor: pointer;
+}
+.checklist-check:focus-visible,
+.checklist-follow input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.checklist-text { display: block; min-width: 0; }
+.checklist-text .checklist-trigger,
+.checklist-text .checklist-heading,
+.checklist-text .checklist-detail { display: block; }
+.checklist-item { transition: box-shadow 0.2s ease; }
+.checklist-item:has(.checklist-check:checked) { box-shadow: inset 3px 0 0 var(--good); }
+.checklist-item:has(.checklist-follow input:checked) { box-shadow: inset 3px 0 0 var(--warn); }
+/* "What they said" and the Follow up chip share a row, and the answer
+   line takes the full width under them, so a phone keeps the line wide. */
+.checklist-reply {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+    max-width: 42rem;
+    padding-left: 2.225rem;
+}
+.checklist-reply-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+.checklist-said {
+    grid-column: 1 / -1;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.7rem;
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.checklist-said:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.checklist-follow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.75rem;
+    padding: 0 0.85rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--ink-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+}
+.checklist-follow input { width: 1.1rem; height: 1.1rem; margin: 0; accent-color: var(--warn); cursor: pointer; }
+.checklist-follow:hover { border-color: var(--warn); }
+.checklist-follow:has(input:checked) { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
+.checklist-save-row { margin: 1.25rem 0 0; }
+.checklist-save { min-height: 2.75rem; }
+@media (max-width: 520px) {
+    .checklist-reply { padding-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .checklist-item, .checklist-meter span { transition: none; }
+}
+@media print {
+    .checklist-panel { background: none; }
+    .checklist-item { box-shadow: none; }
+    .checklist-said { background: none; border-width: 0 0 1px; border-color: currentColor; border-radius: 0; }
+    .checklist-follow { background: none; border: 0; padding: 0; min-height: 0; }
 }
 
 /* Print: ink on paper, nothing that only works on a screen. */
@@ -5930,6 +6049,13 @@ main:focus { outline: none; }
    fact about the home, not a warning about it. */
 .myprops-access { margin: 0; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--ink-faint); }
 .myprops-access-open { color: var(--good); }
+/* The asking price kept from the comparables page (18 Sep 2026,
+   first-visitor audit F1), or the way to add one. */
+.myprops-asking { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.myprops-asking strong { color: var(--ink); font-weight: var(--weight-medium); }
+/* How far through its viewing checklist (18 Sep 2026, first-visitor
+   audit F2), in the asking price's quiet line. */
+.myprops-viewed { margin: 0; font-size: var(--text-sm); color: var(--ink-soft); }
 /* The one offer line above the compare bar, once two or more saved
    homes are closed (17 Sep 2026). */
 .myprops-offer { margin: 1.25rem 0 0; font-size: var(--text-sm); color: var(--ink-soft); }
@@ -7226,6 +7352,64 @@ body.theme-dark .map-district-label-g {
     color: var(--ink);
 }
 
+/* The band picker moves every figure, and the energy toggle beside it
+   (18 Sep 2026, first-visitor audit F4). Tokens only, so the lamp needs
+   no rule of its own. Controls are at least 44 by 36px, and the select
+   is 16px on a phone, or iOS zooms the page. */
+.rc-band-pick select { min-height: 2.25rem; }
+.rc-energy-pick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.5rem;
+    flex-basis: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.rc-energy-pick legend { float: left; padding: 0; margin-right: 0.25rem; color: var(--ink); }
+.rc-chip { position: relative; display: inline-flex; max-width: 100%; }
+.rc-chip input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.rc-chip span {
+    display: inline-flex;
+    align-items: center;
+    min-width: 2.75rem;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.85rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+.rc-chip:hover span { border-color: var(--accent); color: var(--accent); }
+.rc-chip input:checked + span,
+.rc-chip:hover input:checked + span { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.rc-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rc-band-pick .rc-pick-go,
+.rc-save .rc-save-btn { min-height: 2.75rem; }
+.rc-band-pick .rc-pick-go:hover,
+.rc-save .rc-save-btn:hover { background: var(--accent-hover); }
+.rc-save { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: -0.5rem 0 1.25rem; }
+.rc-save .rc-save-clear,
+.rc-save .rc-save-clear:hover {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.85rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+}
+.rc-save .rc-save-clear:hover { border-color: var(--accent); }
+.rc-save-status,
+.rc-save-note { font-size: var(--text-sm); color: var(--ink-soft); }
+.rc-save-note { margin: -0.5rem 0 1.25rem; }
+.tx-table th.rc-band-chosen { color: var(--accent); border-bottom-color: var(--accent); }
+@media (max-width: 600px) {
+    .rc-band-pick select { font-size: var(--text-base); }
+}
+
 /* Sales since, on the comparables page (16 Sep 2026). */
 .comp-range { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0 0 0.75rem; }
 .comp-range button,
@@ -7247,6 +7431,135 @@ body.theme-dark .map-district-label-g {
 .comp-range button[aria-pressed="true"],
 .comp-range button[aria-pressed="true"]:hover { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .comp-range-count { margin-left: auto; font-size: var(--text-sm); color: var(--ink-soft); }
+
+/* Is the asking price in line? on the comparables page (18 Sep 2026,
+   first-visitor audit F1). The type and tenure chips are real checkboxes
+   and radios inside their labels, so the keyboard and a form without
+   JavaScript both work: the chip is the label, the input sits under it
+   unseen and draws the focus ring onto it. Every chip and year button is
+   at least 44 by 36 px to tap. The asking price is a circle on the bar,
+   the home's own sale the existing line, and the sentence beside each
+   carries its mark. Colours are tokens, so the lamp needs no rule. */
+.comp-ask-heading { margin: 1.75rem 0 0.9rem; }
+.comp-filters { margin: 0 0 1.25rem; }
+.comp-ask { margin: 0 0 1rem; }
+.comp-ask-label,
+.comp-choice-label {
+    display: block;
+    margin: 0 0 0.4rem;
+    padding: 0;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.comp-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.comp-ask-pound { font-size: var(--text-lg); color: var(--ink-soft); }
+.comp-ask-row input {
+    flex: 0 1 13rem;
+    min-width: 0;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+.comp-ask-row input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.comp-ask-row .comp-apply { min-height: 2.75rem; }
+.comp-ask-row .comp-apply:hover,
+.comp-save .comp-save-btn:hover { background: var(--accent-hover); }
+.comp-ask-hint { margin: 0.4rem 0 0; font-size: var(--text-sm); color: var(--ink-soft); }
+.comp-choice { min-width: 0; margin: 0 0 0.75rem; padding: 0; border: 0; }
+.comp-chip-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.comp-chip { position: relative; display: inline-flex; }
+.comp-chip input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.comp-chip span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.25rem;
+    padding: 0.35rem 0.85rem;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+}
+.comp-chip:hover span { border-color: var(--accent); color: var(--accent); }
+.comp-chip input:checked + span,
+.comp-chip:hover input:checked + span { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.comp-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.comp-note { margin: -0.25rem 0 0.9rem; font-size: var(--text-sm); color: var(--ink-soft); }
+.comp-filters .comp-range button { min-width: 2.75rem; min-height: 2.25rem; }
+.comp-figures { margin: 0 0 1.5rem; }
+.price-position-marker.comp-ask-marker {
+    top: -5px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px var(--surface);
+    transform: translateX(-9px);
+    transition: left 0.25s ease;
+}
+.comp-ref-swatch,
+.comp-ask-swatch { display: inline-block; flex: none; margin-right: 0.35rem; }
+.comp-ref-swatch { width: 3px; height: 0.9em; border-radius: 2px; background: var(--ink); vertical-align: -0.1em; }
+.comp-ask-swatch { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--accent); vertical-align: -0.05em; }
+.comp-ask-result { margin: 0.75rem 0 0; font-size: var(--text-base); color: var(--ink); }
+.comp-sdlt {
+    margin: 1rem 0 0;
+    padding: 0.9rem 1.1rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+.comp-sdlt-head { margin: 0 0 0.6rem; font-weight: var(--weight-medium); }
+.comp-sdlt-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.comp-sdlt-list li { display: flex; flex-direction: column; gap: 0.15rem; }
+.comp-sdlt-who {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.comp-sdlt-list strong { font-size: var(--text-lg); font-weight: var(--weight-bold); color: var(--ink); }
+.comp-sdlt-note,
+.comp-sdlt-source { font-size: var(--text-sm); color: var(--ink-soft); }
+.comp-sdlt-source { margin: 0.6rem 0 0; }
+.comp-save { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 1rem 0 0; }
+.comp-save .comp-save-btn { min-height: 2.75rem; }
+.comp-save .comp-save-clear,
+.comp-save .comp-save-clear:hover {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.85rem;
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--border);
+}
+.comp-save .comp-save-clear:hover { border-color: var(--accent); }
+.comp-save-status,
+.comp-save-note { font-size: var(--text-sm); color: var(--ink-soft); }
+.comp-save-note { margin: 1rem 0 0; }
+.comp-figures .share-send { display: inline-flex; align-items: center; min-height: 2.25rem; }
+@media (prefers-reduced-motion: reduce) {
+    .price-position-marker.comp-ask-marker { transition: none; }
+}
 
 /* Show 25 more, on the comparables page (18 Sep 2026, audit item D2).
    Only a phone pages the list: the script marks rows past the limit and
@@ -9272,6 +9585,97 @@ body.theme-dark .lx-hero-form button[type="submit"]:hover {
 
 .catchment-badge-mid { background: var(--warn-bg); color: var(--warn); }
 .admission-deadline { margin: 0.25rem 0 0.75rem; }
+
+/* Homes you looked at, under a school page's checker, and the saved
+   homes against saved schools on the shortlist (18 Sep 2026, first-
+   visitor audit F3). Each home is one row that opens its report: the
+   address, its district, then the distance and the reading chip (the
+   schools guide's .table-verdict) at the right, wrapping under the
+   address on a phone. Rows the script adds rise in once, one after
+   another, and not at all under reduced motion; there is no box while
+   they are measured, the list simply appears. Tokens only, so the lamp
+   needs no rule of its own. */
+.school-homes { margin: 0 0 1.25rem; max-width: 36rem; }
+.school-page-map ~ .school-homes { margin-top: 1rem; }
+.school-homes-sub {
+    margin: 0 0 0.6rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+}
+.school-homes-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border);
+}
+.school-home { border-bottom: 1px solid var(--border); }
+.school-home-link {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.6rem;
+    min-height: 2.75rem;
+    padding: 0.45rem 0.25rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: var(--text-sm);
+}
+.school-home-link:hover { background: var(--surface-2); }
+.school-home-link:hover .school-home-address { text-decoration: underline; }
+.school-home-address {
+    min-width: 0;
+    font-weight: var(--weight-medium);
+    overflow-wrap: anywhere;
+}
+.school-home-area { color: var(--ink-soft); font-size: var(--text-xs); }
+.school-home-miles,
+.shortlist-grid-mi {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-soft);
+    white-space: nowrap;
+}
+.school-home-miles,
+.school-home-none { margin-left: auto; }
+.school-home-none,
+.shortlist-grid-none { font-size: var(--text-xs); color: var(--ink-soft); }
+/* The Clear under the device's homes takes a 44 by 32 tap, not just its word. */
+.school-homes .lx-recent-clear {
+    display: inline-flex;
+    align-items: center;
+    min-width: 2.75rem;
+    min-height: 2rem;
+}
+.school-home-new { animation: school-home-in 0.3s ease both; }
+@keyframes school-home-in {
+    from { opacity: 0; transform: translateY(0.25rem); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .school-home-new { animation: none; }
+}
+.shortlist-grid td { vertical-align: top; }
+.shortlist-grid thead th { vertical-align: bottom; }
+.shortlist-grid th.shortlist-grid-school {
+    min-width: 8rem;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: var(--text-sm);
+    color: var(--ink);
+}
+.shortlist-grid-home a,
+.shortlist-grid-school a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+}
+.shortlist-grid-cell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.5rem;
+}
 
 
 /* The "send the link again" control in the email-confirmation banner is

@@ -85,6 +85,55 @@
     {% endif %}
 </div>
 
+{# Homes you looked at (18 Sep 2026, first-visitor audit F3): under the
+   checker, every home this device opened and, signed in, every home in
+   My properties, each read against this school the way the checker
+   reads a postcode, and each opening its report. Parents arrive here
+   from Google with several houses on the go and could check them one
+   postcode at a time. Saved homes are rendered here; the device's homes
+   are added by the script at the foot of the page, which keeps the list
+   on the device and sends only postcodes, to this site. Hidden until it
+   has a home, so a first visit, a crawler and the cached page show
+   nothing. Every school with a page has a published distance, so no
+   reading here is an estimate and none needs the "est." mark. The
+   script builds its rows in the same markup as home_row. #}
+{% macro home_row(h, reading) -%}
+<li class="school-home" data-pc="{{ h.postcode }}" data-hn="{{ h.house_number }}">
+    <a class="school-home-link" href="{{ h.url }}">
+        <span class="school-home-address">{{ h.label }}</span>
+        {% if h.area %}<span class="school-home-area">{{ h.area }}</span>{% endif %}
+        {% if reading %}
+        <span class="school-home-miles">{{ reading.distance_miles | miles }} mi</span>
+        <span class="table-verdict table-verdict-{{ reading.level }}" title="{{ reading.why_sentence }}">{{ reading.label }}</span>
+        {% else %}
+        <span class="school-home-none">{{ "Postcode not found" if h.status == "not_found" else "Not measured just now" }}</span>
+        {% endif %}
+    </a>
+</li>
+{%- endmacro %}
+{% macro homes_looked_at() -%}
+<div class="school-homes" id="school-homes" data-urn="{{ school.urn }}" data-max="{{ school_homes_max }}"{% if not saved_homes %} hidden{% endif %}>
+    <p class="lx-recent-label" id="school-homes-title">Homes you looked at</p>
+    <p class="school-homes-sub">
+        {% if school.no_distance_limit %}How far each is from {{ school.name }}, from its postcode's centre. Distance did not limit entry {{ school.in_year }}, on {{ school.authority }}'s figure, so each reads Very likely.
+        {% else %}Each measured from its postcode's centre against the {{ school.miles_label }} miles {{ school.authority }} published for {{ school.year_or_latest }}, as the checker measures.{% endif %}
+    </p>
+    <ul class="school-homes-list" id="school-homes-list" aria-labelledby="school-homes-title">
+        {% for h in saved_homes %}{{ home_row(h, h.reading) }}{% endfor %}
+    </ul>
+    {% if saved_homes %}
+    {% if saved_homes_total and saved_homes_total > saved_homes | length %}
+    <p class="lx-recent-note">Your {{ saved_homes | length }} most recently saved homes, of {{ saved_homes_total }}. <a href="/watchlist">My properties</a> has them all.</p>
+    {% endif %}
+    <p class="lx-recent-note">From <a href="/watchlist">My properties</a>. <a href="/schools/shortlist">Your school shortlist</a> puts every saved home against every school you save.</p>
+    {% endif %}
+    <p class="lx-recent-note" id="school-homes-device" hidden>Opened on this device and kept on it only: just their postcodes are sent, to this site, to measure them. <button type="button" class="lx-recent-clear" id="school-homes-clear">Clear</button></p>
+    {% if not current_user %}
+    <p class="lx-recent-note" id="school-homes-signup" hidden><a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}">Sign up</a> and the homes you open are kept in My properties, so this list is here on any phone or computer.</p>
+    {% endif %}
+</div>
+{%- endmacro %}
+
 {# The page's one action, under the figure that answered the search.
    The verdict and the map sit further down; this form submits to them.
    It is the only checker (18 Sep 2026): a second standing "Check this
@@ -108,6 +157,7 @@
        report as well. #}
     <p class="section-sub" style="margin: 0.5rem 0 0;">Checking a house? After the answer, the full report on that postcode is one tap away: every nearby school at once, and the house itself.</p>
 </form>
+{{ homes_looked_at() }}
 {% endif %}
 
 {# Sharing sits after the figure, not before it: a link is worth
@@ -216,6 +266,10 @@
         <label class="map-toggle"><input type="checkbox" id="nearby-rings-toggle"> {% if nearby_rings | length == 1 %}Draw the admission distance of the nearest school in the table below that has a limit{% else %}Draw the admission distances of the {{ nearby_rings | length }} nearest schools in the table below that have a limit{% endif %}</label>
     </div>
     {% endif %}
+    {# After an answer the checker is the verdict's last row and the map
+       shows the answer's pin, so the homes follow the map rather than
+       part the two (F3, 18 Sep 2026). #}
+    {% if check %}{{ homes_looked_at() }}{% endif %}
 
     {# The honest part, and the reason this page exists. Most sites draw
        a circle and call it a catchment; there usually isn't one. #}
@@ -768,6 +822,122 @@
     })();
 </script>
 {% endif %}
+<script>
+(function () {
+    /* Homes you looked at (18 Sep 2026, first-visitor audit F3): the
+       homes this device opened, from the "Pick up where you left off"
+       list (localStorage uki-recent), read against this school. The list
+       never leaves the device: only the postcodes are posted, to this
+       site's /api/school-readings, which answers with the checker's own
+       reading. House numbers stay here. A home already listed from My
+       properties is not asked for again, matched as watchlist.same_home
+       matches ("12" and "12 Test Road" are one home, "1" and "1A" are
+       not). With storage blocked, or no script, the list is what the
+       server rendered. */
+    var wrap = document.getElementById('school-homes');
+    var list = document.getElementById('school-homes-list');
+    if (!wrap || !list || !window.fetch) return;
+    var MAX = parseInt(wrap.getAttribute('data-max'), 10) || 8;
+    var URN = parseInt(wrap.getAttribute('data-urn'), 10);
+    var entries;
+    try {
+        entries = JSON.parse(localStorage.getItem('uki-recent') || '[]');
+    } catch (e) { return; }
+    if (!Array.isArray(entries) || !entries.length) return;
+
+    function compact(pc) { return String(pc || '').toUpperCase().replace(/\s+/g, ''); }
+    function words(hn) {
+        return String(hn || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    }
+    function sameHome(a, b) {
+        var wa = words(a), wb = words(b);
+        if (!wa.length || !wb.length) return wa.length === wb.length;
+        var shorter = wa.length <= wb.length ? wa : wb, longer = shorter === wa ? wb : wa;
+        for (var i = 0; i < shorter.length; i++) { if (shorter[i] !== longer[i]) return false; }
+        return true;
+    }
+    var listed = [];
+    Array.prototype.forEach.call(list.querySelectorAll('li[data-pc]'), function (li) {
+        listed.push({ pc: compact(li.getAttribute('data-pc')), hn: li.getAttribute('data-hn') || '' });
+    });
+    var fresh = [];
+    entries.forEach(function (e) {
+        if (!e || typeof e.pc !== 'string' || !e.pc.trim() || fresh.length >= MAX) return;
+        var hn = typeof e.hn === 'string' ? e.hn.trim() : '';
+        var pc = compact(e.pc);
+        var seen = listed.concat(fresh).some(function (s) { return s.pc === pc && sameHome(s.hn, hn); });
+        if (!seen) fresh.push({ pc: pc, raw: e.pc.trim(), hn: hn, area: typeof e.area === 'string' ? e.area : '' });
+    });
+    if (!fresh.length) return;
+    var postcodes = [], asked = {};
+    fresh.forEach(function (f) { if (!asked[f.pc]) { asked[f.pc] = true; postcodes.push(f.raw); } });
+
+    function add(parent, cls, text) {
+        var span = document.createElement('span');
+        span.className = cls;
+        span.textContent = text;
+        parent.appendChild(span);
+        return span;
+    }
+    /* The markup of home_row in the template, built as text, never HTML. */
+    function row(f, r) {
+        var li = document.createElement('li');
+        li.className = 'school-home school-home-new';
+        li.setAttribute('data-pc', f.pc);
+        li.setAttribute('data-hn', f.hn);
+        li.setAttribute('data-device', '1');
+        var a = document.createElement('a');
+        a.className = 'school-home-link';
+        var postcode = r && r.postcode ? r.postcode : f.raw.toUpperCase();
+        a.href = '/property?postcode=' + encodeURIComponent(postcode) +
+                 (f.hn ? '&house_number=' + encodeURIComponent(f.hn) : '');
+        add(a, 'school-home-address', f.hn ? f.hn + ', ' + postcode : postcode);
+        var area = f.area || (r && r.area) || '';
+        if (area) add(a, 'school-home-area', area);
+        if (r && r.status === 'ok' && /^(likely|borderline|unlikely)$/.test(r.level)) {
+            add(a, 'school-home-miles', r.distance_label + ' mi');
+            add(a, 'table-verdict table-verdict-' + r.level, r.label).title = r.why || '';
+        } else {
+            add(a, 'school-home-none', r && r.status !== 'error' ? 'Postcode not found' : 'Not measured just now');
+        }
+        li.appendChild(a);
+        return li;
+    }
+    function show(readings) {
+        var byPc = {};
+        (readings || []).forEach(function (r) { if (r && r.query) byPc[compact(r.query)] = r; });
+        fresh.forEach(function (f, i) {
+            var li = row(f, readings ? (byPc[f.pc] || { status: 'not_found' }) : null);
+            li.style.animationDelay = (i * 60) + 'ms';
+            list.appendChild(li);
+        });
+        var device = document.getElementById('school-homes-device');
+        var signup = document.getElementById('school-homes-signup');
+        if (device) device.hidden = false;
+        if (signup) signup.hidden = false;
+        wrap.hidden = false;
+        var clear = document.getElementById('school-homes-clear');
+        if (clear) clear.addEventListener('click', function () {
+            try { localStorage.removeItem('uki-recent'); } catch (e) {}
+            Array.prototype.forEach.call(list.querySelectorAll('li[data-device]'), function (li) {
+                li.parentNode.removeChild(li);
+            });
+            if (device) device.hidden = true;
+            if (signup) signup.hidden = true;
+            if (!list.children.length) wrap.hidden = true;
+        });
+    }
+    fetch('/api/school-readings', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ urn: URN, postcodes: postcodes })
+    }).then(function (res) {
+        if (!res.ok) throw new Error('readings ' + res.status);
+        return res.json();
+    }).then(function (data) { show(data && data.readings); }, function () { show(null); });
+})();
+</script>
 {# This school, remembered on the device for the schools search's
    "Pick up where you left off" (15 Sep 2026). #}
 {% import "_recent_places.html" as recent %}
