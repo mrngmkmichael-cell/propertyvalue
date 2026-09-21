@@ -6,6 +6,25 @@ headline verdict) pinned to the top of the page, which expands into a full
 tabbed report on click: Summary, Map, Market History, Comparables, Schools,
 EPC, Demographics, and Crime.
 
+## What changed for users
+
+### 2.4.0, 21 September 2026
+
+- Costs & Affordability, Rental Analysis and Household Income are free, as
+  they have been on the site since 17 September. Without logging in you now
+  see the stamp duty, mortgage and yield calculator, the typical rent and the
+  area's household income, where 2.3.0 showed all three behind a lock.
+- The Schools tab says whether this listing is likely to get a place at a
+  school, and how far that school admitted from, only with Premium or where
+  you have opened that postcode's report with your free full report, the same
+  rule as on the site. Otherwise each school still shows its phase, distance
+  and Ofsted grade, and the admission column says where the answer opens
+  instead of showing it.
+- The Crime tab writes the month in words (July 2026) and puts commas in the
+  counts (1,834), as the site does.
+- The locked Price Trend card has the site's name for it, and its description
+  no longer promises a forecast, which the site no longer makes.
+
 ## Before you use it
 
 1. Deploy the site (already done on Render) and note its public URL.

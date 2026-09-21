@@ -575,11 +575,27 @@
                 {% if watchlist_item and not compare_offer and not shared %}
                 <div class="compare-offer extension-offer" data-animate>
                     <p class="compare-offer-lead">The next listing you open can show this too.</p>
+                    {# "each nearby school's Likely, Borderline or Unlikely
+                       reading" is the free extension's until its feed stops
+                       giving that reading to a reader without Premium or the
+                       home opened, as this report already does (21 Sep
+                       2026). That waits for extension 2.4.0 to be live, so
+                       the new words, which say who gets it, wait with it:
+                       extension_240_live is main.EXTENSION_240_LIVE. #}
+                    {% if extension_240_live %}
+                    <p class="section-sub">
+                        The free Chrome extension puts sold prices, the flood zone and the nearest
+                        schools on Rightmove, Zoopla and OnTheMarket listings, from the same sources
+                        as this report. With Premium it also says whether a place at each school is
+                        Likely, Borderline or Unlikely.
+                    </p>
+                    {% else %}
                     <p class="section-sub">
                         The free Chrome extension puts sold prices, the flood zone and each nearby
                         school's Likely, Borderline or Unlikely reading on Rightmove, Zoopla and
                         OnTheMarket listings, from the same sources as this report.
                     </p>
+                    {% endif %}
                     <p><a class="compare-offer-link" href="/browser-extension">Add it to Chrome &rarr;</a></p>
                 </div>
                 {% endif %}

@@ -1152,8 +1152,23 @@ def test_compare_page_gets_a_schools_row(client, monkeypatch):
                                     "likely": ["Near Primary", "Other Primary"], "borderline": ["Far Secondary"]}}
 
     monkeypatch.setattr(app_main, "_comparison_summary", _summary)
+    monkeypatch.setattr(app_main.email_service, "can_verify", lambda: False)
     body = client.get("/compare?postcode=M1+1AE&postcode=LS1+4DY").text
     assert "Schools likely to admit" in body
+    # Signed out, the row keeps its counts, free as on the report's own
+    # Schools Nearby card, and says where the names open (21 Sep 2026):
+    # which schools are likely to admit is the locked School Catchment
+    # Areas list. tests/test_leaks_closed_21sep.py has the rest.
+    assert "2 likely" in body and "Opens with your free full report" in body
+    assert "Near Primary" not in body
+
+    from app import auth, db
+    _signed_in(client, "compare-row-subscriber@example.com")
+    with db.get_session() as session:
+        user = auth.find_user_by_email(session, "compare-row-subscriber@example.com")
+        user.is_premium, user.plan = True, "monthly"
+        session.commit()
+    body = client.get("/compare?postcode=M1+1AE&postcode=LS1+4DY").text
     assert "2 likely" in body and "Near Primary, Other Primary" in body
 
 

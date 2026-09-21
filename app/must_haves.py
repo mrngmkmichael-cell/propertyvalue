@@ -444,9 +444,48 @@ def summary_line(met: int, total: int, unknown: int) -> str:
 # carries and nothing else: a locked check is not in it, so a saved home
 # reads "not yet known" for those until its own report is opened, which
 # is where a full report answers them.
+#
+# Surface water and broadband (21 Sep 2026) are free checks the snapshot
+# did not carry, so every saved home read "Not yet known" for both. A
+# report visit now writes them into the home's snapshot (snapshot_facts,
+# called by main._summary_from_report), and My properties and the alert
+# job carry them forward, because _comparison_summary does not fetch
+# them. A home whose report has not been opened since holds neither, and
+# its line says so rather than a bare "Not yet known".
 
 _SNAPSHOT_TEXT_KEYS = {"flood": "flood_zone", "epc": "energy_band",
-                       "council_tax": "band_d", "tenure": "tenure"}
+                       "council_tax": "band_d", "tenure": "tenure",
+                       "surface_water": "surface_water", "broadband": "broadband"}
+
+# The two snapshot keys only a report visit writes.
+REPORT_SNAPSHOT_KEYS = ("surface_water", "broadband")
+# Written where the report has broadband's answer but Ofcom holds no figure
+# for the postcode, so My properties says what the report says ("No broadband
+# coverage data available for this postcode") rather than "not yet known".
+BROADBAND_NO_FIGURE = "No broadband coverage data for this postcode"
+# What a saved home says for either before its report has written them.
+NOT_YET_FROM_REPORT = "Not yet known until you next open this home's report"
+
+
+def snapshot_facts(context: dict) -> dict:
+    """The two report-only facts for a saved home's snapshot, from a
+    report's own context (21 Sep 2026): the band where the report has
+    one, the report's own words where the source does not reach this
+    address ("Not mapped for Wales") or holds no figure for it, and
+    nothing at all where the check failed on this render, so the stored
+    reading is kept (main._keep_report_facts)."""
+    out = {}
+    surface = _fact_surface_water(context)
+    if surface["known"] or surface["gap"]:
+        out["surface_water"] = surface["text"] or surface["gap"]
+    if "broadband" in context and not context.get("broadband_error"):
+        if not context.get("broadband"):
+            out["broadband"] = BROADBAND_NO_FIGURE
+        else:
+            broadband = _fact_broadband(context)
+            if broadband["known"]:
+                out["broadband"] = broadband["text"]
+    return out
 
 
 def facts_from_snapshot(snapshot: dict) -> dict:
@@ -464,6 +503,32 @@ def facts_from_snapshot(snapshot: dict) -> dict:
     elif zone_label:
         # "Not mapped for Wales", written by the watchlist's own summary.
         known["flood"]["gap"] = zone_label
+
+    # Surface water and broadband as the home's report last wrote them (21
+    # Sep 2026, snapshot_facts). Outside England surface water is not
+    # mapped either: the same Environment Agency maps as the flood zone
+    # (flood_zones.outside_coverage), and the report says so for both.
+    surface = str(snapshot.get("surface_water") or "")
+    surface_index = _index(_SURFACE_WATER, surface)
+    if surface_index is not None:
+        known["surface_water"] = {"locked": False, "known": True, "value": surface_index,
+                                  "text": _SURFACE_WATER[surface_index], "gap": None}
+    elif surface.startswith("Not mapped"):
+        known["surface_water"]["gap"] = surface
+    elif zone_label.startswith("Not mapped"):
+        known["surface_water"]["gap"] = zone_label
+    else:
+        known["surface_water"]["gap"] = NOT_YET_FROM_REPORT
+
+    broadband = str(snapshot.get("broadband") or "")
+    broadband_index = _index(_BROADBAND, broadband)
+    if broadband_index is not None:
+        known["broadband"] = {"locked": False, "known": True, "value": broadband_index,
+                              "text": _BROADBAND[broadband_index], "gap": None}
+    elif broadband == BROADBAND_NO_FIGURE:
+        known["broadband"]["gap"] = BROADBAND_NO_FIGURE
+    else:
+        known["broadband"]["gap"] = NOT_YET_FROM_REPORT
 
     band_index = _index(_EPC_BANDS, snapshot.get("energy_band"))
     if band_index is not None:

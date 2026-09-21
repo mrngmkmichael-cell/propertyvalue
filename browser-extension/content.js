@@ -768,6 +768,17 @@
     return null;
   }
 
+  // The same lookup in the free payload's free_cards (21 Sep 2026), so a
+  // reader with no Premium payload still gets the calculator and the
+  // income table in the popup.
+  function findFreeCard(title) {
+    const cards = (currentData && currentData.free_cards) || [];
+    for (const c of cards) {
+      if (c.title === title) return c;
+    }
+    return null;
+  }
+
   function openCardModal(dashCardEl) {
     if (!shadowRoot) return;
     const title = dashCardEl.querySelector(".pv-dash-card-title").textContent;
@@ -782,7 +793,7 @@
 
     const bodyEl = backdrop.querySelector(".pv-modal-body");
     const tabKey = CARD_TAB_MAP[title];
-    const premiumCard = findPremiumCard(title);
+    const premiumCard = findPremiumCard(title) || findFreeCard(title);
     const isRich = (tabKey && RENDERERS[tabKey] && currentData) || (premiumCard && premiumCard.detail);
     modalEl.classList.toggle("pv-modal-rich", !!isRich);
 
@@ -1020,13 +1031,17 @@
   // value hidden behind a lock icon) for a logged-out/free viewer, the
   // same "see the category exists, log in for the number" pattern the
   // main site's own dashboard grid uses.
+  // Costs & Affordability, Rental Analysis and Household Income left this
+  // list on 21 Sep 2026: the site made them free on 17 Sep, and the free
+  // payload now carries them as free_cards, which open in full at the
+  // head of their own group (see the overview renderer).
   const PREMIUM_SECTIONS = [
-    { heading: "Value & Market", cards: ["Local Market", "Valuation Estimate", "Costs & Affordability", "Area Prosperity", "Price Trend", "Rental Analysis"] },
+    { heading: "Value & Market", cards: ["Local Market", "Valuation Estimate", "Area Prosperity", "Price Trend"] },
     { heading: "Property & Condition", cards: ["Energy Efficiency", "Extended or Modified", "Aspect"] },
     { heading: "Risk & Safety", cards: ["Flood Risk", "Crime & Safety", "Surface Water Risk", "Sewage Discharge", "Noise", "Radon Gas", "Subsidence Risk", "Air Quality", "Historic Contamination", "Mining Risk"] },
     { heading: "Planning & Heritage", cards: ["Planning Constraints", "Environmental Designations", "Listed Buildings"] },
     { heading: "Location & Connectivity", cards: ["Schools Nearby", "School Catchment Areas", "Nearby Essentials", "Getting Around", "Broadband", "Mobile Signal"] },
-    { heading: "Area & Community", cards: ["Household Income", "Deprivation", "Occupation", "Qualification", "Age Profile", "Housing Types & Tenure", "Ethnicity, Religion & Origin", "Health, Relationships & Social Grade", "Resident Reviews"] },
+    { heading: "Area & Community", cards: ["Deprivation", "Occupation", "Qualification", "Age Profile", "Housing Types & Tenure", "Ethnicity, Religion & Origin", "Health, Relationships & Social Grade", "Resident Reviews"] },
   ];
 
   // Icon glyph + colour-class per card title, mirroring the colour
@@ -1177,9 +1192,18 @@
         dashCard("EPC rating", data.area_level ? "Ask agent for address" : s.epc_rating) +
         "</div>";
 
+      // Without the Premium payload, the checks the site made free come
+      // from the free payload's free_cards (21 Sep 2026), open, at the head
+      // of their group, and the locked placeholders follow.
+      const freeCards = data.free_cards || [];
       const sections = currentPremiumData
         ? currentPremiumData.sections.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (c) { return [c.title, c.value, false, c.status, false]; }) }; })
-        : PREMIUM_SECTIONS.map(function (sec) { return { heading: sec.heading, cards: sec.cards.map(function (title) { return [title, showLoading ? null : "Premium", !showLoading, null, showLoading]; }) }; });
+        : PREMIUM_SECTIONS.map(function (sec) {
+            const open = freeCards
+              .filter(function (c) { return c.section === sec.heading; })
+              .map(function (c) { return [c.title, c.value, false, c.status, false]; });
+            return { heading: sec.heading, cards: open.concat(sec.cards.map(function (title) { return [title, showLoading ? null : "Premium", !showLoading, null, showLoading]; })) };
+          });
 
       sections.forEach(function (section) {
         html += '<h3 class="pv-category-heading">' + escapeHtml(section.heading) + '</h3><div class="pv-dash-grid">' +
@@ -1231,7 +1255,13 @@
       // listing's distance against how far the school admitted from
       // last time. Published council figure, or a modelled estimate
       // marked "est.", or "no figure" in words.
+      // Locked without Premium or this home opened (21 Sep 2026): the
+      // server sends no admission distance or reading then, and the words
+      // for where it opens, which every row shows in place of "no
+      // figure", since there may well be one.
+      const lockedLabel = data.premium_unlocked ? "" : (data.schools_locked_label || "Opens with a full report");
       const verdictHtml = function (s) {
+        if (lockedLabel) return '<span class="pv-muted">' + escapeHtml(lockedLabel) + "</span>";
         if (!s.admission_miles) return '<span class="pv-muted">no figure</span>';
         const label = { likely: "Likely", borderline: "Borderline", unlikely: "Unlikely" }[s.verdict] || "";
         const cls = { likely: "pv-verdict-likely", borderline: "pv-verdict-borderline", unlikely: "pv-verdict-unlikely" }[s.verdict] || "";

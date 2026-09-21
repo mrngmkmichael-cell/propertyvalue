@@ -795,7 +795,9 @@ def test_extension_schools_carry_a_verdict_and_a_link():
 def test_extension_manifest_version_moved_with_the_feature():
     import json, pathlib
     manifest = json.loads(pathlib.Path("browser-extension/manifest.json").read_text(encoding="utf-8"))
-    assert manifest["version"] == "2.3.0"
+    # 2.4.0 on 21 Sep 2026: three checks free, the admissions reading locked
+    # (tests/test_leaks_closed_21sep.py).
+    assert manifest["version"] == "2.4.0"
     js = pathlib.Path("browser-extension/content.js").read_text(encoding="utf-8")
     assert "pv-verdict-likely" in js and "Will this address get in?" in js
 

@@ -2800,14 +2800,18 @@ C6_AFTER_EVERYTHING = {
     "flood_zone": "Zone 2 (medium probability)", "price_growth_pct": -1.5,
     "crime_total": 60, "crime_month": "2026-07",
 }
+# The sale line in alert_triggers' words since 21 Sep 2026: a new sale at
+# this postcode where the snapshot holds no house number, as these two do,
+# and a sale of this home where it does (C6_HOME_SALE_LINE, for _c6_run).
 C6_ORDER = [
-    "1 new sold price recorded here since you last looked",
+    "A new sale has been recorded at this postcode since you last looked",
     "A new energy certificate was lodged, often a sign the property is being prepared for sale",
     "Flood zone changed from Zone 1 (low probability) to Zone 2 (medium probability)",
     "Area house-price trend flipped: growth turned negative (-1.5% YoY)",
     "Average sold price changed from £250,000 to £262,500",
 ]
 C6_CRIME_LINE = "Recorded crime nearby up by 20 in July 2026 compared with June 2026"
+C6_HOME_SALE_LINE = "A sale of this home has been recorded since you last looked"
 
 
 def _c6_run(client, monkeypatch, email, postcode, house_number, before, after):
@@ -2926,7 +2930,8 @@ def test_c6_an_email_with_several_changes_lists_them_in_the_new_order(client, mo
     mine, _sent, left = _c6_run(client, monkeypatch, "c6-ordered@customer.test",
                                 "M38 2AA", "9", C6_BEFORE, C6_AFTER_EVERYTHING)
     assert len(mine) == 1
-    assert _c6_listed(mine[0]["html"]) == C6_ORDER
+    # Saved with house number 9, so the sale is this home's (21 Sep 2026).
+    assert _c6_listed(mine[0]["html"]) == [C6_HOME_SALE_LINE] + C6_ORDER[1:]
     assert "crime" not in mine[0]["html"].lower()
     assert mine[0]["subject"] == "Changes on 1 property you follow"
     run = app_main._alert_runs()[0]
@@ -2943,8 +2948,9 @@ def test_c6_a_single_change_email_leads_its_subject_with_that_change(client, mon
     mine, _sent, _left = _c6_run(client, monkeypatch, "c6-sale@customer.test",
                                  "M38 3AA", "11", C6_BEFORE, sale_and_crime)
     assert len(mine) == 1
-    assert mine[0]["subject"] == "M38 3AA, 11: 2 new sold prices recorded here since you last looked"
-    assert _c6_listed(mine[0]["html"]) == ["2 new sold prices recorded here since you last looked"]
+    # In alert_triggers' words for a house-numbered home since 21 Sep 2026.
+    assert mine[0]["subject"] == "M38 3AA, 11: 2 sales of this home have been recorded since you last looked"
+    assert _c6_listed(mine[0]["html"]) == ["2 sales of this home have been recorded since you last looked"]
     assert "never on a schedule" in mine[0]["html"]
 
 

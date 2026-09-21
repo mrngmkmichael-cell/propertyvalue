@@ -315,7 +315,9 @@ def test_a_return_visit_says_what_changed_and_opens_that_group(client, fake_repo
         ])
         second = _report(client, fake_report, gather=later)
         assert "Since you last looked:" in second
-        assert "1 new sold price recorded here since you last looked" in second
+        # A postcode-only report, so the sale is the postcode's, in
+        # alert_triggers' words (21 Sep 2026).
+        assert "A new sale has been recorded at this postcode since you last looked" in second
         assert "Average sold price changed from £250,000 to £270,000" in second
         assert 'data-open-group="cat-value-market"' in second
 

@@ -961,6 +961,12 @@ async def _comparison_summary(postcode: str, house_number: str) -> dict:
         filtered_tx = _filter_by_address(tx_result, house_number)
         summary["avg_price"] = _average_amount(filtered_tx)
         summary["tx_count"] = len(filtered_tx)
+        # The newest sale among the same sales (21 Sep 2026), so a new
+        # sale is seen when the count cannot rise: see the sale rule in
+        # _snapshot_change_items.
+        latest_sale = _latest_sale_date(filtered_tx)
+        if latest_sale:
+            summary["latest_sale_date"] = latest_sale
         # The tenure recorded at this home's last sale, and below it the
         # authority's Band D (18 Sep 2026, first-visitor audit F7): two
         # facts a buyer may set a must-have on, both already in hand here
@@ -1035,6 +1041,12 @@ def _summary_from_report(context: dict, canonical: str, house_number: str) -> di
     if not context.get("tx_error"):
         summary["avg_price"] = _average_amount(transactions)
         summary["tx_count"] = len(transactions)
+        # The newest sale, as _comparison_summary records it (21 Sep 2026).
+        # The gather's list is already this home's own sales where there
+        # is a house number (_filter_by_address), the postcode's otherwise.
+        latest_sale = _latest_sale_date(transactions)
+        if latest_sale:
+            summary["latest_sale_date"] = latest_sale
         # The same two must-have facts _comparison_summary keeps (18 Sep
         # 2026, F7), written the same way, so a snapshot from a report
         # visit and one from My properties hold the same keys and neither
@@ -1061,7 +1073,51 @@ def _summary_from_report(context: dict, canonical: str, house_number: str) -> di
         summary["price_growth_pct"] = growth_area.get("annual_change_pct")
         summary["price_growth_area"] = growth_area.get("name")
         summary["price_growth_period"] = growth_area.get("period")
+    # Surface water and broadband (21 Sep 2026): two free checks a buyer
+    # may set a must-have on, which My properties read as "Not yet known"
+    # on every saved home because no snapshot carried them. Only this
+    # summary can write them: _comparison_summary does not fetch them, and
+    # every write of its snapshot carries these two forward from the last
+    # one (REPORT_ONLY_SNAPSHOT_KEYS). Never compared: not a change, not an
+    # email. must_haves.snapshot_facts decides the words, as it reads them.
+    summary.update(must_haves.snapshot_facts(context))
     return summary
+
+
+def _sale_day(value) -> datetime.date | None:
+    """A Price Paid transaction date ("2026-08-01") as a date, or None
+    for anything that is not one."""
+    try:
+        return datetime.date.fromisoformat(str(value or "")[:10])
+    except ValueError:
+        return None
+
+
+def _latest_sale_date(sales: list[dict]) -> str | None:
+    """The newest date among these sales as an ISO date string, for the
+    snapshot's latest_sale_date (21 Sep 2026), or None with no dated sale."""
+    days = [day for day in (_sale_day(sale.get("date")) for sale in sales or []) if day]
+    return max(days).isoformat() if days else None
+
+
+# The snapshot keys only a report visit writes (21 Sep 2026): see the end
+# of _summary_from_report. My properties and the alert job write their
+# snapshots from _comparison_summary, which does not hold these, so each
+# carries them forward from the stored snapshot rather than dropping them,
+# from the row it has already read: no fetch and no query per home. A
+# report whose check failed on that render carries the last one forward
+# too; one that answered, even to say the source has no figure, replaces it.
+REPORT_ONLY_SNAPSHOT_KEYS = must_haves.REPORT_SNAPSHOT_KEYS
+
+
+def _keep_report_facts(old: dict | None, fresh: dict) -> dict:
+    """fresh, with each report-only fact the stored snapshot holds and
+    fresh does not. A new dict: fresh may be _comparison_summary's cached
+    one, which must not pick up one account's snapshot."""
+    if not isinstance(old, dict) or not isinstance(fresh, dict):
+        return fresh
+    kept = {key: old[key] for key in REPORT_ONLY_SNAPSHOT_KEYS if key in old and key not in fresh}
+    return {**fresh, **kept} if kept else fresh
 
 
 def _group_for_changes(changes: list[str]) -> str:
@@ -1070,7 +1126,9 @@ def _group_for_changes(changes: list[str]) -> str:
     and crime to Risk & Safety, a new EPC to Property & Condition."""
     for text in changes:
         low = text.lower()
-        if "sold price" in low or "trend" in low:
+        # The sale line says "sale" since 21 Sep 2026 (_sale_change_text).
+        # Not "sale" alone: the certificate line ends "prepared for sale".
+        if "sold price" in low or "trend" in low or any(words in low for words in _SALE_LINE_WORDS):
             return "cat-value-market"
         if "flood zone" in low or "crime" in low:
             return "cat-risk-safety"
@@ -1079,7 +1137,25 @@ def _group_for_changes(changes: list[str]) -> str:
     return ""
 
 
-def _snapshot_change_items(old: dict, new: dict) -> list[tuple[str, str]]:
+def _sale_change_text(count: int, house_number: str | None) -> str:
+    """The sale line in the words alert_triggers promises (21 Sep 2026): a
+    sale of this home where a house number is saved, a new sale at this
+    postcode otherwise. It read "N new sold prices recorded here" for
+    both, where the promise beside the home names one or the other."""
+    if (house_number or "").strip():
+        if count == 1:
+            return "A sale of this home has been recorded since you last looked"
+        return f"{count} sales of this home have been recorded since you last looked"
+    if count == 1:
+        return "A new sale has been recorded at this postcode since you last looked"
+    return f"{count} new sales have been recorded at this postcode since you last looked"
+
+
+# What _group_for_changes knows the sale line by, in both wordings above.
+_SALE_LINE_WORDS = ("sale of this home", "sales of this home", "new sale")
+
+
+def _snapshot_change_items(old: dict, new: dict, sales: list[dict] | None = None) -> list[tuple[str, str]]:
     """(kind, sentence) for each difference between two
     _comparison_summary snapshots of the same address - deliberately
     only meaningfully-sized moves, not every minor fluctuation.
@@ -1089,13 +1165,47 @@ def _snapshot_change_items(old: dict, new: dict) -> list[tuple[str, str]]:
     trend, the average sold price, and recorded crime last. The average
     price used to come first and crime sat between the flood zone and
     the sales, so an alert could open on the least telling line in it.
-    The branches below are written in that order on purpose."""
+    The branches below are written in that order on purpose.
+
+    sales, where the caller has them in hand (the report does), are the
+    sales the new snapshot was built from, so the sales dated after the
+    old snapshot's newest are counted; without them a later newest date
+    is said as one sale (21 Sep 2026). The limits of that rule are in
+    the comment on the sale branch below.
+
+    Only the keys named below are compared. The report-only facts
+    (REPORT_ONLY_SNAPSHOT_KEYS, 21 Sep 2026) are never among them: a
+    snapshot carries them for the must-haves on My properties, and they
+    are no change and never an email."""
     changes = []
 
+    # A new sale, by the count or by the newest sale date (21 Sep 2026).
+    # The count alone misses a sale whenever it does not rise. Both
+    # snapshots are built from one postcode's whole Price Paid record
+    # (land_registry.sold_prices_for_postcode, whose query has no row
+    # limit; the 300 cap in that file is the nearby-sales query's), cut to
+    # the home's own sales where a house number is saved. So what the date
+    # rule catches is a monthly update that adds one sale there and
+    # removes another record there: the count stays level and the newest
+    # date moves on. It would catch a cap on that list too,
+    # should one ever be added. Its limits: a late-registered older sale
+    # and a removal in the same month move neither the count nor the
+    # newest date, so they give no line; and a newest sale, a late one and
+    # a removal together are reported as one sale, not two. Both rules
+    # often see the same sale, so the line takes the larger of the two
+    # counts, never their sum. A snapshot written before this date has no
+    # latest_sale_date, so the date rule says nothing against it: the new
+    # snapshot records the date and the next comparison uses it.
+    added = 0
     old_tx, new_tx = old.get("tx_count"), new.get("tx_count")
     if old_tx is not None and new_tx is not None and new_tx > old_tx:
         added = new_tx - old_tx
-        changes.append(("sale", f"{added} new sold price{'s' if added != 1 else ''} recorded here since you last looked"))
+    old_latest, new_latest = _sale_day(old.get("latest_sale_date")), _sale_day(new.get("latest_sale_date"))
+    if old_latest and new_latest and new_latest > old_latest:
+        dated_after = sum(1 for sale in sales or [] if (_sale_day(sale.get("date")) or old_latest) > old_latest)
+        added = max(added, dated_after, 1)
+    if added:
+        changes.append(("sale", _sale_change_text(added, new.get("house_number", old.get("house_number")))))
 
     old_epc, new_epc = old.get("epc_date"), new.get("epc_date")
     if old_epc and new_epc and new_epc > old_epc:
@@ -1147,11 +1257,11 @@ def _snapshot_change_items(old: dict, new: dict) -> list[tuple[str, str]]:
     return changes
 
 
-def _snapshot_changes(old: dict, new: dict) -> list[str]:
+def _snapshot_changes(old: dict, new: dict, sales: list[dict] | None = None) -> list[str]:
     """Human-readable differences between two _comparison_summary
     snapshots of the same address, for the watchlist's and the report's
     "what's changed since you last looked". Every kind, crime included."""
-    return [text for _, text in _snapshot_change_items(old, new)]
+    return [text for _, text in _snapshot_change_items(old, new, sales)]
 
 
 # What a change alert email may carry (17 Sep 2026): everything the page
@@ -1159,13 +1269,15 @@ def _snapshot_changes(old: dict, new: dict) -> list[str]:
 # last snapshot and fired at a difference of 5, which for a busy postcode
 # is most months, so an email could say nothing but that. It stays on the
 # report and My properties; it never sends an email, alone or alongside
-# anything else.
+# anything else. Surface water and broadband are not a kind at all (21
+# Sep 2026): a snapshot carries them for the must-haves only, and
+# _snapshot_change_items never compares them.
 ALERT_CHANGE_KINDS = ("sale", "epc", "flood", "trend", "price")
 
 
-def _alert_changes(old: dict, new: dict) -> list[str]:
+def _alert_changes(old: dict, new: dict, sales: list[dict] | None = None) -> list[str]:
     """The changes a change alert email lists, in the page's order."""
-    return [text for kind, text in _snapshot_change_items(old, new)
+    return [text for kind, text in _snapshot_change_items(old, new, sales)
             if kind in ALERT_CHANGE_KINDS]
 
 
@@ -1209,6 +1321,11 @@ def _snapshot_after_alert_run(old: dict | None, fresh: dict) -> dict:
 # house number, any sale at the postcode when there is not. Widening the
 # job to postcode-level sales is a behaviour change for the owner to
 # decide, not a wording fix.
+#
+# The change line itself says the same since 21 Sep 2026 (_sale_change_text):
+# "A sale of this home has been recorded" with a house number, "A new sale
+# has been recorded at this postcode" without, where it said "N new sold
+# prices recorded here" for both.
 ALERT_SALE_TRIGGER_HOME = "a sale of this home is recorded"
 ALERT_SALE_TRIGGER_POSTCODE = "a new sale is recorded at this postcode"
 ALERT_OTHER_TRIGGERS = (
@@ -3719,6 +3836,9 @@ def _set_page_date(context: dict, cache_key) -> None:
 def browser_extension_page(request: Request):
     context = base_context(request)
     context["store_url"] = EXTENSION_STORE_URL
+    # The FAQ's account answer keeps its old words until 2.4.0 is live
+    # (21 Sep 2026, EXTENSION_240_LIVE).
+    context["extension_240_live"] = EXTENSION_240_LIVE
     return templates.TemplateResponse(request, "browser_extension.html", context)
 
 
@@ -4485,10 +4605,15 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["open_group"] = ""
         saved_here = context["watchlist_item"]
         if saved_here:
-            fresh = _summary_from_report(context, canonical, house_number)
             old = json.loads(saved_here["last_snapshot"]) if saved_here.get("last_snapshot") else None
+            # A report-only fact whose check failed on this render keeps
+            # its last reading (21 Sep 2026, _keep_report_facts).
+            fresh = _keep_report_facts(old, _summary_from_report(context, canonical, house_number))
             if old:
-                context["since_last_visit"] = _snapshot_changes(old, fresh)
+                # The sales this snapshot was built from are in hand here,
+                # so a sale the count cannot see is counted by its date
+                # rather than said as one (21 Sep 2026).
+                context["since_last_visit"] = _snapshot_changes(old, fresh, sales=context.get("transactions"))
                 context["open_group"] = _group_for_changes(context["since_last_visit"])
             watchlist.update_snapshot(context["current_user"]["id"], saved_here["id"], json.dumps(fresh, default=str))
             # The council tax band saved with this home on /running-costs
@@ -4503,6 +4628,9 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["compare_offer"] = _compare_offer(
             saved_items, canonical, house_number, context["current_user"]
         )
+        # Which words the extension offer uses (21 Sep 2026): the old ones
+        # until 2.4.0 is live, see EXTENSION_240_LIVE.
+        context["extension_240_live"] = EXTENSION_240_LIVE
         context["shortlisted_urns"] = {
             item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
         }
@@ -5785,6 +5913,21 @@ EXTENSION_SCHOOLS_LIMIT = 8
 EXTENSION_MARKET_HISTORY_LIMIT = 10
 EXTENSION_COMPARABLES_LIMIT = 12
 EXTENSION_FREE_ROW_LIMIT = 1  # how many rows of a gated list a free/logged-out user sees, as a teaser
+# Held back until extension 2.4.0 is live in the Chrome Web Store (21 Sep
+# 2026). The published 2.3.0 prints "no figure" on a school row whose
+# admission_miles is null and has no words for a locked reading, and it
+# still shows the three checks the site made free on 17 Sep behind a
+# lock, which the /browser-extension FAQ would contradict. While False,
+# the one teaser school row goes out whole, admission figures and reading
+# included, with no schools_locked_label, and the /browser-extension FAQ
+# and the report's extension offer keep their old words. True sends the
+# admission fields only to a caller with Premium or this postcode opened.
+# free_cards go to every caller either way: 2.3.0 never reads them, and
+# 2.4.0 shows the three only from them, so they are there from the day
+# 2.4.0 is approved. The main session flips the switch when the owner
+# confirms 2.4.0 is live. The lapsed-pass and spacing fixes to who
+# counts as unlocked (_extension_postcode_open) apply either way.
+EXTENSION_240_LIVE = False
 EXTENSION_TOKEN_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days
 
 
@@ -5863,7 +6006,9 @@ async def api_extension_login(request: Request):
         if user is None or not auth.verify_password(password, user.password_hash):
             return JSONResponse({"error": "invalid_credentials"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
         token = _extension_token_serializer().dumps({"user_id": user.id})
-        payload = {"token": token, "email": user.email, "is_premium": user.is_premium}
+        # has_active_premium, not the bare flag (21 Sep 2026): nothing
+        # resets is_premium when a buying pass runs out.
+        payload = {"token": token, "email": user.email, "is_premium": auth.has_active_premium(user)}
 
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
@@ -5993,6 +6138,123 @@ def _gate_extension_list(payload: dict, key: str, premium_unlocked: bool, subkey
     payload[key + "_full_count"] = full_count
 
 
+# What a school row keeps for a caller who has not opened this home (21
+# Sep 2026), once EXTENSION_240_LIVE is True. Name, phase, Ofsted and the
+# straight-line distance are the report's free Schools Nearby check. How
+# far the school admitted from, whether that figure is published or
+# estimated, its year and the Likely, Borderline or Unlikely reading are
+# School Catchment Areas, which is locked, and a tokenless caller was
+# given all four on the teaser row. The slug stays (review of 21 Sep
+# 2026): it only links the school's name to its free public school page,
+# whose own checker answers any postcode free, so it gives nothing the
+# lock keeps back.
+EXTENSION_LOCKED_SCHOOL_KEYS = ("admission_miles", "admission_kind", "admission_year", "verdict")
+
+
+def _withhold_extension_admissions(payload: dict, premium_unlocked: bool, locked_label: str) -> None:
+    """Blanks EXTENSION_LOCKED_SCHOOL_KEYS on every school row for a
+    caller without Premium or this home unlocked, and says where they
+    open, in the site's words. New row dicts, never the cached ones. The
+    paid path returns before touching anything."""
+    if premium_unlocked:
+        return
+    payload["schools"] = [
+        {key: (None if key in EXTENSION_LOCKED_SCHOOL_KEYS else value) for key, value in row.items()}
+        for row in payload["schools"]
+    ]
+    payload["schools_locked_label"] = locked_label
+
+
+def _extension_release(payload: dict, premium_unlocked: bool, locked_label: str | None) -> None:
+    """What EXTENSION_240_LIVE decides, on the per-request copy of the
+    payload, never the cached one (21 Sep 2026). While False the teaser
+    school row goes out whole, as 2.3.0 expects. Once True the admission
+    fields go for a caller without Premium or this postcode opened.
+    free_cards are left alone in both: every caller gets them, and 2.3.0
+    never reads them. The switch never needs the cache rebuilt.
+    locked_label is the signed-in caller's own words, read in its unlock
+    session, or None for a caller without a valid token, who gets the
+    signed-out words."""
+    if not EXTENSION_240_LIVE:
+        return
+    _withhold_extension_admissions(payload, premium_unlocked, locked_label or _locked_label_for(None))
+
+
+def _extension_locked_label(user: User, session) -> str:
+    """_locked_label_for, for the extension's signed-in caller, from the
+    token's User row. Read in the caller's own unlock session (21 Sep
+    2026), so the unlock check and these words share one session rather
+    than opening a second. A caller without a valid token gets
+    _locked_label_for(None), in _extension_release."""
+    state = auth.premium_state(user, session)
+    return _locked_label_for({**state, "id": user.id, "email_verified": user.email_verified_at is not None})
+
+
+def _extension_postcode_open(session, user: User, postcode: str) -> bool:
+    """Whether the extension's signed-in caller may read this postcode in
+    full (21 Sep 2026): an active subscription or buying pass, or the
+    postcode opened with the free full report on the site, asked the way
+    the extension asks, with no house number. An unlock already made on
+    the site counts; the extension never spends the free report on a
+    listing by itself.
+
+    Two fixes to what both extension endpoints asked before. They read
+    is_premium, which nothing resets when a buying pass runs out, so a
+    lapsed pass stayed Premium in the extension; auth.has_active_premium
+    is the site's own test. And they asked auth.has_unlocked about the
+    postcode as the listing gave it, so an account that opened "M60 7CA"
+    was closed on "m607ca". postcode here is the looked-up one, and the
+    unlock rows are read on _watchlist_unlock_key, as _opened_home_keys
+    reads them for the comparisons. In area-level mode it is the
+    neighbouring postcode the payload is built from, so an account reads
+    in full only what that report showed it."""
+    if auth.has_active_premium(user):
+        return True
+    return _watchlist_unlock_key(postcode, "") in _opened_home_keys(user.id, session)
+
+
+def _extension_free_cards(rental_data: dict | None, income: dict | None,
+                          average_price: float | None, country: str) -> list[dict]:
+    """Costs & Affordability, Rental Analysis and Household Income, for
+    every caller (21 Sep 2026). The site made all three free on 17 Sep
+    2026; the extension still had them in the Premium payload only, and
+    showed a signed-out reader a lock. Each is the Premium payload's own
+    card with its section, so the extension can put it in its group. The
+    one difference is the calculator's starting price: the postcode's
+    average sale, as the report starts it for a reader who has not opened
+    the home, never the locked valuation estimate."""
+    income_rows = []
+    if income:
+        income_rows.append(["This neighbourhood", _format_gbp(income["here"])])
+        if income.get("la_average"):
+            income_rows.append([income.get("la_name") or "Local authority average", _format_gbp(income["la_average"])])
+        if income.get("region_average"):
+            income_rows.append([income.get("region_name") or "Region average", _format_gbp(income["region_average"])])
+    return [
+        {
+            "section": "Value & Market", "title": "Costs & Affordability",
+            "value": "Stamp duty, mortgage, yield", "status": "ok", "sub": None,
+            "detail": {
+                "type": "calculator",
+                "price": average_price or 300000,
+                "rent": (rental_data or {}).get("price_all") or 0,
+                "country": country,
+            },
+        },
+        {
+            "section": "Value & Market", "title": "Rental Analysis",
+            "value": f"£{rental_data['price_all']:,}/month typical" if rental_data else "No data",
+            "status": "ok" if rental_data else "muted", "sub": None, "detail": None,
+        },
+        {
+            "section": "Area & Community", "title": "Household Income",
+            "value": f"{_format_gbp(income['here'])} p/a" if income else "No data",
+            "status": "ok" if income else "muted", "sub": None,
+            "detail": {"type": "table", "columns": ["Area", "Household income"], "rows": income_rows} if income_rows else None,
+        },
+    ]
+
+
 @app.get("/api/extension-report")
 async def api_extension_report(request: Request, postcode: str = ""):
     """The full data set behind the browser extension's tabbed overlay
@@ -6011,22 +6273,22 @@ async def api_extension_report(request: Request, postcode: str = ""):
     cached object itself, so a free lookup can never leak into or
     corrupt what a Premium caller sees for the same postcode (or vice
     versa) via the shared cache.
+
+    Every payload since 21 Sep 2026 carries the three checks the site made
+    free on 17 Sep as free_cards (_extension_free_cards), for every
+    caller; 2.3.0 never reads them. While EXTENSION_240_LIVE is False the
+    teaser school row goes out whole, as 2.3.0 expects; once it is True
+    the school rows go without their admission distance and reading for a
+    caller who has not opened the postcode (_extension_release).
     """
     postcode = postcode.strip()
     if not postcode:
         return JSONResponse({"error": "postcode_required"}, status_code=400, headers=_EXTENSION_CORS_HEADERS)
 
-    premium_unlocked = False
+    token_user = None
     auth_header = request.headers.get("authorization", "")
     if auth_header.startswith("Bearer "):
         token_user = _user_from_extension_token(auth_header[7:])
-        if token_user:
-            with db.get_session() as unlock_session:
-                # An unlock already made on the site counts; the extension
-                # never spends the free report on a listing by itself.
-                premium_unlocked = bool(token_user.is_premium) or auth.has_unlocked(
-                    unlock_session, token_user.id, postcode, ""
-                )
 
     try:
         location, area_level = await _resolve_extension_location(postcode)
@@ -6039,6 +6301,18 @@ async def api_extension_report(request: Request, postcode: str = ""):
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
 
+    # Who reads this postcode in full, asked after the lookup since 21 Sep
+    # 2026 so the unlock is checked against the looked-up postcode in any
+    # spacing, and on an active pass rather than the bare flag
+    # (_extension_postcode_open). The words for where a locked answer
+    # opens come from the same session, and only when they will be sent.
+    premium_unlocked, locked_label = False, None
+    if token_user:
+        with db.get_session() as unlock_session:
+            premium_unlocked = _extension_postcode_open(unlock_session, token_user, canonical)
+            if not premium_unlocked and EXTENSION_240_LIVE:
+                locked_label = _extension_locked_label(token_user, unlock_session)
+
     cache_key = ("extension_report", canonical, area_level)
     cached = _cache.get(cache_key, EXTENSION_REPORT_CACHE_TTL_S)
     if cached is not None:
@@ -6047,11 +6321,12 @@ async def api_extension_report(request: Request, postcode: str = ""):
         _gate_extension_list(payload, "market_history", premium_unlocked)
         _gate_extension_list(payload, "comparables", premium_unlocked, subkey="transactions")
         _gate_extension_list(payload, "schools", premium_unlocked)
+        _extension_release(payload, premium_unlocked, locked_label)
         return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
     (
         tx_result, comparables_result, flood_zone_result, crime_result, crime_outcode_result, landscape_result,
-        hpi_result, certs_result, deprivation_result, income_result, occupation_result,
+        hpi_result, certs_result, deprivation_result, income_result, occupation_result, rental_result,
     ) = await asyncio.gather(
         # In area-level mode `canonical` is a geographic neighbour's
         # postcode, not this property's - querying its sold prices/EPC
@@ -6069,6 +6344,9 @@ async def api_extension_report(request: Request, postcode: str = ""):
         asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
         asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
+        # For the free Rental Analysis card (21 Sep 2026): one row of our
+        # own table, read only when this payload is built, once an hour.
+        asyncio.to_thread(rental.rental_for_laua, codes.get("admin_district", "")),
         return_exceptions=True,
     )
 
@@ -6174,7 +6452,14 @@ async def api_extension_report(request: Request, postcode: str = ""):
             adm_miles, adm_kind, adm_year, verdict = None, None, None, None
             if s.get("admission_radius"):
                 adm_miles = s["admission_radius"]["last_distance_miles"]
-                adm_kind, adm_year = "published", s["admission_radius"]["academic_year"]
+                # The year only when it is one (21 Sep 2026). 832 profiles
+                # carry "varies", and both extension builds print the year
+                # in brackets after the distance, so a row read "admitted
+                # from 0.45 mi (varies)", as if the distance varied. The
+                # site's own rule since 18 Sep, _year_label; None rather
+                # than "", since both builds show a year only when truthy.
+                adm_kind = "published"
+                adm_year = _year_label(s["admission_radius"].get("academic_year")) or None
             elif s.get("catchment_estimate"):
                 adm_miles, adm_kind = s["catchment_estimate"]["radius_miles"], "estimated"
             if adm_miles:
@@ -6230,6 +6515,13 @@ async def api_extension_report(request: Request, postcode: str = ""):
         ],
     }
 
+    # Free on the site since 17 Sep 2026, so free here for every caller
+    # (21 Sep 2026), whatever EXTENSION_240_LIVE says: 2.3.0 never reads
+    # them. Nothing in them is gated, so they are cached as built.
+    payload["free_cards"] = _extension_free_cards(
+        ok(rental_result), income, _average_amount(tx_result), location.get("country") or "",
+    )
+
     _cache.set(cache_key, payload)
 
     payload = dict(payload)
@@ -6237,6 +6529,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     _gate_extension_list(payload, "market_history", premium_unlocked)
     _gate_extension_list(payload, "comparables", premium_unlocked, subkey="transactions")
     _gate_extension_list(payload, "schools", premium_unlocked)
+    _extension_release(payload, premium_unlocked, locked_label)
     return JSONResponse(payload, headers=_EXTENSION_CORS_HEADERS)
 
 
@@ -6270,11 +6563,6 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     token_user = _user_from_extension_token(auth_header[7:])
     if not token_user:
         return JSONResponse({"error": "login_required"}, status_code=401, headers=_EXTENSION_CORS_HEADERS)
-    if not token_user.is_premium:
-        with db.get_session() as unlock_session:
-            if not auth.has_unlocked(unlock_session, token_user.id, postcode, ""):
-                return JSONResponse({"error": "premium_required"}, status_code=403,
-                                    headers=_EXTENSION_CORS_HEADERS)
 
     try:
         location, area_level = await _resolve_extension_location(postcode)
@@ -6284,6 +6572,15 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         return JSONResponse({"error": "not_found"}, status_code=404, headers=_EXTENSION_CORS_HEADERS)
 
     canonical = location["postcode"]
+    # After the lookup since 21 Sep 2026, the same test as
+    # /api/extension-report's (_extension_postcode_open): a lapsed buying
+    # pass is refused, and an unlock counts in any spacing. Before any
+    # cached payload is read, so a refused caller never gets one.
+    with db.get_session() as unlock_session:
+        allowed = _extension_postcode_open(unlock_session, token_user, canonical)
+    if not allowed:
+        return JSONResponse({"error": "premium_required"}, status_code=403, headers=_EXTENSION_CORS_HEADERS)
+
     lat, lon = location["latitude"], location["longitude"]
     codes = location.get("codes", {})
     laua = codes.get("admin_district", "")
@@ -10616,6 +10913,51 @@ def _watchlist_unlock_key(postcode: str, house_number: str) -> tuple[str, str]:
     return re.sub(r"\s+", "", pc), hn
 
 
+def _opened_home_keys(user_id: int, session=None) -> set[tuple[str, str]]:
+    """Every home this account has opened with its free full report, as
+    _watchlist_unlock_key keys (21 Sep 2026). One query for a whole page:
+    a comparison asks the question once per column, and auth.has_unlocked
+    per column would be a round trip per home. In the caller's session
+    where it has one open (the extension's unlock check), a new one
+    otherwise."""
+    if session is None:
+        with db.get_session() as own_session:
+            return _opened_home_keys(user_id, own_session)
+    rows = session.execute(
+        select(PremiumUnlock.postcode, PremiumUnlock.house_number)
+        .where(PremiumUnlock.user_id == user_id)
+    ).all()
+    return {_watchlist_unlock_key(pc, hn) for pc, hn in rows}
+
+
+def _homes_open_in_full(user: dict | None, homes: list[tuple[str, str]]) -> list[bool]:
+    """For each (postcode, house number), whether this reader may see its
+    locked checks (21 Sep 2026), on the report's own rule: a subscriber
+    always, anyone else only on a home they have unlocked, and signed
+    out never. At most one query, and none for a subscriber."""
+    if not user or not homes:
+        return [False] * len(homes)
+    if user.get("subscribed"):
+        return [True] * len(homes)
+    opened = _opened_home_keys(user["id"])
+    return [_watchlist_unlock_key(pc, hn) in opened for pc, hn in homes]
+
+
+def _locked_label_for(user: dict | None) -> str:
+    """What a locked check says on a page that is not the report (21 Sep
+    2026), in the report's own words from _must_have_locked_label: "Opens
+    with your free full report" while the account still has it, and
+    signed out, where signing up is that report; "Opens with Premium"
+    once it is spent. can_unlock_now is worked out the way the report
+    works it out for a home the reader has not opened: a free report
+    left, and no email confirmation waiting."""
+    can_unlock_now = bool(
+        user and not user.get("subscribed") and (user.get("free_unlocks_left") or 0) > 0
+        and not (email_service.can_verify() and not user.get("email_verified"))
+    )
+    return _must_have_locked_label({"current_user": user, "can_unlock_now": can_unlock_now})
+
+
 @app.get("/watchlist")
 async def watchlist_view(request: Request):
     context = base_context(request)
@@ -10687,11 +11029,16 @@ async def watchlist_view(request: Request):
         # visit, most of them writing back what was already there, and
         # Neon round trips are the unit of a page's cost.
         moved_snapshots = {}
-        for item, fresh in zip(items, fresh_summaries):
+        for index, (item, fresh) in enumerate(zip(items, fresh_summaries)):
             if isinstance(fresh, Exception):
                 item["changes"] = []
                 continue
             old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
+            # Surface water and broadband come only from a report visit (21
+            # Sep 2026). They are kept from the stored snapshot this loop has
+            # already read, so the must-haves below answer them and the write
+            # never drops them: no fetch and no statement per home.
+            fresh = fresh_summaries[index] = _keep_report_facts(old, fresh)
             item["changes"] = _snapshot_changes(old, fresh) if old else []
             snapshot = json.dumps(fresh, default=str)
             if old is None or json.loads(snapshot) != old:
@@ -10706,7 +11053,8 @@ async def watchlist_view(request: Request):
     # "Opens with Premium" and nothing else; on one that is open in full
     # it is simply not yet known here, and its own report answers it.
     # Nothing is guessed: a fact the snapshot does not hold is "not yet
-    # known", never a miss.
+    # known", never a miss. Surface water and broadband are answered too
+    # since 21 Sep 2026, from what the home's report last wrote, kept above.
     conditions: dict = {}
     if items:
         try:
@@ -10770,11 +11118,24 @@ async def watchlist_compare(request: Request, item_ids: list[int] = Query(defaul
         kept_prices = asking_prices.for_items(context["current_user"]["id"], items)
         # With what the buyer ticked at each viewing (18 Sep 2026, F2).
         viewed = checklist_ticks.for_items(context["current_user"]["id"], items)
+        # Which schools are likely to admit, by name, is the locked School
+        # Catchment Areas list, and until 21 Sep 2026 this page printed it
+        # for every saved home to any signed-in account. How many are
+        # likely or borderline stays in every column: a count is the free
+        # headline of the report's own Schools Nearby card (the "Ungated:
+        # the counts" rule in the gather). Each column now says whether
+        # this reader has that home open in full, from one query for the
+        # page, and the template gives every other home the report's
+        # locked words in place of the names.
+        schools_open = _homes_open_in_full(
+            context["current_user"], [(item["postcode"], item["house_number"]) for item in items])
         context["columns"] = [
             {**item, "summary": ({"not_found": True} if isinstance(s, Exception) else s),
-             "asking_price": kept_prices.get(item["id"]), "viewing": viewed.get(item["id"])}
-            for item, s in zip(items, summaries)
+             "asking_price": kept_prices.get(item["id"]), "viewing": viewed.get(item["id"]),
+             "schools_open": opened}
+            for item, s, opened in zip(items, summaries, schools_open)
         ]
+        context["schools_locked_label"] = _locked_label_for(context["current_user"])
         context["asking_row"] = True
         context["viewing_row"] = True
     else:
@@ -10791,8 +11152,13 @@ COMPARE_FULL_MAX = 4
 
 
 def _all_unlocked(user_id: int, items: list[dict]) -> bool:
-    with db.get_session() as session:
-        return all(auth.has_unlocked(session, user_id, i["postcode"], i["house_number"]) for i in items)
+    """Whether this account has opened every one of these homes. From
+    _opened_home_keys since 21 Sep 2026: one query for the page, on the
+    key the other two comparisons use. It asked auth.has_unlocked once
+    per home, on the postcode as saved, so a home saved as "m145tg" and
+    opened as "M14 5TG" kept the page locked."""
+    opened = _opened_home_keys(user_id)
+    return all(_watchlist_unlock_key(i["postcode"], i["house_number"]) in opened for i in items)
 
 
 async def _compare_rows(postcode: str, house_number: str) -> dict:
@@ -11008,6 +11374,17 @@ async def compare_postcodes(request: Request, postcode: list[str] = Query(defaul
             else:
                 columns.append({"postcode": s["postcode"], "house_number": "", "summary": s})
 
+    # The same gate as the saved-homes comparison (21 Sep 2026). A home's
+    # likely schools come from its postcode alone, so this page, open to
+    # anyone, would otherwise give out by name exactly what that one keeps
+    # back. The counts are free in every column, as on the report. A
+    # column's names open for a subscriber, or for an account that has
+    # opened that postcode's own report.
+    for column, opened in zip(columns, _homes_open_in_full(
+            context["current_user"], [(column["postcode"], "") for column in columns])):
+        column["schools_open"] = opened
+    context["schools_locked_label"] = _locked_label_for(context["current_user"])
+
     context["columns"] = columns
     context["anonymous_compare"] = True
     context["entered"] = entered
@@ -11108,6 +11485,10 @@ async def run_watchlist_alerts(request: Request):
         if not item["last_snapshot"]:
             first_look += 1
         old = json.loads(item["last_snapshot"]) if item["last_snapshot"] else None
+        # Surface water and broadband, which only a report visit writes,
+        # kept from the stored snapshot rather than dropped (21 Sep 2026).
+        # Never compared, so they never send anything.
+        fresh = _keep_report_facts(old, fresh)
         # Only what an email may carry, in the order it is read, and the
         # crime the email leaves out left for the page (17 Sep 2026): see
         # ALERT_CHANGE_KINDS and PAGE_ONLY_SNAPSHOT_KEYS. A home whose only
@@ -11648,9 +12029,16 @@ async def area_versus(request: Request, left: str, right: str):
         if crime_gap:
             summary.update(crime_total=None, crime_unpublished=True, crime_incomplete=crime_gap["status"])
         sides.append(summary)
+    # schools_open: the names in the row of schools likely to admit are
+    # left as they were on these district pages (21 Sep 2026). The
+    # comparisons of homes and postcodes now keep the names for readers
+    # who have opened the home (the counts are free everywhere), but this
+    # page's title, description and "Should I buy" answer promise the row,
+    # so closing the names here waits on the owner. compare.html treats a
+    # column without the flag as closed.
     context["columns"] = [
-        {"postcode": left, "house_number": "", "summary": sides[0], "outcode": left},
-        {"postcode": right, "house_number": "", "summary": sides[1], "outcode": right},
+        {"postcode": left, "house_number": "", "summary": sides[0], "outcode": left, "schools_open": True},
+        {"postcode": right, "house_number": "", "summary": sides[1], "outcode": right, "schools_open": True},
     ]
     # The district-wide median only: the summary's own average is one postcode
     # inside the district, not the district (18 Sep 2026).

@@ -3196,6 +3196,15 @@ def fetch_bexley() -> list[dict]:
     outright ("@ 1 July 2022"); the rest are relative ("5 years ago"),
     so they are counted back from that dated column and nothing is
     labelled at all when the booklet's own header carries no date.
+
+    Checked against the live booklet on 21 Sep 2026: page 13's header
+    reads "5 years ago | 4 years ago | 3 years ago | 2 years ago |
+    1 years ago* | @ 7.7.2022", with "* as at July 2022" beneath. A
+    column dated July 2022 can only be the September 2022 intake (the
+    2023 allocation had not happened), so the columns are the 2017 to
+    2022 intakes. The stored rows matched the printed cells exactly,
+    Bexley Grammar 2.3, 2.2, 3.2, 2.5, 2.5 and 1.92 miles, and Beths'
+    2019 is rightly absent: every selective applicant got a place.
     """
     url = "https://www.bexley.gov.uk/sites/default/files/2023-03/Admission-to-secondary-schools-2023-2024.pdf"
     print(f"  Downloading {url}")

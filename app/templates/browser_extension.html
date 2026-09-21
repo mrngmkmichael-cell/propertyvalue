@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{# The account answer, used by the FAQPage data and the list below. It said
+   "including the admissions verdict for the nearest school" until 21 Sep
+   2026, when the extension's free feed was changed to stop giving that
+   reading to a reader who has not opened the home, as the report already
+   did, and to give the three checks the site made free on 17 Sep in its
+   place. The published 2.3.0 cannot show those three free, so the new
+   words wait for 2.4.0: extension_240_live is main.EXTENSION_240_LIVE. #}
+{% set account_answer = (
+    "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, and the costs calculator, typical rent and household income in full. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
+    if extension_240_live else
+    "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, including the admissions verdict for the nearest school. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
+) %}
 
 {% block title %}Rightmove and Zoopla Chrome Extension: Schools, Flood Risk{% endblock %}
 {% block og_title %}UKPropertyInsight · Free Chrome Extension{% endblock %}
@@ -58,7 +70,7 @@ review data. Only factual fields below. #}
             "name": "Do I need a UKPropertyInsight account to use it?",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, including the admissions verdict for the nearest school. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
+                "text": "{{ account_answer }}"
             }
         },
         {
@@ -244,11 +256,13 @@ review data. Only factual fields below. #}
 <section class="landing-section">
     <span class="section-pill" data-animate>Questions</span>
     <h2 class="landing-heading" data-animate>Questions people ask first</h2>
+    {# The account answer is account_answer, set at the top of this file,
+       so this list and the FAQPage data can never say two things. #}
     <div class="faq-list">
         {% for q, a in [
             ('Is the extension safe to install? What can it see?', 'It only runs on Rightmove, Zoopla and OnTheMarket property listing pages, and only reads the postcode from the page. It can\'t see anything on any other site, and it doesn\'t have permission to read your browsing history, other tabs, or any page outside those three. The one permission it asks for is local storage, to keep you logged in between listings.'),
             ('Does it cost anything?', 'Installing it and seeing the free preview data on every listing costs nothing and needs no account. A UKPropertyInsight Premium account unlocks the full report on every card.'),
-            ('Do I need a UKPropertyInsight account to use it?', 'No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, including the admissions verdict for the nearest school. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest.'),
+            ('Do I need a UKPropertyInsight account to use it?', account_answer),
             ('Will it slow down Rightmove or Zoopla?', 'No. It only wakes up once the listing page has finished loading, and it only adds one small summary bar. It doesn\'t modify or interfere with the rest of the page.'),
             ('Is UKPropertyInsight affiliated with Rightmove, Zoopla or OnTheMarket?', 'No. UKPropertyInsight is an independent due-diligence tool and has no affiliation with Rightmove, Zoopla or OnTheMarket. It simply reads the postcode from a listing you\'re already viewing to show official public data alongside it.'),
         ] %}

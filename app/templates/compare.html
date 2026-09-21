@@ -188,6 +188,16 @@
                 {% endfor %}
             </tr>
             {% endif %}
+            {# The counts in this row are free in every column (21 Sep 2026):
+               how many schools are likely or borderline is the headline of
+               the report's own free Schools Nearby card, a teaser rather
+               than the finding. Which schools they are is the locked School
+               Catchment Areas list, and until 21 Sep 2026 this row printed
+               the names in every column. A column shows them only when its
+               route sets schools_open: a subscriber, or a home this reader
+               has opened. Every other column gives the report's own locked
+               words where the names would be. A column without the flag is
+               closed. #}
             <tr>
                 <td><strong>Schools likely to admit</strong></td>
                 {% for col in columns %}
@@ -195,7 +205,7 @@
                     {%- if col.summary.school_verdicts is defined and col.summary.school_verdicts -%}
                     {% set v = col.summary.school_verdicts %}
                     <strong>{{ v.counts.likely }} likely</strong>{% if v.counts.borderline %}, {{ v.counts.borderline }} borderline{% endif %} of {{ v.total }} with a figure
-                    {% if v.likely %}<div class="compare-note">{{ v.likely | join(', ') }}</div>{% endif %}
+                    {% if v.likely %}<div class="compare-note">{{ (v.likely | join(', ')) if col.schools_open else (schools_locked_label or "Opens with a full report") }}</div>{% endif %}
                     {%- else %} no admission figures nearby {% endif -%}
                 </td>
                 {% endfor %}
