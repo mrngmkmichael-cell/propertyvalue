@@ -42,6 +42,22 @@ EPC, Demographics, and Crime.
    summary bar should appear pinned to the top of the page within a second
    or two. Click it to expand the full tabbed report.
 
+## Check a build before you upload it
+
+`python scripts/check_extension.py` runs this folder's build, signed out,
+against the live site on a stand-in listing page (Rightmove is never
+visited), and prints what the panel shows: the overview, the costs
+calculator and the Schools tab, with screenshots. `--server
+http://localhost:8012` points it at the dev server, and `--build` at another
+unpacked build, such as the published zip unpacked. It uses Microsoft Edge,
+because Chrome no longer loads unpacked extensions from the command line.
+
+2.4.0 waits on one switch (21 Sep 2026): `EXTENSION_240_LIVE` in
+`app/main.py` stays False until 2.4.0 is live in the Chrome Web Store,
+because the published 2.3.0 would print "no figure" on a school row that
+the new feed leaves without a distance. Flip it once the store shows
+2.4.0, push, and run the check against the live site with both builds.
+
 ## How it finds the property
 
 Rather than hardcoding each site's HTML structure (which breaks on every
