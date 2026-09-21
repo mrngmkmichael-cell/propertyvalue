@@ -5913,21 +5913,23 @@ EXTENSION_SCHOOLS_LIMIT = 8
 EXTENSION_MARKET_HISTORY_LIMIT = 10
 EXTENSION_COMPARABLES_LIMIT = 12
 EXTENSION_FREE_ROW_LIMIT = 1  # how many rows of a gated list a free/logged-out user sees, as a teaser
-# Held back until extension 2.4.0 is live in the Chrome Web Store (21 Sep
-# 2026). The published 2.3.0 prints "no figure" on a school row whose
-# admission_miles is null and has no words for a locked reading, and it
-# still shows the three checks the site made free on 17 Sep behind a
-# lock, which the /browser-extension FAQ would contradict. While False,
-# the one teaser school row goes out whole, admission figures and reading
-# included, with no schools_locked_label, and the /browser-extension FAQ
-# and the report's extension offer keep their old words. True sends the
-# admission fields only to a caller with Premium or this postcode opened.
-# free_cards go to every caller either way: 2.3.0 never reads them, and
-# 2.4.0 shows the three only from them, so they are there from the day
-# 2.4.0 is approved. The main session flips the switch when the owner
-# confirms 2.4.0 is live. The lapsed-pass and spacing fixes to who
-# counts as unlocked (_extension_postcode_open) apply either way.
-EXTENSION_240_LIVE = False
+# True since 21 Sep 2026, on the owner's word. It was written False, to
+# hold this back until extension 2.4.0 was live, on the belief that the
+# Chrome Web Store served 2.3.0, which prints "no figure" on a school row
+# without admission_miles. Chrome's update service showed the store still
+# serving 2.1.0 (21 Aug 2026): 2.2.0 and 2.3.0 were uploaded but never
+# went live. 2.1.0 has no admission column and never reads free_cards or
+# schools_locked_label, so True changes nothing its readers see (checked
+# with scripts/check_extension.py) and stops the tokenless feed giving the
+# teaser row's admission distance and reading today. 2.4.0 was submitted
+# for review the same day, and the /browser-extension FAQ and the report's
+# extension offer describe it. True sends the admission fields only to a
+# caller with Premium or this postcode opened; False sent the teaser row
+# whole, with the old words. free_cards go to every caller either way.
+# Once 2.4.0 is live, the switch and its False branches can go. The
+# lapsed-pass and spacing fixes (_extension_postcode_open) never depended
+# on it.
+EXTENSION_240_LIVE = True
 EXTENSION_TOKEN_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days
 
 
