@@ -5,13 +5,8 @@
    2026, when the extension's free feed was changed to stop giving that
    reading to a reader who has not opened the home, as the report already
    did, and to give the three checks the site made free on 17 Sep in its
-   place. The published 2.3.0 cannot show those three free, so the new
-   words wait for 2.4.0: extension_240_live is main.EXTENSION_240_LIVE. #}
-{% set account_answer = (
-    "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, and the costs calculator, typical rent and household income in full. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
-    if extension_240_live else
-    "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, including the admissions verdict for the nearest school. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest."
-) %}
+   place. 2.4.0, which shows them, was published on 25 Sep 2026. #}
+{% set account_answer = "No. Install it and it works straight away, showing a free preview on Market History, Comparables and Schools, and the costs calculator, typical rent and household income in full. Logging in with a UKPropertyInsight account, free or Premium, unlocks the rest." %}
 
 {% block title %}Rightmove and Zoopla Chrome Extension: Schools, Flood Risk{% endblock %}
 {% block og_title %}UKPropertyInsight · Free Chrome Extension{% endblock %}

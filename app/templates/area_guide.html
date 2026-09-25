@@ -131,6 +131,7 @@
         {% if hpi.local_authority.annual_change_pct >= 0 %}up{% else %}down{% endif %}
         {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}% on a year ago
         ({{ hpi.local_authority.period | month_label }}).
+        {% if hpi_swing_note %}{{ hpi_swing_note }}{% endif %}
         {% if hpi.region %}
         The wider {{ hpi.region.name }} average is {{ hpi.region.average_price | gbp }}.
         {% endif %}

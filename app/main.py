@@ -658,8 +658,16 @@ def _address_words(text: str) -> str:
     Registry writes "FLAT 2 12 HIGH STREET", and a comma is no reason for
     the two not to meet. Kept for the last few thousand addresses (18 Sep
     2026): "Which home is yours?" asks the house number filter about the
-    same records once per home."""
-    return " ".join(re.sub(r"[^\w']+", " ", (text or "").lower()).split())
+    same records once per home. A flat word run into its number
+    ("Apartment18") is split from it (25 Sep 2026): one record at 113
+    Newton Street, M1 1AE, is written that way, and the sample report the
+    homepage links offered Apartment 18 twice."""
+    words = re.sub(r"[^\w']+", " ", (text or "").lower())
+    return " ".join(_FLAT_RUN_ON.sub(r"\1 ", words).split())
+
+
+_FLAT_RUN_ON = re.compile(r"\b(flat|flats|apartment|apt|unit|maisonette)(?=\d)")
+_FLAT_RUN_ON_LABEL = re.compile(_FLAT_RUN_ON.pattern, re.IGNORECASE)
 
 
 def _filter_by_address(records: list[dict], query: str) -> list[dict]:
@@ -2295,7 +2303,7 @@ def _sale_label(address: str) -> str:
     Register's comma between a flat and its building's number (18 Sep
     2026, D1 review). HM Land Registry joins the two with a space, and
     "Flat 1 2" was hard to tell from "Flat 12" at 375px."""
-    label = _tidy_case(address)
+    label = _FLAT_RUN_ON_LABEL.sub(r"\1 ", _tidy_case(address))
     words = label.split(" ")
     if len(words) > 2 and words[0].lower() in _FLAT_WORDS and not words[1].endswith(",") and words[2][:1].isdigit():
         return f"{words[0]} {words[1]}, {' '.join(words[2:])}"
@@ -2628,7 +2636,9 @@ async def healthz():
 # The advertising code asks a comparison to be verifiable and fair, so
 # each rival's section says what it does better, and the date is on the
 # page. Re-read the three sites and move the date when anything changes.
-ALTERNATIVES_CHECKED_ON = "9 September 2026"
+# Re-read 25 Sep 2026: prices unchanged at all three; Crystal Roof had
+# added a school guide, marked new, and the schools cell says so.
+ALTERNATIVES_CHECKED_ON = "25 September 2026"
 
 
 @app.get("/alternatives")
@@ -2654,7 +2664,7 @@ def alternatives_page(request: Request):
          "check are free there; sale prices, comparables, the valuation and the full risk detail are on the paid plan."),
         ("Is Crystal Roof free?",
          "Yes. Its home page says its service is 100% free for all visitors. It describes area statistics for a postcode across "
-         f"ten categories, plus an instant valuation, as read on {ALTERNATIVES_CHECKED_ON}."),
+         f"ten categories, an instant valuation and a school guide, as read on {ALTERNATIVES_CHECKED_ON}."),
         ("What does Locrating do that UKPropertyInsight does not?",
          "Locrating shows where a school's existing pupils live, its feeder and destination schools and its priority areas, and "
          "has published school data since 2010. This site shows the council's published admission distance for "
@@ -3836,9 +3846,6 @@ def _set_page_date(context: dict, cache_key) -> None:
 def browser_extension_page(request: Request):
     context = base_context(request)
     context["store_url"] = EXTENSION_STORE_URL
-    # The FAQ's account answer keeps its old words until 2.4.0 is live
-    # (21 Sep 2026, EXTENSION_240_LIVE).
-    context["extension_240_live"] = EXTENSION_240_LIVE
     return templates.TemplateResponse(request, "browser_extension.html", context)
 
 
@@ -4628,9 +4635,6 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
         context["compare_offer"] = _compare_offer(
             saved_items, canonical, house_number, context["current_user"]
         )
-        # Which words the extension offer uses (21 Sep 2026): the old ones
-        # until 2.4.0 is live, see EXTENSION_240_LIVE.
-        context["extension_240_live"] = EXTENSION_240_LIVE
         context["shortlisted_urns"] = {
             item["urn"] for item in school_shortlist.list_items(context["current_user"]["id"])
         }
@@ -5913,23 +5917,11 @@ EXTENSION_SCHOOLS_LIMIT = 8
 EXTENSION_MARKET_HISTORY_LIMIT = 10
 EXTENSION_COMPARABLES_LIMIT = 12
 EXTENSION_FREE_ROW_LIMIT = 1  # how many rows of a gated list a free/logged-out user sees, as a teaser
-# True since 21 Sep 2026, on the owner's word. It was written False, to
-# hold this back until extension 2.4.0 was live, on the belief that the
-# Chrome Web Store served 2.3.0, which prints "no figure" on a school row
-# without admission_miles. Chrome's update service showed the store still
-# serving 2.1.0 (21 Aug 2026): 2.2.0 and 2.3.0 were uploaded but never
-# went live. 2.1.0 has no admission column and never reads free_cards or
-# schools_locked_label, so True changes nothing its readers see (checked
-# with scripts/check_extension.py) and stops the tokenless feed giving the
-# teaser row's admission distance and reading today. 2.4.0 was submitted
-# for review the same day, and the /browser-extension FAQ and the report's
-# extension offer describe it. True sends the admission fields only to a
-# caller with Premium or this postcode opened; False sent the teaser row
-# whole, with the old words. free_cards go to every caller either way.
-# Once 2.4.0 is live, the switch and its False branches can go. The
-# lapsed-pass and spacing fixes (_extension_postcode_open) never depended
-# on it.
-EXTENSION_240_LIVE = True
+# The tokenless feed stopped sending a school's admission distance and
+# reading to a caller who has not opened the home on 21 Sep 2026, behind
+# a switch held for extension 2.4.0. Chrome's update service reported
+# 2.4.0 published on 25 Sep 2026 and the switch went, checked live with
+# scripts/check_extension.py.
 EXTENSION_TOKEN_MAX_AGE_S = 60 * 60 * 24 * 30  # 30 days
 
 
@@ -6141,7 +6133,7 @@ def _gate_extension_list(payload: dict, key: str, premium_unlocked: bool, subkey
 
 
 # What a school row keeps for a caller who has not opened this home (21
-# Sep 2026), once EXTENSION_240_LIVE is True. Name, phase, Ofsted and the
+# Sep 2026). Name, phase, Ofsted and the
 # straight-line distance are the report's free Schools Nearby check. How
 # far the school admitted from, whether that figure is published or
 # estimated, its year and the Likely, Borderline or Unlikely reading are
@@ -6168,17 +6160,12 @@ def _withhold_extension_admissions(payload: dict, premium_unlocked: bool, locked
 
 
 def _extension_release(payload: dict, premium_unlocked: bool, locked_label: str | None) -> None:
-    """What EXTENSION_240_LIVE decides, on the per-request copy of the
-    payload, never the cached one (21 Sep 2026). While False the teaser
-    school row goes out whole, as 2.3.0 expects. Once True the admission
-    fields go for a caller without Premium or this postcode opened.
-    free_cards are left alone in both: every caller gets them, and 2.3.0
-    never reads them. The switch never needs the cache rebuilt.
-    locked_label is the signed-in caller's own words, read in its unlock
-    session, or None for a caller without a valid token, who gets the
-    signed-out words."""
-    if not EXTENSION_240_LIVE:
-        return
+    """On the per-request copy of the payload, never the cached one (21
+    Sep 2026): the admission fields go for a caller without Premium or
+    this postcode opened. free_cards are left alone: every caller gets
+    them. locked_label is the signed-in caller's own words, read in its
+    unlock session, or None for a caller without a valid token, who gets
+    the signed-out words."""
     _withhold_extension_admissions(payload, premium_unlocked, locked_label or _locked_label_for(None))
 
 
@@ -6278,10 +6265,9 @@ async def api_extension_report(request: Request, postcode: str = ""):
 
     Every payload since 21 Sep 2026 carries the three checks the site made
     free on 17 Sep as free_cards (_extension_free_cards), for every
-    caller; 2.3.0 never reads them. While EXTENSION_240_LIVE is False the
-    teaser school row goes out whole, as 2.3.0 expects; once it is True
-    the school rows go without their admission distance and reading for a
-    caller who has not opened the postcode (_extension_release).
+    caller. The school rows go without their admission distance and
+    reading for a caller who has not opened the postcode
+    (_extension_release).
     """
     postcode = postcode.strip()
     if not postcode:
@@ -6312,7 +6298,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     if token_user:
         with db.get_session() as unlock_session:
             premium_unlocked = _extension_postcode_open(unlock_session, token_user, canonical)
-            if not premium_unlocked and EXTENSION_240_LIVE:
+            if not premium_unlocked:
                 locked_label = _extension_locked_label(token_user, unlock_session)
 
     cache_key = ("extension_report", canonical, area_level)
@@ -6518,8 +6504,7 @@ async def api_extension_report(request: Request, postcode: str = ""):
     }
 
     # Free on the site since 17 Sep 2026, so free here for every caller
-    # (21 Sep 2026), whatever EXTENSION_240_LIVE says: 2.3.0 never reads
-    # them. Nothing in them is gated, so they are cached as built.
+    # (21 Sep 2026). Nothing in them is gated, so they are cached as built.
     payload["free_cards"] = _extension_free_cards(
         ok(rental_result), income, _average_amount(tx_result), location.get("country") or "",
     )
@@ -7945,6 +7930,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
     # already in it, so the 2,943 warm guides pick it up without a
     # payload version bump and a full re-warm.
     context["area_lead"] = _area_lead(outcode, context)
+    context["hpi_swing_note"] = _hpi_swing_note((context.get("hpi") or {}).get("local_authority"))
     # The Band D history as a trend (16 Sep 2026), from the same rows as
     # the table it sits above; outside the payload for the same reason.
     finance = context.get("finance") or {}
@@ -8000,7 +7986,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             faqs.append((
                 f"Are house prices rising in {outcode}?",
                 f"Prices in {la['name']} are {direction} {abs(la['annual_change_pct']):.1f}% on a year ago "
-                "(UK House Price Index).",
+                "(UK House Price Index)." + (f" {note}" if (note := _hpi_swing_note(la)) else ""),
             ))
     # The council-wide average above is shared with every district in the
     # same authority; this one is specific to these streets, so it is the
@@ -8405,6 +8391,33 @@ ENGLAND_MEDIAN_SALE_PRICE = 290000    # HM Land Registry UK HPI, England
 ENGLAND_GOOD_OR_BETTER_PCT = 90       # Ofsted, state schools Good or Outstanding
 
 
+# A council's yearly move of this size or more carries a sentence on
+# what the index month rests on (25 Sep 2026). The guide for SW1A led
+# with "down 20.7% on a year ago" for City of Westminster, flatly, while
+# the index behind it had moved from -9.0% to -24.2% in three months on
+# 84 to 136 sales a month, and its two newest months were first
+# estimates without a count. The figure is still shown; the sentence
+# says, from the same source, how firm it is.
+HPI_SWING_NOTE_PCT = 10.0
+
+
+def _hpi_swing_note(la: dict | None) -> str | None:
+    """One sentence on a large council-wide yearly change: the sales the
+    index rests on and that its newest month is a first estimate, each
+    only where HM Land Registry published it. None for a smaller move,
+    or for an index read before these fields were kept."""
+    if not la or la.get("annual_change_pct") is None or abs(la["annual_change_pct"]) < HPI_SWING_NOTE_PCT:
+        return None
+    parts = []
+    if la.get("sales_volume") and la.get("sales_volume_period"):
+        parts.append(f"The index for {la['name']} rests on {la['sales_volume']:,} recorded sales in "
+                     f"{_month_label(la['sales_volume_period'][:7])}, the newest month with a count.")
+    if la.get("provisional") and la.get("period"):
+        parts.append(f"{_month_label(la['period'][:7])} is a first estimate, which HM Land Registry revises as "
+                     "more sales are registered.")
+    return " ".join(parts) or None
+
+
 def _area_lead(outcode: str, payload: dict) -> list[str]:
     """The first thing an area guide says, in the words the question gets
     asked in.
@@ -8448,6 +8461,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
         out.append(
             f"Prices across {la['name']} are {'up' if pct >= 0 else 'down'} "
             f"{abs(pct):.1f}% on a year ago (UK House Price Index)."
+            + (f" {note}" if (note := _hpi_swing_note(la)) else "")
         )
 
     landscape = payload.get("landscape") or {}

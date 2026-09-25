@@ -6,6 +6,43 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The six ideas of the 22 Sep 2026 brainstorm, built on 25 Sep. Michael
+  said "do all", which is the approval ideas 4 and 6 needed.
+  1. One flat, one link. The M1 1AE sample's "Which home is yours?" row
+  offered "Apartment18 113" beside "Apartment 18, 113": one record at
+  113 Newton Street runs the flat word into its number. _address_words
+  (main and watchlist) splits flat, apartment, apt, unit and maisonette
+  from a number run on to them, and the row's label gains the space and
+  comma. Matching, saved homes and the house number filter all follow.
+  2. The district's crime month is kept in the Postgres cache. Two cold
+  reports on 25 Sep spent 5.3 s and 5.2 s on crime-summary-for-outcode,
+  the slowest source both times: a busy district's Police.uk month is a
+  megabyte, and the answer is the same for every address in the district.
+  Stored without points (no caller draws them), with the coverage rule
+  applied before the cache is read. crime-summary-near, 2.9 to 4.7 s, is
+  the address's own and stays live; it is now the thing to look at.
+  3. /alternatives re-read on 25 Sep: prices unchanged at all three.
+  Crystal Roof had added a school guide, marked new (Ofsted, results,
+  applications and offers, pupils, class sizes, destinations; England and
+  Wales, no admission distance), and the schools cell and FAQ say so.
+  4. The brainstorm's premise was half wrong: SW1A's "down 25.4%" (20.7%
+  by 25 Sep) is the UK House Price Index for all of City of Westminster,
+  not the 5 local sales beside it. What was true: the index moved from
+  -9.0% to -24.2% in three months on 84 to 136 sales a month, and its two
+  newest months carry no count because HM Land Registry revises them. A
+  council-wide yearly move of 10% or more (HPI_SWING_NOTE_PCT) now says,
+  from the same source, how many sales the index rests on and that its
+  newest month is a first estimate: guide lead, FAQ and House prices
+  section. Guides warmed before 25 Sep show it as their week runs out.
+  5. The SE15 2AF double unlock is not the OX3 0SG shape: account 90
+  opened number 77 and came back on 24 Sep; account 91 opened the
+  postcode without a number 31 minutes later. Nothing built.
+  6. The store serves 2.4.0 (Chrome's update service, 25 Sep).
+  scripts/check_extension.py passed live, and EXTENSION_240_LIVE and its
+  False branches, words and tests are gone.
+  No dev server could be started from the session; tests 800, then smoke
+  and the audit against production after deploy.
+
 - All eight ideas of the 18 Sep 2026 morning brainstorm, built the same
   day in a separate worktree while the audit batches ran in the main
   checkout. Michael said "Do all in sequence", which is the approval

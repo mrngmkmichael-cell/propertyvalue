@@ -17,12 +17,10 @@ column.
 Rental Analysis, Household Income and Costs & Affordability, free on the
 site since 17 Sep 2026, are free in the extension's feed and its new build.
 
-The extension's half waits for main.EXTENSION_240_LIVE: the published 2.3.0
-has no words for a locked reading and cannot show the three free, so while
-the switch is False the feed's school row is what it was before, and the
-pages that describe the extension keep their old words. The three free
-checks go to every caller in both states, since 2.3.0 never reads them.
-Both states are tested here.
+The extension's half waited for extension 2.4.0 behind a switch,
+EXTENSION_240_LIVE, because the published 2.3.0 had no words for a locked
+reading. The store served 2.4.0 on 25 Sep 2026 and the switch went; these
+test the one state left.
 Who counts as having opened a postcode is fixed in the extension either way:
 a buying pass that has run out no longer counts, and an unlock counts in any
 spacing. /watchlist/compare/full reads the unlocks the way the other two
@@ -353,13 +351,11 @@ def test_the_postcode_comparison_keeps_the_names_for_whoever_opened_it(client, m
 # ==== 3. The extension's public feed ======================================
 # /api/extension-report gave a caller with no token one school row with its
 # admission distance, whether that was published or estimated, its year and
-# the Likely, Borderline or Unlikely reading. Once EXTENSION_240_LIVE is True
-# a caller without Premium, or without this postcode opened on their
+# the Likely, Borderline or Unlikely reading. Now a caller without Premium, or without this postcode opened on their
 # account, gets name, phase, Ofsted, straight-line distance and the link to
 # the school's free page, and the words for where the rest opens, and every
 # caller gets the three checks the site made free on 17 Sep as free_cards.
-# While it is False the feed is what 2.3.0 was built for, plus free_cards,
-# which 2.3.0 never reads. The paid path is as it was in both.
+# The paid path is as it was.
 
 LOCKED_KEYS = ("admission_miles", "admission_kind", "admission_year", "verdict")
 EXT_LANDSCAPE = {
@@ -376,7 +372,7 @@ EXT_LANDSCAPE = {
     ],
 }
 # The nearest school's row as the feed sent it to anyone before 21 Sep 2026,
-# and as it still does while the switch is off.
+# and still sends it to a caller with the home open.
 KESTREL_ROW = {"name": "Kestrel Lane Primary", "urn": 990761, "slug": "kestrel-lane-primary", "distance_m": 400,
                "phase": "Primary", "ofsted_rating_label": "Good", "admission_miles": 1.2,
                "admission_kind": "published", "admission_year": "2025", "verdict": "likely"}
@@ -389,12 +385,6 @@ EXT_RENTAL = {"la_name": "Manchester", "period": "2026-06", "price_all": 1250, "
               "by_bedroom": []}
 EXT_INCOME = {"here": 45000, "la_name": "Manchester", "la_average": 41000,
               "region_name": "North West", "region_average": 43000}
-
-
-def _switch(monkeypatch, live):
-    """main.EXTENSION_240_LIVE for this test. The main session flips the
-    real one when the owner confirms 2.4.0 is live in the Chrome Web Store."""
-    monkeypatch.setattr(app_main, "EXTENSION_240_LIVE", live)
 
 
 def _ext_install(monkeypatch, postcode, landscape=EXT_LANDSCAPE):
@@ -481,31 +471,7 @@ def _cached_premium_payload(postcode):
     return key
 
 
-def test_while_the_switch_is_off_the_feed_is_what_2_3_0_was_sent(client, monkeypatch):
-    """EXTENSION_240_LIVE False: every key and the teaser school row as the
-    feed sent them before 21 Sep 2026, built or from the cache, signed in or
-    not, plus free_cards, which 2.3.0 never reads (checked in its published
-    content.js) and 2.4.0 needs from the day it is approved. 2.3.0 prints
-    "no figure" for a row without admission_miles. True, the same payload
-    blanks that row."""
-    _switch(monkeypatch, False)
-    _ext_install(monkeypatch, "M60 7BF")
-    token = _token_for(client, "leak21-ext-switch-off@example.com")
-    for attempt, bearer in (("built", None), ("from the cache", None), ("signed in, free", token)):
-        data = _ext_get(client, "M60 7BF", bearer)
-        assert set(data) == HEAD_KEYS | {"free_cards"}, attempt
-        assert data["premium_unlocked"] is False, attempt
-        assert data["schools"] == [KESTREL_ROW], attempt
-        assert data["schools_full_count"] == 3, attempt
-
-    _switch(monkeypatch, True)
-    data = _ext_get(client, "M60 7BF")
-    assert set(data) == HEAD_KEYS | {"free_cards", "schools_locked_label"}
-    assert data["schools"] == [{**KESTREL_ROW, **dict.fromkeys(LOCKED_KEYS)}]
-
-
-def test_with_the_switch_on_a_caller_without_a_token_gets_no_admission_distance_or_reading(client, monkeypatch):
-    _switch(monkeypatch, True)
+def test_a_caller_without_a_token_gets_no_admission_distance_or_reading(client, monkeypatch):
     _ext_install(monkeypatch, "M60 7BA")
     for attempt in ("built", "from the cache"):
         data = _ext_get(client, "M60 7BA")
@@ -524,7 +490,6 @@ def test_with_the_switch_on_a_caller_without_a_token_gets_no_admission_distance_
 
 
 def test_the_paid_path_is_as_it_was_and_the_cached_rows_are_never_blanked(client, monkeypatch):
-    _switch(monkeypatch, True)
     _ext_install(monkeypatch, "M60 7BB")
     # A caller with no token first, so the Premium call below is served
     # from the payload that call cached.
@@ -541,14 +506,9 @@ def test_the_paid_path_is_as_it_was_and_the_cached_rows_are_never_blanked(client
     assert none["admission_miles"] is None and none["verdict"] is None
     # The free cards come to a paying caller too.
     assert [c["title"] for c in data["free_cards"]] == ["Costs & Affordability", "Rental Analysis", "Household Income"]
-    # With the switch off, a paying caller gets the same rows and cards.
-    _switch(monkeypatch, False)
-    off = _ext_get(client, "M60 7BB", token)
-    assert off["schools"] == data["schools"] and off["free_cards"] == data["free_cards"]
 
 
 def test_a_signed_in_free_account_gets_the_answer_only_for_a_home_it_opened(client, monkeypatch):
-    _switch(monkeypatch, True)
     _ext_install(monkeypatch, "M60 7BC")
     email = "leak21-ext-free@example.com"
     token = _token_for(client, email)
@@ -567,7 +527,6 @@ def test_a_signed_in_free_account_gets_the_answer_only_for_a_home_it_opened(clie
 
 
 def test_the_three_checks_the_site_made_free_are_in_a_tokenless_payload(client, monkeypatch):
-    _switch(monkeypatch, True)
     _ext_install(monkeypatch, "M60 7BE")
     data = _ext_get(client, "M60 7BE")
     assert [c["title"] for c in data["free_cards"]] == ["Costs & Affordability", "Rental Analysis", "Household Income"]
@@ -623,19 +582,14 @@ def test_a_lapsed_buying_pass_gets_no_admission_fields_and_no_premium_payload(cl
         _pass_ends(-1)
         login = _login()
         assert login["is_premium"] is False
-        # With the switch on: not one admission field, and the words for
-        # an account whose free full report is still to spend.
-        _switch(monkeypatch, True)
+        # Not one admission field, and the words for an account whose
+        # free full report is still to spend.
         data = _ext_get(client, postcode, login["token"])
         assert data["premium_unlocked"] is False
         assert len(data["schools"]) == 1 and data["schools_full_count"] == 3
         for row in data["schools"]:
             assert {key: row[key] for key in LOCKED_KEYS} == dict.fromkeys(LOCKED_KEYS)
         assert data["schools_locked_label"] == LOCKED_FREE
-        # With it off: what any caller without Premium is sent, one row.
-        _switch(monkeypatch, False)
-        data = _ext_get(client, postcode, login["token"])
-        assert data["premium_unlocked"] is False and data["schools"] == [KESTREL_ROW]
         # And the Premium payload is refused, though one is built.
         r = _premium_get(client, postcode, login["token"])
         assert r.status_code == 403 and r.json() == {"error": "premium_required"}
@@ -657,7 +611,6 @@ def test_an_unlock_opens_the_postcode_in_the_extension_in_any_spacing(client, mo
     as the listing gave it, so an account that opened "M60 7CA" was closed
     on "m607ca". They ask about the looked-up postcode now, in any spacing."""
     from app.services import _cache
-    _switch(monkeypatch, True)
     postcode = "M60 7CA"
     _ext_install(monkeypatch, postcode)
     email = "leak21-ext-spacing@example.com"
@@ -686,7 +639,6 @@ def test_an_unlock_opens_the_postcode_in_the_extension_in_any_spacing(client, mo
 def test_the_locked_words_are_read_in_the_unlock_session(client, monkeypatch):
     """The words for where a locked answer opens took a session of their
     own; they are read in the one the unlock check already has open."""
-    _switch(monkeypatch, True)
     _ext_install(monkeypatch, "M60 7CD")
     token = _token_for(client, "leak21-ext-one-session@example.com")
     sessions = []
@@ -706,19 +658,13 @@ def test_the_locked_words_are_read_in_the_unlock_session(client, monkeypatch):
     assert data["schools_locked_label"] == LOCKED_FREE
     assert [kind for kind, _ in sessions] == ["unlocks", "words"]
     assert sessions[0][1] is not None and sessions[0][1] is sessions[1][1]
-    # With the switch off nothing reads the words at all.
-    sessions.clear()
-    _switch(monkeypatch, False)
-    _ext_get(client, "M60 7CD", token)
-    assert [kind for kind, _ in sessions] == ["unlocks"]
 
 
 def test_a_year_that_is_not_a_year_is_sent_as_none(client, monkeypatch):
     """832 profiles carry "varies" where a year would be, and both extension
     builds print the year in brackets after the distance, so a row read
     "admitted from 0.45 mi (varies)". The feed sends a year only when it is
-    one (_year_label, the site's own rule), and None otherwise, whatever the
-    switch says."""
+    one (_year_label, the site's own rule), and None otherwise."""
     landscape = {
         "total_schools": 2, "good_or_better_pct": 100, "radius_miles": 3,
         "all_schools": [
@@ -731,20 +677,11 @@ def test_a_year_that_is_not_a_year_is_sent_as_none(client, monkeypatch):
         ],
     }
     token = _token_for(client, "leak21-ext-years@example.com", subscribed=True)
-    for live in (False, True):
-        _switch(monkeypatch, live)
-        _ext_install(monkeypatch, "M60 7CE", landscape=landscape)
-        paid = _ext_get(client, "M60 7CE", token)
-        assert [(s["name"], s["admission_year"]) for s in paid["schools"]] == [
-            ("Brentry Lane Primary", None), ("Coombe Hill Academy", "2025/26")], live
-        assert (paid["schools"][0]["admission_miles"], paid["schools"][0]["verdict"]) == (0.45, "likely"), live
-    # The switch off, the teaser row a caller with no token is sent is the
-    # row it was always sent, with that one field cleaned.
-    _switch(monkeypatch, False)
-    assert _ext_get(client, "M60 7CE")["schools"] == [{
-        "name": "Brentry Lane Primary", "urn": 990771, "slug": "brentry-lane-primary", "distance_m": 400,
-        "phase": "Primary", "ofsted_rating_label": "Good", "admission_miles": 0.45,
-        "admission_kind": "published", "admission_year": None, "verdict": "likely"}]
+    _ext_install(monkeypatch, "M60 7CE", landscape=landscape)
+    paid = _ext_get(client, "M60 7CE", token)
+    assert [(s["name"], s["admission_year"]) for s in paid["schools"]] == [
+        ("Brentry Lane Primary", None), ("Coombe Hill Academy", "2025/26")]
+    assert (paid["schools"][0]["admission_miles"], paid["schools"][0]["verdict"]) == (0.45, "likely")
 
 
 def test_the_new_build_shows_the_three_as_free_and_the_schools_lock_in_words():
@@ -770,39 +707,32 @@ def test_the_new_build_shows_the_three_as_free_and_the_schools_lock_in_words():
     assert "### 2.4.0, 21 September 2026" in readme
 
 
-# The words the pages that describe the extension use, before and after
-# 2.4.0 is live.
+# The words the pages that describe the extension use, now that 2.4.0 is
+# live, and the ones they used before, which must not come back.
 ANSWER_BEFORE = "including the admissions verdict for the nearest school"
 ANSWER_AFTER = "and the costs calculator, typical rent and household income in full"
-OFFER_BEFORE = ("The free Chrome extension puts sold prices, the flood zone and each nearby school's Likely, "
-                "Borderline or Unlikely reading on Rightmove, Zoopla and OnTheMarket listings, from the same "
-                "sources as this report.")
+OFFER_BEFORE = "each nearby school's Likely, Borderline or Unlikely reading on Rightmove"
 OFFER_AFTER = ("The free Chrome extension puts sold prices, the flood zone and the nearest schools on Rightmove, "
                "Zoopla and OnTheMarket listings, from the same sources as this report. With Premium it also "
                "says whether a place at each school is Likely, Borderline or Unlikely.")
 
 
-def test_the_pages_that_describe_the_extension_keep_their_words_until_the_switch(client, fake_report, monkeypatch):
+def test_the_pages_that_describe_the_extension_describe_2_4_0(client, fake_report):
     """The /browser-extension FAQ's account answer, in its FAQPage data and
-    its list, and the report's extension offer: the old words while 2.3.0 is
-    the published build, the new ones once EXTENSION_240_LIVE is True, and
-    never both."""
+    its list, and the report's extension offer say who gets the admission
+    reading, as the published 2.4.0 does."""
     from app.services import _cache
-    for live, answer, other in ((False, ANSWER_BEFORE, ANSWER_AFTER), (True, ANSWER_AFTER, ANSWER_BEFORE)):
-        _switch(monkeypatch, live)
-        client.cookies.clear()
-        for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] == "anon_html"]:
-            _cache._evict(key)
-        body = client.get("/browser-extension").text
-        assert body.count(answer) == 2, live
-        assert other not in body, live
+    client.cookies.clear()
+    for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] == "anon_html"]:
+        _cache._evict(key)
+    body = client.get("/browser-extension").text
+    assert body.count(ANSWER_AFTER) == 2
+    assert ANSWER_BEFORE not in body
 
     fake_report()
     _signed_in(client, "leak21-offer-words@example.com")
-    for live, offer, other in ((False, OFFER_BEFORE, OFFER_AFTER), (True, OFFER_AFTER, OFFER_BEFORE)):
-        _switch(monkeypatch, live)
-        body = client.get("/property?postcode=M14%205TG").text
-        shown = _flat(body.split('<p class="compare-offer-lead">The next listing you open can show this too.</p>', 1)[1]
-                      .split("</div>", 1)[0])
-        assert offer in shown, live
-        assert other not in shown, live
+    body = client.get("/property?postcode=M14%205TG").text
+    shown = _flat(body.split('<p class="compare-offer-lead">The next listing you open can show this too.</p>', 1)[1]
+                  .split("</div>", 1)[0])
+    assert OFFER_AFTER in shown
+    assert OFFER_BEFORE not in shown

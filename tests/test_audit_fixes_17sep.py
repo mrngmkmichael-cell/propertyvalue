@@ -4939,8 +4939,9 @@ def test_d6_an_ng1_report_and_the_nottingham_rows_read_the_city(monkeypatch):
     ng1 = next(o for o in app_main.ALL_OUTCODES if o["outcode"] == "NG1")
     assert ng1["district"] == "Nottingham"
     local = asyncio.run(hpi.area_comparison(ng1["district"], "", ""))["local_authority"]
-    assert local == {"name": "City of Nottingham", "average_price": 187500.0, "annual_change_pct": 4.6,
-                     "period": "2026-07"}
+    # The sales count fields (25 Sep 2026) are not what this pins.
+    assert {k: local[k] for k in ("name", "average_price", "annual_change_pct", "period")} == {
+        "name": "City of Nottingham", "average_price": 187500.0, "annual_change_pct": 4.6, "period": "2026-07"}
     trend = asyncio.run(hpi.price_trend(ng1["district"]))
     assert trend["area_name"] == "City of Nottingham" and trend["current_price"] == 187500.0
 

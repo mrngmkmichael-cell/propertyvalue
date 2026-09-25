@@ -52,12 +52,10 @@ http://localhost:8012` points it at the dev server, and `--build` at another
 unpacked build, such as the published zip unpacked. It uses Microsoft Edge,
 because Chrome no longer loads unpacked extensions from the command line.
 
-`EXTENSION_240_LIVE` in `app/main.py` is True since 21 Sep 2026: the feed
-gives a school's admission distance and reading only to Premium or a
-reader who opened the postcode. It was meant to wait for 2.4.0, but the
-store turned out to serve 2.1.0, which has no admission column, so it
-changed nothing its readers see. Once 2.4.0 is live, remove the switch and
-its False branches. To see which version the store serves, ask Chrome's
+The feed gives a school's admission distance and reading only to Premium
+or a reader who opened the postcode. Since 25 Sep 2026 the store serves
+2.4.0, and the `EXTENSION_240_LIVE` switch that held the change for it is
+gone. To see which version the store serves, ask Chrome's
 update service (the `version` attribute in its reply):
 `https://clients2.google.com/service/update2/crx?response=updatecheck&acceptformat=crx2,crx3&prodversion=140.0&x=id%3Dpoclbfmjpgdnoabacpcdlmiiediakbcl%26v%3D0.0.0%26uc`.
 The developer dashboard's row shows the latest upload, not what is

@@ -228,14 +228,33 @@ async def summary_for_outcode(outcode: str) -> dict | None:
     comparison. Not a true local-authority crime rate (no free,
     population-normalized dataset comparable to a point-radius query
     exists) - this is the same ~1 mile radius sample, just centred
-    more broadly."""
+    more broadly.
+
+    Kept in the Postgres cache as well as memory (25 Sep 2026). It is
+    one answer for every address in the district, and on two cold
+    reports that day it was the slowest source of about thirty, 5.3 s
+    and 5.2 s, because a busy district's month from Police.uk is a
+    megabyte. The memory tier alone is evicted within the hour by the
+    crawl. No caller draws its points, so they are not stored; the
+    coverage rule is applied before the cache is read, so a district
+    taken off or put on the list is answered by today's rule."""
     centroid = await postcodes.outcode_centroid(outcode)
     if centroid is None:
         return None
-    return await summary_near(
-        centroid["latitude"], centroid["longitude"],
-        district=centroid.get("admin_district"), country=centroid.get("country"),
-    )
+    district, country = centroid.get("admin_district"), centroid.get("country")
+    gap = coverage_gap(district, country)
+    if gap:
+        return gap_summary(gap)
+    key = ("crime_district", outcode.upper())
+    cached = await asyncio.to_thread(_cache.get_persistent, key, CACHE_TTL_S)
+    if cached is not None:
+        return cached
+    result = without_points(await summary_near(
+        centroid["latitude"], centroid["longitude"], district=district, country=country,
+    ))
+    if result and not result.get("unpublished"):
+        await asyncio.to_thread(_cache.set_persistent, key, result)
+    return result
 
 
 async def summary_near(lat: float, lon: float, *, district: str | None, country: str | None) -> dict:

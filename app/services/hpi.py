@@ -23,11 +23,12 @@ _QUERY_TEMPLATE = """
 prefix ukhpi: <http://landregistry.data.gov.uk/def/ukhpi/>
 prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT ?refMonth ?averagePrice ?percentageAnnualChange ?label WHERE {{
+SELECT ?refMonth ?averagePrice ?percentageAnnualChange ?salesVolume ?label WHERE {{
   ?obs ukhpi:refRegion ?region ;
        ukhpi:refMonth ?refMonth ;
        ukhpi:averagePrice ?averagePrice ;
        ukhpi:percentageAnnualChange ?percentageAnnualChange .
+  OPTIONAL {{ ?obs ukhpi:salesVolume ?salesVolume }}
   ?region rdfs:label ?label .
   FILTER(LANG(?label) = "en")
   FILTER(CONTAINS(LCASE(STR(?label)), LCASE("{name}")))
@@ -126,6 +127,13 @@ async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
     row = next((r for r in bindings if r["label"]["value"] == chosen), None)
     if row is None:
         return None
+    # How many sales the index month rests on (25 Sep 2026). HM Land
+    # Registry publishes no count for its newest months, which are first
+    # estimates it revises as late sales are registered, so the count is
+    # the newest month that has one. Read 25 Sep 2026: City of
+    # Westminster's July 2026 index read -20.7%, June -24.2%, both without
+    # a count, and May rested on 84 sales.
+    counted = next((r for r in bindings if r["label"]["value"] == chosen and r.get("salesVolume")), None)
     return {
         # The area's own published label, not the name that was searched
         # for: when they differ the reader should see which area the
@@ -134,6 +142,9 @@ async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
         "average_price": float(row["averagePrice"]["value"]),
         "annual_change_pct": float(row["percentageAnnualChange"]["value"]),
         "period": row["refMonth"]["value"],
+        "provisional": not row.get("salesVolume"),
+        "sales_volume": int(float(counted["salesVolume"]["value"])) if counted else None,
+        "sales_volume_period": counted["refMonth"]["value"] if counted else None,
     }
 
 

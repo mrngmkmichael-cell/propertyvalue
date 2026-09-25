@@ -6,8 +6,8 @@ the dev server, and print what a reader without an account would see.
     python scripts/check_extension.py --build path/to/unpacked --postcode "KT3 4HX"
 
 Written on 21 Sep 2026 to check extension 2.4.0 before its upload, and the
-published 2.3.0 against the server change that waits for it (see
-EXTENSION_240_LIVE in app/main.py). Rightmove is never visited: the listing
+published build against the server's feed; 2.4.0 went live on 25 Sep
+2026. Rightmove is never visited: the listing
 is a local page served at a Rightmove address, with the postcode in its
 title as on the real portal, so the content script runs as it would there.
 Every call the extension makes to ukpropertyinsight.co.uk goes to production

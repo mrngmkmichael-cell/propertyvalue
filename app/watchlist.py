@@ -12,7 +12,10 @@ from app.models import User, WatchlistItem
 
 
 def _address_words(house_number: str) -> list[str]:
-    return re.sub(r"[^a-z0-9]+", " ", (house_number or "").lower()).split()
+    # "Apartment18" and "Apartment 18" are one home (25 Sep 2026), the
+    # same split main._address_words makes.
+    words = re.sub(r"[^a-z0-9]+", " ", (house_number or "").lower())
+    return re.sub(r"\b(flat|flats|apartment|apt|unit|maisonette)(?=\d)", r"\1 ", words).split()
 
 
 def same_home(a: str, b: str) -> bool:
