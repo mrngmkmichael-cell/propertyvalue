@@ -3672,11 +3672,16 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     # us being surfaced for at position 46 with the per-postcode pages;
     # one page per council is the shape of the query.
     entries.append((f"{base}/schools/independent", "0.6"))
-    try:
-        entries += [(f"{base}/schools/independent/{d['slug']}", "0.6")
-                    for d in schools_db.independent_districts()]
-    except Exception:  # noqa: BLE001 - a database blip must not break the sitemap
-        pass
+    # The 151 per-council independent pages left the sitemap on 26 Sep
+    # 2026, the same way the per-outcode ones did on 8 Sep and the
+    # calculators before them. Three months of Search Console: 1,302
+    # impressions, no clicks, average position 41, and not one of them
+    # in the top 20, because "private school birmingham" belongs to the
+    # schools themselves and to the guides with twenty years of links.
+    # Meanwhile 3,104 pages the crawl has not reached include the school
+    # pages that do earn clicks. The pages stay live and linked from the
+    # index, the area guides and each school; they are simply not what
+    # this domain should spend its crawl on.
     try:
         entries += [(f"{base}/schools/admissions/{c['slug']}", "0.6")
                     for c in schools_db.admission_councils()]
@@ -3722,31 +3727,95 @@ SITEMAP_TTL_S = 3600
 # The date this process started, which on Render is the deploy date.
 _STARTED_ON = datetime.date.today().isoformat()
 
+# One child sitemap per family (26 Sep 2026). Search Console reports
+# coverage per sitemap, and with a single file of 6,017 URLs the only
+# figure it could give was "3,104 discovered, currently not indexed" for
+# the whole site, which says nothing about which family the crawl is
+# reaching. Split, each family's indexed count is its own line, and the
+# next decision about what to advertise can be made on evidence rather
+# than on a guess. /sitemap.xml stays the URL Search Console has and
+# becomes the index that lists the children.
+SITEMAP_GROUPS = ("schools", "school-guides", "admissions", "areas", "costs", "comparisons", "pages")
 
-@app.get("/sitemap.xml")
-def sitemap(request: Request):
-    base = _public_base_url(request)
-    cached = _cache.get(("sitemap", base), SITEMAP_TTL_S)
-    if cached is not None:
-        return Response(content=_cache.unpack_text(cached), media_type="application/xml")
-    # lastmod is the deploy's own date: a guide's data changes on the
-    # cadence of the imports behind it, and every deploy re-reads those,
-    # so this is honest without tracking per-page dates. It used to be
-    # "today" on every request, which Google learns to ignore.
-    lastmod = _STARTED_ON
-    entries = _sitemap_entries(base)
-    # Every URL in the sitemap now carries a query string, and a bare "&"
-    # in <loc> is malformed XML that makes Google reject the whole file.
-    # One param today, so nothing to escape yet; escaping here means a
-    # second one never silently breaks the sitemap.
-    body = (
+# <lastmod> only where the date is one we actually know (26 Sep 2026).
+# Every URL used to carry the deploy's date: a deploy is not when a
+# school's admission distance changed, and a lastmod that is always
+# today is a lastmod Google learns to ignore. A family whose date we do
+# not hold now carries none, which is what the protocol expects. Set a
+# date here when an import moves that family.
+SITEMAP_LASTMOD = {
+    "schools": "2026-09-21",  # scripts/import_admission_radii.py, the multi-year run
+}
+
+
+def _sitemap_group(url: str) -> str:
+    """Which child sitemap a URL belongs in."""
+    path = "/" + url.split("://", 1)[-1].split("/", 1)[-1]
+    if path.startswith("/school/"):
+        return "schools"
+    if path.startswith("/schools/guide"):
+        return "school-guides"
+    if path.startswith("/schools/"):
+        return "admissions"
+    if path.startswith("/area/"):
+        return "areas"
+    if path.startswith("/running-costs") or path.startswith("/estate-charges"):
+        return "costs"
+    if path.startswith("/compare/") or path.startswith("/market/"):
+        return "comparisons"
+    return "pages"
+
+
+def _sitemap_urlset(entries: list[tuple[str, str]], lastmod: str | None) -> str:
+    # A bare "&" in <loc> is malformed XML and makes Google reject the
+    # whole file; the school guides' URLs carry a query string, so every
+    # loc is escaped.
+    mod = f"<lastmod>{lastmod}</lastmod>" if lastmod else ""
+    return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"  <url><loc>{escape(u)}</loc><lastmod>{lastmod}</lastmod><priority>{pr}</priority></url>\n"
+        + "".join(f"  <url><loc>{escape(u)}</loc>{mod}<priority>{pr}</priority></url>\n"
                   for u, pr in entries)
         + "</urlset>"
     )
-    _cache.set(("sitemap", base), _cache.pack_text(body))
+
+
+@app.get("/sitemap.xml")
+def sitemap(request: Request):
+    """The index: one line per child sitemap that has any URLs."""
+    base = _public_base_url(request)
+    cached = _cache.get(("sitemap", "index", base), SITEMAP_TTL_S)
+    if cached is not None:
+        return Response(content=_cache.unpack_text(cached), media_type="application/xml")
+    present = {_sitemap_group(u) for u, _ in _sitemap_entries(base)}
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "".join(
+            f"  <sitemap><loc>{escape(base)}/sitemap-{g}.xml</loc>"
+            + (f"<lastmod>{SITEMAP_LASTMOD[g]}</lastmod>" if g in SITEMAP_LASTMOD else "")
+            + "</sitemap>\n"
+            for g in SITEMAP_GROUPS if g in present
+        )
+        + "</sitemapindex>"
+    )
+    _cache.set(("sitemap", "index", base), _cache.pack_text(body))
+    return Response(content=body, media_type="application/xml")
+
+
+@app.get("/sitemap-{group}.xml")
+def sitemap_child(request: Request, group: str):
+    """One family's URLs. Unknown names 404 rather than serving an empty
+    file, so a typo in Search Console is visible there."""
+    if group not in SITEMAP_GROUPS:
+        return Response(status_code=404, media_type="application/xml")
+    base = _public_base_url(request)
+    cached = _cache.get(("sitemap", group, base), SITEMAP_TTL_S)
+    if cached is not None:
+        return Response(content=_cache.unpack_text(cached), media_type="application/xml")
+    entries = [(u, pr) for u, pr in _sitemap_entries(base) if _sitemap_group(u) == group]
+    body = _sitemap_urlset(entries, SITEMAP_LASTMOD.get(group))
+    _cache.set(("sitemap", group, base), _cache.pack_text(body))
     return Response(content=body, media_type="application/xml")
 
 
@@ -3781,7 +3850,28 @@ def areas_index(request: Request):
 
 @app.get("/robots.txt")
 def robots(request: Request):
-    body = f"User-agent: *\nAllow: /\nDisallow: /watchlist\nDisallow: /internal/\nSitemap: {_public_base_url(request)}/sitemap.xml\n"
+    """What a crawler may spend its time on.
+
+    /property and the admissions search box joined the list on 26 Sep
+    2026. A report is built from a form: its URL carries a postcode, it
+    is worth nothing in an index (13 impressions and one click in three
+    months), and a crawler walking postcodes gets a 404 for every one
+    that does not exist. Search Console that day reported 1,509 URLs
+    returning 404, 809 of them under /property, against 3,104 pages it
+    had discovered and not yet crawled. The school pages waiting in that
+    queue are the ones earning clicks, so the crawl is better spent on
+    them. Both paths stay open to people; robots.txt speaks to crawlers
+    only.
+    """
+    body = (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /watchlist\n"
+        "Disallow: /internal/\n"
+        "Disallow: /property\n"
+        "Disallow: /schools/admissions/search\n"
+        f"Sitemap: {_public_base_url(request)}/sitemap.xml\n"
+    )
     return Response(content=body, media_type="text/plain")
 
 
@@ -12554,13 +12644,17 @@ def _school_labels(profile: dict) -> dict:
 # The admissions hub links them so the site's own weight reaches the
 # pages closest to page one. Refresh from the weekly export; drop any
 # that reach the top five, they no longer need the help.
-# Refreshed from the export of 16 Sep 2026: none had reached the top
-# five; seven that have since earned a click or were overtaken made way
-# for seven with more impressions (Glyn, Gillespie, Fielding, Harris
-# Chobham, King Edward VII, Elmlea, Landau Forte).
+# Refreshed from the export of 26 Sep 2026, when 116 school pages met
+# the rule and these are the twenty with the most impressions. Three of
+# the twenty listed on 16 Sep have since earned their first clicks and
+# left the list (Dunraven, Hayes, Laurus Ryecroft), which is what the
+# list is for; four more were overtaken (Talbot, Yerbury, Heartlands,
+# Landau Forte). New this round: Chislehurst and Sidcup Grammar,
+# Cheadle Hulme High, Priory, Magna Carta, Tetherdown, Birchanger and
+# St Michael's.
 NEAR_MISS_SCHOOL_URNS = [
-    102156, 136534, 100405, 120277, 137531, 101897, 102097, 144308, 100050, 139703,
-    137093, 108076, 152145, 100429, 107140, 139616, 136644, 147476, 145894, 138790,
+    102156, 136534, 137531, 100050, 137423, 137843, 100405, 101897, 139703, 141175,
+    142771, 102097, 108076, 120277, 147476, 102098, 144308, 107140, 115127, 104019,
 ]
 
 

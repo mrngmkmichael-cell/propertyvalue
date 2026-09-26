@@ -5,8 +5,30 @@ failure that has actually bitten this site: a template that crashes
 canonical tags."""
 import re
 import xml.etree.ElementTree as ET
+from urllib.parse import urlparse
 
 import pytest
+
+
+def sitemap_text(client):
+    """The whole sitemap as one string. /sitemap.xml has been an index of
+    one child per family since 26 Sep 2026 (see test_seo_crawl_26sep),
+    so "is this URL advertised" means reading the children as well."""
+    body = client.get("/sitemap.xml").text
+    for loc in re.findall(r"<loc>([^<]+)</loc>", body):
+        body += client.get(urlparse(loc).path).text
+    return body
+
+
+def sitemap_locs(client):
+    """Every URL the sitemap advertises, across all its children."""
+    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+    index = ET.fromstring(client.get("/sitemap.xml").content)
+    locs = []
+    for child in [el.text for el in index.findall(".//s:loc", ns)]:
+        root = ET.fromstring(client.get(urlparse(child).path).content)
+        locs += [el.text for el in root.findall(".//s:loc", ns)]
+    return locs
 
 STATIC_PAGES = [
     "/", "/areas", "/methodology", "/premium", "/schools/guide", "/privacy", "/terms",
@@ -118,11 +140,7 @@ def test_robots_allows_crawling_and_points_at_sitemap(client):
 
 
 def test_sitemap_is_valid_and_substantial(client):
-    r = client.get("/sitemap.xml")
-    assert r.status_code == 200
-    root = ET.fromstring(r.content)
-    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    locs = [el.text for el in root.findall(".//s:loc", ns)]
+    locs = sitemap_locs(client)
     assert len(locs) > 300
     assert all(loc.startswith("https://") for loc in locs)
     assert any(loc.endswith("/area/SW1A") for loc in locs)
@@ -183,9 +201,7 @@ def test_sitemap_advertises_only_self_canonical_school_guides(client, fake_place
     """A sitemap entry that canonicals elsewhere asks Google to crawl a
     page and then ignore it. Every school guide submitted must point at
     itself."""
-    root = ET.fromstring(client.get("/sitemap.xml").content)
-    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    locs = [el.text for el in root.findall(".//s:loc", ns)]
+    locs = sitemap_locs(client)
     schools = [u for u in locs if "/schools/guide?q=" in u]
     assert len(schools) > 300
 
@@ -199,9 +215,7 @@ def test_sitemap_is_curated_not_the_whole_country(client):
     105 "Crawled - currently not indexed". Submitting every district at
     once spends a new domain's crawl on the long tail. The rest stay live
     and linked from /areas, just not queue-jumped."""
-    root = ET.fromstring(client.get("/sitemap.xml").content)
-    ns = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-    locs = [el.text for el in root.findall(".//s:loc", ns)]
+    locs = sitemap_locs(client)
     # Area GUIDES specifically: /area/M1, not /area/M1/private-schools,
     # which is a different page type that happens to live underneath.
     areas = [u for u in locs if re.search(r"/area/[A-Z0-9]+$", u)]
@@ -593,7 +607,7 @@ def test_calculator_pages_render_but_no_longer_compete(client):
         assert 'id="calc-price"' in body, slug
         assert 'content="noindex, follow"' in body, slug
         assert "/running-costs" in body, slug
-    sitemap = client.get("/sitemap.xml").text
+    sitemap = sitemap_text(client)
     assert "/tools/mortgage-calculator" not in sitemap
     assert "/tools/stamp-duty-calculator" not in sitemap
     assert client.get("/tools/not-a-tool").status_code == 404
@@ -939,7 +953,7 @@ def test_sitemap_carries_the_admissions_pages(client):
     _seed_admission_school()
     from app.services import _cache
     _cache._store.clear(); _cache._bytes = 0
-    body = client.get("/sitemap.xml").text
+    body = sitemap_text(client)
     assert "/schools/admissions</loc>" in body
     assert "/schools/how-admissions-work</loc>" in body
     assert "/schools/admissions/manchester</loc>" in body
@@ -1207,7 +1221,7 @@ def test_tightest_catchments_ranks_nationally_and_by_council(client):
     # Every figure names where it came from.
     assert "published" in body.lower() and "straight line" in body.lower()
     assert 'href="/schools/tightest-catchments"' in client.get("/schools/admissions").text
-    assert "/schools/tightest-catchments" in client.get("/sitemap.xml").text
+    assert "/schools/tightest-catchments" in sitemap_text(client)
 
 
 def test_school_title_answers_the_catchment_query(client):
@@ -1276,7 +1290,10 @@ def test_independent_school_pages_by_council(client):
     # Links across to the state-school hub for the same council.
     assert 'href="/schools/admissions/manchester"' in body
     assert client.get("/schools/independent/no-such-council").status_code == 404
-    assert "/schools/independent/manchester" in client.get("/sitemap.xml").text
+    # Live and linked, but off the sitemap since 26 Sep 2026: three months
+    # of 1,302 impressions and no clicks at an average position of 41,
+    # while 3,104 pages waited to be crawled (test_seo_crawl_26sep).
+    assert "/schools/independent/manchester" not in sitemap_text(client)
 
 
 def test_structured_data_and_share_cards_on_the_admissions_pages(client):
@@ -1351,7 +1368,7 @@ def test_catchment_house_prices_pairs_distances_with_land_registry(client, monke
     assert "within reach" in body
     assert "Ancoats Gate Primary" in body and "&pound;250,000" in body
     assert 'href="/area/M1"' in body
-    assert "/schools/catchment-house-prices" in client.get("/sitemap.xml").text
+    assert "/schools/catchment-house-prices" in sitemap_text(client)
     assert 'href="/schools/catchment-house-prices"' in client.get("/schools/tightest-catchments").text
 
 
@@ -1363,10 +1380,13 @@ def test_council_hub_invites_the_signed_out_to_sign_up(client):
     assert 'href="/signup?next=/schools/admissions/manchester"' in body
 
 
-def test_sitemap_is_cached_and_dated_by_deploy(client):
+def test_sitemap_is_cached_and_carries_no_invented_dates(client):
+    """Every URL used to claim the deploy's date. Since 26 Sep 2026 a
+    lastmod appears only for a family whose import date we actually
+    hold, and the index and each child are still cached."""
     from app import main as app_main
     first = client.get("/sitemap.xml").text
-    assert f"<lastmod>{app_main._STARTED_ON}</lastmod>" in first
+    assert f"<lastmod>{app_main._STARTED_ON}</lastmod>" not in sitemap_text(client)
     assert client.get("/sitemap.xml").text == first
 
 
@@ -1472,7 +1492,7 @@ def test_running_costs_page_ranks_councils_from_the_official_file(client):
     assert "Cheapest twenty" in body and "Dearest twenty" in body
     assert '"FAQPage"' in body
     assert 'href="/estate-charges"' in body
-    assert "/running-costs" in client.get("/sitemap.xml").text
+    assert "/running-costs" in sitemap_text(client)
 
 
 def test_estate_charges_page_is_sourced_and_honest(client):
@@ -1481,7 +1501,7 @@ def test_estate_charges_page_is_sourced_and_honest(client):
     assert "cma-cases/housebuilding-market-study" in body
     assert "no official source" in body.lower()
     assert '"FAQPage"' in body
-    assert "/estate-charges" in client.get("/sitemap.xml").text
+    assert "/estate-charges" in sitemap_text(client)
 
 
 # ---- who manages your estate, 4 Sep 2026 night ------------------------------
@@ -1525,7 +1545,7 @@ def test_the_estate_directory_is_withdrawn_until_its_data_is_checked(client):
         assert r.status_code == 301, path
         assert r.headers["location"] == "/estate-charges", path
         assert "firstport" not in client.get(path).text.lower(), path
-    assert "/estate-charges/managing-agents" not in client.get("/sitemap.xml").text
+    assert "/estate-charges/managing-agents" not in sitemap_text(client)
     assert "/estate-charges/managing-agents" not in client.get("/running-costs").text
     explainer = client.get("/estate-charges")
     assert explainer.status_code == 200 and "/estate-charges/managing-agents" not in explainer.text
@@ -1536,7 +1556,7 @@ def test_council_tax_table_lists_every_authority(client):
     body = client.get("/running-costs/council-tax").text
     assert "Adur" in body and "billing authorities" in body
     assert "Band A" in body and "Band H" in body
-    assert "/running-costs/council-tax" in client.get("/sitemap.xml").text
+    assert "/running-costs/council-tax" in sitemap_text(client)
 
 
 def test_council_tax_finds_an_english_council_by_name():
@@ -1728,7 +1748,7 @@ def test_outcode_private_school_pages_point_at_the_council_page(client):
     import re
     canonical = re.search(r'<link rel="canonical" href="([^"]+)"', r.text).group(1)
     assert canonical.endswith("/schools/independent/manchester"), canonical
-    assert "/area/M14/private-schools" not in client.get("/sitemap.xml").text
+    assert "/area/M14/private-schools" not in sitemap_text(client)
     # The page says the same thing to a reader that it says to a crawler.
     assert 'href="/schools/independent/manchester"' in r.text
 
@@ -2200,7 +2220,7 @@ def test_each_council_has_a_council_tax_page(client):
     assert "Scottish Government" in scot and "Scottish Assessors" in scot and "Six years of Band D" not in scot
     listing = client.get("/running-costs/council-tax").text
     assert 'href="/running-costs/council-tax/manchester"' in listing
-    assert "/running-costs/council-tax/manchester" in client.get("/sitemap.xml").text
+    assert "/running-costs/council-tax/manchester" in sitemap_text(client)
 
 
 def test_healthz_answers_without_touching_the_database(client, monkeypatch):
@@ -2323,7 +2343,7 @@ def test_the_comparison_page_is_dated_and_fair(client):
     assert "What each does better than this site" in body and "FAQPage" in body
     assert 'rel="canonical" href="https://testserver/alternatives"' in body
     assert "\u2014" not in body                                   # no em-dashes in user-facing copy
-    assert "/alternatives" in client.get("/sitemap.xml").text
+    assert "/alternatives" in sitemap_text(client)
     assert 'href="/alternatives"' in client.get("/premium").text and 'href="/alternatives"' in client.get("/").text
 
 

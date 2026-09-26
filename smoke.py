@@ -111,8 +111,13 @@ CHECKS = [
     # Not the production hostname: on the dev server these are localhost
     # URLs, and a check that only passes against one environment is a
     # check that gets ignored on the other.
-    ("/sitemap.xml", {200}, ["<urlset", "<loc>"]),
-    ("/robots.txt", {200}, ["Sitemap:"]),
+    # An index of one child per family since 26 Sep 2026, so the page
+    # itself carries no <url>: the children do, and each is checked.
+    ("/sitemap.xml", {200}, ["<sitemapindex", "/sitemap-schools.xml"]),
+    ("/sitemap-schools.xml", {200}, ["<urlset", "/school/"]),
+    ("/sitemap-areas.xml", {200}, ["<urlset", "/area/"]),
+    ("/sitemap-pages.xml", {200}, ["<urlset", "<loc>"]),
+    ("/robots.txt", {200}, ["Sitemap:", "Disallow: /property"]),
     ("/healthz", {200}, ["ok"]),
     # Signed out, so these must send the visitor to sign in rather than
     # rendering an empty page or erroring.
