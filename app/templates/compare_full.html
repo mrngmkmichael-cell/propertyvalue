@@ -25,12 +25,27 @@
 </p>
 {% elif not columns %}
 <p class="notice">No properties selected. Go back to My properties and tick up to {{ max_columns }} to compare.</p>
+{% elif partial %}
+{% set open_names = [] %}{% set shut_count = namespace(n=0) %}
+{% for col in columns %}{% if col.data.locked %}{% set shut_count.n = shut_count.n + 1 %}{% elif not col.data.not_found %}{% set _ = open_names.append((col.house_number ~ ', ' ~ col.postcode) if col.house_number else col.postcode) %}{% endif %}{% endfor %}
+<p class="dek">
+    {{ check_count }} checks, from the same official sources as each full report. {{ open_names | join(' and ') }}
+    {{ 'is' if open_names | length == 1 else 'are' }} open in full, so {{ 'its column is' if open_names | length == 1 else 'their columns are' }} filled.
+    The other {{ 'home' if shut_count.n == 1 else shut_count.n ~ ' homes' }} open{{ 's' if shut_count.n == 1 }} with Premium:
+    {{ plan_prices.quarterly }} for three months, made for one house hunt, or {{ plan_prices.monthly }} a month. Each renews until you cancel.
+</p>
+<p class="compare-full-cta">
+    <a class="compare-full-btn" href="/premium">Open every column with Premium</a>
+    <a href="/watchlist/compare?{{ ids_query }}">Or compare the headline figures of all of them, free</a>
+</p>
 {% else %}
 <p class="dek">
     {{ check_count }} checks for {{ columns | length }} home{{ 's' if columns | length != 1 }}, from the same official sources as each full report.
     <strong>{{ differ_count }}</strong> of them differ between these homes.
 </p>
 <label class="map-toggle"><input type="checkbox" id="differences-only"> Show only the checks that differ</label>
+{% endif %}
+{% if columns and not locked %}
 
 <div class="compare-table-wrap">
 <table class="tx-table compare-table compare-full" id="compare-full">
@@ -42,6 +57,12 @@
                 {% if col.data.not_found %}
                 <span class="compare-missing">{{ col.postcode }}</span>
                 <div class="compare-note">Could not be looked up just now</div>
+                {% elif col.data.locked %}
+                <a href="/property?postcode={{ col.postcode | urlencode }}{% if col.house_number %}&house_number={{ col.house_number | urlencode }}{% endif %}">
+                    {{ (col.house_number ~ ", " ~ col.postcode) if col.house_number else col.postcode }}
+                </a>
+                <div class="compare-note">Opens with Premium</div>
+                {% if col.asking_price %}<div class="compare-note compare-asking">Asking price you saved: <strong>{{ col.asking_price.price | gbp }}</strong></div>{% endif %}
                 {% else %}
                 <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
                     {{ (col.house_number ~ ", " ~ col.postcode) if col.house_number else col.postcode }}
@@ -63,7 +84,11 @@
         <tr class="compare-row{% if r.differs %} compare-differs{% endif %}" data-differs="{{ 1 if r.differs else 0 }}">
             <td class="compare-check"><strong>{{ r.check }}</strong>{% if r.source %}<div class="compare-note">{{ r.source }}</div>{% endif %}</td>
             {% for cell in r.cells %}
+            {% if columns[loop.index0].data.locked %}
+            <td class="cmp-locked"><span class="compare-missing">Opens with Premium</span></td>
+            {% else %}
             <td class="cmp-{{ cell.status if cell else 'none' }}">{% if cell %}{{ cell.result }}{% else %}<span class="compare-missing">Not on this report</span>{% endif %}</td>
+            {% endif %}
             {% endfor %}
         </tr>
         {% endfor %}

@@ -262,8 +262,14 @@
         {% if current_user and current_user.is_premium %}
         <a class="compare-full-btn" href="/watchlist/compare/full?{{ ids_query }}">Compare every check on these homes</a>
         {% else %}
+        {% set opened = columns | selectattr('schools_open') | list %}
+        {% if opened and columns | length > 1 %}
+        <a class="compare-full-btn" href="/watchlist/compare/full?{{ ids_query }}">See every check, {{ (opened[0].house_number ~ ', ' ~ opened[0].postcode) if opened[0].house_number else opened[0].postcode }} in full</a>
+        <span class="section-sub">The home you opened is filled in on every check, beside the ones Premium opens on the others.</span>
+        {% else %}
         <a class="compare-full-btn" href="/watchlist/compare/full?{{ ids_query }}">Every check side by side, with Premium</a>
         <span class="section-sub">Flood, crime, schools, energy, council tax, the valuation and the rest, for the homes you save.</span>
+        {% endif %}
         {% endif %}
     </div>
     {% endif %}

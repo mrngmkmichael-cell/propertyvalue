@@ -59,6 +59,9 @@ def _no_leaked_session(request):
     for key in [k for k in _cache._store if isinstance(k, tuple) and k and k[0] in (
             "anon_html", "sitemap", "comparables_page", "nearby_comparables")]:
         _cache._evict(key)
+    # The report PDFs kept ten minutes (26 Sep 2026): one test's fake
+    # document would otherwise be the next test's download.
+    app_main._pdf_kept.clear()
     # The two school-data summaries persist to tier 2 (the page_cache
     # table) since 4 Sep 2026, so a test that seeds a school would
     # otherwise read the previous test's summary back from SQLite.

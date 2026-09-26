@@ -45,7 +45,7 @@
                route sorts by distance: nearest first, and newest first
                only among sales at the same postcode. #}
             <p class="section-sub">
-                {{ comparables_count }} sold prices recorded nearby (up to 0.6 miles), from
+                {% if comparables_since %}The {{ comparables_count }} most recent sold prices recorded nearby (up to 0.6 miles), since {{ comparables_since }}, from{% else %}{{ comparables_count }} sold prices recorded nearby (up to 0.6 miles), from{% endif %}
                 HM Land Registry, the same source as the Sold Price History section. Listed nearest first,
                 and newest first within each postcode. Not "for sale" or
                 "to let" listings. That's licensed data (Rightmove/Zoopla) we don't have free access to,

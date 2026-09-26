@@ -5,6 +5,12 @@ import httpx
 
 SPARQL_ENDPOINT = "https://landregistry.data.gov.uk/landregistry/query"
 
+# The nearby query returns at most this many sales, newest first. A busy
+# area always reaches it, so a count of this many is a ceiling, not a
+# count, and the pages say "the 300 most recent" with the oldest date
+# (26 Sep 2026: LS6 3HN read "300 sales within a short walk").
+NEARBY_SALES_LIMIT = 300
+
 _NEARBY_QUERY_TEMPLATE = """
 prefix lrppi: <http://landregistry.data.gov.uk/def/ppi/>
 prefix lrcommon: <http://landregistry.data.gov.uk/def/common/>
@@ -26,7 +32,7 @@ WHERE {{
   OPTIONAL {{?transx lrppi:newBuild ?newBuild}}
 }}
 ORDER BY DESC(?date)
-LIMIT 300
+LIMIT {limit}
 """
 
 _QUERY_TEMPLATE = """
@@ -69,7 +75,7 @@ async def sold_prices_for_postcodes(postcodes: list[str]) -> list[dict]:
     if not postcodes:
         return []
     values_clause = " ".join(f'"{pc}"' for pc in postcodes)
-    query = _NEARBY_QUERY_TEMPLATE.format(postcode_values=values_clause)
+    query = _NEARBY_QUERY_TEMPLATE.format(postcode_values=values_clause, limit=NEARBY_SALES_LIMIT)
 
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(

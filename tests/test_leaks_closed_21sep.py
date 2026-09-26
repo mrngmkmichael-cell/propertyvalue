@@ -235,10 +235,11 @@ def test_the_full_comparison_and_my_properties_hold_no_school_answer_either(clie
         return {"not_found": True, "postcode": postcode, "house_number": house_number}
 
     monkeypatch.setattr(app_main, "_compare_rows", _rows)
-    # Every check side by side waits until every home is open, as it did.
+    # Every check side by side gathers only the home that is open (26 Sep
+    # 2026: its column is filled, the other reads "Opens with Premium").
     full = client.get(f"/watchlist/compare/full?item_ids={ids[0]}&item_ids={ids[1]}").text
-    assert "Premium puts every check on the report next to each other" in full
-    assert gathered == []
+    assert "Opens with Premium" in full
+    assert gathered == [("M14 5TG", "751")]
     # And My properties never prints a home's school readings at all.
     mine = client.get("/watchlist").text
     for body in (full, mine):

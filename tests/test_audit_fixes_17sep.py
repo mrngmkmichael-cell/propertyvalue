@@ -182,7 +182,7 @@ def test_a2_a_free_account_gets_the_pdf_of_the_home_it_unlocked(client, fake_rep
 
     # The report's own button, followed as a browser would.
     body = client.get("/property?postcode=M13+9PL&house_number=4").text
-    button = re.search(r'<a class="pdf-download-btn" download href="([^"]*)">\s*<svg.*?</svg>\s*Download full PDF report', body, re.S)
+    button = re.search(r'<a class="pdf-download-btn" id="pdf-download" download href="([^"]*)">\s*<svg.*?</svg>\s*<span class="pdf-download-label">Download full PDF report', body, re.S)
     assert button, "the unlocked home has no PDF button"
     assert "PDF report &middot; Premium" not in body
 
@@ -3285,13 +3285,13 @@ def test_d1_one_home_in_both_sources_is_one_link_and_every_link_fits_the_column(
     # no sale keeps the register's whole address, in ordinary case.
     assert [h["label"] for h in homes] == [
         "9 High Street", "10 High Street", "Flat 2, 12 High Street",
-        "Flat 14 The Very Long Named Building 120 High Street", "Rose Cottage, Church Lane"]
+        "Flat 14, The Very Long Named Building 120 High Street", "Rose Cottage, Church Lane"]
     assert [(h["street"], h["short"]) for h in homes] == [
         ("High Street", "9"), ("High Street", "10"), ("High Street", "Flat 2, 12"),
-        ("High Street", "Flat 14 The Very Long Named Building 120"), ("", "Rose Cottage, Church Lane")]
+        ("High Street", "Flat 14, The Very Long Named Building 120"), ("", "Rose Cottage, Church Lane")]
     assert all(len(h["house_number"]) <= app_main.HOUSE_NUMBER_MAX_LEN for h in homes)
     long_one = homes[3]["house_number"]
-    assert long_one == "Flat 14 The Very Long Named"
+    assert long_one == "Flat 14, The Very Long Named"
     # A cut label still opens its own home, and only that one.
     assert app_main._filter_by_address(sales, long_one) == [sales[2]]
     # Two dozen shown, street by street, and the rest behind "and N more".
@@ -5668,9 +5668,10 @@ def test_dfix_the_row_sets_the_number_alone_only_where_it_opens_the_same_home():
     assert flat["short"] == "Flat 1, 2" and flat["house_number"] == "Flat 1, 2"
     assert app_main._filter_by_address(sales, flat["house_number"]) == [sales[0]]
     assert app_main._filter_by_address(certs, flat["house_number"]) == []
-    # A building's name is not a flat's number: no comma there.
+    # A building's name after a flat's number takes the comma too since 26 Sep
+    # 2026, as the EPC Register writes most of one block at LS6 3HN.
     assert app_main._sale_label("FLAT 14 THE VERY LONG NAMED BUILDING 120 HIGH STREET") == \
-        "Flat 14 The Very Long Named Building 120 High Street"
+        "Flat 14, The Very Long Named Building 120 High Street"
     assert app_main._sale_label("MALDEN HOUSE 3 MALDEN HILL GARDENS") == "Malden House 3 Malden Hill Gardens"
 
 

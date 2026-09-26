@@ -6,6 +6,39 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The six ideas of the 26 Sep 2026 brainstorm, built the same evening.
+  Michael said "do all", which is the approval idea 3 needed. The day's
+  reading: one new real account in three days (95, 25 Sep), one free
+  unlock, no Premium since 17 Sep, /premium 14 views in four days.
+  1. The report's PDF. Account 95 asked for it 7 times in 90 seconds,
+  four in the same second: the button was a plain link with no sign of
+  the render, and a failed render redirected silently to the postcode
+  without the house. Now the page fetches it with a busy label and a
+  status line, one request however many clicks; the server keeps each
+  home's PDF ten minutes and shares one render between concurrent asks
+  (_pdf_once); a failure returns to the same home with ?pdf=failed and
+  says so. Without JavaScript the link still downloads.
+  2. "300 sales within a short walk" was the query's LIMIT 300
+  (land_registry.NEARBY_SALES_LIMIT). At the ceiling the report tile and
+  the Comparables page say "the 300 most recent ... since <month>".
+  3. The full comparison for a free account with one of the homes open
+  fills that column and reads "Opens with Premium" down the others, with
+  the plan prices; no gather runs for a locked home. The light comparison
+  names the open home in its link. This is the 12 Sep fallback; judge it
+  by paywall-then-subscribe on /admin.
+  4. /login is not a pageview (143 and 156 crawler views on 23 and 26 Sep,
+  no account). The signup page counts a visit only once a person presses
+  a key, taps or clicks: sending on load still counted a JS renderer, 48
+  views between 02:00 and 03:00 UTC on 23 Sep.
+  5. /premium and /browser-extension keep their anonymous copy an hour, as
+  the homepage does (0.87 s cold against 0.21 s kept on 26 Sep). Helps
+  only while the entry survives the shared LRU.
+  6. A flat's number then a building name takes the comma ("Flat 18, Park
+  Lane Central"), as the EPC Register writes most of that block. No
+  stored unlock or saved home had the old spelling.
+  No dev server could be started from the session; pages were rendered
+  through the test client and exercised in Playwright at 1280 and 375 px.
+
 - The six ideas of the 22 Sep 2026 brainstorm, built on 25 Sep. Michael
   said "do all", which is the approval ideas 4 and 6 needed.
   1. One flat, one link. The M1 1AE sample's "Which home is yours?" row

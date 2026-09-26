@@ -51,7 +51,7 @@ from app.services import (
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow, council_tax, viewing_checklist,
 )
-from app.services.land_registry import sold_prices_for_postcode, sold_prices_for_postcodes
+from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
 from app.services.postcodes import any_postcode_in_outcode, lookup_postcode, nearby_postcodes, outcode_centroid
 
@@ -153,6 +153,12 @@ _ANON_HTML_TTL_S = 600
 # 0.27 s (14 Sep). Its figures move on a deploy or an import, and a
 # deploy restarts the process and empties the store anyway.
 _ANON_HOME_TTL_S = 3600
+# The two pages that sell, kept the homepage's hour for the homepage's
+# reason (26 Sep 2026): /premium had 14 counted views in four days and
+# /browser-extension 8, so nearly every reader found the ten-minute copy
+# gone. Measured live that day: /premium 0.87 s cold against 0.21 s kept,
+# /browser-extension 0.84 s against 0.23 s. Both change only on a deploy.
+_ANON_HOUR_PATHS = frozenset({"/", "/premium", "/browser-extension"})
 _ANON_HTML_PREFIXES = (
     "/area/", "/schools/guide", "/schools/admissions", "/schools/how-admissions-work",
     "/schools/tightest-catchments", "/schools/independent", "/schools/catchment-house-prices",
@@ -201,7 +207,7 @@ async def anon_html_cache(request: Request, call_next):
     key = _anon_html_key(request)
     if key is None:
         return await call_next(request)
-    hit = _cache.get(key, _ANON_HOME_TTL_S if key[1] == "/" else _ANON_HTML_TTL_S)
+    hit = _cache.get(key, _ANON_HOME_TTL_S if key[1] in _ANON_HOUR_PATHS else _ANON_HTML_TTL_S)
     if hit is not None:
         status, packed = hit
         body = _cache.unpack_text(packed)
@@ -259,7 +265,14 @@ _PAGEVIEW_EXCLUDE_PREFIXES = ("/static/", "/api/", "/internal/", "/webhooks/")
 _PAGEVIEW_EXCLUDE_PATHS = {"/robots.txt", "/sitemap.xml", "/favicon.ico", "/llms.txt",
                            "/schools/admission-distances.csv",
                            # Counted by the page itself: see signup_seen.
-                           "/signup"}
+                           "/signup",
+                           # Not counted at all (26 Sep 2026). Every page's
+                           # header links it, so a crawl of the school and
+                           # area pages read as 143 and 156 log-in views on
+                           # 23 and 26 Sep with no account either day, and no
+                           # figure on /admin reads it. A log-in is seen as
+                           # the signed-in pages that follow it.
+                           "/login"}
 if indexnow.key():
     _PAGEVIEW_EXCLUDE_PATHS.add(f"/{indexnow.key()}.txt")
 
@@ -668,6 +681,12 @@ def _address_words(text: str) -> str:
 
 _FLAT_RUN_ON = re.compile(r"\b(flat|flats|apartment|apt|unit|maisonette)(?=\d)")
 _FLAT_RUN_ON_LABEL = re.compile(_FLAT_RUN_ON.pattern, re.IGNORECASE)
+# A flat and its number, then a building's name with no comma between
+# (26 Sep 2026). The EPC Register writes one block at LS6 3HN both ways,
+# "Flat 16, Park Lane Central" and "Flat 18 Park Lane Central", and the
+# row read as two buildings. Labels only: matching ignores commas.
+_FLAT_NUMBER_THEN_NAME = re.compile(
+    r"^((?:flat|flats|apartment|apt|unit|maisonette) \d+[a-z]?) (?=[a-z])", re.IGNORECASE)
 
 
 def _filter_by_address(records: list[dict], query: str) -> list[dict]:
@@ -2207,7 +2226,7 @@ def _epc_home_label(address: str, streets: set[str]) -> str:
     for part in kept:
         joiner = " " if re.fullmatch(r"\d+[A-Za-z]?", label) else ", "
         label = f"{label}{joiner}{part}" if label else part
-    return _tidy_case(label)
+    return _FLAT_NUMBER_THEN_NAME.sub(r"\1, ", _tidy_case(label))
 
 
 def _house_number_for(label: str) -> str:
@@ -2307,7 +2326,7 @@ def _sale_label(address: str) -> str:
     words = label.split(" ")
     if len(words) > 2 and words[0].lower() in _FLAT_WORDS and not words[1].endswith(",") and words[2][:1].isdigit():
         return f"{words[0]} {words[1]}, {' '.join(words[2:])}"
-    return label
+    return _FLAT_NUMBER_THEN_NAME.sub(r"\1, ", label)
 
 
 def _which_home_sections(homes: list[dict]) -> list[dict]:
@@ -5394,6 +5413,7 @@ def _apply_valuation(context: dict, comparables, subject_floor_area, growth_pct,
     # a count and the most recent one give nothing away that the
     # next click wouldn't.
     context["nearby_sales_count"] = len(comparables)
+    context["nearby_sales_since"] = _nearby_sales_since(comparables)
     dated = [t for t in comparables if t.get("date") and t.get("amount")]
     context["nearby_latest_sale"] = max(dated, key=lambda t: t["date"]) if dated else None
 
@@ -7546,6 +7566,17 @@ def _comparables_page_key(lat: float, lon: float) -> tuple:
     return ("comparables_page", round(lat, 6), round(lon, 6))
 
 
+def _nearby_sales_since(rows: list[dict]) -> str:
+    """The month of the oldest sale when the nearby list is the query's
+    ceiling (land_registry.NEARBY_SALES_LIMIT), so a page can say "the 300
+    most recent, since March 2021" rather than present the ceiling as a
+    count. Empty when the list is every sale the query found."""
+    if len(rows) < NEARBY_SALES_LIMIT:
+        return ""
+    dates = [t["date"] for t in rows if t.get("date")]
+    return _month_label(min(dates)) if dates else ""
+
+
 async def _comparables_page_rows(lat: float, lon: float) -> list[dict]:
     """Nearby sales with their distance and coordinates, nearest first:
     the Comparables page's table and both of its maps."""
@@ -7625,6 +7656,7 @@ async def property_comparables(request: Request, postcode: str = "", house_numbe
         amounts = sorted(float(t["amount"]) for t in transactions if t.get("amount"))
         context["comparables"] = transactions
         context["comparables_count"] = len(transactions)
+        context["comparables_since"] = _nearby_sales_since(transactions)
 
         # comparables_median, _min and _max went on 20 Sep 2026: comp_view
         # gives the page all three, filtered by what the reader chose.
@@ -7764,6 +7796,42 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
     }
 
 
+# A home's PDF is kept ten minutes and made once however many ask for it
+# at the same time (26 Sep 2026). On 25 Sep one buyer asked for the same
+# PDF seven times in 90 seconds, four in the same second, and each was a
+# full 25-page xhtml2pdf render on a 512 MB instance. Every request is
+# still access-checked first; the bytes are the same for every account
+# allowed them, because the gather runs with every card open.
+PDF_KEEP_S = 600
+_PDF_KEEP_MAX = 6
+_pdf_kept: "collections.OrderedDict[tuple, tuple[float, bytes]]" = collections.OrderedDict()
+_pdf_building: dict[tuple, asyncio.Task] = {}
+
+
+async def _pdf_once(key: tuple, build):
+    kept = _pdf_kept.get(key)
+    if kept and time.monotonic() - kept[0] < PDF_KEEP_S:
+        _pdf_kept.move_to_end(key)
+        return kept[1]
+    task = _pdf_building.get(key)
+    if task is None:
+        async def run():
+            try:
+                pdf = await build()
+                if pdf is not None:
+                    _pdf_kept[key] = (time.monotonic(), pdf)
+                    _pdf_kept.move_to_end(key)
+                    while len(_pdf_kept) > _PDF_KEEP_MAX:
+                        _pdf_kept.popitem(last=False)
+                return pdf
+            finally:
+                _pdf_building.pop(key, None)
+        task = _pdf_building[key] = asyncio.ensure_future(run())
+    # Shielded, so a reader who leaves does not cancel the render the
+    # others are waiting on.
+    return await asyncio.shield(task)
+
+
 @app.get("/property/pdf")
 async def property_pdf(request: Request, postcode: str = "", house_number: str = ""):
     """A full, printable due-diligence document - the thing a buyer can
@@ -7821,25 +7889,31 @@ async def property_pdf(request: Request, postcode: str = "", house_number: str =
                 {"home": location["postcode"], **({"hn": house_number} if house_number else {})}
             ), status_code=303)
 
-    # premium_unlocked=True is this home's own access, not a subscription
-    # flag: only a subscriber or an account that unlocked this home gets
-    # past the check above, and both see every card on its report.
-    report, running_costs = await asyncio.gather(
-        _full_property_gather(location, house_number, premium_unlocked=True, wait_for_slow=True),
-        _running_costs_for_postcode(location, house_number),
-        return_exceptions=True,
-    )
-    if isinstance(report, Exception):
-        raise report
-    if isinstance(running_costs, Exception):
-        # The running-costs part says what is missing rather than the
-        # whole document failing for it.
-        running_costs = {}
+    async def build():
+        # premium_unlocked=True is this home's own access, not a subscription
+        # flag: only a subscriber or an account that unlocked this home gets
+        # past the check above, and both see every card on its report.
+        report, running_costs = await asyncio.gather(
+            _full_property_gather(location, house_number, premium_unlocked=True, wait_for_slow=True),
+            _running_costs_for_postcode(location, house_number),
+            return_exceptions=True,
+        )
+        if isinstance(report, Exception):
+            raise report
+        if isinstance(running_costs, Exception):
+            # The running-costs part says what is missing rather than the
+            # whole document failing for it.
+            running_costs = {}
+        html = templates.get_template("pdf_report_full.html").render(_pdf_context(report, running_costs, location, house_number))
+        return await asyncio.to_thread(pdf_export.html_to_pdf, html)
 
-    html = templates.get_template("pdf_report_full.html").render(_pdf_context(report, running_costs, location, house_number))
-    pdf_bytes = await asyncio.to_thread(pdf_export.html_to_pdf, html)
+    pdf_bytes = await _pdf_once(auth.property_key(location["postcode"], house_number), build)
     if pdf_bytes is None:
-        return RedirectResponse(f"/property?postcode={quote(postcode)}", status_code=303)
+        # Back to the same home, saying the PDF failed. It went to the
+        # postcode as typed, without the house, and said nothing, so a
+        # reader could only press the button again.
+        back = {"postcode": location["postcode"], **({"house_number": house_number} if house_number else {}), "pdf": "failed"}
+        return RedirectResponse("/property?" + urlencode(back), status_code=303)
 
     filename = f"UKPropertyInsight-{location['postcode'].replace(' ', '')}.pdf"
     return Response(
@@ -11314,22 +11388,36 @@ async def watchlist_compare_full(request: Request, item_ids: list[int] = Query(d
     context["max_columns"] = COMPARE_FULL_MAX
     context["ids_query"] = "&".join(f"item_ids={i['id']}" for i in items)
     allowed = bool(user.get("is_premium")) or (bool(items) and await asyncio.to_thread(_all_unlocked, user["id"], items))
-    context["locked"] = not allowed
+    # A free account with one of these homes open sees that home's column
+    # in full and "Opens with Premium" down the others (26 Sep 2026, the
+    # fallback the 12 Sep second-home entry named). On 25 Sep account 95
+    # opened its free report, met the wall on a second home, came here,
+    # read a page of what Premium would show and left. No gather runs for
+    # a locked home, so none of its locked checks can reach the page.
+    open_cols = [True] * len(items)
+    if not allowed and items and not user.get("is_premium"):
+        open_cols = await asyncio.to_thread(
+            _homes_open_in_full, user, [(i["postcode"], i["house_number"]) for i in items])
+    partial = not allowed and any(open_cols) and len(items) > 1
+    context["locked"] = not allowed and not partial
+    context["partial"] = partial
     context["columns"] = []
     context["groups"] = []
     context["differ_count"] = 0
     context["check_count"] = 0
-    if allowed and items:
+    if (allowed or partial) and items:
         sem = asyncio.Semaphore(2)
 
-        async def one(item: dict) -> dict:
+        async def one(item: dict, is_open: bool) -> dict:
+            if not is_open:
+                return {"locked": True, "postcode": item["postcode"], "house_number": item["house_number"]}
             async with sem:
                 try:
                     return await _compare_rows(item["postcode"], item["house_number"])
                 except Exception:  # noqa: BLE001 - one bad address must not sink the table
                     return {"not_found": True, "postcode": item["postcode"], "house_number": item["house_number"]}
 
-        results = await asyncio.gather(*(one(i) for i in items))
+        results = await asyncio.gather(*(one(i, o) for i, o in zip(items, open_cols)))
         # Each home's kept asking price heads its column (18 Sep 2026,
         # first-visitor audit F1): the buyer's own number beside the checks.
         kept_prices = asking_prices.for_items(user["id"], items)
@@ -11346,9 +11434,12 @@ async def watchlist_compare_full(request: Request, item_ids: list[int] = Query(d
         groups: list[tuple[str, list[dict]]] = []
         for group, check in order:
             cells = [c["data"].get("rows", {}).get((group, check)) for c in columns]
+            # Differences are read across the open columns only: a locked
+            # cell is not a reading.
+            readable = [r for r, c in zip(cells, columns) if not c["data"].get("locked")]
             entry = {
                 "check": check, "cells": cells,
-                "differs": len({(r["result"] if r else None) for r in cells}) > 1,
+                "differs": len({(r["result"] if r else None) for r in readable}) > 1,
                 "source": next((r["source"] for r in cells if r and r.get("source")), ""),
             }
             if groups and groups[-1][0] == group:

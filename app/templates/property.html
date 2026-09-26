@@ -250,10 +250,17 @@
                 </div>
                 {% endif %}
                 {% if premium_unlocked and not shared %}
-                <a class="pdf-download-btn" download href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
+                {# The PDF is 25 pages made on request, which takes seconds,
+                   and the plain download link gave no sign of it: on 25 Sep
+                   2026 the one new buyer of the week asked for it seven
+                   times in 90 seconds, four in the same second. base.html
+                   fetches it with a busy label and says so if it fails;
+                   without JavaScript the link still downloads. #}
+                <a class="pdf-download-btn" id="pdf-download" download href="/property/pdf?postcode={{ location.postcode | urlencode }}{% if house_number %}&house_number={{ house_number | urlencode }}{% endif %}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M12 15l-4-4M12 15l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
-                    Download full PDF report
+                    <span class="pdf-download-label">Download full PDF report</span>
                 </a>
+                <p class="pdf-download-status" id="pdf-download-status" role="status" aria-live="polite"{% if request.query_params.get("pdf") == "failed" %}>The PDF could not be made just then. Try again in a minute; this report stays open.{% else %} hidden>{% endif %}</p>
                 {% elif not shared %}
                 {# Labelled by state, the way lock_redirect is (17 Sep 2026).
                    It said Premium to everyone, while the PDF comes with the
@@ -2292,7 +2299,7 @@
                 <span class="keep-exploring-title">What sold nearby</span>
                 {% if nearby_sales_count %}
                 <span class="keep-exploring-stat">
-                    <strong>{{ nearby_sales_count }}</strong> sale{{ "s" if nearby_sales_count != 1 }} within a short walk{% if nearby_latest_sale %}, latest <strong>{{ nearby_latest_sale.amount | gbp }}</strong>{% endif %}
+                    {% if nearby_sales_since %}The <strong>{{ nearby_sales_count }}</strong> most recent sales within a short walk, since {{ nearby_sales_since }}{% else %}<strong>{{ nearby_sales_count }}</strong> sale{{ "s" if nearby_sales_count != 1 }} within a short walk{% endif %}{% if nearby_latest_sale %}, latest <strong>{{ nearby_latest_sale.amount | gbp }}</strong>{% endif %}
                 </span>
                 {% endif %}
                 <span class="keep-exploring-desc">Every recent sale on the surrounding streets, on a map, with the distance from this address and the local median.</span>

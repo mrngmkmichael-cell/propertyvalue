@@ -465,6 +465,53 @@
                 if (new URLSearchParams(window.location.search).get('shared') === '1') open(true);
             }
 
+            /* The report's PDF: fetched so the button can say it is being
+               made and say so if it fails, rather than sitting still for
+               the half minute a 25-page render takes (26 Sep 2026). Where
+               fetch or blob links are missing the plain link downloads. */
+            const pdfLink = document.getElementById('pdf-download');
+            const pdfStatus = document.getElementById('pdf-download-status');
+            if (pdfLink && pdfStatus && window.fetch && window.URL && URL.createObjectURL) {
+                const pdfLabel = pdfLink.querySelector('.pdf-download-label');
+                const idle = pdfLabel ? pdfLabel.textContent : '';
+                let busy = false;
+                const say = function (text) { pdfStatus.textContent = text; pdfStatus.hidden = !text; };
+                pdfLink.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    if (busy) return;
+                    busy = true;
+                    pdfLink.setAttribute('aria-busy', 'true');
+                    pdfLink.classList.add('is-busy');
+                    if (pdfLabel) pdfLabel.textContent = 'Making your PDF';
+                    say('Putting 25 pages together. This takes about half a minute; the file downloads by itself.');
+                    const done = function (message) {
+                        busy = false;
+                        pdfLink.removeAttribute('aria-busy');
+                        pdfLink.classList.remove('is-busy');
+                        if (pdfLabel) pdfLabel.textContent = idle;
+                        say(message);
+                    };
+                    fetch(pdfLink.href, { credentials: 'same-origin' }).then(function (r) {
+                        const type = r.headers.get('Content-Type') || '';
+                        if (!r.ok || type.indexOf('application/pdf') !== 0) throw new Error('not a pdf');
+                        const named = /filename="([^"]+)"/.exec(r.headers.get('Content-Disposition') || '');
+                        return r.blob().then(function (blob) {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = named ? named[1] : 'UKPropertyInsight.pdf';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                            setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+                            done('Downloaded. Look in your downloads folder.');
+                        });
+                    }).catch(function () {
+                        done('The PDF could not be made just then. Try again in a minute; this report stays open.');
+                    });
+                });
+            }
+
             /* Share link copy button on a property report. */
             const copyBtn = document.getElementById('share-copy-btn');
             const copyInput = document.getElementById('share-link-input');

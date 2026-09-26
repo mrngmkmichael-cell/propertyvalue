@@ -71,13 +71,24 @@
 </div>
 {# The /admin signup-page count, sent from the page so a crawler that
    only fetches the HTML is not counted (17 Sep 2026, see signup_seen).
-   Nothing identifying is sent. #}
+   Since 26 Sep 2026 it waits for a person to touch the page: a key, a
+   tap or a click. Sending on load still counted a renderer that runs
+   JavaScript, 48 views between 02:00 and 03:00 UTC on 23 Sep with no
+   account that day. Nothing identifying is sent. #}
 <script>
 (function () {
-    try {
-        if (navigator.sendBeacon) { navigator.sendBeacon('/signup/seen'); }
-        else { fetch('/signup/seen', {method: 'POST', keepalive: true}); }
-    } catch (e) {}
+    var sent = false;
+    var events = ['pointerdown', 'keydown', 'touchstart', 'focusin'];
+    function send() {
+        if (sent) return;
+        sent = true;
+        events.forEach(function (name) { document.removeEventListener(name, send, true); });
+        try {
+            if (navigator.sendBeacon) { navigator.sendBeacon('/signup/seen'); }
+            else { fetch('/signup/seen', {method: 'POST', keepalive: true}); }
+        } catch (e) {}
+    }
+    events.forEach(function (name) { document.addEventListener(name, send, true); });
 })();
 </script>
 {% endblock %}
