@@ -13,6 +13,7 @@ rather than an exact string, since postcodes.io's admin_district
 label ("City of Westminster") exactly.
 """
 import asyncio
+import re
 from datetime import date, timedelta
 
 import httpx
@@ -97,6 +98,52 @@ def _pick_area(labels, name: str) -> str | None:
     return containing[0] if containing else None
 
 
+# Wording postcodes.io places where the index does not (18 Sep 2026).
+# postcodes.io names a council as the ONS register does, "Bristol, City
+# of", "Glasgow City", "Kingston upon Hull, City of", where the index
+# says "City of Bristol", "City of Glasgow", "City of Kingston upon
+# Hull". Neither contains the other, so the CONTAINS filter matched no
+# label at all and _pick_area's city step never saw a row: a report for
+# any address in Aberdeen, Bristol, Dundee, Glasgow or Hull (72 postcode
+# districts) had no council row in its price comparison, and its Price
+# Trend card said "Not enough historical data" for a city the index has
+# decades of. Checking the index's June 2026 labels against all 360
+# councils in outcodes.json found five more failing on punctuation
+# alone: "Herefordshire, County of", "St. Helens", and three names whose
+# commas the index leaves out. No index label has a comma or a full stop.
+_PLACED_WORDING = re.compile(r"^city of\s+|\s+city$|,\s*(?:city|county) of$", re.IGNORECASE)
+
+
+def _index_spelling(name: str) -> str:
+    """The name to search the index for: "Bristol, City of" and "Aberdeen
+    City" as "Bristol" and "Aberdeen", "City of Edinburgh" as "Edinburgh",
+    "Herefordshire, County of" as "Herefordshire", "St. Helens" as "St
+    Helens". A name with none of that comes back as it was, so the market
+    report's "Bristol" and "Nottingham" search exactly as before."""
+    bare = _PLACED_WORDING.sub("", name.strip()).replace(",", " ").replace(".", "")
+    return " ".join(bare.split()) or name.strip()
+
+
+def _choose(labels, name: str) -> str | None:
+    """_pick_area for a name as postcodes.io gives it, when the search
+    used _index_spelling. The name itself, exactly, comes first, so "City
+    of London" stays the City and never becomes "London" the region.
+    Then the index spelling goes through _pick_area and its city step.
+    Where the two spellings differ the answer must be that place or its
+    city label, never a county that only contains the name: "Aberdeen
+    City" is not Aberdeenshire, even if the city's own row were missing."""
+    searched = _index_spelling(name)
+    wanted = name.strip().lower()
+    if searched.lower() == wanted:
+        return _pick_area(labels, name)
+    labels = list(labels)
+    for label in labels:
+        if label.strip().lower() == wanted:
+            return label
+    chosen = _pick_area(labels, searched)
+    return chosen if chosen is not None and is_the_place_asked_for(chosen, searched) else None
+
+
 def _latest_cutoff() -> str:
     return (date.today() - timedelta(days=31 * _LATEST_LOOKBACK_MONTHS)).strftime("%Y-%m")
 
@@ -104,7 +151,7 @@ def _latest_cutoff() -> str:
 async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
     if not name:
         return None
-    query = _QUERY_TEMPLATE.format(name=name.replace('"', ""), cutoff=_latest_cutoff())
+    query = _QUERY_TEMPLATE.format(name=_index_spelling(name).replace('"', ""), cutoff=_latest_cutoff())
     try:
         response = await client.get(
             SPARQL_ENDPOINT,
@@ -119,7 +166,7 @@ async def _latest_for_area(client: httpx.AsyncClient, name: str) -> dict | None:
     if not bindings:
         return None
 
-    chosen = _pick_area({row["label"]["value"] for row in bindings}, name)
+    chosen = _choose({row["label"]["value"] for row in bindings}, name)
     if chosen is None:
         return None
     # Rows arrive newest first, so the first one for the chosen area is
@@ -228,7 +275,9 @@ async def price_trend(admin_district: str, years: int = max(CHANGE_YEARS)) -> di
     # and the ten-year change would never be found. The series is cut
     # back to the span below.
     cutoff = (date.today() - timedelta(days=365 * years + 183)).strftime("%Y-%m")
-    query = _SERIES_QUERY_TEMPLATE.format(name=admin_district.replace('"', ""), cutoff=cutoff)
+    # Searched by its index spelling, as _latest_for_area is: see
+    # _PLACED_WORDING.
+    query = _SERIES_QUERY_TEMPLATE.format(name=_index_spelling(admin_district).replace('"', ""), cutoff=cutoff)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
@@ -248,7 +297,7 @@ async def price_trend(admin_district: str, years: int = max(CHANGE_YEARS)) -> di
     # zigzag between different places, the projection was fitted to it,
     # and the x-axis printed each year once per area, which is how this
     # was found.
-    chosen = _pick_area({row["label"]["value"] for row in bindings}, admin_district)
+    chosen = _choose({row["label"]["value"] for row in bindings}, admin_district)
     if chosen is None:
         return None
     series = [
