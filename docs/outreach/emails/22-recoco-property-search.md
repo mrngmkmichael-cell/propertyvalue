@@ -10,7 +10,7 @@ Hello,
 
 You search London, country and waterside for buyers.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+A school's admission distance moves more than people expect. One Haringey primary admitted from 0.51 miles in 2022 and 1.59 in 2026, three times the range, so a family judging by last year's figure alone rules out streets that would have worked. Where a council publishes several years, I show them side by side, for 3,627 schools across 88 councils.
 
 https://ukpropertyinsight.co.uk/school/102156/fortismere-school
 

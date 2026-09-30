@@ -2,7 +2,7 @@
 
 **To:** fulwell@jacksonpotter.co.uk
 
-**Subject:** A free property report you can send a first-time buyer
+**Subject:** The flood zone before the valuation comes back
 
 ---
 
@@ -10,7 +10,7 @@ Hello,
 
 First-time buyers are a large part of what you do, from Sunderland to London.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+Every council publishes, after offer day, how far from the school the last child offered a place lived. Each does it in its own PDF, in its own format, once a year, and takes the file down when the next one appears. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
 
 https://ukpropertyinsight.co.uk
 

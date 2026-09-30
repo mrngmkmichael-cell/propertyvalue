@@ -177,7 +177,8 @@
     "drafted": "2026-09-30",
     "sent": "2026-09-30",
     "copies_sent": 1,
-    "replied": ""
+    "replied": "",
+    "allow_same_domain": true
   },
   {
     "firm": "Stacks Property Search, London",
@@ -192,7 +193,8 @@
     "drafted": "2026-09-30",
     "sent": "2026-09-30",
     "copies_sent": 1,
-    "replied": ""
+    "replied": "",
+    "allow_same_domain": true
   },
   {
     "firm": "Buying Agent Partnership",
@@ -282,7 +284,8 @@
     "drafted": "2026-09-30",
     "sent": "2026-09-30",
     "copies_sent": 1,
-    "replied": ""
+    "replied": "",
+    "allow_same_domain": true
   },
   {
     "firm": "Property Hounds, Bath and Bristol",
@@ -297,7 +300,8 @@
     "drafted": "2026-09-30",
     "sent": "2026-09-30",
     "copies_sent": 1,
-    "replied": ""
+    "replied": "",
+    "allow_same_domain": true
   },
   {
     "firm": "Property Hounds, Cheltenham and North Cotswolds",
@@ -312,7 +316,8 @@
     "drafted": "2026-09-30",
     "sent": "2026-09-30",
     "copies_sent": 1,
-    "replied": ""
+    "replied": "",
+    "allow_same_domain": true
   },
   {
     "firm": "Recoco Property Search",

@@ -60,6 +60,26 @@ went out.
    `docs/outreach/log/<date>.md`, commit the ledger, the emails and the
    log, and push.
 
+## The two promises, enforced in code
+
+**One firm, one email.** `scripts/outreach_build_emails.py` refuses to
+build if the ledger holds the same address twice, or two addresses at
+the same domain without `"allow_same_domain": true` on the entry, and
+`scripts/outreach_to_outlook.ps1` drafts only for entries with no
+`drafted` date. `tests/test_outreach_ledger.py` fails the suite if
+either rule is broken, so a repeat cannot reach a mailbox through a
+mistake in a morning's research. A firm that turns out to be form-only
+or a sole trader still goes in the ledger, with an empty email, so it is
+never researched a second time either.
+
+**No two days read alike.** Each firm draws its subject line, its
+opening angle and its price sentence from rotations, chosen by its own
+address and the day it was added: fourteen subject lines across the four
+trades, four openings, three ways of saying the price. The same firm
+always rebuilds to the same email, and a batch of five never opens the
+same way five times. When adding a firm, write its hook line fresh from
+that firm's own site; the rotation handles the rest.
+
 ## Never
 
 - **Never send.** The routine writes drafts. Michael reads and clicks

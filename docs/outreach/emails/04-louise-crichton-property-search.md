@@ -10,7 +10,7 @@ Hello Louise,
 
 You run a boutique search across prime central London and selected country locations.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+Most property tools stop at sold prices and a crime count. The one figure that decides where a family with children will actually buy is how far the school admitted from, and that lives in 88 separate council PDFs. I have put all of them behind one postcode box, 3,627 schools, with each published year kept rather than overwritten.
 
 https://ukpropertyinsight.co.uk/schools/admissions/haringey
 

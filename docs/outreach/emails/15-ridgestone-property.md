@@ -10,7 +10,7 @@ Hello,
 
 You are a small buying agent working across Greater London, where a few hundred metres decides a school place.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+The question that is hardest to answer honestly about a house is whether the school would have taken it. Councils do publish the answer, as the distance the last child admitted lived from the gate, but it sits in a PDF that changes shape every year and disappears when the next one lands. I hold 3,627 schools across 88 councils, and a postcode check against each published year.
 
 https://ukpropertyinsight.co.uk/school/102156/fortismere-school
 

@@ -10,7 +10,7 @@ Hello,
 
 You handle residential conveyancing across the North West from Stockport.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+Every council publishes, after offer day, how far from the school the last child offered a place lived. Each does it in its own PDF, in its own format, once a year, and takes the file down when the next one appears. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
 
 https://ukpropertyinsight.co.uk/schools/admissions/stockport
 
@@ -18,7 +18,7 @@ It is not a search and does not replace one. It is the context clients ask you f
 
 The rest of the report is the same idea: 44 checks on an address, 29 of them free without an account, each naming the official source it came from, from HM Land Registry, the Environment Agency, Ofsted, the EPC register, Police.uk and the ONS. It comes as a page you can send or a PDF you can attach, and there is a Chrome extension that puts the same figures on a Rightmove, Zoopla or OnTheMarket listing while you browse.
 
-It is £9.99 a month or £24.99 a quarter, and the first full report on any address is free with an account. Those are introductory prices while I am still collecting feedback from early customers, and I will review them once I have enough of it. If you tell me what is missing for your work, that feedback is worth more to me than the subscription.
+Pricing, plainly: the first full report is free with an account, then £9.99 a month or £24.99 a quarter. Those are introductory figures set while I gather feedback from early customers, and they will be reviewed. I would rather hear what a professional finds missing than take the subscription and guess.
 
 Send me an address from a current file and I will email the full report back the same day, free.
 

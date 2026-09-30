@@ -2,7 +2,7 @@
 
 **To:** advice@comptons.co.uk
 
-**Subject:** What buyers ask you before the searches come back
+**Subject:** Context for a client in week one, before the searches land
 
 ---
 
@@ -10,7 +10,7 @@ Hello,
 
 You act for first-time buyers as well as developers, from Camden.
 
-Every council publishes, after offer day, how far from the school the last child offered a place lived. Each one does it in its own PDF, in its own format, once a year, and the file is gone from the website a year later. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
+Every council publishes, after offer day, how far from the school the last child offered a place lived. Each does it in its own PDF, in its own format, once a year, and takes the file down when the next one appears. I have turned 88 councils' figures into one thing you can check by postcode, for 3,627 schools, with the years side by side where a council publishes more than one. I have not found anyone else who does that.
 
 https://ukpropertyinsight.co.uk
 
