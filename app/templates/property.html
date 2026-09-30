@@ -9,13 +9,13 @@
 {% block title %}{{ query }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
 
-{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district }}{% endif %} | UKPropertyInsight{% endblock %}
+{% block og_title %}{{ query }}{% if location %}, {{ location.admin_district | council }}{% endif %} | UKPropertyInsight{% endblock %}
 {# A share of this report should look like this report, not like the
    homepage. The card carries the address's own score and figures. The
    not-found page renders this template with no location, so it keeps
    the site's default image. #}
 {% block og_image %}{% if location is defined and location %}{{ request.url_for('og_property_image') }}?postcode={{ location.postcode | urlencode }}{% if house_number %}&amp;house_number={{ house_number | urlencode }}{% endif %}{% else %}{{ request.url_for('static', path='img/og-default.png') }}{% endif %}{% endblock %}
-{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
+{% block meta_description %}{% if location %}Sold prices, EPC rating, flood risk, crime stats and schools for {{ location.postcode }}, {{ location.admin_district | council }}. A free UK property due-diligence report from official public data.{% else %}Look up sold price history, EPC rating, flood risk, crime stats and schools for any UK postcode. A free due-diligence report from official public data.{% endif %}{% endblock %}
 
 {% block content %}
 {% if shared %}
@@ -79,12 +79,25 @@
     <div class="report-modal-inner">
         <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
         <section class="report-section">
-            <h2>Use your free full report on {{ location.postcode }}{% if house_number %}, {{ house_number }}{% endif %}?</h2>
-            <p class="section-sub">You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Using it here opens every card on this property, for good. Keep it if this is not the house you are weighing up.</p>
+            {% if house_number %}
+            <h2>Use your free full report on {{ location.postcode }}, {{ house_number }}?</h2>
+            <p class="section-sub">You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Using it here opens every card on this property, for good. Keep it if this is not the house you are weighing up.{% if premium_reach %} {{ unlock_reach_line }}{% endif %}</p>
+            {% else %}
+            {# A postcode is not a home (30 Sep 2026). Account 96 said yes on
+               GU1 4NQ with no number, opened number 55 twenty-one seconds
+               later and met the paywall four times: the one free report had
+               gone on the postcode. The number is asked for first. #}
+            <h2>Which home at {{ location.postcode }} is it for?</h2>
+            <p class="section-sub">You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}, and it opens one home, for good. Give the house number or name first, so it opens the house you are weighing up and not the postcode.{% if premium_reach %} {{ unlock_reach_line }}{% endif %}</p>
+            {% endif %}
             <form action="/property/unlock" method="post" class="unlock-choice">
                 <input type="hidden" name="postcode" value="{{ location.postcode }}">
-                <input type="hidden" name="house_number" value="{{ house_number or '' }}">
-                <button type="submit">Yes, unlock this property</button>
+                {% if house_number %}
+                <input type="hidden" name="house_number" value="{{ house_number }}">
+                {% else %}
+                <label class="unlock-number">House number or name <input type="text" name="house_number" required maxlength="32" autocomplete="off"></label>
+                {% endif %}
+                <button type="submit">Yes, unlock this {{ "property" if house_number else "home" }}</button>
                 <button type="button" class="link-button unlock-keep">Not this one, keep it</button>
             </form>
         </section>
@@ -171,8 +184,13 @@
     <div class="notice unlock-offer" id="use-free-report">
         <form action="/property/unlock" method="post" class="unlock-choice">
             <input type="hidden" name="postcode" value="{{ location.postcode }}">
-            <input type="hidden" name="house_number" value="{{ house_number or '' }}">
-            <span>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Use it on this property?</span>
+            {% if house_number %}
+            <input type="hidden" name="house_number" value="{{ house_number }}">
+            <span>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}. Use it on this property?{% if premium_reach %} {{ unlock_reach_line }}{% endif %}</span>
+            {% else %}
+            <span>You have {{ current_user.free_unlocks_left }} free full report{{ "s" if current_user.free_unlocks_left != 1 }}, and it opens one home. Which one at {{ location.postcode }}?{% if premium_reach %} {{ unlock_reach_line }}{% endif %}</span>
+            <label class="unlock-number">House number or name <input type="text" name="house_number" required maxlength="32" autocomplete="off"></label>
+            {% endif %}
             <button type="submit">Yes, unlock every card</button>
         </form>
     </div>
@@ -209,7 +227,7 @@
                 {% endif %}
                 <span class="kicker">Property report</span>
                 <h1>{{ location.postcode }}</h1>
-                <span class="byline">{{ location.admin_district }}{% if location.region %}, {{ location.region }}{% elif location.get("country") %}, {{ location.country }}{% endif %}</span>
+                <span class="byline">{{ location.admin_district | council }}{% if location.region %}, {{ location.region }}{% elif location.get("country") %}, {{ location.country }}{% endif %}</span>
             </div>
             <div class="report-head-actions">
                 {% if premium_unlocked and not shared and current_user %}
@@ -1151,7 +1169,7 @@
                 {% else %}No data available{% endif %}
             </span>
             {% if rental %}
-            <span class="dashboard-card-substat">{{ rental.la_name }}, by bedroom count</span>
+            <span class="dashboard-card-substat">{{ rental.la_name | council }}, by bedroom count</span>
             {% endif %}
         </button>
 
@@ -2385,7 +2403,7 @@
                    over the years, exceptional financial support, section 114. #}
                 {% if finance %}
                 <h3 class="subsection-heading">The council's finances</h3>
-                <p class="section-sub">What a Band D household in {{ finance.name }} has paid each year, all precepts included, from MHCLG's live council tax tables. The England median rise for {{ finance.latest_label }} was {{ finance.median_rise_latest }}%.</p>
+                <p class="section-sub">What a Band D household in {{ finance.name | council }} has paid each year, all precepts included, from MHCLG's live council tax tables. The England median rise for {{ finance.latest_label }} was {{ finance.median_rise_latest }}%.</p>
                 {% if council_tax and council_tax.slug %}<p class="section-sub"><a href="/running-costs/council-tax/{{ council_tax.slug }}">Every band for {{ council_tax.authority }}, its rank among councils and the area guides inside it →</a></p>{% endif %}
                 <div class="tablewrap">
                 <table class="tx-table finance-table">
@@ -2400,7 +2418,7 @@
                 {% if finance.efs or finance.county_efs %}
                 <p class="notice">
                     <strong>Exceptional Financial Support.</strong>
-                    {% if finance.efs %}{{ finance.name }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+                    {% if finance.efs %}{{ finance.name | council }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
                     {% if finance.county_efs %} The county council, {{ finance.county_name }}, was agreed support for {% for e in finance.county_efs | reverse %}{{ e.year }} ({{ e.amount }}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
                     Support is permission to borrow, or to spend capital receipts, on day-to-day services because the council could not otherwise set a balanced budget, usually on condition of an external review. Councils in this position tend to cut services and raise council tax by the most the rules allow; some have been allowed rises above the usual cap.
                 </p>
@@ -2413,7 +2431,7 @@
                 </p>
                 {% endif %}
                 {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-                <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
+                <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name | council }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
                 {% endif %}
                 <p class="property-detail-note">Sources: MHCLG, live tables on council tax (Band D, all precepts, by billing authority); MHCLG, exceptional financial support for local authorities, the list for each year from 2020-21; section 114 notices as published by the councils, listed to {{ finance.s114_as_of | day_label }}. Open Government Licence.</p>
                 {% endif %}
@@ -2635,7 +2653,7 @@
             {% endif %}
         {% else %}
             <p class="notice">
-                Not enough monthly House Price Index history for {{ location.admin_district if location else "this area" }}
+                Not enough monthly House Price Index history for {{ (location.admin_district if location else "this area") | council }}
                 to show a trend.
             </p>
         {% endif %}
@@ -2728,7 +2746,7 @@
             <section class="report-section">
         <h2>Rental analysis</h2>
         <p class="section-sub">
-            Typical private-rental price by bedroom count for {{ rental.la_name if rental else "this local authority" }}, from ONS's Price Index of Private Rents
+            Typical private-rental price by bedroom count for {{ (rental.la_name if rental else "this local authority") | council }}, from ONS's Price Index of Private Rents
             ({{ rental.period | month_label if rental else "" }}). There's no free equivalent to Land Registry's sold price
             register for rents. Tenancies aren't publicly registered the way sales are, so this is an
             area + bedroom-count typical rent, not a comparison against specific nearby lettings.
@@ -3990,7 +4008,7 @@
                     </tr>
                     {% if household_income.la_average %}
                     <tr>
-                        <td>{{ household_income.la_name }} (borough)</td>
+                        <td>{{ household_income.la_name | council }} (borough)</td>
                         <td class="num">{{ household_income.la_average | gbp }}</td>
                     </tr>
                     {% endif %}
@@ -4299,7 +4317,7 @@
             </p>
         {% elif mobile %}
             <p class="section-sub">
-                Ofcom's Connected Nations coverage estimates for {{ mobile.la_name }} (local authority
+                Ofcom's Connected Nations coverage estimates for {{ mobile.la_name | council }} (local authority
                 level, because mobile signal isn't mapped to individual postcodes the way fixed-line
                 broadband is).
             </p>

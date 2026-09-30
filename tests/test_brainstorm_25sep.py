@@ -87,12 +87,12 @@ WESTMINSTER = {"name": "City of Westminster", "average_price": 876788, "annual_c
 
 def test_a_large_swing_names_its_sales_and_its_first_estimate():
     note = app_main._hpi_swing_note(WESTMINSTER)
-    assert note == ("The index for City of Westminster rests on 84 recorded sales in May 2026, the newest month "
+    assert note == ("The index for Westminster rests on 84 recorded sales in May 2026, the newest month "
                     "with a count. July 2026 is a first estimate, which HM Land Registry revises as more sales "
                     "are registered.")
     assert "—" not in note and "!" not in note
     lead = " ".join(app_main._area_lead("SW1A", {"hpi": {"local_authority": WESTMINSTER}}))
-    assert "down 20.7% on a year ago (UK House Price Index). The index for City of Westminster rests on 84" in lead
+    assert "down 20.7% on a year ago (UK House Price Index). The index for Westminster rests on 84" in lead
 
 
 def test_an_ordinary_move_or_an_old_payload_says_nothing_more():

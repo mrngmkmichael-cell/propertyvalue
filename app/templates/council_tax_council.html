@@ -96,7 +96,7 @@
     {% if finance.efs or finance.county_efs %}
     <p class="notice">
         <strong>Exceptional Financial Support.</strong>
-        {% if finance.efs %}{{ finance.name }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        {% if finance.efs %}{{ finance.name | council }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
         {% if finance.county_efs %} The county council, {{ finance.county_name }}, was agreed support for {% for e in finance.county_efs | reverse %}{{ e.year }} ({{ e.amount }}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
         Support is permission to borrow, or to spend capital receipts, on day-to-day services because the council could not otherwise set a balanced budget, usually on condition of an external review. Councils in this position tend to cut services and raise council tax by the most the rules allow; some have been allowed rises above the usual cap.
     </p>
@@ -109,7 +109,7 @@
     </p>
     {% endif %}
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}, as at {{ finance.as_of | day_label }}.</p>
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name | council }}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
     <p class="section-sub">Ministry of Housing, Communities and Local Government: live council tax tables (Band D area averages by year) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils. Rises are year on year on the Band D area average.</p>
 </section>

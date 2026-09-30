@@ -10092,6 +10092,10 @@ body.theme-dark .lx-hero-form button[type="submit"]:hover {
 .unlock-offer { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; justify-content: space-between; }
 .unlock-offer form { display: contents; }
 .unlock-choice { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; margin-top: 1rem; }
+/* The house number a postcode-only report asks for before the free report
+   is spent (30 Sep 2026). */
+.unlock-number { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; color: var(--ink-soft); flex: 1 1 12rem; }
+.unlock-number input { font: inherit; font-size: 1rem; color: var(--ink); padding: 0.55rem 0.7rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); min-width: 0; }
 .unlock-choice .link-button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 
 /* Straight after the unlock the same notice carries a second line: the

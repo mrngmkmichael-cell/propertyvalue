@@ -32,7 +32,7 @@ def test_the_wall_after_the_free_report_talks_about_the_next_house(client, fake_
         # account, and the admin page counts an address two accounts share.
         fake_report(location=fake_location(postcode="M20 3AA", outcode="M20"))
         client.get("/property?postcode=M20+3AA")
-        r = client.post("/property/unlock", data={"postcode": "M20 3AA", "house_number": ""}, follow_redirects=False)
+        r = client.post("/property/unlock", data={"postcode": "M20 3AA", "house_number": "1"}, follow_redirects=False)
         assert r.status_code == 303
         client.get(r.headers["location"])
 

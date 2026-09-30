@@ -77,7 +77,7 @@
                         <a href="/property?postcode={{ col.postcode }}{% if col.house_number %}&house_number={{ col.house_number }}{% endif %}">
                             {{ col.house_number ~ ", " ~ col.postcode if col.house_number else col.postcode }}
                         </a>
-                        {% if col.summary.admin_district %}<div class="compare-note">{{ col.summary.admin_district }}</div>{% endif %}
+                        {% if col.summary.admin_district %}<div class="compare-note">{{ col.summary.admin_district | council }}</div>{% endif %}
                         {% if col.note %}<div class="compare-note">{{ col.note }}</div>{% endif %}
                     {% endif %}
                 </th>

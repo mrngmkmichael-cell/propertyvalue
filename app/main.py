@@ -1657,6 +1657,26 @@ def _day_label(value, full_month: bool = False) -> str:
 templates.env.filters["day_label"] = _day_label
 
 
+# One name per council on a page (30 Sep 2026). Each source spells the
+# council its own way: postcodes.io "Bristol, City of", MHCLG's finance
+# file "Bristol UA", the price index "City of Bristol", and the BS7 guide
+# printed all three, its H1 reading "Living in BS7, Bristol, City of".
+# Lookups keep the source's spelling; only what a reader sees goes
+# through this. The City of London is a different place from London, so
+# it keeps its name.
+_COUNCIL_WORDING = re.compile(r"^city of\s+|\s+city$|,\s*(?:city|county) of$|\s+UA$", re.IGNORECASE)
+
+
+def _council_name(name) -> str:
+    name = " ".join(str(name or "").split())
+    if not name or name.lower() == "city of london":
+        return name
+    return _COUNCIL_WORDING.sub("", name).strip() or name
+
+
+templates.env.filters["council"] = _council_name
+
+
 _ADDRESS_STREET = re.compile(r"^(?:(?:flat|apartment|unit)\s+\S+\s+)?\d+\S*\s+(.+)$", re.I)
 
 
@@ -1745,6 +1765,19 @@ _PREWARM_POSTCODES = ["SW1A 1AA", "M1 1AE", "LS1 4DY", "B1 1BD"]
 # the only one a first-time visitor is invited to click.
 _HERO_SAMPLE_POSTCODE = "M1 1AE"
 
+# Held outside the LRU so the crawl cannot push them out (30 Sep 2026, see
+# _cache.pin). The sample report's gather and its finished anonymous HTML,
+# and the three pages people are sent to by name. The deploy warm below
+# fills the gather; the rest fill on their first view and then stay.
+for _pinned_key in (
+    ("property_search_gather", _HERO_SAMPLE_POSTCODE, ""),
+    ("anon_property_page", _HERO_SAMPLE_POSTCODE, ""),
+    ("anon_html", "/", ""),
+    ("anon_html", "/premium", ""),
+    ("anon_html", "/browser-extension", ""),
+):
+    _cache.pin(_pinned_key)
+
 
 async def _prewarm_reports(postcodes_to_warm=None):
     for pc in (postcodes_to_warm or _PREWARM_POSTCODES):
@@ -1782,6 +1815,24 @@ async def _prewarm_reports(postcodes_to_warm=None):
 # quota on every miss, so it waits for Michael rather than being assumed.
 
 
+# The sample report kept warm (30 Sep 2026). Pinned, it is no longer
+# pushed out by the crawl, which is what defeated the 9 Sep timer above;
+# what is left is its own hour. So the one gather is rebuilt every 50
+# minutes, before the hour runs out: about 29 gathers a day for the one
+# report the homepage invites a first-time visitor to open by name. The
+# old entry is dropped first so _deduped builds rather than reusing it.
+SAMPLE_REWARM_S = 50 * 60
+
+
+async def _keep_sample_report_warm():
+    key = ("property_search_gather", _HERO_SAMPLE_POSTCODE, "")
+    while True:
+        await _prewarm_reports([_HERO_SAMPLE_POSTCODE])
+        await asyncio.sleep(SAMPLE_REWARM_S)
+        _cache.drop(key)
+        _cache.drop(("anon_property_page", _HERO_SAMPLE_POSTCODE, ""))
+
+
 @app.on_event("startup")
 async def on_startup():
     # If the database is unreachable, boot anyway. On 31 Aug 2026 Neon
@@ -1809,7 +1860,7 @@ async def on_startup():
         # cold at 6.15 s and 5.80 s against 0.87 s warm. It is the only
         # report a first-time visitor is invited to open by name, so it
         # is worth a quarter of the cost the old prewarm carried.
-        asyncio.create_task(_prewarm_reports([_HERO_SAMPLE_POSTCODE]))
+        asyncio.create_task(_keep_sample_report_warm())
 
 
 # Pages that ask for a postcode in their own hero. The header carries a
@@ -3263,6 +3314,15 @@ def premium_reach_sentence(country: str) -> str:
             f"read. {listed} draw on records that do not cover {country}.")
 
 
+def unlock_reach_line(reach: dict | None) -> str:
+    """The free report offer's line for an address outside England."""
+    if not reach:
+        return ""
+    others = reach["total"] - reach["reach"]
+    return (f"In {reach['country']} that is {reach['reach']} of the {reach['total']} Premium checks: "
+            f"the other {others} read records that do not cover {reach['country']}, and the report says which.")
+
+
 def premium_reach_summary() -> str:
     """The /premium answer for a buyer outside England: the three counts,
     then the checks that stop at the English border, named once."""
@@ -4627,6 +4687,11 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     context["premium_check_count"] = len(PREMIUM_CHECKS)
     # How many Premium checks have a source in this nation (18 Sep 2026).
     context["premium_reach"] = premium_reach(location.get("country"))
+    # Said in the free report offer itself, before the yes (30 Sep 2026).
+    # Account 98 spent its report on BT14 8LP, where 4 of the 15 Premium
+    # checks have a source, and learned the reach only from the wall on
+    # its second home; the offer had said "opens every card".
+    context["unlock_reach_line"] = unlock_reach_line(context["premium_reach"])
     context["england_only_gap"] = (location.get("country") or None) if location.get("country") not in (None, "", "England") else None
     # The wall's "By hand, these N checks are 28 websites" was a typed 44
     # until 17 Sep 2026, on the one page a reader can count the cards on.
@@ -8141,7 +8206,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
         period = (la.get("period") or "")[:7]
         faqs.append((
             f"What is the average house price in {outcode}?",
-            f"The average sold price in {la['name']} is \u00a3{la['average_price']:,.0f}"
+            f"The average sold price in {_council_name(la['name'])} is \u00a3{la['average_price']:,.0f}"
             + (f" as of {_month_label(period)}" if period else "")
             + ", according to the UK House Price Index.",
         ))
@@ -8149,7 +8214,7 @@ def _area_guide_extras(context: dict, outcode: str, lat: float, lon: float) -> N
             direction = "up" if la["annual_change_pct"] >= 0 else "down"
             faqs.append((
                 f"Are house prices rising in {outcode}?",
-                f"Prices in {la['name']} are {direction} {abs(la['annual_change_pct']):.1f}% on a year ago "
+                f"Prices in {_council_name(la['name'])} are {direction} {abs(la['annual_change_pct']):.1f}% on a year ago "
                 "(UK House Price Index)." + (f" {note}" if (note := _hpi_swing_note(la)) else ""),
             ))
     # The council-wide average above is shared with every district in the
@@ -8574,7 +8639,7 @@ def _hpi_swing_note(la: dict | None) -> str | None:
         return None
     parts = []
     if la.get("sales_volume") and la.get("sales_volume_period"):
-        parts.append(f"The index for {la['name']} rests on {la['sales_volume']:,} recorded sales in "
+        parts.append(f"The index for {_council_name(la['name'])} rests on {la['sales_volume']:,} recorded sales in "
                      f"{_month_label(la['sales_volume_period'][:7])}, the newest month with a count.")
     if la.get("provisional") and la.get("period"):
         parts.append(f"{_month_label(la['period'][:7])} is a first estimate, which HM Land Registry revises as "
@@ -8616,14 +8681,14 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
         )
     elif la.get("average_price"):
         out.append(
-            f"The average sold price in {la['name']} is \u00a3{la['average_price']:,.0f} "
+            f"The average sold price in {_council_name(la['name'])} is \u00a3{la['average_price']:,.0f} "
             f"(HM Land Registry UK House Price Index)."
         )
 
     if la.get("annual_change_pct") is not None and la.get("name"):
         pct = la["annual_change_pct"]
         out.append(
-            f"Prices across {la['name']} are {'up' if pct >= 0 else 'down'} "
+            f"Prices across {_council_name(la['name'])} are {'up' if pct >= 0 else 'down'} "
             f"{abs(pct):.1f}% on a year ago (UK House Price Index)."
             + (f" {note}" if (note := _hpi_swing_note(la)) else "")
         )
@@ -8650,7 +8715,7 @@ def _area_lead(outcode: str, payload: dict) -> list[str]:
     history = finance.get("history") or []
     if history and history[-1].get("band_d") and finance.get("name"):
         out.append(
-            f"A Band D household in {finance['name']} pays "
+            f"A Band D household in {_council_name(finance['name'])} pays "
             f"{_format_gbp(history[-1]['band_d'])} in council tax for {finance['latest_label']}, "
             f"every precept included (MHCLG)."
         )
@@ -8694,7 +8759,7 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
     if la.get("annual_change_pct") is not None and la.get("name"):
         pct = la["annual_change_pct"]
         month = f", {_month_label(la['period'])}" if la.get("period") else ""
-        change = f"{'+' if pct >= 0 else ''}{pct:.1f}% ({la['name']}{month})"
+        change = f"{'+' if pct >= 0 else ''}{pct:.1f}% ({_council_name(la['name'])}{month})"
     else:
         change = "Not held"
     if landscape.get("good_or_better_pct") is not None and landscape.get("total_schools"):
@@ -8703,7 +8768,7 @@ def _area_figures(outcode: str, payload: dict, country: str | None = None) -> li
         schools = "Not held"
     zone = flood_zones.not_mapped_label(country) or flood.get("label") or "Not held"
     if history and history[-1].get("band_d") and finance.get("name"):
-        band_d = f"{_format_gbp(history[-1]['band_d'])} a year ({finance['name']}, {finance.get('latest_label', '')})".replace(", )", ")")
+        band_d = f"{_format_gbp(history[-1]['band_d'])} a year ({_council_name(finance['name'])}, {finance.get('latest_label', '')})".replace(", )", ")")
     else:
         band_d = "Not held"
     if crime.get("total") is not None:
@@ -8813,6 +8878,8 @@ async def _area_compare(context: dict, outcode: str, compare: str, here_location
         context["compare_error"] = f"The figures for {other} could not be gathered just now. Try again in a moment."
         return
     payload = dict(payload)
+    if (refreshed := await _council_index_if_missing(payload.get("hpi"), location)) is not None:
+        payload["hpi"] = refreshed
     payload["crime"] = crime.with_coverage(payload.get("crime"), location.get("admin_district"), location.get("country"))
     here = _area_figures(outcode, context, (context.get("flood_not_covered") or {}).get("country"))
     there = _area_figures(other, payload, location.get("country"))
@@ -8872,6 +8939,29 @@ async def _area_compare(context: dict, outcode: str, compare: str, here_location
         # The linkable page exists only for genuine neighbours.
         "versus_href": f"/compare/{pair[0]}/vs/{pair[1]}" if _are_neighbours(outcode, other) and _versus_indexable(outcode, other) else "",
     }
+
+
+async def _council_index_if_missing(cached_hpi: dict | None, location: dict) -> dict | None:
+    """The price index comparison again, for a cached guide that has no
+    council row and whose council the index spells its own way ("Bristol,
+    City of" against "City of Bristol"). None when there is nothing to
+    correct or the index still has no row, so the cached answer stands.
+
+    Kept in memory for a day and never written back: the stored guide
+    says when its figures were gathered, and rewriting it would move that
+    date for figures nobody read again. The row itself names its month."""
+    name = location.get("admin_district") or ""
+    if (cached_hpi or {}).get("local_authority") or hpi._index_spelling(name) == name.strip():
+        return None
+    memo_key = ("council_index_fix", name, location.get("region") or "", location.get("country") or "")
+    fresh = _cache.get(memo_key, 86400)
+    if fresh is None:
+        try:
+            fresh = await hpi.area_comparison(name, location.get("region") or "", location.get("country") or "")
+        except Exception:  # noqa: BLE001 - the cached guide still renders
+            return None
+        _cache.set(memo_key, fresh)
+    return fresh if fresh.get("local_authority") else None
 
 
 @app.get("/area/{outcode}")
@@ -8940,6 +9030,14 @@ async def area_guide(request: Request, outcode: str, compare: str = ""):
         context.update(cached)
         outcome = _cache.last_outcome
         timing = ""
+        # Warm guides for Bristol, Glasgow, Aberdeen, Dundee, Hull and five
+        # more councils hold the empty council row the index search gave
+        # them before hpi._index_spelling (30 Sep 2026). Asked again, only
+        # for a council whose name the index spells differently, until the
+        # guide's own week runs out and it is rebuilt with the row in it.
+        refreshed = await _council_index_if_missing(cached.get("hpi"), location)
+        if refreshed is not None:
+            context["hpi"] = refreshed
     else:
         context.update(await _build_area_payload(outcode, location, cache_key))
         outcome = _cache.last_outcome
@@ -10381,6 +10479,10 @@ def property_unlock(request: Request, postcode: str = Form(...), house_number: s
     if not current:
         return RedirectResponse("/login?next=" + quote(back), status_code=303)
     canonical, house_number = auth.property_key(postcode, house_number)
+    if not house_number:
+        # One free report opens one home, never a postcode (30 Sep 2026):
+        # the offer asks for the number, and a bare POST spends nothing.
+        return RedirectResponse(back, status_code=303)
     with db.get_session() as session:
         granted = auth.claim_unlock(session, current["id"], canonical, house_number)
     return RedirectResponse(back + ("&unlocked=1" if granted else ""), status_code=303)

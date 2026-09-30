@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
-{% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ admin_district if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
+{% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ (admin_district | council) if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
-{% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
+{% block meta_description %}{% if outcode %}{{ outcode }}{% if admin_district %}, {{ admin_district | council }}{% endif %} area guide: average house prices and price trend, school quality, crime levels{% if flood_zone %} and flood risk{% endif %}, all from open UK government data.{% else %}Free UK area guides covering house prices, schools, crime and flood risk, built from official government data.{% endif %}{% endblock %}
 {% block robots %}{% if compare or compare_error %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 {% block extra_head %}
 {% if outcode %}
@@ -13,7 +13,7 @@
     "itemListElement": [
         {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://ukpropertyinsight.co.uk/"},
         {"@type": "ListItem", "position": 2, "name": "Area guides", "item": "https://ukpropertyinsight.co.uk/areas"},
-        {"@type": "ListItem", "position": 3, "name": "{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}", "item": "{{ canonical_url }}"}
+        {"@type": "ListItem", "position": 3, "name": "{{ outcode }}{% if admin_district %}, {{ admin_district | council }}{% endif %}", "item": "{{ canonical_url }}"}
     ]
 }
 </script>
@@ -22,7 +22,7 @@
 {
     "@context": "https://schema.org",
     "@type": "Place",
-    "name": "{{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}",
+    "name": "{{ outcode }}{% if admin_district %}, {{ admin_district | council }}{% endif %}",
     "url": "{{ request.url }}"
 }
 </script>
@@ -42,10 +42,10 @@
 {% else %}
 
 <span class="kicker">Area guide</span>
-<h1>Living in {{ outcode }}{% if admin_district %}, {{ admin_district }}{% endif %}</h1>
+<h1>Living in {{ outcode }}{% if admin_district %}, {{ admin_district | council }}{% endif %}</h1>
 <p class="dek">
     What the open data says about house prices, schools, crime and flood risk around
-    {{ outcode }}{% if admin_district %} in {{ admin_district }}{% endif %}. Built from the same sources
+    {{ outcode }}{% if admin_district %} in {{ admin_district | council }}{% endif %}. Built from the same sources
     as every property report on this site, not opinion or marketing copy.
 </p>
 
@@ -127,7 +127,7 @@
     <h2>House prices</h2>
     {% if hpi and hpi.local_authority %}
     <p class="section-sub">
-        Average price in {{ hpi.local_authority.name }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
+        Average price in {{ hpi.local_authority.name | council }}: <strong>{{ hpi.local_authority.average_price | gbp }}</strong>,
         {% if hpi.local_authority.annual_change_pct >= 0 %}up{% else %}down{% endif %}
         {{ "%.1f"|format(hpi.local_authority.annual_change_pct|abs) }}% on a year ago
         ({{ hpi.local_authority.period | month_label }}).
@@ -195,7 +195,7 @@
     <label class="map-toggle" id="area-differ-toggle" hidden><input type="checkbox" id="area-differences-only"> Show only the checks that differ ({{ compare.differ_count }} of {{ compare.rows | length }})</label>
     <table class="tx-table compare-table" id="area-compare-table">
         <thead>
-            <tr><th scope="col">Figure</th><th scope="col">{{ outcode }}</th><th scope="col">{{ compare.outcode }}{% if compare.admin_district %} ({{ compare.admin_district }}){% endif %}</th></tr>
+            <tr><th scope="col">Figure</th><th scope="col">{{ outcode }}</th><th scope="col">{{ compare.outcode }}{% if compare.admin_district %} ({{ compare.admin_district | council }}){% endif %}</th></tr>
         </thead>
         <tbody>
             {% for row in compare.rows %}
@@ -318,7 +318,7 @@
     {% endif %}
     {% if council_hub %}
     <p class="section-sub">
-        Will an address here get a place? <a href="/schools/admissions/{{ council_hub.slug }}">How far {{ council_hub.name }} schools admitted from, school by school →</a>
+        Will an address here get a place? <a href="/schools/admissions/{{ council_hub.slug }}">How far {{ council_hub.name | council }} schools admitted from, school by school →</a>
     </p>
     {% endif %}
     {% if by_sector %}
@@ -465,7 +465,7 @@
         This area falls in decile {{ deprivation.imd_decile }} of 10 on the Index of Multiple
         Deprivation ({{ "most" if deprivation.imd_decile <= 3 else ("least" if deprivation.imd_decile >= 8 else "moderately") }}
         deprived {{ "nationally" if deprivation.imd_decile <= 3 or deprivation.imd_decile >= 8 else "" }}),
-        based on {{ deprivation.la_name }}'s figures.
+        based on {{ deprivation.la_name | council }}'s figures.
     </p>
 </section>
 {% endif %}
@@ -526,9 +526,9 @@
 <section class="report-section">
     <h2>Council tax and the council's finances</h2>
     <p>
-        A Band D household in <strong>{{ finance.name }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
+        A Band D household in <strong>{{ finance.name | council }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
         a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
-        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}. A home's own band is on its council tax bill, free to look up at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>; the report shows every band's bill at the council beside the home's other checks.
+        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name | council }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}. A home's own band is on its council tax bill, free to look up at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>; the report shows every band's bill at the council beside the home's other checks.
         {# It said "the full report gives the band of a specific address"
            until 17 Sep 2026. It does not: the band list is not open data.
            This section is MHCLG's, so England only, and the gov.uk lookup
@@ -537,8 +537,8 @@
     {% if council_tax_trend %}
     {% import "_trend_chart.html" as trendchart %}
     {{ trendchart.trend(council_tax_trend,
-        "Band D council tax at " ~ finance.name ~ " by year, from " ~ council_tax_trend.first.value ~ " in " ~ council_tax_trend.first.period ~ " to " ~ council_tax_trend.end.value ~ " in " ~ council_tax_trend.end.period ~ ". Use the left and right arrow keys to read each year.",
-        "Band D bill a year at " ~ finance.name ~ ", all precepts included, from MHCLG. Every year and its rise is in the table below.") }}
+        "Band D council tax at " ~ (finance.name | council) ~ " by year, from " ~ council_tax_trend.first.value ~ " in " ~ council_tax_trend.first.period ~ " to " ~ council_tax_trend.end.value ~ " in " ~ council_tax_trend.end.period ~ ". Use the left and right arrow keys to read each year.",
+        "Band D bill a year at " ~ (finance.name | council) ~ ", all precepts included, from MHCLG. Every year and its rise is in the table below.") }}
     {% endif %}
     <div class="tablewrap">
     <table class="tx-table finance-table">
@@ -553,7 +553,7 @@
     {% if finance.efs or finance.county_efs %}
     <p class="notice">
         <strong>Exceptional Financial Support.</strong>
-        {% if finance.efs %}{{ finance.name }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+        {% if finance.efs %}{{ finance.name | council }} was agreed support by government for {% for e in finance.efs | reverse %}{{ e.year }} ({{ e.amount }}{% if e.revised %}, later revised{% endif %}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
         {% if finance.county_efs %} The county council, {{ finance.county_name }}, was agreed support for {% for e in finance.county_efs | reverse %}{{ e.year }} ({{ e.amount }}){% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
         Support is permission to borrow, or to spend capital receipts, on day-to-day services because the council could not otherwise set a balanced budget. Councils in this position tend to cut services and raise council tax by the most the rules allow.
     </p>
@@ -566,7 +566,7 @@
     </p>
     {% endif %}
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
-    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
+    <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name | council }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
     <p class="section-sub">Ministry of Housing, Communities and Local Government, live council tax tables (Band D, area averages) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils.</p>
 </section>
@@ -591,7 +591,7 @@
     <h2>Neighbouring districts</h2>
     <div class="area-chip-row">
         {% for n in nearby_outcodes %}
-        <a class="area-chip" href="/area/{{ n.outcode }}"><strong>{{ n.outcode }}</strong> {{ n.district }}</a>
+        <a class="area-chip" href="/area/{{ n.outcode }}"><strong>{{ n.outcode }}</strong> {{ n.district | council }}</a>
         {% endfor %}
         <a class="area-chip area-chip-all" href="/areas">All area guides &rsaquo;</a>
     </div>

@@ -153,7 +153,7 @@ def test_the_free_report_is_offered_not_spent_silently(client, fake_report, monk
     with db.get_session() as session:
         uid = auth.find_user_by_email(session, "chooser@customer.test").id
 
-    body = client.get("/property?postcode=M14+5TG").text
+    body = client.get("/property?postcode=M14+5TG&house_number=1").text
     assert 'class="dashboard-card-lock-overlay"' in body     # still locked (the class name alone is in the inlined CSS)
     assert "Use your free full report here" in body            # the cards say why
     assert 'id="use-free-report-dialog"' in body                # the pop-up asks
@@ -161,7 +161,7 @@ def test_the_free_report_is_offered_not_spent_silently(client, fake_report, monk
     with db.get_session() as session:
         assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 0
 
-    r = client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M14 5TG", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
     with db.get_session() as session:
         assert session.query(PremiumUnlock).filter_by(user_id=uid).count() == 1
@@ -196,7 +196,7 @@ def test_the_paywall_says_something_new_on_a_return_visit(client, fake_report, m
 
     # Spend the one free report, so every later property is walled.
     client.get("/property?postcode=M20+1AA")
-    r = client.post("/property/unlock", data={"postcode": "M20 1AA", "house_number": ""},
+    r = client.post("/property/unlock", data={"postcode": "M20 1AA", "house_number": "1"},
                     follow_redirects=False)
     assert r.status_code == 303
     client.get(r.headers["location"])

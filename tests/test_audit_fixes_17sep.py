@@ -86,7 +86,7 @@ def test_a1_the_used_up_wall_is_for_an_account_that_spent_its_report(client, fak
     fake_report(location=fake_location(postcode="M20 9AA", outcode="M20"))
     assert _signup(client, "a1-spent@customer.test").status_code == 303
     client.get("/property?postcode=M20+9AA")
-    r = client.post("/property/unlock", data={"postcode": "M20 9AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M20 9AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
 
     fake_report(location=fake_location(postcode="M1 9AA", outcode="M1"))
@@ -201,21 +201,21 @@ def test_a2_a_free_account_gets_the_pdf_of_the_home_it_unlocked(client, fake_rep
 def test_a2_the_same_free_account_is_sent_to_premium_for_a_home_it_has_not_unlocked(client, monkeypatch):
     monkeypatch.setattr(email_service, "can_verify", lambda: False)
     assert _signup(client, "a2-other-home@customer.test").status_code == 303
-    r = client.post("/property/unlock", data={"postcode": "M15 5AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M15 5AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
 
     seen = _pdf_route_fakes(monkeypatch)
     # The unlocked home's PDF is served...
-    assert client.get("/property/pdf?postcode=M15+5AA", follow_redirects=False).status_code == 200
+    assert client.get("/property/pdf?postcode=M15+5AA&house_number=1", follow_redirects=False).status_code == 200
     # ...another home's is not, nor the same postcode at a house it did not unlock.
-    for url in ("/property/pdf?postcode=M16+7AA", "/property/pdf?postcode=M15+5AA&house_number=9"):
+    for url in ("/property/pdf?postcode=M16+7AA", "/property/pdf?postcode=M15+5AA", "/property/pdf?postcode=M15+5AA&house_number=9"):
         r = client.get(url, follow_redirects=False)
         assert r.status_code == 303, url
         # To Premium carrying the home, house number too (batch C fix pass).
         assert r.headers["location"].startswith("/premium?home="), url
     assert client.get("/property/pdf?postcode=M15+5AA&house_number=9",
                       follow_redirects=False).headers["location"] == "/premium?home=M15+5AA&hn=9"
-    assert seen["gathers"] == [("M15 5AA", "", True, True)] and len(seen["documents"]) == 1
+    assert seen["gathers"] == [("M15 5AA", "1", True, True)] and len(seen["documents"]) == 1
 
 
 def test_a2_a_subscriber_gets_every_homes_pdf_without_spending_an_unlock(client, monkeypatch):
@@ -376,7 +376,7 @@ def test_a3_a_one_unlock_account_is_told_it_used_its_free_full_report(client, fa
     assert "You have 1 free full report left." in body
     assert "Every check below is unlocked on it." in body
 
-    r = client.post("/property/unlock", data={"postcode": "M21 0AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M21 0AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
     body = " ".join(client.get("/premium").text.split())
     assert "all 1 free reports" not in body
@@ -390,7 +390,7 @@ def test_a3_more_than_one_free_report_is_counted_in_words_that_agree(client, mon
     _billing(monkeypatch)
     assert _signup(client, "a3-two-unlocks@customer.test").status_code == 303
     for postcode in ("M22 0AA", "M23 0AA"):
-        r = client.post("/property/unlock", data={"postcode": postcode, "house_number": ""}, follow_redirects=False)
+        r = client.post("/property/unlock", data={"postcode": postcode, "house_number": "1"}, follow_redirects=False)
         assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
     body = " ".join(client.get("/premium").text.split())
     assert "<strong>You have used all 2 free full reports.</strong>" in body
@@ -751,9 +751,9 @@ def test_a5_the_locked_sentence_holds_in_every_locked_state_and_goes_when_the_ho
     assert _a5_banner(body)[1].endswith(LOCKED_SENTENCE)
 
     # The same account after saying yes: this home is open, nothing is locked.
-    r = client.post("/property/unlock", data={"postcode": "M21 7AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M21 7AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
-    words = _a5_banner(client.get("/property?postcode=M21+7AA").text)[1]
+    words = _a5_banner(client.get("/property?postcode=M21+7AA&house_number=1").text)[1]
     assert "locked" not in words
     assert "air quality" in _cleared(words) and "contamination" in _cleared(words)
 
@@ -1006,7 +1006,7 @@ def test_fix_the_locked_pdf_button_says_premium_only_once_the_free_report_is_spe
     assert _locked_pdf_button(client.get("/property?postcode=M25+1AA").text) == ("#use-free-report", FREE_PDF_LABEL)
 
     # Spent on another home: this one's PDF is Premium's.
-    r = client.post("/property/unlock", data={"postcode": "M26 1AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M26 1AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
     body = client.get("/property?postcode=M25+1AA").text
     assert USED_UP in body
@@ -1031,7 +1031,7 @@ def test_fix_an_unconfirmed_account_is_not_told_the_pdf_is_premium(client, fake_
 def test_fix_a_lapsed_subscribers_wall_promises_only_the_free_reports_home(client, fake_report, monkeypatch):
     monkeypatch.setattr(email_service, "can_verify", lambda: False)
     assert _signup(client, "fix-lapsed@customer.test").status_code == 303
-    r = client.post("/property/unlock", data={"postcode": "M28 1AA", "house_number": ""}, follow_redirects=False)
+    r = client.post("/property/unlock", data={"postcode": "M28 1AA", "house_number": "1"}, follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"].endswith("unlocked=1")
 
     # Opened on the subscription, then the subscription ended.
@@ -1058,7 +1058,7 @@ def test_fix_a_lapsed_subscribers_wall_promises_only_the_free_reports_home(clien
     assert f"{USED_UP}." in banner
     assert "The ones you opened" not in banner and "stay unlocked for good" not in banner
     assert banner.count("for good") == 1
-    assert '<a href="/property?postcode=M28+1AA">M28 1AA</a>, and it stays open for good.' in banner
+    assert '<a href="/property?postcode=M28+1AA&amp;house_number=1">1 M28 1AA</a>, and it stays open for good.' in banner
     # The price the wall quotes is the plans' own, and from 17 Sep 2026 it
     # is both of them (C2), so this reads them rather than typing one.
     assert f"or {stripe_billing.plan_prices()['monthly']} a month" in banner

@@ -72,6 +72,32 @@ _KEEP_OVERSIZED: "builtins.set[str]" = builtins.set()
 def keep_oversized(prefix: str) -> None:
     _KEEP_OVERSIZED.add(prefix)
 
+
+# Exact keys held outside the LRU (30 Sep 2026). The pages the site
+# advertises by name, the homepage, /premium, /browser-extension and the
+# M1 1AE sample report it offers five times, were pushed out by the crawl:
+# about 27,000 school page views in four days writing to the same store.
+# M1 1AE answered in 12.5 s with the wait page that morning, 0.54 s on the
+# repeat; /browser-extension took 0.79 s inside its hour. A pinned key is
+# kept here, beside the store, never evicted for space and never counted
+# against MAX_BYTES, and still expires by its caller's TTL. A handful of
+# keys, so a few megabytes at most; each is named by the caller with pin().
+_PINNED_KEYS: "builtins.set" = builtins.set()
+_pinned: dict = {}
+
+
+def pin(key) -> None:
+    _PINNED_KEYS.add(key)
+
+
+def drop(key) -> None:
+    """Forget one key in tier 1, pinned or not."""
+    _evict(key)
+
+
+def pinned_keys() -> tuple:
+    return tuple(_PINNED_KEYS)
+
 # Deep enough for a gather result (dict -> service -> list -> row -> value)
 # with room to spare. Anything deeper is charged at the cap rather than
 # walked forever: a cache sizer must never be the thing that hangs.
@@ -145,6 +171,13 @@ def get(key, ttl_seconds: float, keep_expired: bool = False):
     """keep_expired leaves an expired entry in place (still returning
     None) so a caller can follow up with get_stale() and serve it while
     a refresh runs - see flood._national_warnings."""
+    entry = _pinned.get(key)
+    if entry is not None:
+        if time.time() - entry[0] >= ttl_seconds:
+            if not keep_expired:
+                _pinned.pop(key, None)
+            return None
+        return entry[1]
     entry = _store.get(key)
     if entry is None:
         return None
@@ -165,19 +198,20 @@ def stored_at(key) -> float | None:
     when its figures were gathered without a second round trip. Added
     16 Sep 2026 for the pages' dateModified; a page never falls back to
     the render time, because that would claim a freshness nobody checked."""
-    entry = _store.get(key)
+    entry = _pinned.get(key) or _store.get(key)
     return entry[0] if entry is not None else None
 
 
 def get_stale(key):
     """The cached value regardless of age, or None if never cached (or
     since evicted). For stale-while-revalidate callers only."""
-    entry = _store.get(key)
+    entry = _pinned.get(key) or _store.get(key)
     return entry[1] if entry is not None else None
 
 
 def _evict(key) -> None:
     global _bytes
+    _pinned.pop(key, None)
     entry = _store.pop(key, None)
     if entry is not None:
         _bytes -= entry[2]
@@ -186,6 +220,9 @@ def _evict(key) -> None:
 def _put(key, stored_at: float, value) -> None:
     global _bytes
     _evict(key)
+    if key in _PINNED_KEYS:
+        _pinned[key] = (stored_at, value)
+        return
     size = _approx_size(value)
     if size > MAX_ENTRY_BYTES:
         family = key[0] if isinstance(key, tuple) and key else key

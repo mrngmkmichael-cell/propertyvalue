@@ -29,6 +29,14 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app import main as app_main  # noqa: E402
+from app.services import _cache as _app_cache  # noqa: E402
+
+# The advertised pages are pinned outside the LRU in the running app (30
+# Sep 2026). Tests clear the store between cases to isolate one fake from
+# the next, and a pinned homepage would survive that, so the suite runs
+# unpinned; tests/test_pinned_cache.py pins its own keys.
+_app_cache._PINNED_KEYS.clear()
+_app_cache._pinned.clear()
 
 
 @pytest.fixture(scope="session")

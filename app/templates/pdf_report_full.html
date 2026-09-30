@@ -89,6 +89,7 @@
 
     /* Callout with a rust edge */
     table.callout td { border-left: 1.6pt solid #a8541a; padding: 2pt 0 2pt 10pt; font-size: 9pt; color: #57504a; }
+    a { color: #2b4c8c; text-decoration: underline; }
 
     /* Chips (positives / concerns) */
     table.chips td { padding: 4pt 0; border-bottom: 0.4pt solid #e5e1d8; font-size: 9.2pt; }
@@ -125,7 +126,14 @@
 {% endmacro %}
 {% macro status_word(s) %}{% if s == "good" %}<span class="good">Fine</span>{% elif s == "warn" %}<span class="warn">Check</span>{% elif s == "bad" %}<span class="bad">Act</span>{% else %}<span class="faint">Noted</span>{% endif %}{% endmacro %}
 
-{% set place = location.admin_district ~ (", " ~ location.region if location.region else (", " ~ location.country if location.get("country") else "")) %}
+{% set place = (location.admin_district | council) ~ (", " ~ location.region if location.region else (", " ~ location.country if location.get("country") else "")) %}
+{# The way back (30 Sep 2026). All five accounts that joined from 25 to 30 Sep
+   opened this PDF, for two it was the last thing they did, and none came
+   back. The live address was a line of plain text on page 2 that could not
+   be clicked. Now a link, on the cover and on the last page. The bytes are
+   shared by every account allowed them (_pdf_once), so it names no one. #}
+{% set live_url = "https://ukpropertyinsight.co.uk/property?postcode=" ~ postcode_url ~ ("&house_number=" ~ house_number_url if house_number else "") %}
+{% macro way_back() %}<table class="callout"><tr><td>The live report for this home is at <a href="{{ live_url }}">ukpropertyinsight.co.uk</a>, updated as each source publishes. Signed in, the home is kept in <a href="https://ukpropertyinsight.co.uk/watchlist">My properties</a>, which opens on what has changed since your last look.</td></tr></table>{% endmacro %}
 {% set address_line = address or (location.postcode ~ (", " ~ house_number if house_number else "")) %}
 
 {# ---------- running header and footer (main template) ---------- #}
@@ -137,7 +145,7 @@
 
 {# ================= COVER ================= #}
 <p class="kicker">UKPropertyInsight &nbsp;&middot;&nbsp; Property due-diligence report &nbsp;&middot;&nbsp; {{ generated_date }}</p>
-{{ sp("96pt") }}
+{{ sp("64pt") }}
 <p class="cv-post">{{ location.postcode }}</p>
 {# With no house number the address line was the postcode again, so the
    cover printed it twice, the second time in the sans face where the
@@ -191,6 +199,9 @@
     <td class="kicker" style="text-align: right; padding-top: 2pt; line-height: 1.7">Prepared for the buyer of<br/>{{ location.postcode }}{% if house_number %}, no. {{ house_number }}{% endif %}<br/><span class="kicker-faint">{{ generated_date }}</span></td>
 </tr></table>
 
+{{ sp("10pt") }}
+{{ way_back() }}
+
 <pdf:nexttemplate name="main"/>
 <pdf:nextpage/>
 
@@ -206,7 +217,7 @@
 <h2>How to read this report</h2>
 <p class="why">The score is a summary of the checks that bear on living here and on resale: schools, crime against the wider area, price direction, flood and other risks, energy. It is not a valuation and not a survey. Every figure below names the body that published it and the period it covers. Where a source holds nothing for this address, that is written down rather than left blank, because a blank reads as "fine" and it is not.</p>
 <p class="why">The checks are grouped into ten parts. Part 1 answers every check on one page; the parts after it carry the detail a solicitor, surveyor, lender or the buyer will want to see.</p>
-<table class="callout"><tr><td>Live version, updated as sources publish: ukpropertyinsight.co.uk/property?postcode={{ postcode_url }}{% if house_number %}&amp;house_number={{ house_number_url }}{% endif %}</td></tr></table>
+{{ way_back() }}
 
 {# ================= PART 1: SUMMARY ================= #}
 {{ part("01", "Summary", "The score, what drives it, and every check the report ran.") }}
@@ -315,7 +326,7 @@
 <p class="why">What the area rents for: the yield if you let it, or the cost of renting instead while you wait.</p>
 <table class="data">
     <tr><th style="width: 50%">Size</th><th class="num" style="width: 25%">Rent a month</th><th class="num" style="width: 25%">Change on a year ago</th></tr>
-    <tr><td class="b">All sizes, {{ rental.la_name }}</td><td class="num b">{{ rental.price_all | gbp }}</td><td class="num">{% if rental.change_all_pct is not none %}{{ "%+.1f" | format(rental.change_all_pct) }}%{% endif %}</td></tr>
+    <tr><td class="b">All sizes, {{ rental.la_name | council }}</td><td class="num b">{{ rental.price_all | gbp }}</td><td class="num">{% if rental.change_all_pct is not none %}{{ "%+.1f" | format(rental.change_all_pct) }}%{% endif %}</td></tr>
     {% for b in rental.by_bedroom %}<tr><td>{{ b.label }}</td><td class="num">{{ b.price | gbp }}</td><td class="num">{% if b.change_pct is not none %}{{ "%+.1f" | format(b.change_pct) }}%{% endif %}</td></tr>{% endfor %}
 </table>
 <p class="tiny faint">ONS Price Index of Private Rents{% if rental.period %}, {{ rental.period | month_label }}{% endif %}.</p>
@@ -686,7 +697,7 @@
     <tr><th style="width: 32%">Area</th><th class="num" style="width: 18%">Median, a year</th><th style="width: 50%"></th></tr>
     {% set topi = [household_income.here or 0, household_income.la_average or 0, household_income.region_average or 0] | max %}
     <tr><td class="b">Around this address</td><td class="num b">{{ household_income.here | gbp }}</td><td>{{ bar((household_income.here or 0) / (topi or 1) * 100) }}</td></tr>
-    {% if household_income.la_average %}<tr><td>{{ household_income.la_name }}</td><td class="num">{{ household_income.la_average | gbp }}</td><td>{{ bar(household_income.la_average / (topi or 1) * 100, "bar-fill-soft") }}</td></tr>{% endif %}
+    {% if household_income.la_average %}<tr><td>{{ household_income.la_name | council }}</td><td class="num">{{ household_income.la_average | gbp }}</td><td>{{ bar(household_income.la_average / (topi or 1) * 100, "bar-fill-soft") }}</td></tr>{% endif %}
     {% if household_income.region_average %}<tr><td>{{ household_income.region_name }}</td><td class="num">{{ household_income.region_average | gbp }}</td><td>{{ bar(household_income.region_average / (topi or 1) * 100, "bar-fill-soft") }}</td></tr>{% endif %}
 </table>
 <p class="tiny faint">ONS small area income estimates, net equivalised household income after housing costs.</p>
@@ -766,6 +777,8 @@
 <p class="why">The score out of 100 starts from the checks that most affect living here and resale: the share of nearby schools rated Good or Outstanding, crime against the wider district, the direction of area prices, the property's energy band (without a house number, whether most of the postcode's homes with a certificate rate C or better), and each mapped risk (flood, surface water, radon, subsidence, noise, air, contamination, planning constraints). Strengths add, concerns subtract, and anything a source could not answer leaves the score untouched rather than counting for or against. It is a summary for comparing addresses, not a valuation and not a survey.</p>
 <h2>What this report is not</h2>
 <p class="why">It is not a RICS survey, a solicitor's searches, a mortgage valuation or advice. Sources publish on their own cycles, from monthly (prices, crime) to a decade (the Census); each figure carries its period. All data is used under the Open Government Licence v3.0 and the licences of OpenStreetMap contributors. Generated {{ generated_date }} by UKPropertyInsight, ukpropertyinsight.co.uk.</p>
+{{ sp("10pt") }}
+{{ way_back() }}
 
 </body>
 </html>

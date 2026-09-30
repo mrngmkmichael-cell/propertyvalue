@@ -6,6 +6,48 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The six ideas of the 30 Sep 2026 brainstorm, built the same evening.
+  Michael said "do all", which is the approval ideas 2 and 3 needed. The
+  day's reading: four real sign-ups from 27 to 30 Sep (96 to 99), each
+  spending its free report within 2 minutes, every account since 95
+  opening the PDF and none returning; no Premium since 17 Sep; 26,946
+  /school views in four days, flat around the clock.
+  1. The price index spelling fix of 18 Sep (4b3d433, hpi._index_spelling)
+  had waited on a side branch for D6 and never followed it. Applied to
+  main: Bristol, Glasgow, Aberdeen, Dundee, Hull, Herefordshire, St
+  Helens and three Northern Ireland councils read their council row (the
+  BS7 guide said "House price index data isn't available"). Warm guides
+  and the guide's district comparison ask the index again at render,
+  only for those councils, memoised a day and never written back, so the
+  guide's "Figures gathered" date does not move for figures nobody read
+  again. The /compare/A/vs/B pages are corrected as their week runs out.
+  2. A postcode-only report asks "Which home at GU1 4NQ is it for?" with a
+  required house number or name, in the dialog and in the inline offer,
+  and POST /property/unlock with no number spends nothing. Account 96
+  spent its one report on GU1 4NQ and met the paywall on number 55
+  twenty-one seconds later. Existing postcode-only unlocks stay open.
+  3. Outside England the offer says, before the yes, "In Northern Ireland
+  that is 4 of the 15 Premium checks: the other 11 read records that do
+  not cover Northern Ireland, and the report says which"
+  (unlock_reach_line, from PREMIUM_REACH). Account 98's shape.
+  4. The PDF links to the live report and to My properties on the cover,
+  page 2 and the last page (way_back in pdf_report_full.html); the
+  cover's top space went from 96pt to 64pt to keep it one page. It names
+  no one, because _pdf_once shares the bytes between accounts.
+  5. _cache.pin keeps exact keys outside the LRU: the M1 1AE gather and
+  its anonymous HTML, and the homepage, /premium and /browser-extension.
+  M1 1AE had answered in 12.5 s with the wait page. The gather is rebuilt
+  every 50 minutes (SAMPLE_REWARM_S), about 29 gathers a day, which the
+  9 Sep timer could not do while the crawl evicted it. The suite runs
+  unpinned (conftest); watch Neon transfer on /admin for the first days.
+  6. One name per council: the |council filter and _council_name turn
+  "Bristol, City of", "Bristol UA" and "City of Bristol" into "Bristol"
+  on 41 template prints and in the guide lead; the City of London keeps
+  its name. Lookups keep each source's spelling.
+  No dev server could be started from the session (it began as a
+  scheduled run); pages were rendered in-process, the guides with real
+  data, and screenshotted with Playwright at 1280 and 375 px.
+
 - The six ideas of the 26 Sep 2026 brainstorm, built the same evening.
   Michael said "do all", which is the approval idea 3 needed. The day's
   reading: one new real account in three days (95, 25 Sep), one free
