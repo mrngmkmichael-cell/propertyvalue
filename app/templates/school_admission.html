@@ -543,6 +543,21 @@
     </p>
 </section>
 
+{# If this school says no (1 Oct 2026). The figure is the council's,
+   for all its schools together, because the Department for Education
+   does not publish appeals school by school. Said plainly here rather
+   than left for the reader to assume. #}
+{% if appeals and appeals.secondary and appeals.secondary.heard %}
+<p class="section-sub">
+    <strong>If the answer is no.</strong> A refusal carries a right of appeal to an independent panel. In
+    {{ appeals.council }}, panels heard {{ "{:,}".format(appeals.secondary.heard) }} appeals for secondary
+    places in the {{ appeals.year }} round and allowed {{ "{:,}".format(appeals.secondary.won or 0) }},
+    {{ appeals.secondary.won_pct }}%, against {{ appeals.england.won_pct }}% across England. That is the
+    council's figure for all its schools: appeals are not published school by school.
+    <a href="/schools/appeals">How every council compares</a>.
+</p>
+{% endif %}
+
 {% if nearby_with_figure %}
 {# The one list of the nearest schools, and the key to the rings the box
    under the map draws. It stood at the foot of the page until 18 Sep

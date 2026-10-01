@@ -88,6 +88,49 @@
 </p>
 {% endif %}
 
+{# If a place is refused (1 Oct 2026). The Department for Education
+   publishes appeals by council and never by school, so this block names
+   the council every time and says the school's own figure does not
+   exist. appeals.for_council in main.py; None for a council the release
+   does not carry. #}
+{% if appeals %}
+<section class="report-section">
+    <h2>If a place is refused</h2>
+    <p class="section-sub">
+        Every refusal carries a right of appeal to an independent panel.
+        {% set s = appeals.secondary %}
+        {% if s and s.heard %}In {{ appeals.council }}, panels heard {{ "{:,}".format(s.heard) }} appeals for
+        secondary places in the {{ appeals.year }} round and allowed {{ "{:,}".format(s.won or 0) }} of them,
+        {{ s.won_pct }}%, against {{ appeals.england.won_pct }}% across England.{% endif %}
+        These are the council's figures for all its schools together: appeals are not published school by
+        school, so no one can tell you the rate for one named school, and this page will not pretend to.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead>
+                <tr><th>Appeals in {{ appeals.year }}</th><th class="num">Lodged</th><th class="num">Heard</th><th class="num">Allowed</th><th class="num">Share allowed</th></tr>
+            </thead>
+            <tbody>
+                {% for row in appeals.phases %}
+                <tr>
+                    <td>{{ row.phase }}</td>
+                    <td class="num">{{ "{:,}".format(row.lodged) if row.lodged else "0" }}</td>
+                    <td class="num">{{ "{:,}".format(row.heard) if row.heard else "0" }}</td>
+                    <td class="num">{{ "{:,}".format(row.won) if row.won else "0" }}</td>
+                    <td class="num">{% if row.readable %}{{ row.won_pct }}%{% elif row.heard %}{{ row.won_pct }}% <span class="school-table-type">of {{ row.heard }} heard</span>{% else %}&ndash;{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        An infant class appeal, for reception to year 2, can only be allowed on narrow legal grounds, which
+        is why its share is a fraction of the others.
+        <a href="/schools/appeals">How every council compares</a>, and what the figures are and are not.
+    </p>
+</section>
+{% endif %}
+
 {% for phase, schools in council.by_phase %}
 <section class="report-section">
     <h2>{{ phase }} schools</h2>

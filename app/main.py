@@ -49,7 +49,7 @@ from app.services import (
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
-    solicitor_questions, indexnow, council_tax, viewing_checklist,
+    solicitor_questions, indexnow, council_tax, viewing_checklist, appeals,
 )
 from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -3736,6 +3736,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/admissions", "0.7"))
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
+    entries.append((f"{base}/schools/appeals", "0.7"))
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     entries.append((f"{base}/running-costs", "0.7"))
     entries.append((f"{base}/running-costs/council-tax", "0.7"))
@@ -4379,7 +4380,7 @@ ANON_PAGE_CACHE_TTL_S = 600
 REPORT_SOURCES = {"area-guide", "school", "council-tax", "schools-guide",
                   "running-costs", "council-hub", "areas", "premium-success",
                   "admissions-index", "tightest", "independent", "market-report",
-                  "buying-guide"}
+                  "buying-guide", "appeals"}
 REPORT_SOURCE_PATH_PREFIX = "/from/"
 
 
@@ -13230,6 +13231,10 @@ async def school_admission_page(
     except Exception:  # noqa: BLE001 - the page stands without it
         context["bus"] = None
     context["badge_snippet"] = _school_badge_snippet(request, profile, slug)
+    # What happens if this school says no. The figure belongs to the
+    # council, because appeals are not published school by school, and
+    # the page says so where it shows it (1 Oct 2026).
+    context["appeals"] = appeals.for_council(profile.get("authority") or "")
     return templates.TemplateResponse(request, "school_admission.html", context)
 
 
@@ -14068,6 +14073,11 @@ async def admissions_council(request: Request, council_slug: str):
         years=council.get("years") or [], keywords=["school admissions", "catchment", "last distance offered", council["name"]],
         csv_path="/schools/admission-distances.csv",
     )
+    # What happens after a refusal, for this council (1 Oct 2026). The
+    # DfE publishes appeals by council, never by school, so the block
+    # names the council and says the school's own figure is not
+    # published. None for a council the release does not carry.
+    context["appeals"] = appeals.for_council(council["name"])
     context["admissions_faqs_jsonld"] = _faq_jsonld([
         (f"How far do you need to live from a school in {council['name']} to get a place?",
          f"It depends on the school. Across the {council['count']} {council['name']} {phase_word}schools with a "
@@ -14204,6 +14214,81 @@ def tightest_catchments_page(request: Request):
         csv_path="/schools/admission-distances.csv",
     )
     return templates.TemplateResponse(request, "schools_tightest.html", context)
+
+
+@app.get("/schools/appeals")
+def admission_appeals_page(request: Request):
+    """What happens after a place is refused, council by council.
+
+    The question every parent asks the moment the distance goes against
+    them, and the one page on this site that answers it: how many
+    appealed where you live, how many were heard, and how many were
+    allowed. The Department for Education publishes it by council and
+    not by school, which the page says in its own words rather than
+    quietly implying otherwise (1 Oct 2026)."""
+    context = base_context(request)
+    _base = _public_base_url(request)
+    context["canonical_url"] = f"{_base}/schools/appeals"
+    context["summary"] = summary = appeals.summary()
+    context["league"] = appeals.league()
+    context["primary_league"] = appeals.league(appeals.PRIMARY)
+    context["readable_min"] = appeals.READABLE_MIN_HEARD
+    try:
+        context["council_slugs"] = {c["name"]: c["slug"] for c in schools_db.admission_councils()}
+    except Exception:  # noqa: BLE001 - a database blip must not take the page down
+        context["council_slugs"] = {}
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_base, [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+        ("School admission appeals", "/schools/appeals"),
+    ])
+    if summary:
+        context["dataset_jsonld"] = _dataset_jsonld(
+            _base,
+            name="School admission appeals by council, England",
+            description=(f"Appeals lodged, heard and allowed against refused school places in "
+                         f"{summary['councils']} English councils, reporting year {summary['year']}, "
+                         f"from the Department for Education's own release. Secondary, primary and "
+                         f"infant class appeals, with the England figure for comparison."),
+            path="/schools/appeals", spatial="England",
+            years=summary["source"].get("years") or [],
+            keywords=["school admission appeals", "appeal success rate", "school places", "England"],
+        )
+        context["appeals_faqs"] = faqs = _appeal_faqs(summary)
+        context["appeals_faqs_jsonld"] = _faq_jsonld(faqs)
+    return templates.TemplateResponse(request, "schools_appeals.html", context)
+
+
+def _appeal_faqs(summary: dict) -> list[tuple[str, str]]:
+    """Three questions, answered from the release's own figures (1 Oct
+    2026). No answer here is written where the figure behind it is
+    missing."""
+    nation = summary.get("england") or {}
+    infant = summary.get("england_infant") or {}
+    faqs = []
+    if nation.get("heard"):
+        faqs.append((
+            "How often do school admission appeals succeed?",
+            f"In the {summary['year']} release, panels heard {nation['heard']:,} appeals for secondary "
+            f"places in England and allowed {nation['won']:,} of them, {nation['won_pct']}%. The rate "
+            f"differs council by council, from under 5% in some to over half in others, which is what "
+            f"the table on this page shows. It describes the round that has already happened, not the "
+            f"one you are about to appeal in."))
+    if infant.get("heard"):
+        faqs.append((
+            "Why do infant class appeals almost never succeed?",
+            f"An infant class appeal, for reception to year 2, can only be allowed on narrow legal "
+            f"grounds: that the admission arrangements were applied wrongly or unlawfully, or that the "
+            f"decision was one no reasonable panel would make. That is why England allowed "
+            f"{infant['won_pct']}% of the {infant['heard']:,} infant class appeals heard, against "
+            f"{nation.get('won_pct', '')}% for secondary places."))
+    faqs.append((
+        "Does a high success rate mean my appeal will succeed?",
+        "No. A council's rate is made of every school in it, and a panel decides each case on its own "
+        "facts: whether the school is genuinely full, whether the arrangements were applied correctly, "
+        "and what the child's circumstances are. A high rate usually means places were still available "
+        "somewhere in that council, and a low one that the schools appealed against were genuinely "
+        "full."))
+    return faqs
 
 
 @app.get("/schools/independent")

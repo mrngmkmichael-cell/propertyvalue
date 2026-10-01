@@ -10214,3 +10214,41 @@ button.compare-full-secondary { background: transparent; color: var(--accent); b
 .pv-swatch-views { height: 0.7rem; border: 1px solid var(--border); background: var(--surface-2); }
 .pv-table { margin-top: 0.75rem; }
 .pv-table summary { cursor: pointer; font-size: var(--text-sm); color: var(--ink-soft); }
+
+/* A share shown as a figure with a quiet bar behind it (1 Oct 2026, the
+   appeals table). The bar is the accent at low opacity rather than a new
+   colour, the figure stays mono and tabular so a column of them lines
+   up, and the bar is decoration: every row states its own numbers, so a
+   reader who cannot see the bar loses nothing. */
+.rate-cell { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
+.rate-bar {
+    flex: 0 1 4.5rem;
+    height: 0.4rem;
+    border-radius: 2px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    overflow: hidden;
+}
+.rate-bar > span { display: block; height: 100%; background: var(--accent); opacity: 0.45; }
+.rate-figure { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+@media (max-width: 640px) { .rate-bar { display: none; } }
+
+/* Find a council in a long table, and the button that opens the rest of
+   it (1 Oct 2026, the appeals page). The input wears the same border and
+   mono label as every other control; the button is a link, because it
+   reveals rows rather than doing anything. */
+.table-filter { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 0.75rem; margin: 1rem 0 0.5rem; }
+.table-filter label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }
+.table-filter input {
+    flex: 1 1 14rem;
+    max-width: 22rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--text-sm);
+}
+.table-filter input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#appeals-show-all { background: none; border: 0; padding: 0.4rem 0; font: inherit; font-size: var(--text-sm); color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }

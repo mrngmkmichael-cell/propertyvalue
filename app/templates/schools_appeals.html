@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{# The page a parent reaches on the evening of offer day. It leads with
+   the one figure that answers the question, keeps every rate next to the
+   count it rests on, and says in its own words that these are councils'
+   figures and not schools'. 1 Oct 2026. #}
+
+{% block title %}School Admission Appeals: How Often They Succeed, by Council{% endblock %}
+{% block meta_description %}{% if summary %}Of {{ "{:,}".format(summary.england.heard) }} secondary school appeals heard in England, {{ summary.england.won_pct }}% were allowed. The rate council by council, with primary and infant class appeals, from the Department for Education's {{ summary.year }} release.{% else %}How often school admission appeals succeed in England, council by council, from the Department for Education's own figures.{% endif %}{% endblock %}
+{% block og_title %}School admission appeals, council by council{% endblock %}
+
+{% block content %}
+{% if appeals_faqs_jsonld %}<script type="application/ld+json">{{ appeals_faqs_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
+
+<span class="kicker">Admissions data</span>
+<h1>When a school place is refused</h1>
+{% if summary %}
+<p class="dek">
+    Every refusal comes with a right of appeal, and most parents have no idea whether it is worth taking.
+    In the {{ summary.year }} release, independent panels heard {{ "{:,}".format(summary.england.heard) }} appeals
+    for secondary places in England and allowed {{ "{:,}".format(summary.england.won) }} of them,
+    {{ summary.england.won_pct }}%. Where you live changes that more than anything else on this page:
+    {{ summary.best.council }} allowed {{ summary.best.won_pct }}% of the appeals it heard, and
+    {{ summary.worst.council }} {{ summary.worst.won_pct }}%.
+</p>
+{% with share_url=canonical_url, share_text="How often school admission appeals succeed in England, council by council" %}{% include "_share_row.html" %}{% endwith %}
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ summary.england.won_pct }}%</span><span class="score-tile-label">of secondary appeals heard in England were allowed</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(summary.england.heard) }}</span><span class="score-tile-label">secondary appeals heard</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ "{:,}".format(summary.england.lodged) }}</span><span class="score-tile-label">lodged, so some are withdrawn or settled before a hearing</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ summary.councils }}</span><span class="score-tile-label">councils with appeals heard</span></div>
+</div>
+
+<section class="report-section">
+    <h2>The odds by council, secondary places</h2>
+    <p class="section-sub">
+        Councils ordered by the share of heard appeals a panel allowed, in the {{ summary.year }} release, which
+        covers appeals decided by 1 September {{ summary.year | int - 1 }}. The counts are beside every share on
+        purpose: {{ summary.best.council }}'s {{ summary.best.won_pct }}% rests on
+        {{ summary.best.heard }} hearings, where a large council's rate rests on thousands. A council with
+        fewer than {{ readable_min }} appeals heard is listed below the table instead of ranked, because at that
+        size a rate is one family's luck.
+    </p>
+    {# 151 councils is a wall on a phone, so the page opens on the first
+       twenty-five and the rest are one tap away, and a filter finds a
+       council by name without scrolling (1 Oct 2026). Without
+       JavaScript every row is simply there, which is the version a
+       crawler and a reader with scripts off get. #}
+    <div class="table-filter">
+        <label for="council-filter">Find your council</label>
+        <input type="search" id="council-filter" placeholder="Start typing a council" autocomplete="off">
+        <span id="council-filter-count" class="section-sub" aria-live="polite"></span>
+    </div>
+    <div class="tablewrap">
+        <table class="tx-table school-table" id="appeals-table">
+            <thead>
+                <tr>
+                    <th data-sort="num" aria-sort="ascending">#</th>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num">Lodged</th>
+                    <th class="num" data-sort="num">Heard</th>
+                    <th class="num" data-sort="num">Allowed</th>
+                    <th class="num" data-sort="num">Share allowed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in league if r.readable %}
+                <tr>
+                    <td data-value="{{ loop.index }}">{{ loop.index }}</td>
+                    <td data-value="{{ r.council }}">{% if council_slugs.get(r.council) %}<a href="/schools/admissions/{{ council_slugs[r.council] }}">{{ r.council }}</a>{% else %}{{ r.council }}{% endif %}</td>
+                    <td class="num" data-value="{{ r.lodged or 0 }}">{{ "{:,}".format(r.lodged) if r.lodged else "&ndash;" | safe }}</td>
+                    <td class="num" data-value="{{ r.heard }}">{{ "{:,}".format(r.heard) }}</td>
+                    <td class="num" data-value="{{ r.won or 0 }}">{{ "{:,}".format(r.won) if r.won else 0 }}</td>
+                    <td class="num" data-value="{{ r.won_pct }}">
+                        <span class="rate-cell">
+                            <span class="rate-bar" aria-hidden="true"><span style="width: {{ [[r.won_pct, 100] | min, 1] | max }}%"></span></span>
+                            <span class="rate-figure">{{ r.won_pct }}%</span>
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button type="button" class="link-button" id="appeals-show-all" hidden>Show all councils</button>
+    {% set thin = league | rejectattr("readable") | list %}
+    {% if thin %}
+    <p class="section-sub">
+        Too few heard to read as a rate:
+        {% for r in thin %}{{ r.council }} ({{ r.won or 0 }} of {{ r.heard }}){% if not loop.last %}, {% endif %}{% endfor %}.
+    </p>
+    {% endif %}
+</section>
+
+<section class="report-section">
+    <h2>Primary places, and why infant appeals are different</h2>
+    <p class="section-sub">
+        A reception, year 1 or year 2 appeal is heard under a separate rule. Where admitting another child
+        would push an infant class past 30, the panel may only allow the appeal on narrow legal grounds:
+        that the arrangements were applied wrongly or unlawfully, or that the decision was one no reasonable
+        panel would have made. England allowed {{ summary.england_infant.won_pct }}% of the
+        {{ "{:,}".format(summary.england_infant.heard) }} infant class appeals heard, against
+        {{ summary.england_primary.won_pct }}% across primary appeals as a whole and
+        {{ summary.england.won_pct }}% for secondary places.
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table school-table">
+            <thead>
+                <tr>
+                    <th data-sort="text">Council</th>
+                    <th class="num" data-sort="num">Primary appeals heard</th>
+                    <th class="num" data-sort="num">Allowed</th>
+                    <th class="num" data-sort="num">Share allowed</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in primary_league[:20] %}
+                <tr>
+                    <td data-value="{{ r.council }}">{% if council_slugs.get(r.council) %}<a href="/schools/admissions/{{ council_slugs[r.council] }}">{{ r.council }}</a>{% else %}{{ r.council }}{% endif %}</td>
+                    <td class="num" data-value="{{ r.heard }}">{{ "{:,}".format(r.heard) }}</td>
+                    <td class="num" data-value="{{ r.won or 0 }}">{{ "{:,}".format(r.won) if r.won else 0 }}</td>
+                    <td class="num" data-value="{{ r.won_pct }}">{{ r.won_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">The twenty councils whose panels allowed the largest share, among those with enough primary hearings to read.</p>
+</section>
+
+<section class="report-section">
+    <h2>What these figures are, and what they are not</h2>
+    <div class="section-sub">
+        <p><strong>They belong to councils, not to schools.</strong> The Department for Education collects
+        appeals against community and voluntary controlled schools as council totals, and does not publish
+        the school-level returns academies and voluntary aided schools make. Appeals are not published school
+        by school, so nobody can tell you how often appeals against one named school succeed, and this page
+        does not pretend to.</p>
+        <p><strong>They describe a round that has finished.</strong> The {{ summary.year }} release covers
+        appeals decided by 1 September {{ summary.year | int - 1 }}, against places for that September. A
+        panel decides your case on its own facts.</p>
+        <p><strong>Lodged, heard and allowed are three different numbers.</strong> Some appeals are withdrawn
+        when a place comes up, and some are settled before a hearing, which is why fewer are heard than
+        lodged. The share allowed is always of the appeals actually heard.</p>
+        <p><strong>A high rate is not a promise.</strong> It usually means places were still available
+        somewhere in that council. A low one usually means the schools appealed against were genuinely full.</p>
+    </div>
+</section>
+
+{% if appeals_faqs %}
+<section class="report-section">
+    <h2>Questions people ask</h2>
+    <div class="faq-list">
+        {% for q, a in appeals_faqs %}
+        <details class="faq-item">
+            <summary>{{ q }}</summary>
+            <p>{{ a }}</p>
+        </details>
+        {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<p class="section-sub">
+    Source: <a href="{{ summary.source.url }}" rel="noopener" target="_blank">{{ summary.source.release }}</a>,
+    Department for Education, read 1 October 2026. Figures for reporting years
+    {{ summary.source.years | first }} to {{ summary.source.years | last }}; the next release is due in August.
+</p>
+
+<section class="report-section">
+    <h2>Before it comes to an appeal</h2>
+    <p class="section-sub">
+        The distance each school admitted from is the figure that decides most places in the first round:
+        <a href="/schools/admissions">how far each school admitted from, council by council</a>,
+        <a href="/schools/tightest-catchments">England's tightest catchments</a>, and
+        <a href="/schools/how-admissions-work">how admissions work</a>. Check an address against the
+        schools around it before you choose where to apply from.
+    </p>
+    {% with box_id="appeals-check-postcode", box_label="Check an address against every school near it", box_src="appeals" %}{% include "_address_box.html" %}{% endwith %}
+</section>
+{% else %}
+<p class="dek">The appeals figures are not loaded on this server yet. They return with the next deploy.</p>
+{% endif %}
+
+<script>
+    /* The long table opens short and filters by name. Both are added by
+       script, so the page without script is the whole table. */
+    (function () {
+        const table = document.getElementById('appeals-table');
+        const filter = document.getElementById('council-filter');
+        const count = document.getElementById('council-filter-count');
+        const showAll = document.getElementById('appeals-show-all');
+        if (!table || !filter) { return; }
+        const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+        const SHORT = 25;
+        let collapsed = rows.length > SHORT;
+
+        function paint() {
+            const term = filter.value.trim().toLowerCase();
+            let shown = 0;
+            rows.forEach(function (row, i) {
+                const name = (row.cells[1].textContent || '').toLowerCase();
+                const matches = !term || name.indexOf(term) !== -1;
+                const hide = !matches || (collapsed && !term && i >= SHORT);
+                row.hidden = hide;
+                if (matches) { shown++; }
+            });
+            count.textContent = term ? (shown ? shown + ' of ' + rows.length + ' councils' : 'no council of that name') : '';
+            showAll.hidden = !collapsed || !!term;
+        }
+
+        if (collapsed) {
+            showAll.hidden = false;
+            showAll.textContent = 'Show all ' + rows.length + ' councils';
+            showAll.addEventListener('click', function () { collapsed = false; paint(); showAll.hidden = true; });
+        }
+        filter.addEventListener('input', paint);
+        paint();
+    })();
+
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            const heads = table.querySelectorAll('th[data-sort]');
+            heads.forEach(function (th, col) {
+                th.addEventListener('click', function () {
+                    const dir = th.getAttribute('aria-sort') === 'ascending' ? 'descending' : 'ascending';
+                    heads.forEach(function (h) { h.removeAttribute('aria-sort'); });
+                    th.setAttribute('aria-sort', dir);
+                    const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+                    const numeric = th.dataset.sort === 'num';
+                    rows.sort(function (a, b) {
+                        const va = a.cells[col].dataset.value, vb = b.cells[col].dataset.value;
+                        const r = numeric ? (parseFloat(va) - parseFloat(vb)) : va.localeCompare(vb);
+                        return dir === 'ascending' ? r : -r;
+                    });
+                    rows.forEach(function (row) { table.tBodies[0].appendChild(row); });
+                });
+            });
+        });
+    })();
+</script>
+{% endblock %}
