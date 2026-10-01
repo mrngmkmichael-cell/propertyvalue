@@ -1354,11 +1354,13 @@
         {# Road collisions the police attended, from the DfT's STATS19
            returns, read out of a local file in microseconds (see
            app/services/road_safety.py for why a file and not a table).
-           The card reads amber when someone was killed within 500 m in
-           the five years, because that is worth seeing, and carries no
-           "Check this" tag: there is nothing here for a buyer to go and
-           do about it. #}
+           The card is flagged where someone was killed within 500 m in
+           the five years. It carries the tag as well as the colour: on
+           the live grid the tinted card without one read as a bug
+           beside Noise, which has both, and "Check this" on this site
+           means look into it, not fix it. #}
         <button type="button" class="dashboard-card status-{{ 'muted' if (road_safety_not_covered or not road_safety) else ('attn' if road_safety.fatal else 'ok') }}" data-modal-target="modal-road-safety" data-animate>
+            {% if road_safety and road_safety.fatal %}<span class="check-this-tag">Check this</span>{% endif %}
             <span class="dashboard-card-icon icon-road">{{ icons.icon('road') }}</span>
             <span class="dashboard-card-title">Road Safety</span>
             <span class="dashboard-card-status">
