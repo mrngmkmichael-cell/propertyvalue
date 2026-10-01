@@ -58,5 +58,13 @@ Sep 2026, so nobody ran it, and the homepage said "40 checks" beside its
 own "44 checks" for days with a rule sitting in that script that would
 have caught it the day it drifted. A tool nobody is told to run is a
 tool nobody runs.
+
+**Once a month, first session of the month, also run**
+`.venv/Scripts/python.exe scripts/check_freshness.py`. It asks the one
+question none of the other three ask: whether an imported dataset is
+still the newest its publisher has. On 1 Oct 2026 the Ofsted file was
+two months behind and the rent index three editions behind, and every
+page rendered perfectly throughout. A pinned URL does not fail, it
+just serves last spring.
 Data imports: `scripts/import_*.py`, each re-runnable and commented with
 its source and refresh cadence.
