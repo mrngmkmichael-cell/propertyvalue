@@ -6,6 +6,54 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The seven ideas of the 1 Oct 2026 brainstorm, built the same evening.
+  Michael said "Do all", which is the approval ideas 4, 6 and 7 needed.
+  The day's reading: two real sign-ups (98, 99), each spending its free
+  report within 10 seconds and opening the PDF; no Premium since 17 Sep;
+  56 cold-report waits against 69 report views in three days; 27,797
+  school-page views in three days, flat around the clock.
+  1. Secondary results read Attainment 8 where Progress 8 was not
+  published. 0 of 5,755 schools carry a Progress 8 for 2024/25 (no Key
+  Stage 2 tests in 2020) while 4,736 carry an Attainment 8, so every
+  secondary said "No data" on the report, "no figure" on the schools
+  guide and a blank in the PDF. schools_db._ks4_headline picks the
+  measure and the trend follows it; the guide marks A8 or P8, the modal
+  and the report cell say why, the PDF says "Not published" instead of a
+  blank, and the school page's tile falls back to Attainment 8. The
+  percent sign is read from the label, not a new key, so payloads cached
+  before today stay right.
+  2. Cold reports: catchment.catchments_for asked all 21 council layers
+  for every address in the country, each with a 10 s timeout. EX4 4QJ
+  spent 11.2 s of a 13.2 s cold report there. Each authority now has the
+  extent its own layers reported in WGS84 (padded 0.02 degrees), and an
+  address outside every box asks nothing: Exeter 0.00 s, Sheffield,
+  Glasgow and Winchester still matched live. Found on the way: the
+  "Stirling" source was Dundee's school locations as points, which could
+  never match and made the report list Stirling as covered. Removed.
+  The next slowest members, crime (both), noise and hpi-area-comparison,
+  sit at 3 to 4.5 s each.
+  3. The PDF's last page says the home is watched and what sends an
+  email (ALERT_TRIGGERS_LIST), generic because _pdf_once shares bytes.
+  The cover is unchanged, so it stays one page.
+  4. The schools guide lists state schools by default and says how many
+  fee-paying schools it left out, with "Show them as well" (?only=all)
+  and "Fee-paying only" (?only=fee). CB1 had 14 fee-paying rows in its
+  first 35, the first two among them.
+  5. Removal: the homepage states the offer sentence in the hero dek and
+  the FAQ only. The band under the hero keeps its Sign up button; the
+  closing section lost its copy. It was four visible copies.
+  6. /premium with a home outside England, for a signed-in account
+  without a subscription, says that nation's reach above the buttons
+  (premium_reach_sentence), from the report's cached postcode lookup.
+  Account 98's shape.
+  7. GET /internal/fetchers (secret-gated) returns the /admin "Who is
+  fetching pages" families, overall and per page family, so the school
+  crawl can be named without a browser session. Read after deploy; any
+  robots rule follows what it says.
+  No dev server could be started from the session (the preview tool
+  reads the main checkout's config); pages were rendered in-process with
+  real data and screenshotted with Playwright at 1280 and 375 px.
+
 - The six ideas of the 30 Sep 2026 brainstorm, built the same evening.
   Michael said "do all", which is the approval ideas 2 and 3 needed. The
   day's reading: four real sign-ups from 27 to 30 Sep (96 to 99), each

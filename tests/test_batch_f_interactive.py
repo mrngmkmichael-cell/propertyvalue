@@ -3022,16 +3022,25 @@ def test_f8_the_schools_guide_can_be_read_as_fee_paying_only(client, monkeypatch
     monkeypatch.setattr(app_main.schools_db, "school_landscape", lambda lat, lon: landscape)
     monkeypatch.setattr(app_main.schools_db, "national_baseline", lambda: {"good_or_better_pct": 90})
 
+    # State schools by default since 1 Oct 2026, with the fee-paying ones
+    # counted and one link away; ?only=all is the 18 Sep default.
     _forget_html()
-    both = client.get("/schools/guide", params={"q": "M14"}).text
+    state = client.get("/schools/guide", params={"q": "M14"}).text
+    assert "Stackford High" in state and "Whitworth House School" not in state
+    assert "1 fee-paying school is left out of this table" in state
+    assert "only=all" in state and "only=fee" in state
+
+    _forget_html()
+    both = client.get("/schools/guide", params={"q": "M14", "only": "all"}).text
     assert "Stackford High" in both and "Whitworth House School" in both
     assert "Fee-paying schools only" not in both
+    assert "The table includes 1 fee-paying school." in both
 
     _forget_html()
     fee = client.get("/schools/guide", params={"q": "M14", "only": "fee"}).text
     assert "Whitworth House School" in fee and "Stackford High" not in fee
     assert "Fee-paying schools only: 1 of them near M14" in fee
-    assert 'href="/schools/guide?q=M14"' in fee
+    assert "Show state schools as well" in fee and "only=all" in fee
 
 
 # ---- F8 (4). Two districts in one council --------------------------------

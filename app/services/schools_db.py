@@ -115,6 +115,32 @@ def _latest_and_trend(rows) -> tuple[dict[int, object], dict[int, list]]:
     return latest_by_urn, trend_by_urn
 
 
+def _ks4_headline(latest, trend: list) -> dict:
+    """A secondary school's headline result and its trend in one measure.
+
+    Progress 8 where the newest year has it, Attainment 8 where it does
+    not (1 Oct 2026). The Department for Education published no Progress
+    8 for 2024/25, because those pupils sat no Key Stage 2 tests in 2020,
+    so 0 of 5,755 schools carry one for that year while 4,736 carry an
+    Attainment 8. Read as Progress 8 only, every secondary in England
+    said "No data" on the report and "no figure" on the schools guide,
+    and the PDF left the cell blank. The trend follows the headline's
+    measure, so a by-year table never mixes the two scales."""
+    if latest.progress8_score is not None or latest.attainment8_avg is None:
+        label, field = "Progress 8", "progress8_score"
+    else:
+        label, field = "Attainment 8", "attainment8_avg"
+    return {
+        "headline_label": label,
+        "headline_value": getattr(latest, field),
+        # Said beside an Attainment 8 headline, so nobody reads the
+        # change of measure as the school's choice.
+        "progress8_unpublished": label == "Attainment 8",
+        "trend": [{"academic_year": t.academic_year, "headline_value": getattr(t, field),
+                   "grade5_english_maths_pct": t.grade5_english_maths_pct} for t in trend],
+    }
+
+
 def _haversine_km(lat1, lon1, lat2, lon2) -> float:
     r = 6371
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -172,17 +198,22 @@ def nearby_schools(lat: float, lon: float) -> dict[str, list[dict]]:
 
         secondary_urns = [s["urn"] for s in grouped["Secondary"]]
         if secondary_urns:
-            ks4_by_urn, _ = _latest_and_trend(
+            ks4_by_urn, ks4_trend = _latest_and_trend(
                 session.scalars(select(Ks4Result).where(Ks4Result.urn.in_(secondary_urns)))
             )
             for school in grouped["Secondary"]:
                 r = ks4_by_urn.get(school["urn"])
+                if r is None:
+                    school["exam_results"] = None
+                    continue
+                head = _ks4_headline(r, ks4_trend[school["urn"]])
                 school["exam_results"] = {
                     "academic_year": r.academic_year,
-                    "headline_label": "Progress 8",
-                    "headline_value": r.progress8_score,
+                    "headline_label": head["headline_label"],
+                    "headline_value": head["headline_value"],
+                    "progress8_unpublished": head["progress8_unpublished"],
                     "grade5_english_maths_pct": r.grade5_english_maths_pct,
-                } if r else None
+                }
 
         primary_urns = [s["urn"] for s in grouped["Primary"]]
         if primary_urns:
@@ -532,16 +563,15 @@ def _enrich_entries(all_entries: list[dict], with_detail: bool = True) -> None:
                 e["catchment_estimate"] = catchment_estimate_by_urn.get(e["urn"])
             if e["phase_group"] == "Secondary" and e["urn"] in ks4_by_urn:
                 r = ks4_by_urn[e["urn"]]
+                head = _ks4_headline(r, ks4_trend_by_urn[e["urn"]])
                 e["exam_results"] = {
-                    "academic_year": r.academic_year, "headline_label": "Progress 8",
-                    "headline_value": r.progress8_score, "grade5_english_maths_pct": r.grade5_english_maths_pct,
+                    "academic_year": r.academic_year, "headline_label": head["headline_label"],
+                    "headline_value": head["headline_value"],
+                    "progress8_unpublished": head["progress8_unpublished"],
+                    "grade5_english_maths_pct": r.grade5_english_maths_pct,
                     "pupil_count": r.pupil_count,
                 }
-                e["exam_trend"] = [
-                    {"academic_year": t.academic_year, "headline_value": t.progress8_score,
-                     "grade5_english_maths_pct": t.grade5_english_maths_pct}
-                    for t in ks4_trend_by_urn[e["urn"]]
-                ]
+                e["exam_trend"] = head["trend"]
             elif e["phase_group"] == "Primary" and e["urn"] in ks2_by_urn:
                 r = ks2_by_urn[e["urn"]]
                 e["exam_results"] = {

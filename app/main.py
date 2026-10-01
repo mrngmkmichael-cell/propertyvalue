@@ -10027,6 +10027,33 @@ def email_status(request: Request):
     })
 
 
+@app.get("/internal/fetchers")
+def internal_fetchers(request: Request):
+    """The /admin "Who is fetching pages" counts, read without a browser
+    session (1 Oct 2026). 14,269 school-page views on 29 Sep came 476 to
+    816 an hour all day and night, and the panel that names who asks
+    lives on one page behind the owner's sign-in and forgets after 24
+    hours, so the question went unanswered across three floods. Coarse
+    families only, as the panel keeps them: never a user agent string, a
+    path or an address. Secret-gated like the other internal reads."""
+    configured_secret = os.environ.get("ALERTS_CRON_SECRET")
+    provided_secret = request.headers.get("x-alerts-secret", "")
+    if not configured_secret or not hmac.compare_digest(provided_secret, configured_secret):
+        return JSONResponse({"error": "not_found"}, status_code=404)
+    hour = int(time.time() // 3600)
+    by_page: dict[str, collections.Counter] = {}
+    for (h, family, page), count in _agent_counts.items():
+        if h > hour - _AGENT_WINDOW_H:
+            by_page.setdefault(page, collections.Counter())[family] += count
+    busiest = sorted(by_page.items(), key=lambda kv: -sum(kv[1].values()))[:10]
+    summary = _agent_summary()
+    return JSONResponse({
+        "total": summary["total"],
+        "families": [{"family": r["family"], "total": r["total"]} for r in summary["rows"]],
+        "pages": [{"page": page, "total": sum(c.values()), "families": c.most_common(5)} for page, c in busiest],
+    })
+
+
 @app.post("/internal/resend-confirmation")
 async def internal_resend_confirmation(request: Request, email: str = Form(...)):
     """Send the confirmation link to one account from the outside, for the
@@ -10168,8 +10195,8 @@ def _home_from_query(home: str, house_number: str) -> dict | None:
 
 
 @app.get("/premium")
-def premium_info(request: Request, checkout: str = "", error: str = "",
-                 home: str = "", hn: str = "", postcode: str = ""):
+async def premium_info(request: Request, checkout: str = "", error: str = "",
+                       home: str = "", hn: str = "", postcode: str = ""):
     context = base_context(request)
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
@@ -10189,10 +10216,28 @@ def premium_info(request: Request, checkout: str = "", error: str = "",
     # before then gets the same block.
     context["home"] = _home_from_query(home or postcode, hn)
     context["home_free_report"] = None
+    context["home_reach_sentence"] = ""
     current = context["current_user"]
-    if context["home"] and current and not current.get("subscribed") and db.is_configured():
-        with db.get_session() as session:
-            context["home_free_report"] = _free_report_home(session, current["id"])
+    if context["home"] and current and not current.get("subscribed"):
+        if db.is_configured():
+            def _free_report() -> dict | None:
+                with db.get_session() as session:
+                    return _free_report_home(session, current["id"])
+            # In a thread: the route became async on 1 Oct 2026 for the
+            # postcode lookup below, and a query here would hold the loop.
+            context["home_free_report"] = await asyncio.to_thread(_free_report)
+        # The home's own nation, above the buttons (1 Oct 2026). Account
+        # 98 met the wall on a Northern Ireland home, opened this page
+        # twice in a minute and left: it led with English search prices,
+        # and that 4 of the Premium checks reach Northern Ireland was the
+        # fifth answer down. The lookup is the report's own, cached a week.
+        try:
+            found = await postcodes.lookup_postcode(context["home"]["postcode"])
+        except Exception:  # noqa: BLE001 - the page stands without it
+            found = None
+        country = (found or {}).get("country")
+        if premium_reach(country):
+            context["home_reach_sentence"] = premium_reach_sentence(country)
     return templates.TemplateResponse(request, "premium.html", context)
 
 
@@ -14580,6 +14625,13 @@ async def schools_guide(request: Request, q: str = "", areas: str = "", only: st
     # so the filtered page is a real page with no script running.
     only_fee = (only or "").strip().lower() == "fee"
     context["only_fee"] = only_fee
+    # State schools by default (1 Oct 2026). On the CB1 guide 14 of the
+    # first 35 rows were fee-paying schools reading "Not Ofsted-rated, no
+    # figure, no figure", the first two among them, so the schools the
+    # admission column exists for sat below a run of blanks. ?only=all
+    # puts them back; ?only=fee is the 18 Sep view of them alone.
+    show_fee = (only or "").strip().lower() == "all"
+    context["show_fee"] = show_fee
 
     area_list = _parse_areas_param(areas)
 
@@ -14611,10 +14663,14 @@ async def schools_guide(request: Request, q: str = "", areas: str = "", only: st
         # while being nothing of the kind.
         precise = area if area.get("kind") == "postcode" else None
         rows = _guide_rows(landscape, verdict_from=precise)
+        fee_count = sum(1 for row in rows if row["independent"])
         if only_fee:
             rows = [row for row in rows if row["independent"]]
+        elif not show_fee:
+            rows = [row for row in rows if not row["independent"]]
         areas_with_stats.append({
             **area, "landscape": landscape, "remove_areas_param": _areas_param(remaining),
+            "fee_count": fee_count, "self_areas_param": _areas_param([area]),
             "verdict_postcode": (area.get("label") or "").strip().upper() if precise else None,
             "rows": rows,
             # A search that was a postcode district gets a link to its area

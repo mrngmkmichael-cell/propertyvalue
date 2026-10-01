@@ -841,12 +841,16 @@ def test_a6_the_homepage_states_the_offer_in_one_sentence_and_the_old_wordings_a
     assert dek.split()[:5] == ["Forty-six", "checks", "on", "any", "UK"]
     assert _flat(dek).endswith("What it costs to live there. " + sentence)
 
+    # Said once in the page's own words since 1 Oct 2026: the dek, then
+    # the FAQ's answer (and its structured data). The band keeps its
+    # button and the closing section its search.
     banner = body.split('<section class="promo-banner">', 1)[1].split("</section>", 1)[0]
-    assert f'<p class="promo-banner-text">{sentence}</p>' in banner
-    assert 'href="/signup"' in banner
-
+    assert sentence not in banner and 'href="/signup"' in banner
     closing = body.split('id="contact"', 1)[1].split("</section>", 1)[0]
-    assert f'<p class="lx-lede">{sentence}</p>' in closing
+    assert sentence not in closing
+    visible = body.split("<footer", 1)[0]
+    visible = re.sub(r"<script.*?</script>", "", visible, flags=re.S)
+    assert visible.count(sentence) == 2
 
     for gone in ("normally", "£9.99", "promo-banner-price", "headline verdicts on every check",
                  "Free, and no account needed", "come with every Premium check", "free on your first property",

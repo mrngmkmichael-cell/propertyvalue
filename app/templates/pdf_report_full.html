@@ -133,7 +133,7 @@
    be clicked. Now a link, on the cover and on the last page. The bytes are
    shared by every account allowed them (_pdf_once), so it names no one. #}
 {% set live_url = "https://ukpropertyinsight.co.uk/property?postcode=" ~ postcode_url ~ ("&house_number=" ~ house_number_url if house_number else "") %}
-{% macro way_back() %}<table class="callout"><tr><td>The live report for this home is at <a href="{{ live_url }}">ukpropertyinsight.co.uk</a>, updated as each source publishes. Signed in, the home is kept in <a href="https://ukpropertyinsight.co.uk/watchlist">My properties</a>, which opens on what has changed since your last look.</td></tr></table>{% endmacro %}
+{% macro way_back(alerts=False) %}<table class="callout"><tr><td>The live report for this home is at <a href="{{ live_url }}">ukpropertyinsight.co.uk</a>, updated as each source publishes. Signed in, the home is kept in <a href="https://ukpropertyinsight.co.uk/watchlist">My properties</a>, which opens on what has changed since your last look{% if alerts %}, and we email the account's confirmed address when {{ alert_triggers_list }}. Never on a schedule{% endif %}.</td></tr></table>{% endmacro %}
 {% set address_line = address or (location.postcode ~ (", " ~ house_number if house_number else "")) %}
 
 {# ---------- running header and footer (main template) ---------- #}
@@ -641,7 +641,7 @@ under-reported, so this is weaker evidence than a high count would be.</p>
 <table class="data">
     <tr><th style="width: 26%">School</th><th style="width: 16%">Type</th><th class="num" style="width: 10%">Distance</th><th style="width: 14%">Ofsted</th><th class="num" style="width: 10%">Free school meals</th><th style="width: 24%">Results</th></tr>
     {% for s in list[:8] %}
-    <tr><td class="b">{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td class="{{ 'good' if s.ofsted_rating_label in ('Outstanding', 'Good') else '' }}">{% if s.ofsted_rating_label %}{{ s.ofsted_rating_label }}{% elif "ngraded" in (s.ofsted_note or "") %}Ungraded{% else %}No grade{% endif %}</td><td class="num">{% if s.fsm_eligible_pct is not none %}{{ s.fsm_eligible_pct }}%{% else %}&nbsp;{% endif %}</td><td>{% if s.exam_results and s.exam_results.headline_value is not none %}{% if group == "Primary" %}{{ s.exam_results.headline_value | round | int }}% met the standard{% else %}Progress 8 {{ s.exam_results.headline_value }}{% endif %} ({{ s.exam_results.academic_year }}){% else %}&nbsp;{% endif %}</td></tr>
+    <tr><td class="b">{{ s.name }}</td><td>{{ s.type }}</td><td class="num">{{ s.distance_m | distance }}</td><td class="{{ 'good' if s.ofsted_rating_label in ('Outstanding', 'Good') else '' }}">{% if s.ofsted_rating_label %}{{ s.ofsted_rating_label }}{% elif "ngraded" in (s.ofsted_note or "") %}Ungraded{% else %}No grade{% endif %}</td><td class="num">{% if s.fsm_eligible_pct is not none %}{{ s.fsm_eligible_pct }}%{% else %}&nbsp;{% endif %}</td><td>{% if s.exam_results and s.exam_results.headline_value is not none %}{% if group == "Primary" %}{{ s.exam_results.headline_value | round | int }}% met the standard{% else %}{{ s.exam_results.headline_label }} {{ s.exam_results.headline_value }}{% endif %} ({{ s.exam_results.academic_year }}){% else %}Not published{% endif %}</td></tr>
     {% endfor %}
 </table>
 </td></tr></table>
@@ -811,7 +811,7 @@ under-reported, so this is weaker evidence than a high count would be.</p>
 <h2>What this report is not</h2>
 <p class="why">It is not a RICS survey, a solicitor's searches, a mortgage valuation or advice. Sources publish on their own cycles, from monthly (prices, crime) to a decade (the Census); each figure carries its period. All data is used under the Open Government Licence v3.0 and the licences of OpenStreetMap contributors. Generated {{ generated_date }} by UKPropertyInsight, ukpropertyinsight.co.uk.</p>
 {{ sp("10pt") }}
-{{ way_back() }}
+{{ way_back(alerts=True) }}
 
 </body>
 </html>

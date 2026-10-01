@@ -161,3 +161,14 @@ def test_the_pdf_does_not_print_zone_1_where_the_ea_map_does_not_reach():
     html = app_main.templates.get_template("pdf_report_full.html").render(ctx)
     assert "Zone 1" not in html
     assert "Not mapped for Scotland" in html and "map.sepa.org.uk/floodmaps" in html
+
+
+def test_the_last_page_says_the_home_is_watched_and_the_cover_stays_short():
+    # 1 Oct 2026: every recent account read the PDF and left, and the
+    # PDF never said a saved home is watched. Once, on the last page: the
+    # cover was trimmed on 30 Sep to stay one page.
+    ctx = app_main._pdf_context(_report(), _running_costs(), LOCATION, "36")
+    html = app_main.templates.get_template("pdf_report_full.html").render(ctx)
+    assert html.count("Never on a schedule") == 1
+    assert app_main.ALERT_TRIGGERS_LIST in html
+    assert html.rindex("Never on a schedule") > html.index("What this report is not")

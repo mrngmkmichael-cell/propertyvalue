@@ -4006,7 +4006,7 @@
                                 {% else %}<span class="ofsted-none">Not published</span>{% endif %}
                             </td>
                             {% if group_name != "Nursery" %}
-                            <td>
+                            <td{% if s.exam_results and s.exam_results.progress8_unpublished %} title="Progress 8 was not published for {{ s.exam_results.academic_year }}: those pupils sat no Key Stage 2 tests in 2020"{% endif %}>
                                 {% if s.exam_results and s.exam_results.headline_value is not none %}
                                     {{ s.exam_results.headline_label }}: {{ s.exam_results.headline_value }}{{ "%" if group_name == "Primary" else "" }}
                                     <span class="exam-year">({{ s.exam_results.academic_year }})</span>

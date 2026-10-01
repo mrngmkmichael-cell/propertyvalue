@@ -256,10 +256,13 @@ def test_homepage_promo_banner_copy_matches_the_real_offer(client):
     # "get a full Premium property report on us, normally £9.99/month"
     # until 17 Sep 2026; the band now states the site's one offer
     # sentence, whose "your first home" is this allowance of one.
+    # Since 1 Oct 2026 the band carries only its button; the hero dek
+    # above it states the offer.
     from app.main import OFFER_SENTENCE
     banner = body.split('<section class="promo-banner">', 1)[1].split("</section>", 1)[0]
-    assert OFFER_SENTENCE in banner
-    assert "normally" not in banner
+    assert 'href="/signup"' in banner and "normally" not in banner
+    dek = body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0]
+    assert OFFER_SENTENCE in " ".join(dek.split())
 
 
 def test_oauth_buttons_render_only_for_configured_providers(client, monkeypatch):

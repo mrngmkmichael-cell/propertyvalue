@@ -6563,6 +6563,7 @@ main:focus { outline: none; }
 .premium-home-form { margin: 0; }
 /* Reassurance, not the ask: the same quiet the wall's own aside uses. */
 .premium-home-aside { margin: 0.7rem 0 0; font-size: var(--text-xs); color: var(--ink-faint); }
+.premium-home-reach { margin: 0.5rem 0 0; font-size: var(--text-sm); color: var(--ink); max-width: 60ch; }
 .premium-home-aside a { color: var(--ink-soft); }
 
 /* ---- Signup ---- */

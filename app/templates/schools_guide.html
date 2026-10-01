@@ -73,7 +73,7 @@
         {% if only_fee %}
         <p class="section-sub">
             Fee-paying schools only: {{ area.rows | length }} of them near {{ area.label }}, each with its distance from here.
-            <a href="/schools/guide?q={{ area.label | urlencode }}">Show state schools as well</a>
+            <a href="/schools/guide?areas={{ area.self_areas_param | urlencode }}&amp;only=all">Show state schools as well</a>
         </p>
         {% endif %}
         {# 21 Sep 2026: the Ofsted headline and its rating chips describe
@@ -206,8 +206,8 @@
                             {% endif %}
                             <td class="num" data-value="{{ r.result_value if r.result_value is not none else -999 }}" data-label="Results">
                                 {% if r.result_value is not none %}
-                                    {{ r.result_value }}{{ '%' if r.result_label != 'Progress 8' }}
-                                    <span class="school-table-note">{{ 'P8' if r.result_label == 'Progress 8' else 'KS2' }}</span>
+                                    {{ r.result_value }}{{ '%' if r.result_label not in ('Progress 8', 'Attainment 8') }}
+                                    <span class="school-table-note">{{ {'Progress 8': 'P8', 'Attainment 8': 'A8'}.get(r.result_label, 'KS2') }}</span>
                                 {% else %}<span class="section-sub">no figure</span>{% endif %}
                             </td>
                         </tr>
@@ -215,12 +215,27 @@
                     </tbody>
                 </table>
             </div>
+            {% if not only_fee and area.fee_count %}
+            <p class="section-sub school-guide-fee-note">
+                {% if show_fee %}
+                The table includes {{ area.fee_count }} fee-paying school{{ 's' if area.fee_count != 1 }}.
+                <a href="/schools/guide?areas={{ area.self_areas_param | urlencode }}">State schools only</a>
+                {% else %}
+                {{ area.fee_count }} fee-paying school{{ 's are' if area.fee_count != 1 else ' is' }} left out of this table:
+                Ofsted grades few of them and none publishes an admission distance.
+                <a href="/schools/guide?areas={{ area.self_areas_param | urlencode }}&amp;only=all">Show them as well</a>
+                &middot; <a href="/schools/guide?areas={{ area.self_areas_param | urlencode }}&amp;only=fee">Fee-paying only</a>
+                {% endif %}
+            </p>
+            {% endif %}
             <p class="section-sub">
                 "Admitted from" is how far the last child offered a place lived, in the year shown, from the
                 council's own published figure. Where a council publishes none, "est." is a modelled estimate
                 and meaningfully less reliable. "No limit" means the council's own figure puts the furthest
-                offer beyond any commute, so distance did not decide who got in. Results are Progress 8 for
-                secondaries and the share meeting the expected standard for primaries. Nothing here is a
+                offer beyond any commute, so distance did not decide who got in. Results are the share meeting the expected
+                standard for primaries, and Attainment 8 (A8) for secondaries: the Department for Education
+                published no Progress 8 for 2024/25, because those pupils sat no Key Stage 2 tests in 2020.
+                A school whose newest year still has a Progress 8 shows it as P8. Nothing here is a
                 catchment boundary: most English schools have none, and the distance moves every year.
                 {% if area.verdict_postcode %}The reading for {{ area.verdict_postcode }} compares the
                 distance from that postcode with the figure beside it, the same three bands every school page

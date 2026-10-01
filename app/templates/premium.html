@@ -116,6 +116,9 @@
 {% set plan_button = {"quarterly": plan_prices.quarterly ~ " for three months", "monthly": plan_prices.monthly ~ " a month"} %}
 <div class="premium-home">
     <p class="premium-home-line"><strong>Open {{ home.label }} in full</strong></p>
+    {% if home_reach_sentence %}
+    <p class="premium-home-reach">{{ home_reach_sentence }}</p>
+    {% endif %}
     {# While the free full report is unspent it is the only offer (17 Sep
        2026, batch C review). The pay buttons went to every account
        without a subscription, so an account that had never used its

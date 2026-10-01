@@ -77,6 +77,13 @@
         <span class="score-tile-value">{{ "%+.2f"|format(school.ks4.progress8) }}</span>
         <span class="score-tile-label">Progress 8, {{ school.ks4.year }}</span>
     </div>
+    {% elif school.ks4 and school.ks4.attainment8 is not none %}
+    {# Progress 8 was not published for 2024/25 (1 Oct 2026), so a
+       secondary's tile fell through to nothing. #}
+    <div class="score-tile">
+        <span class="score-tile-value">{{ school.ks4.attainment8 }}</span>
+        <span class="score-tile-label">Attainment 8, {{ school.ks4.year }}</span>
+    </div>
     {% elif school.ks2 and school.ks2.rwm_expected_pct is not none %}
     <div class="score-tile">
         <span class="score-tile-value">{{ school.ks2.rwm_expected_pct }}%</span>

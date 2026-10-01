@@ -229,7 +229,7 @@
                                an absence. The trend table below already knew
                                this; the headline did not. #}
                             {% set _headline = s.exam_results.headline_value %}
-                            {% set _pct = "%" if s.exam_results.headline_label != "Progress 8" else "" %}
+                            {% set _pct = "" if s.exam_results.headline_label in ("Progress 8", "Attainment 8") else "%" %}
                             <span class="school-profile-label">Exam Results</span>
                             <span class="school-profile-preview">{{ (_headline ~ _pct) if _headline is not none else "Not published" }}</span>
                             <span class="school-profile-toggle">+</span>
@@ -242,13 +242,16 @@
                                 {% endif %}
                                 <tr><td>Academic year</td><td>{{ s.exam_results.academic_year }}</td></tr>
                             </table>
+                            {% if s.exam_results.progress8_unpublished %}
+                            <p class="section-sub">Progress 8 was not published for {{ s.exam_results.academic_year }}: those pupils sat no Key Stage 2 tests in 2020, so the Department for Education had no starting point to measure progress from. Attainment 8 is a pupil's average across eight GCSE subjects, with English and maths counted twice.</p>
+                            {% endif %}
                             {% if s.exam_trend and s.exam_trend | length > 1 %}
                             <p style="margin-top: 0.75rem;"><strong>{{ s.exam_results.headline_label }} by year</strong></p>
                             <table>
                                 {% for t in s.exam_trend %}
                                 <tr>
                                     <td>{{ t.academic_year }}</td>
-                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else "Not published" }}{{ "%" if s.exam_results.headline_label != "Progress 8" and t.headline_value is not none else "" }}</span></td>
+                                    <td><span class="{{ value_lock_class }}">{{ t.headline_value if t.headline_value is not none else "Not published" }}{{ "%" if s.exam_results.headline_label not in ("Progress 8", "Attainment 8") and t.headline_value is not none else "" }}</span></td>
                                 </tr>
                                 {% endfor %}
                             </table>
