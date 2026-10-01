@@ -313,11 +313,59 @@ def get_persistent(key, ttl_seconds: float):
     return value
 
 
+# Tier 2 had the leak tier 1 used to have, one layer down. A row was
+# written and never removed: an expired row was read, found stale, and
+# left in place, and a key nobody asks for twice (a postcode searched
+# once) was never looked at again at all. On 1 Oct 2026 the table held
+# 22,050 rows and 48 MB inside a 512 MB database that had reached 499 MB,
+# which is how a cache becomes an outage. So writes sweep occasionally.
+#
+# The sweep goes by age, not by each caller's TTL, because the row does
+# not record the TTL it was written under. Thirty days is four times the
+# longest page TTL (area guides, seven days), so nothing a page could
+# still use is in range. The two keys that are deliberately long-lived
+# are named here rather than inferred.
+PRUNE_AFTER_DAYS = 30
+PRUNE_EVERY_WRITES = 200
+PRUNE_BATCH = 5000
+NEVER_PRUNE = ("indexnow_submitted_hash", "watchlist_alert_runs")
+_writes_since_prune = 0
+
+
+def prune_persistent(older_than_days: float = PRUNE_AFTER_DAYS, limit: int = PRUNE_BATCH) -> int:
+    """Delete long-dead tier-2 rows. Returns how many went. Best effort:
+    a cache tidying itself must never take a page down."""
+    from app import db
+    if not db.is_configured():
+        return 0
+    try:
+        from sqlalchemy import delete, select
+
+        from app.models import PageCache
+        cutoff = (datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(days=older_than_days))
+        with db.get_session() as session:
+            doomed = session.execute(
+                select(PageCache.cache_key)
+                .where(PageCache.created_at < cutoff,
+                       PageCache.cache_key.notin_(NEVER_PRUNE))
+                .limit(limit)).scalars().all()
+            if not doomed:
+                return 0
+            session.execute(delete(PageCache).where(PageCache.cache_key.in_(doomed)))
+            session.commit()
+        logging.info("page cache: pruned %d rows older than %s days", len(doomed), older_than_days)
+        return len(doomed)
+    except Exception as exc:  # noqa: BLE001
+        logging.warning("page cache prune failed: %s", exc)
+        return 0
+
+
 def set_persistent(key, value) -> None:
     """Tier 1 always; tier 2 when the value is plain JSON. Anything that
     isn't (dataclasses, exceptions, datetimes) stays memory-only and is
     logged once, so the caller needn't care."""
-    global last_outcome
+    global last_outcome, _writes_since_prune
     set(key, value)
 
     from app import db
@@ -342,3 +390,9 @@ def set_persistent(key, value) -> None:
     except Exception as exc:  # noqa: BLE001
         logging.warning("page cache write failed for %s: %s", _db_key(key), exc)
         last_outcome = "db-write-error:" + type(exc).__name__
+        return
+
+    _writes_since_prune += 1
+    if _writes_since_prune >= PRUNE_EVERY_WRITES:
+        _writes_since_prune = 0
+        prune_persistent()
