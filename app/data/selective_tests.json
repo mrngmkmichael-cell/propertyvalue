@@ -1,0 +1,868 @@
+{
+ "about": "Which entrance test each selective area uses, what is in it, and the dates of the current round. One entry per selective area, each read from that council's, consortium's or school's own page, with the pages and the date they were read. Nothing here is inferred from another area: where a source does not name the test provider, the paper content, a registration window or a results date, the entry says so rather than guessing.",
+ "entry_year": 2027,
+ "areas_covered": 35,
+ "schools_covered": 163,
+ "national_dates": {
+  "secondary_applications_close": "2026-10-31",
+  "secondary_offer_day": "2027-03-01",
+  "primary_applications_close": "2027-01-15",
+  "primary_offer_day": "2027-04-16",
+  "source": "https://www.gov.uk/apply-for-secondary-school-place",
+  "read_on": "2026-10-01"
+ },
+ "areas": [
+  {
+   "council": "Barnet",
+   "test_name": "Each school sets its own test",
+   "provider": "",
+   "provider_note": "None of the three schools names an outside test provider.",
+   "papers": [
+    "Queen Elizabeth's School: multiple-choice maths and English",
+    "The Henrietta Barnett School: a first round of verbal reasoning, non-verbal reasoning and English, then a second round of English and mathematics",
+    "St Michael's Catholic Grammar School: tests by invitation"
+   ],
+   "format": "",
+   "registration_opened": "",
+   "registration_closed": "",
+   "registration_note": "Each school registers separately. Queen Elizabeth's wanted its test request form by noon on 8 July 2026, St Michael's by 4pm on 7 July 2026, and The Henrietta Barnett School has closed its 2027 entry registration.",
+   "test_dates": [
+    "2026-09-11, St Michael's Catholic Grammar School, by invitation",
+    "2026-09-16, Queen Elizabeth's School, on 16 or 17 September"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.qebarnet.co.uk/admissions-information/admissions/",
+    "https://www.hbschool.org.uk/admissions/",
+    "https://www.st-michaels.barnet.sch.uk/home/admissions/admissions-2027-28/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "There is no Barnet test: the borough's three selective schools each run their own, on their own dates, and a family applying to more than one sits more than one. Queen Elizabeth's gives 1 October 2026 as the provisional date for telling parents the result."
+  },
+  {
+   "council": "Bexley",
+   "test_name": "Bexley Selection Test",
+   "provider": "Quest Assessments",
+   "provider_note": "",
+   "papers": [
+    "Two booklets, between them verbal ability and English comprehension, numerical reasoning and non-verbal reasoning",
+    "Each paper about 50 minutes, and a session of two and a half to three hours with instructions and a break"
+   ],
+   "format": "Multiple choice.",
+   "registration_opened": "2026-03-01",
+   "registration_closed": "2026-03-31",
+   "test_dates": [
+    "2026-09-02, between 2 and 10 September for pupils at a Bexley primary school acting as a test centre",
+    "2026-09-07, between 7 and 10 September at grammar school test centres for everyone else"
+   ],
+   "results_date": "2026-10-02",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.bexley.gov.uk/services/schools-and-education/selection-tests/about-test",
+    "https://www.bexley.gov.uk/services/schools-and-education/selection-tests/register-secondary-selection-test"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Only children born between 1 September 2015 and 31 August 2016 could sit the 2026 test. The council says a registration after the deadline is not accepted and there is no appeal against that."
+  },
+  {
+   "council": "Birmingham",
+   "test_name": "West Midlands Grammar Schools entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two papers, each about 60 minutes including spoken instructions and practice questions",
+    "Divided into individually timed sections: English comprehension, verbal reasoning, mathematics, and non-verbal and spatial reasoning"
+   ],
+   "format": "Multiple choice on a separate answer sheet, with no writing sections. Section scores are standardised for age.",
+   "registration_opened": "",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09, the council says September 2026 without naming the day"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.birmingham.gov.uk/info/20119/school_admissions/584/grammar_schools_in_birmingham/3",
+    "https://www.birmingham.gov.uk/info/20119/school_admissions/584/grammar_schools_in_birmingham/4"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "One test for every grammar school in the West Midlands Grammar Schools group, and results are sent before 31 October. Only children born between 1 September 2015 and 31 August 2016 could sit it in 2026. A family applying to a grammar school in Shropshire, Walsall, Warwickshire or Wolverhampton has to tick the data-sharing box at registration, and the council warns that without it no place will be offered there even with a qualifying score."
+  },
+  {
+   "council": "Bournemouth, Christchurch and Poole",
+   "test_name": "BCP grammar schools consortium entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Mathematics, 50 minutes, on key stage 2 work",
+    "English, 45 minutes, comprehension with spelling, punctuation and grammar",
+    "Verbal reasoning, 50 minutes, with a practice element built in because it is meant to be sat without prior knowledge"
+   ],
+   "format": "",
+   "registration_opened": "2026-04-13",
+   "registration_closed": "2026-09-04",
+   "test_dates": [
+    "2026-09-26"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.poolegrammar.com/join-our-school/admissions/admissions-to-year-7/",
+   "sources": [
+    "https://www.poolegrammar.com/join-our-school/admissions/admissions-to-year-7/",
+    "https://www.parkstone.poole.sch.uk/information/admissions/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "One set of tests for Bournemouth School, Bournemouth School for Girls, Parkstone Grammar School and Poole Grammar School. A child who missed the September sitting can ask for a late test in February 2027, but candidates from the September test take priority. A qualifying score still has to be followed by naming the school on the local authority form by 31 October."
+  },
+  {
+   "council": "Bromley",
+   "test_name": "Each school sets its own test",
+   "provider": "",
+   "provider_note": "Neither school names an outside test provider.",
+   "papers": [
+    "St Olave's Grammar School: a Selective Entrance Test, then a second-stage test for those invited back"
+   ],
+   "format": "",
+   "registration_opened": "2026-06-08",
+   "registration_closed": "2026-06-29",
+   "registration_note": "St Olave's took its supplementary information form from 9am on 8 June to midday on 29 June 2026 and accepts nothing later. Newstead Wood School opens its form on 1 May each year and publishes the closing date nearer the time.",
+   "test_dates": [
+    "2026-09-18, St Olave's Grammar School stage one",
+    "2026-11-13, St Olave's Grammar School stage two, for those invited back"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.newsteadwood.co.uk/admissions",
+   "sources": [
+    "https://www.saintolaves.net/4205/key-dates-1",
+    "https://www.newsteadwood.co.uk/admissions"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Bromley's two selective schools test separately. St Olave's says the outcome of stage one comes in mid October, before half term, and holds both tests at the school. Newstead Wood tests at the end of September and confirms in the first full week of September which October window results will land in, so it publishes no results date in advance. Both schools require the school to be named on the local authority form by 31 October whatever the score. Newstead Wood offers free familiarisation material to pupil premium candidates."
+  },
+  {
+   "council": "Buckinghamshire",
+   "test_name": "Secondary Transfer Test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two papers, each about 60 minutes, with a break between",
+    "Between them they measure verbal, non-verbal and mathematical skills. The council does not say which paper covers which"
+   ],
+   "format": "The council does not describe the answer format of the Transfer Test itself. The shorter Practice Test papers taken beforehand are multiple choice.",
+   "registration_opened": "2026-05-01",
+   "registration_closed": "2026-06-02",
+   "test_dates": [
+    "2026-09-08, the Practice Test, for children at a state-funded Buckinghamshire primary or Partner School",
+    "2026-09-10, the Secondary Transfer Test"
+   ],
+   "results_date": "2026-10-09",
+   "familiarisation_url": "https://www.buckinghamshire.gov.uk/documents/36850/Secondary_Transfer_Test_-_Familiarisation_Booklet_RiwS4qP.pdf",
+   "sources": [
+    "https://www.buckinghamshire.gov.uk/schools-and-learning/schools-index/school-admissions/grammar-schools-and-transfer-testing-11/the-secondary-transfer-test/",
+    "https://www.buckinghamshire.gov.uk/schools-and-learning/schools-index/school-admissions/grammar-schools-and-transfer-testing-11/register-for-the-secondary-transfer-test/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "A standardised score of at least 121 is what the council calls qualified for a Buckinghamshire grammar school. The thirteen grammar schools run the test through a company of their own, The Buckinghamshire Grammar Schools."
+  },
+  {
+   "council": "Calderdale",
+   "test_name": "Halifax Grammar Schools admissions test",
+   "provider": "",
+   "provider_note": "The schools do not name an outside test provider.",
+   "papers": [
+    "Paper 1, mathematics and English",
+    "Paper 2, mathematics and English",
+    "Paper 3, creative writing, judged by a panel of staff from the two schools and only for candidates who already met the standard on papers 1 and 2"
+   ],
+   "format": "Papers 1 and 2 are marked, age weighted and standardised into a score. A child has to meet the standard in English, mathematics and creative writing to be considered.",
+   "registration_opened": "2026-03-20",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09-19"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://new.calderdale.gov.uk/schools-and-learning/schools/admissions/secondary-criteria/north-halifax-grammar"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "North Halifax Grammar School and The Crossley Heath School run one joint process and both tests are sat at the schools. The arrangements say children are not tested beyond the year 5 curriculum and are not tested on non-verbal reasoning, because it is not taught in school. Results go to parent accounts by mid October with a banding, and meeting the standard in all three papers still does not guarantee a place. A child may sit the test only once, with a supplementary sitting for a valid reason."
+  },
+  {
+   "council": "Devon",
+   "test_name": "Colyton Grammar School 11+ entrance test",
+   "provider": "",
+   "provider_note": "The school does not name the provider of its Year 7 test. Its separate in-year test is CEM Select Evaluate.",
+   "papers": [
+    "English",
+    "Mathematics",
+    "Extended writing"
+   ],
+   "format": "The school states that the test does not include verbal or non-verbal reasoning.",
+   "registration_opened": "2026-03-31",
+   "registration_closed": "2026-07-31",
+   "test_dates": [
+    "2026-09-12"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.colytongrammar.com/95/joining-our-school-3",
+   "sources": [
+    "https://www.colytongrammar.com/95/joining-our-school-3",
+    "https://admissions.colytongrammar.com/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Devon's one state grammar school runs its own test. The school says there are no commercially available practice papers for it and publishes a familiarisation guide instead. Children who have had free school meals at any point in the last six years can use a free online preparation programme from year 3, whether or not they apply to Colyton."
+  },
+  {
+   "council": "Enfield",
+   "test_name": "The Latymer School entrance test",
+   "provider": "",
+   "provider_note": "The school does not name an outside test provider.",
+   "papers": [
+    "Stage one: mathematics and verbal reasoning",
+    "Stage two: English, for those who rank high enough after stage one"
+   ],
+   "format": "",
+   "registration_opened": "2026-03-17",
+   "registration_closed": "2026-06-02",
+   "test_dates": [
+    "2026-09-03, assessment days on 3, 4 and 5 September"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.latymer.co.uk/north-london-grammar-school-admissions/year-7/faq",
+   "sources": [
+    "https://www.latymer.co.uk/2027admissionsyear7",
+    "https://www.latymer.co.uk/north-london-grammar-school-admissions/year-7/2026"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Enfield's one selective school runs its own two-stage test. Stage one gives a score for each paper and a rank, and the school invites the top 700 to stage two; re-standardised results including the English score go out before the end of October. The school admits only children living in a listed set of north and east London postcodes, with no preference between them."
+  },
+  {
+   "council": "Essex",
+   "test_name": "CSSE 11+ examination",
+   "provider": "",
+   "provider_note": "The Consortium of Selective Schools in Essex sets and administers the examination itself and names no outside test provider.",
+   "papers": [
+    "English, 60 minutes, with 10 minutes of reading time before it",
+    "Mathematics, 60 minutes"
+   ],
+   "format": "",
+   "registration_opened": "2026-05-12",
+   "registration_closed": "2026-06-19",
+   "test_dates": [
+    "2026-09-19, for every candidate",
+    "2026-09-29, a Tuesday sitting for religious observance, illness or exceptional circumstances only"
+   ],
+   "results_date": "2026-10-12",
+   "familiarisation_url": "https://csse.org.uk/?page_id=185",
+   "sources": [
+    "https://csse.org.uk/storage/2026/03/CSSE-Information-Guide-2027-Entry.pdf",
+    "https://www.csse.org.uk/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "One examination for ten schools across Essex and Southend. A family nominates a single CSSE school as the test centre. English and maths familiarisation papers are free to download. Since September 2024 the English paper no longer contains applied reasoning questions. Registering is not an application: the local authority form still has to be in by 31 October."
+  },
+  {
+   "council": "Gloucestershire",
+   "test_name": "Gloucestershire Grammar Schools' Entrance Test",
+   "provider": "",
+   "provider_note": "Neither the council nor the schools' published policies name an outside test provider.",
+   "papers": [
+    "Two papers of multiple-choice questions",
+    "Verbal ability, including comprehension, vocabulary and verbal reasoning, then numerical reasoning and non-verbal reasoning"
+   ],
+   "format": "Multiple choice. Each paper is age standardised and the two are combined into a total that ranks applicants, rather than being marked against a fixed pass mark.",
+   "registration_opened": "2026-05-18",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09-12"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.gloucestershire.gov.uk/schooladmissions/grammar-schools/",
+    "https://www.gloucestershire.gov.uk/schooladmissions/transfer-to-secondary-school-or-from-middle-to-high-school-september-2027/",
+    "https://www.gloucestershire.gov.uk/media/10efpvz3/sirtho-1.pdf"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The grammar schools run the test themselves, not the council, and the council says to take any question about it to the schools. Results go out before 31 October. Every school a family opted to share the score with writes separately to say whether the score qualifies, and a qualifying score is not an offer: the school still has to be named on the application form. The qualifying standard is set about a week before results, against that year's cohort."
+  },
+  {
+   "council": "Kent",
+   "test_name": "Kent Test",
+   "provider": "",
+   "provider_note": "Kent does not name a test provider on its own pages.",
+   "papers": [
+    "English and maths, one hour, each section a five minute practice then a 25 minute test",
+    "Verbal and non-verbal reasoning, about one hour",
+    "A writing exercise of 40 minutes, not marked, but a headteacher panel may use it"
+   ],
+   "format": "Multiple choice on a separate answer sheet, marked by computer.",
+   "registration_opened": "2026-06-01",
+   "registration_closed": "2026-07-01",
+   "test_dates": [
+    "2026-09-10, for pupils at a Kent primary school",
+    "2026-09-12, the weekend of 12 and 13 September, for everyone else"
+   ],
+   "results_date": "2026-10-15",
+   "familiarisation_url": "https://www.kent.gov.uk/education-and-children/schools/school-places/kent-test/prepare-for-the-kent-test",
+   "sources": [
+    "https://www.kent.gov.uk/education-and-children/schools/school-places/kent-test/register-for-the-kent-test"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The Kent Test is only valid for Kent grammar schools. Medway and Bexley run their own tests. Kent says its grammar schools provide for about the top 25% of the ability range."
+  },
+  {
+   "council": "Kingston upon Thames",
+   "test_name": "Each school sets its own test",
+   "provider": "",
+   "provider_note": "Neither school names an outside test provider.",
+   "papers": [
+    "The Tiffin Girls' School: a stage one test, then a stage two test for those invited"
+   ],
+   "format": "",
+   "registration_opened": "",
+   "registration_closed": "2026-09-01",
+   "registration_note": "The Tiffin Girls' School closed stage one registration at noon on 1 September 2026 and accepts no late registrations. Tiffin School publishes its own timetable, which we could not read on the day this was compiled.",
+   "test_dates": [
+    "2026-10-01, The Tiffin Girls' School stage one, held over 1 and 2 October",
+    "2026-11-07, The Tiffin Girls' School stage two, for those invited"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.tiffingirls.org/admissions/year-7/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Kingston's two selective schools, Tiffin School and The Tiffin Girls' School, run separate tests, so there is no single Kingston date. The Tiffin Girls' School tells parents on or around 14 October whether their daughter is invited to stage two, and emails stage two results on 2 March 2027 to those on the waiting list. Priority goes to an Inner Area and a Designated Area of 44 postal districts, and since 2014 every place has gone to a child living inside the Designated Area."
+  },
+  {
+   "council": "Kirklees",
+   "test_name": "Heckmondwike Grammar School entrance exam",
+   "provider": "Future Stories Community Enterprise",
+   "provider_note": "",
+   "papers": [
+    "Papers testing a range of reasoning skills in a variety of contexts. The school does not break them down further"
+   ],
+   "format": "Each paper is standardised and age weighted, then combined into one total standardised age score.",
+   "registration_opened": "2026-05-11",
+   "registration_closed": "2026-06-22",
+   "test_dates": [
+    "2026-09-14"
+   ],
+   "results_date": "2026-10-17",
+   "familiarisation_url": "https://www.heckgrammar.co.uk/admissions/entrance-exam/",
+   "sources": [
+    "https://www.heckgrammar.co.uk/admissions/entrance-exam/",
+    "https://www.heckgrammar.co.uk/admissions/admissions-calendar/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The school took the Future Stories Community Enterprise exam to make grammar school testing less dependent on primary school and background. The outcome reaches parents in mid October, with results online on 17 October as a target date, before the application deadline. The school offers 210 places and says that in recent years more children have reached the standard than there are places, so meeting it is not an offer."
+  },
+  {
+   "council": "Lancashire",
+   "test_name": "Each school sets its own test, on a shared date",
+   "provider": "GL Assessment",
+   "provider_note": "Lancaster Royal Grammar School points families to GL Assessment's own free sample materials and warns against buying papers from anyone else.",
+   "papers": [
+    "Lancaster Royal Grammar School: three tests, verbal reasoning, mathematics and English, with no non-verbal reasoning"
+   ],
+   "format": "",
+   "registration_opened": "",
+   "registration_closed": "2026-09-07",
+   "registration_note": "Each school takes its own form on its own deadline: Lancaster Royal Grammar School by 7 September 2026, Lancaster Girls' Grammar School by noon on 9 September, Bacup and Rawtenstall Grammar School by noon on 14 September.",
+   "test_dates": [
+    "2026-09-26, the date all four schools use"
+   ],
+   "results_date": "2026-10-06",
+   "familiarisation_url": "https://www.lrgs.org.uk/join-the-school/admissions",
+   "sources": [
+    "https://www.lrgs.org.uk/join-the-school/admissions",
+    "https://www.brgs.org.uk/information/admission-to-academy/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Lancashire's grammar schools all test on the same Saturday but register separately, so a family applying to more than one fills in more than one form. Lancaster Royal says results reach parents by 6 October, and gives priority to boys living inside the administrative city of Lancaster who reach the standard, after looked-after children and those eligible for the pupil premium. Two forms are needed in every case: the school's and the local authority's."
+  },
+  {
+   "council": "Lincolnshire",
+   "test_name": "Lincolnshire Consortium of Grammar Schools 11+",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Verbal Reasoning, preceded by a separate preliminary practice test",
+    "Non-Verbal Reasoning and Spatial Awareness"
+   ],
+   "format": "Answers are shaded on an optical mark reading sheet.",
+   "registration_opened": "2026-01-07",
+   "registration_closed": "2026-03-31",
+   "test_dates": [
+    "2026-09-11, Friday 11 or Saturday 12 September, Verbal Reasoning",
+    "2026-09-18, Friday 18 or Saturday 19 September, Non-Verbal Reasoning and Spatial Awareness"
+   ],
+   "results_date": "2026-10-09",
+   "familiarisation_url": "https://grammarschools.lincs.sch.uk/the-11-plus/how-to-prepare-your-children/",
+   "sources": [
+    "https://grammarschools.lincs.sch.uk/the-11-plus/11-key-dates-2026/",
+    "https://grammarschools.lincs.sch.uk/the-11-plus/testing-arrangements/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Registration forms go back to the individual grammar school, not to the council. Children sit the tests either in their own primary school or at the grammar school they registered with, by area. The consortium says no special preparation is needed and that it does not endorse tutoring."
+  },
+  {
+   "council": "Liverpool",
+   "test_name": "The Blue Coat School entrance test",
+   "provider": "",
+   "provider_note": "The school does not name an outside test provider.",
+   "papers": [
+    "Phase 1: reading, spelling, general mathematics, mental arithmetic and developed ability",
+    "Phase 2: for about 400 candidates carried forward from phase 1"
+   ],
+   "format": "",
+   "registration_opened": "2026-03-26",
+   "registration_closed": "2026-04-24",
+   "test_dates": [
+    "2026-07-02, phase 1, over 2, 3 and 4 July",
+    "2026-09-19, phase 2, for those who go through"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.bluecoatschoolliverpool.org.uk/page/?title=Year+7&pid=58",
+   "sources": [
+    "https://www.bluecoatschoolliverpool.org.uk/page/?title=Year+7&pid=58",
+    "https://www.bluecoatschoolliverpool.org.uk/attachments/download.asp?file=137&type=pdf"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Liverpool's one state grammar school runs a two-phase test that starts in the July before entry, which is earlier than most of the country, and closes registration in April. About 400 candidates go from phase 1 to phase 2. Results are published on 16 October, before the application deadline, so that families can decide what to name on the form."
+  },
+  {
+   "council": "Medway",
+   "test_name": "Medway Test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "English, 30 minutes: comprehension, punctuation and grammar, with no separate timed sections",
+    "Mathematics, 50 minutes",
+    "Reasoning, 45 minutes: four timed sections of spatial and non-verbal reasoning and one of verbal reasoning"
+   ],
+   "format": "",
+   "registration_opened": "2026-05-18",
+   "registration_closed": "2026-06-12",
+   "test_dates": [
+    "2026-09-15, 15 and 16 September for children at a Medway primary or junior school",
+    "2026-09-19, 19 or 20 September for children from schools outside Medway"
+   ],
+   "results_date": "2026-10-14",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.medway.gov.uk/info/200137/schools_and_learning/1049/medway_test_11",
+    "https://www.medway.gov.uk/info/200137/schools_and_learning/1049/medway_test_11/4"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The council does not say whether answers are multiple choice. It warns that test materials sold anywhere other than the GL Assessment website are not official. The result gives a total score, a score for each paper, and whether the child is assessed as suitable for a grammar school."
+  },
+  {
+   "council": "North Yorkshire",
+   "test_name": "Ripon Grammar School entrance test, and separate tests at the other two schools",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Paper one, verbal skills: verbal reasoning with English comprehension, spelling and grammar",
+    "Paper two, non-verbal reasoning with key stage 2 mathematics"
+   ],
+   "format": "All questions are multiple choice.",
+   "registration_opened": "2026-04-30",
+   "registration_closed": "2026-06-30",
+   "test_dates": [
+    "2026-09-12, at Ripon Grammar School"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.northyorks.gov.uk/education-and-learning/school-admissions/selective-schools",
+   "sources": [
+    "https://www.northyorks.gov.uk/education-and-learning/school-admissions/selective-schools",
+    "https://www.ripongrammar.co.uk/admissions/main-school-admissions/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The council organises the test for Ripon Grammar School only. Ermysted's Grammar School and Skipton Girls' High School arrange their own, on their own timescales, and the council says to contact them directly. Results are issued no later than 16 October. Registering and sitting the test is not an application for a place. A child may sit it only once in a school year."
+  },
+  {
+   "council": "Plymouth",
+   "test_name": "Plymouth 11 Plus",
+   "provider": "Quest Assessments",
+   "provider_note": "",
+   "papers": [
+    "English, 40 minutes and 60 questions, split into two sections, with no writing",
+    "Mathematics, 40 minutes and 60 questions, split into two sections",
+    "Devonport High School for Boys adds an English writing paper of its own"
+   ],
+   "format": "The two Quest papers are multiple choice. At the boys' school the average of the two gives the rank, and the writing paper is marked alongside.",
+   "registration_opened": "",
+   "registration_closed": "2026-08-31",
+   "test_dates": [
+    "2026-09-12, Quest English",
+    "2026-09-19, Quest Mathematics"
+   ],
+   "results_date": "2026-10-15",
+   "familiarisation_url": "https://phsg.org/page/?pid=418&title=The+11+Plus+Examination+Process",
+   "sources": [
+    "https://www.dhsg.co.uk/page/?title=The+Application+Process&pid=122",
+    "https://phsg.org/page/?pid=418&title=The+11+Plus+Examination+Process",
+    "https://www.plymouth.gov.uk/11-plus"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Three grammar schools: Devonport High School for Boys, Devonport High School for Girls and Plymouth High School for Girls. The two girls' schools use the same papers on the same days, and a girl can sit the test at either and apply to either or both. The schools also run an optional practice sitting in July, with its results out by the middle of that month. Results for the girls' schools are emailed on 15 October."
+  },
+  {
+   "council": "Reading",
+   "test_name": "Each school sets its own test",
+   "provider": "GL Assessment",
+   "provider_note": "Kendrick School names GL Assessment as the marker and standardiser. Reading School does not name a provider.",
+   "papers": [
+    "Kendrick School: two tests of about an hour, with a short break, covering English, mathematics, non-verbal and verbal reasoning, and no creative writing",
+    "Reading School: the school publishes familiarisation guides rather than a list of papers, and says the content changes each year"
+   ],
+   "format": "Kendrick standardises raw scores for age and ranks candidates on the total.",
+   "registration_opened": "2026-03-27",
+   "registration_closed": "2026-07-01",
+   "registration_note": "Reading School registered from 27 March to midnight on 17 May 2026. Kendrick School opened on 1 May and closed at midnight on 1 July 2026. The two timetables are weeks apart, so a family applying to both has to watch both.",
+   "test_dates": [
+    "2026-07-16, Reading School, for day and boarding applicants, with 15 July for SEN applicants and 25 September for day applicants outside the catchment",
+    "2026-09-18, Kendrick School, in a morning or afternoon session the school allocates"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.reading-school.co.uk/admissions/year-7-entry",
+   "sources": [
+    "https://www.reading-school.co.uk/admissions/year-7-entry",
+    "https://www.kendrick.reading.sch.uk/_site/data/files/users/admissions/2027/170D3EDB314D36939E4997CE23158DBE.pdf"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Reading's two selective schools run separate tests on very different timetables: Reading School tests in July, months before most of the country, and Kendrick in September. Kendrick emails results before 31 October and lowers the qualifying score by 5 points for candidates in its Widening Horizons group, who also get free familiarisation material. Reading School reserves a tenth of its places for boys with both academic ability and sporting aptitude, assessed on a separate day."
+  },
+  {
+   "council": "Redbridge",
+   "test_name": "Redbridge 11 plus",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "English and verbal reasoning",
+    "Mathematics and non-verbal reasoning"
+   ],
+   "format": "",
+   "registration_opened": "2026-05-01",
+   "registration_closed": "2026-06-15",
+   "test_dates": [
+    "2026-09-18"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.redbridge.gov.uk/schools/school-admissions/redbridge-11-plus/",
+   "sources": [
+    "https://www.redbridge.gov.uk/schools/school-admissions/redbridge-11-plus/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "One test for Ilford County High School for Boys and Woodford County High School for Girls, and a child has to live inside the common catchment area the council maps by postcode. Results are emailed in the middle of October. The council warns that other grammar schools often test on the same day and that it will not offer a second date to a child who sat someone else's test instead. A photo ID form has to be brought on the day. No adjustment requests were considered after 15 June."
+  },
+  {
+   "council": "Slough",
+   "test_name": "Slough Consortium 11+ entrance examination",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two separate papers, each about 60 to 65 minutes",
+    "Between them they test verbal, numerical and non-verbal ability, with a range of answer formats"
+   ],
+   "format": "Answers go on a separate answer sheet, marked by computer. The question booklet is not marked, and answers cannot be copied across afterwards.",
+   "registration_opened": "2026-05-01",
+   "registration_closed": "2026-06-05",
+   "test_dates": [
+    "2026-09-19, for every candidate, at one of the four grammar schools"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.herschel.slough.sch.uk/year-7-admissions-2027/",
+   "sources": [
+    "https://s3-eu-west-1.amazonaws.com/sh22-herschel-slough-sch-uk/media/downloads/sloughconsortiumofgrammarschoolsguidetothe11test2027entry.pdf",
+    "https://www.herschel.slough.sch.uk/year-7-admissions-2027/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Herschel, Langley, St Bernard's Catholic and Upton Court share one examination, and a child sits it once however many of them the family applies to. Results are mid October and the consortium will not give a date, because the papers are marked externally. Registering is not an application: the common application form still has to be in by 31 October. Up to 25% extra time is available for a recognised special educational need, requested at registration."
+  },
+  {
+   "council": "Southend-on-Sea",
+   "test_name": "CSSE 11+ examination",
+   "provider": "",
+   "provider_note": "The Consortium of Selective Schools in Essex sets and administers the examination itself and names no outside test provider.",
+   "papers": [
+    "English, 60 minutes, with 10 minutes of reading time before it",
+    "Mathematics, 60 minutes"
+   ],
+   "format": "",
+   "registration_opened": "2026-05-12",
+   "registration_closed": "2026-06-19",
+   "test_dates": [
+    "2026-09-19, for every candidate",
+    "2026-09-29, a Tuesday sitting for religious observance, illness or exceptional circumstances only"
+   ],
+   "results_date": "2026-10-12",
+   "familiarisation_url": "https://csse.org.uk/?page_id=185",
+   "sources": [
+    "https://csse.org.uk/storage/2026/03/CSSE-Information-Guide-2027-Entry.pdf",
+    "https://www.csse.org.uk/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Southend's selective schools sit inside the same Essex consortium: Southend High School for Boys, Southend High School for Girls, Westcliff High School for Boys and Westcliff High School for Girls among them, so the test, the dates and the papers are the same as in Essex. The consortium notes that the Southend schools do not ask for a pupil premium form."
+  },
+  {
+   "council": "Stoke-on-Trent",
+   "test_name": "St Joseph's College entrance test",
+   "provider": "",
+   "provider_note": "The school does not name an outside test provider.",
+   "papers": [],
+   "format": "",
+   "registration_opened": "",
+   "registration_closed": "2026-09-28",
+   "registration_note": "The main round has closed. The school added a last entrance test on 7 October 2026 for entry in September 2027, with registration open until 4pm on 28 September 2026.",
+   "test_dates": [
+    "2026-09-15, over 15, 16 and 17 September",
+    "2026-10-07, an additional and final sitting"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.stjosephstrentvale.com/admissions/",
+   "sources": [
+    "https://www.stjosephstrentvale.com/admissions/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Stoke-on-Trent's one selective state school is St Joseph's College, which runs its own test and publishes example year 7 entry exam questions on its admissions page. The school is heavily oversubscribed and is trialling a small number of extra places in years 7 to 10 during 2026/27, with its published admission number unchanged at 150."
+  },
+  {
+   "council": "Sutton",
+   "test_name": "Selective Eligibility Test",
+   "provider": "",
+   "provider_note": "The schools do not name an outside test provider.",
+   "papers": [
+    "Maths, multiple choice, 40 to 50 minutes",
+    "English, multiple choice, 40 to 50 minutes, with a rest and toilet break between the two"
+   ],
+   "format": "Multiple choice on a separate answer sheet, filling in a lozenge for A to E. No verbal or non-verbal reasoning, and no negative marking. The content is broadly the key stage 2 curriculum.",
+   "registration_opened": "2026-05-01",
+   "registration_closed": "2026-07-31",
+   "test_dates": [
+    "2026-09-15, the Selective Eligibility Test, which every candidate sits",
+    "2026-09-26, stage 2 for Nonsuch High School for Girls and Wallington High School for Girls",
+    "2026-10-03, stage 2 for Wilson's School, Wallington County Grammar School and Sutton Grammar School",
+    "2026-10-10, an aptitude test for Wilson's School only"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://www.suttongrammar.sutton.sch.uk/admissions/faqs/",
+   "sources": [
+    "https://www.suttongrammar.sutton.sch.uk/admissions/selective-eligibility-test-examination/",
+    "https://www.suttongrammar.sutton.sch.uk/admissions/faqs/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Two stages. The Selective Eligibility Test is common to Greenshaw High School's selective band, Nonsuch High School for Girls, Sutton Grammar, Wallington County Grammar, Wallington High School for Girls and Wilson's School, and the schools then run their own second-stage papers. The schools publish no specimen papers, only sample questions, and say results come before the application deadline without naming a date. Access arrangements had to be requested by 12 June 2026."
+  },
+  {
+   "council": "Telford and Wrekin",
+   "test_name": "West Midlands Grammar Schools entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two papers, each normally about 50 minutes, with a short break between them",
+    "Questions come in booklets and answers go on separate answer sheets"
+   ],
+   "format": "Answers must be written on the separate answer sheet, not in the question booklet.",
+   "registration_opened": "2026-05-05",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09-14, for candidates sitting at Newport Girls' High School"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.nghs.org.uk/admissions/entrance-test",
+   "sources": [
+    "https://www.nghs.org.uk/admissions/entrance-test",
+    "https://www.adamsgs.uk/join-us-year-7/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Newport Girls' High School and Haberdashers' Adams administer the test as a smaller consortium with Shropshire, Walsall and Wolverhampton, inside the wider West Midlands Grammar Schools partnership, and register through the same portal. The test day here is 14 September, two days after the one Walsall and Warwickshire publish, so the day depends on the test centre. A reasonable adjustments form had to be in by 4pm on 12 June. Registering for the test is not an application: the local authority form is still needed."
+  },
+  {
+   "council": "Torbay",
+   "test_name": "A single test shared by Torbay's selective schools",
+   "provider": "",
+   "provider_note": "The council does not name a test provider.",
+   "papers": [],
+   "format": "",
+   "registration_opened": "",
+   "registration_closed": "2026-07-15",
+   "registration_note": "A registration form is downloaded from each school's own website and returned to the school by midday on 15 July 2026, or at the very latest by midday on 2 September 2026.",
+   "test_dates": [],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.torbay.gov.uk/schools-and-learning/admissions/secondary-applications/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Churston Ferrers Grammar School, The Spires College, Torquay Boys' Grammar School and Torquay Girls' Grammar School all use the same test and sit it at the same time, so a child takes it once. The council publishes the registration deadline but not the test date, the results date or what is in the papers, and points families to the schools for those."
+  },
+  {
+   "council": "Trafford",
+   "test_name": "Trafford Consortium entrance examination",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two tests, each about an hour",
+    "Between them they assess verbal, non-verbal and mathematics skills"
+   ],
+   "format": "",
+   "registration_opened": "2026-04-23",
+   "registration_closed": "2026-06-19",
+   "test_dates": [
+    "2026-09-14, for the five Trafford Consortium schools",
+    "2026-09-18, for Loreto Grammar School and St Ambrose College, which use a different test"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://www.trafford.gov.uk/schools-and-learning/starting-school-and-admissions/starting-secondary-school/entrance-test-grammar-schools",
+    "https://www.agsb.co.uk/page/?title=Entrance+Examination&pid=52"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Five of Trafford's seven grammar schools share one test: Altrincham Grammar School for Boys, Altrincham Grammar School for Girls, Sale Grammar, Stretford Grammar and Urmston Grammar. A child sits it once and can have the result sent to any of the five. Registration is with the schools, not the council, and the council does not publish a results date. A registration missed by the deadline means no test until after 1 March 2027."
+  },
+  {
+   "council": "Walsall",
+   "test_name": "West Midlands Grammar Schools entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two papers, each about 60 minutes including spoken instructions and practice questions",
+    "Four sections between them: English comprehension, verbal reasoning, mathematics, and non-verbal and spatial reasoning"
+   ],
+   "format": "Multiple choice on a separate answer sheet, with no writing sections.",
+   "registration_opened": "2026-05-05",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09-12"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://qmgs.walsall.sch.uk/September-2027-Entry/",
+    "https://westmidlandsgrammarschools.co.uk/"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The same test as Birmingham, Warwickshire, Wolverhampton and Shropshire, registered through one portal. Walsall's own grammar schools publish the dates: registration opened on 5 May and closed at 4pm on 26 June 2026, and a request for reasonable adjustments had to be in by 12 June. A late registration means no test until the waiting list round in March 2027."
+  },
+  {
+   "council": "Warwickshire",
+   "test_name": "West Midlands Grammar Schools entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two tests, each around 60 minutes including spoken instructions and practice items",
+    "Four sections between them: English, verbal reasoning, non-verbal reasoning and mathematics"
+   ],
+   "format": "Multiple choice. Raw scores are standardised and weighted into one total.",
+   "registration_opened": "2026-05-07",
+   "registration_closed": "2026-06-30",
+   "test_dates": [
+    "2026-09-12, 12 and 13 September"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.warwickshire.gov.uk/grammar-schools-11-test/11-test",
+   "sources": [
+    "https://www.warwickshire.gov.uk/grammar-schools-11-test/11-test",
+    "https://www.warwickshire.gov.uk/grammar-schools-11-test/register-11-test/1"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The same papers are used in Warwickshire, Birmingham, Walsall, Wolverhampton and Shropshire, and a result can be shared across all five if the box is ticked at registration. A score from any other authority's 11+ cannot be transferred. Eligibility is by date of birth alone: a child does not have to live in Warwickshire. Results appear on the council's parent portal."
+  },
+  {
+   "council": "Westmorland and Furness",
+   "test_name": "Queen Elizabeth Grammar School Penrith entrance test",
+   "provider": "Future Stories Community Enterprise",
+   "provider_note": "",
+   "papers": [],
+   "format": "",
+   "registration_opened": "2026-05-01",
+   "registration_closed": "2026-07-12",
+   "test_dates": [
+    "2026-09-17"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://qegspenrith.education/admissions/",
+   "sources": [
+    "https://qegspenrith.education/admissions/",
+    "https://qegspenrith.education/wp-content/uploads/2026/01/Admission-Policy-2027-2028.pdf"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The school uses the Future Stories Community Enterprise test and publishes its familiarisation guides for children and for parents alongside the format for 2026. Registering with the school does not replace the local authority preference form, which has to be completed as well or the application is not valid."
+  },
+  {
+   "council": "Wiltshire",
+   "test_name": "Each school sets its own test",
+   "provider": "",
+   "provider_note": "Neither school names an outside test provider.",
+   "papers": [],
+   "format": "",
+   "registration_opened": "2026-03-25",
+   "registration_closed": "2026-07-03",
+   "registration_note": "Bishop Wordsworth's School took applications from 25 March to 3 July 2026. South Wilts Grammar School publishes its own timetable.",
+   "test_dates": [
+    "2026-09-26, Bishop Wordsworth's School"
+   ],
+   "results_date": "2026-10-16",
+   "familiarisation_url": "https://www.bishopwordsworths.org.uk/admissions/widening-access/11-familiarisation-courses",
+   "sources": [
+    "https://www.bishopwordsworths.org.uk/admissions/year-7-admissions",
+    "https://www.bishopwordsworths.org.uk/assets/Uploads/11+-Entry-Information-Leaflet.pdf"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Wiltshire's two grammar schools are both in Salisbury, Bishop Wordsworth's for boys and South Wilts for girls, and each runs its own admissions timetable. Bishop Wordsworth's publishes an entry information leaflet and runs familiarisation courses as part of its widening access work. Its result letters are available on 16 October, before the local authority deadline at the end of the month."
+  },
+  {
+   "council": "Wirral",
+   "test_name": "Wirral 11+ Assessment",
+   "provider": "Quest Assessments",
+   "provider_note": "",
+   "papers": [
+    "Paper one, verbal reasoning, about 50 minutes",
+    "Paper two, mathematics and non-verbal reasoning, about 50 minutes, with a short break between the two"
+   ],
+   "format": "Both papers are sat in the same session.",
+   "registration_opened": "",
+   "registration_closed": "2026-06-01",
+   "test_dates": [
+    "2026-09-15, at a test venue the council names by the end of August"
+   ],
+   "results_date": "",
+   "familiarisation_url": "https://wirral.gov.uk/files/wirral-11-quest-candidate-information-pack.pdf/download?inline=",
+   "sources": [
+    "https://www.wirral.gov.uk/schools-and-learning/school-admissions/step-by-step/apply-secondary-school-place/assessment-grammar",
+    "https://wirral.gov.uk/files/wirral-11-quest-candidate-information-pack.pdf/download?inline="
+   ],
+   "read_on": "2026-10-01",
+   "notes": "The assessment is for the non-Catholic grammar schools. The council says registration closed at noon on 1 June 2026, while its own candidate pack gives 31 May, so check with the council before relying on either. Results are mid October, with no date given. There is no resit: a child who is unwell on the day is invited to another session instead. Children eligible for free school meals can ask for a free preparation account through the consortium's learning partner."
+  },
+  {
+   "council": "Wolverhampton",
+   "test_name": "West Midlands Grammar Schools entrance test",
+   "provider": "GL Assessment",
+   "provider_note": "",
+   "papers": [
+    "Two papers, each about 60 minutes including spoken instructions and practice questions",
+    "Four sections between them: English comprehension, verbal reasoning, mathematics, and non-verbal and spatial reasoning"
+   ],
+   "format": "Multiple choice on a separate answer sheet, with no writing sections.",
+   "registration_opened": "",
+   "registration_closed": "2026-06-26",
+   "test_dates": [
+    "2026-09-12, the shared West Midlands test day, which Walsall and Warwickshire both publish"
+   ],
+   "results_date": "",
+   "familiarisation_url": "",
+   "sources": [
+    "https://westmidlandsgrammarschools.co.uk/",
+    "https://www.wghs.org.uk/year7admissions"
+   ],
+   "read_on": "2026-10-01",
+   "notes": "Wolverhampton Girls' High School uses the shared West Midlands test and the same registration portal, which closed at 4pm on 26 June 2026. The school's own timeline page does not set out the dates in text, so the test day here is the shared one published by the other authorities in the group."
+  }
+ ]
+}
