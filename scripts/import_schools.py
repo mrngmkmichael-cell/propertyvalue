@@ -59,8 +59,8 @@ GIAS_URL = (
 )
 # Update this before re-running - Ofsted republishes at a new URL each month.
 OFSTED_URL = (
-    "https://assets.publishing.service.gov.uk/media/6a54efeba6586e258d371d9c/"
-    "Management_information_-_state-funded_schools_-_latest_inspections_as_at_30_June_2026.csv"
+    "https://assets.publishing.service.gov.uk/media/6aa0175392e72b8ac437ef37/"
+    "Management_information_-_state-funded_schools_-_latest_inspections_as_at_31_August_2026.csv"
 )
 
 RATING_LABELS = {1: "Outstanding", 2: "Good", 3: "Requires improvement", 4: "Inadequate"}

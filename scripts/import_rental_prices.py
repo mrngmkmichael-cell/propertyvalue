@@ -16,12 +16,15 @@ summary statistics in England" (last published Dec 2023) - that
 dataset doesn't exist anymore, PIPR is the only free source left with
 this granularity (local authority x bedroom count).
 
-The download URL is dated (changes every edition) - update
-XLSX_URL below to the current "full data download" link from the
-dataset page above if this script starts 404ing.
+The edition URL is dated and changes every month, so this reads ONS's
+own "current" link instead and falls back to the newest dated link on
+the dataset page. Pinning an edition is how the site came to be showing
+June's rents in October 2026, three editions behind, with nothing broken
+enough to notice (1 Oct 2026).
 """
 import io
 import os
+import re
 import sys
 
 import httpx
@@ -37,11 +40,30 @@ from app.db import Base, _get_engine  # noqa: E402
 from app.models import RentalPrice  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
-XLSX_URL = (
-    "https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/"
-    "priceindexofprivaterentsukmonthlypricestatistics/22july2026/"
-    "priceindexofprivaterentsukmonthlypricestatistics14.xlsx"
-)
+DATASET_PAGE = ("https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/"
+                "priceindexofprivaterentsukmonthlypricestatistics")
+XLSX_URL = ("https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/"
+            "priceindexofprivaterentsukmonthlypricestatistics/current/"
+            "priceindexofprivaterentsukmonthlypricestatistics.xlsx")
+
+
+def latest_url() -> str:
+    """ONS's "current" file, or the newest dated one the page lists if
+    that link ever moves."""
+    try:
+        head = httpx.head(XLSX_URL, timeout=60, follow_redirects=True,
+                          headers={"User-Agent": "Mozilla/5.0"})
+        if head.status_code == 200:
+            return XLSX_URL
+    except httpx.HTTPError:
+        pass
+    page = httpx.get(DATASET_PAGE, timeout=60, follow_redirects=True,
+                     headers={"User-Agent": "Mozilla/5.0"}).text
+    links = re.findall(r"""/file\?uri=[^"']+?\.xlsx""", page)
+    dated = [link for link in links if "/current/" not in link]
+    if not dated:
+        raise SystemExit("no spreadsheet link found on the ONS dataset page")
+    return "https://www.ons.gov.uk" + dated[0].replace("&amp;", "&")
 
 # Local-authority-level area code prefixes (England unitary/district/
 # metropolitan/London borough, and Wales) - excludes UK/country/region
@@ -58,8 +80,9 @@ def _num(value):
 
 
 def fetch_workbook() -> openpyxl.workbook.Workbook:
-    print(f"Downloading {XLSX_URL}")
-    resp = httpx.get(XLSX_URL, timeout=120, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
+    url = latest_url()
+    print(f"Downloading {url}")
+    resp = httpx.get(url, timeout=120, follow_redirects=True, headers={"User-Agent": "Mozilla/5.0"})
     resp.raise_for_status()
     return openpyxl.load_workbook(io.BytesIO(resp.content), read_only=True)
 
