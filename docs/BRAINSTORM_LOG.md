@@ -48,8 +48,16 @@ the local Claude session as things ship. Newest first.
   Account 98's shape.
   7. GET /internal/fetchers (secret-gated) returns the /admin "Who is
   fetching pages" families, overall and per page family, so the school
-  crawl can be named without a browser session. Read after deploy; any
-  robots rule follows what it says.
+  crawl can be named without a browser session. First hour after deploy
+  (1 Oct, about 20:30 to 21:30 BST): of 71 school-page fetches it saw,
+  45 presented as an ordinary browser, 9 Googlebot, the rest Baiduspider,
+  Applebot, PetalBot and GoogleOther; Amazonbot led on guides and area
+  pages. No robots rule was added: the largest share does not name
+  itself, so robots.txt would not reach it, and the named ones are
+  search engines the site wants. The endpoint counted 71 in an hour
+  while page_views recorded 286 to 418 school views an hour, so it sees
+  only part of the traffic (likely one worker of several, as its
+  counts live in process memory). Read it with that in mind.
   No dev server could be started from the session (the preview tool
   reads the main checkout's config); pages were rendered in-process with
   real data and screenshotted with Playwright at 1280 and 375 px.
