@@ -131,6 +131,69 @@
 </section>
 {% endif %}
 
+{# How often children here are out of school (1 Oct 2026). Two figures
+   that answer different questions: overall absence is days, persistent
+   absence is children. Both are the council's, never a school's, which
+   is the same limit the appeals block above carries.
+   school_absence.for_council in main.py. #}
+{% if absence %}
+<section class="report-section">
+    <h2>How often children here are out of school</h2>
+    <p class="section-sub">
+        {% set p = absence.primary %}
+        In {{ absence.council }}, {{ p.overall_pct }}% of primary school sessions were missed in
+        {{ absence.year }}, {{ p.overall_against_england }} the {{ p.england_overall_pct }}% across England.
+        That is days missed. The second figure is children: {{ p.persistent_pct }}% of primary pupils here
+        were persistently absent, meaning they missed {{ absence.persistent_threshold }},
+        {{ p.persistent_against_england }} England's {{ p.england_persistent_pct }}%.
+    </p>
+    {# data-stack: five columns do not fit a 375px screen, and the two
+       England columns were the half that fell off the edge, which is
+       exactly the half that makes the council's own figure mean
+       something. Below 600px each phase becomes one block with its four
+       labelled lines. #}
+    <div class="tablewrap">
+        <table class="tx-table" data-stack>
+            <thead>
+                <tr>
+                    <th>{{ absence.year }}</th>
+                    <th class="num">Sessions missed</th>
+                    <th class="num">England</th>
+                    <th class="num">Persistently absent</th>
+                    <th class="num">England</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in absence.phases %}
+                <tr>
+                    <td data-st="title">{{ row.phase }}</td>
+                    <td class="num" data-label="Sessions missed">{{ row.overall_pct }}%</td>
+                    <td class="num" data-label="England">{{ row.england_overall_pct }}%</td>
+                    <td class="num" data-label="Persistently absent">{{ row.persistent_pct }}%</td>
+                    <td class="num" data-label="England">{{ row.england_persistent_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub">
+        Persistently absent means missing {{ absence.persistent_threshold }}, for any reason, authorised or
+        not. A council's rate is moved by things no school controls, term-time holidays and a bad winter
+        among them, so read it as the weather around the schools rather than a mark against them. Higher or
+        lower is said only where the two rates differ by at least {{ absence.same_within_pp }} percentage
+        point{{ 's' if absence.same_within_pp != 1 }}.
+    </p>
+    <p class="section-sub">
+        These are {{ absence.council }}'s figures for all its schools together. The Department for Education
+        publishes absence by council, not school by school, so no one can give you the rate for one named
+        school from this release.
+        Source: {{ absence.source }},
+        <a href="{{ absence.source_url }}" target="_blank" rel="noopener">explore-education-statistics.service.gov.uk</a>.
+        Read on {{ absence.read_on | day_label(true) }}.
+    </p>
+</section>
+{% endif %}
+
 {% for phase, schools in council.by_phase %}
 <section class="report-section">
     <h2>{{ phase }} schools</h2>

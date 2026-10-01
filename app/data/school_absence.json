@@ -1,0 +1,3220 @@
+{
+ "about": "How often children are out of school, by council. Overall absence is the share of half-day sessions missed. Persistent absence is the share of pupils who missed a tenth or more of their sessions, and severe absence the share who missed half or more. The DfE publishes these by local authority and never by school.",
+ "source": "DfE pupil absence in schools in England",
+ "url": "https://explore-education-statistics.service.gov.uk/find-statistics/pupil-absence-in-schools-in-england",
+ "year": "2024/25",
+ "read_on": "2026-10-01",
+ "coverage": [
+  "England"
+ ],
+ "persistent_threshold": "a tenth or more of their sessions",
+ "severe_threshold": "half or more of their sessions",
+ "england": {
+  "secondary": {
+   "overall_pct": 8.4,
+   "unauthorised_pct": 3.2,
+   "persistent_pct": 23.4,
+   "severe_pct": 3.9
+  },
+  "all": {
+   "overall_pct": 6.8,
+   "unauthorised_pct": 2.3,
+   "persistent_pct": 18.1,
+   "severe_pct": 2.4
+  },
+  "primary": {
+   "overall_pct": 5.2,
+   "unauthorised_pct": 1.5,
+   "persistent_pct": 13.0,
+   "severe_pct": 0.9
+  }
+ },
+ "councils": {
+  "E09000023": {
+   "name": "Lewisham",
+   "secondary": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 19.5,
+    "severe_pct": 2.3
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 13.9,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 16.6,
+    "severe_pct": 1.5
+   }
+  },
+  "E09000030": {
+   "name": "Tower Hamlets",
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.3,
+    "severe_pct": 1.2
+   },
+   "secondary": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 18.0,
+    "severe_pct": 1.7
+   },
+   "primary": {
+    "overall_pct": 6.1,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 17.8,
+    "severe_pct": 0.7
+   }
+  },
+  "E09000032": {
+   "name": "Wandsworth",
+   "all": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 17.0,
+    "severe_pct": 1.5
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 13.6,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 20.1,
+    "severe_pct": 2.1
+   }
+  },
+  "E09000003": {
+   "name": "Barnet",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 11.6,
+    "severe_pct": 0.7
+   },
+   "secondary": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 19.0,
+    "severe_pct": 1.7
+   },
+   "all": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 15.6,
+    "severe_pct": 1.3
+   }
+  },
+  "E09000005": {
+   "name": "Brent",
+   "all": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.0,
+    "severe_pct": 1.2
+   },
+   "secondary": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.6,
+    "severe_pct": 1.7
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 13.4,
+    "severe_pct": 0.8
+   }
+  },
+  "E09000006": {
+   "name": "Bromley",
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 19.6,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.0,
+    "severe_pct": 0.7
+   },
+   "all": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 15.2,
+    "severe_pct": 1.6
+   }
+  },
+  "E09000008": {
+   "name": "Croydon",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.3,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 23.9,
+    "severe_pct": 2.9
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 18.7,
+    "severe_pct": 2.0
+   }
+  },
+  "E09000016": {
+   "name": "Havering",
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.1,
+    "severe_pct": 2.6
+   },
+   "all": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 15.2,
+    "severe_pct": 1.5
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 11.9,
+    "severe_pct": 0.7
+   }
+  },
+  "E09000018": {
+   "name": "Hounslow",
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 14.9,
+    "severe_pct": 0.7
+   },
+   "secondary": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.2,
+    "severe_pct": 2.0
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 17.8,
+    "severe_pct": 1.4
+   }
+  },
+  "E09000024": {
+   "name": "Merton",
+   "all": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 14.9,
+    "severe_pct": 1.3
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.5,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 18.3,
+    "severe_pct": 2.0
+   }
+  },
+  "E09000025": {
+   "name": "Newham",
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 20.6,
+    "severe_pct": 2.5
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 19.6,
+    "severe_pct": 2.2
+   },
+   "primary": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 18.3,
+    "severe_pct": 1.8
+   }
+  },
+  "E09000027": {
+   "name": "Richmond upon Thames",
+   "primary": {
+    "overall_pct": 4.3,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 8.6,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 12.4,
+    "severe_pct": 1.4
+   },
+   "secondary": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 16.9,
+    "severe_pct": 2.5
+   }
+  },
+  "E08000019": {
+   "name": "Sheffield",
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 15.4,
+    "severe_pct": 1.4
+   },
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 21.3,
+    "severe_pct": 3.7
+   },
+   "secondary": {
+    "overall_pct": 9.5,
+    "unauthorised_pct": 5.3,
+    "persistent_pct": 27.1,
+    "severe_pct": 5.8
+   }
+  },
+  "E08000032": {
+   "name": "Bradford",
+   "secondary": {
+    "overall_pct": 10.9,
+    "unauthorised_pct": 5.7,
+    "persistent_pct": 31.0,
+    "severe_pct": 6.1
+   },
+   "all": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 23.1,
+    "severe_pct": 3.4
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 16.2,
+    "severe_pct": 1.1
+   }
+  },
+  "E08000034": {
+   "name": "Kirklees",
+   "secondary": {
+    "overall_pct": 8.0,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 21.8,
+    "severe_pct": 3.6
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 17.6,
+    "severe_pct": 2.2
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 13.6,
+    "severe_pct": 0.9
+   }
+  },
+  "E08000035": {
+   "name": "Leeds",
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 4.6,
+    "persistent_pct": 23.8,
+    "severe_pct": 5.0
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 19.0,
+    "severe_pct": 2.9
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 14.3,
+    "severe_pct": 1.0
+   }
+  },
+  "E06000012": {
+   "name": "North East Lincolnshire",
+   "secondary": {
+    "overall_pct": 9.9,
+    "unauthorised_pct": 4.8,
+    "persistent_pct": 28.6,
+    "severe_pct": 5.2
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 12.7,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 19.8,
+    "severe_pct": 2.8
+   }
+  },
+  "E08000009": {
+   "name": "Trafford",
+   "primary": {
+    "overall_pct": 4.2,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 9.2,
+    "severe_pct": 0.4
+   },
+   "all": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.6,
+    "severe_pct": 1.3
+   },
+   "secondary": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 15.5,
+    "severe_pct": 2.2
+   }
+  },
+  "E06000006": {
+   "name": "Halton",
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 14.7,
+    "severe_pct": 0.5
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 21.7,
+    "severe_pct": 2.6
+   },
+   "secondary": {
+    "overall_pct": 9.8,
+    "unauthorised_pct": 5.2,
+    "persistent_pct": 28.5,
+    "severe_pct": 4.6
+   }
+  },
+  "E10000017": {
+   "name": "Lancashire",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.4,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 17.6,
+    "severe_pct": 2.3
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 23.3,
+    "severe_pct": 3.9
+   }
+  },
+  "E06000008": {
+   "name": "Blackburn with Darwen",
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.1,
+    "severe_pct": 2.2
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 24.5,
+    "severe_pct": 3.4
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.0,
+    "severe_pct": 1.0
+   }
+  },
+  "E06000049": {
+   "name": "Cheshire East",
+   "all": {
+    "overall_pct": 6.1,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 14.8,
+    "severe_pct": 2.0
+   },
+   "primary": {
+    "overall_pct": 4.5,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 9.5,
+    "severe_pct": 0.7
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 20.4,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000013": {
+   "name": "North Lincolnshire",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 12.0,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 3.8,
+    "persistent_pct": 24.0,
+    "severe_pct": 4.5
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 18.0,
+    "severe_pct": 2.6
+   }
+  },
+  "E06000065": {
+   "name": "North Yorkshire",
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 10.5,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 24.2,
+    "severe_pct": 4.4
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.3,
+    "severe_pct": 2.7
+   }
+  },
+  "E06000014": {
+   "name": "York",
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 17.5,
+    "severe_pct": 3.3
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 11.7,
+    "severe_pct": 1.2
+   },
+   "secondary": {
+    "overall_pct": 9.5,
+    "unauthorised_pct": 4.0,
+    "persistent_pct": 23.9,
+    "severe_pct": 5.6
+   }
+  },
+  "E10000007": {
+   "name": "Derbyshire",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 21.7,
+    "severe_pct": 4.3
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 15.8,
+    "severe_pct": 2.4
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 10.5,
+    "severe_pct": 0.8
+   }
+  },
+  "E08000037": {
+   "name": "Gateshead",
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 10.6,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 9.3,
+    "unauthorised_pct": 4.7,
+    "persistent_pct": 24.1,
+    "severe_pct": 5.3
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 17.1,
+    "severe_pct": 2.8
+   }
+  },
+  "E08000021": {
+   "name": "Newcastle upon Tyne",
+   "all": {
+    "overall_pct": 7.7,
+    "unauthorised_pct": 4.0,
+    "persistent_pct": 20.5,
+    "severe_pct": 3.1
+   },
+   "secondary": {
+    "overall_pct": 9.8,
+    "unauthorised_pct": 5.9,
+    "persistent_pct": 26.2,
+    "severe_pct": 5.1
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 14.4,
+    "severe_pct": 0.8
+   }
+  },
+  "E06000003": {
+   "name": "Redcar and Cleveland",
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 19.5,
+    "severe_pct": 2.9
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 13.3,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 4.6,
+    "persistent_pct": 25.3,
+    "severe_pct": 4.8
+   }
+  },
+  "E06000005": {
+   "name": "Darlington",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 25.6,
+    "severe_pct": 3.7
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 20.1,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.8,
+    "severe_pct": 1.8
+   }
+  },
+  "E06000057": {
+   "name": "Northumberland",
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 17.8,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 10.8,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 8.6,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 22.4,
+    "severe_pct": 3.9
+   }
+  },
+  "E08000013": {
+   "name": "St. Helens",
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 18.5,
+    "severe_pct": 2.8
+   },
+   "secondary": {
+    "overall_pct": 9.3,
+    "unauthorised_pct": 4.7,
+    "persistent_pct": 24.7,
+    "severe_pct": 5.1
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 12.7,
+    "severe_pct": 0.8
+   }
+  },
+  "E10000030": {
+   "name": "Surrey",
+   "all": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.1,
+    "severe_pct": 2.1
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 10.8,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 19.4,
+    "severe_pct": 3.2
+   }
+  },
+  "E06000024": {
+   "name": "North Somerset",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.4,
+    "severe_pct": 0.7
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.9,
+    "severe_pct": 2.7
+   },
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 24.8,
+    "severe_pct": 4.7
+   }
+  },
+  "E06000025": {
+   "name": "South Gloucestershire",
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.3,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 11.9,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 9.0,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 24.0,
+    "severe_pct": 4.8
+   }
+  },
+  "E06000059": {
+   "name": "Dorset",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 12.8,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 9.1,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 24.6,
+    "severe_pct": 4.8
+   },
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.5,
+    "severe_pct": 3.1
+   }
+  },
+  "E06000030": {
+   "name": "Swindon",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.9,
+    "severe_pct": 4.4
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 10.9,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.2,
+    "severe_pct": 2.5
+   }
+  },
+  "E10000008": {
+   "name": "Devon",
+   "secondary": {
+    "overall_pct": 9.9,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 27.0,
+    "severe_pct": 5.9
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 11.0,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 7.2,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.4,
+    "severe_pct": 3.2
+   }
+  },
+  "E06000027": {
+   "name": "Torbay",
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 19.1,
+    "severe_pct": 3.3
+   },
+   "secondary": {
+    "overall_pct": 9.0,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.3,
+    "severe_pct": 5.1
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 13.5,
+    "severe_pct": 1.2
+   }
+  },
+  "E06000066": {
+   "name": "Somerset",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.8,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 9.4,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 24.9,
+    "severe_pct": 4.8
+   },
+   "all": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 18.9,
+    "severe_pct": 3.1
+   }
+  },
+  "E09000026": {
+   "name": "Redbridge",
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 15.6,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 19.2,
+    "severe_pct": 1.5
+   },
+   "all": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 17.7,
+    "severe_pct": 1.2
+   }
+  },
+  "E09000031": {
+   "name": "Waltham Forest",
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 13.4,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 18.5,
+    "severe_pct": 1.5
+   },
+   "secondary": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 23.7,
+    "severe_pct": 2.2
+   }
+  },
+  "E06000042": {
+   "name": "Milton Keynes",
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.8,
+    "severe_pct": 1.1
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.7,
+    "severe_pct": 2.5
+   },
+   "secondary": {
+    "overall_pct": 8.6,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.6,
+    "severe_pct": 4.0
+   }
+  },
+  "E06000043": {
+   "name": "Brighton and Hove",
+   "secondary": {
+    "overall_pct": 10.8,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 29.4,
+    "severe_pct": 5.6
+   },
+   "all": {
+    "overall_pct": 8.0,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 21.2,
+    "severe_pct": 3.2
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 14.2,
+    "severe_pct": 1.3
+   }
+  },
+  "E06000036": {
+   "name": "Bracknell Forest",
+   "primary": {
+    "overall_pct": 4.5,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 8.8,
+    "severe_pct": 0.4
+   },
+   "all": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 14.1,
+    "severe_pct": 1.8
+   },
+   "secondary": {
+    "overall_pct": 7.7,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 19.8,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000041": {
+   "name": "Wokingham",
+   "primary": {
+    "overall_pct": 4.6,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 9.5,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 14.3,
+    "severe_pct": 1.5
+   },
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 19.3,
+    "severe_pct": 2.4
+   }
+  },
+  "E10000016": {
+   "name": "Kent",
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.6,
+    "severe_pct": 1.1
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 19.4,
+    "severe_pct": 2.4
+   },
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.9,
+    "severe_pct": 3.6
+   }
+  },
+  "E09000009": {
+   "name": "Ealing",
+   "secondary": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 22.8,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 14.1,
+    "severe_pct": 1.1
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 18.2,
+    "severe_pct": 1.8
+   }
+  },
+  "E09000010": {
+   "name": "Enfield",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 14.4,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.0,
+    "severe_pct": 1.7
+   },
+   "secondary": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 23.2,
+    "severe_pct": 2.3
+   }
+  },
+  "E09000015": {
+   "name": "Harrow",
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 21.3,
+    "severe_pct": 1.9
+   },
+   "all": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 16.0,
+    "severe_pct": 1.3
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 11.4,
+    "severe_pct": 0.8
+   }
+  },
+  "E09000021": {
+   "name": "Kingston upon Thames",
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 11.1,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.3,
+    "severe_pct": 2.1
+   },
+   "all": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.0,
+    "severe_pct": 1.5
+   }
+  },
+  "E10000034": {
+   "name": "Worcestershire",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 23.0,
+    "severe_pct": 4.0
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.4,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 18.2,
+    "severe_pct": 2.5
+   }
+  },
+  "E06000051": {
+   "name": "Shropshire",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 11.5,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 17.5,
+    "severe_pct": 2.1
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 23.7,
+    "severe_pct": 3.4
+   }
+  },
+  "E10000031": {
+   "name": "Warwickshire",
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.8,
+    "severe_pct": 5.0
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 12.5,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.0,
+    "severe_pct": 2.9
+   }
+  },
+  "E06000032": {
+   "name": "Luton",
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 21.7,
+    "severe_pct": 1.9
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 13.7,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 17.7,
+    "severe_pct": 1.5
+   }
+  },
+  "E06000056": {
+   "name": "Central Bedfordshire",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.3,
+    "severe_pct": 1.2
+   },
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 20.0,
+    "severe_pct": 2.8
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 16.3,
+    "severe_pct": 2.2
+   }
+  },
+  "E10000012": {
+   "name": "Essex",
+   "secondary": {
+    "overall_pct": 8.7,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 23.6,
+    "severe_pct": 4.3
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 18.1,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 13.1,
+    "severe_pct": 1.0
+   }
+  },
+  "E06000034": {
+   "name": "Thurrock",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 13.1,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 20.8,
+    "severe_pct": 3.2
+   },
+   "all": {
+    "overall_pct": 6.1,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 16.6,
+    "severe_pct": 2.0
+   }
+  },
+  "E10000019": {
+   "name": "Lincolnshire",
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 18.3,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 12.3,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 24.1,
+    "severe_pct": 3.7
+   }
+  },
+  "E06000061": {
+   "name": "North Northamptonshire",
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 17.8,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.3,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 8.6,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 23.5,
+    "severe_pct": 4.3
+   }
+  },
+  "E06000016": {
+   "name": "Leicester",
+   "secondary": {
+    "overall_pct": 8.0,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 22.6,
+    "severe_pct": 3.6
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 19.4,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 15.9,
+    "severe_pct": 1.3
+   }
+  },
+  "E06000017": {
+   "name": "Rutland",
+   "all": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 14.2,
+    "severe_pct": 2.6
+   },
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 18.2,
+    "severe_pct": 3.5
+   },
+   "primary": {
+    "overall_pct": 4.2,
+    "unauthorised_pct": 0.6,
+    "persistent_pct": 9.1,
+    "severe_pct": 1.5
+   }
+  },
+  "E10000024": {
+   "name": "Nottinghamshire",
+   "secondary": {
+    "overall_pct": 8.3,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 22.5,
+    "severe_pct": 3.9
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 11.4,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 16.6,
+    "severe_pct": 2.3
+   }
+  },
+  "E06000018": {
+   "name": "Nottingham",
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 20.6,
+    "severe_pct": 2.8
+   },
+   "secondary": {
+    "overall_pct": 8.9,
+    "unauthorised_pct": 4.8,
+    "persistent_pct": 25.4,
+    "severe_pct": 4.5
+   },
+   "primary": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 16.3,
+    "severe_pct": 1.2
+   }
+  },
+  "E08000003": {
+   "name": "Manchester",
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 18.8,
+    "severe_pct": 2.5
+   },
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 4.3,
+    "persistent_pct": 21.6,
+    "severe_pct": 3.8
+   },
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 15.4,
+    "severe_pct": 1.2
+   }
+  },
+  "E08000005": {
+   "name": "Rochdale",
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 20.0,
+    "severe_pct": 2.4
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 14.5,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 9.0,
+    "unauthorised_pct": 4.8,
+    "persistent_pct": 26.2,
+    "severe_pct": 4.0
+   }
+  },
+  "E08000008": {
+   "name": "Tameside",
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 12.1,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 18.4,
+    "severe_pct": 2.7
+   },
+   "secondary": {
+    "overall_pct": 9.1,
+    "unauthorised_pct": 5.1,
+    "persistent_pct": 25.0,
+    "severe_pct": 5.1
+   }
+  },
+  "E06000009": {
+   "name": "Blackpool",
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 3.9,
+    "persistent_pct": 22.0,
+    "severe_pct": 3.0
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 15.5,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 5.7,
+    "persistent_pct": 29.6,
+    "severe_pct": 5.5
+   }
+  },
+  "E08000014": {
+   "name": "Sefton",
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 13.5,
+    "severe_pct": 0.7
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 21.0,
+    "severe_pct": 3.0
+   },
+   "secondary": {
+    "overall_pct": 10.1,
+    "unauthorised_pct": 4.7,
+    "persistent_pct": 28.7,
+    "severe_pct": 5.2
+   }
+  },
+  "E08000002": {
+   "name": "Bury",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.3,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 18.7,
+    "severe_pct": 2.5
+   },
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 25.2,
+    "severe_pct": 3.9
+   }
+  },
+  "E08000029": {
+   "name": "Solihull",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 23.2,
+    "severe_pct": 3.7
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 18.3,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.5,
+    "severe_pct": 1.0
+   }
+  },
+  "E08000030": {
+   "name": "Walsall",
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 5.0,
+    "persistent_pct": 27.4,
+    "severe_pct": 4.4
+   },
+   "primary": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 16.1,
+    "severe_pct": 1.2
+   },
+   "all": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 21.6,
+    "severe_pct": 2.7
+   }
+  },
+  "E08000031": {
+   "name": "Wolverhampton",
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 17.7,
+    "severe_pct": 1.8
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 14.2,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 20.9,
+    "severe_pct": 2.7
+   }
+  },
+  "E10000028": {
+   "name": "Staffordshire",
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 10.3,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 20.9,
+    "severe_pct": 3.0
+   },
+   "all": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.8,
+    "severe_pct": 1.8
+   }
+  },
+  "E06000019": {
+   "name": "Herefordshire, County of",
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 0.8,
+    "persistent_pct": 10.1,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 15.9,
+    "severe_pct": 1.9
+   },
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 22.0,
+    "severe_pct": 3.4
+   }
+  },
+  "E06000020": {
+   "name": "Telford and Wrekin",
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.6,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 21.6,
+    "severe_pct": 3.6
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 16.7,
+    "severe_pct": 2.2
+   }
+  },
+  "E08000018": {
+   "name": "Rotherham",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 14.4,
+    "severe_pct": 1.2
+   },
+   "all": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 20.1,
+    "severe_pct": 3.0
+   },
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 4.9,
+    "persistent_pct": 25.4,
+    "severe_pct": 4.6
+   }
+  },
+  "E08000033": {
+   "name": "Calderdale",
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.3,
+    "severe_pct": 0.5
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 17.0,
+    "severe_pct": 1.9
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 22.4,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000015": {
+   "name": "Derby",
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 15.0,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 23.8,
+    "severe_pct": 3.5
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 19.5,
+    "severe_pct": 2.3
+   }
+  },
+  "E10000018": {
+   "name": "Leicestershire",
+   "primary": {
+    "overall_pct": 4.6,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 9.6,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.4,
+    "severe_pct": 2.2
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 21.8,
+    "severe_pct": 3.9
+   }
+  },
+  "E08000025": {
+   "name": "Birmingham",
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 24.8,
+    "severe_pct": 3.5
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 21.0,
+    "severe_pct": 2.4
+   },
+   "primary": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 16.7,
+    "severe_pct": 1.2
+   }
+  },
+  "E08000027": {
+   "name": "Dudley",
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.1,
+    "severe_pct": 2.7
+   },
+   "secondary": {
+    "overall_pct": 8.7,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 26.2,
+    "severe_pct": 4.5
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 14.8,
+    "severe_pct": 1.3
+   }
+  },
+  "E08000028": {
+   "name": "Sandwell",
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 15.5,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 4.0,
+    "persistent_pct": 24.3,
+    "severe_pct": 3.5
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 19.7,
+    "severe_pct": 2.2
+   }
+  },
+  "E06000021": {
+   "name": "Stoke-on-Trent",
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 13.4,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 19.7,
+    "severe_pct": 2.6
+   },
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 4.8,
+    "persistent_pct": 26.9,
+    "severe_pct": 4.4
+   }
+  },
+  "E10000025": {
+   "name": "Oxfordshire",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 11.9,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 24.4,
+    "severe_pct": 5.1
+   },
+   "all": {
+    "overall_pct": 7.2,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 17.8,
+    "severe_pct": 2.9
+   }
+  },
+  "E10000032": {
+   "name": "West Sussex",
+   "secondary": {
+    "overall_pct": 8.6,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 23.7,
+    "severe_pct": 4.0
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.7,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 17.6,
+    "severe_pct": 2.3
+   }
+  },
+  "E06000052": {
+   "name": "Cornwall",
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 26.3,
+    "severe_pct": 4.6
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 18.8,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.1,
+    "severe_pct": 0.9
+   }
+  },
+  "E10000013": {
+   "name": "Gloucestershire",
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 17.2,
+    "severe_pct": 2.4
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 11.9,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 8.3,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 22.5,
+    "severe_pct": 3.8
+   }
+  },
+  "E10000014": {
+   "name": "Hampshire",
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 10.0,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 22.0,
+    "severe_pct": 4.2
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.8,
+    "severe_pct": 2.4
+   }
+  },
+  "E06000044": {
+   "name": "Portsmouth",
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 12.7,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 10.1,
+    "unauthorised_pct": 4.8,
+    "persistent_pct": 25.7,
+    "severe_pct": 5.5
+   },
+   "all": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 19.7,
+    "severe_pct": 3.5
+   }
+  },
+  "E06000045": {
+   "name": "Southampton",
+   "all": {
+    "overall_pct": 8.0,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 21.4,
+    "severe_pct": 3.4
+   },
+   "primary": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 16.0,
+    "severe_pct": 1.3
+   },
+   "secondary": {
+    "overall_pct": 10.5,
+    "unauthorised_pct": 4.9,
+    "persistent_pct": 27.2,
+    "severe_pct": 5.8
+   }
+  },
+  "E06000037": {
+   "name": "West Berkshire",
+   "secondary": {
+    "overall_pct": 8.5,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 21.4,
+    "severe_pct": 4.2
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 11.2,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 16.5,
+    "severe_pct": 2.5
+   }
+  },
+  "E06000038": {
+   "name": "Reading",
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 23.3,
+    "severe_pct": 3.8
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 15.3,
+    "severe_pct": 1.2
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.0,
+    "severe_pct": 2.4
+   }
+  },
+  "E06000046": {
+   "name": "Isle of Wight",
+   "secondary": {
+    "overall_pct": 10.0,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 29.3,
+    "severe_pct": 5.7
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 15.4,
+    "severe_pct": 1.2
+   },
+   "all": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 22.2,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000058": {
+   "name": "Bournemouth, Christchurch and Poole",
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 21.5,
+    "severe_pct": 3.5
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 16.6,
+    "severe_pct": 2.2
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 10.8,
+    "severe_pct": 0.8
+   }
+  },
+  "E10000029": {
+   "name": "Suffolk",
+   "secondary": {
+    "overall_pct": 9.1,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 24.5,
+    "severe_pct": 4.7
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 18.1,
+    "severe_pct": 2.8
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.2,
+    "severe_pct": 1.0
+   }
+  },
+  "E09000001": {
+   "name": "City of London",
+   "all": {
+    "overall_pct": 4.1,
+    "unauthorised_pct": 0.9,
+    "persistent_pct": 6.0,
+    "severe_pct": 0.0
+   },
+   "primary": {
+    "overall_pct": 4.1,
+    "unauthorised_pct": 0.9,
+    "persistent_pct": 6.0,
+    "severe_pct": 0.0
+   }
+  },
+  "E09000012": {
+   "name": "Hackney",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 13.9,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 17.8,
+    "severe_pct": 1.6
+   },
+   "secondary": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 22.0,
+    "severe_pct": 2.5
+   }
+  },
+  "E09000013": {
+   "name": "Hammersmith and Fulham",
+   "secondary": {
+    "overall_pct": 7.2,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 21.8,
+    "severe_pct": 2.1
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 14.9,
+    "severe_pct": 0.7
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 19.1,
+    "severe_pct": 1.6
+   }
+  },
+  "E09000020": {
+   "name": "Kensington and Chelsea",
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.8,
+    "severe_pct": 2.2
+   },
+   "primary": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 16.4,
+    "severe_pct": 1.2
+   },
+   "secondary": {
+    "overall_pct": 8.7,
+    "unauthorised_pct": 4.2,
+    "persistent_pct": 25.2,
+    "severe_pct": 3.2
+   }
+  },
+  "E09000022": {
+   "name": "Lambeth",
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 16.0,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 21.3,
+    "severe_pct": 2.6
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 18.7,
+    "severe_pct": 1.9
+   }
+  },
+  "E10000003": {
+   "name": "Cambridgeshire",
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 16.2,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 11.7,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 20.9,
+    "severe_pct": 4.3
+   }
+  },
+  "E10000015": {
+   "name": "Hertfordshire",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 11.6,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 16.7,
+    "severe_pct": 2.1
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 21.6,
+    "severe_pct": 3.1
+   }
+  },
+  "E09000007": {
+   "name": "Camden",
+   "primary": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 16.5,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 29.7,
+    "severe_pct": 3.8
+   },
+   "all": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 23.2,
+    "severe_pct": 2.5
+   }
+  },
+  "E06000055": {
+   "name": "Bedford",
+   "secondary": {
+    "overall_pct": 8.3,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 24.4,
+    "severe_pct": 3.3
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.1,
+    "severe_pct": 2.1
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.3,
+    "severe_pct": 1.0
+   }
+  },
+  "E06000033": {
+   "name": "Southend-on-Sea",
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.8,
+    "severe_pct": 3.0
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 14.2,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 6.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 17.7,
+    "severe_pct": 2.1
+   }
+  },
+  "E06000054": {
+   "name": "Wiltshire",
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 22.4,
+    "severe_pct": 4.6
+   },
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 16.0,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 4.7,
+    "unauthorised_pct": 1.0,
+    "persistent_pct": 10.1,
+    "severe_pct": 0.8
+   }
+  },
+  "E06000026": {
+   "name": "Plymouth",
+   "secondary": {
+    "overall_pct": 10.2,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 29.1,
+    "severe_pct": 5.9
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 20.8,
+    "severe_pct": 3.3
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 12.7,
+    "severe_pct": 0.8
+   }
+  },
+  "E09000017": {
+   "name": "Hillingdon",
+   "primary": {
+    "overall_pct": 5.8,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 15.8,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 19.2,
+    "severe_pct": 1.7
+   },
+   "secondary": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 22.4,
+    "severe_pct": 2.2
+   }
+  },
+  "E10000011": {
+   "name": "East Sussex",
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.5,
+    "severe_pct": 1.1
+   },
+   "secondary": {
+    "overall_pct": 9.5,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 26.4,
+    "severe_pct": 4.9
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 20.8,
+    "severe_pct": 3.1
+   }
+  },
+  "E06000050": {
+   "name": "Cheshire West and Chester",
+   "all": {
+    "overall_pct": 6.9,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 17.7,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 11.4,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 9.2,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 24.7,
+    "severe_pct": 4.5
+   }
+  },
+  "E06000064": {
+   "name": "Westmorland and Furness",
+   "primary": {
+    "overall_pct": 4.4,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 8.7,
+    "severe_pct": 0.3
+   },
+   "all": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.6,
+    "severe_pct": 1.9
+   },
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 22.1,
+    "severe_pct": 3.4
+   }
+  },
+  "E08000016": {
+   "name": "Barnsley",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 12.1,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 7.2,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 18.6,
+    "severe_pct": 3.1
+   },
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 4.6,
+    "persistent_pct": 25.8,
+    "severe_pct": 5.5
+   }
+  },
+  "E09000004": {
+   "name": "Bexley",
+   "all": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 15.7,
+    "severe_pct": 1.7
+   },
+   "secondary": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 19.5,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 11.5,
+    "severe_pct": 0.7
+   }
+  },
+  "E09000029": {
+   "name": "Sutton",
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.0,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.7,
+    "severe_pct": 1.5
+   },
+   "secondary": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 17.1,
+    "severe_pct": 2.1
+   }
+  },
+  "E06000060": {
+   "name": "Buckinghamshire",
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 23.3,
+    "severe_pct": 3.1
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 12.1,
+    "severe_pct": 1.0
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 17.8,
+    "severe_pct": 2.1
+   }
+  },
+  "E08000011": {
+   "name": "Knowsley",
+   "primary": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 19.7,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 11.0,
+    "unauthorised_pct": 7.6,
+    "persistent_pct": 32.0,
+    "severe_pct": 5.4
+   },
+   "all": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 4.6,
+    "persistent_pct": 24.4,
+    "severe_pct": 2.6
+   }
+  },
+  "E08000012": {
+   "name": "Liverpool",
+   "secondary": {
+    "overall_pct": 9.7,
+    "unauthorised_pct": 5.5,
+    "persistent_pct": 27.0,
+    "severe_pct": 5.0
+   },
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 3.9,
+    "persistent_pct": 20.9,
+    "severe_pct": 2.8
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 15.1,
+    "severe_pct": 0.7
+   }
+  },
+  "E08000015": {
+   "name": "Wirral",
+   "secondary": {
+    "overall_pct": 9.3,
+    "unauthorised_pct": 3.8,
+    "persistent_pct": 25.4,
+    "severe_pct": 4.2
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 20.4,
+    "severe_pct": 2.6
+   },
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 14.6,
+    "severe_pct": 0.8
+   }
+  },
+  "E08000001": {
+   "name": "Bolton",
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 18.3,
+    "severe_pct": 1.9
+   },
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 23.1,
+    "severe_pct": 3.1
+   },
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 13.4,
+    "severe_pct": 0.7
+   }
+  },
+  "E08000006": {
+   "name": "Salford",
+   "secondary": {
+    "overall_pct": 9.3,
+    "unauthorised_pct": 5.0,
+    "persistent_pct": 26.5,
+    "severe_pct": 4.9
+   },
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 20.6,
+    "severe_pct": 2.9
+   },
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 15.5,
+    "severe_pct": 1.2
+   }
+  },
+  "E09000033": {
+   "name": "Westminster",
+   "primary": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 18.7,
+    "severe_pct": 1.5
+   },
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 22.1,
+    "severe_pct": 2.1
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 24.0,
+    "severe_pct": 2.4
+   }
+  },
+  "E06000031": {
+   "name": "Peterborough",
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 13.6,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 18.9,
+    "severe_pct": 2.1
+   },
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 24.1,
+    "severe_pct": 3.4
+   }
+  },
+  "E09000011": {
+   "name": "Greenwich",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 13.3,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 21.0,
+    "severe_pct": 2.9
+   },
+   "all": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 2.5,
+    "persistent_pct": 17.1,
+    "severe_pct": 1.7
+   }
+  },
+  "E09000019": {
+   "name": "Islington",
+   "primary": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 18.7,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 9.4,
+    "unauthorised_pct": 5.5,
+    "persistent_pct": 26.3,
+    "severe_pct": 4.3
+   },
+   "all": {
+    "overall_pct": 7.7,
+    "unauthorised_pct": 3.6,
+    "persistent_pct": 22.4,
+    "severe_pct": 2.5
+   }
+  },
+  "E06000039": {
+   "name": "Slough",
+   "primary": {
+    "overall_pct": 5.7,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 15.3,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 7.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 21.7,
+    "severe_pct": 2.3
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 18.6,
+    "severe_pct": 1.7
+   }
+  },
+  "E09000002": {
+   "name": "Barking and Dagenham",
+   "secondary": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.6,
+    "persistent_pct": 19.1,
+    "severe_pct": 1.9
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 16.1,
+    "severe_pct": 0.9
+   },
+   "all": {
+    "overall_pct": 6.1,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 17.9,
+    "severe_pct": 1.5
+   }
+  },
+  "E09000014": {
+   "name": "Haringey",
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 15.0,
+    "severe_pct": 1.2
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.3,
+    "persistent_pct": 18.9,
+    "severe_pct": 1.9
+   },
+   "secondary": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 22.7,
+    "severe_pct": 2.5
+   }
+  },
+  "E10000020": {
+   "name": "Norfolk",
+   "secondary": {
+    "overall_pct": 9.0,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 23.9,
+    "severe_pct": 4.7
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 12.6,
+    "severe_pct": 1.1
+   },
+   "all": {
+    "overall_pct": 7.1,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 18.1,
+    "severe_pct": 2.8
+   }
+  },
+  "E09000028": {
+   "name": "Southwark",
+   "secondary": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 19.1,
+    "severe_pct": 2.0
+   },
+   "all": {
+    "overall_pct": 6.2,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 17.2,
+    "severe_pct": 1.6
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.5,
+    "persistent_pct": 14.5,
+    "severe_pct": 0.9
+   }
+  },
+  "E08000004": {
+   "name": "Oldham",
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 18.9,
+    "severe_pct": 2.0
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 14.9,
+    "severe_pct": 0.8
+   },
+   "secondary": {
+    "overall_pct": 7.8,
+    "unauthorised_pct": 3.9,
+    "persistent_pct": 22.1,
+    "severe_pct": 3.0
+   }
+  },
+  "E08000007": {
+   "name": "Stockport",
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 16.6,
+    "severe_pct": 2.5
+   },
+   "secondary": {
+    "overall_pct": 8.9,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 22.8,
+    "severe_pct": 4.8
+   },
+   "primary": {
+    "overall_pct": 4.6,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.1,
+    "severe_pct": 0.5
+   }
+  },
+  "E06000007": {
+   "name": "Warrington",
+   "primary": {
+    "overall_pct": 4.4,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 8.8,
+    "severe_pct": 0.4
+   },
+   "all": {
+    "overall_pct": 6.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 14.4,
+    "severe_pct": 1.8
+   },
+   "secondary": {
+    "overall_pct": 7.7,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 20.1,
+    "severe_pct": 3.2
+   }
+  },
+  "E08000010": {
+   "name": "Wigan",
+   "secondary": {
+    "overall_pct": 8.4,
+    "unauthorised_pct": 3.2,
+    "persistent_pct": 22.9,
+    "severe_pct": 3.7
+   },
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 12.4,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 17.5,
+    "severe_pct": 2.2
+   }
+  },
+  "E06000063": {
+   "name": "Cumberland",
+   "all": {
+    "overall_pct": 6.6,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 16.3,
+    "severe_pct": 2.2
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 10.2,
+    "severe_pct": 0.5
+   },
+   "secondary": {
+    "overall_pct": 8.7,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 23.2,
+    "severe_pct": 4.1
+   }
+  },
+  "E08000036": {
+   "name": "Wakefield",
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 13.7,
+    "severe_pct": 1.1
+   },
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 19.5,
+    "severe_pct": 3.2
+   },
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 4.2,
+    "persistent_pct": 26.2,
+    "severe_pct": 5.6
+   }
+  },
+  "E06000011": {
+   "name": "East Riding of Yorkshire",
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 23.8,
+    "severe_pct": 3.2
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.4,
+    "persistent_pct": 10.7,
+    "severe_pct": 0.6
+   },
+   "all": {
+    "overall_pct": 6.3,
+    "unauthorised_pct": 2.0,
+    "persistent_pct": 16.9,
+    "severe_pct": 1.9
+   }
+  },
+  "E06000062": {
+   "name": "West Northamptonshire",
+   "primary": {
+    "overall_pct": 4.9,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 11.5,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 8.2,
+    "unauthorised_pct": 3.1,
+    "persistent_pct": 21.5,
+    "severe_pct": 4.0
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 16.5,
+    "severe_pct": 2.5
+   }
+  },
+  "E08000026": {
+   "name": "Coventry",
+   "secondary": {
+    "overall_pct": 9.0,
+    "unauthorised_pct": 4.0,
+    "persistent_pct": 24.9,
+    "severe_pct": 4.9
+   },
+   "all": {
+    "overall_pct": 7.2,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 20.2,
+    "severe_pct": 3.1
+   },
+   "primary": {
+    "overall_pct": 5.6,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 15.9,
+    "severe_pct": 1.5
+   }
+  },
+  "E08000017": {
+   "name": "Doncaster",
+   "primary": {
+    "overall_pct": 5.1,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 13.2,
+    "severe_pct": 0.7
+   },
+   "secondary": {
+    "overall_pct": 8.1,
+    "unauthorised_pct": 4.1,
+    "persistent_pct": 24.2,
+    "severe_pct": 4.2
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.8,
+    "persistent_pct": 18.3,
+    "severe_pct": 2.3
+   }
+  },
+  "E08000022": {
+   "name": "North Tyneside",
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 11.2,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 20.9,
+    "severe_pct": 3.4
+   },
+   "all": {
+    "overall_pct": 6.5,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 16.5,
+    "severe_pct": 2.1
+   }
+  },
+  "E08000023": {
+   "name": "South Tyneside",
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.3,
+    "persistent_pct": 13.3,
+    "severe_pct": 0.8
+   },
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 20.4,
+    "severe_pct": 2.7
+   },
+   "secondary": {
+    "overall_pct": 10.1,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 28.2,
+    "severe_pct": 4.8
+   }
+  },
+  "E08000024": {
+   "name": "Sunderland",
+   "primary": {
+    "overall_pct": 5.2,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 13.6,
+    "severe_pct": 0.7
+   },
+   "secondary": {
+    "overall_pct": 9.8,
+    "unauthorised_pct": 5.5,
+    "persistent_pct": 28.4,
+    "severe_pct": 5.2
+   },
+   "all": {
+    "overall_pct": 7.5,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 20.9,
+    "severe_pct": 3.0
+   }
+  },
+  "E06000001": {
+   "name": "Hartlepool",
+   "secondary": {
+    "overall_pct": 9.6,
+    "unauthorised_pct": 5.6,
+    "persistent_pct": 26.6,
+    "severe_pct": 5.2
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 13.3,
+    "severe_pct": 0.7
+   },
+   "all": {
+    "overall_pct": 7.3,
+    "unauthorised_pct": 3.5,
+    "persistent_pct": 19.7,
+    "severe_pct": 2.8
+   }
+  },
+  "E06000002": {
+   "name": "Middlesbrough",
+   "secondary": {
+    "overall_pct": 10.3,
+    "unauthorised_pct": 5.8,
+    "persistent_pct": 30.0,
+    "severe_pct": 5.8
+   },
+   "all": {
+    "overall_pct": 7.6,
+    "unauthorised_pct": 3.7,
+    "persistent_pct": 22.1,
+    "severe_pct": 3.3
+   },
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 15.8,
+    "severe_pct": 1.2
+   }
+  },
+  "E06000004": {
+   "name": "Stockton-on-Tees",
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 3.0,
+    "persistent_pct": 19.3,
+    "severe_pct": 2.7
+   },
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 12.1,
+    "severe_pct": 0.6
+   },
+   "secondary": {
+    "overall_pct": 9.3,
+    "unauthorised_pct": 4.6,
+    "persistent_pct": 27.1,
+    "severe_pct": 4.8
+   }
+  },
+  "E06000010": {
+   "name": "Kingston upon Hull, City of",
+   "primary": {
+    "overall_pct": 5.4,
+    "unauthorised_pct": 2.1,
+    "persistent_pct": 14.6,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 4.9,
+    "persistent_pct": 25.7,
+    "severe_pct": 4.7
+   },
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 3.3,
+    "persistent_pct": 19.9,
+    "severe_pct": 2.7
+   }
+  },
+  "E06000035": {
+   "name": "Medway",
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 18.8,
+    "severe_pct": 2.4
+   },
+   "primary": {
+    "overall_pct": 5.5,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 14.9,
+    "severe_pct": 1.3
+   },
+   "secondary": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 2.9,
+    "persistent_pct": 22.6,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000022": {
+   "name": "Bath and North East Somerset",
+   "secondary": {
+    "overall_pct": 8.6,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 22.7,
+    "severe_pct": 4.0
+   },
+   "all": {
+    "overall_pct": 6.8,
+    "unauthorised_pct": 1.9,
+    "persistent_pct": 16.8,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 4.8,
+    "unauthorised_pct": 1.1,
+    "persistent_pct": 10.0,
+    "severe_pct": 0.8
+   }
+  },
+  "E06000023": {
+   "name": "Bristol, City of",
+   "secondary": {
+    "overall_pct": 10.3,
+    "unauthorised_pct": 3.8,
+    "persistent_pct": 29.3,
+    "severe_pct": 5.3
+   },
+   "primary": {
+    "overall_pct": 5.9,
+    "unauthorised_pct": 1.8,
+    "persistent_pct": 15.9,
+    "severe_pct": 1.4
+   },
+   "all": {
+    "overall_pct": 7.9,
+    "unauthorised_pct": 2.7,
+    "persistent_pct": 22.2,
+    "severe_pct": 3.3
+   }
+  },
+  "E06000040": {
+   "name": "Windsor and Maidenhead",
+   "primary": {
+    "overall_pct": 5.0,
+    "unauthorised_pct": 1.2,
+    "persistent_pct": 11.9,
+    "severe_pct": 1.0
+   },
+   "secondary": {
+    "overall_pct": 8.0,
+    "unauthorised_pct": 2.2,
+    "persistent_pct": 22.3,
+    "severe_pct": 3.1
+   },
+   "all": {
+    "overall_pct": 6.7,
+    "unauthorised_pct": 1.7,
+    "persistent_pct": 17.9,
+    "severe_pct": 2.2
+   }
+  },
+  "E06000047": {
+   "name": "County Durham",
+   "all": {
+    "overall_pct": 7.0,
+    "unauthorised_pct": 2.4,
+    "persistent_pct": 19.4,
+    "severe_pct": 2.5
+   },
+   "primary": {
+    "overall_pct": 5.3,
+    "unauthorised_pct": 1.6,
+    "persistent_pct": 13.6,
+    "severe_pct": 0.9
+   },
+   "secondary": {
+    "overall_pct": 8.8,
+    "unauthorised_pct": 3.4,
+    "persistent_pct": 25.4,
+    "severe_pct": 4.1
+   }
+  }
+ }
+}

@@ -50,7 +50,7 @@ from app.services import (
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow, council_tax, viewing_checklist, appeals, road_safety,
-    planning_decisions,
+    planning_decisions, school_absence,
 )
 from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -14113,6 +14113,10 @@ async def admissions_council(request: Request, council_slug: str):
     # names the council and says the school's own figure is not
     # published. None for a council the release does not carry.
     context["appeals"] = appeals.for_council(council["name"])
+    # And how often children here are out of school (1 Oct 2026). Also a
+    # council figure and never a school one, so the block says so in the
+    # same words the appeals block does.
+    context["absence"] = school_absence.for_council(council["name"])
     context["admissions_faqs_jsonld"] = _faq_jsonld([
         (f"How far do you need to live from a school in {council['name']} to get a place?",
          f"It depends on the school. Across the {council['count']} {council['name']} {phase_word}schools with a "
