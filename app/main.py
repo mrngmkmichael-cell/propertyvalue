@@ -49,7 +49,7 @@ from app.services import (
     oauth_providers, overview_score, pdf_export, place_search, radon, rental, reviews, routing, schools_db, sewage_discharge,
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
-    solicitor_questions, indexnow, council_tax, viewing_checklist, appeals,
+    solicitor_questions, indexnow, council_tax, viewing_checklist, appeals, road_safety,
 )
 from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -2923,7 +2923,7 @@ def _admission_stats() -> dict:
 # pillar strip was outside that script's reach and still read 40 on 12 Sep
 # 2026 while the same page said 44 three times, which is why it now reads
 # this constant instead of a literal of its own.
-CHECK_COUNT = 44
+CHECK_COUNT = 45
 
 # Every check by plan, in the report's own card titles: (icon, title,
 # what it shows, source). The pricing page lists these and the landing
@@ -2949,6 +2949,7 @@ FREE_CHECKS = (
     ('flood', 'Surface Water Risk', 'Rainfall flooding, separate from rivers', 'Environment Agency'),
     ('noise', 'Noise', 'Road and rail, in dB(A)', 'Defra noise mapping'),
     ('crime', 'Crime & Safety', 'By category, against the area', 'Police.uk'),
+    ('road', 'Road Safety', 'Collisions within 500 m, by severity', 'DfT road safety data'),
     ('radon', 'Radon Gas', 'Affected-area class', 'British Geological Survey'),
     # 'MHCLG, 2026-27' until 18 Sep 2026 (item D6): Band D comes from the
     # Welsh and Scottish Governments too (council_tax.py), and this
@@ -3011,7 +3012,8 @@ REPORT_GROUPS = (
                         'Rental Analysis', 'Area Prosperity', 'Price Trend')),
     ('Property & Condition', ('Energy Efficiency', 'Extended or Modified', 'Aspect')),
     ('Risk & Safety', ('Flood Risk', 'Surface Water Risk', 'Sewage Discharge', 'Noise', 'Crime & Safety',
-                       'Radon Gas', 'Subsidence Risk', 'Air Quality', 'Historic Contamination', 'Mining Risk')),
+                       'Road Safety', 'Radon Gas', 'Subsidence Risk', 'Air Quality', 'Historic Contamination',
+                       'Mining Risk')),
     ('Planning & Heritage', ('Planning Constraints', 'Environmental Designations', 'Development Nearby',
                              'Listed Buildings')),
     ('Location & Connectivity', ('Schools Nearby', 'State Schools', 'Private Schools', 'Universities',
@@ -3091,6 +3093,7 @@ _SOURCE_BODIES = {
     'Council admissions data': ('Local councils',),
     'National Rail, OpenStreetMap': ('National Rail', 'OpenStreetMap'),
     'DfT Bus Open Data Service': ('Department for Transport',),
+    'DfT road safety data': ('Department for Transport',),
     'NHS England': ('NHS England',),
 }
 
@@ -4694,6 +4697,15 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     # its second home; the offer had said "opens every card".
     context["unlock_reach_line"] = unlock_reach_line(context["premium_reach"])
     context["england_only_gap"] = (location.get("country") or None) if location.get("country") not in (None, "", "England") else None
+    # Road collisions come out of a local file in microseconds, with no
+    # network and no database behind them, so they are read here rather
+    # than taking a slot in the gather (app/services/road_safety.py says
+    # why a file and not a table). Northern Ireland is not in the DfT's
+    # returns, so an address there is told the check does not reach it
+    # instead of being shown a zero that would read as a quiet road.
+    context["road_safety_not_covered"] = road_safety.outside_coverage(location.get("country"))
+    if not context["road_safety_not_covered"]:
+        context["road_safety"] = road_safety.near(location.get("latitude"), location.get("longitude"))
     # The wall's "By hand, these N checks are 28 websites" was a typed 44
     # until 17 Sep 2026, on the one page a reader can count the cards on.
     context["check_count"] = CHECK_COUNT
@@ -7845,9 +7857,16 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
         address = report["certificates"][0].get("address", "")
     elif house_number and report.get("transactions"):
         address = str(report["transactions"][0].get("address", "")).title()
+    # Read here rather than carried through the gather, for the same
+    # reason the live report reads it in its own handler: a local file,
+    # no network, no database (app/services/road_safety.py).
+    road_gap = road_safety.outside_coverage(location.get("country"))
     return {
         **report,
         "running_costs": rc,
+        "road_safety_not_covered": road_gap,
+        "road_safety": None if road_gap else road_safety.near(
+            location.get("latitude"), location.get("longitude")),
         "stamp_duty_valuation": stamp_duty_valuation,
         "checklist": checklist,
         "checklist_groups": pdf_checklist.grouped(checklist),

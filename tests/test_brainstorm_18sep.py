@@ -525,7 +525,7 @@ def test_the_share_card_counts_the_checks_the_site_counts():
     assert "\"40 CHECKS  ·" not in source
     assert 'f"{check_count} CHECKS  ·  "' in source
     assert "check_count=CHECK_COUNT" in pathlib.Path("app/main.py").read_text(encoding="utf-8")
-    assert app_main.CHECK_COUNT == 44
+    assert app_main.CHECK_COUNT == 45
 
 
 # ---- 8. What Premium covers outside England ----------------------------------

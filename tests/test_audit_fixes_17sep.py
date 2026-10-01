@@ -838,7 +838,7 @@ def test_a6_the_homepage_states_the_offer_in_one_sentence_and_the_old_wordings_a
     sentence = html.escape(app_main.OFFER_SENTENCE, quote=False)
 
     dek = body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0]
-    assert dek.split()[:5] == ["Forty-four", "checks", "on", "any", "UK"]
+    assert dek.split()[:5] == ["Forty-five", "checks", "on", "any", "UK"]
     assert _flat(dek).endswith("What it costs to live there. " + sentence)
 
     banner = body.split('<section class="promo-banner">', 1)[1].split("</section>", 1)[0]
@@ -1265,7 +1265,10 @@ def test_b1_a_signed_out_report_opens_rental_income_and_affordability(client, fa
 
 
 def test_b1_the_free_and_locked_lists_are_twenty_nine_and_fifteen(client, fake_report):
-    assert len(app_main.FREE_CHECKS) == 29
+    # 29 and 15 on 17 Sep 2026, 30 and 15 since Road Safety joined the
+    # free list on 1 Oct. What this test is for is the split and the
+    # three checks the owner moved, not a frozen total.
+    assert len(app_main.FREE_CHECKS) == 30
     assert len(app_main.PREMIUM_CHECKS) == 15
     assert len(app_main.FREE_CHECKS) + len(app_main.PREMIUM_CHECKS) == app_main.CHECK_COUNT
 
@@ -7036,7 +7039,7 @@ def test_e6_premium_lists_the_checks_under_the_reports_six_groups_on_a_phone(cli
     groups = _e6_phone_groups(body)
     assert [summary.split(":", 1)[0] for summary, _, _ in groups] == E6_GROUP_NAMES
     assert [summary for summary, _, _ in groups] == _e6_expected(app_main.FREE_CHECKS, app_main.PREMIUM_CHECKS)
-    assert groups[2][0] == "Risk & Safety: 10 checks, 5 with Premium"
+    assert groups[2][0] == "Risk & Safety: 11 checks, 5 with Premium"
     # Every group is closed until tapped.
     assert not any(is_open for _, _, is_open in groups)
 
@@ -7074,7 +7077,7 @@ def test_e6_the_group_counts_follow_the_lists(client, monkeypatch):
     monkeypatch.setattr(app_main, "PREMIUM_CHECKS", premium)
     groups = _e6_phone_groups(_fresh_premium(client))
     assert [summary for summary, _, _ in groups] == _e6_expected(free, premium)
-    assert groups[2][0] == "Risk & Safety: 9 checks, 4 with Premium"
+    assert groups[2][0] == "Risk & Safety: 10 checks, 4 with Premium"
     assert ("Mining Risk", "Free · Mining Remediation Authority") in groups[2][1]
     # A group with nothing behind the wall says so in words.
     assert app_main.checks_by_group()[0]["count"] == "7 checks, 2 with Premium"

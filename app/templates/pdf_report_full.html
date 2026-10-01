@@ -542,6 +542,38 @@
 <p class="soft small">Crime figures are not available for this point.</p>
 {% endif %}
 
+<h2>Road safety</h2>
+{% if road_safety_not_covered %}
+<p class="soft small">The Department for Transport's collision returns cover Great Britain.
+{{ road_safety_not_covered.country }} is not in them{% if road_safety_not_covered.body %}, because collisions
+there are published by {{ road_safety_not_covered.body }}{% endif %}. No count is shown rather than a zero,
+which would read as a quiet road.</p>
+{% elif road_safety and road_safety.total %}
+<table><tr>
+    <td style="width: 25%"><span class="fig-v" style="font-size: 22pt">{{ road_safety.total | thousands }}</span><br/><span class="fig-l">Within {{ road_safety.radius_m }} m, {{ road_safety.first_year }} to {{ road_safety.last_year }}</span></td>
+    <td style="width: 25%"><span class="fig-v" style="font-size: 22pt">{{ road_safety.fatal }}</span><br/><span class="fig-l">Fatal</span></td>
+    <td style="width: 25%"><span class="fig-v" style="font-size: 22pt">{{ road_safety.serious }}</span><br/><span class="fig-l">Serious</span></td>
+    <td style="width: 25%"><span class="fig-v" style="font-size: 22pt">{{ road_safety.casualties | thousands }}</span><br/><span class="fig-l">People hurt</span></td>
+</tr></table>
+{% if road_safety.worst %}
+{{ sp("6pt") }}
+<table class="keep"><tr><td style="padding: 0pt">
+<table class="data">
+    <tr><th style="width: 22%">Severity</th><th class="num" style="width: 18%">Distance</th><th style="width: 38%">When</th><th class="num" style="width: 22%">People hurt</th></tr>
+    {% for hit in road_safety.worst %}<tr><td class="b">{{ hit.label }}</td><td class="num">{{ hit.metres }} m</td><td>{{ hit.when }}</td><td class="num">{{ hit.casualties }}</td></tr>{% endfor %}
+</table>
+</td></tr></table>
+{% endif %}
+<p class="tiny faint">DfT road safety data, police STATS19 returns. Collisions the police attended and recorded,
+not every collision that happened, and a count rather than a rate.</p>
+{% elif road_safety %}
+<p class="soft small">No collision was reported within {{ road_safety.radius_m }} metres of this postcode
+between {{ road_safety.first_year }} and {{ road_safety.last_year }}. Slight collisions are known to be
+under-reported, so this is weaker evidence than a high count would be.</p>
+{% else %}
+<p class="soft small">Collision figures are not available for this point.</p>
+{% endif %}
+
 
 <table class="keep"><tr><td style="padding: 0pt">
 <h2>Ground and air</h2>

@@ -4409,6 +4409,7 @@ a.school-profile-lock-label:hover {
 .icon-statistics   { background: #eff6ff; color: #1e40af; }
 .icon-geology      { background: #fff7ed; color: #9a3412; }
 .icon-sewage       { background: #f5f5f4; color: #57534e; }
+.icon-road         { background: #fdf6e8; color: #92400e; }
 
 .radon-badge {
     display: inline-block;
@@ -4741,6 +4742,20 @@ dialog.report-modal .report-section {
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
     gap: 0.75rem;
     margin-top: 1rem;
+}
+
+/* Four small figures that are one set, laid out as one: four across on a
+   desktop and two by two on a phone. The shared auto-fit grid left the
+   fourth figure alone on its own row at 1280 and stacked all four at
+   375, which read as four unrelated boxes (1 Oct 2026, Road Safety). */
+.modal-stat-grid-four {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 640px) {
+    .modal-stat-grid-four {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .modal-stat-card {
@@ -7078,6 +7093,7 @@ body.theme-dark .icon-landfill      { background: rgba(226, 65, 65, 0.13); color
 body.theme-dark .icon-statistics    { background: rgba(84, 118, 226, 0.13); color: #5476e2; }
 body.theme-dark .icon-geology       { background: rgba(221, 74, 26, 0.13); color: #dd4a1a; }
 body.theme-dark .icon-sewage        { background: rgba(129, 124, 116, 0.13); color: #817c74; }
+body.theme-dark .icon-road          { background: rgba(224, 142, 74, 0.13); color: #e08e4a; }
 
 /* --- Things that need attention ---------------------------------------
    Amber-on-cream does not survive the swap: #92400e text and #fef3c7

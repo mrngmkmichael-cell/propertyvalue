@@ -1351,6 +1351,29 @@
             {% endif %}
         </button>
 
+        {# Road collisions the police attended, from the DfT's STATS19
+           returns, read out of a local file in microseconds (see
+           app/services/road_safety.py for why a file and not a table).
+           The card reads amber when someone was killed within 500 m in
+           the five years, because that is worth seeing, and carries no
+           "Check this" tag: there is nothing here for a buyer to go and
+           do about it. #}
+        <button type="button" class="dashboard-card status-{{ 'muted' if (road_safety_not_covered or not road_safety) else ('attn' if road_safety.fatal else 'ok') }}" data-modal-target="modal-road-safety" data-animate>
+            <span class="dashboard-card-icon icon-road">{{ icons.icon('road') }}</span>
+            <span class="dashboard-card-title">Road Safety</span>
+            <span class="dashboard-card-status">
+                {% if road_safety_not_covered %}Not covered for {{ road_safety_not_covered.country }}
+                {% elif not road_safety %}No data available
+                {% elif road_safety.total %}{{ road_safety.total | thousands }} collision{{ 's' if road_safety.total != 1 }} within {{ road_safety.radius_m }} m
+                {% else %}None reported within {{ road_safety.radius_m }} m{% endif %}
+            </span>
+            {% if road_safety and road_safety.total %}
+            <span class="dashboard-card-substat">{{ road_safety.first_year }} to {{ road_safety.last_year }}: {{ road_safety.fatal }} fatal, {{ road_safety.serious }} serious, {{ road_safety.slight }} slight</span>
+            {% elif road_safety %}
+            <span class="dashboard-card-substat">Nothing reported between {{ road_safety.first_year }} and {{ road_safety.last_year }}</span>
+            {% endif %}
+        </button>
+
         {# Free, and never a figure: no source records deaths, crimes or
            hauntings at an address, so the card says so and shows how to
            check. See the modal for why a news search is not a data feature. #}
@@ -3373,6 +3396,107 @@
             {% endif %}
         {% else %}
             <p class="notice">No crime data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-road-safety">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Road Safety</h2>
+        {% if road_safety_not_covered %}
+            <p class="notice">
+                The Department for Transport's collision returns cover Great Britain.
+                {{ road_safety_not_covered.country }} is not in them{% if road_safety_not_covered.body %}, because
+                collisions there are published by {{ road_safety_not_covered.body }}{% endif %}. This report shows
+                no count rather than a zero, which would read as a quiet road.
+                {% if road_safety_not_covered.url %}<a href="{{ road_safety_not_covered.url }}" target="_blank" rel="noopener">See their figures</a>.{% endif %}
+            </p>
+        {% elif not road_safety %}
+            <p class="notice">No collision data is available for this address.</p>
+        {% elif road_safety.total %}
+            <p class="section-sub">
+                {{ road_safety.total | thousands }} collision{{ 's' if road_safety.total != 1 }}
+                {{ 'were' if road_safety.total != 1 else 'was' }} reported within {{ road_safety.radius_m }} metres
+                of this postcode between {{ road_safety.first_year }} and {{ road_safety.last_year }}, and
+                {{ road_safety.casualties | thousands }} {{ 'people were' if road_safety.casualties != 1 else 'person was' }} hurt.
+            </p>
+            <div class="modal-stat-grid modal-stat-grid-four">
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Fatal</span>
+                    <span class="modal-stat-card-value">{{ road_safety.fatal | thousands }}</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Serious</span>
+                    <span class="modal-stat-card-value">{{ road_safety.serious | thousands }}</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Slight</span>
+                    <span class="modal-stat-card-value">{{ road_safety.slight | thousands }}</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">People hurt</span>
+                    <span class="modal-stat-card-value">{{ road_safety.casualties | thousands }}</span>
+                </div>
+            </div>
+            {% if road_safety.worst %}
+            <h3 class="subsection-heading">The most serious of them</h3>
+            <div class="tablewrap">
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Severity</th>
+                        <th class="num">Distance</th>
+                        <th>When</th>
+                        <th class="num">Hurt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hit in road_safety.worst %}
+                    <tr>
+                        <td>{{ hit.label }}</td>
+                        <td class="num">{{ hit.metres }} m</td>
+                        <td>{{ hit.when }}</td>
+                        <td class="num">{{ hit.casualties }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            </div>
+            <p class="section-sub">
+                Most serious first, and the nearest first where two share a severity.
+            </p>
+            {% endif %}
+        {% else %}
+            <p class="section-sub">
+                No collision was reported within {{ road_safety.radius_m }} metres of this postcode
+                between {{ road_safety.first_year }} and {{ road_safety.last_year }}.
+            </p>
+        {% endif %}
+        {% if road_safety and not road_safety_not_covered %}
+            <h3 class="subsection-heading">What these counts are, and what they are not</h3>
+            <p class="section-sub">
+                These are collisions the police attended and recorded on form STATS19, not every
+                collision that happened. Slight collisions in particular are known to be
+                under-reported, so a low count is weaker evidence than a high one.
+            </p>
+            <p class="section-sub">
+                A count is not a rate. A busy junction sees more collisions than a quiet lane partly
+                because more traffic passes it, so compare this with the roads you know rather than
+                reading it as a verdict on the street.
+            </p>
+            <p class="section-sub">
+                Each collision is recorded at a point on the road the police noted, so one shown at
+                50 metres may have happened at the junction rather than outside this door.
+            </p>
+            <p class="section-sub">
+                Source: {{ road_safety.source }},
+                <a href="{{ road_safety.source_url }}" target="_blank" rel="noopener">data.gov.uk</a>,
+                covering {{ road_safety.first_year }} to {{ road_safety.last_year }}. Read on
+                {{ road_safety.read_on | day_label(true) }}.
+            </p>
         {% endif %}
             </section>
         </div>
