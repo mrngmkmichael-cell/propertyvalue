@@ -1505,6 +1505,26 @@
             {% if premium_unlocked and brownfield is defined and brownfield and brownfield.covered and brownfield.count and brownfield.dwellings %}<span class="dashboard-card-substat">Up to {{ "{:,}".format(brownfield.dwellings) }} homes where the register gives a figure</span>{% endif %}
         </button>
 
+        {# How this council decides applications, from MHCLG's planning
+           live tables (app/services/planning_decisions.py). Four plain
+           figures and no verdict: a council granting 94% is not "good"
+           and one granting 78% is not "bad", they are a tight
+           conservation area and a growth borough. So the card never
+           reads 'attn'. #}
+        <button type="button" class="dashboard-card status-{{ 'muted' if (planning_decisions_not_covered or not planning_decisions) else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-planning-decisions" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
+            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
+            <span class="dashboard-card-icon icon-planning">{{ icons.icon('planning') }}</span>
+            <span class="dashboard-card-title">Planning Decisions</span>
+            {% if not premium_unlocked %}{{ locked.locked_status('Planning Decisions') }}{% else %}
+            <span class="dashboard-card-status">
+                {% if planning_decisions_not_covered %}Not covered for {{ planning_decisions_not_covered.country }}
+                {% elif not planning_decisions %}No data available
+                {% else %}{{ planning_decisions.granted_pct }}% of applications granted{% endif %}
+            </span>
+            {% endif %}
+            {% if premium_unlocked and planning_decisions %}<span class="dashboard-card-substat">{{ planning_decisions.decisions | thousands }} decided by {{ planning_decisions.name | council }} in the {{ planning_decisions.period }}</span>{% endif %}
+        </button>
+
         <button type="button" class="dashboard-card status-{{ 'muted' if not heritage else 'ok' }}" data-modal-target="modal-heritage" data-animate>
             <span class="dashboard-card-icon icon-heritage">{{ icons.icon('heritage') }}</span>
             <span class="dashboard-card-title">Listed Buildings</span>
@@ -3396,6 +3416,123 @@
             {% endif %}
         {% else %}
             <p class="notice">No crime data available for this area.</p>
+        {% endif %}
+            </section>
+        </div>
+    </dialog>
+
+    <dialog class="report-modal" id="modal-planning-decisions">
+        <div class="report-modal-inner">
+            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
+            <section class="report-section">
+        <h2>Planning Decisions</h2>
+        {% set planning_decisions_method %}
+            <p class="section-sub">
+                Part of whether a house can be changed is the council, not the house. These are
+                MHCLG's planning live tables: every application this local planning authority
+                decided over a year, how many it granted, and how often it had to agree an
+                extension of time with the applicant rather than decide inside the statutory
+                period.
+            </p>
+        {% endset %}
+        {% if not premium_unlocked %}
+            {{ planning_decisions_method }}
+            {{ locked.locked_body(lock_label, lock_redirect) }}
+        {% elif planning_decisions_not_covered %}
+            <p class="notice">
+                MHCLG's planning tables cover England.
+                {{ planning_decisions_not_covered.country }} is not in them{% if planning_decisions_not_covered.body %}:
+                planning statistics there are published by {{ planning_decisions_not_covered.body }}{% endif %}.
+                {% if planning_decisions_not_covered.url %}<a href="{{ planning_decisions_not_covered.url }}" target="_blank" rel="noopener">See their figures</a>.{% endif %}
+            </p>
+        {% elif planning_decisions %}
+            {{ planning_decisions_method }}
+            <p class="section-sub">
+                {{ planning_decisions.name | council }} decided {{ planning_decisions.decisions | thousands }}
+                application{{ 's' if planning_decisions.decisions != 1 }} in the {{ planning_decisions.period }}
+                and granted {{ planning_decisions.granted_pct }}% of them, {{ planning_decisions.granted_against_england }}
+                the {{ planning_decisions.england.granted_pct }}% granted across England.
+            </p>
+            <div class="modal-stat-grid modal-stat-grid-four">
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Decided</span>
+                    <span class="modal-stat-card-value">{{ planning_decisions.decisions | thousands }}</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Granted</span>
+                    <span class="modal-stat-card-value">{{ planning_decisions.granted_pct }}%</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">Needed longer</span>
+                    <span class="modal-stat-card-value">{{ planning_decisions.extension_pct }}%</span>
+                </div>
+                <div class="modal-stat-card">
+                    <span class="modal-stat-card-label">By officers</span>
+                    <span class="modal-stat-card-value">{{ planning_decisions.delegated_pct }}%</span>
+                </div>
+            </div>
+            <table class="tx-table">
+                <thead>
+                    <tr>
+                        <th>Over the {{ planning_decisions.period }}</th>
+                        <th class="num">{{ planning_decisions.name | council }}</th>
+                        <th class="num">England</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Applications decided</td>
+                        <td class="num">{{ planning_decisions.decisions | thousands }}</td>
+                        <td class="num">{{ planning_decisions.england.decisions | thousands }}</td>
+                    </tr>
+                    <tr>
+                        <td>Granted</td>
+                        <td class="num">{{ planning_decisions.granted_pct }}%</td>
+                        <td class="num">{{ planning_decisions.england.granted_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td>An extension of time was agreed</td>
+                        <td class="num">{{ planning_decisions.extension_pct }}%</td>
+                        <td class="num">{{ planning_decisions.england.extension_pct }}%</td>
+                    </tr>
+                    <tr>
+                        <td>Decided by officers, not a committee</td>
+                        <td class="num">{{ planning_decisions.delegated_pct }}%</td>
+                        <td class="num">{{ planning_decisions.england.delegated_pct }}%</td>
+                    </tr>
+                </tbody>
+            </table>
+            <h3 class="subsection-heading">How to read these</h3>
+            <p class="section-sub">
+                A high grant rate is not a good council and a low one is not a bad council. A tight
+                conservation area refuses more than a growth borough does, and both are doing their
+                job. What the figures tell you is what to expect: how likely an application here is
+                to be granted at all, and how likely it is to run past the statutory deadline.
+            </p>
+            <p class="section-sub">
+                Higher, lower or about the same is said only where the two shares differ by at least
+                {{ planning_decisions.same_within_pp }} percentage points.
+            </p>
+            <p class="section-sub">
+                The statutory period is {{ planning_decisions.national_speed.minor_weeks }} weeks for a
+                minor application and {{ planning_decisions.national_speed.major_weeks }} for a major one.
+                Across England in {{ planning_decisions.national_speed.quarter }},
+                {{ planning_decisions.national_speed.minor_in_time_pct }}% of minor and
+                {{ planning_decisions.national_speed.major_in_time_pct }}% of major applications were decided
+                inside it without an extension being agreed. That split is published for England as a
+                whole and never by council, so it is not shown here as a figure for this one.
+            </p>
+            <p class="section-sub">
+                Source: {{ planning_decisions.source }}, tables
+                {{ planning_decisions.tables | join(' and ') }},
+                <a href="{{ planning_decisions.source_url }}" target="_blank" rel="noopener">gov.uk</a>.
+                Read on {{ planning_decisions.read_on | day_label(true) }}.
+            </p>
+        {% else %}
+            {{ planning_decisions_method }}
+            <p class="notice">
+                MHCLG's tables hold no row for this planning authority, so no figure is shown.
+            </p>
         {% endif %}
             </section>
         </div>

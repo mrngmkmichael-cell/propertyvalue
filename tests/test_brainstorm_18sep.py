@@ -525,7 +525,7 @@ def test_the_share_card_counts_the_checks_the_site_counts():
     assert "\"40 CHECKS  ·" not in source
     assert 'f"{check_count} CHECKS  ·  "' in source
     assert "check_count=CHECK_COUNT" in pathlib.Path("app/main.py").read_text(encoding="utf-8")
-    assert app_main.CHECK_COUNT == 45
+    assert app_main.CHECK_COUNT == 46
 
 
 # ---- 8. What Premium covers outside England ----------------------------------
@@ -537,9 +537,9 @@ def test_every_premium_check_says_where_its_source_reaches():
     assert sorted(app_main.PREMIUM_REACH) == sorted(titles)
     assert app_main.premium_reach("England") is None and app_main.premium_reach(None) is None
     wales = app_main.premium_reach("Wales")
-    assert (wales["reach"], wales["total"]) == (10, 15)
+    assert (wales["reach"], wales["total"]) == (10, 16)
     assert wales["missing"] == ["Sewage Discharge", "Historic Contamination", "School Catchment Areas",
-                                "Development Nearby", "Health Services"]
+                                "Development Nearby", "Planning Decisions", "Health Services"]
     assert app_main.premium_reach("Scotland")["reach"] == 7
     assert app_main.premium_reach("Northern Ireland")["reach"] == 4
     # A name with its own comma is never read as two checks.
@@ -571,8 +571,9 @@ def _welsh():
 def test_the_wall_names_what_premium_cannot_read_in_wales(client, fake_report):
     fake_report(location=_welsh())
     body = " ".join(client.get("/property?postcode=CF63%204AA").text.split())
-    assert "In Wales, 10 of the 15 Premium checks have a source to read." in body
-    assert "Development Nearby and Health Services draw on records that do not cover Wales." in body
+    assert "In Wales, 10 of the 16 Premium checks have a source to read." in body
+    assert ("Development Nearby, Planning Decisions and Health Services draw on records "
+            "that do not cover Wales.") in body
     fake_report()
     assert "Premium checks have a source to read" not in client.get("/property?postcode=M14%205TG").text
 

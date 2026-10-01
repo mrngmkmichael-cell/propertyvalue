@@ -1,0 +1,2825 @@
+{
+ "about": "How each English local planning authority decided planning applications over a year: how many it decided, how many it granted, how often it agreed an extension of time, and how much it leaves to officers rather than a committee. Council figures are MHCLG's table P134. The two statutory-period percentages are published for England as a whole, never by authority, and are table P120's latest quarter.",
+ "source": "MHCLG planning application statistics",
+ "page": "https://www.gov.uk/government/statistical-data-sets/live-tables-on-planning-application-statistics",
+ "file": "https://assets.publishing.service.gov.uk/media/6ab2cc778cb3c0580e501005/Tables_P120_to_P138_MJPSI_PIPTDCC.ods",
+ "tables": [
+  "P134",
+  "P120"
+ ],
+ "period": "year ending June 2026",
+ "read_on": "2026-10-01",
+ "coverage": [
+  "England"
+ ],
+ "coverage_note": "Wales, Scotland and Northern Ireland publish their own planning statistics and are not in these tables.",
+ "england": {
+  "name": "England",
+  "received": 314201,
+  "decisions": 291861,
+  "granted": 254065,
+  "granted_pct": 87.0,
+  "extension_pct": 41.2,
+  "delegated_pct": 96.4
+ },
+ "national_speed": {
+  "quarter": "2026 Q2",
+  "major_in_time_pct": 19,
+  "minor_in_time_pct": 39,
+  "granted_pct": 88,
+  "major_weeks": 13,
+  "minor_weeks": 8
+ },
+ "authorities": {
+  "E07000223": {
+   "name": "Adur",
+   "received": 308,
+   "decisions": 307,
+   "granted": 290,
+   "granted_pct": 94.5,
+   "extension_pct": 36.8,
+   "delegated_pct": 95.8
+  },
+  "E07000032": {
+   "name": "Amber Valley",
+   "received": 675,
+   "decisions": 607,
+   "granted": 587,
+   "granted_pct": 96.7,
+   "extension_pct": 46.5,
+   "delegated_pct": 96.7
+  },
+  "E07000224": {
+   "name": "Arun",
+   "received": 795,
+   "decisions": 738,
+   "granted": 642,
+   "granted_pct": 87.0,
+   "extension_pct": 13.7,
+   "delegated_pct": 92.8
+  },
+  "E07000170": {
+   "name": "Ashfield",
+   "received": 433,
+   "decisions": 402,
+   "granted": 346,
+   "granted_pct": 86.1,
+   "extension_pct": 30.6,
+   "delegated_pct": 93.3
+  },
+  "E07000105": {
+   "name": "Ashford",
+   "received": 1347,
+   "decisions": 942,
+   "granted": 832,
+   "granted_pct": 88.3,
+   "extension_pct": 48.3,
+   "delegated_pct": 96.9
+  },
+  "E07000200": {
+   "name": "Babergh",
+   "received": 886,
+   "decisions": 803,
+   "granted": 703,
+   "granted_pct": 87.5,
+   "extension_pct": 36.1,
+   "delegated_pct": 98.8
+  },
+  "E09000002": {
+   "name": "Barking and Dagenham",
+   "received": 686,
+   "decisions": 681,
+   "granted": 441,
+   "granted_pct": 64.8,
+   "extension_pct": 20.1,
+   "delegated_pct": 97.9
+  },
+  "E09000003": {
+   "name": "Barnet",
+   "received": 2586,
+   "decisions": 2417,
+   "granted": 1783,
+   "granted_pct": 73.8,
+   "extension_pct": 24.7,
+   "delegated_pct": 98.1
+  },
+  "E08000038": {
+   "name": "Barnsley",
+   "received": 695,
+   "decisions": 655,
+   "granted": 601,
+   "granted_pct": 91.8,
+   "extension_pct": 36.2,
+   "delegated_pct": 98.3
+  },
+  "E07000066": {
+   "name": "Basildon",
+   "received": 846,
+   "decisions": 824,
+   "granted": 733,
+   "granted_pct": 89.0,
+   "extension_pct": 38.1,
+   "delegated_pct": 96.5
+  },
+  "E07000084": {
+   "name": "Basingstoke and Deane",
+   "received": 1095,
+   "decisions": 1037,
+   "granted": 947,
+   "granted_pct": 91.3,
+   "extension_pct": 44.0,
+   "delegated_pct": 96.5
+  },
+  "E07000171": {
+   "name": "Bassetlaw",
+   "received": 600,
+   "decisions": 564,
+   "granted": 454,
+   "granted_pct": 80.5,
+   "extension_pct": 73.4,
+   "delegated_pct": 98.0
+  },
+  "E06000022": {
+   "name": "Bath and North East Somerset",
+   "received": 1845,
+   "decisions": 1748,
+   "granted": 1651,
+   "granted_pct": 94.5,
+   "extension_pct": 42.0,
+   "delegated_pct": 96.1
+  },
+  "E06000055": {
+   "name": "Bedford",
+   "received": 1068,
+   "decisions": 1060,
+   "granted": 839,
+   "granted_pct": 79.2,
+   "extension_pct": 51.2,
+   "delegated_pct": 95.1
+  },
+  "E09000004": {
+   "name": "Bexley",
+   "received": 1333,
+   "decisions": 1258,
+   "granted": 1126,
+   "granted_pct": 89.5,
+   "extension_pct": 23.1,
+   "delegated_pct": 96.9
+  },
+  "E08000025": {
+   "name": "Birmingham",
+   "received": 3729,
+   "decisions": 3333,
+   "granted": 2735,
+   "granted_pct": 82.1,
+   "extension_pct": 45.5,
+   "delegated_pct": 98.4
+  },
+  "E07000129": {
+   "name": "Blaby",
+   "received": 469,
+   "decisions": 416,
+   "granted": 391,
+   "granted_pct": 94.0,
+   "extension_pct": 61.1,
+   "delegated_pct": 94.5
+  },
+  "E06000008": {
+   "name": "Blackburn with Darwen",
+   "received": 593,
+   "decisions": 478,
+   "granted": 463,
+   "granted_pct": 96.9,
+   "extension_pct": 40.8,
+   "delegated_pct": 90.2
+  },
+  "E06000009": {
+   "name": "Blackpool",
+   "received": 353,
+   "decisions": 314,
+   "granted": 264,
+   "granted_pct": 84.1,
+   "extension_pct": 46.2,
+   "delegated_pct": 96.2
+  },
+  "E07000033": {
+   "name": "Bolsover",
+   "received": 256,
+   "decisions": 276,
+   "granted": 269,
+   "granted_pct": 97.5,
+   "extension_pct": 33.7,
+   "delegated_pct": 89.9
+  },
+  "E08000001": {
+   "name": "Bolton",
+   "received": 1059,
+   "decisions": 992,
+   "granted": 781,
+   "granted_pct": 78.7,
+   "extension_pct": 42.2,
+   "delegated_pct": 95.9
+  },
+  "E07000136": {
+   "name": "Boston",
+   "received": 305,
+   "decisions": 302,
+   "granted": 276,
+   "granted_pct": 91.4,
+   "extension_pct": 50.0,
+   "delegated_pct": 97.0
+  },
+  "E06000058": {
+   "name": "Bournemouth, Christchurch and Poole",
+   "received": 2080,
+   "decisions": 2189,
+   "granted": 1788,
+   "granted_pct": 81.7,
+   "extension_pct": 53.5,
+   "delegated_pct": 97.6
+  },
+  "E06000036": {
+   "name": "Bracknell Forest",
+   "received": 576,
+   "decisions": 474,
+   "granted": 435,
+   "granted_pct": 91.8,
+   "extension_pct": 60.8,
+   "delegated_pct": 95.1
+  },
+  "E08000032": {
+   "name": "Bradford",
+   "received": 2483,
+   "decisions": 2354,
+   "granted": 2041,
+   "granted_pct": 86.7,
+   "extension_pct": 38.7,
+   "delegated_pct": 98.3
+  },
+  "E07000067": {
+   "name": "Braintree",
+   "received": 991,
+   "decisions": 911,
+   "granted": 768,
+   "granted_pct": 84.3,
+   "extension_pct": 31.4,
+   "delegated_pct": 95.9
+  },
+  "E07000143": {
+   "name": "Breckland",
+   "received": 837,
+   "decisions": 774,
+   "granted": 647,
+   "granted_pct": 83.6,
+   "extension_pct": 27.5,
+   "delegated_pct": 96.5
+  },
+  "E09000005": {
+   "name": "Brent",
+   "received": 2076,
+   "decisions": 1916,
+   "granted": 1484,
+   "granted_pct": 77.5,
+   "extension_pct": 27.6,
+   "delegated_pct": 98.6
+  },
+  "E07000068": {
+   "name": "Brentwood",
+   "received": 734,
+   "decisions": 668,
+   "granted": 556,
+   "granted_pct": 83.2,
+   "extension_pct": 65.4,
+   "delegated_pct": 98.5
+  },
+  "E06000043": {
+   "name": "Brighton and Hove",
+   "received": 1841,
+   "decisions": 1659,
+   "granted": 1496,
+   "granted_pct": 90.2,
+   "extension_pct": 48.6,
+   "delegated_pct": 96.1
+  },
+  "E06000023": {
+   "name": "Bristol, City of",
+   "received": 2162,
+   "decisions": 2042,
+   "granted": 1766,
+   "granted_pct": 86.5,
+   "extension_pct": 37.8,
+   "delegated_pct": 99.4
+  },
+  "E07000144": {
+   "name": "Broadland",
+   "received": 716,
+   "decisions": 719,
+   "granted": 665,
+   "granted_pct": 92.5,
+   "extension_pct": 39.8,
+   "delegated_pct": 95.1
+  },
+  "E09000006": {
+   "name": "Bromley",
+   "received": 2398,
+   "decisions": 2314,
+   "granted": 1764,
+   "granted_pct": 76.2,
+   "extension_pct": 34.3,
+   "delegated_pct": 97.8
+  },
+  "E07000234": {
+   "name": "Bromsgrove",
+   "received": 499,
+   "decisions": 481,
+   "granted": 449,
+   "granted_pct": 93.3,
+   "extension_pct": 37.2,
+   "delegated_pct": 94.0
+  },
+  "E07000095": {
+   "name": "Broxbourne",
+   "received": 510,
+   "decisions": 477,
+   "granted": 410,
+   "granted_pct": 86.0,
+   "extension_pct": 50.7,
+   "delegated_pct": 96.2
+  },
+  "E07000172": {
+   "name": "Broxtowe",
+   "received": 494,
+   "decisions": 477,
+   "granted": 449,
+   "granted_pct": 94.1,
+   "extension_pct": 28.9,
+   "delegated_pct": 94.3
+  },
+  "E06000060": {
+   "name": "Buckinghamshire",
+   "received": 4930,
+   "decisions": 4532,
+   "granted": 3831,
+   "granted_pct": 84.5,
+   "extension_pct": 56.5,
+   "delegated_pct": 98.8
+  },
+  "E07000117": {
+   "name": "Burnley",
+   "received": 306,
+   "decisions": 295,
+   "granted": 256,
+   "granted_pct": 86.8,
+   "extension_pct": 37.6,
+   "delegated_pct": 90.2
+  },
+  "E08000002": {
+   "name": "Bury",
+   "received": 744,
+   "decisions": 780,
+   "granted": 668,
+   "granted_pct": 85.6,
+   "extension_pct": 27.9,
+   "delegated_pct": 95.6
+  },
+  "E08000033": {
+   "name": "Calderdale",
+   "received": 838,
+   "decisions": 805,
+   "granted": 666,
+   "granted_pct": 82.7,
+   "extension_pct": 50.8,
+   "delegated_pct": 96.9
+  },
+  "E07000008": {
+   "name": "Cambridge",
+   "received": 1072,
+   "decisions": 986,
+   "granted": 902,
+   "granted_pct": 91.5,
+   "extension_pct": 25.4,
+   "delegated_pct": 95.9
+  },
+  "E09000007": {
+   "name": "Camden",
+   "received": 2152,
+   "decisions": 1951,
+   "granted": 1744,
+   "granted_pct": 89.4,
+   "extension_pct": 44.0,
+   "delegated_pct": 92.8
+  },
+  "E07000192": {
+   "name": "Cannock Chase",
+   "received": 298,
+   "decisions": 251,
+   "granted": 224,
+   "granted_pct": 89.2,
+   "extension_pct": 29.5,
+   "delegated_pct": 92.8
+  },
+  "E07000106": {
+   "name": "Canterbury",
+   "received": 1038,
+   "decisions": 879,
+   "granted": 832,
+   "granted_pct": 94.7,
+   "extension_pct": 37.9,
+   "delegated_pct": 96.0
+  },
+  "E07000069": {
+   "name": "Castle Point",
+   "received": 384,
+   "decisions": 354,
+   "granted": 297,
+   "granted_pct": 83.9,
+   "extension_pct": 12.1,
+   "delegated_pct": 98.6
+  },
+  "E06000056": {
+   "name": "Central Bedfordshire",
+   "received": 1532,
+   "decisions": 1425,
+   "granted": 1186,
+   "granted_pct": 83.2,
+   "extension_pct": 37.5,
+   "delegated_pct": 96.8
+  },
+  "E07000130": {
+   "name": "Charnwood",
+   "received": 1055,
+   "decisions": 895,
+   "granted": 791,
+   "granted_pct": 88.4,
+   "extension_pct": 32.0,
+   "delegated_pct": 96.9
+  },
+  "E07000070": {
+   "name": "Chelmsford",
+   "received": 1265,
+   "decisions": 1209,
+   "granted": 1053,
+   "granted_pct": 87.1,
+   "extension_pct": 22.4,
+   "delegated_pct": 98.8
+  },
+  "E07000078": {
+   "name": "Cheltenham",
+   "received": 990,
+   "decisions": 906,
+   "granted": 875,
+   "granted_pct": 96.6,
+   "extension_pct": 29.0,
+   "delegated_pct": 96.9
+  },
+  "E07000177": {
+   "name": "Cherwell",
+   "received": 1113,
+   "decisions": 1022,
+   "granted": 930,
+   "granted_pct": 91.0,
+   "extension_pct": 50.0,
+   "delegated_pct": 95.4
+  },
+  "E06000049": {
+   "name": "Cheshire East",
+   "received": 2506,
+   "decisions": 2410,
+   "granted": 2087,
+   "granted_pct": 86.6,
+   "extension_pct": 62.1,
+   "delegated_pct": 92.9
+  },
+  "E06000050": {
+   "name": "Cheshire West and Chester",
+   "received": 1844,
+   "decisions": 1708,
+   "granted": 1570,
+   "granted_pct": 91.9,
+   "extension_pct": 63.5,
+   "delegated_pct": 98.4
+  },
+  "E07000034": {
+   "name": "Chesterfield",
+   "received": 401,
+   "decisions": 357,
+   "granted": 310,
+   "granted_pct": 86.8,
+   "extension_pct": 53.8,
+   "delegated_pct": 92.2
+  },
+  "E07000225": {
+   "name": "Chichester",
+   "received": 931,
+   "decisions": 866,
+   "granted": 765,
+   "granted_pct": 88.3,
+   "extension_pct": 14.2,
+   "delegated_pct": 96.9
+  },
+  "E07000118": {
+   "name": "Chorley",
+   "received": 580,
+   "decisions": 536,
+   "granted": 496,
+   "granted_pct": 92.5,
+   "extension_pct": 39.4,
+   "delegated_pct": 94.2
+  },
+  "E09000001": {
+   "name": "City of London",
+   "received": 519,
+   "decisions": 477,
+   "granted": 466,
+   "granted_pct": 97.7,
+   "extension_pct": 82.0,
+   "delegated_pct": 96.2
+  },
+  "E07000071": {
+   "name": "Colchester",
+   "received": 1137,
+   "decisions": 1003,
+   "granted": 841,
+   "granted_pct": 83.8,
+   "extension_pct": 30.6,
+   "delegated_pct": 98.1
+  },
+  "E06000052": {
+   "name": "Cornwall",
+   "received": 5015,
+   "decisions": 4741,
+   "granted": 4418,
+   "granted_pct": 93.2,
+   "extension_pct": 34.7,
+   "delegated_pct": 98.6
+  },
+  "E07000079": {
+   "name": "Cotswold",
+   "received": 1491,
+   "decisions": 1285,
+   "granted": 1154,
+   "granted_pct": 89.8,
+   "extension_pct": 48.6,
+   "delegated_pct": 98.2
+  },
+  "E06000047": {
+   "name": "County Durham",
+   "received": 1949,
+   "decisions": 1679,
+   "granted": 1565,
+   "granted_pct": 93.2,
+   "extension_pct": 47.4,
+   "delegated_pct": 96.9
+  },
+  "E08000026": {
+   "name": "Coventry",
+   "received": 1139,
+   "decisions": 1055,
+   "granted": 870,
+   "granted_pct": 82.5,
+   "extension_pct": 12.2,
+   "delegated_pct": 97.7
+  },
+  "E07000226": {
+   "name": "Crawley",
+   "received": 281,
+   "decisions": 217,
+   "granted": 180,
+   "granted_pct": 82.9,
+   "extension_pct": 76.0,
+   "delegated_pct": 92.6
+  },
+  "E09000008": {
+   "name": "Croydon",
+   "received": 1647,
+   "decisions": 1576,
+   "granted": 1157,
+   "granted_pct": 73.4,
+   "extension_pct": 41.3,
+   "delegated_pct": 97.5
+  },
+  "E06000063": {
+   "name": "Cumberland",
+   "received": 1260,
+   "decisions": 1163,
+   "granted": 1102,
+   "granted_pct": 94.8,
+   "extension_pct": 44.4,
+   "delegated_pct": 97.2
+  },
+  "E07000096": {
+   "name": "Dacorum",
+   "received": 1181,
+   "decisions": 1123,
+   "granted": 973,
+   "granted_pct": 86.6,
+   "extension_pct": 21.0,
+   "delegated_pct": 96.3
+  },
+  "E06000005": {
+   "name": "Darlington",
+   "received": 453,
+   "decisions": 458,
+   "granted": 416,
+   "granted_pct": 90.8,
+   "extension_pct": 34.7,
+   "delegated_pct": 96.1
+  },
+  "E07000107": {
+   "name": "Dartford",
+   "received": 592,
+   "decisions": 596,
+   "granted": 456,
+   "granted_pct": 76.5,
+   "extension_pct": 28.5,
+   "delegated_pct": 97.3
+  },
+  "E26000001": {
+   "name": "Dartmoor National Park",
+   "received": 315,
+   "decisions": 287,
+   "granted": 242,
+   "granted_pct": 84.3,
+   "extension_pct": 42.5,
+   "delegated_pct": 97.6
+  },
+  "E06000015": {
+   "name": "Derby",
+   "received": 910,
+   "decisions": 938,
+   "granted": 830,
+   "granted_pct": 88.5,
+   "extension_pct": 56.6,
+   "delegated_pct": 96.9
+  },
+  "E07000035": {
+   "name": "Derbyshire Dales",
+   "received": 507,
+   "decisions": 486,
+   "granted": 419,
+   "granted_pct": 86.2,
+   "extension_pct": 34.2,
+   "delegated_pct": 92.4
+  },
+  "E08000017": {
+   "name": "Doncaster",
+   "received": 958,
+   "decisions": 969,
+   "granted": 830,
+   "granted_pct": 85.7,
+   "extension_pct": 35.4,
+   "delegated_pct": 96.7
+  },
+  "E06000059": {
+   "name": "Dorset",
+   "received": 2812,
+   "decisions": 2708,
+   "granted": 2483,
+   "granted_pct": 91.7,
+   "extension_pct": 36.9,
+   "delegated_pct": 96.9
+  },
+  "E07000108": {
+   "name": "Dover",
+   "received": 727,
+   "decisions": 732,
+   "granted": 655,
+   "granted_pct": 89.5,
+   "extension_pct": 30.2,
+   "delegated_pct": 93.2
+  },
+  "E08000027": {
+   "name": "Dudley",
+   "received": 926,
+   "decisions": 803,
+   "granted": 668,
+   "granted_pct": 83.2,
+   "extension_pct": 32.9,
+   "delegated_pct": 99.0
+  },
+  "E09000009": {
+   "name": "Ealing",
+   "received": 1986,
+   "decisions": 1955,
+   "granted": 1629,
+   "granted_pct": 83.3,
+   "extension_pct": 60.1,
+   "delegated_pct": 99.4
+  },
+  "E07000009": {
+   "name": "East Cambridgeshire",
+   "received": 721,
+   "decisions": 692,
+   "granted": 613,
+   "granted_pct": 88.6,
+   "extension_pct": 35.4,
+   "delegated_pct": 96.0
+  },
+  "E07000040": {
+   "name": "East Devon",
+   "received": 1328,
+   "decisions": 1267,
+   "granted": 1121,
+   "granted_pct": 88.5,
+   "extension_pct": 35.0,
+   "delegated_pct": 90.6
+  },
+  "E07000085": {
+   "name": "East Hampshire",
+   "received": 604,
+   "decisions": 597,
+   "granted": 526,
+   "granted_pct": 88.1,
+   "extension_pct": 70.9,
+   "delegated_pct": 97.3
+  },
+  "E07000242": {
+   "name": "East Hertfordshire",
+   "received": 1320,
+   "decisions": 1111,
+   "granted": 926,
+   "granted_pct": 83.3,
+   "extension_pct": 40.8,
+   "delegated_pct": 99.4
+  },
+  "E07000137": {
+   "name": "East Lindsey",
+   "received": 833,
+   "decisions": 773,
+   "granted": 722,
+   "granted_pct": 93.4,
+   "extension_pct": 51.2,
+   "delegated_pct": 97.3
+  },
+  "E06000011": {
+   "name": "East Riding of Yorkshire",
+   "received": 1974,
+   "decisions": 1794,
+   "granted": 1614,
+   "granted_pct": 90.0,
+   "extension_pct": 12.8,
+   "delegated_pct": 96.3
+  },
+  "E07000193": {
+   "name": "East Staffordshire",
+   "received": 758,
+   "decisions": 707,
+   "granted": 625,
+   "granted_pct": 88.4,
+   "extension_pct": 66.3,
+   "delegated_pct": 98.3
+  },
+  "E07000244": {
+   "name": "East Suffolk",
+   "received": 2235,
+   "decisions": 1897,
+   "granted": 1738,
+   "granted_pct": 91.6,
+   "extension_pct": 43.4,
+   "delegated_pct": 96.8
+  },
+  "E07000061": {
+   "name": "Eastbourne",
+   "received": 372,
+   "decisions": 350,
+   "granted": 300,
+   "granted_pct": 85.7,
+   "extension_pct": 27.4,
+   "delegated_pct": 98
+  },
+  "E07000086": {
+   "name": "Eastleigh",
+   "received": 563,
+   "decisions": 517,
+   "granted": 466,
+   "granted_pct": 90.1,
+   "extension_pct": 25.9,
+   "delegated_pct": 94.4
+  },
+  "E51000003": {
+   "name": "Ebbsfleet Development Corporation",
+   "received": 27,
+   "decisions": 26,
+   "granted": 25,
+   "granted_pct": 96.2,
+   "extension_pct": 46.2,
+   "delegated_pct": 92.3
+  },
+  "E07000207": {
+   "name": "Elmbridge",
+   "received": 1611,
+   "decisions": 1590,
+   "granted": 1278,
+   "granted_pct": 80.4,
+   "extension_pct": 41.3,
+   "delegated_pct": 95.3
+  },
+  "E09000010": {
+   "name": "Enfield",
+   "received": 2085,
+   "decisions": 1919,
+   "granted": 1514,
+   "granted_pct": 78.9,
+   "extension_pct": 5.6,
+   "delegated_pct": 99.0
+  },
+  "E07000072": {
+   "name": "Epping Forest",
+   "received": 1342,
+   "decisions": 1282,
+   "granted": 871,
+   "granted_pct": 67.9,
+   "extension_pct": 34.7,
+   "delegated_pct": 96.8
+  },
+  "E07000208": {
+   "name": "Epsom and Ewell",
+   "received": 622,
+   "decisions": 591,
+   "granted": 485,
+   "granted_pct": 82.1,
+   "extension_pct": 14.9,
+   "delegated_pct": 97.8
+  },
+  "E07000036": {
+   "name": "Erewash",
+   "received": 424,
+   "decisions": 401,
+   "granted": 368,
+   "granted_pct": 91.8,
+   "extension_pct": 30.2,
+   "delegated_pct": 92.8
+  },
+  "E07000041": {
+   "name": "Exeter",
+   "received": 648,
+   "decisions": 590,
+   "granted": 488,
+   "granted_pct": 82.7,
+   "extension_pct": 41.7,
+   "delegated_pct": 94.7
+  },
+  "E26000002": {
+   "name": "Exmoor National Park",
+   "received": 177,
+   "decisions": 180,
+   "granted": 173,
+   "granted_pct": 96.1,
+   "extension_pct": 53.9,
+   "delegated_pct": 89.4
+  },
+  "E07000087": {
+   "name": "Fareham",
+   "received": 594,
+   "decisions": 575,
+   "granted": 559,
+   "granted_pct": 97.2,
+   "extension_pct": 22.1,
+   "delegated_pct": 92.2
+  },
+  "E07000010": {
+   "name": "Fenland",
+   "received": 630,
+   "decisions": 588,
+   "granted": 506,
+   "granted_pct": 86.1,
+   "extension_pct": 41.2,
+   "delegated_pct": 86.2
+  },
+  "E07000112": {
+   "name": "Folkestone and Hythe",
+   "received": 800,
+   "decisions": 697,
+   "granted": 573,
+   "granted_pct": 82.2,
+   "extension_pct": 11.6,
+   "delegated_pct": 95.6
+  },
+  "E07000080": {
+   "name": "Forest of Dean",
+   "received": 560,
+   "decisions": 526,
+   "granted": 487,
+   "granted_pct": 92.6,
+   "extension_pct": 47.7,
+   "delegated_pct": 96.6
+  },
+  "E07000119": {
+   "name": "Fylde",
+   "received": 458,
+   "decisions": 413,
+   "granted": 397,
+   "granted_pct": 96.1,
+   "extension_pct": 53.0,
+   "delegated_pct": 92.5
+  },
+  "E08000037": {
+   "name": "Gateshead",
+   "received": 517,
+   "decisions": 510,
+   "granted": 444,
+   "granted_pct": 87.1,
+   "extension_pct": 69.0,
+   "delegated_pct": 95.3
+  },
+  "E07000173": {
+   "name": "Gedling",
+   "received": 443,
+   "decisions": 376,
+   "granted": 351,
+   "granted_pct": 93.4,
+   "extension_pct": 43.9,
+   "delegated_pct": 96.0
+  },
+  "E07000081": {
+   "name": "Gloucester",
+   "received": 408,
+   "decisions": 436,
+   "granted": 350,
+   "granted_pct": 80.3,
+   "extension_pct": 47.5,
+   "delegated_pct": 95.6
+  },
+  "E07000088": {
+   "name": "Gosport",
+   "received": 230,
+   "decisions": 247,
+   "granted": 235,
+   "granted_pct": 95.1,
+   "extension_pct": 27.1,
+   "delegated_pct": 88.3
+  },
+  "E07000109": {
+   "name": "Gravesham",
+   "received": 608,
+   "decisions": 632,
+   "granted": 474,
+   "granted_pct": 75.0,
+   "extension_pct": 36.9,
+   "delegated_pct": 96.4
+  },
+  "E07000145": {
+   "name": "Great Yarmouth",
+   "received": 344,
+   "decisions": 333,
+   "granted": 278,
+   "granted_pct": 83.5,
+   "extension_pct": 49.2,
+   "delegated_pct": 92.5
+  },
+  "E09000011": {
+   "name": "Greenwich",
+   "received": 1456,
+   "decisions": 1389,
+   "granted": 1069,
+   "granted_pct": 77.0,
+   "extension_pct": 28.9,
+   "delegated_pct": 93.3
+  },
+  "E07000209": {
+   "name": "Guildford",
+   "received": 1349,
+   "decisions": 1362,
+   "granted": 1161,
+   "granted_pct": 85.2,
+   "extension_pct": 63.3,
+   "delegated_pct": 96.3
+  },
+  "E09000012": {
+   "name": "Hackney",
+   "received": 1407,
+   "decisions": 1287,
+   "granted": 1057,
+   "granted_pct": 82.1,
+   "extension_pct": 45.1,
+   "delegated_pct": 98.5
+  },
+  "E06000006": {
+   "name": "Halton",
+   "received": 255,
+   "decisions": 219,
+   "granted": 210,
+   "granted_pct": 95.9,
+   "extension_pct": 39.3,
+   "delegated_pct": 99.1
+  },
+  "E09000013": {
+   "name": "Hammersmith and Fulham",
+   "received": 1547,
+   "decisions": 1227,
+   "granted": 1166,
+   "granted_pct": 95.0,
+   "extension_pct": 66.0,
+   "delegated_pct": 98.0
+  },
+  "E07000131": {
+   "name": "Harborough",
+   "received": 925,
+   "decisions": 774,
+   "granted": 688,
+   "granted_pct": 88.9,
+   "extension_pct": 39.4,
+   "delegated_pct": 94.4
+  },
+  "E09000014": {
+   "name": "Haringey",
+   "received": 1439,
+   "decisions": 1464,
+   "granted": 1240,
+   "granted_pct": 84.7,
+   "extension_pct": 40.5,
+   "delegated_pct": 99.1
+  },
+  "E07000073": {
+   "name": "Harlow",
+   "received": 285,
+   "decisions": 287,
+   "granted": 237,
+   "granted_pct": 82.6,
+   "extension_pct": 39.0,
+   "delegated_pct": 91.6
+  },
+  "E09000015": {
+   "name": "Harrow",
+   "received": 1387,
+   "decisions": 1362,
+   "granted": 1019,
+   "granted_pct": 74.8,
+   "extension_pct": 31.6,
+   "delegated_pct": 96.9
+  },
+  "E07000089": {
+   "name": "Hart",
+   "received": 702,
+   "decisions": 715,
+   "granted": 611,
+   "granted_pct": 85.5,
+   "extension_pct": 36.9,
+   "delegated_pct": 97.5
+  },
+  "E06000001": {
+   "name": "Hartlepool",
+   "received": 276,
+   "decisions": 215,
+   "granted": 202,
+   "granted_pct": 94.0,
+   "extension_pct": 51.2,
+   "delegated_pct": 90.7
+  },
+  "E51000007": {
+   "name": "Hartlepool Development Corporation",
+   "received": 30,
+   "decisions": 36,
+   "granted": 32,
+   "granted_pct": 88.9,
+   "extension_pct": 55.6,
+   "delegated_pct": 77.8
+  },
+  "E07000062": {
+   "name": "Hastings",
+   "received": 387,
+   "decisions": 329,
+   "granted": 286,
+   "granted_pct": 86.9,
+   "extension_pct": 46.5,
+   "delegated_pct": 93.9
+  },
+  "E07000090": {
+   "name": "Havant",
+   "received": 436,
+   "decisions": 407,
+   "granted": 383,
+   "granted_pct": 94.1,
+   "extension_pct": 57.7,
+   "delegated_pct": 94.3
+  },
+  "E09000016": {
+   "name": "Havering",
+   "received": 1507,
+   "decisions": 1446,
+   "granted": 1119,
+   "granted_pct": 77.4,
+   "extension_pct": 45.9,
+   "delegated_pct": 99.1
+  },
+  "E06000019": {
+   "name": "Herefordshire, County of",
+   "received": 1530,
+   "decisions": 1484,
+   "granted": 1394,
+   "granted_pct": 93.9,
+   "extension_pct": 56.3,
+   "delegated_pct": 98.7
+  },
+  "E07000098": {
+   "name": "Hertsmere",
+   "received": 817,
+   "decisions": 738,
+   "granted": 654,
+   "granted_pct": 88.6,
+   "extension_pct": 43.4,
+   "delegated_pct": 93.6
+  },
+  "E07000037": {
+   "name": "High Peak",
+   "received": 390,
+   "decisions": 340,
+   "granted": 283,
+   "granted_pct": 83.2,
+   "extension_pct": 72.9,
+   "delegated_pct": 85.3
+  },
+  "E09000017": {
+   "name": "Hillingdon",
+   "received": 1792,
+   "decisions": 1633,
+   "granted": 1388,
+   "granted_pct": 85.0,
+   "extension_pct": 46.9,
+   "delegated_pct": 97.8
+  },
+  "E07000132": {
+   "name": "Hinckley and Bosworth",
+   "received": 633,
+   "decisions": 545,
+   "granted": 485,
+   "granted_pct": 89.0,
+   "extension_pct": 61.7,
+   "delegated_pct": 96.3
+  },
+  "E07000227": {
+   "name": "Horsham",
+   "received": 1350,
+   "decisions": 1339,
+   "granted": 1219,
+   "granted_pct": 91.0,
+   "extension_pct": 42.8,
+   "delegated_pct": 94.3
+  },
+  "E09000018": {
+   "name": "Hounslow",
+   "received": 1435,
+   "decisions": 1216,
+   "granted": 907,
+   "granted_pct": 74.6,
+   "extension_pct": 47.4,
+   "delegated_pct": 98.6
+  },
+  "E07000011": {
+   "name": "Huntingdonshire",
+   "received": 1125,
+   "decisions": 1058,
+   "granted": 923,
+   "granted_pct": 87.2,
+   "extension_pct": 56.8,
+   "delegated_pct": 96.3
+  },
+  "E07000120": {
+   "name": "Hyndburn",
+   "received": 304,
+   "decisions": 266,
+   "granted": 208,
+   "granted_pct": 78.2,
+   "extension_pct": 50.8,
+   "delegated_pct": 92.9
+  },
+  "E07000202": {
+   "name": "Ipswich",
+   "received": 436,
+   "decisions": 430,
+   "granted": 401,
+   "granted_pct": 93.3,
+   "extension_pct": 32.3,
+   "delegated_pct": 92.8
+  },
+  "E06000046": {
+   "name": "Isle of Wight",
+   "received": 821,
+   "decisions": 729,
+   "granted": 674,
+   "granted_pct": 92.5,
+   "extension_pct": 15.4,
+   "delegated_pct": 98.4
+  },
+  "E06000053": {
+   "name": "Isles of Scilly",
+   "received": 65,
+   "decisions": 57,
+   "granted": 53,
+   "granted_pct": 93.0,
+   "extension_pct": 57.9,
+   "delegated_pct": 75.4
+  },
+  "E09000019": {
+   "name": "Islington",
+   "received": 1365,
+   "decisions": 1426,
+   "granted": 1259,
+   "granted_pct": 88.3,
+   "extension_pct": 51.3,
+   "delegated_pct": 94.5
+  },
+  "E09000020": {
+   "name": "Kensington and Chelsea",
+   "received": 2505,
+   "decisions": 2292,
+   "granted": 2133,
+   "granted_pct": 93.1,
+   "extension_pct": 43.1,
+   "delegated_pct": 91.4
+  },
+  "E07000146": {
+   "name": "King’s Lynn and West Norfolk",
+   "received": 1214,
+   "decisions": 1126,
+   "granted": 994,
+   "granted_pct": 88.3,
+   "extension_pct": 23.3,
+   "delegated_pct": 95.2
+  },
+  "E06000010": {
+   "name": "Kingston upon Hull, City of",
+   "received": 575,
+   "decisions": 449,
+   "granted": 406,
+   "granted_pct": 90.4,
+   "extension_pct": 62.1,
+   "delegated_pct": 93.8
+  },
+  "E09000021": {
+   "name": "Kingston upon Thames",
+   "received": 1106,
+   "decisions": 1100,
+   "granted": 856,
+   "granted_pct": 77.8,
+   "extension_pct": 7.9,
+   "delegated_pct": 98.9
+  },
+  "E08000034": {
+   "name": "Kirklees",
+   "received": 1959,
+   "decisions": 1766,
+   "granted": 1595,
+   "granted_pct": 90.3,
+   "extension_pct": 61.8,
+   "delegated_pct": 98.6
+  },
+  "E08000011": {
+   "name": "Knowsley",
+   "received": 299,
+   "decisions": 274,
+   "granted": 262,
+   "granted_pct": 95.6,
+   "extension_pct": 47.8,
+   "delegated_pct": 95.3
+  },
+  "E26000011": {
+   "name": "Lake District National Park",
+   "received": 837,
+   "decisions": 722,
+   "granted": 641,
+   "granted_pct": 88.8,
+   "extension_pct": 34.1,
+   "delegated_pct": 89.2
+  },
+  "E09000022": {
+   "name": "Lambeth",
+   "received": 1783,
+   "decisions": 1793,
+   "granted": 1412,
+   "granted_pct": 78.8,
+   "extension_pct": 51.2,
+   "delegated_pct": 97.9
+  },
+  "E07000121": {
+   "name": "Lancaster",
+   "received": 674,
+   "decisions": 654,
+   "granted": 545,
+   "granted_pct": 83.3,
+   "extension_pct": 39.9,
+   "delegated_pct": 91.9
+  },
+  "E08000035": {
+   "name": "Leeds",
+   "received": 3568,
+   "decisions": 3465,
+   "granted": 2826,
+   "granted_pct": 81.6,
+   "extension_pct": 32.0,
+   "delegated_pct": 97.1
+  },
+  "E06000016": {
+   "name": "Leicester",
+   "received": 1045,
+   "decisions": 997,
+   "granted": 813,
+   "granted_pct": 81.5,
+   "extension_pct": 43.7,
+   "delegated_pct": 97.0
+  },
+  "E07000063": {
+   "name": "Lewes",
+   "received": 404,
+   "decisions": 405,
+   "granted": 361,
+   "granted_pct": 89.1,
+   "extension_pct": 20.0,
+   "delegated_pct": 97.5
+  },
+  "E09000023": {
+   "name": "Lewisham",
+   "received": 1349,
+   "decisions": 1256,
+   "granted": 1060,
+   "granted_pct": 84.4,
+   "extension_pct": 32.1,
+   "delegated_pct": 97.1
+  },
+  "E07000194": {
+   "name": "Lichfield",
+   "received": 705,
+   "decisions": 677,
+   "granted": 567,
+   "granted_pct": 83.8,
+   "extension_pct": 9.6,
+   "delegated_pct": 97.6
+  },
+  "E07000138": {
+   "name": "Lincoln",
+   "received": 353,
+   "decisions": 324,
+   "granted": 298,
+   "granted_pct": 92.0,
+   "extension_pct": 25.0,
+   "delegated_pct": 97.2
+  },
+  "E08000012": {
+   "name": "Liverpool",
+   "received": 2135,
+   "decisions": 1612,
+   "granted": 1364,
+   "granted_pct": 84.6,
+   "extension_pct": 36.0,
+   "delegated_pct": 96.2
+  },
+  "E06000032": {
+   "name": "Luton",
+   "received": 772,
+   "decisions": 731,
+   "granted": 551,
+   "granted_pct": 75.4,
+   "extension_pct": 40.2,
+   "delegated_pct": 96.6
+  },
+  "E07000110": {
+   "name": "Maidstone",
+   "received": 1178,
+   "decisions": 1097,
+   "granted": 925,
+   "granted_pct": 84.3,
+   "extension_pct": 33.8,
+   "delegated_pct": 94.1
+  },
+  "E07000074": {
+   "name": "Maldon",
+   "received": 531,
+   "decisions": 478,
+   "granted": 402,
+   "granted_pct": 84.1,
+   "extension_pct": 54.6,
+   "delegated_pct": 91.0
+  },
+  "E07000235": {
+   "name": "Malvern Hills",
+   "received": 752,
+   "decisions": 737,
+   "granted": 602,
+   "granted_pct": 81.7,
+   "extension_pct": 34.7,
+   "delegated_pct": 96.7
+  },
+  "E08000003": {
+   "name": "Manchester",
+   "received": 2034,
+   "decisions": 1807,
+   "granted": 1606,
+   "granted_pct": 88.9,
+   "extension_pct": 33.3,
+   "delegated_pct": 97.2
+  },
+  "E07000174": {
+   "name": "Mansfield",
+   "received": 296,
+   "decisions": 284,
+   "granted": 273,
+   "granted_pct": 96.1,
+   "extension_pct": 53.9,
+   "delegated_pct": 88.7
+  },
+  "E06000035": {
+   "name": "Medway",
+   "received": 996,
+   "decisions": 918,
+   "granted": 844,
+   "granted_pct": 91.9,
+   "extension_pct": 18.5,
+   "delegated_pct": 95.6
+  },
+  "E07000133": {
+   "name": "Melton",
+   "received": 356,
+   "decisions": 333,
+   "granted": 293,
+   "granted_pct": 88.0,
+   "extension_pct": 74.5,
+   "delegated_pct": 96.1
+  },
+  "E09000024": {
+   "name": "Merton",
+   "received": 1165,
+   "decisions": 1073,
+   "granted": 972,
+   "granted_pct": 90.6,
+   "extension_pct": 48.5,
+   "delegated_pct": 95.6
+  },
+  "E07000042": {
+   "name": "Mid Devon",
+   "received": 702,
+   "decisions": 663,
+   "granted": 628,
+   "granted_pct": 94.7,
+   "extension_pct": 38.6,
+   "delegated_pct": 96.7
+  },
+  "E07000203": {
+   "name": "Mid Suffolk",
+   "received": 936,
+   "decisions": 849,
+   "granted": 762,
+   "granted_pct": 89.8,
+   "extension_pct": 33.8,
+   "delegated_pct": 96.2
+  },
+  "E07000228": {
+   "name": "Mid Sussex",
+   "received": 1162,
+   "decisions": 1089,
+   "granted": 992,
+   "granted_pct": 91.1,
+   "extension_pct": 42.2,
+   "delegated_pct": 96.1
+  },
+  "E06000002": {
+   "name": "Middlesbrough",
+   "received": 325,
+   "decisions": 301,
+   "granted": 223,
+   "granted_pct": 74.1,
+   "extension_pct": 56.5,
+   "delegated_pct": 93.0
+  },
+  "E51000006": {
+   "name": "Middlesbrough Development Corporation",
+   "received": 58,
+   "decisions": 69,
+   "granted": 61,
+   "granted_pct": 88.4,
+   "extension_pct": 49.3,
+   "delegated_pct": 89.9
+  },
+  "E06000042": {
+   "name": "Milton Keynes",
+   "received": 1094,
+   "decisions": 1030,
+   "granted": 909,
+   "granted_pct": 88.3,
+   "extension_pct": 31.7,
+   "delegated_pct": 97.5
+  },
+  "E07000210": {
+   "name": "Mole Valley",
+   "received": 897,
+   "decisions": 857,
+   "granted": 626,
+   "granted_pct": 73.0,
+   "extension_pct": 47.8,
+   "delegated_pct": 95.3
+  },
+  "E07000091": {
+   "name": "New Forest",
+   "received": 922,
+   "decisions": 884,
+   "granted": 798,
+   "granted_pct": 90.3,
+   "extension_pct": 35.2,
+   "delegated_pct": 94.5
+  },
+  "E26000009": {
+   "name": "New Forest National Park",
+   "received": 444,
+   "decisions": 471,
+   "granted": 413,
+   "granted_pct": 87.7,
+   "extension_pct": 40.1,
+   "delegated_pct": 95.3
+  },
+  "E07000175": {
+   "name": "Newark and Sherwood",
+   "received": 768,
+   "decisions": 752,
+   "granted": 688,
+   "granted_pct": 91.5,
+   "extension_pct": 56.8,
+   "delegated_pct": 92.4
+  },
+  "E07000195": {
+   "name": "Newcastle-under-Lyme",
+   "received": 473,
+   "decisions": 441,
+   "granted": 400,
+   "granted_pct": 90.7,
+   "extension_pct": 35.6,
+   "delegated_pct": 90.5
+  },
+  "E08000021": {
+   "name": "Newcastle upon Tyne",
+   "received": 1096,
+   "decisions": 1018,
+   "granted": 904,
+   "granted_pct": 88.8,
+   "extension_pct": 39.6,
+   "delegated_pct": 97.5
+  },
+  "E09000025": {
+   "name": "Newham",
+   "received": 1112,
+   "decisions": 978,
+   "granted": 812,
+   "granted_pct": 83.0,
+   "extension_pct": 28.8,
+   "delegated_pct": 98.0
+  },
+  "E07000043": {
+   "name": "North Devon",
+   "received": 822,
+   "decisions": 874,
+   "granted": 823,
+   "granted_pct": 94.2,
+   "extension_pct": 39.8,
+   "delegated_pct": 95.1
+  },
+  "E07000038": {
+   "name": "North East Derbyshire",
+   "received": 532,
+   "decisions": 503,
+   "granted": 459,
+   "granted_pct": 91.3,
+   "extension_pct": 43.9,
+   "delegated_pct": 97.4
+  },
+  "E06000012": {
+   "name": "North East Lincolnshire",
+   "received": 472,
+   "decisions": 447,
+   "granted": 422,
+   "granted_pct": 94.4,
+   "extension_pct": 53.7,
+   "delegated_pct": 87.7
+  },
+  "E07000099": {
+   "name": "North Hertfordshire",
+   "received": 1030,
+   "decisions": 995,
+   "granted": 910,
+   "granted_pct": 91.5,
+   "extension_pct": 32.7,
+   "delegated_pct": 95.6
+  },
+  "E07000139": {
+   "name": "North Kesteven",
+   "received": 654,
+   "decisions": 616,
+   "granted": 598,
+   "granted_pct": 97.1,
+   "extension_pct": 51.0,
+   "delegated_pct": 99.0
+  },
+  "E06000013": {
+   "name": "North Lincolnshire",
+   "received": 838,
+   "decisions": 681,
+   "granted": 605,
+   "granted_pct": 88.8,
+   "extension_pct": 49.2,
+   "delegated_pct": 90.5
+  },
+  "E07000147": {
+   "name": "North Norfolk",
+   "received": 1004,
+   "decisions": 871,
+   "granted": 814,
+   "granted_pct": 93.5,
+   "extension_pct": 45.6,
+   "delegated_pct": 96.8
+  },
+  "E06000061": {
+   "name": "North Northamptonshire",
+   "received": 1140,
+   "decisions": 1111,
+   "granted": 1000,
+   "granted_pct": 90.0,
+   "extension_pct": 68.5,
+   "delegated_pct": 97.5
+  },
+  "E06000024": {
+   "name": "North Somerset",
+   "received": 1116,
+   "decisions": 1087,
+   "granted": 979,
+   "granted_pct": 90.1,
+   "extension_pct": 34.9,
+   "delegated_pct": 96.9
+  },
+  "E08000022": {
+   "name": "North Tyneside",
+   "received": 634,
+   "decisions": 612,
+   "granted": 591,
+   "granted_pct": 96.6,
+   "extension_pct": 22.9,
+   "delegated_pct": 97.5
+  },
+  "E07000218": {
+   "name": "North Warwickshire",
+   "received": 415,
+   "decisions": 340,
+   "granted": 322,
+   "granted_pct": 94.7,
+   "extension_pct": 63.2,
+   "delegated_pct": 91.2
+  },
+  "E07000134": {
+   "name": "North West Leicestershire",
+   "received": 612,
+   "decisions": 532,
+   "granted": 503,
+   "granted_pct": 94.5,
+   "extension_pct": 55.6,
+   "delegated_pct": 97.0
+  },
+  "E26000005": {
+   "name": "North York Moors National Park",
+   "received": 436,
+   "decisions": 418,
+   "granted": 402,
+   "granted_pct": 96.2,
+   "extension_pct": 25.1,
+   "delegated_pct": 94.3
+  },
+  "E06000065": {
+   "name": "North Yorkshire",
+   "received": 4835,
+   "decisions": 4642,
+   "granted": 4151,
+   "granted_pct": 89.4,
+   "extension_pct": 44.5,
+   "delegated_pct": 98.6
+  },
+  "E06000057": {
+   "name": "Northumberland",
+   "received": 1822,
+   "decisions": 2028,
+   "granted": 1800,
+   "granted_pct": 88.8,
+   "extension_pct": 45.2,
+   "delegated_pct": 98.9
+  },
+  "E26000004": {
+   "name": "Northumberland National Park",
+   "received": 42,
+   "decisions": 36,
+   "granted": 33,
+   "granted_pct": 91.7,
+   "extension_pct": 44.4,
+   "delegated_pct": 86.1
+  },
+  "E07000148": {
+   "name": "Norwich",
+   "received": 553,
+   "decisions": 558,
+   "granted": 529,
+   "granted_pct": 94.8,
+   "extension_pct": 25.8,
+   "delegated_pct": 93.2
+  },
+  "E06000018": {
+   "name": "Nottingham",
+   "received": 928,
+   "decisions": 922,
+   "granted": 808,
+   "granted_pct": 87.6,
+   "extension_pct": 36.8,
+   "delegated_pct": 98.6
+  },
+  "E07000219": {
+   "name": "Nuneaton and Bedworth",
+   "received": 324,
+   "decisions": 284,
+   "granted": 266,
+   "granted_pct": 93.7,
+   "extension_pct": 49.3,
+   "delegated_pct": 94.7
+  },
+  "E07000135": {
+   "name": "Oadby and Wigston",
+   "received": 268,
+   "decisions": 248,
+   "granted": 180,
+   "granted_pct": 72.6,
+   "extension_pct": 27.4,
+   "delegated_pct": 96.0
+  },
+  "E51000002": {
+   "name": "Old Oak and Park Royal Development Corporation",
+   "received": 55,
+   "decisions": 59,
+   "granted": 49,
+   "granted_pct": 83.1,
+   "extension_pct": 37.3,
+   "delegated_pct": 91.5
+  },
+  "E08000004": {
+   "name": "Oldham",
+   "received": 865,
+   "decisions": 814,
+   "granted": 759,
+   "granted_pct": 93.2,
+   "extension_pct": 60.2,
+   "delegated_pct": 97.1
+  },
+  "E07000178": {
+   "name": "Oxford",
+   "received": 1197,
+   "decisions": 1186,
+   "granted": 1048,
+   "granted_pct": 88.4,
+   "extension_pct": 56.6,
+   "delegated_pct": 97.8
+  },
+  "E26000006": {
+   "name": "Peak District National Park",
+   "received": 556,
+   "decisions": 513,
+   "granted": 445,
+   "granted_pct": 86.7,
+   "extension_pct": 34.1,
+   "delegated_pct": 91.8
+  },
+  "E07000122": {
+   "name": "Pendle",
+   "received": 476,
+   "decisions": 440,
+   "granted": 371,
+   "granted_pct": 84.3,
+   "extension_pct": 28.0,
+   "delegated_pct": 75
+  },
+  "E06000031": {
+   "name": "Peterborough",
+   "received": 725,
+   "decisions": 626,
+   "granted": 532,
+   "granted_pct": 85.0,
+   "extension_pct": 38.8,
+   "delegated_pct": 98.2
+  },
+  "E06000026": {
+   "name": "Plymouth",
+   "received": 758,
+   "decisions": 672,
+   "granted": 636,
+   "granted_pct": 94.6,
+   "extension_pct": 32.1,
+   "delegated_pct": 98.1
+  },
+  "E06000044": {
+   "name": "Portsmouth",
+   "received": 729,
+   "decisions": 650,
+   "granted": 557,
+   "granted_pct": 85.7,
+   "extension_pct": 44.3,
+   "delegated_pct": 88.6
+  },
+  "E07000123": {
+   "name": "Preston",
+   "received": 562,
+   "decisions": 612,
+   "granted": 556,
+   "granted_pct": 90.8,
+   "extension_pct": 45.3,
+   "delegated_pct": 94.8
+  },
+  "E06000038": {
+   "name": "Reading",
+   "received": 988,
+   "decisions": 652,
+   "granted": 553,
+   "granted_pct": 84.8,
+   "extension_pct": 58.1,
+   "delegated_pct": 97.7
+  },
+  "E09000026": {
+   "name": "Redbridge",
+   "received": 1681,
+   "decisions": 1638,
+   "granted": 1194,
+   "granted_pct": 72.9,
+   "extension_pct": 39.3,
+   "delegated_pct": 100
+  },
+  "E06000003": {
+   "name": "Redcar and Cleveland",
+   "received": 428,
+   "decisions": 387,
+   "granted": 369,
+   "granted_pct": 95.3,
+   "extension_pct": 29.2,
+   "delegated_pct": 91.2
+  },
+  "E07000236": {
+   "name": "Redditch",
+   "received": 253,
+   "decisions": 171,
+   "granted": 162,
+   "granted_pct": 94.7,
+   "extension_pct": 31.6,
+   "delegated_pct": 81.3
+  },
+  "E07000211": {
+   "name": "Reigate and Banstead",
+   "received": 1010,
+   "decisions": 936,
+   "granted": 833,
+   "granted_pct": 89.0,
+   "extension_pct": 27.2,
+   "delegated_pct": 97.8
+  },
+  "E07000124": {
+   "name": "Ribble Valley",
+   "received": 509,
+   "decisions": 487,
+   "granted": 401,
+   "granted_pct": 82.3,
+   "extension_pct": 49.3,
+   "delegated_pct": 96.3
+  },
+  "E09000027": {
+   "name": "Richmond upon Thames",
+   "received": 1943,
+   "decisions": 1825,
+   "granted": 1498,
+   "granted_pct": 82.1,
+   "extension_pct": 33.6,
+   "delegated_pct": 99.2
+  },
+  "E08000005": {
+   "name": "Rochdale",
+   "received": 653,
+   "decisions": 607,
+   "granted": 524,
+   "granted_pct": 86.3,
+   "extension_pct": 49.9,
+   "delegated_pct": 98.7
+  },
+  "E07000075": {
+   "name": "Rochford",
+   "received": 542,
+   "decisions": 471,
+   "granted": 376,
+   "granted_pct": 79.8,
+   "extension_pct": 39.1,
+   "delegated_pct": 97.0
+  },
+  "E07000125": {
+   "name": "Rossendale",
+   "received": 252,
+   "decisions": 242,
+   "granted": 208,
+   "granted_pct": 86.0,
+   "extension_pct": 75.6,
+   "delegated_pct": 81.4
+  },
+  "E07000064": {
+   "name": "Rother",
+   "received": 835,
+   "decisions": 714,
+   "granted": 638,
+   "granted_pct": 89.4,
+   "extension_pct": 77.6,
+   "delegated_pct": 96.2
+  },
+  "E08000018": {
+   "name": "Rotherham",
+   "received": 806,
+   "decisions": 731,
+   "granted": 567,
+   "granted_pct": 77.6,
+   "extension_pct": 38.3,
+   "delegated_pct": 96.0
+  },
+  "E07000220": {
+   "name": "Rugby",
+   "received": 619,
+   "decisions": 443,
+   "granted": 410,
+   "granted_pct": 92.6,
+   "extension_pct": 62.8,
+   "delegated_pct": 96.6
+  },
+  "E07000212": {
+   "name": "Runnymede",
+   "received": 672,
+   "decisions": 600,
+   "granted": 501,
+   "granted_pct": 83.5,
+   "extension_pct": 41.3,
+   "delegated_pct": 96.5
+  },
+  "E07000176": {
+   "name": "Rushcliffe",
+   "received": 854,
+   "decisions": 760,
+   "granted": 698,
+   "granted_pct": 91.8,
+   "extension_pct": 49.5,
+   "delegated_pct": 98.9
+  },
+  "E07000092": {
+   "name": "Rushmoor",
+   "received": 339,
+   "decisions": 276,
+   "granted": 262,
+   "granted_pct": 94.9,
+   "extension_pct": 23.2,
+   "delegated_pct": 94.9
+  },
+  "E06000017": {
+   "name": "Rutland",
+   "received": 564,
+   "decisions": 510,
+   "granted": 450,
+   "granted_pct": 88.2,
+   "extension_pct": 37.6,
+   "delegated_pct": 96.1
+  },
+  "E08000006": {
+   "name": "Salford",
+   "received": 931,
+   "decisions": 708,
+   "granted": 617,
+   "granted_pct": 87.1,
+   "extension_pct": 60.0,
+   "delegated_pct": 95.1
+  },
+  "E08000028": {
+   "name": "Sandwell",
+   "received": 900,
+   "decisions": 856,
+   "granted": 741,
+   "granted_pct": 86.6,
+   "extension_pct": 35.3,
+   "delegated_pct": 96.8
+  },
+  "E08000014": {
+   "name": "Sefton",
+   "received": 1083,
+   "decisions": 1033,
+   "granted": 958,
+   "granted_pct": 92.7,
+   "extension_pct": 43.6,
+   "delegated_pct": 97.2
+  },
+  "E07000111": {
+   "name": "Sevenoaks",
+   "received": 1172,
+   "decisions": 1099,
+   "granted": 958,
+   "granted_pct": 87.2,
+   "extension_pct": 33.6,
+   "delegated_pct": 96.7
+  },
+  "E08000039": {
+   "name": "Sheffield",
+   "received": 1800,
+   "decisions": 1716,
+   "granted": 1489,
+   "granted_pct": 86.8,
+   "extension_pct": 36.9,
+   "delegated_pct": 99.0
+  },
+  "E06000051": {
+   "name": "Shropshire",
+   "received": 2330,
+   "decisions": 2076,
+   "granted": 1805,
+   "granted_pct": 86.9,
+   "extension_pct": 31.0,
+   "delegated_pct": 98.7
+  },
+  "E06000039": {
+   "name": "Slough",
+   "received": 660,
+   "decisions": 616,
+   "granted": 491,
+   "granted_pct": 79.7,
+   "extension_pct": 37.8,
+   "delegated_pct": 99.0
+  },
+  "E08000029": {
+   "name": "Solihull",
+   "received": 1121,
+   "decisions": 1100,
+   "granted": 1033,
+   "granted_pct": 93.9,
+   "extension_pct": 32.7,
+   "delegated_pct": 95
+  },
+  "E06000066": {
+   "name": "Somerset",
+   "received": 3525,
+   "decisions": 3544,
+   "granted": 3083,
+   "granted_pct": 87.0,
+   "extension_pct": 37.3,
+   "delegated_pct": 96.1
+  },
+  "E07000012": {
+   "name": "South Cambridgeshire",
+   "received": 1606,
+   "decisions": 1498,
+   "granted": 1402,
+   "granted_pct": 93.6,
+   "extension_pct": 30.4,
+   "delegated_pct": 97.3
+  },
+  "E07000039": {
+   "name": "South Derbyshire",
+   "received": 726,
+   "decisions": 596,
+   "granted": 557,
+   "granted_pct": 93.5,
+   "extension_pct": 36.2,
+   "delegated_pct": 91.9
+  },
+  "E26000010": {
+   "name": "South Downs National Park",
+   "received": 1711,
+   "decisions": 1616,
+   "granted": 1476,
+   "granted_pct": 91.3,
+   "extension_pct": 58.2,
+   "delegated_pct": 97.5
+  },
+  "E06000025": {
+   "name": "South Gloucestershire",
+   "received": 1524,
+   "decisions": 1490,
+   "granted": 1309,
+   "granted_pct": 87.9,
+   "extension_pct": 46.2,
+   "delegated_pct": 98.1
+  },
+  "E07000044": {
+   "name": "South Hams",
+   "received": 1033,
+   "decisions": 976,
+   "granted": 898,
+   "granted_pct": 92.0,
+   "extension_pct": 33.1,
+   "delegated_pct": 96.9
+  },
+  "E07000140": {
+   "name": "South Holland",
+   "received": 596,
+   "decisions": 574,
+   "granted": 451,
+   "granted_pct": 78.6,
+   "extension_pct": 42.9,
+   "delegated_pct": 96.3
+  },
+  "E07000141": {
+   "name": "South Kesteven",
+   "received": 933,
+   "decisions": 961,
+   "granted": 868,
+   "granted_pct": 90.3,
+   "extension_pct": 63.1,
+   "delegated_pct": 94.3
+  },
+  "E07000149": {
+   "name": "South Norfolk",
+   "received": 984,
+   "decisions": 1003,
+   "granted": 927,
+   "granted_pct": 92.4,
+   "extension_pct": 45.5,
+   "delegated_pct": 95.3
+  },
+  "E07000179": {
+   "name": "South Oxfordshire",
+   "received": 1475,
+   "decisions": 1465,
+   "granted": 1374,
+   "granted_pct": 93.8,
+   "extension_pct": 41.2,
+   "delegated_pct": 96.7
+  },
+  "E07000126": {
+   "name": "South Ribble",
+   "received": 426,
+   "decisions": 392,
+   "granted": 379,
+   "granted_pct": 96.7,
+   "extension_pct": 35.2,
+   "delegated_pct": 96.4
+  },
+  "E07000196": {
+   "name": "South Staffordshire",
+   "received": 673,
+   "decisions": 610,
+   "granted": 509,
+   "granted_pct": 83.4,
+   "extension_pct": 53.1,
+   "delegated_pct": 95.1
+  },
+  "E08000023": {
+   "name": "South Tyneside",
+   "received": 460,
+   "decisions": 387,
+   "granted": 350,
+   "granted_pct": 90.4,
+   "extension_pct": 45.7,
+   "delegated_pct": 92.0
+  },
+  "E06000045": {
+   "name": "Southampton",
+   "received": 695,
+   "decisions": 685,
+   "granted": 618,
+   "granted_pct": 90.2,
+   "extension_pct": 33.0,
+   "delegated_pct": 93.1
+  },
+  "E06000033": {
+   "name": "Southend-on-Sea",
+   "received": 894,
+   "decisions": 866,
+   "granted": 713,
+   "granted_pct": 82.3,
+   "extension_pct": 42.5,
+   "delegated_pct": 95.5
+  },
+  "E09000028": {
+   "name": "Southwark",
+   "received": 1697,
+   "decisions": 1492,
+   "granted": 1364,
+   "granted_pct": 91.4,
+   "extension_pct": 36.9,
+   "delegated_pct": 89.2
+  },
+  "E07000213": {
+   "name": "Spelthorne",
+   "received": 571,
+   "decisions": 566,
+   "granted": 448,
+   "granted_pct": 79.2,
+   "extension_pct": 41.3,
+   "delegated_pct": 97.5
+  },
+  "E07000240": {
+   "name": "St Albans",
+   "received": 1537,
+   "decisions": 1415,
+   "granted": 1221,
+   "granted_pct": 86.3,
+   "extension_pct": 65.2,
+   "delegated_pct": 98.7
+  },
+  "E08000013": {
+   "name": "St. Helens",
+   "received": 466,
+   "decisions": 455,
+   "granted": 427,
+   "granted_pct": 93.8,
+   "extension_pct": 33.4,
+   "delegated_pct": 96.7
+  },
+  "E07000197": {
+   "name": "Stafford",
+   "received": 495,
+   "decisions": 508,
+   "granted": 410,
+   "granted_pct": 80.7,
+   "extension_pct": 59.3,
+   "delegated_pct": 95.3
+  },
+  "E07000198": {
+   "name": "Staffordshire Moorlands",
+   "received": 445,
+   "decisions": 381,
+   "granted": 290,
+   "granted_pct": 76.1,
+   "extension_pct": 67.7,
+   "delegated_pct": 89.5
+  },
+  "E07000243": {
+   "name": "Stevenage",
+   "received": 260,
+   "decisions": 246,
+   "granted": 235,
+   "granted_pct": 95.5,
+   "extension_pct": 16.3,
+   "delegated_pct": 93.1
+  },
+  "E08000007": {
+   "name": "Stockport",
+   "received": 1416,
+   "decisions": 1289,
+   "granted": 1225,
+   "granted_pct": 95.0,
+   "extension_pct": 32.7,
+   "delegated_pct": 91.0
+  },
+  "E06000004": {
+   "name": "Stockton-on-Tees",
+   "received": 659,
+   "decisions": 615,
+   "granted": 568,
+   "granted_pct": 92.4,
+   "extension_pct": 38.4,
+   "delegated_pct": 97.6
+  },
+  "E06000021": {
+   "name": "Stoke-on-Trent",
+   "received": 583,
+   "decisions": 551,
+   "granted": 479,
+   "granted_pct": 86.9,
+   "extension_pct": 74.2,
+   "delegated_pct": 95.8
+  },
+  "E07000221": {
+   "name": "Stratford-on-Avon",
+   "received": 1379,
+   "decisions": 1228,
+   "granted": 1128,
+   "granted_pct": 91.9,
+   "extension_pct": 44.0,
+   "delegated_pct": 96.5
+  },
+  "E07000082": {
+   "name": "Stroud",
+   "received": 1064,
+   "decisions": 917,
+   "granted": 805,
+   "granted_pct": 87.8,
+   "extension_pct": 40.0,
+   "delegated_pct": 98.7
+  },
+  "E08000024": {
+   "name": "Sunderland",
+   "received": 607,
+   "decisions": 607,
+   "granted": 550,
+   "granted_pct": 90.6,
+   "extension_pct": 36.2,
+   "delegated_pct": 89.3
+  },
+  "E07000214": {
+   "name": "Surrey Heath",
+   "received": 668,
+   "decisions": 589,
+   "granted": 509,
+   "granted_pct": 86.4,
+   "extension_pct": 35.7,
+   "delegated_pct": 95.8
+  },
+  "E09000029": {
+   "name": "Sutton",
+   "received": 897,
+   "decisions": 879,
+   "granted": 775,
+   "granted_pct": 88.2,
+   "extension_pct": 11.8,
+   "delegated_pct": 97.5
+  },
+  "E07000113": {
+   "name": "Swale",
+   "received": 640,
+   "decisions": 644,
+   "granted": 573,
+   "granted_pct": 89.0,
+   "extension_pct": 62.4,
+   "delegated_pct": 95.0
+  },
+  "E06000030": {
+   "name": "Swindon",
+   "received": 877,
+   "decisions": 829,
+   "granted": 750,
+   "granted_pct": 90.5,
+   "extension_pct": 15.2,
+   "delegated_pct": 95.4
+  },
+  "E08000008": {
+   "name": "Tameside",
+   "received": 670,
+   "decisions": 553,
+   "granted": 474,
+   "granted_pct": 85.7,
+   "extension_pct": 38.0,
+   "delegated_pct": 95.3
+  },
+  "E07000199": {
+   "name": "Tamworth",
+   "received": 252,
+   "decisions": 152,
+   "granted": 145,
+   "granted_pct": 95.4,
+   "extension_pct": 58.6,
+   "delegated_pct": 94.1
+  },
+  "E07000215": {
+   "name": "Tandridge",
+   "received": 829,
+   "decisions": 712,
+   "granted": 586,
+   "granted_pct": 82.3,
+   "extension_pct": 57.0,
+   "delegated_pct": 98.2
+  },
+  "E07000045": {
+   "name": "Teignbridge",
+   "received": 709,
+   "decisions": 718,
+   "granted": 571,
+   "granted_pct": 79.5,
+   "extension_pct": 24.2,
+   "delegated_pct": 97.9
+  },
+  "E06000020": {
+   "name": "Telford and Wrekin",
+   "received": 703,
+   "decisions": 559,
+   "granted": 510,
+   "granted_pct": 91.2,
+   "extension_pct": 11.8,
+   "delegated_pct": 97.9
+  },
+  "E07000076": {
+   "name": "Tendring",
+   "received": 912,
+   "decisions": 848,
+   "granted": 715,
+   "granted_pct": 84.3,
+   "extension_pct": 23.3,
+   "delegated_pct": 96.9
+  },
+  "E07000093": {
+   "name": "Test Valley",
+   "received": 1164,
+   "decisions": 993,
+   "granted": 923,
+   "granted_pct": 93.0,
+   "extension_pct": 31.6,
+   "delegated_pct": 95.6
+  },
+  "E07000083": {
+   "name": "Tewkesbury",
+   "received": 763,
+   "decisions": 692,
+   "granted": 611,
+   "granted_pct": 88.3,
+   "extension_pct": 50.1,
+   "delegated_pct": 98.3
+  },
+  "E07000114": {
+   "name": "Thanet",
+   "received": 714,
+   "decisions": 684,
+   "granted": 632,
+   "granted_pct": 92.4,
+   "extension_pct": 46.3,
+   "delegated_pct": 91.5
+  },
+  "E26000007": {
+   "name": "The Broads Authority",
+   "received": 125,
+   "decisions": 127,
+   "granted": 123,
+   "granted_pct": 96.9,
+   "extension_pct": 46.5,
+   "delegated_pct": 91.3
+  },
+  "E07000102": {
+   "name": "Three Rivers",
+   "received": 849,
+   "decisions": 809,
+   "granted": 719,
+   "granted_pct": 88.9,
+   "extension_pct": 25.2,
+   "delegated_pct": 94.4
+  },
+  "E06000034": {
+   "name": "Thurrock",
+   "received": 691,
+   "decisions": 670,
+   "granted": 541,
+   "granted_pct": 80.7,
+   "extension_pct": 37.3,
+   "delegated_pct": 94.0
+  },
+  "E07000115": {
+   "name": "Tonbridge and Malling",
+   "received": 910,
+   "decisions": 891,
+   "granted": 846,
+   "granted_pct": 94.9,
+   "extension_pct": 57.7,
+   "delegated_pct": 96.6
+  },
+  "E06000027": {
+   "name": "Torbay",
+   "received": 644,
+   "decisions": 504,
+   "granted": 437,
+   "granted_pct": 86.7,
+   "extension_pct": 59.1,
+   "delegated_pct": 98.0
+  },
+  "E07000046": {
+   "name": "Torridge",
+   "received": 604,
+   "decisions": 512,
+   "granted": 460,
+   "granted_pct": 89.8,
+   "extension_pct": 41.0,
+   "delegated_pct": 95.7
+  },
+  "E09000030": {
+   "name": "Tower Hamlets",
+   "received": 1008,
+   "decisions": 972,
+   "granted": 821,
+   "granted_pct": 84.5,
+   "extension_pct": 39.9,
+   "delegated_pct": 98.0
+  },
+  "E08000009": {
+   "name": "Trafford",
+   "received": 1480,
+   "decisions": 1352,
+   "granted": 1163,
+   "granted_pct": 86.0,
+   "extension_pct": 36.5,
+   "delegated_pct": 97.5
+  },
+  "E07000116": {
+   "name": "Tunbridge Wells",
+   "received": 1188,
+   "decisions": 1100,
+   "granted": 1028,
+   "granted_pct": 93.5,
+   "extension_pct": 27.0,
+   "delegated_pct": 98.3
+  },
+  "E07000077": {
+   "name": "Uttlesford",
+   "received": 1206,
+   "decisions": 1215,
+   "granted": 925,
+   "granted_pct": 76.1,
+   "extension_pct": 26.3,
+   "delegated_pct": 95.6
+  },
+  "E07000180": {
+   "name": "Vale of White Horse",
+   "received": 1075,
+   "decisions": 981,
+   "granted": 930,
+   "granted_pct": 94.8,
+   "extension_pct": 58.5,
+   "delegated_pct": 97.9
+  },
+  "E08000036": {
+   "name": "Wakefield",
+   "received": 1109,
+   "decisions": 1084,
+   "granted": 994,
+   "granted_pct": 91.7,
+   "extension_pct": 58.3,
+   "delegated_pct": 99.0
+  },
+  "E08000030": {
+   "name": "Walsall",
+   "received": 826,
+   "decisions": 753,
+   "granted": 630,
+   "granted_pct": 83.7,
+   "extension_pct": 62.9,
+   "delegated_pct": 96.7
+  },
+  "E09000031": {
+   "name": "Waltham Forest",
+   "received": 1488,
+   "decisions": 1406,
+   "granted": 1105,
+   "granted_pct": 78.6,
+   "extension_pct": 21.0,
+   "delegated_pct": 99.0
+  },
+  "E09000032": {
+   "name": "Wandsworth",
+   "received": 2205,
+   "decisions": 2123,
+   "granted": 1885,
+   "granted_pct": 88.8,
+   "extension_pct": 36.0,
+   "delegated_pct": 97.1
+  },
+  "E06000007": {
+   "name": "Warrington",
+   "received": 897,
+   "decisions": 843,
+   "granted": 662,
+   "granted_pct": 78.5,
+   "extension_pct": 33.2,
+   "delegated_pct": 94.5
+  },
+  "E07000222": {
+   "name": "Warwick",
+   "received": 945,
+   "decisions": 864,
+   "granted": 788,
+   "granted_pct": 91.2,
+   "extension_pct": 61.3,
+   "delegated_pct": 89.8
+  },
+  "E07000103": {
+   "name": "Watford",
+   "received": 491,
+   "decisions": 496,
+   "granted": 396,
+   "granted_pct": 79.8,
+   "extension_pct": 20.2,
+   "delegated_pct": 97.4
+  },
+  "E07000216": {
+   "name": "Waverley",
+   "received": 1437,
+   "decisions": 1362,
+   "granted": 1199,
+   "granted_pct": 88.0,
+   "extension_pct": 39.2,
+   "delegated_pct": 97.1
+  },
+  "E07000065": {
+   "name": "Wealden",
+   "received": 1376,
+   "decisions": 1283,
+   "granted": 1085,
+   "granted_pct": 84.6,
+   "extension_pct": 40.5,
+   "delegated_pct": 97.0
+  },
+  "E07000241": {
+   "name": "Welwyn Hatfield",
+   "received": 722,
+   "decisions": 632,
+   "granted": 538,
+   "granted_pct": 85.1,
+   "extension_pct": 51.3,
+   "delegated_pct": 98.3
+  },
+  "E06000037": {
+   "name": "West Berkshire",
+   "received": 1234,
+   "decisions": 1037,
+   "granted": 933,
+   "granted_pct": 90.0,
+   "extension_pct": 49.6,
+   "delegated_pct": 97.9
+  },
+  "E07000047": {
+   "name": "West Devon",
+   "received": 367,
+   "decisions": 346,
+   "granted": 302,
+   "granted_pct": 87.3,
+   "extension_pct": 38.2,
+   "delegated_pct": 97.4
+  },
+  "E07000127": {
+   "name": "West Lancashire",
+   "received": 583,
+   "decisions": 543,
+   "granted": 440,
+   "granted_pct": 81.0,
+   "extension_pct": 54.7,
+   "delegated_pct": 95.8
+  },
+  "E07000142": {
+   "name": "West Lindsey",
+   "received": 651,
+   "decisions": 556,
+   "granted": 517,
+   "granted_pct": 93.0,
+   "extension_pct": 42.8,
+   "delegated_pct": 96.2
+  },
+  "E06000062": {
+   "name": "West Northamptonshire",
+   "received": 1949,
+   "decisions": 1852,
+   "granted": 1636,
+   "granted_pct": 88.3,
+   "extension_pct": 80.2,
+   "delegated_pct": 94.1
+  },
+  "E07000181": {
+   "name": "West Oxfordshire",
+   "received": 1191,
+   "decisions": 1117,
+   "granted": 1061,
+   "granted_pct": 95.0,
+   "extension_pct": 35.1,
+   "delegated_pct": 95.4
+  },
+  "E07000245": {
+   "name": "West Suffolk",
+   "received": 994,
+   "decisions": 1000,
+   "granted": 926,
+   "granted_pct": 92.6,
+   "extension_pct": 45.1,
+   "delegated_pct": 93.7
+  },
+  "E09000033": {
+   "name": "Westminster",
+   "received": 5354,
+   "decisions": 4802,
+   "granted": 4137,
+   "granted_pct": 86.2,
+   "extension_pct": 30.5,
+   "delegated_pct": 98.8
+  },
+  "E06000064": {
+   "name": "Westmorland and Furness",
+   "received": 1470,
+   "decisions": 1131,
+   "granted": 1050,
+   "granted_pct": 92.8,
+   "extension_pct": 56.4,
+   "delegated_pct": 94.1
+  },
+  "E08000010": {
+   "name": "Wigan",
+   "received": 710,
+   "decisions": 690,
+   "granted": 584,
+   "granted_pct": 84.6,
+   "extension_pct": 53.8,
+   "delegated_pct": 96.4
+  },
+  "E06000054": {
+   "name": "Wiltshire",
+   "received": 4109,
+   "decisions": 3509,
+   "granted": 3248,
+   "granted_pct": 92.6,
+   "extension_pct": 54.5,
+   "delegated_pct": 98.8
+  },
+  "E07000094": {
+   "name": "Winchester",
+   "received": 949,
+   "decisions": 854,
+   "granted": 797,
+   "granted_pct": 93.3,
+   "extension_pct": 52.2,
+   "delegated_pct": 96.4
+  },
+  "E06000040": {
+   "name": "Windsor and Maidenhead",
+   "received": 1523,
+   "decisions": 1409,
+   "granted": 1023,
+   "granted_pct": 72.6,
+   "extension_pct": 31.2,
+   "delegated_pct": 96.6
+  },
+  "E08000015": {
+   "name": "Wirral",
+   "received": 967,
+   "decisions": 877,
+   "granted": 770,
+   "granted_pct": 87.8,
+   "extension_pct": 47.0,
+   "delegated_pct": 99.1
+  },
+  "E07000217": {
+   "name": "Woking",
+   "received": 719,
+   "decisions": 694,
+   "granted": 586,
+   "granted_pct": 84.4,
+   "extension_pct": 43.2,
+   "delegated_pct": 96.5
+  },
+  "E06000041": {
+   "name": "Wokingham",
+   "received": 1164,
+   "decisions": 1117,
+   "granted": 1064,
+   "granted_pct": 95.3,
+   "extension_pct": 38.4,
+   "delegated_pct": 89.1
+  },
+  "E08000031": {
+   "name": "Wolverhampton",
+   "received": 770,
+   "decisions": 745,
+   "granted": 670,
+   "granted_pct": 89.9,
+   "extension_pct": 32.1,
+   "delegated_pct": 97.4
+  },
+  "E07000237": {
+   "name": "Worcester",
+   "received": 411,
+   "decisions": 386,
+   "granted": 342,
+   "granted_pct": 88.6,
+   "extension_pct": 38.3,
+   "delegated_pct": 94.8
+  },
+  "E07000229": {
+   "name": "Worthing",
+   "received": 548,
+   "decisions": 553,
+   "granted": 498,
+   "granted_pct": 90.1,
+   "extension_pct": 43.4,
+   "delegated_pct": 95.8
+  },
+  "E07000238": {
+   "name": "Wychavon",
+   "received": 1153,
+   "decisions": 1057,
+   "granted": 885,
+   "granted_pct": 83.7,
+   "extension_pct": 33.6,
+   "delegated_pct": 95.4
+  },
+  "E07000128": {
+   "name": "Wyre",
+   "received": 543,
+   "decisions": 529,
+   "granted": 448,
+   "granted_pct": 84.7,
+   "extension_pct": 65.6,
+   "delegated_pct": 95.3
+  },
+  "E07000239": {
+   "name": "Wyre Forest",
+   "received": 512,
+   "decisions": 434,
+   "granted": 400,
+   "granted_pct": 92.2,
+   "extension_pct": 37.8,
+   "delegated_pct": 94.0
+  },
+  "E06000014": {
+   "name": "York",
+   "received": 1590,
+   "decisions": 1198,
+   "granted": 995,
+   "granted_pct": 83.1,
+   "extension_pct": 45.7,
+   "delegated_pct": 98.0
+  },
+  "E26000012": {
+   "name": "Yorkshire Dales National Park",
+   "received": 471,
+   "decisions": 434,
+   "granted": 395,
+   "granted_pct": 91.0,
+   "extension_pct": 46.8,
+   "delegated_pct": 95.4
+  }
+ }
+}

@@ -838,7 +838,7 @@ def test_a6_the_homepage_states_the_offer_in_one_sentence_and_the_old_wordings_a
     sentence = html.escape(app_main.OFFER_SENTENCE, quote=False)
 
     dek = body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0]
-    assert dek.split()[:5] == ["Forty-five", "checks", "on", "any", "UK"]
+    assert dek.split()[:5] == ["Forty-six", "checks", "on", "any", "UK"]
     assert _flat(dek).endswith("What it costs to live there. " + sentence)
 
     banner = body.split('<section class="promo-banner">', 1)[1].split("</section>", 1)[0]
@@ -1269,7 +1269,7 @@ def test_b1_the_free_and_locked_lists_are_twenty_nine_and_fifteen(client, fake_r
     # free list on 1 Oct. What this test is for is the split and the
     # three checks the owner moved, not a frozen total.
     assert len(app_main.FREE_CHECKS) == 30
-    assert len(app_main.PREMIUM_CHECKS) == 15
+    assert len(app_main.PREMIUM_CHECKS) == 16
     assert len(app_main.FREE_CHECKS) + len(app_main.PREMIUM_CHECKS) == app_main.CHECK_COUNT
 
     free = {c[1] for c in app_main.FREE_CHECKS}
@@ -1609,6 +1609,7 @@ B3_MODALS = {
     "Getting Around": "modal-getting-around",
     "Health, Relationships & Social Grade": "modal-wellbeing",
     "Development Nearby": "modal-brownfield",
+    "Planning Decisions": "modal-planning-decisions",
     "Bus Service": "modal-bus",
     "Health Services": "modal-health",
 }

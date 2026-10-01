@@ -50,6 +50,7 @@ from app.services import (
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow, council_tax, viewing_checklist, appeals, road_safety,
+    planning_decisions,
 )
 from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -2923,7 +2924,7 @@ def _admission_stats() -> dict:
 # pillar strip was outside that script's reach and still read 40 on 12 Sep
 # 2026 while the same page said 44 three times, which is why it now reads
 # this constant instead of a literal of its own.
-CHECK_COUNT = 45
+CHECK_COUNT = 46
 
 # Every check by plan, in the report's own card titles: (icon, title,
 # what it shows, source). The pricing page lists these and the landing
@@ -2993,6 +2994,7 @@ PREMIUM_CHECKS = (
     ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
     ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021'),
     ('planning', 'Development Nearby', 'Brownfield register sites within half a mile', 'MHCLG planning data platform'),
+    ('planning', 'Planning Decisions', 'What this council grants, and how often it needs longer', 'MHCLG planning application statistics'),
     ('bus', 'Bus Service', 'Buses an hour at the nearest stops', 'DfT Bus Open Data Service'),
     ('wellbeing', 'Health Services', 'GP list sizes and A&E four-hour performance', 'NHS England'),
 )
@@ -3015,7 +3017,7 @@ REPORT_GROUPS = (
                        'Road Safety', 'Radon Gas', 'Subsidence Risk', 'Air Quality', 'Historic Contamination',
                        'Mining Risk')),
     ('Planning & Heritage', ('Planning Constraints', 'Environmental Designations', 'Development Nearby',
-                             'Listed Buildings')),
+                             'Planning Decisions', 'Listed Buildings')),
     ('Location & Connectivity', ('Schools Nearby', 'State Schools', 'Private Schools', 'Universities',
                                  'School Catchment Areas', 'Nearby Essentials', 'Getting Around',
                                  'Health Services', 'Bus Service', 'Broadband', 'Mobile Signal')),
@@ -3094,6 +3096,7 @@ _SOURCE_BODIES = {
     'National Rail, OpenStreetMap': ('National Rail', 'OpenStreetMap'),
     'DfT Bus Open Data Service': ('Department for Transport',),
     'DfT road safety data': ('Department for Transport',),
+    'MHCLG planning application statistics': ('MHCLG',),
     'NHS England': ('NHS England',),
 }
 
@@ -3173,6 +3176,7 @@ LOCKED_CARD_LINES = {
     'Getting Around': 'Nearest stations and journey times to the city · National Rail',
     'Health, Relationships & Social Grade': 'Health and social grade mix of the area · Census 2021',
     'Development Nearby': 'Brownfield sites for building within half a mile · MHCLG planning data',
+    'Planning Decisions': 'How many applications this council grants, and how often it needs longer · MHCLG planning statistics',
     'Bus Service': 'Buses an hour at the nearest stops · DfT Bus Open Data Service',
     'Health Services': 'GP list sizes and A&E performance nearby · NHS England',
 }
@@ -3264,6 +3268,7 @@ PREMIUM_REACH = {
     "Getting Around": _REACH_UK,
     "Health, Relationships & Social Grade": _REACH_ENGLAND_WALES,
     "Development Nearby": _REACH_ENGLAND,
+    "Planning Decisions": _REACH_ENGLAND,
     "Bus Service": _REACH_GB,
     "Health Services": _REACH_ENGLAND,
 }
@@ -4706,6 +4711,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
     context["road_safety_not_covered"] = road_safety.outside_coverage(location.get("country"))
     if not context["road_safety_not_covered"]:
         context["road_safety"] = road_safety.near(location.get("latitude"), location.get("longitude"))
+    # And the same for how this council decides planning applications:
+    # one small local file, keyed on the ONS code the report already
+    # holds (app/services/planning_decisions.py). England only.
+    context["planning_decisions_not_covered"] = planning_decisions.outside_coverage(location.get("country"))
+    if not context["planning_decisions_not_covered"]:
+        context["planning_decisions"] = planning_decisions.for_council(
+            (location.get("codes") or {}).get("admin_district"), location.get("admin_district"))
     # The wall's "By hand, these N checks are 28 websites" was a typed 44
     # until 17 Sep 2026, on the one page a reader can count the cards on.
     context["check_count"] = CHECK_COUNT
@@ -7861,12 +7873,16 @@ def _pdf_context(report: dict, running_costs: dict | None, location: dict, house
     # reason the live report reads it in its own handler: a local file,
     # no network, no database (app/services/road_safety.py).
     road_gap = road_safety.outside_coverage(location.get("country"))
+    planning_gap = planning_decisions.outside_coverage(location.get("country"))
     return {
         **report,
         "running_costs": rc,
         "road_safety_not_covered": road_gap,
         "road_safety": None if road_gap else road_safety.near(
             location.get("latitude"), location.get("longitude")),
+        "planning_decisions_not_covered": planning_gap,
+        "planning_decisions": None if planning_gap else planning_decisions.for_council(
+            (location.get("codes") or {}).get("admin_district"), location.get("admin_district")),
         "stamp_duty_valuation": stamp_duty_valuation,
         "checklist": checklist,
         "checklist_groups": pdf_checklist.grouped(checklist),
