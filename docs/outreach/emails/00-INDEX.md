@@ -42,6 +42,12 @@ Figures quoted in the bodies today: 3,627 schools across 88 councils,
 | 28 | Gregory Abrams Davidson Solicitors | conveyancing solicitor | info@gadlegal.co.uk | 2026-09-30 | [28-gregory-abrams-davidson-solicitors.md](28-gregory-abrams-davidson-solicitors.md) |
 | 29 | Comptons Solicitors | conveyancing solicitor | advice@comptons.co.uk | 2026-09-30 | [29-comptons-solicitors.md](29-comptons-solicitors.md) |
 | 30 | Gorvins Residential | conveyancing solicitor | Enquiries@gorvinsresi.com | 2026-09-30 | [30-gorvins-residential.md](30-gorvins-residential.md) |
+| 31 | Move to Cambridge | relocation consultant | sarah@movetocambridge.co.uk | 2026-10-01 | [31-move-to-cambridge.md](31-move-to-cambridge.md) |
+| 32 | A3 Relocation Solutions | relocation consultant | lrobinson@lsh.co.uk | 2026-10-01 | [32-a3-relocation-solutions.md](32-a3-relocation-solutions.md) |
+| 33 | Robert Bruce Relocation | buying agent | rb@robertbrucerelocation.co.uk | 2026-10-01 | [33-robert-bruce-relocation.md](33-robert-bruce-relocation.md) |
+| 34 | Rebecca Regis Property Search | buying agent | enquiries@rebeccaregis.co.uk | 2026-10-01 | [34-rebecca-regis-property-search.md](34-rebecca-regis-property-search.md) |
+| 35 | Yellow Brick Mortgages | mortgage broker | info@ybmortgages.co.uk | 2026-10-01 | [35-yellow-brick-mortgages.md](35-yellow-brick-mortgages.md) |
+| 36 | Keystone Property Finders | buying agent |  | 2026-10-01 | [36-keystone-property-finders.md](36-keystone-property-finders.md) |
 
 ## How they reach Outlook
 
