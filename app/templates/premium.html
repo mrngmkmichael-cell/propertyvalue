@@ -26,7 +26,8 @@
      because of it, so it locks again when the paid period ends, as the
      terms say. The free full report's home stays open for good.
    - Both sent readers to an "account page" that does not exist.
-     Cancelling is Manage subscription on this page.
+     Cancelling is its own button on this page since 2 Oct 2026, and
+     goes straight to Stripe's cancellation screen.
    The pass is off sale while STRIPE_PRICE_ID_PASS is unset, so its
    answer is gated with it. Unconditional, it described a product with
    no button on the page, to exactly the reader most likely to want it:
@@ -53,7 +54,7 @@
      "No. The three-month plan is " ~ plan_prices.quarterly ~ " for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
 ]) + [
     ("Can I cancel?",
-     "Yes, any time, from this page once you have subscribed. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
+     "Yes, any time. Once you have subscribed there is a Cancel subscription button on this page that takes you straight to Stripe to confirm it. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
     ("What do I get that the free report does not show?",
      "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
     ("I am buying outside England. What does Premium cover there?",
@@ -204,9 +205,40 @@
 <p class="notice" style="background: var(--good-bg); color: var(--good);">
     <strong>You're on Premium.</strong> Manage your plan, payment details, or cancel any time.
 </p>
-<form action="/premium/manage" method="post" class="stacked-form" style="max-width: 20em;">
-    <button type="submit">Manage subscription</button>
-</form>
+{% if returned_from_cancel %}
+{# Stripe does not tell us in the return whether they went through with
+   it, and the webhook may land a moment later, so this is worded to be
+   true either way (2 Oct 2026). #}
+<p class="notice">
+    If you cancelled just now, that is done and nothing further will be charged. You keep Premium until
+    the end of the month you have already paid for, and your account and saved homes stay as they are.
+    A confirmation is on its way from Stripe.
+</p>
+{% endif %}
+{# Two buttons, not one (2 Oct 2026). Cancelling used to mean finding
+   the way out inside Stripe's portal, and whether a cancel button was
+   there at all depended on a dashboard setting. A customer who cannot
+   find the exit emails instead, and in September an email was missed
+   for four weeks while the subscription renewed. The second button
+   goes straight to Stripe's cancellation screen for this subscription.
+   It is only rendered for a real subscription: a comped account or a
+   pass has nothing to cancel. #}
+<div class="form-pair">
+    <form action="/premium/manage" method="post" class="stacked-form">
+        <button type="submit">Manage subscription</button>
+    </form>
+    {% if current_user.has_subscription %}
+    <form action="/premium/cancel-subscription" method="post" class="stacked-form">
+        <button type="submit" class="button-quiet">Cancel subscription</button>
+    </form>
+    {% endif %}
+</div>
+{% if current_user.has_subscription %}
+<p class="section-sub" style="max-width: 32em;">
+    Cancelling takes effect at the end of the month you have already paid for, so nothing is lost and
+    nothing further is taken. Stripe handles it and emails you the confirmation.
+</p>
+{% endif %}
 
 {% else %}
 {# Free accounts still see the pricing: someone weighing up whether to

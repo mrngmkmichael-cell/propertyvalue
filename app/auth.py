@@ -161,6 +161,13 @@ def premium_state(user, db=None) -> dict:
     return {
         "is_premium": subscribed,
         "subscribed": subscribed,
+        # Whether there is a recurring Stripe subscription behind the
+        # access, which a comped account and a one-off pass do not have.
+        # The cancel button on /premium is rendered from this, because
+        # offering to cancel something that does not exist is worse than
+        # not offering it (2 Oct 2026).
+        "has_subscription": bool(getattr(user, "stripe_subscription_id", None)
+                                 and getattr(user, "stripe_customer_id", None)),
         "free_unlocks_total": FREE_PREMIUM_UNLOCKS,
         "free_unlocks_used": used,
         "free_unlocks_left": max(0, FREE_PREMIUM_UNLOCKS - used) if not subscribed else 0,

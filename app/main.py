@@ -10208,7 +10208,8 @@ def _home_from_query(home: str, house_number: str) -> dict | None:
 
 @app.get("/premium")
 async def premium_info(request: Request, checkout: str = "", error: str = "",
-                       home: str = "", hn: str = "", postcode: str = ""):
+                       home: str = "", hn: str = "", postcode: str = "",
+                       cancelled: str = ""):
     context = base_context(request)
     context["billing_configured"] = stripe_billing.is_configured()
     context["plans"] = stripe_billing.plan_choices()
@@ -10217,6 +10218,10 @@ async def premium_info(request: Request, checkout: str = "", error: str = "",
     context["checkout_cancelled"] = checkout == "cancelled"
     context["checkout_error"] = error == "checkout_failed"
     context["portal_error"] = error == "portal_failed"
+    # Stripe sends them back here after its cancellation screen. It does
+    # not say in the return whether they went through with it, so the
+    # line below the button is worded for either (2 Oct 2026).
+    context["returned_from_cancel"] = cancelled == "1"
     context["free_checks"] = FREE_CHECKS
     context["premium_checks"] = PREMIUM_CHECKS
     # The same checks under the report's group names, for a phone (18 Sep
@@ -10343,6 +10348,45 @@ async def premium_manage(request: Request):
 
     portal_url = await stripe_billing.create_billing_portal_session(
         customer_id, return_url=f"{_public_base_url(request)}/premium"
+    )
+    if not portal_url:
+        return RedirectResponse("/premium?error=portal_failed", status_code=303)
+    return RedirectResponse(portal_url, status_code=303)
+
+
+@app.post("/premium/cancel-subscription")
+async def premium_cancel_subscription(request: Request):
+    """One click from the page to Stripe's cancellation screen (2 Oct
+    2026).
+
+    "Manage subscription" already reached the portal, but the way out
+    was a page of someone else's UI away, and whether a cancel button
+    appeared there at all depended on a dashboard setting. A customer
+    who cannot find the exit emails instead, and an email can be
+    missed: one sat unanswered for four weeks in September and the
+    subscription renewed in the meantime.
+
+    So this goes straight to the cancellation screen for their own
+    subscription, under a portal configuration this site sets, which
+    cancels at the end of the period they have paid for. Stripe takes
+    the decision and tells us through the webhook; nothing here writes
+    the cancellation itself."""
+    user = auth.current_user(request)
+    if not user:
+        return RedirectResponse("/login?next=/premium", status_code=303)
+
+    with db.get_session() as session:
+        db_user = session.get(User, user["id"])
+        customer_id = db_user.stripe_customer_id if db_user else None
+        subscription_id = db_user.stripe_subscription_id if db_user else None
+    # A comped account, or a pass, has no subscription to cancel. The
+    # button is not rendered for them, so this is the typed-URL case.
+    if not customer_id or not subscription_id:
+        return RedirectResponse("/premium", status_code=303)
+
+    portal_url = await stripe_billing.create_billing_portal_session(
+        customer_id, return_url=f"{_public_base_url(request)}/premium?cancelled=1",
+        cancel_subscription=subscription_id,
     )
     if not portal_url:
         return RedirectResponse("/premium?error=portal_failed", status_code=303)

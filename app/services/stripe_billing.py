@@ -138,17 +138,84 @@ async def create_checkout_session(
     return response.json().get("url")
 
 
-async def create_billing_portal_session(stripe_customer_id: str, return_url: str) -> str | None:
+# The portal configuration this site asks Stripe to use (2 Oct 2026).
+#
+# Whether a customer can cancel in Stripe's portal, and whether that
+# cancellation takes effect now or at the end of the month they have
+# paid for, is a setting on the portal configuration rather than
+# anything in this code. Left to the dashboard default it is one
+# checkbox between "cancel any time" being true and a customer having
+# to email instead, which is how a cancellation request sat unanswered
+# for four weeks in September.
+#
+# So the site states the behaviour it promises and lets Stripe hold it:
+# cancellation on, at the end of the billing period, with no proration,
+# which is the "you keep what you paid for" the page says out loud. The
+# configuration is created once and its id remembered, because creating
+# one per click would litter the account.
+PORTAL_CONFIG_KEY = ("stripe_portal_config", 2)
+PORTAL_CONFIG_TTL_S = 86400 * 365
+PORTAL_FEATURES = {
+    "features[subscription_cancel][enabled]": "true",
+    "features[subscription_cancel][mode]": "at_period_end",
+    "features[subscription_cancel][proration_behavior]": "none",
+    "features[payment_method_update][enabled]": "true",
+    "features[invoice_history][enabled]": "true",
+    "business_profile[headline]": "UKPropertyInsight Premium",
+}
+
+
+async def _portal_configuration_id() -> str | None:
+    """The id of our own portal configuration, created on first use and
+    remembered after. None if Stripe will not make one, in which case
+    the caller falls back to the account's default configuration."""
+    from app.services import _cache
+    remembered = _cache.get_persistent(PORTAL_CONFIG_KEY, PORTAL_CONFIG_TTL_S)
+    if remembered:
+        return remembered
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(
+                f"{API_BASE}/billing_portal/configurations",
+                data=PORTAL_FEATURES,
+                auth=(os.environ["STRIPE_SECRET_KEY"], ""),
+            )
+        response.raise_for_status()
+    except httpx.HTTPError:
+        return None
+    made = response.json().get("id")
+    if made:
+        _cache.set_persistent(PORTAL_CONFIG_KEY, made)
+    return made
+
+
+async def create_billing_portal_session(stripe_customer_id: str, return_url: str,
+                                        cancel_subscription: str | None = None) -> str | None:
     """Returns a URL to Stripe's hosted billing portal, where a user
     can update payment details, change plan, or cancel - or None if
-    not configured or the request failed."""
+    not configured or the request failed.
+
+    With cancel_subscription set to a subscription id, the link opens on
+    Stripe's cancellation screen for that subscription instead of the
+    portal's front page, so "Cancel subscription" on our side is one
+    click away from done rather than a hunt through someone else's UI.
+    """
     if not is_configured():
         return None
+    data = {"customer": stripe_customer_id, "return_url": return_url}
+    configuration = await _portal_configuration_id()
+    if configuration:
+        data["configuration"] = configuration
+    if cancel_subscription:
+        data["flow_data[type]"] = "subscription_cancel"
+        data["flow_data[subscription_cancel][subscription]"] = cancel_subscription
+        data["flow_data[after_completion][type]"] = "redirect"
+        data["flow_data[after_completion][redirect][return_url]"] = return_url
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             response = await client.post(
                 f"{API_BASE}/billing_portal/sessions",
-                data={"customer": stripe_customer_id, "return_url": return_url},
+                data=data,
                 auth=(os.environ["STRIPE_SECRET_KEY"], ""),
             )
         response.raise_for_status()
