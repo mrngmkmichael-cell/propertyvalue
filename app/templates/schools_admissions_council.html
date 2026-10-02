@@ -131,6 +131,27 @@
 </section>
 {% endif %}
 
+{# Which entrance test this council's grammar schools use (1 Oct 2026).
+   Only on the hubs for the 35 selective areas; everywhere else
+   selective_tests.for_council returns None and the block does not
+   render. The full page carries the sources and the papers. #}
+{% if entrance_test %}
+<section class="report-section">
+    <h2>The entrance test here</h2>
+    <p class="section-sub">
+        {{ council.name }} has grammar schools, so a place depends on an entrance test as well as on where
+        you live. {% if entrance_test.one_test %}The test is the {{ entrance_test.test_name }}{% if entrance_test.provider %}, set by {{ entrance_test.provider }}{% endif %}.
+        {%- else %}There is no single test here: {{ entrance_test.test_name | lower }}, so a family applying to two schools sits two.{% endif %}
+        {% if entrance_test.first_test_said %}For entry in September {{ entry_year }} it was sat on {{ entrance_test.first_test_said }}{% if entrance_test.registration_closed_said %}, with registration closing on {{ entrance_test.registration_closed_said }}{% endif %}.{% endif %}
+        {% if entrance_test.results_said %}Results were published on {{ entrance_test.results_said }}.{% endif %}
+    </p>
+    <p class="section-sub">
+        <a href="/schools/entrance-tests#{{ entrance_test.slug }}">What is in the papers, and where this came from</a>,
+        beside every other selective area in England.
+    </p>
+</section>
+{% endif %}
+
 {# How often children here are out of school (1 Oct 2026). Two figures
    that answer different questions: overall absence is days, persistent
    absence is children. Both are the council's, never a school's, which

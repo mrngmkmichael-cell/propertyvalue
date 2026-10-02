@@ -28,3 +28,7 @@ node_modules/
 # Sweep output: a 14,715-line log and its postcode cache, regenerated on demand
 sweep_results.jsonl
 sweep_postcodes.json
+
+# Support correspondence: real customers, email addresses and Stripe ids.
+# Kept on disk, never in the repository.
+docs/support/

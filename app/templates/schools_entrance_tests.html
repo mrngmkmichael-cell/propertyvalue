@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{# Which entrance test each selective area uses (1 Oct 2026). The page a
+   parent reaches in year 5, when they have worked out that the house
+   they are looking at is in a grammar school area and have no idea what
+   that involves. Every area was read from its own council's,
+   consortium's or school's page, and where a source is silent the page
+   says so rather than filling the gap from a neighbouring area. #}
+
+{% block title %}Grammar School Entrance Tests by Area: Dates, Papers and Who Sets Them{% endblock %}
+{% block meta_description %}{% if summary %}The entrance test in all {{ summary.areas }} selective areas of England, covering {{ summary.schools }} grammar schools: what is in the papers, who sets them, when registration closed, when the test was sat and when results land. Read from each council's own pages.{% else %}Grammar school entrance tests in England, area by area.{% endif %}{% endblock %}
+{% block og_title %}Grammar school entrance tests, area by area{% endblock %}
+
+{% block content %}
+{% if tests_faqs_jsonld %}<script type="application/ld+json">{{ tests_faqs_jsonld | safe }}</script>{% endif %}
+<a class="back-link" href="/schools/admissions">&larr; Admission distances by council</a>
+
+<span class="kicker">Admissions data</span>
+<h1>Which entrance test your area uses</h1>
+{% if summary %}
+<p class="dek">
+    England has {{ summary.areas }} areas with state grammar schools, {{ summary.schools }} schools between
+    them, and no two areas run the test the same way. This is every one of them for entry in
+    September {{ summary.entry_year }}: what is in the papers, who writes them, when registration
+    opened and closed, when the test was sat and when the result arrives. Each area was read from its
+    own council's, consortium's or school's pages on
+    {{ summary.read_on | day_label(true) }}.
+</p>
+{% with share_url=canonical_url, share_text="Grammar school entrance tests in England, area by area" %}{% include "_share_row.html" %}{% endwith %}
+
+<div class="scorecard-row">
+    <div class="score-tile"><span class="score-tile-value">{{ summary.areas }}</span><span class="score-tile-label">selective areas, covering {{ summary.schools }} grammar schools</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ summary.providers | length }}</span><span class="score-tile-label">test providers named between them, and {{ summary.without_provider }} areas that name none</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ summary.own_test_per_school }}</span><span class="score-tile-label">areas with no single test, where each school runs its own</span></div>
+    <div class="score-tile"><span class="score-tile-value">{{ summary.with_results_date }}</span><span class="score-tile-label">areas that publish a results date, the rest say mid October or nothing</span></div>
+</div>
+
+<section class="report-section">
+    <h2>Every selective area</h2>
+    <p class="section-sub">
+        The test day is the first one each area publishes. Where an area runs more than one sitting, or
+        a second stage, the full list is in its own section below. Tap an area to jump to it.
+    </p>
+    <div class="table-filter">
+        <label for="area-filter">Find your area</label>
+        <input type="search" id="area-filter" placeholder="Start typing a council" autocomplete="off">
+        <span id="area-filter-count" class="section-sub" aria-live="polite"></span>
+    </div>
+    <div class="tablewrap">
+        <table class="tx-table school-table" id="tests-table" data-stack>
+            <thead>
+                <tr>
+                    <th>Area</th>
+                    <th>Test</th>
+                    <th>Set by</th>
+                    <th>Test day</th>
+                    <th>Results</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for area in areas %}
+                <tr>
+                    <td data-st="title"><a href="#{{ area.slug }}">{{ area.council }}</a></td>
+                    <td data-label="Test">{{ area.test_name }}</td>
+                    <td data-label="Set by">{% if area.provider %}{{ area.provider }}{% else %}<span class="ofsted-none">not named</span>{% endif %}</td>
+                    <td data-label="Test day">{% if area.first_test_said %}{{ area.first_test_said }}{% else %}<span class="ofsted-none">not published</span>{% endif %}</td>
+                    <td>{% if area.results_said %}{{ area.results_said }}{% else %}<span class="ofsted-none">not published</span>{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="report-section">
+    <h2>What this page is, and what it is not</h2>
+    <p class="section-sub">
+        These are the arrangements for entry in September {{ summary.entry_year }}, which means the round
+        that ran through 2026. Registration for most areas closed in June or July and the tests were sat in
+        September, so for a family moving now the useful part is the shape of it: how early the area
+        registers, what the papers contain, and how long after the test the result arrives. The next
+        round's dates appear on the same pages in the spring.
+    </p>
+    <p class="section-sub">
+        Nothing here is inferred from another area. Where a council does not name its test provider,
+        this page says it does not, instead of repeating what a tutoring company claims. Where no
+        results date is published, it says that too. Every area lists the pages it was read from, so
+        anything on this page can be checked against the body that published it.
+    </p>
+    <p class="section-sub">
+        Sitting a test is not an application. In every area the school still has to be named on the
+        local authority form, which closes on
+        {{ summary.national.secondary_applications_close | day_label(true) }} for secondary places, with
+        offers on {{ summary.national.secondary_offer_day | day_label(true) }}
+        (<a href="{{ summary.national.source }}" target="_blank" rel="noopener">gov.uk</a>).
+        A qualifying score is not an offer either: several areas say in as many words that more
+        children reach the standard than there are places.
+    </p>
+</section>
+
+{% for area in areas %}
+<section class="report-section" id="{{ area.slug }}">
+    <h2>{{ area.council }}</h2>
+    <p class="section-sub">
+        <strong>{{ area.test_name }}</strong>{% if area.provider %}, set by {{ area.provider }}{% elif area.provider_note %}. {{ area.provider_note }}{% endif %}
+    </p>
+    <div class="tablewrap">
+        <table class="tx-table" data-stack>
+            <tbody>
+                <tr>
+                    <td data-st="title">Registration</td>
+                    <td>
+                        {%- if area.registration_opened_said and area.registration_closed_said %}{{ area.registration_opened_said }} to {{ area.registration_closed_said }}
+                        {%- elif area.registration_closed_said %}closed {{ area.registration_closed_said }}
+                        {%- elif area.registration_note %}see below
+                        {%- else %}<span class="ofsted-none">not published</span>{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td data-st="title">Test</td>
+                    <td>
+                        {%- if area.test_dates_said %}{% for said in area.test_dates_said %}{{ said }}{% if not loop.last %}<br>{% endif %}{% endfor %}
+                        {%- else %}<span class="ofsted-none">not published</span>{% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td data-st="title">Results</td>
+                    <td>{% if area.results_said %}{{ area.results_said }}{% else %}<span class="ofsted-none">not published</span>{% endif %}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% if area.registration_note %}<p class="section-sub">{{ area.registration_note }}</p>{% endif %}
+    {% if area.papers %}
+    <h3 class="subsection-heading">What is in it</h3>
+    <ul class="notice-list">
+        {% for paper in area.papers %}<li>{{ paper }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if area.format %}<p class="section-sub">{{ area.format }}</p>{% endif %}
+    {% if not area.papers and not area.format %}
+    <p class="section-sub">The sources for this area do not describe the papers.</p>
+    {% endif %}
+    {% if area.notes %}<p class="section-sub">{{ area.notes }}</p>{% endif %}
+    <p class="section-sub">
+        {% if area.familiarisation_url %}<a href="{{ area.familiarisation_url }}" target="_blank" rel="noopener">Familiarisation material</a>. {% endif %}
+        Read on {{ area.read_on | day_label(true) }} from
+        {% for url in area.sources %}<a href="{{ url }}" target="_blank" rel="noopener">{{ url | link_host }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+    </p>
+</section>
+{% endfor %}
+
+{% if tests_faqs %}
+<section class="report-section">
+    <h2>Questions parents ask</h2>
+    {% for question, answer in tests_faqs %}
+    <h3 class="subsection-heading">{{ question }}</h3>
+    <p class="section-sub">{{ answer }}</p>
+    {% endfor %}
+</section>
+{% endif %}
+{% else %}
+<p class="notice">The entrance test information is not available at the moment.</p>
+{% endif %}
+
+<script>
+    (function () {
+        const table = document.getElementById('tests-table');
+        const filter = document.getElementById('area-filter');
+        const count = document.getElementById('area-filter-count');
+        if (!table || !filter) { return; }
+        const rows = Array.prototype.slice.call(table.tBodies[0].rows);
+        function paint() {
+            const term = filter.value.trim().toLowerCase();
+            let shown = 0;
+            rows.forEach(function (row) {
+                const name = (row.cells[0].textContent || '').toLowerCase();
+                const matches = !term || name.indexOf(term) !== -1;
+                row.hidden = !matches;
+                if (matches) { shown++; }
+            });
+            count.textContent = term ? (shown ? shown + ' of ' + rows.length + ' areas' : 'no area of that name') : '';
+        }
+        filter.addEventListener('input', paint);
+        paint();
+    })();
+</script>
+{% endblock %}

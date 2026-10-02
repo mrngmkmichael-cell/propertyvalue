@@ -50,7 +50,7 @@ from app.services import (
     og_image,
     stripe_billing, surface_water_risk, telegram, valuation,
     solicitor_questions, indexnow, council_tax, viewing_checklist, appeals, road_safety,
-    planning_decisions, school_absence,
+    planning_decisions, school_absence, selective_tests,
 )
 from app.services.land_registry import NEARBY_SALES_LIMIT, sold_prices_for_postcode, sold_prices_for_postcodes
 from app.services import postcodes
@@ -1607,6 +1607,17 @@ def _external_url(value) -> str:
 
 
 templates.env.filters["external_url"] = _external_url
+
+
+def _link_host(value) -> str:
+    """A source link shown as the body that published it: a page on
+    gov.uk reads as "kent.gov.uk", not as 120 characters of URL. The
+    full address is still the href (1 Oct 2026, entrance tests)."""
+    text = (value or "").split("//", 1)[-1].split("/", 1)[0]
+    return text[4:] if text.startswith("www.") else text
+
+
+templates.env.filters["link_host"] = _link_host
 templates.env.filters["distance"] = _format_distance
 
 
@@ -3745,6 +3756,7 @@ def _sitemap_entries(base: str) -> list[tuple[str, str]]:
     entries.append((f"{base}/schools/how-admissions-work", "0.7"))
     entries.append((f"{base}/schools/tightest-catchments", "0.7"))
     entries.append((f"{base}/schools/appeals", "0.7"))
+    entries.append((f"{base}/schools/entrance-tests", "0.7"))
     entries.append((f"{base}/schools/catchment-house-prices", "0.7"))
     entries.append((f"{base}/running-costs", "0.7"))
     entries.append((f"{base}/running-costs/council-tax", "0.7"))
@@ -14162,6 +14174,11 @@ async def admissions_council(request: Request, council_slug: str):
     # council figure and never a school one, so the block says so in the
     # same words the appeals block does.
     context["absence"] = school_absence.for_council(council["name"])
+    # And, where this council has grammar schools, which entrance test
+    # they use and when its round runs (1 Oct 2026). None for the
+    # councils with no selective school, which is most of them.
+    context["entrance_test"] = selective_tests.for_council(council["name"])
+    context["entry_year"] = (selective_tests.source() or {}).get("entry_year")
     context["admissions_faqs_jsonld"] = _faq_jsonld([
         (f"How far do you need to live from a school in {council['name']} to get a place?",
          f"It depends on the school. Across the {council['count']} {council['name']} {phase_word}schools with a "
@@ -14298,6 +14315,70 @@ def tightest_catchments_page(request: Request):
         csv_path="/schools/admission-distances.csv",
     )
     return templates.TemplateResponse(request, "schools_tightest.html", context)
+
+
+@app.get("/schools/entrance-tests")
+def schools_entrance_tests_page(request: Request):
+    """Which entrance test each selective area uses (1 Oct 2026).
+
+    A family looking at a house in a grammar school area has no way of
+    knowing what that involves: whether there is one test or one per
+    school, what is in the papers, how early registration closes. All
+    thirty-five areas were read from their own councils', consortia'
+    and schools' pages, and where a source is silent this page says so
+    rather than filling the gap from a neighbour."""
+    context = base_context(request)
+    _base = _public_base_url(request)
+    context["canonical_url"] = f"{_base}/schools/entrance-tests"
+    context["summary"] = summary = selective_tests.summary()
+    context["areas"] = selective_tests.all_areas()
+    context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_base, [
+        ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
+        ("Grammar school entrance tests", "/schools/entrance-tests"),
+    ])
+    if summary:
+        context["dataset_jsonld"] = _dataset_jsonld(
+            _base,
+            name="Grammar school entrance tests by area, England",
+            description=(f"The entrance test in each of the {summary['areas']} selective areas of "
+                         f"England, covering {summary['schools']} grammar schools: the test's name, "
+                         f"who sets it, what is in the papers, the registration window, the test "
+                         f"dates and the results date, for entry in September {summary['entry_year']}."),
+            path="/schools/entrance-tests", spatial="England",
+            years=[str(summary["entry_year"])],
+            keywords=["11 plus", "grammar school entrance test", "school admissions", "England"],
+        )
+        context["tests_faqs"] = faqs = _entrance_test_faqs(summary, context["areas"])
+        context["tests_faqs_jsonld"] = _faq_jsonld(faqs)
+    return templates.TemplateResponse(request, "schools_entrance_tests.html", context)
+
+
+def _entrance_test_faqs(summary: dict, areas: list[dict]) -> list[tuple[str, str]]:
+    """Three questions answered from the file itself, so no answer here
+    can drift away from the areas below it."""
+    providers = summary["providers"]
+    shared = [area["council"] for area in areas if not area["one_test"]]
+    septembers = [area for area in areas if area["first_test_date"][5:7] == "09"]
+    return [
+        ("Is the 11-plus the same test everywhere?",
+         f"No. There are {summary['areas']} selective areas in England and they do not share one test. "
+         f"{len(providers)} providers are named between them, {', '.join(providers)}, and "
+         f"{summary['without_provider']} areas name no provider at all. In {len(shared)} areas there is "
+         f"no single area-wide test and each school runs its own, so a family applying to two schools "
+         f"sits two tests."),
+        ("When is the 11-plus taken?",
+         f"Almost always in September, at the start of year 6, before the secondary application closes on "
+         f"{summary['national']['secondary_applications_close'][8:10].lstrip('0')} October. "
+         f"{len(septembers)} of the {summary['areas']} areas sat it in September 2026 for entry in "
+         f"{summary['entry_year']}. A few are earlier: Reading School and Liverpool's Blue Coat School "
+         f"both test in July, and Kingston's second stage runs into November. Registration usually closes "
+         f"in June or July, months before the test."),
+        ("Does passing the test get you a place?",
+         "No. The test decides whether a child is eligible, and the place is decided by the local "
+         "authority form, which has to name the school and be in by 31 October. Several areas say in "
+         "as many words that more children reach the standard than there are places, so the "
+         "oversubscription rules, usually distance or a catchment area, then decide who is offered one."),
+    ]
 
 
 @app.get("/schools/appeals")
