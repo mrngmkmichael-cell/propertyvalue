@@ -144,8 +144,9 @@
     </table>
     </div>
     <p class="section-sub">
-        People is the figure from the chart above, with any single page
-        held to what the rest of the site managed. Waits counts clients
+        People is the figure from the chart above: from {{ people_seen_from_label }},
+        views where the page itself saw a person, and before that the
+        estimate described under the bars. Waits counts clients
         that asked for a cold report and came back for the answer, which
         since 11 Sep 2026 is what the wait page records. A blank in "of
         those" means nobody reached the signup page that day, which is
@@ -255,12 +256,12 @@
         <div class="feature-card">
             <span class="feature-card-title">Today, people</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ audience_today }}</span>
-            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_today }} views; {{ crawl_today }} crawl-shaped</span>
+            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_today }} views; {{ crawl_today }} not counted as people</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Last 7 days, people</span>
             <span class="feature-card-blurb" style="font-size:1.5rem; font-weight:800; color:var(--ink);">{{ audience_week }}</span>
-            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_week_days }} views; {{ crawl_week }} crawl-shaped</span>
+            <span class="feature-card-blurb" style="color:var(--ink-faint);">of {{ pageviews_week_days }} views; {{ crawl_week }} not counted as people</span>
         </div>
         <div class="feature-card">
             <span class="feature-card-title">Last 30 days</span>
@@ -282,7 +283,7 @@
         {% set max_count = daily_pageviews | map(attribute='count') | max %}
         {% for d in daily_pageviews %}
         <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;"
-             title="{{ d.date }}: {{ d.count }} views, of which {{ d.audience }} on pages read more than once and {{ d.crawl }} on pages visited exactly once. {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}{% if d.capped_views %}. {{ d.capped_views }} repeat views of {{ d.capped_path }} held back from the people figure{% endif %}">
+             title="{{ d.date }}: {{ d.count }} views, of which {% if d.confirmed %}{{ d.audience }} with a person the page saw and {{ d.crawl }} without{% else %}{{ d.audience }} on pages read more than once and {{ d.crawl }} on pages visited exactly once{% endif %}. {{ d.distinct }} pages, {{ d.signed_in }} signed in{% if d.flagged %}. AUTOMATION PATTERN: {{ d.reason }}{% endif %}{% if d.capped_views %}. {{ d.capped_views }} repeat views of {{ d.capped_path }} held back from the people figure{% endif %}">
             <div style="width:100%; display:flex; flex-direction:column; justify-content:flex-end; height:80px;">
                 <div style="width:100%; background:var(--surface-2); border:1px solid var(--border); border-bottom:0; border-radius:3px 3px 0 0; height:{{ (d.crawl / max_count * 80) if max_count else 0 }}px;"></div>
                 <div style="width:100%; background:{{ 'var(--warn)' if d.flagged else 'var(--accent)' }}; height:{{ (d.audience / max_count * 80) if max_count else 0 }}px; min-height:2px;"></div>
@@ -301,7 +302,15 @@
         the next morning.
     </p>
     <p class="section-sub">
-        Treat the solid part as a floor, not a headcount: a real visitor
+        From {{ people_seen_from_label }} the solid part is people the page
+        itself saw: a short script of the site's own tells the server once
+        someone moves, taps, scrolls or types on a page. A crawler that only
+        fetches the HTML never runs it, and one that runs it does not touch
+        the page. Only the page's path is sent. The days before keep the
+        estimate described next.
+    </p>
+    <p class="section-sub">
+        Before then, treat the solid part as a floor, not a headcount: a real visitor
         who reads one area guide and leaves is counted as crawl here.
         Nothing is subtracted from the raw counts above, and user agents
         are still not stored.
@@ -327,7 +336,7 @@
        rests on colour alone: the legend names a shape, the ends carry
        labels, and the same days sit in a table underneath. #}
     <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">People and all views, last 30 days</h3>
-    <p class="section-sub">The pale area is every view the middleware recorded; the line is the part on pages read more than once that day, the same floor as the solid bars above. The last point is today so far.</p>
+    <p class="section-sub">The pale area is every view the server recorded; the line is people, the same figure as the solid bars above: seen by the page from {{ people_seen_from_label }}, estimated before. The last point is today so far.</p>
     {% set c = people_chart %}
     <figure class="pv-chart" id="people-views-chart">
         <div class="pv-scroll">
@@ -348,20 +357,20 @@
             {% endfor %}
             {% for col in c.columns %}
             <rect class="pv-hit" x="{{ col.x }}" y="{{ c.top }}" width="{{ col.w }}" height="{{ c.h - c.top - c.bottom }}">
-                <title>{{ col.date }}: {{ col.count }} views, {{ col.audience }} people, {{ col.crawl }} crawl-shaped{% if col.flagged %}; automation pattern: {{ col.reason }}{% endif %}{% if col.capped_views %}; {{ col.capped_views }} repeat views of {{ col.capped_path }} held back{% endif %}</title>
+                <title>{{ col.date }}: {{ col.count }} views, {{ col.audience }} people, {{ col.crawl }} {{ 'not seen by the page' if col.confirmed else 'crawl-shaped' }}{% if col.flagged %}; automation pattern: {{ col.reason }}{% endif %}{% if col.capped_views %}; {{ col.capped_views }} repeat views of {{ col.capped_path }} held back{% endif %}</title>
             </rect>
             {% endfor %}
         </svg>
         </div>
         <figcaption class="pv-legend">
-            <span><i class="pv-swatch pv-swatch-people"></i> People, pages read more than once that day</span>
+            <span><i class="pv-swatch pv-swatch-people"></i> People: seen by the page from {{ people_seen_from_label }}, estimated before</span>
             <span><i class="pv-swatch pv-swatch-views"></i> All views</span>
         </figcaption>
         <details class="pv-table">
             <summary>The same 30 days as a table</summary>
             <div class="tablewrap">
             <table class="tx-table">
-                <thead><tr><th>Day</th><th class="num">All views</th><th class="num">People</th><th class="num">Crawl-shaped</th><th>Shape</th></tr></thead>
+                <thead><tr><th>Day</th><th class="num">All views</th><th class="num">People</th><th class="num">Not people</th><th>Shape</th></tr></thead>
                 <tbody>
                 {% for d in c.days | reverse %}
                 <tr><td>{{ d.date }}</td><td class="num">{{ "{:,}".format(d.count) }}</td><td class="num">{{ "{:,}".format(d.audience) }}</td><td class="num">{{ "{:,}".format(d.crawl) }}</td><td>{{ d.reason if d.flagged else "" }}</td></tr>

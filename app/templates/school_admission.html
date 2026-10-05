@@ -291,7 +291,7 @@
         <span class="section-sub" style="flex-basis:100%; margin:0.5rem 0 0;">On <a href="/schools/shortlist">your shortlist</a>: you will be told when {{ school.authority }} republishes this distance.</span>
         {% else %}
         <span class="section-sub" style="flex-basis:100%; margin:0.5rem 0 0;">
-            <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}%3Fcheck%3D{{ check.postcode | urlencode }}">Sign up</a>
+            <a href="/signup?next=/school/{{ school.urn }}/{{ school.slug }}%3Fcheck%3D{{ check.postcode | urlencode }}&amp;save_school={{ school.urn }}">Sign up</a>
             to save this school and be told when {{ school.authority }} republishes the distance this answer rests on.
         </span>
         {% endif %}
@@ -542,7 +542,7 @@
     </form>
     {% else %}
     <p class="section-sub">
-        <a href="/signup?next={{ pair_next | urlencode }}">Sign up</a> to save both schools and be told when either
+        <a href="/signup?next={{ pair_next | urlencode }}&amp;save_school={{ school.urn }}%2C{{ pair_school.urn }}">Sign up</a> to save both schools and be told when either
         council republishes the distance these answers rest on.
     </p>
     {% endif %}
@@ -1038,6 +1038,25 @@
         });
     };
 </script>
+<script>
+    /* The map loads as it nears the screen, not with the page (5 Oct
+       2026). It was about 280 KB of Google Maps on every school page
+       view, though most readers stop at the verdict above it, and each
+       load counts towards the Maps allowance. Already in view, opened
+       at #school-page-map, or in a browser without IntersectionObserver,
+       it loads at once. The box keeps its size meanwhile, so nothing
+       moves when the map arrives. */
+    window.whenMapNear = function (el, load) {
+        if (!el) return;
+        if (!('IntersectionObserver' in window)) { load(); return; }
+        var watcher = new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+                if (entries[i].isIntersecting) { watcher.disconnect(); load(); return; }
+            }
+        }, { rootMargin: '600px 0px' });
+        watcher.observe(el);
+    };
+</script>
 {% if google_maps_api_key %}
 {{ mapstyle.dark_map_style() }}
 <script>
@@ -1169,12 +1188,18 @@
         }
     }
 </script>
-<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initSchoolPageMap&loading=async" async defer></script>
-{% else %}
-<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
-<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script>
-    (function () {
+    window.whenMapNear(document.getElementById('school-page-map'), function () {
+        var maps = document.createElement('script');
+        maps.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent({{ google_maps_api_key | tojson }})
+            + '&callback=initSchoolPageMap&loading=async';
+        maps.async = true;
+        document.head.appendChild(maps);
+    });
+</script>
+{% else %}
+<script>
+    function initSchoolPageLeaflet() {
         const S = window.SCHOOL_PAGE;
         const el = document.getElementById('school-page-map');
         if (!el) return;
@@ -1268,7 +1293,17 @@
                 map.fitBounds(bounds, { padding: [30, 30] });
             });
         }
-    })();
+    }
+    window.whenMapNear(document.getElementById('school-page-map'), function () {
+        var css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = '/static/vendor/leaflet/leaflet.css';
+        document.head.appendChild(css);
+        var lib = document.createElement('script');
+        lib.src = '/static/vendor/leaflet/leaflet.js';
+        lib.onload = initSchoolPageLeaflet;
+        document.head.appendChild(lib);
+    });
 </script>
 {% endif %}
 <script>

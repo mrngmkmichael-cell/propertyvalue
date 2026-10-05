@@ -1104,6 +1104,21 @@ class PageView(Base):
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
 
+class PageSeen(Base):
+    """A person on a page, said by the page itself (5 Oct 2026): a short
+    script in base.html posts the path to /seen once someone moves,
+    taps, scrolls or types on it. The people figure on /admin is these
+    rows from 6 Oct 2026, where it had been estimated from the shape of
+    each day's page_views. A path and a time, nothing else: no account,
+    no address, no agent. Its own table so that no figure already read
+    from page_views changes underneath it."""
+    __tablename__ = "page_seen"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    path: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+
 # --- Live external lookups below don't need their own DB models -
 # radon.py and heritage.py query the BGS/Historic England ArcGIS
 # services directly per-request, cached in-memory like noise.py,

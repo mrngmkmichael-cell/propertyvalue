@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{# Not a page anyone reads for itself, so not a person on /admin (5 Oct 2026). #}
+{% block page_seen %}{% endblock %}
 
 {% block title %}Sign up | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
@@ -23,6 +25,8 @@
 {% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up, say yes once on the report, and it opens in full.{% if verification_available() %} With an email and password, confirm your address first.{% endif %}</p>{% endif %}
 {% endif %}
 
+{% with verb = "Signing up" %}{% include "_save_school_note.html" %}{% endwith %}
+
 {% if error %}
     <p class="notice notice-error">{{ error }}</p>
 {% endif %}
@@ -33,6 +37,7 @@
 
 <form class="stacked-form" action="/signup" method="post">
     <input type="hidden" name="next" value="{{ next or '/' }}">
+    {% if save_school %}<input type="hidden" name="save_school" value="{{ save_school }}">{% endif %}
     <div class="search-form-field">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required autocomplete="email" value="{{ email_value or '' }}">
@@ -44,7 +49,7 @@
     <button type="submit">Create account</button>
 </form>
 
-<p class="section-sub">Already have an account? <a href="/login">Log in</a></p>
+<p class="section-sub">Already have an account? <a href="/login?next={{ (next or '/') | urlencode }}{% if save_school %}&amp;save_school={{ save_school | urlencode }}{% endif %}">Log in</a></p>
 </div>
 
 <aside class="signup-benefits">

@@ -1,0 +1,14 @@
+{# Said before it happens (5 Oct 2026): the account form names the
+   school or schools it will save, so nothing lands on a shortlist the
+   reader was not told about. save_schools comes from
+   _save_school_context in main.py; save_school is the same URNs, which
+   the form and every onward link carry. #}
+{% if save_schools %}
+{% set first = save_schools[0] %}
+<p class="dek signup-for">{{ verb }} also saves <strong>{{ first.name }}</strong>
+{%- if save_schools | length > 1 %} and <strong>{{ save_schools[1].name }}</strong> to your shortlist, so you are told when
+{%- if first.authority and first.authority == save_schools[1].authority %} {{ first.authority }} republishes their admission distances.
+{%- else %} either council republishes its admission distance.{% endif %}
+{%- elif first.authority %} to your shortlist, so you are told when {{ first.authority }} republishes its admission distance.
+{%- else %} to your shortlist, so you are told when its council republishes its admission distance.{% endif %}</p>
+{% endif %}

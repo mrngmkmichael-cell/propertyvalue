@@ -951,6 +951,31 @@
             }
         })();
     </script>
+    {% block page_seen %}
+    <script>
+        /* A person on this page, said by the page itself (5 Oct 2026). A
+           crawler that fetches HTML never runs this, and one that runs it
+           does not move a mouse, tap, scroll or type, which is what sends
+           it: the sign-up page learned on 23 Sep that counting on load
+           still counts renderers. Only the page's path is sent; nothing
+           identifies anyone. See page_seen in main.py. */
+        (function () {
+            var sent = false;
+            var events = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel', 'focusin'];
+            function send() {
+                if (sent) return;
+                sent = true;
+                events.forEach(function (name) { document.removeEventListener(name, send, true); });
+                try {
+                    var path = window.location.pathname;
+                    if (navigator.sendBeacon) navigator.sendBeacon('/seen', path);
+                    else fetch('/seen', {method: 'POST', body: path, keepalive: true});
+                } catch (e) {}
+            }
+            events.forEach(function (name) { document.addEventListener(name, send, {capture: true, passive: true}); });
+        })();
+    </script>
+    {% endblock %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

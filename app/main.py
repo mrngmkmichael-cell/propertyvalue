@@ -39,7 +39,7 @@ from app import asking_prices, auth, checklist_ticks, db, must_haves, school_sho
 from app.services import _cache, comparables_view, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import (
-    FigureReport, PageCache, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
+    FigureReport, PageCache, PageSeen, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
     WatchlistItem,
 )
 from app.services import (
@@ -698,6 +698,52 @@ def _safe_next(next_url: str) -> str:
     if not next_url or not next_url.startswith("/") or next_url.startswith("//"):
         return "/"
     return next_url
+
+
+# Saved as part of signing in (5 Oct 2026). "Sign up to save this school"
+# sent a parent to the sign-up form and back to the school page, where
+# the Save button waited to be pressed a second time. Four schools had
+# been saved by three accounts since the shortlist launched, though the
+# school pages bring more visitors from Google than any other page. The
+# intent now rides along as save_school: one URN, or two for a pair.
+SAVE_ON_SIGN_IN_MAX = 2
+
+
+def _schools_to_save(raw: str) -> list[dict]:
+    """The schools a sign-up or log-in set out to save: at most two,
+    each a URN the DfE register knows (admission_partner, one statement
+    each), anything else ignored rather than refused."""
+    found, seen = [], set()
+    for part in str(raw or "").split(",")[:SAVE_ON_SIGN_IN_MAX]:
+        part = part.strip()[:12]
+        if not part.isdigit() or not 0 < int(part) < 10 ** 8 or int(part) in seen:
+            continue
+        school = schools_db.admission_partner(int(part))
+        if school is not None:
+            found.append(school)
+            seen.add(int(part))
+    return found
+
+
+def _save_schools_after_sign_in(user_id: int, schools: list[dict]) -> None:
+    """Put them on the new or returning account's shortlist. A school
+    already there keeps its note. Never the reason a sign-in fails."""
+    if not schools:
+        return
+    try:
+        already = school_shortlist.saved_urns(user_id)
+        for school in schools:
+            if school["urn"] not in already:
+                school_shortlist.save_item(user_id, school["urn"], "")
+    except Exception:  # noqa: BLE001 - the account exists; the Save button is still there
+        pass
+
+
+def _save_school_context(context: dict, raw: str) -> list[dict]:
+    schools = _schools_to_save(raw)
+    context["save_schools"] = schools
+    context["save_school"] = ",".join(str(s["urn"]) for s in schools)
+    return schools
 
 
 def _average_amount(transactions: list[dict]) -> float | None:
@@ -9619,6 +9665,14 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
         .where(PageView.created_at >= today_start - datetime.timedelta(days=29),
                _real_page_views())
     ).all()
+    # People the page itself confirmed (5 Oct 2026), one grouped statement
+    # for the thirty days; read from PEOPLE_SEEN_FROM on, the estimate
+    # below before it.
+    seen_by_day = {str(d)[:10]: c for d, c in session.execute(
+        select(func.date(PageSeen.created_at), func.count())
+        .where(PageSeen.created_at >= today_start - datetime.timedelta(days=29))
+        .group_by(func.date(PageSeen.created_at))
+    ).all()}
     by_day: dict = {}
     for created, path, user_id in raw_rows:
         day = by_day.setdefault(str(created.date()), {"paths": {}, "signed_in": 0})
@@ -9638,11 +9692,16 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             top_path, top_count = max(day["paths"].items(), key=lambda kv: kv[1])
         one_hit = sum(1 for c in day["paths"].values() if c == 1)
         flagged, reason = _traffic_day_shape(total, top_path, top_count, one_hit, day["signed_in"])
-        audience, crawl, capped_path, capped_views = _audience_split(day["paths"])
+        confirmed = d >= PEOPLE_SEEN_FROM
+        if confirmed:
+            audience, capped_path, capped_views = seen_by_day.get(key, 0), "", 0
+            crawl = max(0, total - audience)
+        else:
+            audience, crawl, capped_path, capped_views = _audience_split(day["paths"])
         daily_all.append({
             "date": key, "count": total, "distinct": len(day["paths"]),
             "signed_in": day["signed_in"], "flagged": flagged, "reason": reason,
-            "audience": audience, "crawl": crawl,
+            "audience": audience, "crawl": crawl, "confirmed": confirmed,
             "capped_path": capped_path, "capped_views": capped_views,
         })
     m["daily_pageviews"] = daily_all[-14:]
@@ -9749,6 +9808,9 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # week is seven single visits, not one page read seven times.
     by_date = {d["date"]: d for d in m["daily_pageviews"]}
     m["audience_today"] = by_date.get(str(date_range[-1]), {}).get("audience", 0)
+    m["people_confirmed_today"] = bool(by_date.get(str(date_range[-1]), {}).get("confirmed"))
+    m["people_seen_from"] = PEOPLE_SEEN_FROM
+    m["people_seen_from_label"] = f"{PEOPLE_SEEN_FROM.day} {PEOPLE_SEEN_FROM:%B %Y}"
     m["crawl_today"] = by_date.get(str(date_range[-1]), {}).get("crawl", 0)
     m["audience_week"] = sum(d["audience"] for d in m["daily_pageviews"][-7:])
     m["crawl_week"] = sum(d["crawl"] for d in m["daily_pageviews"][-7:])
@@ -10617,9 +10679,10 @@ def _free_report_label(next_url: str) -> str:
 
 
 @app.get("/signup")
-def signup_form(request: Request, next: str = "/", error: str = ""):
+def signup_form(request: Request, next: str = "/", error: str = "", save_school: str = ""):
     context = base_context(request)
     context["next"] = next
+    _save_school_context(context, save_school)
     context["free_report_for"] = _free_report_label(next)
     context["check_count"] = CHECK_COUNT  # typed in the benefits list until 17 Sep 2026
     context["error"] = _AUTH_ERRORS.get(error)
@@ -10654,12 +10717,54 @@ def signup_seen(request: Request):
     return Response(status_code=204)
 
 
+# The first whole day the people figure is read from page_seen. The
+# script went live during 5 Oct, so that day keeps the estimate.
+PEOPLE_SEEN_FROM = datetime.date(2026, 10, 6)
+
+
+@app.post("/seen")
+async def page_seen(request: Request):
+    """One person on one page, sent by the page itself (5 Oct 2026).
+
+    The people figure on /admin had been estimated from the shape of
+    each day: views of pages read once that day were called crawl. It
+    was a floor and said so, and crawlers that look like browsers still
+    landed on both sides of it. A crawler that fetches HTML never runs
+    the page, and one that runs it does not move a mouse, tap, scroll or
+    type, which is what sends this: the sign-up page's counter learned on
+    23 Sep 2026 that counting on load still counts renderers. Same
+    exclusions as capture_pageview, and only from this site's own pages:
+    a post from another origin is ignored. A counter, so it never fails
+    a request and always answers 204."""
+    if _is_excluded_viewer(request) or not db.is_configured():
+        return Response(status_code=204)
+    origin = request.headers.get("origin")
+    if origin and (urlparse(origin).hostname or "").lower() != _request_host(request):
+        return Response(status_code=204)
+    raw = (await request.body())[:512].decode("utf-8", "replace").strip()
+    path = raw.split("?", 1)[0].split("#", 1)[0]
+    if (not path.startswith("/") or path.startswith("//") or len(path) > 200
+            or path in _PAGEVIEW_EXCLUDE_PATHS or path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)):
+        return Response(status_code=204)
+    try:
+        if _is_admin(auth.current_user(request)):
+            return Response(status_code=204)
+        with db.get_session() as seen_session:
+            seen_session.add(PageSeen(path=path))
+            seen_session.commit()
+    except Exception:  # noqa: BLE001 - a counter must never break a page
+        pass
+    return Response(status_code=204)
+
+
 @app.post("/signup")
 def signup_submit(
-    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/")
+    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/"),
+    save_school: str = Form(""),
 ):
     context = base_context(request)
     context["next"] = next
+    schools_to_save = _save_school_context(context, save_school)
     context["free_report_for"] = _free_report_label(next)
     context["check_count"] = CHECK_COUNT
     email = email.strip().lower()
@@ -10695,6 +10800,7 @@ def signup_submit(
         session.refresh(user)
         request.session["user_id"] = user.id
         user_id = user.id
+    _save_schools_after_sign_in(user_id, schools_to_save)
 
     return RedirectResponse(
         _safe_next(next), status_code=303,
@@ -10771,9 +10877,10 @@ def _login_for_saved_homes(next_url: str) -> bool:
 
 
 @app.get("/login")
-def login_form(request: Request, next: str = "/", error: str = ""):
+def login_form(request: Request, next: str = "/", error: str = "", save_school: str = ""):
     context = base_context(request)
     context["next"] = next
+    _save_school_context(context, save_school)
     context["for_saved_homes"] = _login_for_saved_homes(next)
     context["error"] = _AUTH_ERRORS.get(error)
     return templates.TemplateResponse(request, "login.html", context)
@@ -10781,10 +10888,12 @@ def login_form(request: Request, next: str = "/", error: str = ""):
 
 @app.post("/login")
 def login_submit(
-    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/")
+    request: Request, email: str = Form(...), password: str = Form(...), next: str = Form("/"),
+    save_school: str = Form(""),
 ):
     context = base_context(request)
     context["next"] = next
+    schools_to_save = _save_school_context(context, save_school)
     context["for_saved_homes"] = _login_for_saved_homes(next)
     email = email.strip().lower()
 
@@ -10794,6 +10903,8 @@ def login_submit(
             context["error"] = "Incorrect email or password."
             return templates.TemplateResponse(request, "login.html", context)
         request.session["user_id"] = user.id
+        user_id = user.id
+    _save_schools_after_sign_in(user_id, schools_to_save)
 
     return RedirectResponse(_safe_next(next), status_code=303)
 
@@ -11347,7 +11458,7 @@ OAUTH_PROVIDER_NAMES = ("google", "facebook", "linkedin")
 
 
 @app.get("/auth/{provider}")
-def oauth_login(request: Request, provider: str, next: str = "/"):
+def oauth_login(request: Request, provider: str, next: str = "/", save_school: str = ""):
     if provider not in OAUTH_PROVIDER_NAMES or not _oauth_provider_configured(provider):
         return RedirectResponse("/login?error=oauth_unavailable", status_code=303)
     if not db.is_configured():
@@ -11359,6 +11470,7 @@ def oauth_login(request: Request, provider: str, next: str = "/"):
     state = secrets.token_urlsafe(32)
     request.session[f"{provider}_oauth_state"] = state
     request.session[f"{provider}_oauth_next"] = _safe_next(next)
+    request.session[f"{provider}_oauth_save_school"] = str(save_school or "")[:30]
     redirect_uri = _oauth_redirect_uri(request, provider)
     if provider == "google":
         url = google_oauth.authorization_url(redirect_uri, state)
@@ -11375,6 +11487,7 @@ async def oauth_callback(
         return RedirectResponse("/login?error=oauth_unavailable", status_code=303)
     expected_state = request.session.pop(f"{provider}_oauth_state", None)
     next_url = _safe_next(request.session.pop(f"{provider}_oauth_next", "/"))
+    save_school = request.session.pop(f"{provider}_oauth_save_school", "")
 
     # error=access_denied is the normal "user clicked Cancel" path, not a
     # fault - put them back on the login page without an alarming message.
@@ -11413,6 +11526,8 @@ async def oauth_callback(
         # password proves, so this is a second key to their own door -
         # their password keeps working too.
         request.session["user_id"] = user.id
+        user_id = user.id
+    _save_schools_after_sign_in(user_id, _schools_to_save(save_school))
 
     return RedirectResponse(next_url, status_code=303)
 
@@ -15046,7 +15161,8 @@ def school_shortlist_save(
     back = _safe_next(next) if next else (f"/property?postcode={postcode}#schools" if postcode else "/schools/shortlist")
     user = auth.current_user(request)
     if not user:
-        return RedirectResponse(f"/login?next={quote(back, safe='')}", status_code=303)
+        wanted = ",".join(str(u) for u in (urn, also.strip()[:12]) if str(u).isdigit())
+        return RedirectResponse(f"/login?next={quote(back, safe='')}&save_school={quote(wanted)}", status_code=303)
     school_shortlist.save_item(user["id"], urn, note.strip())
     second = also.strip()[:12]
     if second.isdigit() and 0 < int(second) < 10 ** 8 and int(second) != urn:

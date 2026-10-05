@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{# Not a page anyone reads for itself, so not a person on /admin (5 Oct 2026). #}
+{% block page_seen %}{% endblock %}
 
 {# The tab names the postcode, and from the first lookup back the script
    below keeps the count there too ("7 of 19 · BN1 1EE"), so a reader who

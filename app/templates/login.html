@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{# Not a page anyone reads for itself, so not a person on /admin (5 Oct 2026). #}
+{% block page_seen %}{% endblock %}
 
 {% block title %}{{ "Your saved homes" if for_saved_homes else "Log in" }} | UKPropertyInsight{% endblock %}
 {% block robots %}<meta name="robots" content="noindex, follow">{% endblock %}
@@ -16,6 +18,8 @@
 <h1>Log in</h1>
 {% endif %}
 
+{% with verb = "Logging in" %}{% include "_save_school_note.html" %}{% endwith %}
+
 {% if error %}
     <p class="notice notice-error">{{ error }}</p>
 {% endif %}
@@ -24,6 +28,7 @@
 
 <form class="stacked-form" action="/login" method="post">
     <input type="hidden" name="next" value="{{ next or '/' }}">
+    {% if save_school %}<input type="hidden" name="save_school" value="{{ save_school }}">{% endif %}
     <div class="search-form-field">
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required autocomplete="email">
@@ -37,5 +42,5 @@
 
 {# Sign-up carries next (18 Sep 2026, audit E5): it went to a bare /signup
    and a new account landed on the homepage, not where it was going. #}
-<p class="section-sub">No account yet? <a href="/signup{% if next and next != '/' %}?next={{ next | urlencode }}{% endif %}">Sign up</a> &middot; <a href="/forgot-password">Forgotten your password?</a></p>
+<p class="section-sub">No account yet? <a href="/signup{% if next and next != '/' %}?next={{ next | urlencode }}{% if save_school %}&amp;save_school={{ save_school | urlencode }}{% endif %}{% elif save_school %}?save_school={{ save_school | urlencode }}{% endif %}">Sign up</a> &middot; <a href="/forgot-password">Forgotten your password?</a></p>
 {% endblock %}
