@@ -3687,6 +3687,14 @@ GSC_EARNED_OUTCODES = [
     "NG90", "NN4", "OL3", "PO41", "PR1", "PR2", "PR5", "RG31", "RH10",
     "RH15", "RM12", "S96", "SA5", "SK1", "SK14", "SM6", "SR2", "TF3",
     "TN1", "TQ1", "TR21", "TW11", "WD17", "WV6",
+    # --- Promoted from Search Console, 5 Oct 2026 (three months to 2 Oct) ---
+    # 21 districts with impressions and no priority yet, from
+    # scripts/promote_from_gsc.py. SL95 led with 142 impressions. L69 and
+    # CH32 are largely non-geographic, kept on the same rule as N1P and
+    # NE99 above: each resolves to a real guide Google is already showing.
+    "BH1", "BT17", "CA1", "CH32", "CM23", "CR0", "EC2Y", "EH55", "G33",
+    "L69", "LN11", "LN4", "MK18", "PL2", "PR11", "S40", "SA6", "SK4",
+    "SL95", "SO50", "WN6",
 ]
 AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
