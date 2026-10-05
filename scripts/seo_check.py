@@ -43,6 +43,8 @@ PAUSE_S = 0.3
 
 
 def family(url: str) -> str:
+    """The page template a URL is rendered from, so the sample takes
+    some of every kind rather than 80 school pages."""
     path = re.sub(r"^https?://[^/]+", "", url)
     if path.startswith("/area/") and path.endswith("/private-schools"):
         return "/area/*/private-schools"
@@ -52,6 +54,14 @@ def family(url: str) -> str:
         return "/schools/guide"
     if path.startswith("/school/"):
         return "/school/*"
+    if path.startswith("/schools/admissions/"):
+        return "/schools/admissions/*"
+    if path.startswith("/running-costs/council-tax/"):
+        return "/running-costs/council-tax/*"
+    if path.startswith("/compare/"):
+        return "/compare/*"
+    if path.startswith("/schools/independent/"):
+        return "/schools/independent/*"
     return "static"
 
 
@@ -98,6 +108,12 @@ def main() -> int:
         print(f"  disallows         {blocked}")
 
     # ---- sitemap ----
+    # Since 26 Sep 2026 /sitemap.xml is a sitemap INDEX with one child
+    # per page family, and this script went on reading it as a list of
+    # pages: it "checked" the seven child XML files and reported each as
+    # a page with no canonical, for nine days, while saying nothing about
+    # the 5,800 real URLs. Now an index is followed into its children,
+    # and a plain urlset is still read as before (5 Oct 2026).
     r = client.get(f"{base}/sitemap.xml")
     if r.status_code != 200:
         print(f"sitemap.xml         {r.status_code}  FATAL, nothing else can be checked")
@@ -107,8 +123,26 @@ def main() -> int:
     except ET.ParseError as exc:
         print(f"sitemap.xml         does not parse: {exc}")
         return 1
-    urls = [e.text for e in root.findall(".//s:loc", NS)]
-    print(f"sitemap.xml         {len(urls)} URLs, {len(set(urls))} distinct")
+    children = [e.text for e in root.findall("s:sitemap/s:loc", NS)]
+    if children:
+        print(f"sitemap.xml         an index of {len(children)} child sitemaps")
+        urls = []
+        for child in children:
+            resp = client.get(child)
+            if resp.status_code != 200:
+                problems["sitemap"].append(f"child {child} -> {resp.status_code}")
+                continue
+            try:
+                found = [e.text for e in ET.fromstring(resp.text).findall("s:url/s:loc", NS)]
+            except ET.ParseError as exc:
+                problems["sitemap"].append(f"child {child} does not parse: {exc}")
+                continue
+            print(f"  {child.rsplit('/', 1)[-1]:<28} {len(found):>6} URLs")
+            urls.extend(found)
+            time.sleep(PAUSE_S)
+    else:
+        urls = [e.text for e in root.findall("s:url/s:loc", NS)]
+    print(f"sitemap URLs        {len(urls)} URLs, {len(set(urls))} distinct")
     if len(urls) != len(set(urls)):
         problems["sitemap"].append(f"{len(urls) - len(set(urls))} duplicate URLs")
     off = [u for u in urls if not u.startswith(base + "/") and u != base + "/"]

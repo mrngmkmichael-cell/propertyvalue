@@ -186,6 +186,10 @@ def _anon_html_key(request: Request):
     """The cache key for this request, or None if it must not be cached."""
     if request.method != "GET":
         return None
+    # The key carries no host, so a page rendered for another hostname
+    # must never go in or come out (5 Oct 2026, see canonical_host).
+    if not _on_canonical_host(request):
+        return None
     path = request.url.path
     if path != "/" and not path.startswith(_ANON_HTML_PREFIXES):
         return None
@@ -415,6 +419,55 @@ async def capture_pageview(request: Request, call_next):
         else:
             response.background = BackgroundTasks([response.background, BackgroundTask(_record_pageview, path, user_id)])
     return response
+
+
+# One public address (5 Oct 2026). The service also answers on its
+# Render hostname, propertyvalue-eg3v.onrender.com, and until today it
+# served every page there with a 200 and a canonical naming itself: a
+# complete second copy of the site for Google to find and choose
+# between. Worse, the ten-minute page cache keys on the path alone, so
+# a page first rendered through that hostname was then served on the
+# real domain with the Render address as its canonical. The site audit
+# found a school page doing exactly that.
+#
+# So production has one canonical origin whatever a request said, a GET
+# or HEAD on the Render hostname is sent to it permanently, and the
+# page cache only stores or serves a page asked for on the real domain.
+# Three things are deliberately left alone: POSTs, because Stripe does
+# not follow a redirect and its webhook may be pointed at either name;
+# /healthz, /internal/ and /webhooks/ on any host; and any host that is
+# not *.onrender.com, because Render's own health checks reach the app
+# by an internal address and a redirect there could read as a failing
+# service.
+CANONICAL_ORIGIN = (os.environ.get("SITE_URL")
+                    or ("https://ukpropertyinsight.co.uk" if IS_PRODUCTION else "")).rstrip("/")
+_CANONICAL_HOST = CANONICAL_ORIGIN.split("://", 1)[-1].lower() if CANONICAL_ORIGIN else ""
+_ANY_HOST_PATHS = ("/healthz", "/internal/", "/webhooks/")
+
+
+def _request_host(request: Request) -> str:
+    return (request.headers.get("host") or "").split(":")[0].lower()
+
+
+def _on_render_hostname(request: Request) -> bool:
+    return IS_PRODUCTION and bool(_CANONICAL_HOST) and _request_host(request).endswith(".onrender.com")
+
+
+def _on_canonical_host(request: Request) -> bool:
+    """True where a page may be cached: always off production, and only
+    the real domain on it."""
+    return not IS_PRODUCTION or not _CANONICAL_HOST or _request_host(request) == _CANONICAL_HOST
+
+
+@app.middleware("http")
+async def canonical_host(request: Request, call_next):
+    if (_on_render_hostname(request) and request.method in ("GET", "HEAD")
+            and not request.url.path.startswith(_ANY_HOST_PATHS)):
+        target = CANONICAL_ORIGIN + request.url.path
+        if request.url.query:
+            target += "?" + request.url.query
+        return RedirectResponse(target, status_code=301)
+    return await call_next(request)
 
 
 # What 404s, counted in memory. Search Console reported 1,161 pages as
@@ -8470,6 +8523,17 @@ async def _bounded(coro, seconds: float):
         return None
 
 
+async def _bounded_strict(coro, seconds: float):
+    """As _bounded, but a timeout raises rather than coming back as
+    None (5 Oct 2026). _outcode_sales returns None for a district with
+    no sales at all, so through _bounded a timeout and a genuine "no
+    sales" looked the same, and the comparison page cached the timeout
+    as if it were the answer. The task is still shielded, so its own
+    cache fills for the next visitor exactly as before."""
+    task = asyncio.ensure_future(coro)
+    return await asyncio.wait_for(asyncio.shield(task), timeout=seconds)
+
+
 AREA_PREWARM_BATCH = 250
 AREA_PREWARM_REFRESH_AHEAD_S = 86400 * 2
 # Breathing room between districts. Render runs one worker, and a
@@ -10147,9 +10211,12 @@ async def send_daily_summary(request: Request):
 
 
 def _public_base_url(request: Request) -> str:
-    configured = os.environ.get("SITE_URL")
-    if configured:
-        return configured.rstrip("/")
+    # Production always answers with the real domain, whatever hostname
+    # the request arrived on (5 Oct 2026): SITE_URL was never set on
+    # Render, so canonicals followed the Host header, and the Render
+    # hostname's canonicals named the Render hostname.
+    if CANONICAL_ORIGIN:
+        return CANONICAL_ORIGIN
     # Render serves every public request over HTTPS even though the
     # request this app sees internally may report http (no
     # --proxy-headers on the uvicorn start command) - force the scheme
@@ -12444,8 +12511,8 @@ async def area_versus(request: Request, left: str, right: str):
         sides = await asyncio.gather(
             _comparison_summary(places[0][0]["postcode"], ""),
             _comparison_summary(places[1][0]["postcode"], ""),
-            _bounded(_outcode_sales(places[0][0]["latitude"], places[0][0]["longitude"]), 8.0),
-            _bounded(_outcode_sales(places[1][0]["latitude"], places[1][0]["longitude"]), 8.0),
+            _bounded_strict(_outcode_sales(places[0][0]["latitude"], places[0][0]["longitude"]), 8.0),
+            _bounded_strict(_outcode_sales(places[1][0]["latitude"], places[1][0]["longitude"]), 8.0),
             return_exceptions=True,
         )
         if any(isinstance(s, Exception) for s in sides[:2]):
@@ -12455,7 +12522,29 @@ async def area_versus(request: Request, left: str, right: str):
                 summary["local_median"] = sales["median"]
                 summary["local_sales_count"] = sales["count"]
         cached = {"left": sides[0], "right": sides[1]}
-        await asyncio.to_thread(_cache.set_persistent, cache_key, cached)
+        # Only a complete answer is kept (5 Oct 2026). Each side's sales
+        # lookup is capped at eight seconds, and a side that timed out
+        # was stored anyway, without its median, for the whole of the
+        # cache's life. The missing median makes the page noindex, so one
+        # slow moment took a comparison out of search for days, and the
+        # site audit found BH1 against BH4 in the sitemap and noindexed.
+        # A lookup that failed is now asked again next time instead.
+        if not any(isinstance(s, Exception) for s in sides[2:4]):
+            await asyncio.to_thread(_cache.set_persistent, cache_key, cached)
+    # A side still without a median takes its district's own figure
+    # from the area guides, which is the same sales query the guide
+    # publishes for that district (_district_price_rows). That also
+    # heals a comparison stored before the fix above, rather than
+    # leaving it noindexed until its cache entry runs out.
+    try:
+        guide_medians = await asyncio.to_thread(_district_price_rows_by_outcode)
+    except Exception:  # noqa: BLE001 - a missing median is the old behaviour, not an error
+        guide_medians = {}
+    for outcode, side in ((left, cached["left"]), (right, cached["right"])):
+        row = guide_medians.get(outcode)
+        if not side.get("local_median") and row and row.get("median"):
+            side["local_median"] = row["median"]
+            side["local_sales_count"] = row.get("count")
 
     context["canonical_url"] = f"{_public_base_url(request)}/compare/{left}/vs/{right}"
     _set_page_date(context, cache_key)
