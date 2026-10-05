@@ -6163,7 +6163,9 @@ def test_e3_after_a_check_the_verdict_offers_another_postcode(client, monkeypatc
     # Inside the answer, as its last row, and before the map.
     verdict = body[body.index('id="verdict"'):body.index('id="school-page-map"')]
     assert again in verdict
-    assert re.search(r"<button type=\"submit\">Check</button>\s*</form>\s*</div>\s*"
+    # The button is drawn quiet since 5 Oct 2026, the report link above
+    # it being the verdict's one filled button.
+    assert re.search(r"<button type=\"submit\" class=\"button-quiet\">Check</button>\s*</form>\s*</div>\s*"
                      r'<div class="school-page-map"', body)
     # The offer to save the school still follows the answer, ahead of the box.
     offer = "to save this school and be told when Cumberland republishes the distance this answer rests on"

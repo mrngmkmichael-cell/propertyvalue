@@ -250,8 +250,20 @@
             Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
             looked-after children{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
             come before distance, and the distance moves every year.
-            <a href="/property?postcode={{ check.postcode | urlencode }}">Run the full report on {{ check.postcode }}</a> for every school at once, and the house itself.
         </span>
+        {# The way into the report, as the verdict's one button (5 Oct
+           2026). It was an underlined link in the third sentence of the
+           caveat above, while the only filled button in the box was
+           "Check another postcode", so the page asked a parent who had
+           just learned a house was in reach to check a different house.
+           School pages bring most of the site's search clicks and, that
+           week, 2 of its 153 report searches were tagged as theirs. This
+           link carried no src at all, so whatever it sent was counted as
+           direct; it is tagged now, so the next week's count is real. #}
+        <div class="verdict-next">
+            <a class="verdict-next-button" href="/property?postcode={{ check.postcode | urlencode }}&amp;src=school">Run the full report on {{ check.postcode }}</a>
+            <span class="section-sub">Every school near it at once, and the house itself: flood risk, sold prices, crime. {{ offer_sentence }}</span>
+        </div>
         {# The distance this verdict rests on is last year's, and the
            council republishes it every year. This is the point at which
            that is worth being told about. #}
@@ -280,7 +292,7 @@
             </div>
             {% if pair_school %}<input type="hidden" name="with" value="{{ pair_school.urn }}">{% if pair_budget_query %}<input type="hidden" name="budget" value="{{ pair_budget_query }}">{% endif %}{% endif %}
             {% if radius_years | length > 1 and map_ring.year %}<input type="hidden" name="year" value="{{ map_ring.year }}">{% endif %}
-            <button type="submit">Check</button>
+            <button type="submit" class="button-quiet">Check</button>
         </form>
     </div>
     {% endif %}

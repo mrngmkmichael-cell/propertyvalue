@@ -1669,17 +1669,54 @@ button:not([class]):hover { background: var(--accent-hover); }
     max-width: none;
 }
 
-.stacked-form button.button-quiet {
+.stacked-form button.button-quiet,
+.search-form button.button-quiet {
     background: transparent;
     color: var(--ink-soft);
     border: 1px solid var(--border);
     box-shadow: none;
 }
 
-.stacked-form button.button-quiet:hover {
+.stacked-form button.button-quiet:hover,
+.search-form button.button-quiet:hover {
     background: transparent;
     color: var(--ink);
     border-color: var(--ink-faint);
+}
+
+/* The one filled button in a school page's verdict box (5 Oct 2026):
+   the way into the report on the address just checked. "Check another
+   postcode" below it is drawn quiet so the box has a single primary
+   action. A link styled as the site's button, tokens only. */
+.verdict-next {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0.6rem 0 0;
+}
+
+.verdict-next-button {
+    align-self: flex-start;
+    padding: 0.7rem 1.4rem;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.verdict-next-button:hover {
+    background: var(--accent-hover);
+    color: var(--accent-ink);
+}
+
+.verdict-next-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .stacked-form button:hover {

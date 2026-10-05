@@ -71,3 +71,7 @@ def test_a_school_page_points_on_to_the_house_report(client, monkeypatch):
     answered = client.get("/school/990002/riverside-academy?check=M1+2AA").text
     assert "After the answer" not in answered  # the landing box gives way to the answer
     assert "Run the full report on M1 2AA" in answered
+    # The verdict's one filled button since 5 Oct 2026, tagged so the
+    # report searches it sends are counted as the school page's.
+    assert 'class="verdict-next-button" href="/property?postcode=M1%202AA&amp;src=school"' in answered
+    assert '<button type="submit" class="button-quiet">Check</button>' in answered

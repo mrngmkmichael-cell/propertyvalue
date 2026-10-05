@@ -882,7 +882,9 @@ def test_school_page_has_map_checker_and_share_card(client, monkeypatch):
     body = client.get("/school/990002/riverside-academy?check=M1+2AA").text
     assert "admission-verdict-likely" in body
     assert "M1 2AA" in body
-    assert 'href="/property?postcode=M1%202AA"' in body
+    # Tagged with its source since 5 Oct 2026, so the report searches a
+    # school page sends are counted as the school page's.
+    assert 'href="/property?postcode=M1%202AA&amp;src=school"' in body
 
     async def _nowhere(_pc):
         return None
