@@ -914,8 +914,13 @@
             function nameFor(wrap) {
                 const caption = wrap.querySelector('caption');
                 if (caption && caption.textContent.trim()) return caption.textContent.trim();
-                const holder = wrap.closest('section, dialog, article');
-                const heading = holder && holder.querySelector('h2, h3');
+                /* Otherwise the last heading before it in reading order:
+                   the premium table sits in no section of its own. */
+                let heading = null;
+                for (const h of document.querySelectorAll('h1, h2, h3')) {
+                    if (h.compareDocumentPosition(wrap) & Node.DOCUMENT_POSITION_FOLLOWING) heading = h;
+                    else break;
+                }
                 return heading ? heading.textContent.replace(/\s+/g, ' ').trim() : 'Table';
             }
             function mark(wrap) {
@@ -932,7 +937,9 @@
                     delete wrap.dataset.scrollStop;
                 }
             }
-            const wraps = document.querySelectorAll('.tablewrap');
+            /* Every wrapper a table scrolls inside: the rescan after the
+               first fix found the premium comparison's .alt-table-wrap. */
+            const wraps = document.querySelectorAll('.tablewrap, .alt-table-wrap, .compare-table-wrap');
             if (!wraps.length) return;
             if ('ResizeObserver' in window) {
                 const watcher = new ResizeObserver(function (entries) {

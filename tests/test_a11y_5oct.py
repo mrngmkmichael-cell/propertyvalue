@@ -62,3 +62,24 @@ def test_a_sideways_scrolling_table_gets_a_keyboard_stop(client):
     # Only while it scrolls: a wide desktop table is not given a tab stop.
     assert "removeAttribute('tabindex')" in script
     assert "ResizeObserver" in script
+    # The comparison tables scroll inside their own wrappers, not .tablewrap.
+    for wrapper in (".tablewrap", ".alt-table-wrap", ".compare-table-wrap"):
+        assert wrapper in script, wrapper
+
+
+def test_the_premium_table_stacks_on_a_phone_with_every_cell_captioned(client, monkeypatch):
+    """At 375px the Premium column sat wholly off screen (5 Oct 2026);
+    stacked like the homepage's table, each cell names its column."""
+    # The pricing, and the table under it, show only with billing set up.
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_not_a_real_key")
+    from tests.test_ai_search_readiness import _forget_html
+    _forget_html()
+    body = client.get("/premium").text
+    _forget_html()
+    table = body.split('<table class="alt-table alt-table-stack">', 1)[1].split("</table>", 1)[0]
+    rows = re.findall(r"<tr><td>.*?</tr>", table, re.S)
+    assert len(rows) >= 6
+    assert not re.search(r"<th(\s[^>]*)?>\s*(&nbsp;)?\s*</th>", table), "a nameless corner header"
+    for row in rows:
+        assert row.count('data-label="Free account"') == 1, row[:80]
+        assert row.count('data-label="Premium"') == 1, row[:80]

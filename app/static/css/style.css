@@ -6160,7 +6160,7 @@ main:focus { outline: none; }
 
 /* A sideways-scrolling table given a tab stop by base.html shows
    where the keyboard is (5 Oct 2026). */
-.tablewrap[data-scroll-stop]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-scroll-stop]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Screen-reader-only text: a label that must exist but not show. */
 .visually-hidden {
@@ -6580,8 +6580,9 @@ main:focus { outline: none; }
    started off screen. Below 600px each row stacks its label, the DIY
    cell and ours, each captioned from its data-label because the header
    row is hidden, and the portals column is left out. Scoped to
-   .alt-table-stack: the Premium page's and /alternatives' tables keep
-   their own layout. */
+   .alt-table-stack, which the Premium page's table joined on 5 Oct 2026
+   (its Premium column started wholly off screen); /alternatives keeps
+   its own layout. */
 @media (max-width: 600px) {
     .alt-table-stack { min-width: 0; }
     .alt-table-stack thead,

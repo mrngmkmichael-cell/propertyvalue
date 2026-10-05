@@ -930,7 +930,9 @@ def test_a6_the_comparison_stacks_on_a_phone_and_the_other_alt_tables_are_left_a
     assert selectors and all(s.startswith(".alt-table-stack") for s in selectors), selectors
     assert ".alt-table-stack .alt-portal { display: none; }" in rules
     assert "content: attr(data-label);" in rules
-    for page in ("premium.html", "alternatives.html"):
+    # /premium joined on 5 Oct 2026: at 375px its Premium column started
+    # wholly off screen, the fault this rule was written for.
+    for page in ("alternatives.html",):
         assert "alt-table-stack" not in (ROOT / "app" / "templates" / page).read_text(encoding="utf-8"), page
     # No other breakpoint reshapes the shared alt-table.
     for media in re.findall(r"@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}", STYLE_CSS):
