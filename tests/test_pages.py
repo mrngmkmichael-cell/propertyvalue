@@ -1311,7 +1311,7 @@ def test_structured_data_and_share_cards_on_the_admissions_pages(client):
     assert 'property="og:image" content="https://testserver/og/tightest-catchments.png"' in story
     hub = client.get("/schools/admissions/manchester").text
     assert '"Dataset"' in hub and '"BreadcrumbList"' in hub
-    assert "<title>Manchester school catchments" in hub
+    assert "<title>Manchester school catchment areas" in hub
     assert 'content="https://testserver/og/council/manchester.png"' in hub
     school = client.get("/school/990012/quayside-academy").text
     assert '"BreadcrumbList"' in school

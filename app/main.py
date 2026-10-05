@@ -1640,6 +1640,23 @@ def seo_title(head: str, optional: str, tail: str, limit: int = SEO_TITLE_LIMIT)
     return f"{head}{tail}"
 
 
+def fit_title(*candidates: str, limit: int = SEO_TITLE_LIMIT) -> str:
+    """The first title that fits, longest form first; the shortest when
+    none does. For titles with more than one part to spare, in order.
+
+    seo_title spares one part. A school page has three (5 Oct 2026):
+    the authority, then "Church of England" written as the "CofE" many
+    names in the DfE register already use, then the year. A sample of
+    48 school pages had 15 titles over 65 characters with the authority
+    already gone, and Search Console shows the queries are "<school>
+    catchment area": none of them types "church of england".
+    """
+    for title in candidates:
+        if len(title) <= limit:
+            return title
+    return min(candidates, key=len)
+
+
 # Looked up on each call, not bound once, so a change of configuration
 # (or a test's patch) is seen without a restart.
 templates.env.globals["verification_available"] = lambda: email_service.can_verify()
@@ -1786,6 +1803,7 @@ templates.env.globals["news_search"] = _news_search
 templates.env.globals["flood_re"] = flood_re.assess
 templates.env.globals["council_finance"] = council_finance.for_council
 templates.env.globals["seo_title"] = seo_title
+templates.env.globals["fit_title"] = fit_title
 
 
 if indexnow.key():

@@ -5351,7 +5351,10 @@ def test_d7_a_band_reads_the_same_in_the_reports_pop_up_and_on_the_council_page(
     page = client.get(f"/running-costs/council-tax/{ct['slug']}").text
     description = html.unescape(re.search(r'<meta name="description" content="([^"]*)"', page).group(1))
     assert f"F {band_f}," in description
-    assert f"Band D {app_main._format_gbp(ct['band_d'])}," in html.unescape(re.search(r"<title>(.*?)</title>", page, re.S).group(1))
+    title = html.unescape(re.search(r"<title>(.*?)</title>", page, re.S).group(1))
+    # Whole pounds, as the pop-up has them. Not followed by a comma any
+    # more: a long council name drops ", Bands A to H" (5 Oct 2026).
+    assert re.search(rf"Band D {re.escape(app_main._format_gbp(ct['band_d']))}(?![\d.])", title)
 
 
 # (4) The postcode box on a council's page suggests a district inside it.
@@ -6451,7 +6454,7 @@ def test_e4_a_primary_only_hub_says_so_with_its_round_and_names_the_phase(client
     # Under the tiles, ahead of the tightest and the tables.
     at = [body.index(s) for s in ('class="scorecard-row"', line, "The tightest is", "<h2>Primary schools</h2>")]
     assert at == sorted(at)
-    assert "<title>Ormsby Fen primary school catchments: how far each school admitted from</title>" in body
+    assert "<title>Ormsby Fen primary school catchment areas</title>" in body   # 5 Oct 2026 wording
     assert '<meta name="description" content="How far the last child admitted lived, for 3 Ormsby Fen primary schools, from' in body
     assert "<h1>How far Ormsby Fen primary schools admitted from</h1>" in body
     assert "This is that figure for 3 primary schools, tightest first." in _flat(body)
@@ -6470,7 +6473,7 @@ def test_e4_a_hub_with_both_phases_gives_each_its_round_and_deadline_and_keeps_i
     assert ('<p class="section-sub hub-coverage">Primary schools from the 2025/26 round and secondary schools '
             'from the 2024/25 round.</p>') in body
     assert "are not on this page" not in body
-    assert "<title>Fenholt Marsh school catchments: how far each school admitted from</title>" in body
+    assert "<title>Fenholt Marsh school catchment areas and admission distances</title>" in body
     assert "<h1>How far Fenholt Marsh schools admitted from</h1>" in body
     deadline = re.search(r'<p class="section-sub admission-deadline">(.*?)</p>', body, re.S).group(1)
     assert _e4_text(deadline) == (

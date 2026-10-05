@@ -3,7 +3,10 @@
 {# Conditions live inside each block, never around it: Jinja resolves a
    block at parse time, so wrapping the definition in an {% if %} does
    not do what it looks like it does. #}
-{% block title %}{% if versus %}{{ left_code }} or {{ right_code }}? Prices, schools, crime and flood risk compared{% elif anonymous_compare %}Compare UK postcodes side by side{% else %}Compare properties{% endif %} | UKPropertyInsight{% endblock %}
+{# The brand is the part a long comparison title can spare (5 Oct 2026):
+   "CM18 or CM21? ... compared | UKPropertyInsight" ran to 80 characters
+   and Google cut the brand off anyway. seo_title drops it past 60. #}
+{% block title %}{% if versus %}{{ seo_title(left_code ~ " or " ~ right_code ~ "? Prices, schools, crime and flood risk compared", " | UKPropertyInsight", "") }}{% elif anonymous_compare %}Compare UK postcodes side by side | UKPropertyInsight{% else %}Compare properties | UKPropertyInsight{% endif %}{% endblock %}
 {% block meta_description %}{% if versus %}{{ left_code }} against {{ right_code }}: sold prices, schools likely to admit, flood zone, crime and deprivation for both districts, side by side and traced to the official source for each figure.{% else %}Put two or three UK postcodes side by side: sold prices, growth, energy rating, flood zone, crime and deprivation, from official data.{% endif %}{% endblock %}
 {% block robots %}{% if (not versus and not anonymous_compare) or versus_noindex %}<meta name="robots" content="noindex, follow">{% endif %}{% endblock %}
 

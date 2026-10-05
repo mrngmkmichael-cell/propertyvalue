@@ -22,6 +22,7 @@ actually keys on.
 """
 import argparse
 import collections
+import html
 import json
 import random
 import re
@@ -83,17 +84,25 @@ def one(field: str, body: str) -> str:
         "robots": r'<meta\s+name="robots"\s+content="([^"]*)"',
     }
     m = re.search(patterns[field], body, re.S | re.I)
-    return (m.group(1).strip() if m else "")
+    # Unescaped, so "St Peter&#39;s" measures as the 10 characters Google
+    # shows rather than 14: the length rules below were overcounting.
+    return (html.unescape(m.group(1).strip()) if m else "")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("base", nargs="?", default="https://ukpropertyinsight.co.uk")
     ap.add_argument("--sample", type=int, default=80)
+    ap.add_argument("--all", action="store_true",
+                    help="list every item of each kind, not the first six")
     args = ap.parse_args()
     base = args.base.rstrip("/")
 
-    client = httpx.Client(timeout=60, headers=UA, follow_redirects=False)
+    # X-Internal-Check as well as the Googlebot UA (5 Oct 2026): without
+    # it every run of this check logged 84 Googlebot pageviews on /admin,
+    # inside the very crawl figures the dashboard reads.
+    client = httpx.Client(timeout=60, headers={**UA, "X-Internal-Check": "1"},
+                          follow_redirects=False)
     problems = collections.defaultdict(list)
 
     print(f"seo check: {base}\n")
@@ -260,10 +269,11 @@ def main() -> int:
     print(f"{total} issue(s) across {len(problems)} kinds, {len(pages)} pages sampled")
     for kind, items in sorted(problems.items(), key=lambda kv: -len(kv[1])):
         print(f"\n{kind.upper()}  ({len(items)})")
-        for item in items[:6]:
+        shown = items if args.all else items[:6]
+        for item in shown:
             print(f"  {item}")
-        if len(items) > 6:
-            print(f"  ... and {len(items) - 6} more")
+        if len(items) > len(shown):
+            print(f"  ... and {len(items) - len(shown)} more (--all lists them)")
     return 1
 
 

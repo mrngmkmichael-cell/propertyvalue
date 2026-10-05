@@ -7,8 +7,21 @@
    Name plus authority is unique in the DfE register. #}
 {# "X catchment area" is the query parents type; the figure in the
    title is the answer they are after, and no other result has it. The
-   authority is the part that can be spared when the title runs long. #}
-{% block title %}{{ seo_title(school.name ~ " catchment area", " (" ~ school.authority ~ ")", ": distance did not limit entry" if school.no_distance_limit else ": " ~ school.miles_label ~ " miles" ~ school.year_phrase) }}{% endblock %}
+   authority is the part that can be spared when the title runs long,
+   then "Church of England" as "CofE", then the year (5 Oct 2026). #}
+{% block title %}
+{%- set named = school.name ~ " catchment area" -%}
+{%- set cofe = (school.name | replace("Church of England", "CofE")) ~ " catchment area" -%}
+{%- if school.no_distance_limit -%}
+{#- Never shortened: "no distance limit" would claim a standing fact
+    where the figure is one year's, so these titles spare only the
+    authority and "CofE". -#}
+{%- set answer = ": distance did not limit entry" -%}{%- set answer_short = answer -%}
+{%- else -%}
+{%- set answer = ": " ~ school.miles_label ~ " miles" ~ school.year_phrase -%}{%- set answer_short = ": " ~ school.miles_label ~ " miles" -%}
+{%- endif -%}
+{{ fit_title(named ~ " (" ~ school.authority ~ ")" ~ answer, named ~ answer, cofe ~ answer, cofe ~ answer_short) }}
+{%- endblock %}
 {% block meta_description %}{{ school.name }} catchment area: {% if school.no_distance_limit %}distance did not limit entry{{ school.year_phrase }}, on the figure {{ school.authority }} published{% else %}last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}{% endif %}. Check any postcode against it on the map, free.{% endblock %}
 {% block og_title %}{{ school.name }}: {% if school.no_distance_limit %}distance did not limit entry{% else %}admitted from {{ school.miles_label }} miles{% endif %}{% endblock %}
 {# A card of this school's own figure, so a link shared into a

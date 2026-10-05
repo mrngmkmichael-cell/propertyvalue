@@ -3,7 +3,10 @@
 {# A hub holding one phase names it (18 Sep 2026, audit E4): Birmingham's
    was titled for its schools and held only primaries. hub.phase_word is
    "primary " there and "" on a hub holding more than one phase. #}
-{% block title %}{{ seo_title(council.name ~ " " ~ hub.phase_word ~ "school catchments", " and admission distances", ": how far each school admitted from") }}{% endblock %}
+{# "catchment area" is the phrase in the queries (Search Console, 5 Oct
+   2026: "stockport catchment area"); "catchments" appears in none. The
+   old fixed tail put every hub at 65 characters or more. #}
+{% block title %}{{ seo_title(council.name ~ " " ~ hub.phase_word ~ "school catchment areas", " and admission distances", "") }}{% endblock %}
 {% block meta_description %}How far the last child admitted lived, for {{ council.count }} {{ council.name }} {{ hub.phase_word }}schools, from the council's own published figures. Median {{ council.median_miles }} miles; tightest {{ council.tightest.name }} at {{ council.tightest.miles }} miles.{% endblock %}
 {% block og_title %}{{ council.name }}: how far each {{ hub.phase_word }}school admitted from{% endblock %}
 {% block og_image %}{{ og_council_url }}{% endblock %}

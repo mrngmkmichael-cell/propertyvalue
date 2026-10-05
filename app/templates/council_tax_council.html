@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Council Tax in {{ ct.authority }} {{ ct.year }}: Band D {{ ct.band_d | gbp }}, Every Band A to {{ ct.top_band }}{% endblock %}
+{# ", Bands A to H" is what a long council name can spare (5 Oct 2026):
+   Band D and the year are what the search asks for. Shortened from
+   ", Every Band A to H" so a short name like Leeds keeps it, and
+   "bands" is the plural the queries use. #}
+{% block title %}{{ seo_title("Council Tax in " ~ ct.authority ~ " " ~ ct.year ~ ": Band D " ~ (ct.band_d | gbp), ", Bands A to " ~ ct.top_band, "") }}{% endblock %}
 {# Every band's amount leads the description (16 Sep 2026). People search
    "basildon council tax band c" and this page ranked 6th, but the result
    showed only Band D, so the council's own site got the click. The bands
