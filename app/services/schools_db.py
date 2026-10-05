@@ -855,6 +855,56 @@ def tightest_catchments() -> dict:
     return result
 
 
+GRAMMAR_CACHE_KEY = "schools:grammar_by_council"
+# The state school types a grammar school can be. "Selective" is also
+# the admissions policy of 289 independent schools, which are not
+# grammar schools and do not sit the area's test, so the type filter
+# is what makes this list the 163 the entrance tests page is about.
+STATE_SCHOOL_TYPES = ("Academy converter", "Community school", "Foundation school",
+                      "Voluntary aided school", "Voluntary controlled school")
+
+
+def grammar_schools_by_council() -> dict[str, list[dict]]:
+    """Every state grammar school, grouped by its council, for the
+    entrance tests page (5 Oct 2026). One query, cached a day.
+
+    A school is linked only where it has a page of its own, which is
+    where its council publishes an admission distance: 25 of the 163 in
+    October 2026. Grammar schools mostly admit by test score rather than
+    distance, so most have no such figure, and a page without it would
+    be the thin page the admission pages were built to avoid. The rest
+    are listed by name, which is what a parent reading the area needs."""
+    cached = _cache.get(GRAMMAR_CACHE_KEY, 24 * 3600)
+    if cached is not None:
+        return cached
+    if not is_configured():
+        return {}
+    with get_session() as session:
+        rows = session.execute(
+            select(School.urn, School.name, SchoolDetail.local_authority, SchoolDetail.gender,
+                   SchoolAdmissionRadius.last_distance_miles)
+            .join(SchoolDetail, SchoolDetail.urn == School.urn)
+            .outerjoin(SchoolAdmissionRadius, SchoolAdmissionRadius.urn == School.urn)
+            .where(SchoolDetail.admissions_policy == "Selective",
+                   School.type_name.in_(STATE_SCHOOL_TYPES))
+            .order_by(SchoolDetail.local_authority, School.name)
+        ).all()
+    out: dict[str, list[dict]] = {}
+    for urn, name, council, gender, miles in rows:
+        if not council:
+            continue
+        # The gender only where the name does not already say it:
+        # "Dover Grammar School for Girls girls" reads as a typo.
+        said = gender in ("Boys", "Girls") and gender.lower() not in (name or "").lower()
+        out.setdefault(council, []).append({
+            "urn": urn, "name": name,
+            "gender": gender.lower() if said else "",
+            "url": f"/school/{urn}/{_slugify(name)}" if miles else "",
+        })
+    _cache.set(GRAMMAR_CACHE_KEY, out)
+    return out
+
+
 INDEPENDENT_CACHE_KEY = "schools:independent_districts"
 
 

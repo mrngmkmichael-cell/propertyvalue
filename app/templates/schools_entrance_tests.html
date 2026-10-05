@@ -142,10 +142,34 @@
     <p class="section-sub">The sources for this area do not describe the papers.</p>
     {% endif %}
     {% if area.notes %}<p class="section-sub">{{ area.notes }}</p>{% endif %}
+    {# The grammar schools in this area (5 Oct 2026), from the DfE
+       register: state schools whose admissions policy is selective.
+       Linked only where the school has a page of its own, which is
+       where its council publishes an admission distance; grammar
+       schools mostly admit by score, so most do not. #}
+    {% set here = grammars.get(area.council, []) if grammars else [] %}
+    {% if here %}
+    <h3 class="subsection-heading">The grammar school{{ 's' if here | length != 1 }} here</h3>
+    <p class="section-sub grammar-list">
+        {% for school in here -%}
+        {% if school.url %}<a href="{{ school.url }}">{{ school.name }}</a>{% else %}{{ school.name }}{% endif %}{% if school.gender %} ({{ school.gender }}){% endif %}{{ ", " if not loop.last else "." }}
+        {% endfor %}
+    </p>
+    {% endif %}
     <p class="section-sub">
         {% if area.familiarisation_url %}<a href="{{ area.familiarisation_url }}" target="_blank" rel="noopener">Familiarisation material</a>. {% endif %}
+        {# Two pages on one site read as "bexley.gov.uk, bexley.gov.uk"
+           (5 Oct 2026), so a repeated host is named once and its other
+           pages are "a second page" and "a third page". #}
+        {% set ordinals = ["a second page", "a third page", "a fourth page"] %}
+        {% set seen = namespace(hosts=[], repeats=0) %}
         Read on {{ area.read_on | day_label(true) }} from
-        {% for url in area.sources %}<a href="{{ url }}" target="_blank" rel="noopener">{{ url | link_host }}</a>{% if not loop.last %}, {% endif %}{% endfor %}.
+        {% for url in area.sources -%}
+        {% set host = url | link_host %}
+        {%- if not loop.first %}{{ " and " if loop.last else ", " }}{% endif -%}
+        {% if host in seen.hosts %}<a href="{{ url }}" target="_blank" rel="noopener">{{ ordinals[seen.repeats] if seen.repeats < ordinals | length else "another page" }}</a>{% set seen.repeats = seen.repeats + 1 %}
+        {%- else %}<a href="{{ url }}" target="_blank" rel="noopener">{{ host }}</a>{% set seen.hosts = seen.hosts + [host] %}{% endif -%}
+        {% endfor %}.
     </p>
 </section>
 {% endfor %}

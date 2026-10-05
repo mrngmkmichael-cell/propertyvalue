@@ -139,3 +139,39 @@ def test_the_faqs_are_built_from_the_file_rather_than_typed(client):
     body = flat(client.get("/schools/entrance-tests").text)
     for question, _ in faqs:
         assert question in body
+
+
+def test_the_grammar_schools_are_listed_and_only_real_pages_are_linked(client, monkeypatch):
+    """Each area names its grammar schools (5 Oct 2026). Only a school
+    with a page of its own is linked: most grammar schools admit by
+    score, have no published distance and so no page, and a link to a
+    page that does not exist is worse than a name."""
+    from app.services import schools_db
+    fake = {
+        "Kent": [
+            {"urn": 118813, "name": "Dartford Grammar School", "gender": "boys",
+             "url": "/school/118813/dartford-grammar-school"},
+            {"urn": 118814, "name": "Highsted Grammar School", "gender": "girls", "url": ""},
+        ],
+    }
+    monkeypatch.setattr(schools_db, "grammar_schools_by_council", lambda: fake)
+    body = client.get("/schools/entrance-tests").text
+    section = body[body.index('id="kent"'):]
+    section = section[:section.index("</section>")]
+    assert "The grammar schools here" in section
+    assert '<a href="/school/118813/dartford-grammar-school">Dartford Grammar School</a>' in section
+    assert "Highsted Grammar School" in section
+    assert "/school/118814" not in section, "no page, so no link"
+    assert "girls" in section and "boys" in section
+
+
+def test_an_area_with_no_grammar_list_simply_omits_it(client, monkeypatch):
+    from app.services import schools_db
+    monkeypatch.setattr(schools_db, "grammar_schools_by_council", lambda: {})
+    body = client.get("/schools/entrance-tests").text
+    # The heading, not the phrase: Gloucestershire's notes begin "The
+    # grammar schools run the test themselves".
+    assert "grammar-list" not in body
+    assert ">The grammar schools here<" not in body and ">The grammar school here<" not in body
+    assert client.get("/schools/entrance-tests").status_code == 200
+

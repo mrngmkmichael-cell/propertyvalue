@@ -14384,6 +14384,13 @@ def schools_entrance_tests_page(request: Request):
     context["canonical_url"] = f"{_base}/schools/entrance-tests"
     context["summary"] = summary = selective_tests.summary()
     context["areas"] = selective_tests.all_areas()
+    # The grammar schools in each area, by name, linked where a school
+    # has a page of its own (5 Oct 2026). A database blip leaves the
+    # lists off rather than taking the page down.
+    try:
+        context["grammars"] = schools_db.grammar_schools_by_council()
+    except Exception:  # noqa: BLE001
+        context["grammars"] = {}
     context["breadcrumb_jsonld"] = _breadcrumb_jsonld(_base, [
         ("Schools", "/schools/guide"), ("Admission distances", "/schools/admissions"),
         ("Grammar school entrance tests", "/schools/entrance-tests"),
