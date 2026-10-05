@@ -2,8 +2,8 @@
 
 Run against ten page types at 1280 and 375: typeahead boxes carrying
 aria-expanded without being comboboxes (critical), an unlabelled
-textarea (critical), 182 nameless Google map markers on one schools
-guide, maps marked role="img" while holding buttons, sideways-scrolling
+textarea (critical), 91 nameless Google map markers on one schools
+guide page, maps marked role="img" while holding buttons, sideways-scrolling
 tables a keyboard could not reach, and comparison tables whose corner
 header was empty.
 """

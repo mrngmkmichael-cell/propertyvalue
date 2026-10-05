@@ -442,6 +442,7 @@
         {{ active_subscriber_count }} active subscriber{{ "s" if active_subscriber_count != 1 else "" }}
         {% if trialing_count %}, plus {{ trialing_count }} on a free trial (not yet counted in MRR){% endif %}.
         A quarterly plan's £24.99/3 months is shown at its monthly-equivalent rate here.
+        Test accounts are left out, as everywhere on this page.
     </p>
     {% if subscription_status_breakdown %}
     <table class="tx-table">

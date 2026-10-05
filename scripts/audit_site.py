@@ -321,6 +321,19 @@ for path, body in pages_html.items():
         if not labelled and "aria-label" not in inp:
             problems["input without label"].append(f"{path}: {inp[:70]}")
 
+    # Text boxes and dropdowns as well (5 Oct 2026): the badge code box on
+    # every school page had no label, and this rule only looked at <input>.
+    # A field wrapped in its <label> is labelled by it: the report's
+    # must-have dropdowns are, and the first run flagged all 18.
+    for match in re.finditer(r"<(?:textarea|select)\b[^>]*>", body):
+        field = match.group(0)
+        has_id = re.search(r'id="([^"]+)"', field)
+        labelled = has_id and f'for="{has_id.group(1)}"' in body
+        before = body[:match.start()]
+        wrapped = before.rfind("<label") > before.rfind("</label>")
+        if not labelled and not wrapped and "aria-label" not in field:
+            problems["field without label"].append(f"{path}: {field[:70]}")
+
 # ---- 7. the page against the world outside it --------------------------
 # Both defects this rule pair catches were live on 12 Sep 2026, and
 # neither the test suite nor smoke could see them, because both pages

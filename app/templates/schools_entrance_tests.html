@@ -7,8 +7,11 @@
    consortium's or school's page, and where a source is silent the page
    says so rather than filling the gap from a neighbouring area. #}
 
-{% block title %}Grammar School Entrance Tests by Area: Dates, Papers and Who Sets Them{% endblock %}
-{% block meta_description %}{% if summary %}The entrance test in all {{ summary.areas }} selective areas of England, covering {{ summary.schools }} grammar schools: what is in the papers, who sets them, when registration closed, when the test was sat and when results land. Read from each council's own pages.{% else %}Grammar school entrance tests in England, area by area.{% endif %}{% endblock %}
+{# Shortened 5 Oct 2026: the first title ran to 70 characters and the
+   description to 230, past what Google shows. "11+" and "test dates"
+   are the words a parent in year 5 types. #}
+{% block title %}Grammar School 11+ Test Dates and Papers, Area by Area{% endblock %}
+{% block meta_description %}{% if summary %}The 11+ for all {{ summary.schools }} grammar schools in England's {{ summary.areas }} selective areas: registration, test and results dates, and the papers, as each area publishes them.{% else %}Grammar school entrance tests in England, area by area.{% endif %}{% endblock %}
 {% block og_title %}Grammar school entrance tests, area by area{% endblock %}
 
 {% block content %}

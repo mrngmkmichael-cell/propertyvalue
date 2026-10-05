@@ -66,5 +66,11 @@ still the newest its publisher has. On 1 Oct 2026 the Ofsted file was
 two months behind and the rent index three editions behind, and every
 page rendered perfectly throughout. A pinned URL does not fail, it
 just serves last spring.
+**In the same monthly session, also run**
+`.venv/Scripts/python.exe scripts/check_a11y.py`, and after any change
+to a map, a table or a form. It runs axe-core in a real browser at
+desktop and phone width and sees what only exists once a page runs:
+on 5 Oct 2026 it found six kinds of accessibility fault on
+production, two of them critical, that every other check had passed.
 Data imports: `scripts/import_*.py`, each re-runnable and commented with
 its source and refresh cadence.

@@ -9836,14 +9836,19 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # ones aren't paying yet, so they're surfaced separately rather
     # than folded into the total). Monthly-equivalent prices here
     # mirror stripe_billing.PLANS - keep them in sync if pricing changes.
+    # Test accounts out, like every other account figure here (5 Oct
+    # 2026): an owner account's active monthly subscription made this
+    # read £38.30 from four subscribers when customers paid £28.31 from
+    # three, beside a status table that already left it out.
     _monthly_equiv = {"monthly": 9.99, "quarterly": 24.99 / 3}
+    not_test = User.id.notin_(test_ids) if test_ids else True
     active_plan_rows = session.execute(
-        select(User.plan, func.count()).where(User.subscription_status == "active").group_by(User.plan)
+        select(User.plan, func.count()).where(User.subscription_status == "active", not_test).group_by(User.plan)
     ).all()
     m["mrr_estimate"] = round(sum(_monthly_equiv.get(p, 0) * c for p, c in active_plan_rows), 2)
     m["active_subscriber_count"] = sum(c for _, c in active_plan_rows)
     m["trialing_count"] = session.scalar(
-        select(func.count()).select_from(User).where(User.subscription_status == "trialing")
+        select(func.count()).select_from(User).where(User.subscription_status == "trialing", not_test)
     ) or 0
 
     # Real customers only, by the status Stripe last reported. Active and

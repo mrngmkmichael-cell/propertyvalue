@@ -114,3 +114,15 @@ def test_the_seo_check_measures_titles_unescaped():
     body = "<title>St Peter&#39;s &amp; All Saints</title>"
     assert seo_check.one("title", body) == "St Peter's & All Saints"
     assert re.fullmatch(r".{23}", seo_check.one("title", body))
+
+
+def test_the_entrance_tests_page_title_and_description_fit(client):
+    body = client.get("/schools/entrance-tests").text
+    title = re.search(r"<title>(.*?)</title>", body, re.S).group(1)
+    import html as _html
+    title = _html.unescape(title).strip()
+    description = _html.unescape(re.search(r'<meta name="description" content="([^"]*)"', body).group(1))
+    assert title == "Grammar School 11+ Test Dates and Papers, Area by Area"
+    assert len(title) <= SEO_TITLE_LIMIT
+    assert len(description) <= 160, (len(description), description)
+    assert "163 grammar schools" in description and "35 selective areas" in description
