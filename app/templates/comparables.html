@@ -659,6 +659,7 @@ Postcode data from <a href="https://postcodes.io" target="_blank" rel="noopener"
             const marker = new google.maps.Marker({
                 position: { lat: c.latitude, lng: c.longitude },
                 map: map,
+                title: c.address + ', £' + Number(c.amount).toLocaleString() + ', ' + c.date,
                 icon: {
                     path: google.maps.SymbolPath.CIRCLE,
                     scale: 6,

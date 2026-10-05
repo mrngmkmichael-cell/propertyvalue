@@ -221,7 +221,7 @@
 {# The place on a map, beside the box: the postcode's centre, which is
    a few doors' worth of ground, and the caption says so. #}
 <div class="rc-map-wrap">
-    <div class="school-page-map rc-map" id="rc-map" role="img" aria-label="Map of {{ checked.postcode }}"></div>
+    <div class="school-page-map rc-map" id="rc-map" role="region" aria-label="Map of {{ checked.postcode }}"></div>
     <p class="section-sub" style="margin: 0.5rem 0 0;">{{ checked.postcode }}{% if checked.home and checked.home.address %}, {{ checked.home.address }}{% endif %}. The pin is the postcode's centre, not a front door.</p>
 </div>
 <script>

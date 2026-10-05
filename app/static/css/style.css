@@ -6158,6 +6158,10 @@ main:focus { outline: none; }
     .header-search-house, .header-search.is-open .header-search-house { width: 6rem; }
 }
 
+/* A sideways-scrolling table given a tab stop by base.html shows
+   where the keyboard is (5 Oct 2026). */
+.tablewrap[data-scroll-stop]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* Screen-reader-only text: a label that must exist but not show. */
 .visually-hidden {
     position: absolute;

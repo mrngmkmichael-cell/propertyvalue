@@ -4,7 +4,7 @@
 <form class="search-form school-search" action="/schools/admissions/search" method="get" role="search" style="max-width: 36rem; position: relative;" autocomplete="off">
     <label for="sa-q">Find a school by name</label>
     <input id="sa-q" type="text" name="q" placeholder="Type a school name" minlength="2" required
-           aria-autocomplete="list" aria-controls="sa-suggest" aria-expanded="false">
+           role="combobox" aria-autocomplete="list" aria-controls="sa-suggest" aria-expanded="false">
     <button type="submit">Search</button>
     <ul class="typeahead" id="sa-suggest" role="listbox" hidden></ul>
 </form>

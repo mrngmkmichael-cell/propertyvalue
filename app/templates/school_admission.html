@@ -313,7 +313,7 @@
     {# The map: the school, the distance drawn as a circle, and the
        checked address when there is one. A circle is a simplification
        and the caption says so, but it beats a number floating alone. #}
-    <div class="school-page-map" id="school-page-map" role="img" aria-label="Map of {{ school.name }}{% if not map_ring.no_limit %} and the {{ map_ring.miles_label }} mile admission distance{% if map_ring.year %}, {{ map_ring.year }}{% endif %}{% endif %}{% if pair_school and not pair_school.no_distance_limit %}, with {{ pair_school.name }} and its {{ pair_school.miles_label }} mile admission distance{% endif %}"></div>
+    <div class="school-page-map" id="school-page-map" role="region" aria-label="Map of {{ school.name }}{% if not map_ring.no_limit %} and the {{ map_ring.miles_label }} mile admission distance{% if map_ring.year %}, {{ map_ring.year }}{% endif %}{% endif %}{% if pair_school and not pair_school.no_distance_limit %}, with {{ pair_school.name }} and its {{ pair_school.miles_label }} mile admission distance{% endif %}"></div>
     <p class="section-sub" id="school-map-caption">
         {% if map_ring.no_limit %}
         No circle to draw: {{ map_ring.miles_label }} miles is not a distance limit, so the map shows the school and the postcode
@@ -558,7 +558,7 @@
             <label for="pair-q">{% if pair_school %}Swap the second school{% else %}Add a second school{% endif %}</label>
             <input type="text" id="pair-q" name="with_q" value="{{ pair_query }}" minlength="2" required
                    placeholder="e.g. {{ nearby_with_figure[0].name if nearby_with_figure else 'Tapton School' }}"
-                   aria-autocomplete="list" aria-controls="pair-suggest" aria-expanded="false"
+                   role="combobox" aria-autocomplete="list" aria-controls="pair-suggest" aria-expanded="false"
                    {% if pair_error or pair_choices %}aria-invalid="true" aria-describedby="pair-error"{% endif %}>
         </div>
         {% if check %}<input type="hidden" name="check" value="{{ check.postcode }}">{% endif %}
@@ -970,7 +970,7 @@
         website, a parents' group or a local forum. Copy the code and paste it where you want it to appear.
     </p>
     <p><img src="/school/{{ school.urn }}/badge.svg" alt="{{ school.name }} badge" width="320" height="96" loading="lazy" style="max-width:100%;height:auto"></p>
-    <textarea class="embed-code" rows="3" readonly onclick="this.select()">{{ badge_snippet }}</textarea>
+    <textarea class="embed-code" rows="3" readonly onclick="this.select()" aria-label="Code for the {{ school.name }} badge">{{ badge_snippet }}</textarea>
 </section>
 {% endif %}
 

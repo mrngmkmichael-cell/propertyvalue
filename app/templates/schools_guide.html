@@ -107,7 +107,7 @@
                every school with a known admission distance, solid
                where a council published the figure and dashed where
                it is a modelled estimate. #}
-            <div class="school-guide-map" id="school-map-{{ area_idx }}" data-map-idx="{{ area_idx }}" role="img"
+            <div class="school-guide-map" id="school-map-{{ area_idx }}" data-map-idx="{{ area_idx }}" role="region"
                  aria-label="Map of schools near {{ area.label }}"></div>
             <p class="school-guide-map-key">
                 <span class="key-dot" style="background:#2f6b4f"></span> Outstanding
@@ -332,7 +332,7 @@
                 const pos = { lat: r.latitude, lng: r.longitude };
                 bounds.extend(pos);
                 const m = new google.maps.Marker({
-                    position: pos, map: map,
+                    position: pos, map: map, title: r.name + (r.rating ? ', ' + r.rating : ''),
                     icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: color, fillOpacity: 0.95, strokeColor: '#ffffff', strokeWeight: 1.5 },
                 });
                 const miles = (r.distance_m / 1609.34).toFixed(1);

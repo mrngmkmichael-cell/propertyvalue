@@ -904,6 +904,46 @@
             });
         })();
     </script>
+    <script>
+        /* A table that scrolls sideways has to be reachable from the
+           keyboard (5 Oct 2026). Only a wrapper that actually scrolls
+           gets a tab stop, named by its caption or nearest heading, and
+           a ResizeObserver catches the ones inside a pop-up that only
+           take a width when it opens. */
+        (function () {
+            function nameFor(wrap) {
+                const caption = wrap.querySelector('caption');
+                if (caption && caption.textContent.trim()) return caption.textContent.trim();
+                const holder = wrap.closest('section, dialog, article');
+                const heading = holder && holder.querySelector('h2, h3');
+                return heading ? heading.textContent.replace(/\s+/g, ' ').trim() : 'Table';
+            }
+            function mark(wrap) {
+                const scrolls = wrap.scrollWidth > wrap.clientWidth + 1;
+                if (scrolls && !wrap.hasAttribute('tabindex')) {
+                    wrap.setAttribute('tabindex', '0');
+                    wrap.setAttribute('role', 'region');
+                    if (!wrap.hasAttribute('aria-label')) wrap.setAttribute('aria-label', nameFor(wrap));
+                    wrap.dataset.scrollStop = '1';
+                } else if (!scrolls && wrap.dataset.scrollStop) {
+                    wrap.removeAttribute('tabindex');
+                    wrap.removeAttribute('role');
+                    wrap.removeAttribute('aria-label');
+                    delete wrap.dataset.scrollStop;
+                }
+            }
+            const wraps = document.querySelectorAll('.tablewrap');
+            if (!wraps.length) return;
+            if ('ResizeObserver' in window) {
+                const watcher = new ResizeObserver(function (entries) {
+                    entries.forEach(function (entry) { mark(entry.target); });
+                });
+                wraps.forEach(function (wrap) { watcher.observe(wrap); });
+            } else {
+                wraps.forEach(mark);
+            }
+        })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

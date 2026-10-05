@@ -5859,8 +5859,13 @@ Listed building data from Historic England's
         const info = new google.maps.InfoWindow();
 
         function pin(lat, lng, color, radiusPx, html) {
+            /* The pop-up's words as the marker's name: untitled, Google
+               draws it as a button with no name (5 Oct 2026). */
+            const named = document.createElement('div');
+            named.innerHTML = html.replace(/<br\s*\/?>/gi, ', ');
             const m = new google.maps.Marker({
                 position: { lat: lat, lng: lng }, map: map,
+                title: named.textContent.replace(/\s+/g, ' ').trim(),
                 icon: {
                     path: google.maps.SymbolPath.CIRCLE, scale: radiusPx,
                     fillColor: color, fillOpacity: 0.95,
