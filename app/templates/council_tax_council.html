@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_howto.html" as howto %}
 
 {# ", Bands A to H" is what a long council name can spare (5 Oct 2026):
    Band D and the year are what the search asks for. Shortened from
@@ -21,11 +22,17 @@
 
 <span class="kicker">Running costs &middot; {{ ct.nation }}</span>
 <h1>Council tax in {{ ct.authority }}, {{ ct.year }}</h1>
+{# Answer first (7 Oct 2026): the bill and what it is a month, then the
+   ranking on a line of its own, where it had been six figures in one
+   paragraph. #}
 <p class="dek">
-    A Band D home in {{ ct.authority }} pays <strong>&pound;{{ "{:,.2f}".format(ct.band_d) }}</strong> this year,
-    the {{ ct.rank_label }} highest Band D of the {{ ct.of }} billing authorities in {{ ct.nation }}, where the median is
+    A Band D home in {{ ct.authority }} pays <strong>&pound;{{ "{:,.2f}".format(ct.band_d) }}</strong> this year:
+    &pound;{{ "{:,.2f}".format(ct.band_d / 10) }} a month over the usual ten instalments from April, or
+    &pound;{{ "{:,.2f}".format(ct.band_d / 12) }} over twelve.
+</p>
+<p class="section-sub">
+    The {{ ct.rank_label }} highest Band D of the {{ ct.of }} billing authorities in {{ ct.nation }}, where the median is
     &pound;{{ "{:,.2f}".format(ct.nation_median) }}{% if ct.rank == 1 %} (the highest in {{ ct.nation }}){% elif ct.rank == ct.of %} (the lowest in {{ ct.nation }}){% endif %}.
-    Over the usual ten instalments from April that is &pound;{{ "{:,.2f}".format(ct.band_d / 10) }} a month; over twelve, &pound;{{ "{:,.2f}".format(ct.band_d / 12) }}.
 </p>
 
 {# Area guides, school pages and council hubs each got a compact checker
@@ -61,7 +68,7 @@
     {# "Free, no account." became the site's one offer sentence the same
        day (OFFER_SENTENCE in main.py), as under every other box that
        runs the checks. #}
-    <p class="section-sub" style="margin: 0.5rem 0 0;">Every band's bill at {{ ct.authority }} beside the EPC's energy estimate, sold prices, flood risk and the schools nearby. {{ offer_sentence }} The home's own band is on its council tax bill; <a href="/running-costs">running costs by postcode</a> gives the yearly bill for the band you pick.</p>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Every band's bill here beside the home's energy estimate, sold prices, flood risk and schools. {{ offer_sentence }}</p>
 </form>
 
 <section class="report-section">
@@ -76,8 +83,11 @@
         </tbody>
     </table>
     </div>
+    {{ howto.source(ct.source_short ~ " council tax tables, " ~ ct.year) }}
+    {% call howto.howto("How the bands are worked out") %}
     <p class="section-sub">{{ ct.basis }} Source: {{ ct.source }}, {{ ct.year }}. The band itself belongs to the property, set by the {% if ct.nation == "Scotland" %}Scottish Assessors{% else %}Valuation Office Agency{% endif %}; the highest Band D in {{ ct.nation }} this year is {{ ct.highest }}, the lowest {{ ct.lowest }}.</p>
-    {% with nation = ct.nation, figure_words = "bills above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}
+    {% endcall %}
+    {% call howto.howto("Discounts that may apply") %}{% with nation = ct.nation, figure_words = "bills above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}{% endcall %}
 </section>
 
 {% if finance and finance.history %}
@@ -115,7 +125,10 @@
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
     <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name | council }}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
+    {{ howto.source("MHCLG live council tax tables and Exceptional Financial Support lists; section 114 notices as the councils published them") }}
+    {% call howto.howto() %}
     <p class="section-sub">Ministry of Housing, Communities and Local Government: live council tax tables (Band D area averages by year) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils. Rises are year on year on the Band D area average.</p>
+    {% endcall %}
 </section>
 {% elif ct.nation != "England" %}
 <section class="report-section">

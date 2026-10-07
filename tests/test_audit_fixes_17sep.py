@@ -469,8 +469,10 @@ def test_a4_a_council_tax_page_says_where_a_homes_band_is_and_what_the_report_sh
     for words in BAND_PROMISES:
         assert words not in flat
     assert "forty-three other checks" not in flat
-    assert "Every band's bill at Basildon beside the EPC's energy estimate" in flat
-    assert "The home's own band is on its council tax bill;" in flat
+    # Shorter since 7 Oct 2026 (answer first); where the band is now says
+    # once, in "Check a specific address", rather than twice.
+    assert "Every band's bill here beside the home's energy estimate" in flat
+    assert "A home's band is on its council tax bill" in flat
     assert (f'anyone can look it up free at <a {GOV_UK_BANDS} target="_blank" rel="noopener">'
             "gov.uk/council-tax-bands</a>.") in flat
     assert ("shows every band's bill at the address's council beside the home's other checks, and "
@@ -961,7 +963,7 @@ def test_a6_every_run_the_checks_box_states_the_offer(client, monkeypatch):
             "/area/AB12": "for that address. ",
             "/areas": "for that address. ",
             "/schools/admissions/manchester": "flood and crime. ",            # answer first, 7 Oct 2026
-            "/running-costs/council-tax/basildon": "the schools nearby. ",
+            "/running-costs/council-tax/basildon": "flood risk and schools. ",  # answer first, 7 Oct 2026
         }
         for path, lead in pages.items():
             r = client.get(path)

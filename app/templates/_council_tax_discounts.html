@@ -14,18 +14,25 @@
    sets its own and there is no national figure to quote.
 
    Takes `nation` ("England", "Wales" or "Scotland"). #}
+{# A list since 7 Oct 2026, the same words: as one 132-word paragraph
+   the four discounts read as one, and on a phone it was the longest
+   paragraph on the council tax page. #}
 <p class="note">
     The {{ figure_words | default("figures above are") }} the full bill for the band, which is
     what {{ "the Scottish Government" if nation == "Scotland" else "MHCLG" }} publishes. Most
     households pay it; a good many do not.
-    One adult living alone pays <strong>25% less</strong>.
-    A home where every resident is disregarded, a full-time student, under 18, an
+</p>
+<ul class="note-list">
+    <li>One adult living alone pays <strong>25% less</strong>.</li>
+    <li>A home where every resident is disregarded, a full-time student, under 18, an
     apprentice, a live-in carer or severely mentally impaired, pays 50% less or
-    nothing at all, depending on who they are.
-    A home adapted for a disabled resident is charged at the band below.
-    Low-income households can apply for Council Tax Reduction, which
+    nothing at all, depending on who they are.</li>
+    <li>A home adapted for a disabled resident is charged at the band below.</li>
+    <li>Low-income households can apply for Council Tax Reduction, which
     {% if nation == "England" %}each council sets for itself{% else %}is a national
-    scheme in {{ nation }}{% endif %}.
+    scheme in {{ nation }}{% endif %}.</li>
+</ul>
+<p class="note">
     Who qualifies is set in law, not by us, and what a given household pays
     depends on who lives there, so no discount is applied to any figure on this
     site. The rules are at

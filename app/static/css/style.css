@@ -3573,6 +3573,16 @@ button.hub-show-all.button-quiet:hover {
 .hub-show-all { margin: 0.75rem 0 0; }
 .school-table tr[hidden] { display: none; }
 
+/* The council tax discounts as a list (7 Oct 2026). */
+.note-list {
+    margin: 0.4rem 0 0.6rem;
+    padding-left: 1.1rem;
+    font-size: var(--text-sm);
+    color: var(--ink-soft);
+    max-width: 70ch;
+}
+.note-list li { margin: 0 0 0.3rem; }
+
 /* Where a section's figures come from, as one line of data mono. */
 .source-line {
     font-family: var(--font-mono);
