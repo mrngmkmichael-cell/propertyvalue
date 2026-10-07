@@ -8344,6 +8344,34 @@ body.theme-dark .map-district-label-g {
     max-width: 40rem;
 }
 .lx-lede-centre { margin-left: auto; margin-right: auto; }
+/* The trust section's sources, one to a line (7 Oct 2026): what the
+   figure is in the data mono, then the body that publishes it. */
+.lx-source-list {
+    margin: 1.5rem 0 0;
+    max-width: 40rem;
+    border-top: 1px solid var(--border);
+}
+.lx-source-list > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.2rem 1rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
+}
+.lx-source-list dt {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+.lx-source-list dd {
+    margin: 0;
+    color: var(--ink);
+    font-weight: 500;
+}
 
 .lx-section { padding: clamp(4rem, 9vw, 8.5rem) 0; }
 
@@ -9305,6 +9333,11 @@ body.theme-dark .accuracy-strip-link:hover { color: var(--accent-hover); }
     .lx-check-grid { grid-template-columns: 1fr; }
     .lx-field, .lx-field-narrow { flex: 1 1 100%; }
     .lx-hero-form button { width: 100%; }
+    /* 5rem of blank above the eyebrow until 7 Oct 2026, under a header
+       that already ends the bar; with it the postcode box sat below the
+       first screen of a 360px phone. 2.5rem is the gap the other pages
+       leave above their kicker. */
+    .lx-hero-inner { padding-top: 2.5rem; }
 }
 
 /* ---- The light theme ------------------------------------------------

@@ -841,7 +841,10 @@ def test_a6_the_homepage_states_the_offer_in_one_sentence_and_the_old_wordings_a
 
     dek = body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0]
     assert dek.split()[:5] == ["Forty-six", "checks", "on", "any", "UK"]
-    assert _flat(dek).endswith("What it costs to live there. " + sentence)
+    # "Whether the house gets a child into the school. What it costs to
+    # live there." left the dek on 7 Oct 2026 (answer first); the offer
+    # still closes it.
+    assert _flat(dek).endswith("each from the body that published it. " + sentence)
 
     # Said once in the page's own words since 1 Oct 2026: the dek, then
     # the FAQ's answer (and its structured data). The band keeps its

@@ -98,9 +98,13 @@
 
         <p class="lx-hero-dek">
             Forty-six checks on any UK address, each from the body that published
-            it. Whether the house gets a child into the school. What it costs
-            to live there. {{ offer_sentence }}
+            it. {{ offer_sentence }}
         </p>
+        {# "Whether the house gets a child into the school. What it costs to
+           live there." stood before the offer until 7 Oct 2026 (answer
+           first). The headline and the three cards under the box say both,
+           and the two lines put the Search button below the first screen
+           of a 375px phone, and the postcode box below a 360px one's. #}
         {# The dek ended "Free, and no account needed." until 17 Sep 2026,
            and a first-timer took it as the whole deal, so the locks a
            minute later read as bait. It now states the offer in the one
@@ -412,22 +416,22 @@
         <div>
             <p class="lx-eyebrow">Why trust this</p>
             <h2 class="lx-h2">Every figure names its source</h2>
+            {# Answer first since 7 Oct 2026: the four sources one to a line,
+               then the two promises. Until then four paragraphs of 171 words:
+               the accuracy log's sentence repeated the strip directly below,
+               and "School sites show you the school" the Schools card in the
+               hero. Their links stay: the log's in the strip, How admissions
+               work in the Browse line. #}
+            <dl class="lx-source-list">
+                <div><dt>Sold prices</dt><dd>HM Land Registry</dd></div>
+                <div><dt>Flood zones</dt><dd>Environment Agency</dd></div>
+                <div><dt>School ratings</dt><dd>Ofsted</dd></div>
+                <div><dt>Subsidence</dt><dd>British Geological Survey</dd></div>
+            </dl>
             <p class="lx-lede">
-                Sold prices from HM Land Registry. Flood zones from the Environment Agency.
-                School ratings from Ofsted. Subsidence from the British Geological Survey.
-                Nothing is scraped from a listings site, and nothing is guessed.
-            </p>
-            <p class="lx-lede">
-                Where a source does not cover an address, the report says so, rather than
-                leaving a gap that looks like good news. When a reader tells us a figure is
-                wrong, we check it and publish what we find on the
-                <a href="/accuracy">accuracy log</a>, including the times we were wrong.
-            </p>
-            <p class="lx-lede">
-                School sites show you the school. This shows you whether the house gets a child
-                in: every nearby school's distance to the address, against how far it admitted
-                from last time, from the council's own published figure.
-                <a href="/schools/how-admissions-work">How that works</a>.
+                Nothing is scraped from a listings site, and nothing is guessed. Where a
+                source does not cover an address, the report says so, rather than leaving
+                a gap that looks like good news.
             </p>
             {# The data pages that earn links, reachable from the page that
                carries the most weight. #}
@@ -435,7 +439,8 @@
                 Browse the figures: <a href="/schools/admissions">admission distances by council</a>,
                 <a href="/schools/tightest-catchments">England's tightest school catchments</a>,
                 <a href="/schools/catchment-house-prices">what a tight catchment costs</a>,
-                and <a href="/schools/independent">private schools by council</a>.
+                <a href="/schools/independent">private schools by council</a>,
+                and <a href="/schools/how-admissions-work">how school admissions work</a>.
             </p>
             <div class="lx-about-stats">
                 {# "Official sources" is the length of OFFICIAL_SOURCES in main.py since 18 Sep 2026 (item D6), not a typed 13.
