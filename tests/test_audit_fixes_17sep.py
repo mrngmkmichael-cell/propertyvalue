@@ -4035,9 +4035,12 @@ def test_d3_the_verdict_and_the_banner_count_one_list_with_a_council_finance_fla
     fake_report(location=loc, gather=gather)
     body = client.get("/property?postcode=YO1+7HH").text
 
-    verdict = _flat(re.sub(r"<[^>]+>", " ", re.search(r'<p class="overview-score-verdict">(.*?)</p>', body, re.S).group(1)))
+    # The reasons are a list since 7 Oct 2026, so the count ends its
+    # heading line with a colon rather than opening a bracket.
+    start = body.index('<p class="overview-score-verdict">')
+    verdict = _flat(re.sub(r"<[^>]+>", " ", body[start:body.index('class="overview-score-upsell"', start)]))
     classes, banner = _a5_banner(body)
-    assert _d3_count(verdict, r" \(") == _d3_count(banner, " on this property") == 2
+    assert _d3_count(verdict, ":") == _d3_count(banner, " on this property") == 2
     chips = [html.unescape(c) for c in re.findall(r'class="attention-banner-chip" data-modal-target="[^"]+">(.*?)</button>', body)]
     reasons = [html.unescape(r) for r in re.findall(r'class="verdict-reason" data-modal-target="[^"]+">(.*?)</button>', body)]
     # The same two, in the same order, in both places: the verdict's

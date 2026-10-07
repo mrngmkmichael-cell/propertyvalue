@@ -58,7 +58,10 @@ def test_the_report_makes_each_reason_a_button_to_its_card(client, fake_report):
         },
         "premium_extra_checks": 1,
     }))
-    verdict = re.search(r'<p class="overview-score-verdict">(.*?)</p>', body, re.S).group(1)
+    # The reasons are a list under their heading line since 7 Oct 2026:
+    # the verdict is everything from that line to the upsell.
+    start = body.index('<p class="overview-score-verdict">')
+    verdict = body[start:body.index('class="overview-score-upsell"', start)]
     assert 'class="verdict-reason" data-modal-target="modal-schools"' in verdict
     assert 'class="verdict-reason" data-modal-target="modal-flood"' in verdict
     assert "Fair overall:" in verdict and "1 thing worth checking" in verdict

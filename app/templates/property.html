@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_howto.html" as howto %}
 {% import "_amenities.html" as amen %}
 {% import "_valuation.html" as val %}
 {% import "_tabs.html" as tabnav %}
@@ -311,8 +312,13 @@
            upstream calls on a noindex page, and two dozen of them on every
            postcode report was the 11 Sep crawl flood waiting to repeat. #}
         {% if not house_number and which_homes %}
+        {# One line since 7 Oct 2026 (answer first): on a phone the homes
+           took the whole first screen of a block of flats before the
+           report said anything. The list is one tap away, unchanged. #}
         <nav class="which-home" aria-label="Which home is yours?">
-            <p class="which-home-q"><strong>Which home is yours?</strong> Choose it and this report reads that home's own certificate and sales. Until then it covers every home at {{ location.postcode }}.</p>
+            <details class="which-home-pick">
+            <summary class="which-home-q"><strong>Which home is yours?</strong> <span class="which-home-open">Choose it</span></summary>
+            <p class="which-home-why">This report then reads that home's own certificate and sales. Until then it covers every home at {{ location.postcode }}.</p>
             {% for section in which_home_sections %}
             {% if section.more %}<details class="which-home-more"><summary>and {{ section.count }} more</summary>{% endif %}
             {% for group in section.groups %}
@@ -326,6 +332,7 @@
             {% if section.more %}</details>{% endif %}
             {% endfor %}
             <p class="which-home-source">Addresses from the EPC Register and HM Land Registry price paid data.</p>
+            </details>
         </nav>
         {% endif %}
 
@@ -337,13 +344,26 @@
             </div>
             <div class="overview-score-body">
                 <span class="overview-score-grade">{{ overview.grade }}</span>
-                {# Each reason is a button to its card (16 Sep 2026); the
-                   sentence is overview.verdict, part by part. #}
+                {# Each reason is a button to its card (16 Sep 2026). As a list
+                   since 7 Oct 2026: in one sentence each button, which a
+                   browser will not break across lines, wrapped as its own
+                   block, and on a phone the card read as a column of
+                   fragments with the semicolons on lines of their own, 750px
+                   tall. The parts and their order are overview.verdict's. #}
                 {% set rs = overview.reasons if overview.reasons is defined else none %}
                 {% if rs and (rs.positives or rs.concerns) %}
-                <p class="overview-score-verdict">{{ overview.grade }} overall:
-                    {%- for r in rs.positives %} <button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button>{% if not loop.last %};{% endif %}{% endfor %}
-                    {%- if rs.concerns %}{% if rs.positives %}, balanced against{% endif %} {{ rs.concerns | length }} thing{{ 's' if rs.concerns | length != 1 }} worth checking ({% for r in rs.concerns %}<button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button>{% if not loop.last %}, {% endif %}{% endfor %}){% endif %}.</p>
+                {% if rs.positives %}
+                <p class="overview-score-verdict">{{ overview.grade }} overall:</p>
+                <ul class="overview-reasons">
+                    {% for r in rs.positives %}<li><button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button></li>{% endfor %}
+                </ul>
+                {% endif %}
+                {% if rs.concerns %}
+                <p class="overview-score-verdict">{% if rs.positives %}Balanced against {% endif %}{{ rs.concerns | length }} thing{{ 's' if rs.concerns | length != 1 }} worth checking:</p>
+                <ul class="overview-reasons overview-reasons-concern">
+                    {% for r in rs.concerns %}<li><button type="button" class="verdict-reason" data-modal-target="{{ r.modal }}">{{ r.text }}</button></li>{% endfor %}
+                </ul>
+                {% endif %}
                 {% else %}
                 <p class="overview-score-verdict">{{ overview.verdict }}</p>
                 {% endif %}
@@ -2439,7 +2459,7 @@
                     {{ council_tax.basis }} Figures are the {{ council_tax.year }} area charge; local
                     parish or community precepts can vary within the authority.
                 </p>
-                {% with nation = council_tax.nation | default("England"), figure_words = "figures above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}
+                {% call howto.howto("Discounts that may apply") %}{% with nation = council_tax.nation | default("England"), figure_words = "figures above are" %}{% include "_council_tax_discounts.html" %}{% endwith %}{% endcall %}
                 {% else %}
                 <p class="notice">Council tax rates aren't available for this council yet. England, Scotland and
                 Wales are covered; Northern Ireland uses domestic rates instead of council tax.</p>
@@ -2711,6 +2731,8 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Costs &amp; affordability</h2>
+        <p class="section-sub">Estimates only, from published tax bands. Not financial advice.</p>
+        {% call howto.howto("Before you rely on these") %}
         <p class="section-sub">
             Estimates only, computed in your browser from published tax bands (correct as of April
             2025. Always confirm the exact figure on
@@ -2720,6 +2742,7 @@
             before exchanging, since Budgets change these). Not financial advice. See the
             <a href="/buying-guide#tax">buying guide</a> for how this fits into the wider purchase process.
         </p>
+        {% endcall %}
 
         <h3 class="subsection-heading">Stamp duty / transaction tax</h3>
         <div class="calc-grid">
@@ -2790,12 +2813,15 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Rental analysis</h2>
+        <p class="section-sub">Typical rent by bedroom count for {{ (rental.la_name if rental else "this local authority") | council }}, from the ONS{% if rental %} ({{ rental.period | month_label }}){% endif %}.</p>
+        {% call howto.howto() %}
         <p class="section-sub">
             Typical private-rental price by bedroom count for {{ (rental.la_name if rental else "this local authority") | council }}, from ONS's Price Index of Private Rents
             ({{ rental.period | month_label if rental else "" }}). There's no free equivalent to Land Registry's sold price
             register for rents. Tenancies aren't publicly registered the way sales are, so this is an
             area + bedroom-count typical rent, not a comparison against specific nearby lettings.
         </p>
+        {% endcall %}
         {% if rental_error %}
             <p class="notice notice-error">
                 The rental data service didn't respond. Try again in a moment.
@@ -2912,7 +2938,10 @@
             </tbody>
         </table>
         </div>
+        {% call howto.howto("About these improvements") %}
         <p class="property-detail-note">The measures, costs and savings are the assessor's, from this certificate's recommendation report, in the order the certificate lists them; each rating is after that step and the ones before it. Indicative costs are national ranges, not quotes. The government's February 2025 consultation proposed that privately rented homes in England and Wales reach Band C by 2030, new tenancies from 2028; check the current rules before relying on it. Source: EPC Register, the certificate's suggested improvements.</p>
+        {% endcall %}
+        {{ howto.source("EPC Register, the certificate's suggested improvements") }}
         {% endif %}
         {% endif %}
         {% if property_detail.heating_cost_current or property_detail.lighting_cost_current or property_detail.hot_water_cost_current %}
@@ -3140,7 +3169,10 @@
             {% elif flood_re_note.standing == 'eligible' %}Built before 2009, so an insurer can pass the flood risk to the scheme, which caps the flood part of the premium and excess. That does not make cover automatic: ask the seller what they pay.
             {% else %}The certificate does not record a build date. Ask the seller's solicitor; homes built on or after 1 January 2009 are outside the scheme.{% endif %}
         </p>
+        {% call howto.howto("What Flood Re is") %}
         <p class="property-detail-note">Flood Re is the government-backed reinsurance scheme, set up under the Water Act 2014, that lets insurers offer flood cover at a capped price on homes at risk. It excludes homes built on or after 1 January 2009, buildings of four or more residential units, company-owned homes and commercial premises. Build date and dwelling type are from the EPC. Source: Flood Re eligibility criteria.</p>
+        {% endcall %}
+        {{ howto.source("Flood Re eligibility criteria") }}
         {% endif %}
 
         {% if not flood_not_covered %}
@@ -3182,6 +3214,8 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Surface water flood risk</h2>
+        <p class="section-sub">Rain that cannot drain away fast enough, from the Environment Agency's surface water map. A different risk from the river and sea Flood Zone.</p>
+        {% call howto.howto() %}
         <p class="section-sub">
             From the Environment Agency's Risk of Flooding from Surface Water map, a different flood
             mechanism from the Flood Zone above, which only covers rivers and the sea. This is about
@@ -3189,6 +3223,7 @@
             can be Flood Zone 1 (low river/sea risk) and still have a real surface water flood risk, or
             the other way round, the two don't move together.
         </p>
+        {% endcall %}
         {% if flood_not_covered %}
             <p class="notice">
                 Not mapped here for {{ flood_not_covered.country }}: this map covers England only.{% if flood_not_covered.body %}
@@ -3283,6 +3318,7 @@
             Modelled Lden (day-evening-night average) noise level in dB(A), from DEFRA's strategic
             noise maps (2022): a 10m-grid model, not a measurement at this specific address.
         </p>
+        {% call howto.howto("What the decibels mean") %}
         <p class="section-sub">
             The dB(A) number on its own doesn't mean much without context, and there's no official
             "acceptable" cut-off. DEFRA just groups the same measurement into four bands.
@@ -3292,6 +3328,7 @@
             outside, or a vacuum cleaner; <strong>Very high</strong> (75 dB(A) and up) is standing
             next to heavy traffic.
         </p>
+        {% endcall %}
         {% if noise_error %}
             <p class="notice notice-error">
                 The noise data service didn't respond. Try again in a moment.
@@ -3879,6 +3916,7 @@
            site disowning its own answer. It now says what Likely means, and
            that it is never a guarantee. #}
         {% if school_verdicts %}
+        {% call howto.howto("What Likely, Borderline and Unlikely mean") %}
         <p class="section-sub">
             Likely means this address is comfortably inside the distance the school last offered places to.
             That distance is the council's published figure where the council publishes one, and a modelled
@@ -3888,6 +3926,7 @@
             that distance that a busier year could go either way; Unlikely is outside it. The card counts the
             nearest {{ school_verdicts.total }} school{{ 's' if school_verdicts.total != 1 }} with an admission distance, published or estimated.
         </p>
+        {% endcall %}
         {% endif %}
         <p class="section-sub">
             The tables below are the nearest 3 of each type, by proximity only: not a catchment area or an
@@ -3975,7 +4014,9 @@
         {% elif schools %}
             {# Two of the badges below are not grades; said once here, as on
                the schools guide's key (16 Sep 2026). #}
+            {% call howto.howto("What the badges mean") %}
             <p class="section-sub">Report card: inspected since Ofsted stopped one-word grades in late 2024, so it has a report card rather than a grade. No current grade: Ofsted's register holds no graded inspection for the school, usually because it is new, or has become an academy and not yet been inspected as one.</p>
+            {% endcall %}
             {% for group_name in ["Nursery", "Primary", "Secondary"] %}
                 {% if schools[group_name] %}
                 <h3 class="subsection-heading">{{ group_name }}</h3>
@@ -4905,7 +4946,10 @@
         {% elif census_change is not defined or not census_change %}
             <p class="notice">No census figures for this address's small area.</p>
         {% else %}
+            <p class="section-sub">{% if census_change.residents_2021 %}{{ "{:,}".format(census_change.residents_2021) }} residents in 2021{% if census_change.residents_change_pct is not none %}, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011{% endif %}. {% endif %}England's own change is shown beside each line, for scale.</p>
+            {% call howto.howto() %}
             <p class="section-sub">The census neighbourhood this address sits in ({{ census_change.lsoa }}, {% if census_change.residents_2021 %}{{ "{:,}".format(census_change.residents_2021) }} residents in 2021{% endif %}{% if census_change.residents_change_pct is not none %}, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011{% endif %}), on the 2011 and 2021 censuses, with England's own change over the same decade for scale. Each line is a share of the area's own households or residents, so a growing area and a shrinking one compare fairly.</p>
+            {% endcall %}
             {% if not census_change.has_2011 %}
             <p class="notice">This 2021 area was created by splitting a 2011 area, and the 2011 figures went with the other part, so there is no comparable 2011 figure here.</p>
             {% elif census_change.merged_from > 1 %}
@@ -4938,11 +4982,14 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Listed buildings nearby</h2>
+        <p class="section-sub">Within about a third of a mile, from Historic England. Nearby only: this does not say whether this home is listed.</p>
+        {% call howto.howto() %}
         <p class="section-sub">
             Within about a third of a mile, from Historic England's National Heritage List. Proximity only, and not a
             statement about this specific address. We don't match individual building footprints
             to addresses, so we can't say whether this property itself is listed.
         </p>
+        {% endcall %}
         {% if heritage_error %}
             <p class="notice notice-error">
                 The heritage data service didn't respond. Try again in a moment.
@@ -4978,6 +5025,8 @@
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
             <section class="report-section">
         <h2>Planning constraints</h2>
+        <p class="section-sub">Whether this exact spot is inside a protected area, such as a conservation area, from the official boundary data.</p>
+        {% call howto.howto() %}
         <p class="section-sub">
             Whether this exact point falls inside a nationally designated planning-constraint area,
             queried live against Historic England's, ONS's and planning.data.gov.uk's official
@@ -4985,6 +5034,7 @@
             locked placeholder. Tree Preservation Orders and Article 4 Directions are a genuine
             "can I build/extend/landscape here" signal, not just a formality.
         </p>
+        {% endcall %}
         {% if designations_error %}
             <p class="notice notice-error">
                 The planning-constraints data service didn't respond. Try again in a moment.
