@@ -1,0 +1,23 @@
+{# The answer first, the reasons one tap away (7 Oct 2026, Michael's
+   choice after the wordiness critique). A section states its answer in
+   a sentence or a few figures; how it was measured, what it does not
+   mean and where it came from sit behind this, closed by default. The
+   content is still in the page for anyone who opens it, for a screen
+   reader, and for search. Nothing that was said is lost, only moved.
+
+   {% import "_howto.html" as howto %}
+   {% call howto.howto() %}<p>...</p>{% endcall %}
+   {{ howto.source("Stockport Council admission figures, 2026/27") }} #}
+
+{% macro howto(label="How to read this", id="") %}
+<details class="howto"{% if id %} id="{{ id }}"{% endif %}>
+    <summary>{{ label }}</summary>
+    <div class="howto-body">{{ caller() }}</div>
+</details>
+{%- endmacro %}
+
+{# One short line naming where a section's figures come from, in the
+   mono the site uses for data, instead of a sentence in the prose. #}
+{% macro source(text) %}
+<p class="source-line">Source: {{ text }}</p>
+{%- endmacro %}

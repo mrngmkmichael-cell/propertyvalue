@@ -105,7 +105,8 @@ def test_a_school_page_carries_its_council_figure_labelled_as_the_council(client
     _cache._store.clear(); _cache._bytes = 0
     body = flat(client.get(SCHOOL_PATH).text)
     assert "If the answer is no" in body
-    assert "council's figure for all its schools" in body
+    # Said in fewer words since 7 Oct 2026 (answer first), same meaning.
+    assert "counted for all the council's schools together" in body
     assert 'href="/schools/appeals"' in body
 
 

@@ -120,7 +120,7 @@ def test_the_map_labels_the_districts_inside_the_distance(client):
     assert expected and "lat" in expected[0] and "lon" in expected[0]
     body = client.get("/school/900108/city-centre-academy").text
     assert "districts: [" in body and f'"code": "{expected[0]["outcode"]}"' in body
-    assert "The labels are postcode districts whose centre falls inside it" in body
+    assert "The labels on the map are postcode districts whose centre falls inside it" in body   # How to read this, 7 Oct 2026
     lonely = client.get("/school/900107/lonely-academy").text
     assert "districts: []" in lonely and "The labels are postcode districts" not in lonely
 

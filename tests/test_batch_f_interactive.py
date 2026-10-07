@@ -2111,13 +2111,13 @@ def test_f6_a_second_school_lists_only_the_districts_inside_both_distances(clien
     # cannot disagree on the same screen.
     labels = json.loads(re.search(r"districts: (\[.*?\])\n", body).group(1))
     assert [d["code"] for d in labels] == ["NG7", "NG3", "NG1"]
-    assert "whose centre falls inside both;" in flat
+    assert "whose centre falls inside both circles;" in flat        # under How to read this since 7 Oct 2026
 
     # With no second school the page is as it was, and the section asks for one.
     alone = _f6_page(client)
     assert 'id="pair-areas"' not in alone and "partner: null" in alone
     assert "<h2>Two schools, both in reach</h2>" in alone
-    assert "Only a school whose council has published a distance can be added." in _flat(alone)
+    assert "Only a school with a published distance can be added." in _flat(alone)
 
 
 def test_f6_a_budget_hides_the_districts_above_it(client, monkeypatch):

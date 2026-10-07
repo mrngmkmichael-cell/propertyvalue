@@ -3439,6 +3439,74 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 /* Notices */
 
+/* A readable measure (7 Oct 2026). Paragraphs in report sections ran
+   the full card, about 165 characters a line at 1280px on five of the
+   seven main page types; 50 to 75 is comfortable, and past that the eye
+   loses its place going back to the next line. Prose only: tables, maps
+   and grids keep the full width, and so do the one-line notes inside the
+   verdict box, which are flex rows that a measure would pull side by side. */
+.report-section > p,
+.report-section > .section-sub,
+.site-main > p.section-sub,
+.howto-body p {
+    max-width: 70ch;
+}
+
+/* How to read this (7 Oct 2026): the reasons behind an answer, closed by
+   default, opened by a quiet line in the data mono. */
+.howto {
+    margin: 0.9rem 0 0;
+    border-top: 1px solid var(--border);
+    padding-top: 0.55rem;
+}
+.howto > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    cursor: pointer;
+    list-style: none;
+    padding: 0.35rem 0;
+    min-height: 44px;
+}
+.howto > summary::-webkit-details-marker { display: none; }
+.howto > summary::before {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.15s ease;
+}
+.howto[open] > summary::before { transform: rotate(45deg); }
+.howto > summary:hover { color: var(--ink); }
+.howto > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-sm); }
+.howto-body {
+    color: var(--ink-soft);
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    padding: 0.2rem 0 0.4rem;
+}
+.howto-body p { margin: 0 0 0.6rem; }
+.howto-body p:last-child { margin-bottom: 0; }
+@media (prefers-reduced-motion: reduce) {
+    .howto > summary::before { transition: none; }
+}
+
+/* Where a section's figures come from, as one line of data mono. */
+.source-line {
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    color: var(--ink-faint);
+    letter-spacing: 0.02em;
+    margin: 0.6rem 0 0;
+}
+
 .notice {
     padding: 0.9rem 1.1rem;
     background: var(--surface-2);
@@ -5272,19 +5340,23 @@ button:active, .oauth-btn:active, .ext-cta-btn:active {
 }
 
 /* Content links get a sliding underline; nav and card links keep their
-   own treatments. */
+   own treatments. Underlined at rest since 7 Oct 2026, faintly, under
+   the sliding one: with nothing at rest a link in a dense paragraph was
+   told apart by colour alone, and a phone has no hover to reveal it. */
 main p a:not([class]), .faq-item p a, .landing-subheading a {
     text-decoration: none;
     color: var(--accent);
-    background-image: linear-gradient(currentColor, currentColor);
-    background-size: 0% 1px;
+    background-image: linear-gradient(currentColor, currentColor),
+                      linear-gradient(color-mix(in srgb, currentColor 35%, transparent),
+                                      color-mix(in srgb, currentColor 35%, transparent));
+    background-size: 0% 1px, 100% 1px;
     background-repeat: no-repeat;
-    background-position: 0 100%;
+    background-position: 0 100%, 0 100%;
     transition: background-size 0.2s ease;
 }
 
 main p a:not([class]):hover, .faq-item p a:hover, .landing-subheading a:hover {
-    background-size: 100% 1px;
+    background-size: 100% 1px, 100% 1px;
 }
 
 /* Cards lift a little; the border firms up rather than a heavy shadow. */

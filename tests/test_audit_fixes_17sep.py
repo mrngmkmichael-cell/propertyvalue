@@ -5238,8 +5238,12 @@ def test_d7_the_school_page_starts_its_why_sentence_with_a_capital_and_gives_mil
     assert '<span class="score-tile-value">1.88 mi</span>' in body
     # And its bus paragraph, for a stop whose last bus leaves after midnight.
     buses = _flat(body.split("Getting to Hoe Park Academy by bus", 1)[1].split("</p>", 1)[0])
-    assert "on Sunday daytime; the service runs through the night." in buses
+    # Answer first since 7 Oct 2026: the weekday figure in the sentence,
+    # evenings and Sundays in the table under "Every stop within 600 m".
+    assert "on weekday daytimes; the service runs through the night." in buses
     assert "00:14" not in buses
+    table = body.split("Every stop within 600 m", 1)[1].split("</table>", 1)[0]
+    assert "<th class=\"num\">Sunday</th>" in table and "Hoe Road" in table
 
 
 def test_d7_the_why_phrase_is_lower_case_inside_a_sentence_and_capitalised_to_start_one():

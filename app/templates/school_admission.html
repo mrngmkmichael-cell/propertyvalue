@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
 {% import "_map_style.html" as mapstyle %}
+{% import "_howto.html" as howto %}
 
 {# The authority is not optional: two real schools are called
    "Cherry Orchard Primary School" and their titles collided.
@@ -192,23 +193,25 @@
 
 <section class="report-section">
     <h2>Will an address get in?</h2>
+    {# Answer first (7 Oct 2026, after the wordiness critique): the figure
+       in one sentence, and once a postcode is checked not even that, as
+       the verdict repeats it. The reasons sit under How to read this at
+       the foot of the section, and the source on one line below it. #}
+    {% if not check %}
     <p class="section-sub">
         {% if school.no_distance_limit %}
-        {{ school.authority }} records the furthest offer at {{ school.miles_label }} miles, which is further than any school
-        run. Read plainly, that means <strong>distance did not limit entry</strong>: no nearer applicant was refused on it.
-        Put a postcode in to see how far the address is, though distance is not what will decide this one.
+        <strong>Distance did not limit entry</strong> {{ school.in_year }}: {{ school.authority }} records the furthest offer at
+        {{ school.miles_label }} miles, further than any school run. Distance is not what will decide a place here.
         {% else %}
-        In the {% if school.year_label %}{{ school.year_label }} round{% else %}latest published round{% endif %}, the furthest-away child offered a place at
-        {{ school.name }} lived <strong>{{ school.miles_label }} miles</strong> away, according to
-        {{ school.authority }}. Put a postcode in and it is measured against that distance.
+        In {% if school.year_label %}{{ school.year_label }}{% else %}the latest published round{% endif %}, the furthest child offered a place lived
+        <strong>{{ school.miles_label }} miles</strong> away.
         {% endif %}
     </p>
+    {% endif %}
     {% if deadline %}
     <p class="section-sub admission-deadline">
         Applying for September {{ deadline.entry_year }}? {{ "Secondary" if deadline.phase == "secondary" else "Primary" }}
-        applications close on <strong>{{ deadline.deadline_text }}</strong>,
-        with offers on {{ deadline.offers_text }}. The address on the deadline is the one the council uses.
-        <a href="/schools/how-admissions-work">How it works</a>.
+        applications close <strong>{{ deadline.deadline_text }}</strong>; offers on {{ deadline.offers_text }}.
     </p>
     {% endif %}
 
@@ -259,11 +262,7 @@
             </span>
         </span>
         {% endif %}
-        <span class="section-sub" style="flex-basis:100%; margin:0">
-            Measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
-            looked-after children{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %}
-            come before distance, and the distance moves every year.
-        </span>
+        <span class="section-sub" style="flex-basis:100%; margin:0">Not a guarantee: the distance moves every year.</span>
         {# The way into the report, as the verdict's one button (5 Oct
            2026). It was an underlined link in the third sentence of the
            caveat above, while the only filled button in the box was
@@ -316,12 +315,10 @@
     <div class="school-page-map" id="school-page-map" role="region" aria-label="Map of {{ school.name }}{% if not map_ring.no_limit %} and the {{ map_ring.miles_label }} mile admission distance{% if map_ring.year %}, {{ map_ring.year }}{% endif %}{% endif %}{% if pair_school and not pair_school.no_distance_limit %}, with {{ pair_school.name }} and its {{ pair_school.miles_label }} mile admission distance{% endif %}"></div>
     <p class="section-sub" id="school-map-caption">
         {% if map_ring.no_limit %}
-        No circle to draw: {{ map_ring.miles_label }} miles is not a distance limit, so the map shows the school and the postcode
-        you check, and claims nothing about a boundary.
+        No circle to draw: {{ map_ring.miles_label }} miles is not a distance limit.
         {% else %}
         The circle is <span id="school-map-miles">{{ map_ring.miles_label }}</span> miles, the distance the school admitted from
-        <span id="school-map-year">{% if map_ring.year %}in {{ map_ring.year }}{% else %}{{ school.in_year }}{% endif %}</span>. Real admission areas are not circular: this is the distance, not a boundary.{% if district_labels %}
-        The labels are postcode districts whose centre falls inside {% if pair %}both{% else %}it{% endif %}; each opens the district's guide.{% endif %}
+        <span id="school-map-year">{% if map_ring.year %}in {{ map_ring.year }}{% else %}{{ school.in_year }}{% endif %}</span>.
         {% endif %}
     </p>
     {# Both circles, named rather than described by colour (18 Sep 2026,
@@ -361,8 +358,6 @@
             The figure at the top of this page is the newest of them.
         </p>
     </div>
-    {% elif radius_years | length == 1 %}
-    <p class="section-sub" id="school-years-one">One published year so far: {{ radius_years[0].year }}, from {{ school.authority }}. With two or more, this map draws any of them.</p>
     {% endif %}
     {% if nearby_rings %}
     {# Step 1 of the catchment map: the nearest schools' distances, on
@@ -385,12 +380,20 @@
     {# The honest part, and the reason this page exists. Most sites draw
        a circle and call it a catchment; there usually isn't one. #}
     <div class="notice">
-        <strong>This is not a catchment area.</strong>
-        Most English schools do not have one. When {{ school.name }} is oversubscribed, places go
-        outward from the school until they run out, so the distance moves each year with how many
-        families applied and where they lived. {{ school.miles_label }} miles was last year's outcome,
-        not a boundary and not a promise.
+        <strong>This is not a catchment area.</strong> {{ school.miles_label }} miles was last year's outcome, not a boundary and not a promise.
     </div>
+    {% call howto.howto() %}
+        <p>Most English schools do not have a catchment area. When {{ school.name }} is oversubscribed, places go outward
+        from the school until they run out, so the distance moves each year with how many families applied and where they lived.</p>
+        <p>Distances are measured from the postcode's centre, not a front door; a postcode covers a few houses. Siblings,
+        looked-after children{% if school.religious_character and school.religious_character not in ("None", "Does not apply") %} and faith criteria{% endif %} come before distance, so a school can fill before distance counts at all.</p>
+        {% if map_ring.no_limit %}<p>With no distance limit the map shows the school and the postcode you check, and claims nothing about a boundary.</p>
+        {% else %}<p>Real admission areas are not circular: the circle is the distance, not a boundary.{% if district_labels %}
+        The labels on the map are postcode districts whose centre falls inside {% if pair %}both circles{% else %}it{% endif %}; each opens the district's guide.{% endif %}</p>{% endif %}
+        {% if deadline %}<p>The address on the closing date is the one the council uses. <a href="/schools/how-admissions-work">How admissions work</a>.</p>{% endif %}
+        {% if radius_years | length == 1 %}<p id="school-years-one">One published year so far: {{ radius_years[0].year }}, from {{ school.authority }}. With two or more, the map can draw any of them.</p>{% endif %}
+    {% endcall %}
+    {{ howto.source(school.authority ~ ", published admission distances" ~ ((", " ~ school.year_label) if school.year_label else "")) }}
 </section>
 
 {# ==== Two schools, both in reach (18 Sep 2026, audit item F6) ==========
@@ -569,9 +572,8 @@
     </form>
     <p class="section-sub">
         {% if pair_school %}<a rel="nofollow" href="{{ '/school/' ~ school.urn ~ '/' ~ school.slug }}{% if check %}?check={{ check.postcode | urlencode }}{% endif %}">Drop {{ pair_school.name }}</a> and go back to one school.
-        {% else %}Two children, or a first and second preference? Add a second school and this page draws both published
-        distances on the map above, lists the districts whose centre falls inside both, cheapest first, and
-        answers a checked postcode for both at once. Only a school whose council has published a distance can be added.{% endif %}
+        {% else %}Two children, or a first and second preference? Add a second school to see where both are in reach,
+        cheapest districts first. Only a school with a published distance can be added.{% endif %}
     </p>
 </section>
 
@@ -581,11 +583,9 @@
    than left for the reader to assume. #}
 {% if appeals and appeals.secondary and appeals.secondary.heard %}
 <p class="section-sub">
-    <strong>If the answer is no.</strong> A refusal carries a right of appeal to an independent panel. In
-    {{ appeals.council }}, panels heard {{ "{:,}".format(appeals.secondary.heard) }} appeals for secondary
-    places in the {{ appeals.year }} round and allowed {{ "{:,}".format(appeals.secondary.won or 0) }},
-    {{ appeals.secondary.won_pct }}%, against {{ appeals.england.won_pct }}% across England. That is the
-    council's figure for all its schools: appeals are not published school by school.
+    <strong>If the answer is no, you can appeal.</strong> In {{ appeals.council }}, {{ "{:,}".format(appeals.secondary.won or 0) }}
+    of {{ "{:,}".format(appeals.secondary.heard) }} secondary appeals succeeded in {{ appeals.year }}
+    ({{ appeals.secondary.won_pct }}%; England {{ appeals.england.won_pct }}%), counted for all the council's schools together.
     <a href="/schools/appeals">How every council compares</a>.
 </p>
 {% endif %}
@@ -800,14 +800,10 @@
 {% if reach_prices %}
 <section class="report-section">
     <h2>What it costs to live within reach of {{ school.name }}</h2>
-    <p class="section-sub">How this compares across England: <a href="/schools/catchment-house-prices">what a tight gate costs, school by school →</a></p>
     <p class="section-sub">
-        The postcode districts whose centre falls inside the {{ school.miles_label }} miles the school admitted
-        from {{ school.in_year }}, cheapest first, by the median of real sales around each
-        district's centre. The cheapest is <a href="/area/{{ reach_prices[0].outcode }}">{{ reach_prices[0].outcode }}</a>
-        at {{ reach_prices[0].median | gbp }}{% if reach_prices | length > 1 %}; the dearest,
+        Cheapest district inside the {{ school.miles_label }} miles: <a href="/area/{{ reach_prices[0].outcode }}">{{ reach_prices[0].outcode }}</a>,
+        median <strong>{{ reach_prices[0].median | gbp }}</strong>{% if reach_prices | length > 1 %}. Dearest:
         <a href="/area/{{ reach_prices[-1].outcode }}">{{ reach_prices[-1].outcode }}</a>, {{ reach_prices[-1].median | gbp }}{% endif %}.
-        A district is wide, so check the address itself, not the list.
     </p>
     <div class="tablewrap">
         <table class="tx-table">
@@ -824,7 +820,13 @@
             </tbody>
         </table>
     </div>
-    <p class="section-sub">Sold prices from HM Land Registry, via each district's area guide. Districts without enough recorded sales to rank are not shown.</p>
+    {% call howto.howto() %}
+        <p>The postcode districts whose centre falls inside the {{ school.miles_label }} miles the school admitted from
+        {{ school.in_year }}, cheapest first, by the median of real sales around each district's centre. A district is
+        wide, so check the address itself, not the list. Districts without enough recorded sales to rank are not shown.</p>
+        <p>How this compares across England: <a href="/schools/catchment-house-prices">what a tight gate costs, school by school</a>.</p>
+    {% endcall %}
+    {{ howto.source("HM Land Registry sold prices, via each district's area guide") }}
 </section>
 {% elif nearby_areas %}
 <section class="report-section">
@@ -859,11 +861,13 @@
     {% if bus.count %}
     {% set best = bus.best %}
     <p class="section-sub">
-        The best-served stop within 600 m of the school is <strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away:
-        <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
-        and {{ best.sunday_day_per_hour }} on Sunday daytime{% set hours = bus_hours(best.weekday_first, best.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}.
-        {% if best.routes %}Routes there: {{ best.routes | join(", ") }}.{% endif %}
+        Best-served stop: <strong>{{ best.name }}</strong>, {{ best.distance_m | distance }} away, with
+        <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on weekday daytimes{% set hours = bus_hours(best.weekday_first, best.weekday_last) %}{% if hours.text %}; {{ hours.text }}{% endif %}.
     </p>
+    {# The best stop is the answer; every stop, with evenings, Sundays
+       and routes, is one tap away (7 Oct 2026): on a phone the table
+       stacked into most of a screen under a sentence that had said it. #}
+    {% call howto.howto("Every stop within 600 m") %}
     <div class="tablewrap">
     <table class="tx-table">
         <thead><tr><th>Stop</th><th class="num">From the school</th><th class="num">Weekday daytime, an hour</th><th class="num">Evening</th><th class="num">Sunday</th><th>Routes</th></tr></thead>
@@ -874,7 +878,9 @@
         </tbody>
     </table>
     </div>
-    <p class="section-sub">Scheduled departures for the week of {{ bus.ref_weekday | day_label }}, from the timetables operators publish to the Department for Transport's Bus Open Data Service; not observed running. Two stops on opposite sides of a road are two rows.</p>
+        <p>These are scheduled departures, not buses observed running. Two stops on opposite sides of a road are two rows.</p>
+    {% endcall %}
+    {{ howto.source("operators' timetables on the Bus Open Data Service (Department for Transport), week of " ~ (bus.ref_weekday | day_label)) }}
     {% else %}
     <p class="section-sub">No bus stop with a scheduled departure within 600 m of the school, in the timetables operators have published to the Bus Open Data Service.</p>
     {% endif %}
@@ -894,8 +900,7 @@
 <section class="report-section">
     <h2>Checking the house as well as the school</h2>
     <p class="section-sub">
-        The full report measures the distance from every nearby school to one address, alongside
-        sold prices, flood risk, crime and the other checks on the same house.
+        The full report checks one address against every nearby school, with sold prices, flood risk and crime.
     </p>
     <form class="search-form" action="/property" method="get">
         <input type="hidden" name="src" value="school">
@@ -966,11 +971,12 @@
 <section class="report-section">
     <h2>Put {{ school.name }}'s figure on your own site</h2>
     <p class="section-sub">
-        A small badge that shows the published admission distance and links back here, for a school
-        website, a parents' group or a local forum. Copy the code and paste it where you want it to appear.
+        A small badge with the published distance that links back here, for a school website, parents' group or forum.
     </p>
+    {% call howto.howto("Show the badge and its code") %}
     <p><img src="/school/{{ school.urn }}/badge.svg" alt="{{ school.name }} badge" width="320" height="96" loading="lazy" style="max-width:100%;height:auto"></p>
     <textarea class="embed-code" rows="3" readonly onclick="this.select()" aria-label="Code for the {{ school.name }} badge">{{ badge_snippet }}</textarea>
+    {% endcall %}
 </section>
 {% endif %}
 
