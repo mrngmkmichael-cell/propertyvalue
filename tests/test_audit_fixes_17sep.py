@@ -297,7 +297,11 @@ def _faq(body):
     from the FAQPage structured data)."""
     dl = re.search(r'<dl class="faq-list">(.*?)</dl>', body, re.S)
     assert dl, "the FAQ list is missing"
-    plain = lambda s: " ".join(html.unescape(re.sub(r"<[^>]+>", "", s)).split())
+    # Since 7 Oct 2026 an answer leads and its detail sits behind a named
+    # tap (answer first): the answer is both, and the tap's label is not
+    # part of it.
+    unlabelled = lambda s: re.sub(r"<summary>.*?</summary>", "", s, flags=re.S)
+    plain = lambda s: " ".join(html.unescape(re.sub(r"<[^>]+>", "", unlabelled(s))).split())
     visible = [(plain(q), plain(a)) for q, a in
                re.findall(r"<dt>(.*?)</dt>\s*<dd>(.*?)</dd>", dl.group(1), re.S)]
     data = next(json.loads(s) for s in re.findall(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)

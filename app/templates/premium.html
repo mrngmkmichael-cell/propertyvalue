@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_howto.html" as howto %}
 
 {% block title %}Premium: Unlimited UK Property Reports | UKPropertyInsight{% endblock %}
 
@@ -43,24 +44,39 @@
    and Getting Around, which read OpenStreetMap. It now counts the bodies
    from OFFICIAL_SOURCES in main.py, the list /methodology shows, and
    names OpenStreetMap apart. #}
+{# Answer first since 7 Oct 2026: each entry is the question, the answer
+   a reader sees, the label of the tap that holds the rest, and the rest.
+   The answers were 29 to 81 words, all printed open, about three phone
+   screens under the prices; the "No." or "Yes, any time." now leads and
+   the detail is one tap away, in the same words. The structured data
+   still gives the whole answer. #}
+{% set reach = premium_reach_parts() %}
 {% set premium_faq = [
     ("Do I need a card for the free report?",
-     "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running."),
+     "No. An account is free, and the property you choose for your free full report gets every check in full, with no card and no clock running.", "", ""),
 ] + ([
     ("What is the difference between the pass and the subscription?",
-     "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking."),
+     "The pass is one payment for a fixed number of months and never renews, made for one house hunt. The subscription renews monthly until you cancel, for people who keep looking.", "", ""),
 ] if pass_available else [
     ("I only have one house to check. Am I stuck with a monthly bill?",
-     "No. The three-month plan is " ~ plan_prices.quarterly ~ " for three months, which covers a normal search from first viewing to exchange. It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
+     "No. The three-month plan is " ~ plan_prices.quarterly ~ " for three months, which covers a normal search from first viewing to exchange.",
+     "Renewing and cancelling",
+     "It renews every three months unless you cancel. Cancelling stops the next payment, and the homes you opened with Premium stay open until the three months you paid for are up, then lock again."),
 ]) + [
     ("Can I cancel?",
-     "Yes, any time. Once you have subscribed there is a Cancel subscription button on this page that takes you straight to Stripe to confirm it. Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
+     "Yes, any time. Once you have subscribed there is a Cancel subscription button on this page that takes you straight to Stripe to confirm it.",
+     "What happens to your homes",
+     "Cancelling stops the next payment. Premium carries on until the end of the period you have already paid for, and so do the homes you opened with it. Then those homes lock again. The home you opened with your free full report stays open for good."),
     ("What do I get that the free report does not show?",
-     "Every check in full on every property, where a free account opens one. That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
+     "Every check in full on every property, where a free account opens one.",
+     "What that includes",
+     "That means the " ~ (premium_checks | length) ~ " checks locked on any other report, school catchment distances among them, plus the full list of questions for your solicitor and surveyor, each property's PDF, and every check side by side when you compare the homes you save. Notes and change alerts on saved homes are free with any account, so Premium does not add them."),
     ("I am buying outside England. What does Premium cover there?",
-     premium_reach_summary()),
+     reach[0], "Which checks are England only", reach[1]),
     ("Where does the data come from?",
-     "Named official bodies, " ~ (official_sources | length) ~ " of them, each listed with the checks it is read for on the methodology page: HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk among them. Which way a home faces and the stations nearby also read OpenStreetMap, the map its volunteers draw, and say so. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
+     "Named official bodies, " ~ (official_sources | length) ~ " of them, each listed with the checks it is read for on the methodology page.",
+     "Which bodies, and OpenStreetMap",
+     "HM Land Registry, the Environment Agency, Ofsted, the Department for Education, councils' own admissions statistics, the British Geological Survey, ONS and Police.uk are among them. Which way a home faces and the stations nearby also read OpenStreetMap, the map its volunteers draw, and say so. Nothing is scraped from a listings portal and nothing is modelled without saying so."),
 ] %}
 
 {# The questions used to sit at the foot of the page, below every one of
@@ -75,14 +91,15 @@
 <section class="report-section" id="before-you-pay">
     <h2>Before you pay</h2>
     <dl class="faq-list">
-        {% for question, answer in questions %}
+        {% for question, answer, label, more in questions %}
         <dt>{{ question }}</dt>
-        <dd>{{ answer }}</dd>
+        <dd>{{ answer }}{% if more %}
+            {% call howto.howto(label) %}<p>{{ more }}</p>{% endcall %}{% endif %}</dd>
         {% endfor %}
     </dl>
 </section>
 {% set faq_ld = namespace(questions=[]) %}
-{% for question, answer in questions %}{% set faq_ld.questions = faq_ld.questions + [{"@type": "Question", "name": question, "acceptedAnswer": {"@type": "Answer", "text": answer}}] %}{% endfor %}
+{% for question, answer, label, more in questions %}{% set faq_ld.questions = faq_ld.questions + [{"@type": "Question", "name": question, "acceptedAnswer": {"@type": "Answer", "text": (answer ~ " " ~ more) | trim}}] %}{% endfor %}
 <script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": faq_ld.questions} | tojson }}</script>
 {% endmacro %}
 
@@ -183,8 +200,12 @@
        own reveal drives them, so reduced motion leaves them still. #}
     <p class="by-hand-marks" aria-hidden="true">{% for i in range(28) %}<i style="--n: {{ i }}"></i>{% endfor %}</p>
     <p class="by-hand-headline"><strong>28 websites.</strong> <strong>One house.</strong> <span class="by-hand-nothing">Nothing to compare at the end.</span></p>
-    <p>That is what those checks cost by hand on 16 September 2026, 44 of them at the time, each on the official site it comes from. Nine of the answers sit in files that need a spreadsheet or mapping software, three are behind a paid report, and twelve are a colour you read off a map. The next house starts again at the first website.</p>
+    {# The two figures first since 7 Oct 2026 (answer first); what the 28
+       websites involved is one tap away, in the same words. #}
     <p class="section-sub">It took 36 minutes, and that was someone who already knew every site. <a href="/methodology#by-hand">The record, check by check</a>.</p>
+    {% call howto.howto("What it involved") %}
+    <p>That is what those checks cost by hand on 16 September 2026, 44 of them at the time, each on the official site it comes from. Nine of the answers sit in files that need a spreadsheet or mapping software, three are behind a paid report, and twelve are a colour you read off a map. The next house starts again at the first website.</p>
+    {% endcall %}
 </section>
 
 {% if checkout_cancelled %}

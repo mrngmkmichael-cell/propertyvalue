@@ -3459,21 +3459,29 @@ def unlock_reach_line(reach: dict | None) -> str:
             f"the other {others} read records that do not cover {reach['country']}, and the report says which.")
 
 
-def premium_reach_summary() -> str:
-    """The /premium answer for a buyer outside England: the three counts,
-    then the checks that stop at the English border, named once."""
+def premium_reach_parts() -> tuple[str, str]:
+    """The /premium answer for a buyer outside England, as the answer and
+    its detail (7 Oct 2026, answer first): the three counts, then the
+    checks that stop at the English border, named once."""
     wales, scotland, ni = (premium_reach(c)["reach"] for c in ("Wales", "Scotland", "Northern Ireland"))
     england_only = [title for _, title, _, _ in PREMIUM_CHECKS if PREMIUM_REACH[title] == _REACH_ENGLAND]
     listed = _check_names(england_only)
     return (f"Less than in England, because some sources stop at the border: {wales} of the "
             f"{len(PREMIUM_CHECKS)} Premium checks have a source to read in Wales, {scotland} in "
-            f"Scotland and {ni} in Northern Ireland. {listed} read records kept for England only. "
+            f"Scotland and {ni} in Northern Ireland.",
+            f"{listed} read records kept for England only. "
             "Each check in the list at the foot of this page says where its source reaches, and a "
             "report outside England names the ones missing there before you pay.")
 
 
+def premium_reach_summary() -> str:
+    """The same answer in one piece, as the structured data gives it."""
+    return " ".join(premium_reach_parts())
+
+
 templates.env.globals["premium_reach_label"] = premium_reach_label
 templates.env.globals["premium_reach_summary"] = premium_reach_summary
+templates.env.globals["premium_reach_parts"] = premium_reach_parts
 templates.env.globals["premium_reach_sentence"] = premium_reach_sentence
 # /methodology names the checks each publishing body is read for, and two
 # of those names carry commas of their own (18 Sep 2026).
