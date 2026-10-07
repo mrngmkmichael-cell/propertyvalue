@@ -960,7 +960,7 @@ def test_a6_every_run_the_checks_box_states_the_offer(client, monkeypatch):
         pages = {
             "/area/AB12": "for that address. ",
             "/areas": "for that address. ",
-            "/schools/admissions/manchester": "flood, crime and running costs. ",
+            "/schools/admissions/manchester": "flood and crime. ",            # answer first, 7 Oct 2026
             "/running-costs/council-tax/basildon": "the schools nearby. ",
         }
         for path, lead in pages.items():
@@ -6466,14 +6466,18 @@ def test_e4_a_primary_only_hub_says_so_with_its_round_and_names_the_phase(client
     assert "<title>Ormsby Fen primary school catchment areas</title>" in body   # 5 Oct 2026 wording
     assert '<meta name="description" content="How far the last child admitted lived, for 3 Ormsby Fen primary schools, from' in body
     assert "<h1>How far Ormsby Fen primary schools admitted from</h1>" in body
-    assert "This is that figure for 3 primary schools, tightest first." in _flat(body)
+    # The dek says what the figure is in one sentence since 7 Oct 2026.
+    assert "for 3 Ormsby Fen primary schools, from the council's own figures. Tightest first." in _flat(body)
     assert "Ormsby Fen primary school admission distances (last distance offered)" in body
     # The school page's deadline line, for the one phase held.
     deadline = re.search(r'<p class="section-sub admission-deadline">(.*?)</p>', body, re.S).group(1)
+    # The date only since 7 Oct 2026; what it means is under Reading the numbers.
     assert _e4_text(deadline) == (
         "Applying for September 2027? Primary applications close on 15 January 2027, with offers on "
-        "16 April 2027. The address on the deadline is the one the council uses. How it works.")
-    assert '<strong>15 January 2027</strong>' in deadline and 'href="/schools/how-admissions-work"' in deadline
+        "16 April 2027.")
+    assert '<strong>15 January 2027</strong>' in deadline
+    assert "The address on the deadline is the one the council uses." in body
+    assert 'href="/schools/how-admissions-work"' in body
     assert "Secondary applications" not in body
 
 
@@ -6487,8 +6491,7 @@ def test_e4_a_hub_with_both_phases_gives_each_its_round_and_deadline_and_keeps_i
     deadline = re.search(r'<p class="section-sub admission-deadline">(.*?)</p>', body, re.S).group(1)
     assert _e4_text(deadline) == (
         "Applying for September 2027? Secondary applications close on 31 October 2026, with offers on "
-        "1 March 2027; primary applications close on 15 January 2027, with offers on 16 April 2027. "
-        "The address on the deadline is the one the council uses. How it works.")
+        "1 March 2027; primary applications close on 15 January 2027, with offers on 16 April 2027.")
 
 
 def test_e4_the_coverage_line_and_the_deadlines_follow_the_rows():

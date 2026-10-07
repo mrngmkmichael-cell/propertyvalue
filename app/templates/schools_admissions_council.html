@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_howto.html" as howto %}
 
 {# A hub holding one phase names it (18 Sep 2026, audit E4): Birmingham's
    was titled for its schools and held only primaries. hub.phase_word is
@@ -17,10 +18,11 @@
 
 <span class="kicker">Admissions</span>
 <h1>How far {{ council.name }} {{ hub.phase_word }}schools admitted from</h1>
+{# Answer first (7 Oct 2026): what the figure is in one sentence; what
+   a short or long one means is under Reading the numbers. #}
 <p class="dek">
-    For every oversubscribed school, {{ council.name }} publishes how far away the last child offered a
-    place lived. This is that figure for {{ council.count }} {{ hub.phase_word }}schools, tightest first. A short distance
-    means a school that fills up close to its gates; a long one means places went further afield.
+    How far away the last child offered a place lived, for {{ council.count }} {{ council.name }}
+    {{ hub.phase_word }}schools, from the council's own figures. Tightest first.
 </p>
 {# Signed out, the link stays generic (18 Sep 2026, audit E4). Saving is a
    POST, and sign-up returns by a redirect, which is a GET: carrying the
@@ -54,7 +56,7 @@
     <button type="submit">Likely, borderline or unlikely, for each school</button>
     {# Ended "Free, no account." until 17 Sep 2026; the offer now reads
        as on every other page (OFFER_SENTENCE in main.py). #}
-    <p class="section-sub" style="margin: 0.5rem 0 0;">The report measures the address against every nearby school's published distance, alongside sold prices, flood, crime and running costs. {{ offer_sentence }}</p>
+    <p class="section-sub" style="margin: 0.5rem 0 0;">Every nearby school's distance at once, with sold prices, flood and crime. {{ offer_sentence }}</p>
 </form>
 
 <div class="scorecard-row">
@@ -76,8 +78,7 @@
     {% for g in hub.deadline_groups %}Applying for September {{ g.entry_year }}?
     {% for d in g["items"] %}{{ d.phase | capitalize if loop.first else d.phase }} applications close on <strong>{{ d.deadline_text }}</strong>,
     with offers on {{ d.offers_text }}{{ "." if loop.last else ";" }}
-    {% endfor %}{% endfor %}The address on the deadline is the one the council uses.
-    <a href="/schools/how-admissions-work">How it works</a>.
+    {% endfor %}{% endfor %}
 </p>
 {% endif %}
 
@@ -89,133 +90,6 @@
     admitted from {{ council.widest.miles }} miles.
     {% if council.years | length > 1 %}Figures are from the {{ council.years | join(', ') }} rounds, each row saying which.{% endif %}
 </p>
-{% endif %}
-
-{# If a place is refused (1 Oct 2026). The Department for Education
-   publishes appeals by council and never by school, so this block names
-   the council every time and says the school's own figure does not
-   exist. appeals.for_council in main.py; None for a council the release
-   does not carry. #}
-{% if appeals %}
-<section class="report-section">
-    <h2>If a place is refused</h2>
-    <p class="section-sub">
-        Every refusal carries a right of appeal to an independent panel.
-        {% set s = appeals.secondary %}
-        {% if s and s.heard %}In {{ appeals.council }}, panels heard {{ "{:,}".format(s.heard) }} appeals for
-        secondary places in the {{ appeals.year }} round and allowed {{ "{:,}".format(s.won or 0) }} of them,
-        {{ s.won_pct }}%, against {{ appeals.england.won_pct }}% across England.{% endif %}
-        These are the council's figures for all its schools together: appeals are not published school by
-        school, so no one can tell you the rate for one named school, and this page will not pretend to.
-    </p>
-    <div class="tablewrap">
-        <table class="tx-table">
-            <thead>
-                <tr><th>Appeals in {{ appeals.year }}</th><th class="num">Lodged</th><th class="num">Heard</th><th class="num">Allowed</th><th class="num">Share allowed</th></tr>
-            </thead>
-            <tbody>
-                {% for row in appeals.phases %}
-                <tr>
-                    <td>{{ row.phase }}</td>
-                    <td class="num">{{ "{:,}".format(row.lodged) if row.lodged else "0" }}</td>
-                    <td class="num">{{ "{:,}".format(row.heard) if row.heard else "0" }}</td>
-                    <td class="num">{{ "{:,}".format(row.won) if row.won else "0" }}</td>
-                    <td class="num">{% if row.readable %}{{ row.won_pct }}%{% elif row.heard %}{{ row.won_pct }}% <span class="school-table-type">of {{ row.heard }} heard</span>{% else %}&ndash;{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <p class="section-sub">
-        An infant class appeal, for reception to year 2, can only be allowed on narrow legal grounds, which
-        is why its share is a fraction of the others.
-        <a href="/schools/appeals">How every council compares</a>, and what the figures are and are not.
-    </p>
-</section>
-{% endif %}
-
-{# Which entrance test this council's grammar schools use (1 Oct 2026).
-   Only on the hubs for the 35 selective areas; everywhere else
-   selective_tests.for_council returns None and the block does not
-   render. The full page carries the sources and the papers. #}
-{% if entrance_test %}
-<section class="report-section">
-    <h2>The entrance test here</h2>
-    <p class="section-sub">
-        {{ council.name }} has grammar schools, so a place depends on an entrance test as well as on where
-        you live. {% if entrance_test.one_test %}The test is the {{ entrance_test.test_name }}{% if entrance_test.provider %}, set by {{ entrance_test.provider }}{% endif %}.
-        {%- else %}There is no single test here: {{ entrance_test.test_name | lower }}, so a family applying to two schools sits two.{% endif %}
-        {% if entrance_test.first_test_said %}For entry in September {{ entry_year }} it was sat on {{ entrance_test.first_test_said }}{% if entrance_test.registration_closed_said %}, with registration closing on {{ entrance_test.registration_closed_said }}{% endif %}.{% endif %}
-        {% if entrance_test.results_said %}Results were published on {{ entrance_test.results_said }}.{% endif %}
-    </p>
-    <p class="section-sub">
-        <a href="/schools/entrance-tests#{{ entrance_test.slug }}">What is in the papers, and where this came from</a>,
-        beside every other selective area in England.
-    </p>
-</section>
-{% endif %}
-
-{# How often children here are out of school (1 Oct 2026). Two figures
-   that answer different questions: overall absence is days, persistent
-   absence is children. Both are the council's, never a school's, which
-   is the same limit the appeals block above carries.
-   school_absence.for_council in main.py. #}
-{% if absence %}
-<section class="report-section">
-    <h2>How often children here are out of school</h2>
-    <p class="section-sub">
-        {% set p = absence.primary %}
-        In {{ absence.council }}, {{ p.overall_pct }}% of primary school sessions were missed in
-        {{ absence.year }}, {{ p.overall_against_england }} the {{ p.england_overall_pct }}% across England.
-        That is days missed. The second figure is children: {{ p.persistent_pct }}% of primary pupils here
-        were persistently absent, meaning they missed {{ absence.persistent_threshold }},
-        {{ p.persistent_against_england }} England's {{ p.england_persistent_pct }}%.
-    </p>
-    {# data-stack: five columns do not fit a 375px screen, and the two
-       England columns were the half that fell off the edge, which is
-       exactly the half that makes the council's own figure mean
-       something. Below 600px each phase becomes one block with its four
-       labelled lines. #}
-    <div class="tablewrap">
-        <table class="tx-table" data-stack>
-            <thead>
-                <tr>
-                    <th>{{ absence.year }}</th>
-                    <th class="num">Sessions missed</th>
-                    <th class="num">England</th>
-                    <th class="num">Persistently absent</th>
-                    <th class="num">England</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in absence.phases %}
-                <tr>
-                    <td data-st="title">{{ row.phase }}</td>
-                    <td class="num" data-label="Sessions missed">{{ row.overall_pct }}%</td>
-                    <td class="num" data-label="England">{{ row.england_overall_pct }}%</td>
-                    <td class="num" data-label="Persistently absent">{{ row.persistent_pct }}%</td>
-                    <td class="num" data-label="England">{{ row.england_persistent_pct }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    <p class="section-sub">
-        Persistently absent means missing {{ absence.persistent_threshold }}, for any reason, authorised or
-        not. A council's rate is moved by things no school controls, term-time holidays and a bad winter
-        among them, so read it as the weather around the schools rather than a mark against them. Higher or
-        lower is said only where the two rates differ by at least {{ absence.same_within_pp }} percentage
-        point{{ 's' if absence.same_within_pp != 1 }}.
-    </p>
-    <p class="section-sub">
-        These are {{ absence.council }}'s figures for all its schools together. The Department for Education
-        publishes absence by council, not school by school, so no one can give you the rate for one named
-        school from this release.
-        Source: {{ absence.source }},
-        <a href="{{ absence.source_url }}" target="_blank" rel="noopener">explore-education-statistics.service.gov.uk</a>.
-        Read on {{ absence.read_on | day_label(true) }}.
-    </p>
-</section>
 {% endif %}
 
 {% for phase, schools in council.by_phase %}
@@ -240,7 +114,7 @@
             </thead>
             <tbody>
                 {% for s in schools %}
-                <tr id="school-{{ s.urn }}">
+                <tr id="school-{{ s.urn }}"{% if loop.index > 10 %} class="hub-more"{% endif %}>
                     <td data-value="{{ s.name | lower }}" data-st="title">
                         <a href="/school/{{ s.urn }}/{{ s.slug }}">{{ s.name }}</a>
                         {% set sub = s.town or s.type %}
@@ -274,11 +148,167 @@
             </tbody>
         </table>
     </div>
+    {% if schools | length > 10 %}
+    {# Ten rows, then the rest one tap away (7 Oct 2026): the primary list
+       alone ran to about 12 phone screens. Every row is still in the page,
+       and with no script every row shows. #}
+    <button type="button" class="hub-show-all button-quiet" hidden>Show all {{ schools | length }} {{ phase | lower }} schools</button>
+    {% endif %}
 </section>
 {% endfor %}
 
+
+
+{# If a place is refused (1 Oct 2026). The Department for Education
+   publishes appeals by council and never by school, so this block names
+   the council every time and says the school's own figure does not
+   exist. appeals.for_council in main.py; None for a council the release
+   does not carry. #}
+{% if appeals %}
+<section class="report-section">
+    <h2>If a place is refused</h2>
+    {% set s = appeals.secondary %}
+    {% if s and s.heard %}<p class="section-sub">You can appeal. In {{ appeals.year }}, {{ "{:,}".format(s.won or 0) }} of
+    {{ "{:,}".format(s.heard) }} secondary appeals heard here were allowed ({{ s.won_pct }}%; England {{ appeals.england.won_pct }}%),
+    counted for all the council's schools together.</p>{% endif %}
+    {% call howto.howto() %}
+    <p class="section-sub">
+        Every refusal carries a right of appeal to an independent panel.
+        {% set s = appeals.secondary %}
+        {% if s and s.heard %}In {{ appeals.council }}, panels heard {{ "{:,}".format(s.heard) }} appeals for
+        secondary places in the {{ appeals.year }} round and allowed {{ "{:,}".format(s.won or 0) }} of them,
+        {{ s.won_pct }}%, against {{ appeals.england.won_pct }}% across England.{% endif %}
+        These are the council's figures for all its schools together: appeals are not published school by
+        school, so no one can tell you the rate for one named school, and this page will not pretend to.
+    </p>
+    <p class="section-sub">
+        An infant class appeal, for reception to year 2, can only be allowed on narrow legal grounds, which
+        is why its share is a fraction of the others.
+    </p>
+    {% endcall %}
+    <div class="tablewrap">
+        <table class="tx-table">
+            <thead>
+                <tr><th>Appeals in {{ appeals.year }}</th><th class="num">Lodged</th><th class="num">Heard</th><th class="num">Allowed</th><th class="num">Share allowed</th></tr>
+            </thead>
+            <tbody>
+                {% for row in appeals.phases %}
+                <tr>
+                    <td>{{ row.phase }}</td>
+                    <td class="num">{{ "{:,}".format(row.lodged) if row.lodged else "0" }}</td>
+                    <td class="num">{{ "{:,}".format(row.heard) if row.heard else "0" }}</td>
+                    <td class="num">{{ "{:,}".format(row.won) if row.won else "0" }}</td>
+                    <td class="num">{% if row.readable %}{{ row.won_pct }}%{% elif row.heard %}{{ row.won_pct }}% <span class="school-table-type">of {{ row.heard }} heard</span>{% else %}&ndash;{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="section-sub"><a href="/schools/appeals">How every council compares</a>, and what the figures are and are not.</p>
+</section>
+{% endif %}
+
+{# Which entrance test this council's grammar schools use (1 Oct 2026).
+   Only on the hubs for the 35 selective areas; everywhere else
+   selective_tests.for_council returns None and the block does not
+   render. The full page carries the sources and the papers. #}
+{% if entrance_test %}
+<section class="report-section">
+    <h2>The entrance test here</h2>
+    <p class="section-sub">
+        {{ council.name }} has grammar schools, so a place depends on an entrance test as well as on where
+        you live. {% if entrance_test.one_test %}The test is the {{ entrance_test.test_name }}{% if entrance_test.provider %}, set by {{ entrance_test.provider }}{% endif %}.
+        {%- else %}There is no single test here: {{ entrance_test.test_name | lower }}, so a family applying to two schools sits two.{% endif %}
+        {% if entrance_test.first_test_said %}For entry in September {{ entry_year }} it was sat on {{ entrance_test.first_test_said }}{% if entrance_test.registration_closed_said %}, with registration closing on {{ entrance_test.registration_closed_said }}{% endif %}.{% endif %}
+        {% if entrance_test.results_said %}Results were published on {{ entrance_test.results_said }}.{% endif %}
+    </p>
+    <p class="section-sub">
+        <a href="/schools/entrance-tests#{{ entrance_test.slug }}">What is in the papers, and where this came from</a>,
+        beside every other selective area in England.
+    </p>
+</section>
+{% endif %}
+
+{# How often children here are out of school (1 Oct 2026). Two figures
+   that answer different questions: overall absence is days, persistent
+   absence is children. Both are the council's, never a school's, which
+   is the same limit the appeals block above carries.
+   school_absence.for_council in main.py. #}
+{% if absence %}
+<section class="report-section">
+    <h2>How often children here are out of school</h2>
+    {% set p = absence.primary %}
+    <p class="section-sub">Primary schools here missed <strong>{{ p.overall_pct }}%</strong> of sessions in {{ absence.year }}
+    (England {{ p.england_overall_pct }}%), and {{ p.persistent_pct }}% of pupils were persistently absent
+    (England {{ p.england_persistent_pct }}%).</p>
+    {% call howto.howto() %}
+    <p class="section-sub">
+        In {{ absence.council }}, {{ p.overall_pct }}% of primary school sessions were missed in
+        {{ absence.year }}, {{ p.overall_against_england }} the {{ p.england_overall_pct }}% across England.
+        That is days missed. The second figure is children: {{ p.persistent_pct }}% of primary pupils here
+        were persistently absent, meaning they missed {{ absence.persistent_threshold }},
+        {{ p.persistent_against_england }} England's {{ p.england_persistent_pct }}%.
+    </p>
+    {% endcall %}
+    {# data-stack: five columns do not fit a 375px screen, and the two
+       England columns were the half that fell off the edge, which is
+       exactly the half that makes the council's own figure mean
+       something. Below 600px each phase becomes one block with its four
+       labelled lines. #}
+    <div class="tablewrap">
+        <table class="tx-table" data-stack>
+            <thead>
+                <tr>
+                    <th>{{ absence.year }}</th>
+                    <th class="num">Sessions missed</th>
+                    <th class="num">England</th>
+                    <th class="num">Persistently absent</th>
+                    <th class="num">England</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in absence.phases %}
+                <tr>
+                    <td data-st="title">{{ row.phase }}</td>
+                    <td class="num" data-label="Sessions missed">{{ row.overall_pct }}%</td>
+                    <td class="num" data-label="England">{{ row.england_overall_pct }}%</td>
+                    <td class="num" data-label="Persistently absent">{{ row.persistent_pct }}%</td>
+                    <td class="num" data-label="England">{{ row.england_persistent_pct }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% call howto.howto("What the figures mean") %}
+    <p class="section-sub">
+        Persistently absent means missing {{ absence.persistent_threshold }}, for any reason, authorised or
+        not. A council's rate is moved by things no school controls, term-time holidays and a bad winter
+        among them, so read it as the weather around the schools rather than a mark against them. Higher or
+        lower is said only where the two rates differ by at least {{ absence.same_within_pp }} percentage
+        point{{ 's' if absence.same_within_pp != 1 }}.
+    </p>
+    <p class="section-sub">
+        These are {{ absence.council }}'s figures for all its schools together. The Department for Education
+        publishes absence by council, not school by school, so no one can give you the rate for one named
+        school from this release.
+        Source: {{ absence.source }},
+        <a href="{{ absence.source_url }}" target="_blank" rel="noopener">explore-education-statistics.service.gov.uk</a>.
+        Read on {{ absence.read_on | day_label(true) }}.
+    </p>
+    {% endcall %}
+    {{ howto.source(absence.source ~ ", by council, not school by school") }}
+</section>
+{% endif %}
+
 <section class="report-section">
     <h2>Reading the numbers</h2>
+    <p class="section-sub"><strong>These are distances, not catchment areas,</strong> and they move every year.</p>
+    {% call howto.howto() %}
+    <p class="section-sub">
+        For every oversubscribed school, {{ council.name }} publishes how far away the last child offered a
+        place lived. A short distance means a school that fills up close to its gates; a long one means
+        places went further afield. The address on the deadline is the one the council uses.
+    </p>
     <p class="section-sub">
         These are not catchment areas: most English schools have none. Each figure is the distance
         from the school to the home of the furthest child who was offered a place under the distance
@@ -288,6 +318,7 @@
         is reached at all. The figure moves every year with the number of applications.
         <a href="/schools/how-admissions-work">How the whole process works →</a>
     </p>
+    {% endcall %}
 </section>
 
 {# The link went to the homepage until 18 Sep 2026 (first-visitor audit
@@ -308,6 +339,34 @@
 </p>
 
 <script>
+    /* Ten rows of each list, the rest behind Show all (7 Oct 2026). Rows
+       are hidden only once this runs, so with no script every row shows;
+       sorting, or arriving at a row's own address, shows them all. */
+    (function () {
+        document.querySelectorAll('.school-table').forEach(function (table) {
+            var more = table.querySelectorAll('tr.hub-more');
+            var button = table.closest('section').querySelector('.hub-show-all');
+            if (!more.length || !button) return;
+            function showAll() {
+                more.forEach(function (row) { row.hidden = false; });
+                button.hidden = true;
+            }
+            function wanted() {
+                var hash = window.location.hash.replace(/[^#\w-]/g, '');
+                var row = hash.length > 1 && table.querySelector(hash);
+                return row && row.classList.contains('hub-more') ? row : null;
+            }
+            if (wanted()) return;
+            more.forEach(function (row) { row.hidden = true; });
+            button.hidden = false;
+            button.addEventListener('click', showAll);
+            table.querySelectorAll('th[data-sort]').forEach(function (th) { th.addEventListener('click', showAll); });
+            window.addEventListener('hashchange', function () {
+                var row = wanted();
+                if (row) { showAll(); row.scrollIntoView(); }
+            });
+        });
+    })();
     (function () {
         document.querySelectorAll('.school-table').forEach(function (table) {
             const heads = table.querySelectorAll('th[data-sort]');
