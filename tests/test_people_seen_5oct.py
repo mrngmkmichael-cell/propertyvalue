@@ -66,12 +66,12 @@ def test_crawlers_our_own_checks_other_sites_and_odd_paths_are_not_people(client
 def test_every_page_carries_the_script_but_errors_and_the_wait_do_not(client):
     home = client.get("/").text
     script = home.split("A person on this page, said by the page itself", 1)[1].split("</script>", 1)[0]
-    assert "navigator.sendBeacon('/seen', path)" in script
+    assert "post('/seen', window.location.pathname)" in script and "navigator.sendBeacon(url, body)" in script
     for event in ("'pointerdown'", "'pointermove'", "'keydown'", "'touchstart'", "'wheel'", "'focusin'"):
         assert event in script, event
     assert "'load'" not in script and "DOMContentLoaded" not in script   # never on load: renderers run that
-    assert "sendBeacon('/seen'" not in client.get("/no-such-page-at-all").text
-    assert "sendBeacon('/seen'" not in client.get("/signup").text        # it has its own counter
+    assert "post('/seen'" not in client.get("/no-such-page-at-all").text
+    assert "post('/seen'" not in client.get("/signup").text              # it has its own counter
     for name in ("404.html", "500.html", "503_data.html", "report_building.html", "signup.html", "login.html"):
         source = (pathlib.Path(app_main.__file__).parent / "templates" / name).read_text(encoding="utf-8")
         assert "{% block page_seen %}{% endblock %}" in source, name
@@ -105,4 +105,4 @@ def test_the_people_figure_reads_the_confirmed_views_from_the_switch_day(client,
 def test_the_privacy_policy_says_so(client):
     body = " ".join(client.get("/privacy").text.split())
     assert ("a short script of our own on each page sends that page's path once you move, tap, "
-            "scroll or type on it, and nothing else.") in body
+            "scroll or type on it, and how far down the page you read, and nothing else.") in body

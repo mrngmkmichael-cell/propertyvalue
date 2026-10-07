@@ -39,7 +39,7 @@ from app import asking_prices, auth, checklist_ticks, db, must_haves, school_sho
 from app.services import _cache, comparables_view, council_tax, estate_companies
 from app.services import pdf_checklist
 from app.models import (
-    FigureReport, PageCache, PageSeen, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
+    FigureReport, PageCache, PageDepth, PageSeen, PageView, PremiumUnlock, School, SchoolShortlistItem, ShareLink, User,
     WatchlistItem,
 )
 from app.services import (
@@ -9332,6 +9332,41 @@ def _traffic_day_shape(total: int, top_path: str, top_count: int,
     return False, ""
 
 
+_READING_FAMILY_NAMES = {
+    "/school/…": "School pages", "/property": "Reports", "/schools/admissions/…": "Admissions hubs",
+    "/running-costs/council-tax/…": "Council tax pages", "/area/…": "Area guides", "/": "Home page",
+    "/schools/guide": "Schools guide", "/premium": "Premium", "/compare/…": "Comparisons",
+}
+READING_DEPTH_MIN_PEOPLE = 5
+
+
+def _reading_depth(session, since) -> list[dict]:
+    """Of the people the page saw (page_seen), the share who read down to
+    each step (page_depth), by page family, busiest first (7 Oct 2026).
+    Two grouped statements. A family with fewer than five people that
+    week is left out: two readers are not a share."""
+    people: collections.Counter = collections.Counter()
+    for path, count in session.execute(
+        select(PageSeen.path, func.count()).where(PageSeen.created_at >= since).group_by(PageSeen.path)
+    ).all():
+        people[_page_family(path, False)] += count
+    reached: dict = collections.defaultdict(collections.Counter)
+    for path, depth, count in session.execute(
+        select(PageDepth.path, PageDepth.depth, func.count())
+        .where(PageDepth.created_at >= since).group_by(PageDepth.path, PageDepth.depth)
+    ).all():
+        reached[_page_family(path, False)][depth] += count
+    rows = []
+    for family, n in people.most_common():
+        if n < READING_DEPTH_MIN_PEOPLE:
+            continue
+        rows.append({
+            "family": family, "label": _READING_FAMILY_NAMES.get(family, family), "people": n,
+            "steps": [min(100, round(100 * reached[family][step] / n)) for step in READ_DEPTH_STEPS],
+        })
+    return rows
+
+
 def _real_page_views():
     """A filter that keeps only rows a person actually loaded a page for.
 
@@ -9810,6 +9845,8 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     m["audience_today"] = by_date.get(str(date_range[-1]), {}).get("audience", 0)
     m["people_confirmed_today"] = bool(by_date.get(str(date_range[-1]), {}).get("confirmed"))
     m["people_seen_from"] = PEOPLE_SEEN_FROM
+    m["reading_depth"] = _reading_depth(session, week_start)
+    m["reading_depth_from_label"] = f"{READ_DEPTH_FROM.day} {READ_DEPTH_FROM:%B %Y}"
     m["people_seen_from_label"] = f"{PEOPLE_SEEN_FROM.day} {PEOPLE_SEEN_FROM:%B %Y}"
     m["crawl_today"] = by_date.get(str(date_range[-1]), {}).get("crawl", 0)
     m["audience_week"] = sum(d["audience"] for d in m["daily_pageviews"][-7:])
@@ -10736,24 +10773,61 @@ async def page_seen(request: Request):
     exclusions as capture_pageview, and only from this site's own pages:
     a post from another origin is ignored. A counter, so it never fails
     a request and always answers 204."""
+    path = _seen_path(request, (await request.body())[:512].decode("utf-8", "replace").strip())
+    if path:
+        try:
+            with db.get_session() as seen_session:
+                seen_session.add(PageSeen(path=path))
+                seen_session.commit()
+        except Exception:  # noqa: BLE001 - a counter must never break a page
+            pass
+    return Response(status_code=204)
+
+
+def _seen_path(request: Request, raw: str) -> str | None:
+    """The page a /seen or /depth post is about, or None when it is not
+    to be counted: a crawler, our own checks, the owner, another site's
+    page, or a path the page-view counter leaves out as well."""
     if _is_excluded_viewer(request) or not db.is_configured():
-        return Response(status_code=204)
+        return None
     origin = request.headers.get("origin")
     if origin and (urlparse(origin).hostname or "").lower() != _request_host(request):
-        return Response(status_code=204)
-    raw = (await request.body())[:512].decode("utf-8", "replace").strip()
+        return None
     path = raw.split("?", 1)[0].split("#", 1)[0]
     if (not path.startswith("/") or path.startswith("//") or len(path) > 200
             or path in _PAGEVIEW_EXCLUDE_PATHS or path.startswith(_PAGEVIEW_EXCLUDE_PREFIXES)):
-        return Response(status_code=204)
+        return None
     try:
         if _is_admin(auth.current_user(request)):
-            return Response(status_code=204)
-        with db.get_session() as seen_session:
-            seen_session.add(PageSeen(path=path))
-            seen_session.commit()
-    except Exception:  # noqa: BLE001 - a counter must never break a page
-        pass
+            return None
+    except Exception:  # noqa: BLE001 - when in doubt, do not count
+        return None
+    return path
+
+
+# The steps a reader is counted at, as a share of the page's main
+# content, and the first day /admin reads them (7 Oct 2026).
+READ_DEPTH_STEPS = (25, 50, 75, 100)
+READ_DEPTH_FROM = datetime.date(2026, 10, 7)
+
+
+@app.post("/depth")
+async def page_depth(request: Request):
+    """How far a person read down a page (7 Oct 2026). Posted by the same
+    script as /seen, only after it has seen a person, once for each step
+    the reader passes: "50 /school/151031/marple-hall-school". The step
+    and the path are all there is. Same exclusions as /seen, 204 always."""
+    raw = (await request.body())[:512].decode("utf-8", "replace").strip()
+    step, _, rest = raw.partition(" ")
+    if step.isdigit() and int(step) in READ_DEPTH_STEPS:
+        path = _seen_path(request, rest.strip())
+        if path:
+            try:
+                with db.get_session() as depth_session:
+                    depth_session.add(PageDepth(path=path, depth=int(step)))
+                    depth_session.commit()
+            except Exception:  # noqa: BLE001 - a counter must never break a page
+                pass
     return Response(status_code=204)
 
 

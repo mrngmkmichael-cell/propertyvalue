@@ -382,6 +382,27 @@
     </figure>
     {% endif %}
 
+    {# How far people read (7 Oct 2026): of the people each page family
+       saw this week, the share who scrolled past each quarter of its main
+       content. Families with fewer than five people are left out. #}
+    <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">How far people read, last 7 days</h3>
+    <p class="section-sub">Of the people each kind of page saw, the share who reached each quarter of it. Counted from {{ reading_depth_from_label }}.</p>
+    {% if reading_depth %}
+    <div class="tablewrap">
+    <table class="tx-table">
+        <caption class="visually-hidden">How far people read each kind of page, last 7 days</caption>
+        <thead><tr><th>Page</th><th class="num">People</th><th class="num">A quarter</th><th class="num">Half</th><th class="num">Three quarters</th><th class="num">The end</th></tr></thead>
+        <tbody>
+        {% for r in reading_depth %}
+        <tr><td>{{ r.label }}</td><td class="num">{{ "{:,}".format(r.people) }}</td>{% for pct in r.steps %}<td class="num">{{ pct }}%</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="section-sub">Not enough readers yet: a kind of page needs five people in the week before its shares mean anything.</p>
+    {% endif %}
+
     <h3 class="landing-heading" style="font-size: var(--text-lg); margin-top: 2rem;">Where report searches started, last 7 days</h3>
     <p class="landing-subheading">
         Each landing family's search box carries a hidden marker, so a

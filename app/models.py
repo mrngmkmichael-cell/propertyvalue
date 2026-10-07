@@ -1119,6 +1119,21 @@ class PageSeen(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
 
 
+class PageDepth(Base):
+    """How far down a page a person read (7 Oct 2026): one row each time
+    a reader the page has already seen (see PageSeen) passes a quarter,
+    half, three quarters or the end of the page's main content. A path,
+    the step and a time; nothing else. Read beside page_seen on /admin
+    as the share of people who reached each step, so shortening a page
+    can be judged by whether it is read further."""
+    __tablename__ = "page_depth"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    path: Mapped[str] = mapped_column(String(255))
+    depth: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, index=True)
+
+
 # --- Live external lookups below don't need their own DB models -
 # radon.py and heritage.py query the BGS/Historic England ArcGIS
 # services directly per-request, cached in-memory like noise.py,

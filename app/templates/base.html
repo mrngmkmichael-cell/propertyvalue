@@ -962,15 +962,39 @@
         (function () {
             var sent = false;
             var events = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel', 'focusin'];
+            function post(url, body) {
+                try {
+                    if (navigator.sendBeacon) navigator.sendBeacon(url, body);
+                    else fetch(url, {method: 'POST', body: body, keepalive: true});
+                } catch (e) {}
+            }
+            /* How far down they read (7 Oct 2026): once the page has
+               seen a person, each quarter of the main content they pass
+               is sent once, as the step and the path. */
+            var steps = [25, 50, 75, 100], passed = {}, main = document.getElementById('main'), queued = false;
+            function measure() {
+                queued = false;
+                if (!main) return;
+                var box = main.getBoundingClientRect();
+                if (box.height <= 0) return;
+                var read = (window.innerHeight - box.top) / box.height * 100;
+                steps.forEach(function (step) {
+                    if (!passed[step] && read >= (step === 100 ? 98 : step)) {
+                        passed[step] = true;
+                        post('/depth', step + ' ' + window.location.pathname);
+                    }
+                });
+            }
+            function onScroll() {
+                if (!queued) { queued = true; window.requestAnimationFrame(measure); }
+            }
             function send() {
                 if (sent) return;
                 sent = true;
                 events.forEach(function (name) { document.removeEventListener(name, send, true); });
-                try {
-                    var path = window.location.pathname;
-                    if (navigator.sendBeacon) navigator.sendBeacon('/seen', path);
-                    else fetch('/seen', {method: 'POST', body: path, keepalive: true});
-                } catch (e) {}
+                post('/seen', window.location.pathname);
+                measure();
+                window.addEventListener('scroll', onScroll, {passive: true});
             }
             events.forEach(function (name) { document.addEventListener(name, send, {capture: true, passive: true}); });
         })();
