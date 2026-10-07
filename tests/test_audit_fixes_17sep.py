@@ -3490,7 +3490,8 @@ def test_d2_each_answer_table_carries_its_phone_markup():
         ("comparables.html", '<table class="tx-table" id="comparables-table" data-stack>',
          ('data-st="sub"', 'data-st="skip"', 'data-label="Type"', 'data-label="Tenure"', 'data-st="lead"',
           'data-st="answer"')),
-        ("area_guide.html", '<table class="tx-table" data-stack>',
+        # Both area guide school tables fold to five rows since 7 Oct 2026.
+        ("area_guide.html", '<table class="tx-table" data-stack data-fold="5" data-fold-noun="schools">',
          ('data-st="title"', 'data-label="Admitted from"', 'data-label="Stage"')),
         ("schools_independent_district.html", '<table class="tx-table school-table" data-stack>',
          ('data-st="title"', 'data-st="lead"', 'data-label="Faith"', 'data-label="On roll"',
@@ -3501,7 +3502,7 @@ def test_d2_each_answer_table_carries_its_phone_markup():
         for mark in marks:
             assert mark in source, f"{name} lacks {mark}"
     # The area guide's second school table stacks the way the hub does.
-    assert '<table class="tx-table" data-stack="comma">' in (templates / "area_guide.html").read_text(encoding="utf-8")
+    assert '<table class="tx-table" data-stack="comma" data-fold="5" data-fold-noun="schools">' in (templates / "area_guide.html").read_text(encoding="utf-8")
 
 
 def test_d2_comparables_lead_each_sale_with_price_date_and_distance_nearest_first(client, monkeypatch):
@@ -3680,7 +3681,7 @@ def test_d2_the_area_guides_school_tables_stack_with_the_distance_on_the_first_l
         _cache._evict(key)
 
     before, nearest = body.split("Nearest well-rated schools", 1)
-    assert before.endswith('<table class="tx-table" data-stack>\n        <thead><tr><th>')
+    assert before.endswith('<table class="tx-table" data-stack data-fold="5" data-fold-noun="schools">\n        <thead><tr><th>')
     nearest = nearest.split("</table>", 1)[0]
     oak = _d2_cells(_d2_row(nearest, "Oak Primary"))
     assert _d2_roles(oak) == ["title", "lead", "answer", "answer", "Admitted from"]
@@ -3692,7 +3693,7 @@ def test_d2_the_area_guides_school_tables_stack_with_the_distance_on_the_first_l
     assert _d2_first_line(ash, " · ") == "Outstanding · 0.6 mi away"
 
     published = body.split("with a published admission distance</h3>", 1)[1].split("</table>", 1)[0]
-    assert '<table class="tx-table" data-stack="comma">' in published
+    assert '<table class="tx-table" data-stack="comma" data-fold="5" data-fold-noun="schools">' in published
     cells = _d2_cells(_d2_row(published, "Oak Primary"))
     assert _d2_roles(cells) == ["title", "Stage", "lead", "answer"]
     assert _d2_first_line(cells, ", ") == "0.59 mi, 2025/26"

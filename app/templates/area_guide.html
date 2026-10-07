@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_howto.html" as howto %}
 
 {% block title %}{% if outcode %}{{ seo_title(outcode, " " ~ (admin_district | council) if admin_district else "", ": House Prices, Schools, Crime & Flood Risk") }}{% else %}Area not found | UKPropertyInsight{% endif %}{% endblock %}
 
@@ -57,7 +58,11 @@
    is a figure from further down this page with its source named. No
    verdict: whether it is a good place to live is the reader's call. #}
 {% if area_lead %}
-<p class="area-lead">{% for sentence in area_lead %}{{ sentence }} {% endfor %}</p>
+{# One sentence to a line since 7 Oct 2026 (answer first): the same
+   sentences, each with its source, read as a block of 79 words with four
+   figures in it. They are still sentences, in the words the question is
+   asked in (see _area_lead). #}
+<ul class="area-lead">{% for sentence in area_lead %}<li>{{ sentence }}</li>{% endfor %}</ul>
 {% endif %}
 {% if page_modified_label %}
 <p class="page-date">Figures gathered {{ page_modified_label }}, each from the source named in its section.</p>
@@ -240,7 +245,7 @@
         {% endif %}
     </p>
     <div class="tablewrap">
-        <table class="tx-table">
+        <table class="tx-table" data-fold="5" data-fold-noun="sales">
             <thead><tr><th>Address</th><th>Type</th><th class="num">Sold for</th><th class="num">Date</th></tr></thead>
             <tbody>
                 {% for s in local_sales.latest %}
@@ -254,10 +259,13 @@
             </tbody>
         </table>
     </div>
+    {% call howto.howto() %}
     <p class="section-sub">
         Source: HM Land Registry Price Paid Data. Every sale of a registered property in England
         and Wales appears here once it completes, so the most recent weeks are always still filling in.
     </p>
+    {% endcall %}
+    {{ howto.source("HM Land Registry Price Paid Data") }}
 </section>
 {% endif %}
 
@@ -282,7 +290,7 @@
        at 375px the distance and admitted-from columns were off screen.
        Where no stage is recorded the grade leads the line instead, and a
        missing distance is left out rather than shown as a gap. #}
-    <table class="tx-table" data-stack>
+    <table class="tx-table" data-stack data-fold="5" data-fold-noun="schools">
         <thead><tr><th>Nearest well-rated schools</th><th>Stage</th><th>Ofsted</th><th class="num">Distance</th><th class="num">Admitted from</th></tr></thead>
         <tbody>
             {% for s in named_schools %}
@@ -302,7 +310,7 @@
     <p class="section-sub">How far away the last child offered a place lived, as the council published it. Tightest first; each name opens the school's page and its postcode checker.</p>
     {# Stacked on a phone the same way as the admissions hub (18 Sep
        2026): the school, then "0.59 mi, 2023/24", then its stage. #}
-    <table class="tx-table" data-stack="comma">
+    <table class="tx-table" data-stack="comma" data-fold="5" data-fold-noun="schools">
         <thead><tr><th>School</th><th>Stage</th><th class="num">Admitted from</th><th>Round</th></tr></thead>
         <tbody>
             {% for s in admission_schools_here %}
@@ -378,7 +386,7 @@
         occupation rather than industry: it says what people do, not which industries employ them.
     </p>
     <div class="tablewrap">
-        <table class="tx-table">
+        <table class="tx-table" data-fold="5" data-fold-noun="occupation groups">
             <thead><tr><th>Occupation group</th><th class="num">Share of workers</th></tr></thead>
             <tbody>
                 {% for o in occupation_mix %}
@@ -396,18 +404,22 @@
 {% if census_change is defined and census_change and census_change.has_2011 and census_change.has_2021 and census_change.rows %}
 <section class="report-section">
     <h2>How {{ outcode }} has changed since 2011</h2>
+    {% if census_change.biggest %}<p class="section-sub">The biggest move: <strong>{{ census_change.biggest.short | lower }}</strong>,
+    {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} points since 2011, with England's change beside each line.</p>{% endif %}
+    {% call howto.howto() %}
     <p class="section-sub">
         The census neighbourhood at the centre of {{ outcode }} ({{ census_change.lsoa }}{% if census_change.residents_2021 %}, {{ "{:,}".format(census_change.residents_2021) }} residents in 2021{% endif %}{% if census_change.residents_change_pct is not none %}, {{ 'up' if census_change.residents_change_pct >= 0 else 'down' }} {{ census_change.residents_change_pct | abs }}% on 2011{% endif %})
         on the 2011 and 2021 censuses, with England's own change over the same decade for scale. Each line is a share of the
         neighbourhood's households or residents, so a growing area and a shrinking one compare fairly.{% if census_change.biggest %}
         The biggest move here: <strong>{{ census_change.biggest.short | lower }}</strong>, {{ 'up' if census_change.biggest.change > 0 else 'down' }} {{ census_change.biggest.change | abs }} points.{% endif %}
     </p>
+    {% endcall %}
     <div class="tablewrap">
-    <table class="tx-table census-change-table">
+    <table class="tx-table census-change-table" data-fold="4" data-fold-noun="measures">
         <thead><tr><th>Measure</th><th class="num">2011</th><th class="num">2021</th><th class="num">Change</th><th class="num">England</th></tr></thead>
         <tbody>
         {% for r in census_change.rows %}
-        <tr{% if census_change.biggest and r.key == census_change.biggest.key %} class="census-change-biggest"{% endif %}>
+        <tr{% if census_change.biggest and r.key == census_change.biggest.key %} class="census-change-biggest" data-keep{% endif %}>
             <td>{{ r.label }}</td>
             <td class="num">{% if r.in_2011 is not none %}{{ r.in_2011 }}%{% else %}Not given{% endif %}</td>
             <td class="num">{% if r.in_2021 is not none %}{{ r.in_2021 }}%{% else %}Not given{% endif %}</td>
@@ -486,6 +498,8 @@
 {% set best = bus.best %}
 <section class="report-section">
     <h2>Buses from the centre of {{ outcode }}</h2>
+    <p>Best-served stop: <strong>{{ best.name }}</strong>, with <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on weekday daytimes.</p>
+    {% call howto.howto("Evenings, Sundays and routes") %}
     <p>
         The best-served stop within {{ bus.radius_m }} m of the centre of {{ outcode }} is <strong>{{ best.name }}</strong>:
         <strong>{{ best.weekday_day_per_hour }} buses an hour</strong> on a weekday daytime, {{ best.weekday_eve_per_hour }} in the evening
@@ -494,6 +508,8 @@
         {{ bus.count }} stop{{ 's' if bus.count != 1 }} with a scheduled service within that distance.
     </p>
     <p class="section-sub">Departures a passenger can board, from the timetables operators publish to the Department for Transport's Bus Open Data Service, for Tuesday {{ bus.ref_weekday | day_label }} and Sunday {{ bus.ref_sunday | day_label }}. Scheduled, not observed. Two stops on opposite sides of a road are two stops. The full report does this for the stops within 500 m of an address.</p>
+    {% endcall %}
+    {{ howto.source("operators' timetables on the Bus Open Data Service (Department for Transport)") }}
 </section>
 {% endif %}
 
@@ -518,7 +534,10 @@
     {% if health.trusts %}
     <p>Nearest A&amp;E: <strong>{{ health.trusts[0].name }}</strong>, where {{ health.trusts[0].type1_within_4h_pct }}% of type 1 attendances were seen within four hours in {{ health.trusts[0].period }}{% if health.trusts | length > 1 %}; then {{ health.trusts[1].name }} at {{ health.trusts[1].type1_within_4h_pct }}%{% endif %}.</p>
     {% endif %}
+    {% call howto.howto() %}
     <p class="section-sub">NHS England: patients registered at a GP practice ({{ (health.patients_date or health.nearest.patients_date) | day_label }}), the general practice workforce ({{ (health.workforce_date or health.nearest.workforce_date) | month_label }}), and A&amp;E attendances by provider, monthly. Fully qualified GPs exclude trainees. Practices are matched by postcode.</p>
+    {% endcall %}
+    {{ howto.source("NHS England, monthly releases") }}
 </section>
 {% endif %}
 
@@ -528,11 +547,7 @@
     <p>
         A Band D household in <strong>{{ finance.name | council }}</strong> pays {{ finance.history[-1].band_d | gbp }} for {{ finance.latest_label }}, all precepts included{% if finance.rise_latest is not none %},
         a rise of {{ finance.rise_latest }}% on the year before against an England median rise of {{ finance.median_rise_latest }}%{% endif %}.
-        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name | council }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}. A home's own band is on its council tax bill, free to look up at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>; the report shows every band's bill at the council beside the home's other checks.
-        {# It said "the full report gives the band of a specific address"
-           until 17 Sep 2026. It does not: the band list is not open data.
-           This section is MHCLG's, so England only, and the gov.uk lookup
-           covers England and Wales. #}
+        {% if council_tax_slug %}<a href="/running-costs/council-tax/{{ council_tax_slug }}">Every band for {{ finance.name | council }}, and how it compares</a>{% else %}Every band for this council is on the <a href="/running-costs/council-tax">council tax page</a>{% endif %}.
     </p>
     {% if council_tax_trend %}
     {% import "_trend_chart.html" as trendchart %}
@@ -568,7 +583,16 @@
     {% if not finance.efs and not finance.county_efs and not finance.s114 %}
     <p class="section-sub">No exceptional financial support from government since 2020-21 and no section 114 notice on record for {{ finance.name | council }}{% if finance.county_name %} or {{ finance.county_name }}{% endif %}, as at {{ finance.as_of | day_label }}.</p>
     {% endif %}
+    {% call howto.howto() %}
+    <p class="section-sub">A home's own band is on its council tax bill, free to look up at <a href="https://www.gov.uk/council-tax-bands" target="_blank" rel="noopener">gov.uk/council-tax-bands</a>; the report shows every band's bill at the council beside the home's other checks.
+        {# It said "the full report gives the band of a specific address"
+           until 17 Sep 2026. It does not: the band list is not open data.
+           This section is MHCLG's, so England only, and the gov.uk lookup
+           covers England and Wales. #}
+    </p>
     <p class="section-sub">Ministry of Housing, Communities and Local Government, live council tax tables (Band D, area averages) and the Exceptional Financial Support lists published each year; section 114 notices as published by the councils.</p>
+    {% endcall %}
+    {{ howto.source("MHCLG live council tax tables and Exceptional Financial Support lists") }}
 </section>
 {% endif %}
 

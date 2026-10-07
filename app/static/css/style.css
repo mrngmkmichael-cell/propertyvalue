@@ -1671,7 +1671,8 @@ button:not([class]):hover { background: var(--accent-hover); }
 
 .stacked-form button.button-quiet,
 .search-form button.button-quiet,
-button.hub-show-all.button-quiet {
+button.hub-show-all.button-quiet,
+button.fold-show-all.button-quiet {
     background: transparent;
     color: var(--ink-soft);
     border: 1px solid var(--border);
@@ -1680,7 +1681,8 @@ button.hub-show-all.button-quiet {
 
 .stacked-form button.button-quiet:hover,
 .search-form button.button-quiet:hover,
-button.hub-show-all.button-quiet:hover {
+button.hub-show-all.button-quiet:hover,
+button.fold-show-all.button-quiet:hover {
     background: transparent;
     color: var(--ink);
     border-color: var(--ink-faint);
@@ -3570,8 +3572,8 @@ button.hub-show-all.button-quiet:hover {
 }
 
 /* Show all, under a hub's first ten schools (7 Oct 2026). */
-.hub-show-all { margin: 0.75rem 0 0; }
-.school-table tr[hidden] { display: none; }
+.hub-show-all, .fold-show-all { margin: 0.75rem 0 0; }
+.school-table tr[hidden], table[data-fold] tr[hidden] { display: none; }
 
 /* The council tax discounts as a list (7 Oct 2026). */
 .note-list {
@@ -3582,6 +3584,28 @@ button.hub-show-all.button-quiet:hover {
     max-width: 70ch;
 }
 .note-list li { margin: 0 0 0.3rem; }
+
+/* The area guide's opening sentences, one to a line (7 Oct 2026). */
+ul.area-lead {
+    list-style: none;
+    display: grid;
+    gap: 0.45rem;
+    max-width: 70ch;
+}
+ul.area-lead li {
+    position: relative;
+    padding-left: 1rem;
+}
+ul.area-lead li::before {
+    content: "";
+    position: absolute;
+    left: 0.1rem;
+    top: 0.6em;
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: var(--accent);
+}
 
 /* Where a section's figures come from, as one line of data mono. */
 .source-line {

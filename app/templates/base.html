@@ -951,6 +951,32 @@
             }
         })();
     </script>
+    <script>
+        /* A long table shows its first rows and a Show all (7 Oct 2026):
+           a table marked data-fold="5" data-fold-noun="sales". Rows are hidden
+           only by this script, so with none every row shows; a row marked
+           data-keep, such as the one a sentence above points at, is never
+           hidden; folding fewer than two rows saves nothing, so it does not. */
+        (function () {
+            document.querySelectorAll('table[data-fold]').forEach(function (table) {
+                var keep = parseInt(table.getAttribute('data-fold'), 10) || 5;
+                var rows = table.tBodies.length ? Array.prototype.slice.call(table.tBodies[0].rows) : [];
+                var extra = rows.filter(function (row, i) { return i >= keep && !row.hasAttribute('data-keep'); });
+                if (extra.length < 2) return;
+                extra.forEach(function (row) { row.hidden = true; });
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'fold-show-all button-quiet';
+                button.textContent = 'Show all ' + rows.length + ' ' + (table.getAttribute('data-fold-noun') || 'rows');
+                button.addEventListener('click', function () {
+                    extra.forEach(function (row) { row.hidden = false; });
+                    button.remove();
+                });
+                var after = table.closest('.tablewrap') || table;
+                after.parentNode.insertBefore(button, after.nextSibling);
+            });
+        })();
+    </script>
     {% block page_seen %}
     <script>
         /* A person on this page, said by the page itself (5 Oct 2026). A
