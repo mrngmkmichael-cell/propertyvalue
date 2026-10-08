@@ -6,6 +6,40 @@ the local Claude session as things ship. Newest first.
 
 ## Shipped (do not re-suggest)
 
+- The seven ideas of the 8 Oct 2026 brainstorm, built the same evening
+  (25255fe). Michael said "Do all", which is the approval ideas 1, 2 and
+  5 needed. The day's reading: one real sign-up in three days (107), no
+  Premium since 17 Sep, 45 to 111 people a day against 2,688 to 11,918
+  raw views; email confirmation completes (6 of 7 email sign-ups since
+  20 Sep, 0.3 to 221 minutes), so the gate stands.
+  1. The spent account's wall carries both plans to /premium/checkout
+     with the home in hidden fields, three months first, "See plans" a
+     link beside them; without a configured plan the old link is the
+     only action. Account 106 met the wall six times on 5 Oct and never
+     opened /premium. Judge it by checkouts started from a wall.
+  2. That wall is three sentences: the by-hand line left it (the
+     signed-out wall keeps it), and the history speaks only to a wall on
+     an earlier UK day (_uk_day_start), as "Welcome back." with no
+     ordinal. The route passes the earlier-day count as prior_walls; the
+     dict's nth_locked is now unused (an edit removing it was refused by
+     the session's permission check, so it stays).
+  3. home_type and sale_address filters: "Flat or maisonette" for
+     flat-maisonette, Land Registry capitals as an address is written, on
+     the area guide, Comparables and the report's sold table.
+  4. /alternatives' title 56 characters (was 84); audit_site.py fails any
+     title over 65.
+  5. VERSUS_OFFERED_TO_SEARCH = False: every district comparison noindex,
+     out of the sitemap, unlinked from guides and tables; the pages and
+     the compare box still work. 959 views, no person, in three days. A
+     switch: set True to offer them again.
+  6. The school page links its council's admissions hub beside the
+     figure (y=1,192 of 6,723 at 375 px; the old link sat at the foot).
+     Judge by /from/council-hub report starts.
+  7. Aspect (orientation, Overpass) waits at most ORIENTATION_BUDGET_S =
+     4 s in a report gather; it carries on and the page reads its cache
+     at render (orientation.cached). It was 10.6 s of TQ1 2BH's 12.8 s
+     cold report. The PDF still waits for it.
+
 - The seven ideas of the 1 Oct 2026 brainstorm, built the same evening.
   Michael said "Do all", which is the approval ideas 4, 6 and 7 needed.
   The day's reading: two real sign-ups (98, 99), each spending its free

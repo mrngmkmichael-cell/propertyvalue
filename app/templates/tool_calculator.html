@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tool.title }} | UKPropertyInsight{% endblock %}
+{% block title %}{{ fit_title(tool.title ~ " | UKPropertyInsight", tool.title, limit=65) }}{% endblock %}
 {% block meta_description %}{{ tool.meta }}{% endblock %}
 {% block og_title %}{{ tool.title }}{% endblock %}
 {# Noindexed on 8 Sep 2026, and out of the sitemap: see the note in

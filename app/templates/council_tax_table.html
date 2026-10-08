@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Council Tax {{ ct.year }} by Council: Band D for Every Authority in England, Wales and Scotland{% endblock %}
+{% block title %}Council Tax {{ ct.year }} by Council: Band D for Every Authority{% endblock %}
 {% block meta_description %}Band D council tax for {{ ct.year }} in every billing authority: {{ ct.england | length }} in England (MHCLG), {{ ct.wales | length }} in Wales (Welsh Government) and {{ ct.scotland | length }} in Scotland (Scottish Government), with Band A and Band H alongside. Sortable.{% endblock %}
 {% block og_title %}Council tax {{ ct.year }}, every council{% endblock %}
 

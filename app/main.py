@@ -12702,7 +12702,7 @@ TOOLS = {
     },
     "mortgage-calculator": {
         "key": "mortgage",
-        "title": "Mortgage Repayment Calculator: monthly cost on any UK price",
+        "title": "Mortgage Repayment Calculator: Monthly Cost on Any UK Price",
         "heading": "Mortgage repayment calculator",
         "meta": "Work out the monthly repayment on a UK mortgage from the purchase price, deposit, interest rate and term. Free, instant, nothing stored.",
         "dek": "Purchase price, deposit, rate and term in; the monthly repayment out. Calculated in your browser, nothing is sent anywhere.",

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ seo_title("Private schools in " ~ district.name, "", ": " ~ district.count ~ " independent schools, ages and admissions") }}{% endblock %}
+{% block title %}{{ fit_title("Private schools in " ~ district.name ~ ": " ~ district.count ~ " independent schools, ages and admissions", "Private schools in " ~ district.name ~ ": " ~ district.count ~ " independent schools", limit=65) }}{% endblock %}
 {% block meta_description %}All {{ district.count }} fee-paying schools registered in {{ district.name }}: age range, single-sex or mixed, faith, special schools and how full each is, from the Department for Education register. With the state schools' admission distances alongside.{% endblock %}
 {% block og_title %}Private schools in {{ district.name }}: {{ district.count }} listed{% endblock %}
 

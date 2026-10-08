@@ -176,3 +176,12 @@ def test_a_bounded_aspect_raises_and_keeps_running():
         return "answered"
 
     assert asyncio.run(run()) == "timed out"
+
+
+def test_the_pages_the_audit_found_long_have_titles_that_fit(client):
+    """The new audit rule's first run on production found eleven more."""
+    for path in ("/estate-charges", "/running-costs/council-tax", "/running-costs", "/schools/admissions",
+                 "/schools/how-admissions-work", "/tools/mortgage-calculator", "/tools/stamp-duty-calculator"):
+        body = client.get(path).text
+        title = html.unescape(" ".join(re.search(r"<title>(.*?)</title>", body, re.S).group(1).split()))
+        assert len(title) <= 65, (path, title)
