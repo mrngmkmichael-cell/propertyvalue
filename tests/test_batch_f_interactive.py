@@ -104,17 +104,17 @@ def test_f1_each_sale_carries_the_type_tenure_price_and_date_the_script_reads(cl
     assert len(rows) == 11, "every sale is in the page, with or without JavaScript"
     by_address = {re.search(r'data-st="sub">([^<]+)', inner).group(1): (date, hidden, inner)
                   for date, hidden, inner in rows}
-    date, hidden, inner = by_address["12 TEST ROAD"]
+    date, hidden, inner = by_address["12 Test Road"]
     assert date == _ago(200) and not hidden
     assert 'data-label="Type" data-type="semi-detached"' in inner
     assert 'data-label="Tenure" data-tenure="freehold"' in inner
     assert 'data-st="lead" data-price="500000">£500,000<' in inner
     # Land Registry's flat-maisonette is the Flat chip.
-    assert 'data-type="flat"' in by_address["FLAT 1 FAR COURT"][2]
-    assert 'data-tenure="leasehold"' in by_address["FLAT 1 FAR COURT"][2]
+    assert 'data-type="flat"' in by_address["Flat 1 Far Court"][2]
+    assert 'data-tenure="leasehold"' in by_address["Flat 1 Far Court"][2]
     # The commercial sale is Other, and Other starts unticked, so its row
     # starts hidden and the figures leave it out.
-    date, hidden, inner = by_address["GOALS SOCCER CENTRE WYVERN ESTATE"]
+    date, hidden, inner = by_address["Goals Soccer Centre Wyvern Estate"]
     assert hidden and 'data-type="other"' in inner and 'data-price="2700000"' in inner
     # The chips, the toggle and the one line about Other.
     tool = _tool(body)

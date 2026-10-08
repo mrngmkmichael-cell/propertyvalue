@@ -1083,7 +1083,7 @@ def test_fix_a_lapsed_subscribers_wall_promises_only_the_free_reports_home(clien
     banner = _flat(_banner(client.get("/property?postcode=M29+1AA").text))
     assert "The ones you opened" not in banner and "stay unlocked for good" not in banner
     assert banner.count("for good") == 1
-    assert "You've used your free report.</strong> The home you opened with it stays open for good. Opening another is" in banner
+    assert "You've used your free report.</strong> The home you opened with it stays open for good. Opening this one and every other is" in banner
 
 
 def _home_faq(body):
@@ -2194,7 +2194,7 @@ def test_c2_the_spent_accounts_wall_names_both_prices_three_months_first(client,
     banner = _flat(_banner(client.get("/property?postcode=M32+7AA").text))
     prices = stripe_billing.plan_prices()
     assert f"{USED_UP}." in banner
-    assert f"Opening another is {prices['quarterly']} for three months" in banner
+    assert f"Opening this one and every other is {prices['quarterly']} for three months" in banner
     assert f"or {prices['monthly']} a month" in banner
     # The three-month plan is the plain answer, so it is read first.
     assert banner.index(prices["quarterly"]) < banner.index(prices["monthly"])
@@ -2222,12 +2222,18 @@ def test_c2_the_returning_wall_names_both_prices_too(client, fake_report, monkey
     from app.services import _cache
     _cache.set(("property_search_gather", "M33 3AA", ""), {"warm": True})
     browser = {"user-agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Safari/537.36"}
-    client.get("/property?postcode=M33+3AA", headers=browser)
+    # A wall on an earlier day is what makes this a return (8 Oct 2026).
+    from app.models import PageView
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, "c2-returner@customer.test").id
+        session.add(PageView(path=app_main.PAYWALL_PATH, user_id=uid,
+                             created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=2)))
+        session.commit()
     banner = _flat(_banner(client.get("/property?postcode=M33+3AA", headers=browser).text))
 
     prices = stripe_billing.plan_prices()
-    assert "This is the 2nd time you have reached this wall." in banner
-    assert (f"Premium is {prices['quarterly']} for three months, made for one house hunt, "
+    assert "Welcome back." in banner
+    assert (f"Premium opens every check on all of them for {prices['quarterly']} for three months, "
             f"or {prices['monthly']} a month") in banner
     assert "Each renews until you cancel" in banner
 

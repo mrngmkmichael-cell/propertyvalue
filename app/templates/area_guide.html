@@ -250,8 +250,8 @@
             <tbody>
                 {% for s in local_sales.latest %}
                 <tr>
-                    <td>{{ s.address }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</td>
-                    <td>{{ s.property_type or "Not recorded" }}</td>
+                    <td>{{ s.address | sale_address }}{% if s.postcode %}, {{ s.postcode }}{% endif %}</td>
+                    <td>{{ s.property_type | home_type }}</td>
                     <td class="num">{{ s.amount | gbp }}</td>
                     <td class="num">{{ s.date | day_label }}</td>
                 </tr>

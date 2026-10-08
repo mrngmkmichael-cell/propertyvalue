@@ -8,7 +8,18 @@ sitemap and noindexed, though both districts have medians on their own
 area guides.
 """
 from app import main as app_main
+import pytest
+
 from tests.conftest import fake_location
+
+
+@pytest.fixture(autouse=True)
+def _comparisons_offered(monkeypatch):
+    """These pin how a comparison is judged when the pages are offered to
+    search; since 8 Oct 2026 they are not (VERSUS_OFFERED_TO_SEARCH), and
+    test_brainstorm_8oct holds that."""
+    from app import main as app_main
+    monkeypatch.setattr(app_main, "VERSUS_OFFERED_TO_SEARCH", True)
 
 
 def _run(client, monkeypatch, sales_result, guide_medians):

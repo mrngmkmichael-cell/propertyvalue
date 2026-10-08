@@ -220,15 +220,29 @@ def test_the_paywall_says_something_new_on_a_return_visit(client, fake_report, m
     assert "You've used your free report." in first          # the original wording
     assert "time you have reached this wall" not in first
 
+    # The same evening is one visit, not a return (8 Oct 2026): account
+    # 106 read "This is the 6th time" three minutes after the 5th.
     second = client.get("/property?postcode=M1+2AA", headers=browser).text
-    assert "This is the 2nd time you have reached this wall." in second
-    assert "would be about &pound;" in second
+    assert "You've used your free report." in second
+    assert "Welcome back." not in second
     # The free report they already own is named, and still theirs.
     assert "Your free report went on" in second
     assert "M20 1AA" in second
 
+    # A wall met on an earlier day makes the next one a return.
+    import datetime
+    from app import auth, db
+    from app.main import PAYWALL_PATH
+    from app.models import PageView
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, "returner@customer.test").id
+        session.add(PageView(path=PAYWALL_PATH, user_id=uid,
+                             created_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1, hours=1)))
+        session.commit()
     third = client.get("/property?postcode=M1+2AA", headers=browser).text
-    assert "This is the 3rd time you have reached this wall." in third
+    assert "Welcome back." in third
+    assert "would be about &pound;" in third
+    assert "time you have reached this wall" not in third
 
 
 def test_can_verify_needs_a_domain_of_our_own(monkeypatch):

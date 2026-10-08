@@ -17,6 +17,7 @@ import secrets
 import statistics
 import string
 import time
+import zoneinfo
 from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urlparse
 from xml.sax.saxutils import escape
 
@@ -953,6 +954,7 @@ async def _epc_flow(
 
 VALUATION_EPC_LOOKUP_CAP = 20  # bounds worst-case added EPC calls regardless of how many recent sales exist
 PROPERTY_SEARCH_CACHE_TTL_S = 3600  # how long a full report is reused for repeat views of the same address
+ORIENTATION_BUDGET_S = 4.0  # the Aspect lookup's wait in a report gather; Overpass took 10.6 s on 8 Oct 2026
 NEW_BUILD_STAT_YEARS = 3  # wide enough to catch a development finishing mid-window, unlike the 1-year valuation comp window
 NEW_BUILD_STAT_MIN_SAMPLE = 5  # below this, a "new-build share" percentage is noise, not a signal
 
@@ -1803,6 +1805,49 @@ def _council_name(name) -> str:
 
 
 templates.env.filters["council"] = _council_name
+
+
+# HM Land Registry's own codes for a home's type, in words (8 Oct 2026).
+# The LS6 guide's sold table printed "flat-maisonette" in four rows.
+_HOME_TYPE_WORDS = {
+    "detached": "Detached", "semi-detached": "Semi-detached", "terraced": "Terraced",
+    "flat-maisonette": "Flat or maisonette", "other": "Other",
+}
+
+
+def _home_type(code) -> str:
+    code = str(code or "").strip()
+    return _HOME_TYPE_WORDS.get(code.lower(), code) or "Not recorded"
+
+
+templates.env.filters["home_type"] = _home_type
+
+
+def _sale_address(address) -> str:
+    """Land Registry's upper-case address read as an address is written:
+    "FLAT 4 21 BAINBRIGGE ROAD" as "Flat 4 21 Bainbrigge Road". Display
+    only; nothing matches on the result. A word with a digit in it keeps
+    its capitals (12A), and O'BRIEN reads O'Brien, not O'brien."""
+    text = str(address or "")
+    if text != text.upper():
+        return text
+
+    def word(w: str) -> str:
+        if any(ch.isdigit() for ch in w):
+            return w
+        parts = []
+        for part in w.split("-"):
+            low = part.lower()
+            if len(low) > 2 and low[1] == "'" and low[0].isalpha():
+                parts.append(low[0].upper() + "'" + low[2:].capitalize())
+            else:
+                parts.append(low[:1].upper() + low[1:])
+        return "-".join(parts)
+
+    return " ".join(word(w) for w in text.split(" "))
+
+
+templates.env.filters["sale_address"] = _sale_address
 
 
 _ADDRESS_STREET = re.compile(r"^(?:(?:flat|apartment|unit)\s+\S+\s+)?\d+\S*\s+(.+)$", re.I)
@@ -4480,6 +4525,13 @@ def _free_report_home(session, user_id: int) -> dict | None:
     }
 
 
+def _uk_day_start() -> datetime.datetime:
+    """Midnight today in the UK, as an aware UTC moment."""
+    london = zoneinfo.ZoneInfo("Europe/London")
+    today = datetime.datetime.now(london).date()
+    return datetime.datetime.combine(today, datetime.time(), tzinfo=london).astimezone(datetime.timezone.utc)
+
+
 def _paywall_history(session, user_id: int, prior_walls: int) -> dict:
     """What this account has already done, for the paywall to say back.
 
@@ -4819,15 +4871,20 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
                 # left opened a property it has not unlocked. Stored as
                 # a pageview with a synthetic path so the funnel can
                 # count it without a new table or any extra identifier.
-                prior_walls = unlock_session.scalar(
+                # Walls met before today, UK time (8 Oct 2026): six walls in
+                # one evening are one visit, not six returns. Passed as
+                # prior_walls, so the history speaks only to an earlier day.
+                earlier_day_walls = unlock_session.scalar(
                     select(func.count()).select_from(PageView)
-                    .where(PageView.path == PAYWALL_PATH, PageView.user_id == current["id"])
+                    .where(PageView.path == PAYWALL_PATH, PageView.user_id == current["id"],
+                           PageView.created_at < _uk_day_start())
                 ) or 0
                 unlock_session.add(PageView(path=PAYWALL_PATH, user_id=current["id"]))
                 unlock_session.commit()
                 context["paywall_history"] = _paywall_history(
-                    unlock_session, current["id"], prior_walls
+                    unlock_session, current["id"], earlier_day_walls
                 )
+                context["wall_plans"] = stripe_billing.plan_choices()
         context["current_user"] = {**current, **state}
 
     # The templates must gate on THIS, not on current_user.is_premium:
@@ -5766,7 +5823,14 @@ async def _full_property_gather(
             _timed("food-hygiene-nearby-ratings", food_hygiene.nearby_ratings(lat, lon)),
             _timed("flood-zones-zone-for", flood_zones.zone_for(lat, lon, location.get("country"))),
             _timed("google-places-nearby-food-ratings", google_places.nearby_food_ratings(lat, lon)),
-            _timed("orientation-orientation-for", orientation.orientation_for(lat, lon)),
+            # A budget, because Overpass sets the pace (8 Oct 2026): on
+            # three cold reports that morning this took 10.6 s of 12.8 s,
+            # the next slowest 3.9 s, and Aspect is a Premium card most
+            # readers see locked. The lookup carries on past the budget
+            # and fills its own cache, which the page reads at render.
+            # The PDF waits for it, as it does for the other slow two.
+            _timed("orientation-orientation-for", orientation.orientation_for(lat, lon) if wait_for_slow
+                   else _bounded_strict(orientation.orientation_for(lat, lon), ORIENTATION_BUDGET_S)),
             _timed("air-quality-for-location, location-get", asyncio.to_thread(air_quality.for_location, location.get("eastings"), location.get("northings"), location.get("latitude"), location.get("longitude"), location.get("country"))),
             _timed("historic-landfill-check-near", _in_england_only(location.get("country"), lambda: historic_landfill.check_near(lat, lon))),
             _timed("catchment-catchments-for", catchment.catchments_for(lat, lon)),
@@ -6069,7 +6133,12 @@ async def _full_property_gather(
         context["google_ratings"] = google_ratings_result
 
     if isinstance(orientation_result, Exception):
-        context["orientation_error"] = True
+        # Past its budget, or failed: the answer may have landed since.
+        late = orientation.cached(lat, lon)
+        if late is not None:
+            context["orientation"] = late
+        else:
+            context["orientation_error"] = True
     else:
         context["orientation"] = orientation_result
 
@@ -12899,8 +12968,21 @@ def _are_neighbours(left: str, right: str) -> bool:
 # to search engines, linked from a guide or listed in the sitemap.
 VERSUS_NATIONS = ("England", "Wales")
 
+# District comparisons offered to search engines at all (8 Oct 2026,
+# Michael's "Do all" to that morning's brainstorm). Over 5 to 8 Oct the
+# /compare pages took 959 views and the page-seen counter recorded no
+# person on any of them; the 5 Oct Search Console reading has no
+# comparison among the pages that earn clicks, while each crawl of one
+# costs a gather and Neon round trips. Off: every pair is noindex, out
+# of the sitemap and unlinked from guides and tables. The pages still
+# answer, and the compare box on each guide still reaches them. A
+# switch, not a deletion: set True to offer them again.
+VERSUS_OFFERED_TO_SEARCH = False
+
 
 def _versus_indexable(left: str, right: str) -> bool:
+    if not VERSUS_OFFERED_TO_SEARCH:
+        return False
     return all(
         OUTCODE_COUNTRY.get(o) in VERSUS_NATIONS and OUTCODE_REGION.get(o) not in ("Scotland", "Northern Ireland")
         for o in (left, right)

@@ -66,6 +66,13 @@ def _centroid(ring: list) -> tuple[float, float]:
     return sum(p["lat"] for p in pts) / len(pts), sum(p["lon"] for p in pts) / len(pts)
 
 
+def cached(lat: float, lon: float) -> dict | None:
+    """The answer already in hand, without asking Overpass. The report
+    reads it at render (8 Oct 2026) when its own wait ran out, so a
+    lookup that finished after the page was built shows on the next view."""
+    return _cache.get(_cache.coord_key("orientation", lat, lon), CACHE_TTL_S)
+
+
 async def orientation_for(lat: float, lon: float) -> dict | None:
     key = _cache.coord_key("orientation", lat, lon)
     cached = _cache.get(key, CACHE_TTL_S)

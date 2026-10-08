@@ -6948,6 +6948,17 @@ main:focus { outline: none; }
     border-radius: var(--radius-sm); font-weight: var(--weight-semi); font-size: var(--text-sm); text-decoration: none;
 }
 .paywall-banner-cta:hover { background: var(--accent-hover); }
+/* The plans on the wall itself (8 Oct 2026): /premium's own checkout
+   forms, three months filled, the month outlined, "See plans" a link. */
+.paywall-banner-plans { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 0.9rem; }
+.paywall-banner-form { margin: 0; }
+button.paywall-banner-cta { border: 1px solid var(--accent); font-family: inherit; line-height: 1.3; cursor: pointer; }
+button.paywall-banner-cta-quiet { background: var(--surface); color: var(--ink); border-color: var(--border-strong); }
+button.paywall-banner-cta-quiet:hover { background: var(--accent-soft); }
+.paywall-banner-plans-link { font-size: var(--text-sm); color: var(--ink-soft); }
+@media (max-width: 30rem) {
+    .paywall-banner-plans, .paywall-banner-form, .paywall-banner-form button { width: 100%; }
+}
 
 /* ---- Report building page ---- */
 .building-wrap { max-width: 34rem; margin: 3rem auto; }

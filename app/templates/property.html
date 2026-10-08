@@ -1076,10 +1076,18 @@
            edited whenever a Stripe Price changes, or this sentence
            states the old price. The renewal wording is the terms
            page's own. #}
+        {# Shorter, and counted by day (8 Oct 2026). Account 106 met this
+           wall six times in 18 minutes on 5 Oct and read "This is the 6th
+           time you have reached this wall" three minutes after the 5th,
+           inside about 120 words: the history, the prices, the 28 websites
+           (/premium's argument again) and two asides. It never pressed
+           "See plans". The history now speaks only to a wall met on an
+           earlier day, without the ordinal, and the by-hand line is gone
+           from this branch; the signed-out wall keeps it. #}
         <div class="paywall-banner-copy">
             {% if paywall_history and paywall_history.prior_walls %}
-            <strong>This is the {{ paywall_history.nth_locked }} time you have reached this wall.</strong>
-            You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each of them, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium is {{ plan_prices.quarterly }} for three months, made for one house hunt, or {{ plan_prices.monthly }} a month. Each renews until you cancel, and either opens every check on all of them, however many you end up walking away from.
+            <strong>Welcome back.</strong>
+            You have opened {{ paywall_history.properties_opened }} propert{{ 'ies' if paywall_history.properties_opened != 1 else 'y' }} here. A flood report and a coal mining search on each, bought the usual way, would be about &pound;{{ "{:,}".format(paywall_history.searches_would_cost) }}. Premium opens every check on all of them for {{ plan_prices.quarterly }} for three months, or {{ plan_prices.monthly }} a month. Each renews until you cancel.
             {% else %}
             {# "The ones you opened stay unlocked for good" until 17 Sep 2026:
                a lapsed subscriber reads this on a home opened during the
@@ -1087,9 +1095,8 @@
                report's home stays open (owner's decision 4 that day), and the
                aside below names it when the history is to hand. #}
             <strong>You've used your free report.</strong>
-            {% if not (paywall_history and paywall_history.free_report) %}The home you opened with it stays open for good. {% endif %}Opening another is {{ plan_prices.quarterly }} for three months, which covers a normal search from first viewing to exchange, or {{ plan_prices.monthly }} a month, less than a single &pound;25 flood search elsewhere. Each renews until you cancel, and either opens every check on unlimited properties.
+            {% if not (paywall_history and paywall_history.free_report) %}The home you opened with it stays open for good. {% endif %}Opening this one and every other is {{ plan_prices.quarterly }} for three months, which covers a normal search from first viewing to exchange, or {{ plan_prices.monthly }} a month. Each renews until you cancel.
             {% endif %}
-            <span class="paywall-banner-by-hand">The next house by hand is the same 28 websites again, and still nothing side by side. Premium opens every check on every house, and the comparison page puts two of them next to each other. <a href="/methodology#by-hand">How we counted</a>.</span>
             {% if paywall_history and paywall_history.free_report %}
             <span class="paywall-banner-aside">Your free report went on <a href="{{ paywall_history.free_report.url }}">{{ paywall_history.free_report.label }}</a>, and it stays open for good.</span>
             {% endif %}
@@ -1099,8 +1106,32 @@
            from the route, so the price page opens naming the home being
            bought and checkout sends the buyer back to its report. It was
            a bare /premium, and the one house they were reading about was
-           dropped at the door. #}
+           dropped at the door.
+           The plans themselves, on the wall (8 Oct 2026): since 20 Sep six
+           accounts met this wall 15 times and opened /premium 3 times, so
+           the step to the price page was where every one of them stopped.
+           Each button is /premium's own checkout form with this home in
+           it, three months first; "See plans" stays as a link beside them.
+           Without a configured plan the link is the only action, as before. #}
+        {% set wall_plans = (wall_plans or []) | selectattr("available") | list %}
+        {% if wall_plans %}
+        {% set ordered_wall_plans = (wall_plans | selectattr("key", "equalto", "quarterly") | list)
+                                  + (wall_plans | rejectattr("key", "equalto", "quarterly") | list) %}
+        {% set wall_button = {"quarterly": plan_prices.quarterly ~ " for three months", "monthly": plan_prices.monthly ~ " a month"} %}
+        <div class="paywall-banner-plans">
+            {% for plan in ordered_wall_plans %}
+            <form action="/premium/checkout" method="post" class="paywall-banner-form">
+                <input type="hidden" name="plan" value="{{ plan.key }}">
+                <input type="hidden" name="home" value="{{ location.postcode }}">
+                <input type="hidden" name="hn" value="{{ house_number }}">
+                <button type="submit" class="paywall-banner-cta{% if not loop.first %} paywall-banner-cta-quiet{% endif %}">{{ wall_button.get(plan.key, plan.label) }}</button>
+            </form>
+            {% endfor %}
+            <a class="paywall-banner-plans-link" href="{{ premium_home_url }}">See plans</a>
+        </div>
+        {% else %}
         <a class="paywall-banner-cta" href="{{ premium_home_url }}">See plans</a>
+        {% endif %}
         {% endif %}
     </div>
     {% endif %}
@@ -2533,7 +2564,7 @@
                 <tbody>
                     {% for tx in transactions %}
                     <tr>
-                        <td>{{ tx.address }}</td>
+                        <td>{{ tx.address | sale_address }}</td>
                         <td>{{ tx.date | day_label }}</td>
                         <td class="num">{{ tx.amount | gbp }}</td>
                         <td>{{ tx.tenure or "Not recorded" }}</td>

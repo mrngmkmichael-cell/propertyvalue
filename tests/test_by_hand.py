@@ -41,8 +41,11 @@ def test_the_wall_after_the_free_report_talks_about_the_next_house(client, fake_
         browser = {"user-agent": "Mozilla/5.0 (Macintosh) AppleWebKit/537.36 Safari/537.36"}
         second = client.get("/property?postcode=M1+3AA", headers=browser).text
         assert "You've used your free report." in second
-        assert "The next house by hand is the same 28 websites again, and still nothing side by side." in second
-        assert 'href="/methodology#by-hand"' in second
+        # Taken off the spent account's wall on 8 Oct 2026: it was
+        # /premium's argument again, inside about 120 words.
+        banner = second.split('class="paywall-banner"', 1)[1].split('id="report-categories"', 1)[0]
+        assert "paywall-banner-by-hand" not in banner
+        assert "28 websites" not in banner
     finally:
         client.cookies.clear()
 

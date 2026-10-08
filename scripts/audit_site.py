@@ -310,6 +310,12 @@ for path, body in pages_html.items():
     title = re.search(r"<title>(.*?)</title>", body, re.S)
     if not title or not title.group(1).strip():
         problems["empty title"].append(path)
+    # Google cuts a title past about 65 characters (8 Oct 2026): the 5 Oct
+    # pass fixed 27 titles by template, and /alternatives, a literal in
+    # its own template, still ran to 84 three days later.
+    elif len(html.unescape(" ".join(title.group(1).split()))) > 65:
+        problems["title over 65 characters"].append(
+            f"{path}: {len(html.unescape(' '.join(title.group(1).split())))}")
 
     desc = re.search(r'<meta name="description" content="([^"]*)"', body)
     if not desc or len(desc.group(1).strip()) < 50:

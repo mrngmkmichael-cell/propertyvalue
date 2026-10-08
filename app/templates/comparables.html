@@ -245,9 +245,9 @@
                        agrees with the figures without JavaScript. #}
                     {% for tx in comparables %}
                     <tr data-date="{{ tx.date }}"{% if not v.shown[loop.index0] %} hidden{% endif %}>
-                        <td data-st="sub">{{ tx.address }}{% if tx.postcode %}<span class="st-only">, {{ tx.postcode }}</span>{% endif %}</td>
+                        <td data-st="sub">{{ tx.address | sale_address }}{% if tx.postcode %}<span class="st-only">, {{ tx.postcode }}</span>{% endif %}</td>
                         <td data-st="skip">{{ tx.postcode }}</td>
-                        <td class="capitalize" data-st="half" data-label="Type" data-type="{{ v.row_types[loop.index0] }}">{{ tx.property_type or "Not recorded" }}</td>
+                        <td data-st="half" data-label="Type" data-type="{{ v.row_types[loop.index0] }}">{{ tx.property_type | home_type }}</td>
                         <td data-st="half" data-label="Tenure" data-tenure="{{ v.row_tenures[loop.index0] }}">{{ tx.tenure or "Not recorded" }}</td>
                         <td class="num" data-st="lead" data-price="{{ tx.amount or '' }}">{{ tx.amount | gbp }}</td>
                         <td data-st="answer">{{ tx.date | day_label }}</td>
