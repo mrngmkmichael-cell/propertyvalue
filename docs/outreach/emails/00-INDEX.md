@@ -6,7 +6,7 @@ scripts/outreach_build_emails.py from docs/outreach/prospects.json, which is the
 ledger of every firm ever drafted to and the page each address was read from.
 
 Figures quoted in the bodies today: 3,627 schools across 88 councils,
-44 checks, 29 of them free.
+46 checks, 30 of them free.
 
 ## The list
 
@@ -48,6 +48,12 @@ Figures quoted in the bodies today: 3,627 schools across 88 councils,
 | 34 | Rebecca Regis Property Search | buying agent | enquiries@rebeccaregis.co.uk | 2026-10-01 | [34-rebecca-regis-property-search.md](34-rebecca-regis-property-search.md) |
 | 35 | Yellow Brick Mortgages | mortgage broker | info@ybmortgages.co.uk | 2026-10-01 | [35-yellow-brick-mortgages.md](35-yellow-brick-mortgages.md) |
 | 36 | Keystone Property Finders | buying agent |  | 2026-10-01 | [36-keystone-property-finders.md](36-keystone-property-finders.md) |
+| 37 | Yorkshire and Humber Relocation | relocation consultant | pw@yorkshireandhumberrelocation.co.uk | 2026-10-13 | [37-yorkshire-and-humber-relocation.md](37-yorkshire-and-humber-relocation.md) |
+| 38 | The Original Property Company LLP | relocation consultant | james@originalproperty.co.uk | 2026-10-13 | [38-the-original-property-company-llp.md](38-the-original-property-company-llp.md) |
+| 39 | The Property Partnership Group | buying agent | info@tppguk.com | 2026-10-13 | [39-the-property-partnership-group.md](39-the-property-partnership-group.md) |
+| 40 | Woodhall Mortgages | mortgage broker | info@woodhallmortgages.co.uk | 2026-10-13 | [40-woodhall-mortgages.md](40-woodhall-mortgages.md) |
+| 41 | Harrowells | conveyancing solicitor | advice@harrowells.co.uk | 2026-10-13 | [41-harrowells.md](41-harrowells.md) |
+| 42 | Vantage Relocation | relocation consultant |  | 2026-10-13 | [42-vantage-relocation.md](42-vantage-relocation.md) |
 
 ## How they reach Outlook
 

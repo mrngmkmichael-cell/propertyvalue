@@ -16,7 +16,7 @@ https://ukpropertyinsight.co.uk/schools/admissions
 
 Before a viewing it tells your client what the street has sold for, whether the flood zone will trouble a lender, and whether the school they are moving for would have taken them last year.
 
-The rest of the report is the same idea: 44 checks on an address, 29 of them free without an account, each naming the official source it came from, from HM Land Registry, the Environment Agency, Ofsted, the EPC register, Police.uk and the ONS. It comes as a page you can send or a PDF you can attach, and there is a Chrome extension that puts the same figures on a Rightmove, Zoopla or OnTheMarket listing while you browse.
+The rest of the report is the same idea: 46 checks on an address, 30 of them free without an account, each naming the official source it came from, from HM Land Registry, the Environment Agency, Ofsted, the EPC register, Police.uk and the ONS. It comes as a page you can send or a PDF you can attach, and there is a Chrome extension that puts the same figures on a Rightmove, Zoopla or OnTheMarket listing while you browse.
 
 The first full report on any address is free with an account, and after that it is £9.99 a month or £24.99 a quarter. Both are introductory: I am pricing low while the first customers tell me what this is worth to them, and I will revise once they have. Honest criticism from someone who does this for a living counts for more than the fee.
 
