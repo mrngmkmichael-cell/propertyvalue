@@ -22,7 +22,7 @@ def _home(client):
 def test_the_dek_states_the_answer_and_the_offer_and_nothing_the_headline_says(client):
     body = _home(client)
     dek = " ".join(body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0].split())
-    assert dek == "Forty-six checks on any UK address, each from the body that published it. " + app_main.OFFER_SENTENCE
+    assert dek == "Forty-five checks on any UK address, each from the body that published it. " + app_main.OFFER_SENTENCE
     assert "Whether the house gets a child into the school" not in body
 
 

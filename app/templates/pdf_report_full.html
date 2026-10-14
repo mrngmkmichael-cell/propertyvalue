@@ -685,7 +685,7 @@ under-reported, so this is weaker evidence than a high count would be.</p>
     {% for s in ((stations_list.tube or []) + (stations_list.tram or []))[:4] %}<tr><td class="b">{{ s.name }}</td><td>{{ s.network or "" }}</td><td class="num">{{ s.distance_m | distance }}</td><td class="num">{% if s.walking_duration_min %}{{ s.walking_duration_min }} min{% else %}&nbsp;{% endif %}</td></tr>{% endfor %}
 </table>
 {% if stations_list.bus %}<p class="small soft">Nearest bus stop: {{ stations_list.bus[0].name }}, {{ stations_list.bus[0].distance_m | distance }}.</p>{% endif %}
-<p class="tiny faint">OpenStreetMap for locations; walking times from OpenRouteService where available.</p>
+<p class="tiny faint">Stations from NaPTAN, the Department for Transport's register; walking times from OpenRouteService where available.</p>
 {% else %}
 <p class="soft small">No rail, tube or tram station within range.</p>
 {% endif %}
@@ -710,12 +710,13 @@ under-reported, so this is weaker evidence than a high count would be.</p>
 <h2>Daily essentials</h2>
 <table class="data">
     <tr><th style="width: 30%">What</th><th class="num" style="width: 16%">Within range</th><th style="width: 38%">Nearest</th><th class="num" style="width: 16%">Distance</th></tr>
-    {% for key, label in [("supermarket", "Supermarkets"), ("pharmacy", "Pharmacies"), ("gp", "GP surgeries"), ("dentist", "Dentists"), ("hospital", "Hospitals and clinics"), ("green_space", "Parks and green space"), ("pub", "Pubs"), ("restaurant", "Restaurants and cafés"), ("ev_charging", "EV charging")] %}
+    {% set covered = amenities.get('_covered') %}
+    {% for key, label in [("supermarket", "Supermarkets"), ("pharmacy", "Pharmacies"), ("gp", "GP surgeries"), ("dentist", "Dentists"), ("hospital", "Hospitals and clinics"), ("green_space", "Parks and green space"), ("pub", "Pubs"), ("restaurant", "Restaurants and cafés"), ("ev_charging", "EV charging")] if covered is none or key in covered %}
     {% set items = amenities.get(key) or [] %}
-    <tr><td class="b">{{ label }}</td><td class="num">{{ items | length }}</td><td>{% if items %}{{ items[0].name }}{% else %}&nbsp;{% endif %}</td><td class="num">{% if items %}{{ items[0].distance_m | distance }}{% else %}<span class="faint">none within range</span>{% endif %}</td></tr>
+    <tr><td class="b">{{ label }}</td><td class="num">{{ "{:,}".format(amenity_total(amenities, key)) }}</td><td>{% if items %}{{ items[0].name }}{% else %}&nbsp;{% endif %}</td><td class="num">{% if items %}{{ items[0].distance_m | distance }}{% else %}<span class="faint">none within range</span>{% endif %}</td></tr>
     {% endfor %}
 </table>
-<p class="tiny faint">OpenStreetMap, within about a mile. Counts depend on how completely the area is mapped.</p>
+<p class="tiny faint">Restaurants, supermarkets and pubs within 1 km from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
 </td></tr></table>
 {% endif %}
 
@@ -803,13 +804,14 @@ under-reported, so this is weaker evidence than a high count would be.</p>
     <tr><td class="b">Department for Education and Ofsted</td><td>Get Information About Schools; inspection outcomes; performance tables; free school meals; local authority admissions publications for last-admitted distances.</td></tr>
     <tr><td class="b">ONS</td><td>Census 2021 small area tables; Price Index of Private Rents; small area income estimates.</td></tr>
     <tr><td class="b">Ofcom</td><td>Connected Nations broadband and mobile coverage.</td></tr>
-    <tr><td class="b">OpenStreetMap and OpenRouteService</td><td>Stations, amenities, building footprints for aspect, walking times.</td></tr>
+    <tr><td class="b">Department for Transport (NaPTAN), Food Standards Agency, NHS England</td><td>Stations; restaurants, supermarkets and pubs nearby; GP surgeries.</td></tr>
+    <tr><td class="b">OpenRouteService</td><td>Walking times to stations, where available.</td></tr>
 </table>
 {{ sp("10pt") }}
 <h2>The score</h2>
 <p class="why">The score out of 100 starts from the checks that most affect living here and resale: the share of nearby schools rated Good or Outstanding, crime against the wider district, the direction of area prices, the property's energy band (without a house number, whether most of the postcode's homes with a certificate rate C or better), and each mapped risk (flood, surface water, radon, subsidence, noise, air, contamination, planning constraints). Strengths add, concerns subtract, and anything a source could not answer leaves the score untouched rather than counting for or against. It is a summary for comparing addresses, not a valuation and not a survey.</p>
 <h2>What this report is not</h2>
-<p class="why">It is not a RICS survey, a solicitor's searches, a mortgage valuation or advice. Sources publish on their own cycles, from monthly (prices, crime) to a decade (the Census); each figure carries its period. All data is used under the Open Government Licence v3.0 and the licences of OpenStreetMap contributors. Generated {{ generated_date }} by UKPropertyInsight, ukpropertyinsight.co.uk.</p>
+<p class="why">It is not a RICS survey, a solicitor's searches, a mortgage valuation or advice. Sources publish on their own cycles, from monthly (prices, crime) to a decade (the Census); each figure carries its period. All data is used under the Open Government Licence v3.0. Generated {{ generated_date }} by UKPropertyInsight, ukpropertyinsight.co.uk.</p>
 {{ sp("10pt") }}
 {{ way_back(alerts=True) }}
 

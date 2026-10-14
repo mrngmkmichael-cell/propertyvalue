@@ -11,7 +11,7 @@ import re
 
 import httpx
 
-from app.services import _cache, rail_journey, routing, transit_lines
+from app.services import _cache, bus_service, food_hygiene, health_services, rail_journey, routing, stations
 
 # Independent public Overpass instances, tried with hedging (see
 # _query_overpass). The primary is known to reject some
@@ -250,172 +250,58 @@ async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = Fals
     return result
 
 
-def _crs_code(ref: str | None) -> str | None:
-    """OSM tags National Rail stations' 3-letter CRS code as
-    `ref:crs`, but the tag is free text - only trust it when it
-    actually looks like one, rather than passing junk through to the
-    LDBWS API."""
-    if ref and re.match(r"^[A-Z]{3}$", ref.strip()):
-        return ref.strip()
-    return None
-
-
-def _line_badges(names: list[str]) -> list[dict]:
-    badges = []
-    for name in names:
-        color = transit_lines.color_for_line(name)
-        badges.append({"name": name, "color": color, "text_color": transit_lines.text_color_for(color)})
-    return badges
-
-
-def _station_mode(tags: dict) -> str:
-    network = tags.get("network", "").lower()
-    if tags.get("railway") == "tram_stop":
-        return "tram"
-    if tags.get("station") == "subway" or "underground" in network or "tube" in network:
-        return "tube"
-    return "rail"
+# Where "Nearby essentials" and "Getting around" come from since 14 Oct
+# 2026, when OpenStreetMap's Overpass service began refusing this site.
+# Restaurants, pubs and supermarkets: the Food Standards Agency's
+# register of food businesses. GP surgeries: NHS England's practice list,
+# the same table the Health Services card reads. Stations: NaPTAN, the
+# Department for Transport's register (stations.py), and the nearest bus
+# stop from the Bus Open Data Service table the Bus Service card reads.
+# The other categories were OpenStreetMap's alone. No official register
+# lists them by location for this site to read, so they are named on
+# the card as not covered rather than shown as a zero.
+CATEGORIES = ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging",
+              "gp", "dentist", "green_space", "wind_turbine", "solar_farm")
+GP_RADIUS_M = 2000
 
 
 async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
-    queries = [q for q in AMENITY_QUERIES if not lite or q[0] in LITE_AMENITY_LABELS]
-    clauses = "".join(
-        f'nwr{tag}(around:{radius},{lat},{lon});' for _, tag, radius in queries
-    )
-    clauses += (
-        f'nwr["railway"~"station|halt"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
-        f'nwr["station"="subway"][!"disused:railway"](around:{STATION_RADIUS_M},{lat},{lon});'
-        f'nwr["railway"="tram_stop"](around:{STATION_RADIUS_M},{lat},{lon});'
-        f'nwr["highway"="bus_stop"](around:{BUS_STOP_RADIUS_M},{lat},{lon});'
-    )
-    query = (
-        f"[out:json][timeout:20];({clauses});out center tags;"
-        f'way["highway"]["name"](around:{ROAD_LOOKUP_RADIUS_M},{lat},{lon});out geom;'
-    )
-    elements = await _query_overpass(query)
+    tasks = [food_hygiene.places_near(lat, lon)]
+    if not lite:
+        tasks += [asyncio.to_thread(health_services.near, lat, lon, GP_RADIUS_M),
+                  asyncio.to_thread(bus_service.stops_near, lat, lon, BUS_STOP_RADIUS_M)]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    places = results[0]
+    if isinstance(places, Exception):
+        raise places  # the cards say "Data unavailable", and nothing wrong is cached
+    gp = results[1] if not lite and not isinstance(results[1], Exception) else None
+    bus = results[2] if not lite and not isinstance(results[2], Exception) else None
 
-    categories = {label: [] for label, _, _ in AMENITY_QUERIES}
-    stations = {"rail": [], "tube": [], "tram": [], "bus": []}
-    roads = [
-        {"name": el["tags"]["name"], "geometry": el["geometry"]}
-        for el in elements
-        if "geometry" in el and el.get("tags", {}).get("highway") and el.get("tags", {}).get("name")
-    ]
-    unnamed_entries = []  # (entry dict, its own lat/lon) - road-name lookup happens after the main loop
+    categories: dict = {label: [] for label in CATEGORIES}
+    totals, covered = {}, []
+    for cat, found in places.items():
+        categories[cat] = found["places"]
+        totals[cat] = found["total"]
+        covered.append(cat)
+    if gp is not None:
+        categories["gp"] = [{"name": p["name"], "distance_m": p["distance_m"], "lat": None, "lon": None}
+                            for p in gp.get("practices", [])]
+        totals["gp"] = len(categories["gp"])
+        covered.append("gp")
+    # Carried inside the categories so every path that already passes them
+    # (the report, its follow-up fetch, the PDF, the area guide) has them.
+    categories["_totals"] = totals
+    categories["_covered"] = covered
 
-    for el in elements:
-        if "geometry" in el:
-            continue  # a road fetched only for the name-lookup above, not an amenity/station
-        tags = el.get("tags", {})
-        name = tags.get("name") or tags.get("ref") or tags.get("addr:street") or "Unnamed"
-        el_lat, el_lon = _element_latlon(el)
-        if el_lat is None:
-            continue
-        distance_m = round(_haversine_m(lat, lon, el_lat, el_lon))
-
-        amenity = tags.get("amenity")
-        shop = tags.get("shop")
-        is_station = bool(
-            re.match(r"station|halt", tags.get("railway", ""))
-            or tags.get("station") == "subway"
-            or tags.get("railway") == "tram_stop"
-        )
-
-        if tags.get("highway") == "bus_stop":
-            stations["bus"].append({
-                "id": el["id"], "type": el["type"], "name": name,
-                "network": "", "distance_m": distance_m,
-            })
-        elif is_station:
-            mode = _station_mode(tags)
-            # Tram stops are commonly mapped as a separate node per
-            # direction of travel at the same physical stop - without
-            # this, a stop like "Piccadilly Gardens" would appear
-            # twice in the list.
-            if not any(s["name"] == name for s in stations[mode]):
-                network = tags.get("network", "")
-                if mode == "tram":
-                    # Trams don't carry OSM's per-line `line` tag the
-                    # way National Rail/Underground stations do, and
-                    # there's no single reliably-documented per-branch
-                    # colour scheme for most UK tram networks either -
-                    # this shows one badge for the whole network (e.g.
-                    # "Manchester Metrolink") rather than guessing at
-                    # individual route colours.
-                    line_names = [network] if network else []
-                else:
-                    line_names = [n.strip() for n in tags.get("line", "").split(";") if n.strip()]
-                stations[mode].append({
-                    "id": el["id"], "type": el["type"], "name": name,
-                    "network": network, "distance_m": distance_m,
-                    "lat": el_lat, "lon": el_lon,
-                    "crs": _crs_code(tags.get("ref:crs")) if mode == "rail" else None,
-                    "lines": _line_badges(line_names),
-                })
-        elif amenity == "restaurant":
-            categories["restaurant"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif shop == "supermarket":
-            categories["supermarket"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif amenity == "pharmacy":
-            categories["pharmacy"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif amenity == "pub":
-            categories["pub"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif amenity == "hospital":
-            categories["hospital"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif amenity == "parking":
-            entry = {
-                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
-                "fee": tags.get("fee", ""), "type": tags.get("parking", ""),
-            }
-            categories["parking"].append(entry)
-            if name == "Unnamed":
-                unnamed_entries.append((entry, el_lat, el_lon, "Parking off {}", "Unnamed car park"))
-        elif amenity == "charging_station":
-            connector_tags = {
-                "socket:type2": "Type 2", "socket:type2_combo": "CCS",
-                "socket:chademo": "CHAdeMO", "socket:tesla_standard": "Tesla",
-            }
-            categories["ev_charging"].append({
-                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
-                "connectors": [label for key, label in connector_tags.items() if tags.get(key)],
-            })
-        elif amenity == "doctors":
-            categories["gp"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif amenity == "dentist":
-            categories["dentist"].append({"name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon})
-        elif tags.get("power") == "generator" and tags.get("generator:source") == "wind":
-            categories["wind_turbine"].append({
-                "name": name if name != "Unnamed" else "Wind turbine",
-                "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
-            })
-        elif tags.get("power") == "plant" and tags.get("plant:source") == "solar":
-            categories["solar_farm"].append({
-                "name": name if name != "Unnamed" else "Solar farm",
-                "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
-            })
-        elif tags.get("leisure") in ("park", "recreation_ground", "nature_reserve"):
-            entry = {
-                "name": name, "distance_m": distance_m, "lat": el_lat, "lon": el_lon,
-                "type": tags.get("leisure"),
-            }
-            categories["green_space"].append(entry)
-            if name == "Unnamed":
-                unnamed_entries.append((entry, el_lat, el_lon, "Green space off {}", "Unnamed green space"))
-
-    for entry, p_lat, p_lon, template, fallback in unnamed_entries:
-        road_name = _nearest_road_name(p_lat, p_lon, roads)
-        entry["name"] = template.format(road_name) if road_name else fallback
-
-    for items in categories.values():
-        items.sort(key=lambda i: i["distance_m"])
-
-    for candidates in stations.values():
-        candidates.sort(key=lambda s: s["distance_m"])
-
-    nearest_by_mode = {mode: candidates[0] for mode, candidates in stations.items() if candidates}
-    # nearest_by_mode holds the same dict objects as `stations` (not
-    # copies), so each already carries the "lines" badges attached
-    # when it was appended above - nothing further to do here.
+    stations_by_mode = stations.near(lat, lon, STATION_RADIUS_M, STATION_LIST_LIMIT)
+    stations_by_mode["bus"] = []
+    if bus and bus.get("stops"):
+        stop = bus["stops"][0]
+        stations_by_mode["bus"] = [{"id": stop["atco_code"], "type": "naptan", "name": stop["name"],
+                                    "network": "", "distance_m": stop["distance_m"]}]
+    # The same dict objects in both, as before: walking times and city
+    # journeys added to the nearest show in the list too.
+    nearest_by_mode = {mode: found[0] for mode, found in stations_by_mode.items() if found}
 
     # Real walking-route distance for the nearest station of each mode
     # a person plausibly walks to (not bus - those are already within
@@ -442,12 +328,5 @@ async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = Fals
             # itself failed) - the template shows different messaging
             # for each case.
             nearest_by_mode["rail"]["city_journeys"] = journeys
-
-    stations_by_mode = {
-        "rail": stations["rail"][:STATION_LIST_LIMIT],
-        "tube": stations["tube"][:STATION_LIST_LIMIT],
-        "tram": stations["tram"][:STATION_LIST_LIMIT],
-        "bus": stations["bus"][:1],
-    }
 
     return {"categories": categories, "stations": nearest_by_mode, "stations_list": stations_by_mode}

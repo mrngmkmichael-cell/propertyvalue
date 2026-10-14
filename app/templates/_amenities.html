@@ -13,7 +13,7 @@
     <span class="dashboard-card-status">
         {% if pending %}Finding what's nearby&hellip;
         {% elif amenities_error %}Data unavailable
-        {% elif amenities %}{{ (amenities.restaurant|length) + (amenities.supermarket|length) + (amenities.pharmacy|length) + (amenities.pub|length) + (amenities.hospital|length) }} nearby
+        {% elif amenities %}{{ "{:,}".format(amenity_total(amenities, 'restaurant') + amenity_total(amenities, 'supermarket') + amenity_total(amenities, 'pharmacy') + amenity_total(amenities, 'pub') + amenity_total(amenities, 'hospital')) }} nearby
         {% else %}No data available{% endif %}
     </span>
 </button>
@@ -51,10 +51,16 @@
         The amenities data service didn't respond. Try again in a moment.
     </p>
 {% elif amenities %}
-    <p class="section-sub">Restaurants, shops and services nearby, from OpenStreetMap.</p>
-    {% for key, label in [("restaurant", "restaurants"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
+    {# From OpenStreetMap until 14 Oct 2026, when its service began refusing
+       this site. The categories an official register covers are listed
+       with the register's own count; the rest are named once below, so a
+       category nobody can read never shows as a zero. #}
+    {% set covered = amenities.get('_covered') %}
+    <p class="section-sub">Restaurants and cafés, supermarkets and pubs within 1 km, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
+    {% for key, label in [("restaurant", "restaurants and cafés"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
+    {% if covered is none or key in covered %}
     <details class="amenity-group">
-        <summary>{{ amenities[key]|length }} {{ label }}</summary>
+        <summary>{{ "{:,}".format(amenity_total(amenities, key)) }} {{ label }}</summary>
         {% if amenities[key] %}
             <ul class="amenity-list">
                 {% for a in amenities[key][:10] %}
@@ -68,7 +74,11 @@
             <p class="notice">None found nearby.</p>
         {% endif %}
     </details>
+    {% endif %}
     {% endfor %}
+    {% if covered is not none %}
+    <p class="section-sub">Not shown: pharmacies, dentists, hospitals, car parks, EV charging points, parks, wind turbines and solar farms. They came from OpenStreetMap, whose service no longer answers this site, and no official register replaces them here yet.</p>
+    {% endif %}
 {% endif %}
 </div>
 {% endmacro %}

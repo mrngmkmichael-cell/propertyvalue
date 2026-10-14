@@ -1291,18 +1291,6 @@
             {% endif %}
         </button>
 
-        <button type="button" class="dashboard-card status-{{ 'muted' if not orientation else 'ok' }}{{ ' dashboard-card-locked' if not premium_unlocked else '' }}" data-modal-target="modal-orientation" {% if not premium_unlocked %}data-lock-redirect="{{ lock_redirect }}"{% endif %} data-animate>
-            {% if not premium_unlocked %}<div class="dashboard-card-lock-overlay">{{ icons.icon('lock') }}<span class="dashboard-card-lock-label">{{ lock_label }}</span></div>{% endif %}
-            <span class="dashboard-card-icon icon-orientation">{{ icons.icon('orientation') }}</span>
-            <span class="dashboard-card-title">Aspect</span>
-            {% if not premium_unlocked %}{{ locked.locked_status('Aspect', orientation_error) }}{% else %}
-            <span class="dashboard-card-status">
-                {% if orientation %}Garden faces {{ orientation.rear_facing }}
-                {% elif orientation_error %}Data unavailable
-                {% else %}No estimate available{% endif %}
-            </span>
-            {% endif %}
-        </button>
     </div>
 
     <h3 class="dashboard-category-heading">Risk &amp; Safety</h3>
@@ -3100,53 +3088,6 @@
         </div>
     </dialog>
 
-    <dialog class="report-modal" id="modal-orientation">
-        <div class="report-modal-inner">
-            <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
-            <section class="report-section">
-        <h2>Aspect</h2>
-        <p class="section-sub">
-            An estimate of which way the property faces, worked out from its building footprint and
-            the nearest named road. Not a measured sunlight or overshadowing survey, and there's no
-            free UK data source for that (it needs proper LIDAR-based shadow modelling). This assumes
-            a typical street-fronting layout and doesn't account for trees or neighbouring buildings
-            that might shade the garden.
-        </p>
-        {# Locked: the method above, never which way this garden faces
-           (17 Sep 2026). #}
-        {% if not premium_unlocked %}
-            {{ locked.locked_body(lock_label, lock_redirect) }}
-        {% elif orientation %}
-            <table class="tx-table">
-                <tbody>
-                    <tr>
-                        <td>Rear/garden-facing</td>
-                        <td class="num"><strong>{{ orientation.rear_facing }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Front-facing</td>
-                        <td class="num">{{ orientation.front_facing }}</td>
-                    </tr>
-                    <tr>
-                        <td>Nearest road</td>
-                        <td class="num">{{ orientation.nearest_road }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        {% elif orientation_error %}
-            <p class="notice notice-error">
-                The map data service didn't respond. Try again in a moment.
-            </p>
-        {% else %}
-            <p class="notice">
-                No estimate available, either no building footprint or no named road was found
-                nearby in OpenStreetMap for this location.
-            </p>
-        {% endif %}
-            </section>
-        </div>
-    </dialog>
-
     <dialog class="report-modal" id="modal-flood">
         <div class="report-modal-inner">
             <button type="button" class="report-modal-close" data-modal-close aria-label="Close">&#10005;</button>
@@ -4275,8 +4216,9 @@
         <p class="section-sub">
             Rail, Tube and tram stations first (closest 5 of each, within ~2 miles), then the nearest
             bus stop, prioritised in that order since trains, the Tube and trams usually matter more
-            for a commute than the nearest bus stop. Stations and stops from OpenStreetMap, city
-            journeys from National Rail's live departures.
+            for a commute than the nearest bus stop. Stations from NaPTAN, the Department for
+            Transport's register, the bus stop from the Bus Open Data Service, city journeys from
+            National Rail's live departures.
         </p>
         {{ locked.locked_body(lock_label, lock_redirect) }}
         {% else %}
@@ -5547,8 +5489,9 @@ Listed building data from Historic England's
 
         // One more try before "Data unavailable" (18 Sep 2026). The same
         // address read "Data unavailable" on one visit and "52 nearby" on
-        // another that day: OpenStreetMap's server drops a query now and
-        // then and answers the next. A failed request, or a reply that
+        // another that day: OpenStreetMap's server dropped a query now and
+        // then and answered the next (its lookups were replaced by the
+        // official registers on 14 Oct 2026; one retry still costs little). A failed request, or a reply that
         // says the lookup failed, is asked again once after a short wait;
         // a second failure shows what the server sent, or the line below.
         const RETRY_AFTER_MS = 2500;

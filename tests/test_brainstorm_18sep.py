@@ -462,8 +462,10 @@ def test_the_official_strip_names_only_official_bodies(client):
     count = len(app_main.OFFICIAL_SOURCES)
     assert len(first_pass) == count and f"{count} official sources" in body
     note = strip[strip.index('class="sources-strip-note"'):]
-    assert "apart from what is nearby and which way a home faces" in " ".join(note.split())
-    assert "OpenStreetMap, the map its volunteers draw" in " ".join(note.split())
+    # Since 14 Oct 2026 nothing on the report is read from OpenStreetMap,
+    # so the note no longer names an exception.
+    assert "Every figure traces back to an official, openly licensed source." in " ".join(note.split())
+    assert "OpenStreetMap" not in note
 
 
 # ---- 7. Dates and counts the way the rest of the site writes them ----------
@@ -525,7 +527,7 @@ def test_the_share_card_counts_the_checks_the_site_counts():
     assert "\"40 CHECKS  ·" not in source
     assert 'f"{check_count} CHECKS  ·  "' in source
     assert "check_count=CHECK_COUNT" in pathlib.Path("app/main.py").read_text(encoding="utf-8")
-    assert app_main.CHECK_COUNT == 46
+    assert app_main.CHECK_COUNT == 45  # Aspect left the checks on 14 Oct 2026
 
 
 # ---- 8. What Premium covers outside England ----------------------------------
@@ -537,11 +539,11 @@ def test_every_premium_check_says_where_its_source_reaches():
     assert sorted(app_main.PREMIUM_REACH) == sorted(titles)
     assert app_main.premium_reach("England") is None and app_main.premium_reach(None) is None
     wales = app_main.premium_reach("Wales")
-    assert (wales["reach"], wales["total"]) == (10, 16)
+    assert (wales["reach"], wales["total"]) == (9, 15)  # Aspect, UK-wide, left on 14 Oct 2026
     assert wales["missing"] == ["Sewage Discharge", "Historic Contamination", "School Catchment Areas",
                                 "Development Nearby", "Planning Decisions", "Health Services"]
-    assert app_main.premium_reach("Scotland")["reach"] == 7
-    assert app_main.premium_reach("Northern Ireland")["reach"] == 4
+    assert app_main.premium_reach("Scotland")["reach"] == 6  # 7 and 4 with Aspect, until 14 Oct 2026
+    assert app_main.premium_reach("Northern Ireland")["reach"] == 3
     # A name with its own comma is never read as two checks.
     assert "Health, Relationships & Social Grade; Development Nearby" in app_main.premium_reach_sentence("Scotland")
 
@@ -571,7 +573,7 @@ def _welsh():
 def test_the_wall_names_what_premium_cannot_read_in_wales(client, fake_report):
     fake_report(location=_welsh())
     body = " ".join(client.get("/property?postcode=CF63%204AA").text.split())
-    assert "In Wales, 10 of the 16 Premium checks have a source to read." in body
+    assert "In Wales, 9 of the 15 Premium checks have a source to read." in body
     assert ("Development Nearby, Planning Decisions and Health Services draw on records "
             "that do not cover Wales.") in body
     fake_report()

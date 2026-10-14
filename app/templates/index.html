@@ -4,8 +4,10 @@
 {% block title %}Check Any UK Postcode: Sold Prices, Flood Risk, Schools & Crime{% endblock %}
 
 {# "built entirely from official government data" until 18 Sep 2026
-   (first-visitor audit item D6): what is nearby and which way a home
-   faces come from OpenStreetMap, as the sources strip on this page says. #}
+   (first-visitor audit item D6), when what is nearby and which way a home
+   faced came from OpenStreetMap. Since 14 Oct 2026 every figure is an
+   official body's again: the stations and places nearby are read from
+   NaPTAN, the FSA and NHS England, and Aspect is gone. #}
 {% block meta_description %}Check any UK postcode for sold prices, EPC rating, flood risk, crime, schools and more. One free report from official government data, every figure naming its source.{% endblock %}
 {# No Leaflet on this page. The hero backdrop is a fixed, non-interactive,
    blurred view, so it is baked into a single static image - see
@@ -97,7 +99,7 @@
         </h1>
 
         <p class="lx-hero-dek">
-            Forty-six checks on any UK address, each from the body that published
+            Forty-five checks on any UK address, each from the body that published
             it. {{ offer_sentence }}
         </p>
         {# "Whether the house gets a child into the school. What it costs to
@@ -709,8 +711,7 @@
     </div>
     <p class="sources-strip-note">
         Never listings scraped from Rightmove or Zoopla. Every figure traces back to an official, openly
-        licensed source, apart from what is nearby and which way a home faces: those come from
-        OpenStreetMap, the map its volunteers draw, and say so where they appear.
+        licensed source.
     </p>
 </section>
 
@@ -1190,7 +1191,7 @@
        can drift the way a baked-in number would. */
     const CHECKS = [
         'Local Market', 'Valuation', 'Costs', 'Rental', 'Area Prosperity', 'Price Trend',
-        'Energy', 'Extension', 'Aspect', 'Flood Risk', 'Surface Water', 'Sewage',
+        'Energy', 'Extension', 'Flood Risk', 'Surface Water', 'Sewage',
         'Noise', 'Crime', 'Radon', 'Subsidence', 'Air Quality', 'Contamination',
         'Mining', 'Planning', 'Designations', 'Listed Buildings', 'Schools', 'Catchments',
         'Essentials', 'Getting Around', 'Broadband', 'Mobile Signal', 'Income', 'Deprivation',

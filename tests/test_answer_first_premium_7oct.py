@@ -34,7 +34,7 @@ def test_each_answer_leads_and_its_detail_is_a_named_tap(client, monkeypatch):
         "Can I cancel?": ["What happens to your homes"],
         "What do I get that the free report does not show?": ["What that includes"],
         "I am buying outside England. What does Premium cover there?": ["Which checks are England only"],
-        "Where does the data come from?": ["Which bodies, and OpenStreetMap"],
+        "Where does the data come from?": ["Which bodies"],
     }
     cancel = dict(pairs)["Can I cancel?"]
     lead = cancel.split("<details", 1)[0]

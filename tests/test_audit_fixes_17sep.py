@@ -851,7 +851,7 @@ def test_a6_the_homepage_states_the_offer_in_one_sentence_and_the_old_wordings_a
     sentence = html.escape(app_main.OFFER_SENTENCE, quote=False)
 
     dek = body.split('<p class="lx-hero-dek">', 1)[1].split("</p>", 1)[0]
-    assert dek.split()[:5] == ["Forty-six", "checks", "on", "any", "UK"]
+    assert dek.split()[:5] == ["Forty-five", "checks", "on", "any", "UK"]
     # "Whether the house gets a child into the school. What it costs to
     # live there." left the dek on 7 Oct 2026 (answer first); the offer
     # still closes it.
@@ -1165,7 +1165,7 @@ def test_fix_counts_on_alternatives_sign_up_and_council_tax_come_from_the_consta
     assert f"One full Premium report free on sign-up; {free} of {total} checks free on every address" in compare
     # Worded apart from OpenStreetMap since the batch D review (D6).
     assert (f"One report per address: {total} checks from {len(app_main.OFFICIAL_SOURCES)} official bodies, "
-            "with OpenStreetMap for what is nearby") in compare
+            "each figure naming where it came from") in compare
     assert f"The free report shows {free} checks on any UK address with no account." in compare
     assert f"UKPropertyInsight shows {free} of its {total} checks free on any address" in compare
 
@@ -1293,7 +1293,7 @@ def test_b1_the_free_and_locked_lists_are_twenty_nine_and_fifteen(client, fake_r
     # free list on 1 Oct. What this test is for is the split and the
     # three checks the owner moved, not a frozen total.
     assert len(app_main.FREE_CHECKS) == 30
-    assert len(app_main.PREMIUM_CHECKS) == 16
+    assert len(app_main.PREMIUM_CHECKS) == 15  # Aspect left on 14 Oct 2026
     assert len(app_main.FREE_CHECKS) + len(app_main.PREMIUM_CHECKS) == app_main.CHECK_COUNT
 
     free = {c[1] for c in app_main.FREE_CHECKS}
@@ -1437,7 +1437,6 @@ def test_b2_a_postcode_only_report_says_the_extension_check_needs_a_house_number
     assert "Needs a house number · EPC register" == app_main.LOCKED_CARD_NEEDS_HOUSE_NUMBER
     # Nothing else changes: the other fourteen read as they do with a
     # house number.
-    assert _b2_line(body, "Aspect") == _b2_escaped("Aspect")
     assert _b2_line(body, "Valuation Estimate") == _b2_escaped("Valuation Estimate")
 
 
@@ -1606,7 +1605,7 @@ B3_ANSWERS = (
     # projection itself (D3 below): nobody is shown it now, paid or not.
     "17.3", "247,777",                                           # Price Trend
     "2 Mar 2011", "87 m", "Locked Lane",                         # Extended or Modified (day_label since 18 Sep 2026), Aspect
-    "South-west", "Locked Outfall", "312.4",                     # Aspect, Sewage Discharge
+    "Locked Outfall", "312.4",                                   # Sewage Discharge (Aspect left on 14 Oct 2026)
     "Probable by 2030", "34.9", "3.49",                          # Subsidence Risk, Air Quality
     "Locked Tip", "Locked Coalfield",                            # Contamination, Mining Risk
     "Locked Primary", "Lockedshire",                             # School Catchment Areas
@@ -1623,7 +1622,6 @@ B3_MODALS = {
     "Valuation Estimate": "modal-valuation",
     "Price Trend": "modal-price-trend",   # "& Forecast" until D3, 18 Sep 2026
     "Extended or Modified": "modal-extension",
-    "Aspect": "modal-orientation",
     "Sewage Discharge": "modal-sewage",
     "Subsidence Risk": "modal-clay-risk",
     "Air Quality": "modal-air-quality",
@@ -4711,8 +4709,9 @@ def test_d6_one_list_of_publishing_bodies_is_read_from_the_check_lists():
 
     official = _d6_names(app_main.OFFICIAL_SOURCES)
     assert len(official) == len(set(official)), "a body read by several checks is counted once"
-    assert _d6_names(app_main.OPEN_DATA_SOURCES) == ["OpenStreetMap"] and "OpenStreetMap" not in official
-    assert set(official) == named - {"OpenStreetMap"}
+    # OpenStreetMap was the one open-data source until 14 Oct 2026.
+    assert _d6_names(app_main.OPEN_DATA_SOURCES) == [] and "OpenStreetMap" not in official
+    assert set(official) == named
     # The bodies the audit found Premium naming and /methodology leaving out.
     for body in ("Mining Remediation Authority", "NHS England", "Department for Transport", "MHCLG",
                  "HMRC", "Bank of England", "Defra", "National Rail"):
@@ -4724,8 +4723,9 @@ def test_d6_one_list_of_publishing_bodies_is_read_from_the_check_lists():
         assert "Planning Constraints" in by_name[body]["checks"], body
     for body in ("MHCLG", "Welsh Government", "Scottish Government"):
         assert "Council Tax" in by_name[body]["checks"], body
-    assert by_name["NHS England"]["checks"] == ("Health Services",)
-    assert set(by_name["OpenStreetMap"]["checks"]) == {"Nearby Essentials", "Aspect", "Getting Around"}
+    assert by_name["NHS England"]["checks"] == ("Nearby Essentials", "Health Services")
+    assert by_name["Food Standards Agency"]["checks"] == ("Nearby Essentials",)
+    assert "Getting Around" in by_name["Department for Transport"]["checks"]
     assert all(b["url"].startswith("https://") for b in by_name.values())
     assert app_main.templates.env.globals["official_sources"] is app_main.OFFICIAL_SOURCES
     assert app_main.templates.env.globals["open_data_sources"] is app_main.OPEN_DATA_SOURCES
@@ -4755,7 +4755,7 @@ def test_d6_the_homepage_gives_the_lists_length_wherever_it_counts_sources(clien
     visible, structured = _home_faq(body)
     answer = dict(visible)["Where does the data come from?"]
     assert answer.startswith(f"{n} official bodies, shown below, among them HM Land Registry")
-    assert "OpenStreetMap, the map its volunteers draw" in answer and " only" not in answer
+    assert "OpenStreetMap" not in answer and " only" not in answer
     assert "the EPC Register" not in answer
     assert dict(structured)["Where does the data come from?"] == answer
     description = html.unescape(re.search(r'<meta name="description" content="([^"]*)"', body).group(1))
@@ -4772,19 +4772,18 @@ def test_d6_methodology_lists_every_body_the_homepage_counts_and_keeps_openstree
                       section)
     assert [html.unescape(name) for _, name, _ in rows] == [b["full_name"] for b in app_main.OFFICIAL_SOURCES]
     assert len(rows) == n and f"{n} official bodies publish what the checks read." in section
-    assert ("https://www.england.nhs.uk", "NHS England", "Health Services") in rows
+    assert ("https://www.england.nhs.uk", "NHS England", "Nearby Essentials and Health Services") in rows
     defra = next(r for r in rows if "Rural Affairs" in r[1])
     assert html.unescape(defra[1]) == "Department for Environment, Food & Rural Affairs"
     assert html.unescape(defra[2]) == "Noise and Air Quality"
 
     table = section[section.index("<table"):section.index("</table>")]
     assert "OpenStreetMap" not in table
-    assert ("Not an official body, and not counted above: OpenStreetMap, the open map its volunteers draw, "
-            "read for Nearby Essentials, Aspect and Getting Around.") in _d6_text(section)
+    assert "Not an official body" not in _d6_text(section)  # nothing read from OpenStreetMap since 14 Oct 2026
 
     dek = _d6_text(re.search(r'<p class="dek">(.*?)</p>', body, re.S).group(1))
     assert "Every figure has a named official source" not in dek
-    assert "apart from what is nearby and which way a home faces, which come from OpenStreetMap" in dek
+    assert "Every figure has a named source, and every source is an official body." in dek
 
 
 def test_d6_the_wait_page_counts_lookups_not_sources(client, fake_report):
@@ -4805,17 +4804,16 @@ def test_d6_other_pages_give_the_same_count_and_never_say_official_sources_only(
     premium = _d6_text(client.get("/premium").text)
     assert (f"Named official bodies, {n} of them, each listed with the checks it is read for on the "
             "methodology page") in premium
-    assert "the stations nearby also read OpenStreetMap, the map its volunteers draw, and say so" in premium
+    assert "OpenStreetMap" not in premium
 
     data = client.get("/data").text
-    rule = _d6_text(re.search(r"<li><strong>Official sources, and one open map\.</strong>(.*?)</li>", data, re.S).group(1))
-    assert rule == ("Every figure traces to a named government or public body, apart from what is nearby and which "
-                    f"way a home faces, which come from OpenStreetMap and say so. The {n} bodies are listed with the "
+    rule = _d6_text(re.search(r"<li><strong>Official sources\.</strong>(.*?)</li>", data, re.S).group(1))
+    assert rule == (f"Every figure traces to a named government or public body. The {n} bodies are listed with the "
                     "checks each is read for. Nothing is scraped from listings sites.")
     assert '<a href="/methodology#sources">' in data
 
     llms = client.get("/llms.txt").text
-    assert f"from {n} official bodies, with OpenStreetMap for what is nearby:" in llms
+    assert f"from {n} official bodies: sold prices" in llms and "OpenStreetMap" not in llms
 
     pages = {"/": _fresh_home(client), "/premium": client.get("/premium").text, "/data": data,
              "/methodology": client.get("/methodology").text, "/llms.txt": llms}

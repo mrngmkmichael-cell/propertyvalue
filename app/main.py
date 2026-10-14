@@ -2159,13 +2159,16 @@ DATA_SOURCE_GROUPS = [
         {"name": "British Geological Survey", "powers": "Radon potential, clay subsidence risk", "freshness": "Live against BGS's current atlases", "url": "https://www.bgs.ac.uk"},
         {"name": "Mining Remediation Authority", "powers": "Coal mining reporting areas", "freshness": "Live", "url": "https://www.gov.uk/government/organisations/mining-remediation-authority"},
         {"name": "planning.data.gov.uk & council GIS", "powers": "Conservation areas, green belt, listed buildings, designations", "freshness": "Live; national planning data platform", "url": "https://www.planning.data.gov.uk"},
-        {"name": "Food Standards Agency", "powers": "Food hygiene ratings nearby", "freshness": "Live", "url": "https://www.food.gov.uk"},
-        {"name": "OpenStreetMap (Overpass)", "powers": "Shops, GPs, pubs, stations nearby", "freshness": "Live; community-maintained", "url": "https://www.openstreetmap.org"},
+        # OpenStreetMap (Overpass) stood here until 14 Oct 2026, for shops,
+        # GPs, pubs and stations nearby; its service began refusing this
+        # site, and the register below and NaPTAN replaced it.
+        {"name": "Food Standards Agency", "powers": "Food hygiene ratings, and the restaurants, pubs and supermarkets nearby", "freshness": "Live", "url": "https://www.food.gov.uk"},
         {"name": "postcodes.io (ONS/OS data)", "powers": "Postcode lookup, coordinates, area codes, autocomplete", "freshness": "Live; rebuilt on ONS postcode releases", "url": "https://postcodes.io"},
     ]),
     ("Imported in bulk, refreshed on the publisher's cycle", [
         {"name": "DfE schools & Ofsted", "powers": "Schools nearby, ratings, exam results, school landscape", "freshness": "Imported; refreshed when DfE/Ofsted publish", "url": "https://www.gov.uk/government/organisations/department-for-education"},
         {"name": "Council catchment data", "powers": "Published admission distances and boundary shapes", "freshness": "Imported per council academic year, labelled real vs estimated", "url": "https://www.gov.uk/school-admissions"},
+        {"name": "NaPTAN (Department for Transport) & TfL", "powers": "Every rail, Underground, metro and tram station, and the Underground lines at each", "freshness": "Imported monthly", "url": "https://www.gov.uk/government/publications/national-public-transport-access-node-schema"},
         {"name": "Ofcom Connected Nations", "powers": "Broadband speeds and mobile coverage", "freshness": "Imported; Ofcom publishes twice a year", "url": "https://www.ofcom.org.uk"},
         {"name": "ONS Census 2021 & area statistics", "powers": "Demographics, occupations, qualifications, wellbeing, income, deprivation", "freshness": "Imported; Census 2021 plus current ONS small-area series", "url": "https://www.ons.gov.uk"},
         {"name": "ONS Price Index of Private Rents", "powers": "Typical rents by area", "freshness": "Imported; ONS publishes monthly", "url": "https://www.ons.gov.uk"},
@@ -3097,7 +3100,7 @@ def _admission_stats() -> dict:
 # pillar strip was outside that script's reach and still read 40 on 12 Sep
 # 2026 while the same page said 44 three times, which is why it now reads
 # this constant instead of a literal of its own.
-CHECK_COUNT = 46
+CHECK_COUNT = 45
 
 # Every check by plan, in the report's own card titles: (icon, title,
 # what it shows, source). The pricing page lists these and the landing
@@ -3138,9 +3141,11 @@ FREE_CHECKS = (
     ('schools', 'State Schools', 'Primary and secondary, counted', 'DfE Get Information About Schools'),
     ('schools', 'Private Schools', 'Fee-paying, prep and senior', 'DfE Get Information About Schools'),
     ('schools', 'Universities', 'Higher education institutions nearby', 'DfE Get Information About Schools'),
-    # 'OpenStreetMap' alone until 18 Sep 2026 (item D6): the card opens on
-    # the Food Standards Agency's hygiene ratings as well.
-    ('amenities', 'Nearby Essentials', 'Shops, GPs, parks and more', 'OpenStreetMap, Food Standards Agency'),
+    # 'OpenStreetMap' alone until 18 Sep 2026 (item D6), and with the Food
+    # Standards Agency until 14 Oct 2026, when OpenStreetMap's Overpass
+    # service began refusing this site: restaurants, pubs and supermarkets
+    # now come from the FSA's register, GP surgeries from NHS England.
+    ('amenities', 'Nearby Essentials', 'Restaurants, shops, pubs and GPs', 'Food Standards Agency, NHS England'),
     ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
     ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
     ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
@@ -3157,14 +3162,17 @@ PREMIUM_CHECKS = (
     # line fitted to the index, and it is gone.
     ('statistics', 'Price Trend', 'Changes over 1, 5 and 10 years', 'UK House Price Index'),
     ('extension', 'Extended or Modified', 'Floor area changes over time', 'EPC history'),
-    ('orientation', 'Aspect', 'Which way garden and rooms face', 'Derived from OpenStreetMap'),
+    # Aspect, which way the garden and rooms face, stood here until 14 Oct
+    # 2026. It was worked out from OpenStreetMap's building outlines, and
+    # when OpenStreetMap's service began refusing this site no official
+    # national source could replace it: no source, no feature.
     ('flood', 'Sewage Discharge', 'Storm overflows, spills and hours', 'Environment Agency'),
     ('geology', 'Subsidence Risk', 'Clay shrink-swell, 2030 and 2050', 'British Geological Survey'),
     ('air_quality', 'Air Quality', 'Against WHO guidelines', 'Defra Pollution Climate Mapping'),
     ('landfill', 'Historic Contamination', 'Former landfill sites nearby', 'Environment Agency'),
     ('mining', 'Mining Risk', 'Coal Mining Reporting Areas', 'Mining Remediation Authority'),
     ('schools', 'School Catchment Areas', 'Real admission distances', 'Council admissions data'),
-    ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, OpenStreetMap'),
+    ('transport', 'Getting Around', 'Stations and live city train times', 'National Rail, DfT NaPTAN'),
     ('wellbeing', 'Health, Relationships & Social Grade', 'Health and social grade mix', 'Census 2021'),
     ('planning', 'Development Nearby', 'Brownfield register sites within half a mile', 'MHCLG planning data platform'),
     ('planning', 'Planning Decisions', 'What this council grants, and how often it needs longer', 'MHCLG planning application statistics'),
@@ -3185,7 +3193,7 @@ PREMIUM_CHECKS = (
 REPORT_GROUPS = (
     ('Value & Market', ('Local Market', 'Council Tax', 'Valuation Estimate', 'Costs & Affordability',
                         'Rental Analysis', 'Area Prosperity', 'Price Trend')),
-    ('Property & Condition', ('Energy Efficiency', 'Extended or Modified', 'Aspect')),
+    ('Property & Condition', ('Energy Efficiency', 'Extended or Modified')),
     ('Risk & Safety', ('Flood Risk', 'Surface Water Risk', 'Sewage Discharge', 'Noise', 'Crime & Safety',
                        'Road Safety', 'Radon Gas', 'Subsidence Risk', 'Air Quality', 'Historic Contamination',
                        'Mining Risk')),
@@ -3231,8 +3239,9 @@ def checks_by_group() -> list[dict]:
 # bodies that publish it, so a source naming two bodies counts both and a
 # body read by five checks counts once. A test holds every source in the
 # two lists to an entry here, so a new check cannot bring a body the
-# count misses. OpenStreetMap is the map its volunteers draw, open data
-# rather than an official body, so it is kept apart and said separately.
+# count misses. OpenStreetMap, the map its volunteers draw, was kept
+# apart as open data rather than an official body until 14 Oct 2026,
+# when the three checks that read it moved to official sources or went.
 # The wait page's 19 are lookups, several to one body, and say so.
 _SOURCE_BODIES = {
     'HM Land Registry': ('HM Land Registry',),
@@ -3262,11 +3271,10 @@ _SOURCE_BODIES = {
     'Historic England': ('Historic England',),
     'Ofsted, DfE': ('Ofsted', 'Department for Education'),
     'DfE Get Information About Schools': ('Department for Education',),
-    'OpenStreetMap, Food Standards Agency': ('OpenStreetMap', 'Food Standards Agency'),
-    'Derived from OpenStreetMap': ('OpenStreetMap',),
+    'Food Standards Agency, NHS England': ('Food Standards Agency', 'NHS England'),
     'Mining Remediation Authority': ('Mining Remediation Authority',),
     'Council admissions data': ('Local councils',),
-    'National Rail, OpenStreetMap': ('National Rail', 'OpenStreetMap'),
+    'National Rail, DfT NaPTAN': ('National Rail', 'Department for Transport'),
     'DfT Bus Open Data Service': ('Department for Transport',),
     'DfT road safety data': ('Department for Transport',),
     'MHCLG planning application statistics': ('MHCLG',),
@@ -3274,7 +3282,7 @@ _SOURCE_BODIES = {
 }
 
 # Each body once: (link, icon, name in full where the lists abbreviate
-# it, official). Only OpenStreetMap is not official.
+# it, official). Every one is official since 14 Oct 2026.
 _BODY_DETAILS = {
     'HM Land Registry': ('https://www.gov.uk/government/organisations/land-registry', 'land_registry', '', True),
     'HMRC': ('https://www.gov.uk/government/organisations/hm-revenue-customs', 'income', 'HM Revenue & Customs', True),
@@ -3294,7 +3302,6 @@ _BODY_DETAILS = {
     'Historic England': ('https://historicengland.org.uk', 'heritage', '', True),
     'Ofsted': ('https://www.gov.uk/government/organisations/ofsted', 'ofsted', '', True),
     'Department for Education': ('https://www.gov.uk/government/organisations/department-for-education', 'schools', '', True),
-    'OpenStreetMap': ('https://www.openstreetmap.org', 'map', '', False),
     'Food Standards Agency': ('https://www.food.gov.uk', 'food', '', True),
     'Mining Remediation Authority': ('https://www.gov.uk/government/organisations/mining-remediation-authority', 'mining', '', True),
     'Local councils': ('https://www.gov.uk/find-local-council', 'pupils', '', True),
@@ -3339,7 +3346,6 @@ LOCKED_CARD_LINES = {
     'Valuation Estimate': 'A price range from recorded sales nearby · HM Land Registry',
     'Price Trend': 'How local prices moved over one, five and ten years · UK House Price Index',
     'Extended or Modified': 'Whether the floor area changed between certificates · EPC register',
-    'Aspect': 'Which way the garden and main rooms face · OpenStreetMap outlines',
     'Sewage Discharge': 'Storm overflow spills nearby, and for how long · Environment Agency',
     'Subsidence Risk': 'Clay shrink-swell risk by 2030 and 2050 · British Geological Survey',
     'Air Quality': 'Nitrogen dioxide and particles against WHO guidelines · Defra',
@@ -3431,7 +3437,6 @@ PREMIUM_REACH = {
     "Valuation Estimate": _REACH_ENGLAND_WALES,
     "Price Trend": _REACH_UK,  # "Price Trend & Forecast" until the projection went, 18 Sep 2026
     "Extended or Modified": _REACH_ENGLAND_WALES,
-    "Aspect": _REACH_UK,
     "Sewage Discharge": _REACH_ENGLAND,
     "Subsidence Risk": _REACH_GB,
     "Air Quality": _REACH_UK,
@@ -3644,11 +3649,12 @@ def index(request: Request):
         # EPC Register, ..." until 18 Sep 2026 (first-visitor audit item
         # D6). The strip below it now lists OFFICIAL_SOURCES, which names
         # the EPC register's publisher rather than the register, and keeps
-        # OpenStreetMap apart, so "only" was no longer true of it.
+        # OpenStreetMap apart, so "only" was no longer true of it. Since 14
+        # Oct 2026 nothing is read from OpenStreetMap, and the answer stops
+        # naming it.
         ("Where does the data come from?",
          f"{len(OFFICIAL_SOURCES)} official bodies, shown below, among them HM Land Registry, the Environment "
-         "Agency, ONS, the Department for Education, Ofsted and Police.uk. What is nearby and which way a home "
-         "faces come from OpenStreetMap, the map its volunteers draw, and say so. Nothing scraped, nothing "
+         "Agency, ONS, the Department for Education, Ofsted and Police.uk. Nothing scraped, nothing "
          "guessed. Every figure traces back to a source."),
         ("Will my child get into the school near a house I am looking at?",
          "Every report and every school page measures an address against how far the school admitted from in its "
@@ -5454,6 +5460,16 @@ def _server_timing_header() -> str:
     return ", ".join(f"{k};dur={v * 1000:.0f}" for k, v in top)
 
 
+def amenity_total(categories: dict, cat: str) -> int:
+    """How many of a kind are within range: the register's own total where
+    it gives one (14 Oct 2026, the FSA's), else the length of the list."""
+    totals = categories.get("_totals") or {}
+    return totals.get(cat, len(categories.get(cat) or []))
+
+
+templates.env.globals["amenity_total"] = amenity_total
+
+
 def _apply_amenities(context: dict, result: dict) -> None:
     """The context keys the amenities cards and modals read, from one
     nearby_amenities_and_station result. Shared by the main gather and
@@ -7111,7 +7127,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
     if amenities_data:
         nearest_transport = min(amenities_data["stations"].values(), key=lambda s: s["distance_m"], default=None)
         essentials_count = sum(
-            len(amenities_data["categories"].get(cat, []))
+            amenity_total(amenities_data["categories"], cat)
             for cat in ("restaurant", "supermarket", "pharmacy", "pub", "hospital")
         )
     else:
@@ -7341,15 +7357,6 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         if area_reviews and area_reviews.get("reviews") else None
     )
 
-    aspect_detail = table_detail(
-        ["", ""],
-        [
-            ["Garden faces", orientation_data["rear_facing"]],
-            ["Front faces", orientation_data["front_facing"]],
-            ["Nearest road", orientation_data.get("nearest_road") or "Not recorded"],
-        ],
-    ) if orientation_data else None
-
     essentials_detail = list_detail([
         f"{cat.replace('_', ' ').title()}: " + ", ".join(p["name"] for p in amenities_data["categories"].get(cat, [])[:3])
         for cat in ("restaurant", "supermarket", "pharmacy", "pub", "hospital")
@@ -7434,12 +7441,6 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
                 # postcode or an area-level one, so this always shows
                 # the site's own "no house number" fallback text.
                 card("Extended or Modified", "Search with a house number", "muted"),
-                card(
-                    "Aspect",
-                    "Ask agent for exact address" if area_level else (f"Garden faces {orientation_data['rear_facing']}" if orientation_data else "No data"),
-                    "muted" if area_level else "ok",
-                    detail=None if area_level else aspect_detail,
-                ),
             ],
         },
         {
@@ -8806,7 +8807,8 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         "pub": "pubs", "hospital": "hospitals",
     }
     amenity_summary = [
-        {"count": len(amenities_data["categories"][cat]), "label": label if len(amenities_data["categories"][cat]) != 1 else cat}
+        {"count": amenity_total(amenities_data["categories"], cat),
+         "label": label if amenity_total(amenities_data["categories"], cat) != 1 else cat}
         for cat, label in amenity_plurals.items()
         if amenities_data and amenities_data["categories"].get(cat)
     ]
@@ -15020,13 +15022,13 @@ async def llms_txt(request: Request):
     so an assistant citing a figure can link the page it came from.
 
     "from official sources only" until 18 Sep 2026 (first-visitor audit
-    item D6): the reports read OpenStreetMap for what is nearby and which
-    way a home faces, and /methodology now keeps it apart from the
-    official bodies it counts (OFFICIAL_SOURCES)."""
+    item D6), and "with OpenStreetMap for what is nearby" until 14 Oct
+    2026, when what is nearby moved to official registers and which way a
+    home faces went. Every body is in OFFICIAL_SOURCES."""
     base = _public_base_url(request)
     text = f"""# UKPropertyInsight
 
-> Free due-diligence reports for UK home buyers, from {len(OFFICIAL_SOURCES)} official bodies, with OpenStreetMap for what is nearby: sold prices, flood risk, crime, schools and, uniquely, how far each state school admitted from (the council's published "last distance offered"). Every figure names its source; nothing is modelled where a real figure exists.
+> Free due-diligence reports for UK home buyers, from {len(OFFICIAL_SOURCES)} official bodies: sold prices, flood risk, crime, schools and, uniquely, how far each state school admitted from (the council's published "last distance offered"). Every figure names its source; nothing is modelled where a real figure exists.
 
 ## Data pages
 
