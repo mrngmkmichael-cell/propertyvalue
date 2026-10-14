@@ -216,7 +216,7 @@
     {# A spent account's locked cards and locked PDF button carry the home to
        Premium, as the wall's "See plans" does (batch C fix pass, 17 Sep
        2026): a bare /premium dropped the house at the door. #}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium"))) %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium")) %}
         <div class="report-head-top">
             <div class="report-head-main">
                 {% set breadcrumb_parts = [] %}
@@ -289,7 +289,7 @@
                    measured wider than a 375px phone leaves it room for. #}
                 <a class="pdf-download-btn pdf-download-btn-locked" href="{{ lock_redirect }}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-                    {% if current_user and not can_unlock_now and not needs_confirmation %}PDF report &middot; Premium{% else %}Free PDF for your first home{% endif %}
+                    {% if current_user and not can_unlock_now %}PDF report &middot; Premium{% else %}Free PDF for your first home{% endif %}
                 </a>
                 {% endif %}
             </div>
@@ -388,11 +388,9 @@
                    locked cards keep back, so it is not named, not hinted
                    at, and not linked to a card here. #}
                 {% set extra_n = overview.premium_extra_checks %}
-                <a href="{% if current_user and not can_unlock_now and not needs_confirmation %}{{ premium_home_url }}{% else %}{{ lock_redirect }}{% endif %}" class="overview-score-upsell">
+                <a href="{% if current_user and not can_unlock_now %}{{ premium_home_url }}{% else %}{{ lock_redirect }}{% endif %}" class="overview-score-upsell">
                     {% if current_user and can_unlock_now %}
                     {{ locked_found_sentence(extra_n) }}. Open them with your free full report →
-                    {% elif current_user and needs_confirmation %}
-                    {{ locked_found_sentence(extra_n) }}. Open them with your free full report, once your email address is confirmed →
                     {% elif current_user %}
                     {{ locked_found_sentence(extra_n) }}. Open them with Premium →
                     {% else %}
@@ -1006,7 +1004,7 @@
     {# Logged-out visitors have a free trial waiting, so say that rather
        than "upgrade", which implies paying. Existing accounts whose
        trial has run out do see the upgrade wording. #}
-    {% set lock_label = "Sign up: 1 free full report" if not current_user else ("Confirm your email to unlock your free full report" if needs_confirmation else ("Use your free full report here" if can_unlock_now else "Upgrade to Premium to unlock")) %}
+    {% set lock_label = "Sign up: 1 free full report" if not current_user else ("Use your free full report here" if can_unlock_now else "Upgrade to Premium to unlock") %}
     {# Back to THIS property after signing up, not to the pricing page.
        Four of the twelve accounts that never opened a report have a
        logged-in history consisting entirely of /premium: they clicked a
@@ -1017,7 +1015,7 @@
     {# A spent account's locked cards and locked PDF button carry the home to
        Premium, as the wall's "See plans" does (batch C fix pass, 17 Sep
        2026): a bare /premium dropped the house at the door. #}
-    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#verify-banner" if needs_confirmation else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium"))) %}
+    {% set lock_redirect = ("/signup?next=" ~ (_return_to | urlencode)) if not current_user else ("#use-free-report" if can_unlock_now else (premium_home_url or "/premium")) %}
 
     {% if not premium_unlocked %}
     {# Outside England, how many Premium checks have a source to read here
@@ -1044,21 +1042,16 @@
         {# 17 Sep 2026: a new account was told "You've used your free
            report", with a price and "See plans", a scroll below the offer
            asking whether to use that same report here. The signed-in wall
-           never checked can_unlock_now or needs_confirmation. Now the
-           used-up wording is only for an account that has spent its
-           report. With it unused the page keeps its one ask (16 Sep 2026)
-           and this only points back at it; unconfirmed, it points at the
-           confirmation banner. Neither carries a button of its own. #}
+           never checked can_unlock_now. Now the used-up wording is only
+           for an account that has spent its report. With it unused the
+           page keeps its one ask (16 Sep 2026) and this only points back
+           at it, with no button of its own. An unconfirmed address no
+           longer waits here (14 Oct 2026). #}
         {% elif can_unlock_now %}
         <div class="paywall-banner-copy">
             <strong>The locked cards below open with your free full report.</strong>
             It is only used when you choose &ldquo;Yes, unlock every card&rdquo; <a href="#use-free-report">at the top of this report</a>.
             {{ reach_aside }}
-        </div>
-        {% elif needs_confirmation %}
-        <div class="paywall-banner-copy">
-            <strong>Your free full report is waiting for a confirmed email address.</strong>
-            Confirm yours with the link we sent, and this page will then ask whether to use the report here. <a href="#verify-banner">Need the link again?</a>
         </div>
         {% else %}
         {# The second and later visits to this wall say something the

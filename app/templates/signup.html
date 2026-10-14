@@ -18,11 +18,9 @@
    page knew it (next= carries the postcode) and did not say so until
    16 Sep 2026. Until 17 Sep 2026 it said "sign up and it opens in
    full", but signing up spends nothing: the report asks once whether
-   to use the free full report there, and the owner kept that yes. A
-   password account also confirms its address first while confirmation
-   is switched on (auth.needs_confirmation); a Google, Facebook or
-   LinkedIn sign-in is confirmed on creation. #}
-{% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up, say yes once on the report, and it opens in full.{% if verification_available() %} With an email and password, confirm your address first.{% endif %}</p>{% endif %}
+   to use the free full report there, and the owner kept that yes.
+   Confirming the email address no longer comes first (14 Oct 2026). #}
+{% if free_report_for %}<p class="dek signup-for">Your free full report will be <strong>{{ free_report_for }}</strong>, the one you came from: sign up, say yes once on the report, and it opens in full.</p>{% endif %}
 {% endif %}
 
 {% with verb = "Signing up" %}{% include "_save_school_note.html" %}{% endwith %}

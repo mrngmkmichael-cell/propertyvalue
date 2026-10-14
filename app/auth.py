@@ -95,12 +95,17 @@ def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> boo
     unlocked, which is the common case for a refresh or a return visit.
     The IntegrityError branch covers two tabs racing on the same new
     property: the unique constraint rejects the second write, and the
-    user still gets access because the first one succeeded."""
+    user still gets access because the first one succeeded.
+
+    An unconfirmed email address no longer holds the free report back
+    (Michael, 14 Oct 2026, reversing his rule of 7 Sep). Of the six
+    people who signed up with an email address from 2 Oct, three never
+    used their free report: one never confirmed, and two confirmed 9 and
+    44 minutes later and never came back to the house. Confirmation now
+    gates only the change alerts (main._email_can_receive)."""
     pc, hn = property_key(postcode, house_number)
     if has_unlocked(db, user_id, pc, hn):
         return True
-    if needs_confirmation(db, user_id):
-        return False
     if unlocks_used(db, user_id) >= FREE_PREMIUM_UNLOCKS:
         return False
 
@@ -110,24 +115,6 @@ def claim_unlock(db, user_id: int, postcode: str, house_number: str = "") -> boo
     except IntegrityError:
         db.rollback()
     return True
-
-
-def needs_confirmation(db, user_id: int) -> bool:
-    """Whether the free full report is waiting on a confirmed address.
-
-    Michael's rule of 7 Sep 2026: the basic report is free to anyone, but
-    the one free full report is the reward for confirming an email
-    address, so a made-up address cannot collect it. Google arrivals are
-    confirmed on creation and accounts from before that day were marked
-    confirmed once, so neither ever sees this. Nothing is asked until a
-    sending domain exists (email.can_verify), because a confirmation
-    that cannot be delivered would lock everyone out."""
-    from app.services import email as email_service  # local: keeps auth importable without the mail layer
-
-    if not email_service.can_verify():
-        return False
-    user = db.get(User, user_id)
-    return user is not None and user.email_verified_at is None
 
 
 def has_active_premium(user) -> bool:

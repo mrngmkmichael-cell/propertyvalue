@@ -103,24 +103,30 @@ def test_a1_the_used_up_wall_is_for_an_account_that_spent_its_report(client, fak
     assert words == app_main.locked_found_sentence(1) + ". Open them with Premium →"
 
 
-def test_a1_an_unconfirmed_account_is_pointed_at_confirming_not_told_it_is_used(client, fake_report, monkeypatch):
+def test_a1_an_unconfirmed_account_is_offered_its_free_report_like_any_other(client, fake_report, monkeypatch):
+    """Until 14 Oct 2026 an unconfirmed address was pointed at the
+    confirmation banner and its free report waited. Half the October
+    email sign-ups never got theirs, so it no longer waits: the banner
+    asks for confirmation for the alerts alone."""
     _live(monkeypatch)
     fake_report(location=fake_location(postcode="M14 8AA", outcode="M14"))
     assert _signup(client, "a1-unconfirmed@customer.test").status_code == 303
     with db.get_session() as session:
-        uid = auth.find_user_by_email(session, "a1-unconfirmed@customer.test").id
-        assert auth.needs_confirmation(session, uid) is True
+        assert auth.find_user_by_email(session, "a1-unconfirmed@customer.test").email_verified_at is None
 
     body = client.get("/property?postcode=M14+8AA").text
     assert 'id="verify-banner"' in body
+    verify = body.split('id="verify-banner"', 1)[1].split("</div>", 1)[0]
+    assert "change alerts" in verify and "free full report" not in verify
     assert USED_UP not in body and "See plans" not in body
+    assert 'id="use-free-report-dialog"' in body
     banner = _banner(body)
-    assert 'href="#verify-banner"' in banner
+    assert 'href="#use-free-report"' in banner and 'href="#verify-banner"' not in banner
     assert 'class="paywall-banner-cta"' not in banner and "<button" not in banner
 
     href, words = _upsell(body)
-    assert href == "#verify-banner"
-    assert "Premium" not in words
+    assert href == "#use-free-report"
+    assert words == app_main.locked_found_sentence(1) + ". Open them with your free full report →"
 
 
 def test_a1_signed_out_the_score_link_carries_the_house_to_sign_up(client, fake_report):
@@ -415,11 +421,12 @@ def test_a3_sign_up_for_a_named_house_says_the_yes_comes_first(client, monkeypat
     assert line == ("Your free full report will be <strong>36, KT3 4HX</strong>, the one you came from: "
                     "sign up, say yes once on the report, and it opens in full.")
 
-    # With confirmation switched on, a password account confirms first.
+    # With confirmation switched on the line is the same: since 14 Oct
+    # 2026 confirming the address no longer comes before the report.
     _live(monkeypatch)
     line = _signup_line(client.get(url).text)
-    assert "sign up and it opens in full" not in line
-    assert line.endswith("say yes once on the report, and it opens in full. With an email and password, confirm your address first.")
+    assert "sign up and it opens in full" not in line and "confirm your address" not in line
+    assert line.endswith("say yes once on the report, and it opens in full.")
 
     # The alert promise is the one My properties makes, not "anything".
     # Since E5 (18 Sep 2026) it names the triggers, not "something".
@@ -1034,12 +1041,14 @@ def test_fix_the_locked_pdf_button_says_premium_only_once_the_free_report_is_spe
 
 
 def test_fix_an_unconfirmed_account_is_not_told_the_pdf_is_premium(client, fake_report, monkeypatch):
+    # Since 14 Oct 2026 the locked PDF points an unconfirmed account at
+    # its free report, as it does any account with one unspent.
     _live(monkeypatch)
     fake_report(location=fake_location(postcode="M27 1AA", outcode="M27"))
     assert _signup(client, "fix-pdf-unconfirmed@customer.test").status_code == 303
     body = client.get("/property?postcode=M27+1AA").text
     assert 'id="verify-banner"' in body
-    assert _locked_pdf_button(body) == ("#verify-banner", FREE_PDF_LABEL)
+    assert _locked_pdf_button(body) == ("#use-free-report", FREE_PDF_LABEL)
     assert "PDF report &middot; Premium" not in body
 
 
@@ -3139,14 +3148,15 @@ def test_c3_premium_offers_an_unspent_free_report_and_no_price(client, monkeypat
     for price in stripe_billing.plan_prices().values():
         assert price not in block
 
-    # Waiting on confirmation, the report is claimed from the banner.
+    # Unconfirmed, the same offer since 14 Oct 2026: the free report no
+    # longer waits on the confirmation link.
     _live(monkeypatch)
     email = "c3-unspent-unconfirmed@customer.test"
     assert _signup(client, email).status_code == 303
     block = " ".join(_home_block(client.get(with_home).text).split())
-    assert "/premium/checkout" not in block
-    assert ('<a href="/property?postcode=M35+1AA&amp;house_number=7#verify-banner">7 M35 1AA</a>, '
-            f'with no card, once you confirm {email}.') in block
+    assert "/premium/checkout" not in block and "once you confirm" not in block
+    assert ('<a href="/property?postcode=M35+1AA&amp;house_number=7#use-free-report">7 M35 1AA</a>, '
+            'with no card.') in block
 
 
 def test_c2_premium_types_no_price_the_plans_already_hold():

@@ -257,17 +257,10 @@
 
     {# Email confirmation. Shown only once a sending domain exists
        (verification_available) and only to signed-in accounts that have
-       not confirmed. Two things wait on it: the change alerts, which
-       cannot go to an address that bounces, and the one free full
-       report, which auth.claim_unlock holds back so a made-up address
-       cannot collect it. The basic report is never gated.
-
-       Worth knowing before this switches on: every one of the twelve
-       most recent unlocks happened between 1 and 33 seconds after the
-       account was created (measured 7 Sep 2026), so for almost everyone
-       this banner will appear at the exact moment they were about to
-       read their report. The link in the confirmation mail carries the
-       property they were on, so the round trip returns them there. #}
+       not confirmed. The change alerts wait on it, because they cannot
+       go to an address that bounces. The free full report waited on it
+       too from 7 Sep to 14 Oct 2026, and half of the people who signed
+       up by email in October never got theirs, so it no longer does. #}
     {% if current_user and not current_user.email_verified and verification_available() %}
     <div class="trial-banner" id="verify-banner">
         <span class="trial-banner-text verify-banner-text">
@@ -278,7 +271,7 @@
             {% elif request.query_params.get("verify") == "failed" %}
                 We could not send the link just now. Try again in a few minutes.
             {% else %}
-                Confirm {{ current_user.email }} to unlock your free full report and receive change alerts. We sent a link; check your inbox and spam.
+                Confirm {{ current_user.email }} to receive change alerts on the homes and schools you save. We sent a link; check your inbox and spam.
             {% endif %}
         </span>
         <form action="/verify-email/resend" method="post" style="display: inline;">

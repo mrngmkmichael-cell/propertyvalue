@@ -4857,15 +4857,13 @@ async def _render_property(request: Request, postcode: str, house_number: str, _
             # stray postcode or not. Now the page offers it, and the spend
             # happens only when they say yes (POST /property/unlock).
             premium_unlocked = auth.has_unlocked(unlock_session, current["id"], canonical, house_number)
-            # Refused because the address is not confirmed yet: the free
-            # report is still theirs, one click away. Not a paywall.
-            context["needs_confirmation"] = (not premium_unlocked) and auth.needs_confirmation(unlock_session, current["id"])
+            # An unconfirmed address is offered its free report like any
+            # other since 14 Oct 2026 (see auth.claim_unlock).
             state = auth.premium_state(
                 unlock_session.get(User, current["id"]), unlock_session
             )
-            context["can_unlock_now"] = (not premium_unlocked and not context["needs_confirmation"]
-                                         and state["free_unlocks_left"] > 0)
-            if (not premium_unlocked and not context["needs_confirmation"] and not context["can_unlock_now"]
+            context["can_unlock_now"] = not premium_unlocked and state["free_unlocks_left"] > 0
+            if (not premium_unlocked and not context["can_unlock_now"]
                     and not _is_excluded_viewer(request)):
                 # The paywall moment: an account with no free reports
                 # left opened a property it has not unlocked. Stored as

@@ -141,11 +141,9 @@
        2026, batch C review). The pay buttons went to every account
        without a subscription, so an account that had never used its
        free report, the one the locked PDF sends here, was offered two
-       prices for a home it could open with no card. Waiting on
-       confirmation, the report is claimed from the confirmation banner. #}
+       prices for a home it could open with no card. #}
     {% if current_user.free_unlocks_left %}
-    {% set confirm_first = not current_user.email_verified and verification_available() %}
-    <p class="premium-home-aside">Your free full report can open <a href="{{ home.url }}#{{ 'verify-banner' if confirm_first else 'use-free-report' }}">{{ home.label }}</a>, with no card{% if confirm_first %}, once you confirm {{ current_user.email }}{% endif %}.</p>
+    <p class="premium-home-aside">Your free full report can open <a href="{{ home.url }}#use-free-report">{{ home.label }}</a>, with no card.</p>
     {% elif ordered_plans %}
     <div class="premium-home-plans">
         {% for plan in ordered_plans %}
