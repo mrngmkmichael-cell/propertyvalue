@@ -14,7 +14,12 @@ import httpx
 from app.services import _cache
 
 API_BASE = "https://api.ratings.food.gov.uk/Establishments"
-SEARCH_RADIUS_MILES = 0.5
+# Whole miles only. The API reads a fraction (0.5, 0.62) as its own 3-mile
+# default without saying so: on 14 Oct 2026 a limit of 0.62 or 0.1 counted
+# 1,073 restaurants near LS6 3HN, a limit of 1 counted 137, and 3 counted
+# 1,073 again. This list asked for half a mile until then, and so could run
+# to three miles wherever fewer than 15 places were nearer.
+SEARCH_RADIUS_MILES = 1
 CACHE_TTL_S = 86400 * 3  # ratings are reassessed periodically, not real-time
 RESULT_LIMIT = 15
 
@@ -28,7 +33,7 @@ HEADERS = {"x-api-version": "2", "Accept": "application/json"}
 # all four nations. The count is the register's own total within the
 # radius, not the length of the short list shown.
 PLACE_TYPES = {"restaurant": 1, "supermarket": 7840, "pub": 7843}
-PLACE_RADIUS_MILES = 0.62  # 1 km, the radius the OpenStreetMap search used
+PLACE_RADIUS_MILES = 1  # whole miles only, see SEARCH_RADIUS_MILES
 PLACE_LIST_LIMIT = 10
 PLACES_SOURCE = "the Food Standards Agency's register of food businesses"
 

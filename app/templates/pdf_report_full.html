@@ -716,7 +716,7 @@ under-reported, so this is weaker evidence than a high count would be.</p>
     <tr><td class="b">{{ label }}</td><td class="num">{{ "{:,}".format(amenity_total(amenities, key)) }}</td><td>{% if items %}{{ items[0].name }}{% else %}&nbsp;{% endif %}</td><td class="num">{% if items %}{{ items[0].distance_m | distance }}{% else %}<span class="faint">none within range</span>{% endif %}</td></tr>
     {% endfor %}
 </table>
-<p class="tiny faint">Restaurants, supermarkets and pubs within 1 km from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
+<p class="tiny faint">Restaurants, supermarkets and pubs within a mile, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
 </td></tr></table>
 {% endif %}
 

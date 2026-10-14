@@ -56,7 +56,7 @@
        with the register's own count; the rest are named once below, so a
        category nobody can read never shows as a zero. #}
     {% set covered = amenities.get('_covered') %}
-    <p class="section-sub">Restaurants and cafés, supermarkets and pubs within 1 km, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
+    <p class="section-sub">Restaurants and cafés, supermarkets and pubs within a mile, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
     {% for key, label in [("restaurant", "restaurants and cafés"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
     {% if covered is none or key in covered %}
     <details class="amenity-group">

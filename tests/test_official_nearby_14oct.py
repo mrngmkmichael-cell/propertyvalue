@@ -86,6 +86,12 @@ def test_the_card_lists_only_what_a_register_covers_and_says_what_it_does_not(mo
     assert "OpenStreetMap." not in body.split("Not shown")[0]
 
 
+def test_the_register_is_asked_in_whole_miles():
+    """A fractional limit is read by the FSA API as its 3-mile default."""
+    assert food_hygiene.PLACE_RADIUS_MILES == 1 and food_hygiene.SEARCH_RADIUS_MILES == 1
+    assert isinstance(food_hygiene.PLACE_RADIUS_MILES, int) and isinstance(food_hygiene.SEARCH_RADIUS_MILES, int)
+
+
 def test_aspect_is_gone_and_the_count_adds_up():
     titles = [title for _, title, _, _ in app_main.FREE_CHECKS + app_main.PREMIUM_CHECKS]
     assert "Aspect" not in titles
