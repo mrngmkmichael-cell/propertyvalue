@@ -28,6 +28,17 @@ OVERPASS_ENDPOINTS = [
     "https://overpass.openstreetmap.fr/api/interpreter",
     "https://overpass.osm.ch/api/interpreter",
 ]
+# Off since 14 Oct 2026, and to stay off. overpass-api.de now refuses
+# any request that names this site ("UKPropertyInsight", "UKProperty",
+# "PropertyValue") and the "curl/8.7.1" string sent after an earlier
+# refusal, while a made-up client name is answered: a block aimed at
+# us by the people who run it, not an outage. The site does not
+# disguise itself to get round it. Of the other four mirrors, two time
+# out, one is whitelist-only and one holds Swiss data only. Every
+# report was still asking all of them and waiting up to 8 s on the slow
+# two. With this off, the cards that read OpenStreetMap say "Data
+# unavailable" at once, until official sources replace them.
+OVERPASS_ENABLED = False
 # Per-attempt timeout, bounding how long any single mirror can hold
 # up the hedge chain.
 OVERPASS_TIMEOUT_S = 8
@@ -165,6 +176,8 @@ async def _query_overpass(query: str) -> list[dict]:
     """
     global _preferred_endpoint_index
 
+    if not OVERPASS_ENABLED:
+        raise RuntimeError("OpenStreetMap's Overpass service is not used: it refuses this site (14 Oct 2026)")
     start = _preferred_endpoint_index
     order = OVERPASS_ENDPOINTS[start:] + OVERPASS_ENDPOINTS[:start]
 
