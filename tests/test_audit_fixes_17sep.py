@@ -1768,7 +1768,7 @@ def test_b3_the_two_follow_up_endpoints_answer_by_who_is_asking(client, fake_rep
         context["price_per_sqm"] = B3_FINDINGS["price_per_sqm"]
         context["valuation_floor_area_known"] = True
 
-    async def _amenities(_lat, _lon, lite=False):
+    async def _amenities(_lat, _lon, lite=False, country=None):
         return {"categories": B3_FINDINGS["amenities"], "stations": B3_FINDINGS["stations"],
                 "stations_list": B3_FINDINGS["stations_list"]}
 
@@ -5432,10 +5432,10 @@ def test_d7_the_amenities_reply_says_whether_the_lookup_failed(client, fake_repo
     from app.services import amenities as amenities_service
     fake_report()
 
-    async def _down(lat, lon, lite=False):
+    async def _down(lat, lon, lite=False, country=None):
         raise RuntimeError("Overpass dropped the query")
 
-    async def _up(lat, lon, lite=False):
+    async def _up(lat, lon, lite=False, country=None):
         categories = {k: [] for k in ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging",
                                       "gp", "dentist", "green_space", "wind_turbine", "solar_farm")}
         return {"categories": categories, "stations": {}, "stations_list": {"rail": [], "tube": [], "tram": [], "bus": []}}

@@ -127,6 +127,9 @@ def near(lat: float, lon: float, radius_m: int = RADIUS_M) -> dict | None:
             if distance <= radius_m:
                 practices.append(practice_row(row, distance, median))
         practices.sort(key=lambda p: p["distance_m"])
+        # How many are within the radius, before the list is cut to the
+        # nearest few (14 Oct 2026): Nearby essentials counts them.
+        within = len(practices)
         practices = practices[:MAX_PRACTICES]
         trusts = []
         icb_code = practices[0]["icb_code"] if practices else ""
@@ -144,6 +147,7 @@ def near(lat: float, lon: float, radius_m: int = RADIUS_M) -> dict | None:
         "radius_m": radius_m,
         "practices": practices,
         "count": len(practices),
+        "within": within,
         "nearest": nearest,
         "median_patients_per_qualified_gp": median,
         "patients_date": ctx.get("patients_date"),

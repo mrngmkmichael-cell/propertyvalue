@@ -3145,7 +3145,10 @@ FREE_CHECKS = (
     # Standards Agency until 14 Oct 2026, when OpenStreetMap's Overpass
     # service began refusing this site: restaurants, pubs and supermarkets
     # now come from the FSA's register, GP surgeries from NHS England.
-    ('amenities', 'Nearby Essentials', 'Restaurants, shops, pubs and GPs', 'Food Standards Agency, NHS England'),
+    # Pharmacies, dentists and hospitals joined from NHS England's
+    # organisation register and the Care Quality Commission's the same day.
+    ('amenities', 'Nearby Essentials', 'Restaurants, shops, pharmacies, dentists, hospitals and GPs',
+     'Food Standards Agency, NHS England, Care Quality Commission'),
     ('income', 'Household Income', 'Modelled for the small area', 'ONS'),
     ('deprivation', 'Deprivation', 'Index of Multiple Deprivation decile', 'MHCLG, 2025'),
     ('occupation', 'Occupation', 'Managerial to manual split', 'Census 2021'),
@@ -3271,7 +3274,8 @@ _SOURCE_BODIES = {
     'Historic England': ('Historic England',),
     'Ofsted, DfE': ('Ofsted', 'Department for Education'),
     'DfE Get Information About Schools': ('Department for Education',),
-    'Food Standards Agency, NHS England': ('Food Standards Agency', 'NHS England'),
+    'Food Standards Agency, NHS England, Care Quality Commission': ('Food Standards Agency', 'NHS England',
+                                                                     'Care Quality Commission'),
     'Mining Remediation Authority': ('Mining Remediation Authority',),
     'Council admissions data': ('Local councils',),
     'National Rail, DfT NaPTAN': ('National Rail', 'Department for Transport'),
@@ -3308,6 +3312,7 @@ _BODY_DETAILS = {
     'National Rail': ('https://www.nationalrail.co.uk', 'transport', '', True),
     'Department for Transport': ('https://www.gov.uk/government/organisations/department-for-transport', 'bus', '', True),
     'NHS England': ('https://www.england.nhs.uk', 'wellbeing', '', True),
+    'Care Quality Commission': ('https://www.cqc.org.uk', 'wellbeing', '', True),
 }
 
 
@@ -5500,7 +5505,8 @@ async def property_amenities(request: Request, postcode: str = "", house_number:
 
     context: dict = {"amenities_pending": False, "amenities_error": False}
     try:
-        result = await amenities.nearby_amenities_and_station(location["latitude"], location["longitude"])
+        result = await amenities.nearby_amenities_and_station(location["latitude"], location["longitude"],
+                                                              country=location.get("country"))
         _apply_amenities(context, result)
     except Exception:  # noqa: BLE001 - the cards show "unavailable", never a broken page
         logging.warning("amenities fetch failed for %s", location["postcode"], exc_info=True)
@@ -5770,7 +5776,8 @@ async def _full_property_gather(
     async def _amenities():
         cached = amenities.cached_nearby(lat, lon)
         if cached is not None or wait_for_slow:
-            return cached if cached is not None else await amenities.nearby_amenities_and_station(lat, lon)
+            return cached if cached is not None else await amenities.nearby_amenities_and_station(
+                lat, lon, country=location.get("country"))
         context["amenities_pending"] = True
         return None
 
@@ -7067,7 +7074,7 @@ async def api_extension_premium_report(request: Request, postcode: str = ""):
         # the 5km-radius wind turbine search) cuts the Overpass query
         # this extension gather was consistently slowest on, without
         # dropping anything the extension actually shows.
-        amenities.nearby_amenities_and_station(lat, lon, lite=True),
+        amenities.nearby_amenities_and_station(lat, lon, lite=True, country=location.get("country")),
         asyncio.to_thread(area_stats.income_for_msoa, codes.get("msoa", "")),
         asyncio.to_thread(census_stats.occupation_for_lsoa, codes.get("lsoa", "")),
         asyncio.to_thread(census_stats.qualification_for_lsoa, codes.get("lsoa", "")),
@@ -8785,7 +8792,8 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         _timed("school-landscape", asyncio.to_thread(schools_db.school_landscape, lat, lon)),
         _timed("flood-zone", flood_zones.zone_for(lat, lon, location.get("country"))),
         _timed("deprivation", asyncio.to_thread(area_stats.deprivation_for_lsoa, codes.get("lsoa", ""))),
-        _timed("amenities", _bounded(amenities.nearby_amenities_and_station(lat, lon, lite=True), 3.0)),
+        _timed("amenities", _bounded(amenities.nearby_amenities_and_station(
+            lat, lon, lite=True, country=location.get("country")), 3.0)),
         # Actual sales on the streets of this district, not the council's
         # average. Everything else on this page is measured from the
         # district's centre point, and neighbouring centres in a city are
@@ -8803,7 +8811,7 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
 
     amenities_data = ok(amenities_result)
     amenity_plurals = {
-        "supermarket": "supermarkets", "pharmacy": "pharmacies", "restaurant": "restaurants",
+        "supermarket": "supermarkets", "pharmacy": "pharmacies", "restaurant": "restaurants and cafés",
         "pub": "pubs", "hospital": "hospitals",
     }
     amenity_summary = [
@@ -8866,6 +8874,12 @@ async def _build_area_payload(outcode: str, location: dict, cache_key: tuple) ->
         "flood_zone": ok(flood_zone_result),
         "deprivation": ok(deprivation_result),
         "amenity_summary": amenity_summary,
+        # How far the counts reach, said with them since 14 Oct 2026, when
+        # they began to come from the registers (a mile; hospitals three).
+        # A payload built before then has no note and keeps its old words.
+        "amenity_reach": ("within a mile of central " + outcode
+                          + (", hospitals within three miles" if any(a["label"] in ("hospital", "hospitals")
+                                                                      for a in amenity_summary) else "")),
         "local_sales": ok(local_sales_result),
         "has_data": any([ok(hpi_result), ok(crime_result), ok(landscape_result), ok(flood_zone_result)]),
     }

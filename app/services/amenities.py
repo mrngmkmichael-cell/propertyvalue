@@ -11,7 +11,7 @@ import re
 
 import httpx
 
-from app.services import _cache, bus_service, food_hygiene, health_services, rail_journey, routing, stations
+from app.services import _cache, bus_service, food_hygiene, health_services, nhs_places, rail_journey, routing, stations
 
 # Independent public Overpass instances, tried with hedging (see
 # _query_overpass). The primary is known to reject some
@@ -236,7 +236,7 @@ def cached_nearby(lat: float, lon: float) -> dict | None:
     return _cache.get(_cache.coord_key("amenities", lat, lon), CACHE_TTL_S)
 
 
-async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
+async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = False, country: str | None = None) -> dict:
     # "lite" is its own cache key, not just a fetch-time filter of the
     # full result - a lite response is missing entire categories, so
     # serving it back out to a full-fetch caller (or vice versa) would
@@ -245,7 +245,7 @@ async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = Fals
     cached = _cache.get(key, CACHE_TTL_S)
     if cached is not None:
         return cached
-    result = await _fetch_amenities_and_station(lat, lon, lite=lite)
+    result = await _fetch_amenities_and_station(lat, lon, lite=lite, country=country)
     _cache.set(key, result)
     return result
 
@@ -253,8 +253,10 @@ async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = Fals
 # Where "Nearby essentials" and "Getting around" come from since 14 Oct
 # 2026, when OpenStreetMap's Overpass service began refusing this site.
 # Restaurants, pubs and supermarkets: the Food Standards Agency's
-# register of food businesses. GP surgeries: NHS England's practice list,
-# the same table the Health Services card reads. Stations: NaPTAN, the
+# register of food businesses. Pharmacies: NHS England's Organisation
+# Data Service. Dentists and hospitals: the Care Quality Commission's
+# register (nhs_places.py). GP surgeries: NHS England's practice list,
+# the same table the Health Services card reads, England only. Stations: NaPTAN, the
 # Department for Transport's register (stations.py), and the nearest bus
 # stop from the Bus Open Data Service table the Bus Service card reads.
 # The other categories were OpenStreetMap's alone. No official register
@@ -262,13 +264,20 @@ async def nearby_amenities_and_station(lat: float, lon: float, lite: bool = Fals
 # the card as not covered rather than shown as a zero.
 CATEGORIES = ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging",
               "gp", "dentist", "green_space", "wind_turbine", "solar_farm")
-GP_RADIUS_M = 2000
+GP_RADIUS_M = 1609  # a mile, as the registers' other places are counted
 
 
-async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = False) -> dict:
+async def _nothing():
+    return None
+
+
+async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = False, country: str | None = None) -> dict:
     tasks = [food_hygiene.places_near(lat, lon)]
+    # NHS England's practice list covers England. With no nation given,
+    # the CQC dentist list, which also covers England only, stands in.
+    gp_covered = country == "England" if country else nhs_places.covers("dentist", lat, lon, None)
     if not lite:
-        tasks += [asyncio.to_thread(health_services.near, lat, lon, GP_RADIUS_M),
+        tasks += [asyncio.to_thread(health_services.near, lat, lon, GP_RADIUS_M) if gp_covered else _nothing(),
                   asyncio.to_thread(bus_service.stops_near, lat, lon, BUS_STOP_RADIUS_M)]
     results = await asyncio.gather(*tasks, return_exceptions=True)
     places = results[0]
@@ -283,10 +292,14 @@ async def _fetch_amenities_and_station(lat: float, lon: float, lite: bool = Fals
         categories[cat] = found["places"]
         totals[cat] = found["total"]
         covered.append(cat)
+    for kind, found in nhs_places.near(lat, lon, country).items():
+        categories[kind] = found["places"]
+        totals[kind] = found["total"]
+        covered.append(kind)
     if gp is not None:
         categories["gp"] = [{"name": p["name"], "distance_m": p["distance_m"], "lat": None, "lon": None}
                             for p in gp.get("practices", [])]
-        totals["gp"] = len(categories["gp"])
+        totals["gp"] = gp.get("within", len(categories["gp"]))
         covered.append("gp")
     # Carried inside the categories so every path that already passes them
     # (the report, its follow-up fetch, the PDF, the area guide) has them.

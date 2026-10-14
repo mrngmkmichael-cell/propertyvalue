@@ -13,7 +13,7 @@ import asyncio
 import pytest
 
 from app import main as app_main
-from app.services import amenities, food_hygiene, stations
+from app.services import amenities, food_hygiene, nhs_places, stations
 
 
 def test_overpass_is_never_asked():
@@ -47,9 +47,18 @@ def _fake_sources(monkeypatch):
     async def no_journeys(crs):
         return None
 
+    def nhs(lat, lon, country=None):
+        if country not in (None, "England"):
+            return {}
+        return {"pharmacy": {"places": [{"name": "Boots", "distance_m": 445, "lat": 53.48, "lon": -2.24}], "total": 12},
+                "dentist": {"places": [], "total": 0},
+                "hospital": {"places": [{"name": "Manchester Royal Infirmary", "distance_m": 2350,
+                                         "lat": 53.46, "lon": -2.23}], "total": 6}}
+
     monkeypatch.setattr(food_hygiene, "places_near", places)
+    monkeypatch.setattr(nhs_places, "near", nhs)
     monkeypatch.setattr(amenities.health_services, "near", lambda lat, lon, radius_m=2000: {
-        "practices": [{"name": "The Doc's Surgery", "distance_m": 300}]})
+        "practices": [{"name": "The Doc's Surgery", "distance_m": 300}], "within": 10})
     monkeypatch.setattr(amenities.bus_service, "stops_near", lambda lat, lon, radius_m=500: {
         "stops": [{"atco_code": "1800SB1", "name": "Piccadilly Station", "distance_m": 61}]})
     monkeypatch.setattr(amenities.rail_journey, "fastest_to_cities", no_journeys)
@@ -60,9 +69,11 @@ def test_the_fetch_counts_by_the_registers_and_names_what_it_covers(monkeypatch)
     _fake_sources(monkeypatch)
     result = asyncio.run(amenities._fetch_amenities_and_station(53.4776, -2.2311))
     cats = result["categories"]
-    assert cats["_totals"] == {"restaurant": 1721, "supermarket": 88, "pub": 0, "gp": 1}
-    assert cats["_covered"] == ["restaurant", "supermarket", "pub", "gp"]
-    assert cats["pharmacy"] == [] and cats["parking"] == []
+    # The GP count is every surgery within the mile, not the three listed.
+    assert cats["_totals"] == {"restaurant": 1721, "supermarket": 88, "pub": 0,
+                               "pharmacy": 12, "dentist": 0, "hospital": 6, "gp": 10}
+    assert cats["_covered"] == ["restaurant", "supermarket", "pub", "pharmacy", "dentist", "hospital", "gp"]
+    assert cats["parking"] == [] and cats["pharmacy"][0]["name"] == "Boots"
     assert cats["gp"] == [{"name": "The Doc's Surgery", "distance_m": 300, "lat": None, "lon": None}]
     assert result["stations"]["rail"]["crs"] == "MAN"
     assert result["stations_list"]["bus"] == [{"id": "1800SB1", "type": "naptan", "name": "Piccadilly Station",
@@ -73,17 +84,48 @@ def test_the_fetch_counts_by_the_registers_and_names_what_it_covers(monkeypatch)
 
 def test_the_card_lists_only_what_a_register_covers_and_says_what_it_does_not(monkeypatch):
     _fake_sources(monkeypatch)
-    cats = asyncio.run(amenities._fetch_amenities_and_station(53.4776, -2.2311))["categories"]
+    cats = asyncio.run(amenities._fetch_amenities_and_station(53.4776, -2.2311, country="England"))["categories"]
     amen = app_main.templates.get_template("_amenities.html").module
     card = str(amen.essentials_card(cats, False, False))
-    assert "1,809 nearby" in " ".join(card.split())  # 1,721 + 88 + 0, pharmacies and hospitals not read
+    assert "1,827 nearby" in " ".join(card.split())  # 1,721 + 88 + 12 + 0 + 6
+    body = " ".join(str(amen.essentials_body(cats, False, False)).replace("&#39;", "'").split())
+    for line in ("1,721 restaurants and cafés", "88 supermarkets", "12 pharmacies", "6 hospitals within three miles",
+                 "10 GP surgeries", "0 dentists"):
+        assert line in body, line
+    assert "car parks</summary>" not in body
+    assert ("Within a mile, hospitals within three miles. Restaurants and cafés, supermarkets and pubs from the "
+            "Food Standards Agency's register of food businesses; pharmacies from NHS England's organisation "
+            "register; dentists and hospitals from the Care Quality Commission's register; GP surgeries from "
+            "NHS England.") in body
+    assert "Not shown for this address" not in body
+    assert "Not shown: car parks, EV charging points, parks, wind turbines and solar farms." in body
+
+
+def test_outside_england_the_card_says_which_registers_do_not_cover_it(monkeypatch):
+    _fake_sources(monkeypatch)
+    cats = asyncio.run(amenities._fetch_amenities_and_station(55.9533, -3.1883, country="Scotland"))["categories"]
+    assert cats["_covered"] == ["restaurant", "supermarket", "pub"]
+    amen = app_main.templates.get_template("_amenities.html").module
     body = " ".join(str(amen.essentials_body(cats, False, False)).split())
-    assert "1,721 restaurants and cafés" in body and "88 supermarkets" in body and "1 GP surgeries" in body
-    assert "car parks</summary>" not in body and "pharmacies</summary>" not in body
-    assert "from the Food Standards Agency&#39;s register of food businesses" in body or \
-        "from the Food Standards Agency's register of food businesses" in body
-    assert "Not shown: pharmacies, dentists, hospitals, car parks" in body
-    assert "OpenStreetMap." not in body.split("Not shown")[0]
+    assert ("Not shown for this address: pharmacies, dentists, hospitals and GP surgeries. The NHS and Care "
+            "Quality Commission registers read for them do not cover it.") in body
+    assert "0 pharmacies" not in body and "pharmacies</summary>" not in body
+
+
+def test_the_registers_hold_real_places_and_say_where_they_reach():
+    manchester = nhs_places.near(53.4776, -2.2311, "England")
+    assert "Manchester Royal Infirmary" in [p["name"] for p in manchester["hospital"]["places"]]
+    assert manchester["pharmacy"]["total"] >= 5 and manchester["dentist"]["total"] >= 5
+    assert all(p["distance_m"] <= nhs_places.RADIUS_M["hospital"] for p in manchester["hospital"]["places"])
+    # Pharmacies cover Wales too; dentists and hospitals do not; Scotland has none.
+    assert set(nhs_places.near(51.4816, -3.1791, "Wales")) == {"pharmacy"}
+    assert nhs_places.near(55.9533, -3.1883, "Scotland") == {}
+    # With no nation given, a list covers a point where it holds places near it.
+    assert set(nhs_places.near(55.9533, -3.1883, None)) == set()
+    assert set(nhs_places.near(53.4776, -2.2311, None)) == {"pharmacy", "dentist", "hospital"}
+    # A provider's head office is not a hospital.
+    names = [name for name, _, _ in nhs_places._load()["by_kind"]["hospital"]]
+    assert not any("head office" in n.lower() or "headquarters" in n.lower() for n in names)
 
 
 def test_the_register_is_asked_in_whole_miles():

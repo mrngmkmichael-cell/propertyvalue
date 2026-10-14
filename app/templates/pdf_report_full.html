@@ -711,12 +711,12 @@ under-reported, so this is weaker evidence than a high count would be.</p>
 <table class="data">
     <tr><th style="width: 30%">What</th><th class="num" style="width: 16%">Within range</th><th style="width: 38%">Nearest</th><th class="num" style="width: 16%">Distance</th></tr>
     {% set covered = amenities.get('_covered') %}
-    {% for key, label in [("supermarket", "Supermarkets"), ("pharmacy", "Pharmacies"), ("gp", "GP surgeries"), ("dentist", "Dentists"), ("hospital", "Hospitals and clinics"), ("green_space", "Parks and green space"), ("pub", "Pubs"), ("restaurant", "Restaurants and cafés"), ("ev_charging", "EV charging")] if covered is none or key in covered %}
+    {% for key, label in [("supermarket", "Supermarkets"), ("pharmacy", "Pharmacies"), ("gp", "GP surgeries"), ("dentist", "Dentists"), ("hospital", "Hospitals, within three miles"), ("green_space", "Parks and green space"), ("pub", "Pubs"), ("restaurant", "Restaurants and cafés"), ("ev_charging", "EV charging")] if covered is none or key in covered %}
     {% set items = amenities.get(key) or [] %}
     <tr><td class="b">{{ label }}</td><td class="num">{{ "{:,}".format(amenity_total(amenities, key)) }}</td><td>{% if items %}{{ items[0].name }}{% else %}&nbsp;{% endif %}</td><td class="num">{% if items %}{{ items[0].distance_m | distance }}{% else %}<span class="faint">none within range</span>{% endif %}</td></tr>
     {% endfor %}
 </table>
-<p class="tiny faint">Restaurants, supermarkets and pubs within a mile, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
+<p class="tiny faint">Within a mile, hospitals within three miles. Restaurants, supermarkets and pubs from the Food Standards Agency's register of food businesses; pharmacies from NHS England's organisation register; dentists and hospitals from the Care Quality Commission's register; GP surgeries from NHS England. The NHS and CQC registers cover England, and pharmacies Wales too.</p>
 </td></tr></table>
 {% endif %}
 
@@ -804,7 +804,7 @@ under-reported, so this is weaker evidence than a high count would be.</p>
     <tr><td class="b">Department for Education and Ofsted</td><td>Get Information About Schools; inspection outcomes; performance tables; free school meals; local authority admissions publications for last-admitted distances.</td></tr>
     <tr><td class="b">ONS</td><td>Census 2021 small area tables; Price Index of Private Rents; small area income estimates.</td></tr>
     <tr><td class="b">Ofcom</td><td>Connected Nations broadband and mobile coverage.</td></tr>
-    <tr><td class="b">Department for Transport (NaPTAN), Food Standards Agency, NHS England</td><td>Stations; restaurants, supermarkets and pubs nearby; GP surgeries.</td></tr>
+    <tr><td class="b">Department for Transport (NaPTAN), Food Standards Agency, NHS England, Care Quality Commission</td><td>Stations; restaurants, supermarkets and pubs nearby; pharmacies, GP surgeries, dentists and hospitals.</td></tr>
     <tr><td class="b">OpenRouteService</td><td>Walking times to stations, where available.</td></tr>
 </table>
 {{ sp("10pt") }}

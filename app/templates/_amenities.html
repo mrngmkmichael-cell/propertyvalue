@@ -56,8 +56,15 @@
        with the register's own count; the rest are named once below, so a
        category nobody can read never shows as a zero. #}
     {% set covered = amenities.get('_covered') %}
-    <p class="section-sub">Restaurants and cafés, supermarkets and pubs within a mile, from the Food Standards Agency's register of food businesses; GP surgeries from NHS England.</p>
-    {% for key, label in [("restaurant", "restaurants and cafés"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
+    {% if covered is none %}
+    <p class="section-sub">Restaurants, shops and services nearby.</p>
+    {% else %}
+    {# Pharmacies, dentists and hospitals from the NHS and Care Quality
+       Commission registers since 14 Oct 2026; each source is named only
+       when its list covers this address. #}
+    <p class="section-sub">Within a mile, hospitals within three miles. Restaurants and cafés, supermarkets and pubs from the Food Standards Agency's register of food businesses{% if 'pharmacy' in covered %}; pharmacies from NHS England's organisation register{% endif %}{% if 'dentist' in covered or 'hospital' in covered %}; dentists and hospitals from the Care Quality Commission's register{% endif %}{% if 'gp' in covered %}; GP surgeries from NHS England{% endif %}.</p>
+    {% endif %}
+    {% for key, label in [("restaurant", "restaurants and cafés"), ("supermarket", "supermarkets"), ("pharmacy", "pharmacies"), ("pub", "pubs"), ("hospital", "hospitals within three miles"), ("parking", "car parks"), ("ev_charging", "EV charging points"), ("gp", "GP surgeries"), ("dentist", "dentists"), ("green_space", "parks and green spaces"), ("wind_turbine", "wind turbines"), ("solar_farm", "solar farms")] %}
     {% if covered is none or key in covered %}
     <details class="amenity-group">
         <summary>{{ "{:,}".format(amenity_total(amenities, key)) }} {{ label }}</summary>
@@ -77,7 +84,10 @@
     {% endif %}
     {% endfor %}
     {% if covered is not none %}
-    <p class="section-sub">Not shown: pharmacies, dentists, hospitals, car parks, EV charging points, parks, wind turbines and solar farms. They came from OpenStreetMap, whose service no longer answers this site, and no official register replaces them here yet.</p>
+    {% set not_here = [] %}
+    {% for key, label in [("pharmacy", "pharmacies"), ("dentist", "dentists"), ("hospital", "hospitals"), ("gp", "GP surgeries")] if key not in covered %}{% set _ = not_here.append(label) %}{% endfor %}
+    {% if not_here %}<p class="section-sub">Not shown for this address: {{ check_names(not_here) }}. The NHS and Care Quality Commission registers read for them do not cover it.</p>{% endif %}
+    <p class="section-sub">Not shown: car parks, EV charging points, parks, wind turbines and solar farms. They came from OpenStreetMap, whose service no longer answers this site.</p>
     {% endif %}
 {% endif %}
 </div>

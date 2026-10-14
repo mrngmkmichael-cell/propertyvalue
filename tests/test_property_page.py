@@ -162,7 +162,7 @@ def test_amenities_render_pending_then_arrive_by_follow_up_fetch(client, fake_re
     assert "Finding what" in body
     assert "/api/property/amenities?postcode=M14%205TG" in body
 
-    async def _fake_fetch(lat, lon, lite=False):
+    async def _fake_fetch(lat, lon, lite=False, country=None):
         return {
             "categories": {k: [] for k in ("restaurant", "supermarket", "pharmacy", "pub", "hospital", "parking", "ev_charging", "gp", "dentist", "green_space", "wind_turbine", "solar_farm")}
             | {"supermarket": [{"name": "Test Stores", "distance_m": 120, "lat": 53.45, "lon": -2.22}]},

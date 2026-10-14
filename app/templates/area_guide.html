@@ -486,8 +486,8 @@
 <section class="report-section">
     <h2>Getting around & nearby essentials</h2>
     <p class="section-sub">
-        {% for a in amenity_summary %}{{ a.count }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
-        within range of central {{ outcode }}.
+        {% for a in amenity_summary %}{{ "{:,}".format(a.count) }} {{ a.label }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {{ amenity_reach if amenity_reach is defined and amenity_reach else "within range of central " ~ outcode }}.
     </p>
 </section>
 {% endif %}
