@@ -9,19 +9,29 @@
 {# "X catchment area" is the query parents type; the figure in the
    title is the answer they are after, and no other result has it. The
    authority is the part that can be spared when the title runs long,
-   then "Church of England" as "CofE", then the year (5 Oct 2026). #}
+   then "Church of England" as "CofE", then the year (5 Oct 2026).
+   14 Oct 2026: about one school page in twenty still ran past what
+   Google shows, and the part it cut was the distance. Long names now
+   go on shedding words, never the answer: "Voluntary Controlled",
+   "Voluntary Aided" and "Roman Catholic" as VC, VA and RC, "and
+   Nursery", then "area", then "Primary School" as "Primary", and only
+   last "catchment" itself. The page's H1 keeps the full name. #}
 {% block title %}
 {%- set named = school.name ~ " catchment area" -%}
 {%- set cofe = (school.name | replace("Church of England", "CofE")) ~ " catchment area" -%}
+{%- set short = school.name | replace("Church of England", "CofE") | replace("Voluntary Controlled", "VC")
+    | replace("Voluntary Aided", "VA") | replace("Roman Catholic", "RC") | replace(" and Nursery", "") | replace(" & Nursery", "") -%}
+{%- set shorter = short | replace(" Primary School", " Primary") -%}
 {%- if school.no_distance_limit -%}
-{#- Never shortened: "no distance limit" would claim a standing fact
-    where the figure is one year's, so these titles spare only the
-    authority and "CofE". -#}
+{#- The answer is never shortened: "no distance limit" would claim a
+    standing fact where the figure is one year's. -#}
 {%- set answer = ": distance did not limit entry" -%}{%- set answer_short = answer -%}
 {%- else -%}
 {%- set answer = ": " ~ school.miles_label ~ " miles" ~ school.year_phrase -%}{%- set answer_short = ": " ~ school.miles_label ~ " miles" -%}
 {%- endif -%}
-{{ fit_title(named ~ " (" ~ school.authority ~ ")" ~ answer, named ~ answer, cofe ~ answer, cofe ~ answer_short) }}
+{{ fit_title(named ~ " (" ~ school.authority ~ ")" ~ answer, named ~ answer, cofe ~ answer, cofe ~ answer_short,
+             short ~ " catchment area" ~ answer_short, short ~ " catchment" ~ answer_short,
+             shorter ~ " catchment" ~ answer_short, shorter ~ answer_short) }}
 {%- endblock %}
 {% block meta_description %}{{ school.name }} catchment area: {% if school.no_distance_limit %}distance did not limit entry{{ school.year_phrase }}, on the figure {{ school.authority }} published{% else %}last admitted from {{ school.miles_label }} miles{{ school.year_phrase }}, published by {{ school.authority }}{% endif %}. Check any postcode against it on the map, free.{% endblock %}
 {% block og_title %}{{ school.name }}: {% if school.no_distance_limit %}distance did not limit entry{% else %}admitted from {{ school.miles_label }} miles{% endif %}{% endblock %}

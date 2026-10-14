@@ -83,7 +83,28 @@ def test_distance_did_not_limit_entry_is_never_reworded():
     assert short == "Ash School catchment area: distance did not limit entry"
     long = _block("school_admission.html", "title",
                   school=_school("Hartpury Church of England Primary School", no_limit=True))
-    assert long == "Hartpury CofE Primary School catchment area: distance did not limit entry"
+    # The name gives way instead (14 Oct 2026): the answer is whole.
+    assert long == "Hartpury CofE Primary: distance did not limit entry"
+    assert len(long) <= SEO_TITLE_LIMIT
+
+
+def test_a_very_long_name_sheds_words_and_never_the_distance():
+    """14 Oct 2026: about one school title in twenty still ran past what
+    Google shows, cutting the distance. Each of these is a real name
+    from the register that did."""
+    for name, miles, expected in (
+        ("Sheering Church of England Voluntary Controlled Primary School", "2.36",
+         "Sheering CofE VC Primary School catchment area: 2.36 miles"),
+        ("Hurdsfield Community Primary School and Nursery", "2",
+         "Hurdsfield Community Primary School catchment area: 2 miles"),
+        ("St Joseph the Worker Catholic Primary School", "0.4",
+         "St Joseph the Worker Catholic Primary catchment: 0.4 miles"),
+        ("Our Lady and St Hubert's Catholic Primary School", "1.28",
+         "Our Lady and St Hubert's Catholic Primary: 1.28 miles"),
+    ):
+        title = _block("school_admission.html", "title", school=_school(name, miles)).replace("&#39;", "'")
+        assert title == expected, title
+        assert len(title) <= SEO_TITLE_LIMIT and f"{miles} miles" in title
 
 
 def test_an_apostrophe_is_measured_as_one_character_not_an_entity():
