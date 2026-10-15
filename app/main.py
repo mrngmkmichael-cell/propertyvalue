@@ -3876,6 +3876,11 @@ GSC_EARNED_OUTCODES = [
     "BH1", "BT17", "CA1", "CH32", "CM23", "CR0", "EC2Y", "EH55", "G33",
     "L69", "LN11", "LN4", "MK18", "PL2", "PR11", "S40", "SA6", "SK4",
     "SL95", "SO50", "WN6",
+    # --- Promoted from Search Console, 15 Oct 2026 (data to 13 Oct) ---
+    # Eight districts with impressions and no priority yet: 212 earned
+    # impressions in this export, 204 already promoted. WC1N led with 45.
+    # WD99 is largely non-geographic, kept on the rule above.
+    "CT19", "EC1V", "PO15", "SL9", "UB8", "WC1N", "WD99", "YO31",
 ]
 AREA_GUIDE_SEED_OUTCODES = AREA_GUIDE_SEED_OUTCODES + GSC_EARNED_OUTCODES
 
@@ -13395,9 +13400,17 @@ def _school_labels(profile: dict) -> dict:
 # Landau Forte). New this round: Chislehurst and Sidcup Grammar,
 # Cheadle Hulme High, Priory, Magna Carta, Tetherdown, Birchanger and
 # St Michael's.
+# Refreshed from the export of 15 Oct 2026 (data to 13 Oct): 90 school
+# pages met the rule. Five of the twenty above earned their first clicks
+# and left (Parliament Hill, Chislehurst and Sidcup Grammar, Gillespie,
+# Fielding, King Edward VII); seven were overtaken (Magna Carta, Crown
+# Hills, Elmlea, Tetherdown, Rosendale, Birchanger, St Michael's). New:
+# Stockport School, Denbigh, St Mary Magdalene Academy, St Damian's,
+# Ashlyns, Frances Bardsley, Bexley Grammar, Yerbury, Northwood,
+# Dr Challoner's Grammar, Chailey and Haberdashers' Crayford.
 NEAR_MISS_SCHOOL_URNS = [
-    102156, 136534, 137531, 100050, 137423, 137843, 100405, 101897, 139703, 141175,
-    142771, 102097, 108076, 120277, 147476, 102098, 144308, 107140, 115127, 104019,
+    102156, 137531, 136534, 137843, 106135, 136468, 134314, 106270, 108076, 139703,
+    117578, 138326, 141175, 136369, 100429, 137829, 136419, 114594, 102097, 135951,
 ]
 
 
