@@ -7544,7 +7544,7 @@ def test_fix_e_the_verification_and_alert_emails_name_what_sends_an_alert():
     alert = _fix_e_email_text(app_main._watchlist_alert_email_html(
         [{"label": "36 Acacia Road, KT3 4HX", "postcode": "KT3 4HX", "house_number": "36",
           "changes": ["A sale was recorded on 3 Jul 2026"]}], "https://example.test/watchlist"))
-    assert ("Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can "
+    assert ("Confirm this is your address on UKPropertyInsight, so we can "
             "email you when one of these happens to a home saved in My properties: "
             f"{app_main.ALERT_TRIGGERS_LIST}. If you ask for it on your school shortlist, we also email you when "
             "a council publishes a new admission distance for a school you saved. Never on a schedule.") in verify

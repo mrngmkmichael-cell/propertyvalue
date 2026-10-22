@@ -136,6 +136,53 @@ def test_the_free_full_report_opens_before_the_address_is_confirmed(client, monk
     assert app_main._email_can_receive("ungated@customer.test") is False
 
 
+def test_confirming_after_the_free_report_opens_the_home_it_was_used_on(client, monkeypatch):
+    """22 Oct 2026: account 112 signed up on one home, used the free report
+    on another, and confirmed the next morning. "Back to where you were"
+    opened the first home behind the price, and they left within the
+    minute. The confirmed page now opens the home the report was used on,
+    and the email no longer promises to unlock a report already open."""
+    sent = _live(monkeypatch)
+    r = client.post("/signup", data={"email": "confirmed-later@customer.test", "password": "password123",
+                                     "next": "/property?postcode=TW3+1AA"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert "unlock your free full report" not in sent[0]["html"]
+    link = re.search(r'href="([^"]+/verify-email\?token=[^"]+)"', sent[0]["html"]).group(1)
+    with db.get_session() as session:
+        uid = auth.find_user_by_email(session, "confirmed-later@customer.test").id
+        assert auth.claim_unlock(session, uid, "PR7 3RQ", "Willows") is True
+
+    page = " ".join(client.get(link).text.split())
+    # And the banner no longer asks them to confirm what the page thanks them for.
+    assert 'id="verify-banner"' not in page
+    assert 'href="/property?postcode=PR7%203RQ&amp;house_number=Willows">Open your full report</a>' in page
+    assert "Your free full report, for Willows, PR7 3RQ, stays open for good." in page
+    assert "TW3" not in page and "Back to where you were" not in page
+
+    # Confirmed on another device, signed out: the way back goes through log in.
+    client.cookies.clear()
+    page = client.get(link).text
+    assert 'href="/login?next=%2Fproperty%3Fpostcode%3DPR7%25203RQ%26house_number%3DWillows">' in page
+    login = client.get("/login?next=%2Fproperty%3Fpostcode%3DPR7%25203RQ%26house_number%3DWillows").text
+    assert 'name="next" value="/property?postcode=PR7%203RQ&amp;house_number=Willows"' in login
+    r = client.post("/login", data={"email": "confirmed-later@customer.test", "password": "password123",
+                                    "next": "/property?postcode=PR7%203RQ&house_number=Willows"}, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/property?postcode=PR7%203RQ&house_number=Willows"
+
+
+def test_confirming_before_the_free_report_still_points_to_it(client, monkeypatch):
+    """Someone who has not used it yet is sent where they signed up, with
+    the report waiting; the used-report link appears only once it is used."""
+    sent = _live(monkeypatch)
+    client.post("/signup", data={"email": "early@customer.test", "password": "password123",
+                                 "next": "/property?postcode=TW3+1AA"}, follow_redirects=False)
+    link = re.search(r'href="([^"]+/verify-email\?token=[^"]+)"', sent[0]["html"]).group(1)
+    page = " ".join(client.get(link).text.split())
+    assert "Your free full report is ready" in page
+    assert 'href="/property?postcode=TW3+1AA">Open your report</a>' in page
+    assert "stays open for good" not in page
+
+
 def test_the_free_report_is_offered_not_spent_silently(client, fake_report, monkeypatch):
     """Until 7 Sep 2026 the first property a signed-in person opened spent
     their free full report, stray postcode or not. Now the page asks, and

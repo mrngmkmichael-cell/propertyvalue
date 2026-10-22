@@ -2234,9 +2234,13 @@ def test_healthz_answers_without_touching_the_database(client, monkeypatch):
     on Neon being reachable."""
     from app import db
     monkeypatch.setattr(db, "get_session", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("no database")))
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
     r = client.get("/healthz")
-    assert r.status_code == 200 and r.json() == {"status": "ok"}
+    assert r.status_code == 200 and r.json() == {"status": "ok", "commit": ""}
     assert r.headers["cache-control"] == "no-store"
+    # On Render it names the deployed commit, so a push can be confirmed live.
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "4b41fe6a1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f")
+    assert client.get("/healthz").json() == {"status": "ok", "commit": "4b41fe6"}
 
 
 # ---- The 404 shapes Search Console listed on 8 Sep 2026 -------------------------

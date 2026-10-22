@@ -2872,8 +2872,13 @@ async def healthz():
     no upstream. Set as the Health Check Path on Render so a deploy keeps
     the old instance serving until the new one answers here: without it,
     every push cost a burst of 502s, which is what a crawler mid-deploy
-    saw (the 8 Sep 2026 guide warm-up logged 18 of them across two pushes)."""
-    return JSONResponse({"status": "ok"}, headers={"Cache-Control": "no-store"})
+    saw (the 8 Sep 2026 guide warm-up logged 18 of them across two pushes).
+
+    It also names the commit Render deployed (RENDER_GIT_COMMIT, set by
+    Render on every deploy; empty anywhere else), so whether a push is
+    live is read here rather than guessed from page copy (22 Oct 2026)."""
+    return JSONResponse({"status": "ok", "commit": os.environ.get("RENDER_GIT_COMMIT", "")[:7]},
+                        headers={"Cache-Control": "no-store"})
 
 
 # How this site compares with the three services a buyer meets first
@@ -11010,10 +11015,35 @@ def verify_email(request: Request, token: str = ""):
             if user.email_verified_at is None:
                 user.email_verified_at = datetime.datetime.now(datetime.timezone.utc)
                 session.commit()
+            # The signed-in state was read before this click was recorded,
+            # so the banner above asked them to confirm the address this
+            # page thanks them for confirming (found 22 Oct 2026).
+            if context.get("current_user") and context["current_user"].get("id") == user.id:
+                context["current_user"] = {**context["current_user"], "email_verified": True}
             context["verified"] = True
             context["verified_email"] = user.email
             context["next_url"] = next_path if next_path and next_path != "/" else ""
             context["free_report_waiting"] = auth.unlocks_used(session, user.id) < auth.FREE_PREMIUM_UNLOCKS and not user.is_premium
+            # Since the report stopped waiting for this click (14 Oct 2026),
+            # most people have used it by the time they confirm, often on a
+            # home other than the page they signed up from. "Back to where
+            # you were" then opened that other home behind the price: account
+            # 112 on 20 Oct, gone within the minute. The way back is the home
+            # they chose (22 Oct 2026).
+            context["unlocked_home"] = None
+            if not context["free_report_waiting"] and not user.is_premium:
+                unlocked = session.scalars(
+                    select(PremiumUnlock).where(PremiumUnlock.user_id == user.id)
+                    .order_by(PremiumUnlock.created_at.desc())
+                ).first()
+                if unlocked:
+                    url = f"/property?postcode={quote(unlocked.postcode)}"
+                    if unlocked.house_number:
+                        url += f"&house_number={quote(unlocked.house_number)}"
+                    context["unlocked_home"] = {
+                        "url": url if context.get("current_user") else "/login?next=" + quote(url, safe=""),
+                        "label": ", ".join(part for part in (unlocked.house_number, unlocked.postcode) if part),
+                    }
     return templates.TemplateResponse(request, "verify_email.html", context, status_code=200 if context["verified"] else 400)
 
 
@@ -11484,10 +11514,12 @@ def _verification_email_html(link: str) -> str:
     # school you follow" until 18 Sep 2026 (first-visitor audit E5, fix
     # pass). Since C6 a move in recorded crime alone never sends an email,
     # so the email names what does, from the list the pages use, and the
-    # school email for what it is: opted into on the shortlist.
+    # school email for what it is: opted into on the shortlist. It also
+    # promised to "unlock your free full report" until 22 Oct 2026, eight
+    # days after the report stopped waiting for this click.
     return (
         "<p>Hello,</p>"
-        "<p>Confirm this is your address to unlock your free full report on UKPropertyInsight, and so we can "
+        "<p>Confirm this is your address on UKPropertyInsight, so we can "
         f"email you when one of these happens to a home saved in My properties: {ALERT_TRIGGERS_LIST}. If you "
         "ask for it on your school shortlist, we also email you when a council publishes a new admission "
         "distance for a school you saved. Never on a schedule.</p>"
