@@ -9860,7 +9860,10 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     # Three grouped queries rather than one per day: every statement is
     # a round trip to a database in another country, which is the unit
     # this page is charged in.
-    funnel_from = today_start - datetime.timedelta(days=13)
+    # Fourteen days back rather than thirteen (23 Oct 2026): the table
+    # still shows fourteen rows, and the extra day lets the week before
+    # in the morning summary have seven full days (see week_compare).
+    funnel_from = today_start - datetime.timedelta(days=14)
     stage_rows = session.execute(
         select(func.date(PageView.created_at), PageView.path, func.count())
         .where(PageView.created_at >= funnel_from,
@@ -9939,6 +9942,34 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
             "paywall": row.get(PAYWALL_PATH, 0),
         })
 
+    # This week against last, for the morning summary (23 Oct 2026): the
+    # seven full days to yesterday against the seven before, so a summary
+    # sent in the afternoon never sets part of a day against whole ones.
+    # Read from the rows above, plus one grouped statement for the new
+    # subscriptions (premium_since, test accounts out, a cancelled one
+    # still counted in the week it started).
+    this_days, last_days = date_range[-8:-1], date_range[-15:-8]
+    paid_by_day = {str(d)[:10]: c for d, c in session.execute(
+        select(func.date(User.premium_since), func.count())
+        .where(User.premium_since >= funnel_from,
+               *( [User.id.notin_(test_ids)] if test_ids else [] ))
+        .group_by(func.date(User.premium_since))
+    ).all()}
+    paywall_by_day = {day: row.get(PAYWALL_PATH, 0) for day, row in stages.items()}
+    people_all_days = {d["date"]: d["audience"] for d in daily_all}
+
+    def _weeks(by_day: dict) -> tuple[int, int]:
+        return (sum(by_day.get(str(d), 0) for d in this_days),
+                sum(by_day.get(str(d), 0) for d in last_days))
+
+    m["week_compare"] = {
+        "people": _weeks(people_all_days),
+        "accounts": _weeks(signups_by_day),
+        "free_reports": _weeks(unlocks_by_day),
+        "paywall": _weeks(paywall_by_day),
+        "subscriptions": _weeks(paid_by_day),
+    }
+
     # The same split rolled up. Each day is split on its own before the
     # days are added together: a page a crawler visits once a day for a
     # week is seven single visits, not one page read seven times.
@@ -10004,9 +10035,10 @@ def _admin_metrics(session, now: datetime.datetime) -> dict:
     ) or 0
     m["pageviews_wow_change"] = _pct_change(m["pageviews_prev_week"], m["pageviews_week"])
 
+    # Test accounts out, as signups_week has them out (23 Oct 2026): the
+    # week-on-week change set a cleaned week against an uncleaned one.
     m["signups_prev_week"] = session.scalar(
-        select(func.count()).select_from(User)
-        .where(User.created_at >= prev_week_start, User.created_at < week_start)
+        _real_users().where(User.created_at >= prev_week_start, User.created_at < week_start)
     ) or 0
     m["signups_wow_change"] = _pct_change(m["signups_prev_week"], m["signups_week"])
 
@@ -10384,6 +10416,15 @@ async def internal_resend_confirmation(request: Request, email: str = Form(...))
     return JSONResponse({"sent": ok, "confirmation_live": email_service.can_verify(), "last_send_error": email_service.last_error})
 
 
+def _week_compare_line(week: dict) -> str:
+    """The morning summary's week line: this week's figure in bold, last
+    week's in brackets, in the order a visitor moves through the site."""
+    parts = (("people", "people"), ("accounts", "new accounts"), ("free_reports", "free reports used"),
+             ("paywall", "reached the price"), ("subscriptions", "new subscriptions"))
+    return ("\U0001F4C5 7 days to yesterday, the 7 before in brackets: "
+            + ", ".join(f"{label} <b>{week[key][0]:,}</b> ({week[key][1]:,})" for key, label in parts))
+
+
 @app.post("/internal/send-daily-summary")
 async def send_daily_summary(request: Request):
     """Scheduled job (see .github/workflows/daily-summary.yml) - posts a
@@ -10418,6 +10459,7 @@ async def send_daily_summary(request: Request):
         f"The rest ({m['crawl_today']} today) is pages visited exactly once, the shape a crawler leaves",
         f"✍️ Signups: <b>{m['signups_today']}</b> today, {m['signups_week']} this week "
         f"({_fmt_change(m['signups_wow_change'])} vs last week), {m['signups_total']} total",
+        _week_compare_line(m["week_compare"]),
         f"⭐ Premium: <b>{m['premium_total']}</b> of {m['signups_total']} accounts",
         f"\U0001F4B0 Est. MRR: <b>£{m['mrr_estimate']:.2f}</b>/month, {m['active_subscriber_count']} active{trialing_note}",
         f"\U0001F4CA 14-day trend: avg {m['pageviews_avg_14d']}/day, typical swing ±{m['pageviews_stdev_14d']}",
